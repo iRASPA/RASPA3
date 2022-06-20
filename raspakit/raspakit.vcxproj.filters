@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="raspakit.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="framework.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="framework.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="component.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="component.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simulationbox.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="simulationbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="atom.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="atom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_md_loop.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_integration.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="monte_carlo.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="monte_carlo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="input_reader.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="input_reader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_hardware_info.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_cross_system_moves.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_cross_system_moves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_system_moves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_system_moves.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_energy_vdw.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_energy_vdw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="averages.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="averages.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="units.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_intermolecular.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status_intra.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status_intra.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status_inter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_status_inter.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loadings.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loadings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_framework_molecule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc_growing_status.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc_growing_status.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc_branched_chain.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc_branched_chain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="units.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cbmc.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sample_movies.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="sample_movies.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_compute_fluid_properties.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="enthalpy_of_adsorption.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="enthalpy_of_adsorption.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lambda.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lambda.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_print_movestatistics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_cbmc_rigid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_energy_coulomb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_energy_coulomb.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_correction_vdw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_correction_vdw.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_ewald.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_tailcorrection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_print_energyaverages.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_print_enthalpy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dudlambda_histogram.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dudlambda_histogram.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="forcefield.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="forcefield.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="probability_histogram.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="probability_histogram.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_deletion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_insertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_reinsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_rotation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_swap_cfcmc_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_translation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_widom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_dudlambda.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_dudlambda.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_energy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_energy.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_enthalpy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_enthalpy.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_lambda_probability_histogram.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_lambda_probability_histogram.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_loading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_loading.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_simulationbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_simulationbox.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_widom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_widom.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_cbmc_rigid_deletion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_cbmc_rigid_insertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_cbmc_rigid_reinsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

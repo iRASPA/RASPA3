@@ -1,0 +1,64 @@
+export module skseitzintegermatrix;
+
+import <vector>;
+import skrotationmatrix;
+import mathkit;
+import skonethirdseitzmatrix;
+import hashcombine;
+
+
+export struct SKSeitzIntegerMatrix
+{
+    SKRotationMatrix rotation;
+    int3 translation;   // denominator = 24
+
+    SKSeitzIntegerMatrix();
+    SKSeitzIntegerMatrix(SKRotationMatrix rotation, int3 translation);
+    SKSeitzIntegerMatrix(char xvalue, char yvalue, char zvalue);
+    static std::vector<SKSeitzIntegerMatrix> SeitzMatrices(std::string encoding);
+
+    int3 normalizedTranslation() const { return int3(translation.x % 24, translation.y % 24, translation.z % 24); }
+
+    bool operator==(SKSeitzIntegerMatrix const& rhs) const
+    {
+        return (this->rotation == rhs.rotation) &&
+            ((this->translation.x % 24) == (rhs.translation.x % 24)) &&
+            ((this->translation.y % 24) == (rhs.translation.y % 24)) &&
+            ((this->translation.z % 24) == (rhs.translation.z % 24));
+    }
+
+    struct hashFunction {
+        std::size_t operator()(const SKSeitzIntegerMatrix& k) const
+        {
+            std::size_t h = 0;
+            hash_combine(h, k.rotation.int3x3.m11);
+            hash_combine(h, k.rotation.int3x3.m12);
+            hash_combine(h, k.rotation.int3x3.m13);
+            hash_combine(h, k.rotation.int3x3.m21);
+            hash_combine(h, k.rotation.int3x3.m22);
+            hash_combine(h, k.rotation.int3x3.m23);
+            hash_combine(h, k.rotation.int3x3.m31);
+            hash_combine(h, k.rotation.int3x3.m32);
+            hash_combine(h, k.rotation.int3x3.m33);
+            hash_combine(h, k.translation.x);
+            hash_combine(h, k.translation.y);
+            hash_combine(h, k.translation.z);
+            return h;
+        }
+    };
+
+    static std::vector<SKOneThirdSeitzMatrix> SeitzData;
+};
+
+export inline double3 operator*(const SKSeitzIntegerMatrix& a, const double3& b)
+{
+    double3 v = a.rotation * b;
+    return v + double3(a.translation.x / 24.0, a.translation.y / 24.0, a.translation.z / 24.0);
+}
+
+export inline SKSeitzIntegerMatrix operator*(const SKSeitzIntegerMatrix& a, const SKSeitzIntegerMatrix& b)
+{
+    SKRotationMatrix rotationMatrix = a.rotation * b.rotation;
+    int3 translationVector = a.translation + a.rotation * b.translation;
+    return SKSeitzIntegerMatrix(rotationMatrix, translationVector);
+}

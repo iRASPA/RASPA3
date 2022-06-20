@@ -1,0 +1,29 @@
+SimulationType                MonteCarlo
+NumberOfCycles                10000
+NumberOfInitializationCycles  1000
+NumberOfEquilibrationCycles   10000
+PrintEvery                    1000
+
+NumberOfBlocks 5
+
+Forcefield                    ExampleMoleculeForceField
+
+Framework 0
+FrameworkName MFI-2x2x2.poscar
+
+ExternalTemperature 300.0
+ExternalPressure 1e4
+HeliumVoidFraction    0.29
+Movies no
+WriteMoviesEvery 1000
+
+Component 0 MoleculeName               CO2
+            MoleculeDefinition         ExampleDefinitions
+            TranslationProbability     0.5
+            RotationProbability        0.5
+            ReinsertionProbability     0.5
+	        SwapProbability            0.0
+	        CFCMC_CBMC_SwapProbability 1.0
+            WidomProbability           1.0
+            CBCFCMCWidomProbability    1.0
+            CreateNumberOfMolecules    0

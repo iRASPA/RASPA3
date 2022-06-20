@@ -1,0 +1,32 @@
+CXX=clang++-14
+CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -fno-omit-frame-pointer -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../mathkit
+
+.PHONY: default
+default: libsymmetrykit;
+
+.SUFFIXES:
+.SUFFIXES: .pcm .ixx *.cpp
+
+.SECONDARY:
+
+%.o: %.cpp %.pcm
+	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+
+%.pcm: %.ixx
+	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
+
+skatomcopy: skatomcopy.o
+skasymmetricatom: skatomcopy skasymmetricatom.o
+skelement: skelement.o
+skboundingbox: skboundingbox.o
+skcell: skboundingbox skcell.o
+skstructure: skcell skasymmetricatom skstructure.o
+skparser: skstructure skparser.o
+skposcarparser: skparser skposcarparser.o
+
+libsymmetrykit: skelement skposcarparser skparser skstructure skcell skboundingbox skasymmetricatom skatomcopy
+	ar Scr libsymmetrykit.a skelement.o skposcarparser.o skparser.o skstructure.o skcell.o skboundingbox.o skasymmetricatom.o skatomcopy.o
+	ranlib libsymmetrykit.a
+
+clean:
+	rm -f *.pcm *.o *.a
