@@ -11,6 +11,7 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
+import energy_factor;
 import energy_status;
 import energy_status_inter;
 import lambda;
@@ -97,13 +98,13 @@ std::optional<EnergyStatus> MC_Particle_Moves::swapMove_CFCMC_CBMC(System& syste
         EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.totalEik, std::span(growData->atom.begin(), growData->atom.end()), {});
         EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
                                             system.computeTailCorrectionVDWOldEnergy();
-        double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy + tailEnergyDifference.totalEnergy));
+        double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));
 
 		double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 		double preFactor = correctionFactorEwald * system.simulationBox.Beta * system.components[selectedComponent].molFraction * system.simulationBox.pressure * system.simulationBox.volume /
 			static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 		double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-		if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.totalEnergy + biasTerm))
+		if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.totalEnergy.energy + biasTerm))
 		{
             system.acceptEwaldMove();
 
@@ -153,7 +154,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::swapMove_CFCMC_CBMC(System& syste
 		    // (1) Biased: the existing fractional molecule is retraced using CBMC with lambda=lambda_o, fractional molecule is removed.
 			ChainData retraceData = system.retraceMoleculeSwapDeletion(selectedComponent, 0, fractionalMolecule, oldLambda, 0.0);			
             EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, fractionalMolecule);
-            double correctionFactorEwald = std::exp(-system.simulationBox.Beta * energyFourierDifference.totalEnergy);
+            double correctionFactorEwald = std::exp(-system.simulationBox.Beta * energyFourierDifference.totalEnergy.energy);
 
 			for (Atom &atom : fractionalMolecule) { atom.setScaling(0.0); }
 
@@ -192,7 +193,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::swapMove_CFCMC_CBMC(System& syste
 			double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
 				(system.simulationBox.Beta * system.components[selectedComponent].molFraction * system.simulationBox.pressure * system.simulationBox.volume);
 			double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-			if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.totalEnergy + biasTerm))
+			if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.totalEnergy.energy + biasTerm))
 			{
                 system.acceptEwaldMove();
 				system.components[selectedComponent].lambda.setCurrentBin(newBin);
@@ -247,7 +248,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::swapMove_CFCMC_CBMC(System& syste
 
 
 		double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-		if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.totalEnergy + biasTerm))
+		if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.totalEnergy.energy + biasTerm))
 		{
             system.acceptEwaldMove();
 			system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;

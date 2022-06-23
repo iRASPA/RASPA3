@@ -10,6 +10,7 @@ import double3;
 import double3x3;
 import forcefield;
 import atom;
+import energy_factor;
 import energy_status_inter;
 import units;
 
@@ -20,10 +21,10 @@ import <vector>;
 import <span>;
 import <cmath>;
 
-void System::computeFrameworkMoleculeVDWEnergy() noexcept
+void System::computeFrameworkMoleculeEnergy() noexcept
 {
 	double3 dr, posA, posB, f;
-	double rr, energy;
+	double rr;
 
     const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
     const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
@@ -58,15 +59,15 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 				double scaling = scaleA * scaleB;
 				EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
 
-				runningEnergies(compA, compB).VanDerWaals += 0.5 * energyFactor.energy;
-				runningEnergies(compB, compA).VanDerWaals += 0.5 * energyFactor.energy;
+				runningEnergies(compA, compB).VanDerWaals += 0.5 * energyFactor;
+				runningEnergies(compB, compA).VanDerWaals += 0.5 * energyFactor;
                 runningEnergies.dUdlambda += energyFactor.dUdlambda;
 			}
-            if (rr < cutOffChargeSquared)
+            if (!noCharges && rr < cutOffChargeSquared)
             {
                 double r = std::sqrt(rr);
                 double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-                energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+                EnergyFactor energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
                 runningEnergies(compA, compB).CoulombicReal += 0.5 * energy;
                 runningEnergies(compB, compA).CoulombicReal += 0.5 * energy;
@@ -75,10 +76,10 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 	}
 }
 
-[[nodiscard]] std::optional<EnergyStatus> System::computeFrameworkMoleculeVDWEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
+[[nodiscard]] std::optional<EnergyStatus> System::computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
 {
 	double3 dr, s, t;
-	double rr, energy;
+	double rr;
 
 	EnergyStatus energySum(components.size());
 
@@ -119,15 +120,15 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 					EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
 
                     if (energyFactor.energy > overlapCriteria) return std::nullopt;
-					energySum(compA, compB).VanDerWaals += 0.5 * energyFactor.energy;
-					energySum(compB, compA).VanDerWaals += 0.5 * energyFactor.energy;
+					energySum(compA, compB).VanDerWaals += 0.5 * energyFactor;
+					energySum(compB, compA).VanDerWaals += 0.5 * energyFactor;
                     energySum.dUdlambda += energyFactor.dUdlambda;
 				}
-                if (rr < cutOffChargeSquared)
+                if (!noCharges && rr < cutOffChargeSquared)
                 {
                     double r = std::sqrt(rr);
                     double scaling = scalingCoulombA * scalingCoulombB;
-                    energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+                    EnergyFactor energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
                     energySum(compA, compB).CoulombicReal += 0.5 * energy;
                     energySum(compB, compA).CoulombicReal += 0.5 * energy;
@@ -145,7 +146,7 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 [[nodiscard]] std::optional<EnergyStatus> System::computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept
 {
 	double3 dr, s, t;
-	double rr, energy;
+	double rr;
 
 	EnergyStatus energySum(components.size());
 
@@ -184,15 +185,15 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 		  	EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
-		  	energySum(compA, compB).VanDerWaals += 0.5 * energyFactor.energy;
-		  	energySum(compB, compA).VanDerWaals += 0.5 * energyFactor.energy;
+		  	energySum(compA, compB).VanDerWaals += 0.5 * energyFactor;
+		  	energySum(compB, compA).VanDerWaals += 0.5 * energyFactor;
             energySum.dUdlambda += energyFactor.dUdlambda;
 		  }
-          if (rr < cutOffChargeSquared)
+          if (!noCharges && rr < cutOffChargeSquared)
           {
               double r = std::sqrt(rr);
               double scaling = scalingCoulombA * scalingCoulombB;
-              energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+              EnergyFactor energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
               energySum(compA, compB).CoulombicReal += 0.5 * energy;
               energySum(compB, compA).CoulombicReal += 0.5 * energy;
@@ -218,15 +219,15 @@ void System::computeFrameworkMoleculeVDWEnergy() noexcept
 		  	EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
 
                  //if (energyFactor.energy > overlapCriteria) return std::nullopt;
-		  	energySum(compA, compB).VanDerWaals -= 0.5 * energyFactor.energy;
-		  	energySum(compB, compA).VanDerWaals -= 0.5 * energyFactor.energy;
+		  	energySum(compA, compB).VanDerWaals -= 0.5 * energyFactor;
+		  	energySum(compB, compA).VanDerWaals -= 0.5 * energyFactor;
             energySum.dUdlambda -= energyFactor.dUdlambda;
 		  }
-          if (rr < cutOffChargeSquared)
+          if (!noCharges && rr < cutOffChargeSquared)
           {
               double r = std::sqrt(rr);
               double scaling = scalingCoulombA * scalingCoulombB;
-              energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+              EnergyFactor energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
               energySum(compA, compB).CoulombicReal -= 0.5 * energy;
               energySum(compB, compA).CoulombicReal -= 0.5 * energy;

@@ -1,29 +1,33 @@
 export module potential_energy_coulomb;
 
 import forcefield;
+import energy_factor;
 
 import double4;
 import <cmath>;
+import <numbers>;
 
-export inline double potentialCoulombEnergy(const ForceField& forcefield, const double& scaling, const double& r, const double& chargeA, const double& chargeB)
+export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const double& scaling, const double& r, const double& chargeA, const double& chargeB)
 {
     switch(forcefield.chargeMethod)
     {
       case ForceField::ChargeMethod::Ewald:
       {
-		return scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r;
+        double alpha = forcefield.alpha;
+        double term = chargeA * chargeB * std::erfc(alpha * r);
+		return EnergyFactor(scaling * term / r, 0.0);
       }
       case ForceField::ChargeMethod::Coulomb:
       {
-		return scaling * chargeA * chargeB / r;
+		return EnergyFactor(scaling * chargeA * chargeB / r, 0.0);
       }
       case ForceField::ChargeMethod::Wolf:
       {
-		return scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r;
+		return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0);
       }
       case ForceField::ChargeMethod::ModifiedWolf:
       {
-		return scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r;
+		return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0);
       }
     }
 };

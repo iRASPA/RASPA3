@@ -36,15 +36,16 @@ export namespace std
         return BWP_FMTNS::vformat(str_fmt, BWP_FMTNS::make_format_args(args...));
     }
 
-    // default to stdout
-    //template<typename... Args> constexpr void print(const std::string_view str_fmt, Args&&... args) {
-    //    fputs(std::vformat(str_fmt, std::make_format_args(args...)).c_str(), stdout);
-    //}
-
-    
     // send to FILE*
     template<typename... Args> constexpr void print(FILE* fdest, const std::string_view str_fmt, Args&&... args) {
-        fputs(BWP_FMTNS::vformat(str_fmt, BWP_FMTNS::make_format_args(args...)).c_str(), fdest);
+        try
+        {
+           fputs(BWP_FMTNS::vformat(str_fmt, BWP_FMTNS::make_format_args(args...)).c_str(), fdest);
+        }
+        catch (std::exception const& e)
+        {
+            std::cerr << e.what();
+        }
     }
 
     // send to ostream

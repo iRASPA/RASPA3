@@ -12,6 +12,7 @@ import energy_status;
 import cbmc;
 import cbmc_growing_status;
 import forcefield;
+import energy_factor;
 
 import <vector>;
 import <tuple>;
@@ -34,6 +35,11 @@ import <numeric>;
 
 	std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {atom.position += firstBeadData->atom.position; });
 
+    if(atoms.size() == 1)
+    {
+	  return ChainData({firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
+    }
+
 	std::optional<ChainData> const rigidRotationData = growChain(startingBead, atoms);
 	
 	if (!rigidRotationData) return std::nullopt;
@@ -53,14 +59,14 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(externalEnergies.begin(), externalEnergies.end(),
-		std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	size_t selected = selectTrialPosition(logBoltmannFactors);
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-	if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+	if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
 
 	return FirstBeadData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }
@@ -79,14 +85,14 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(externalEnergies.begin(), externalEnergies.end(),
-		std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	size_t selected = selectTrialPosition(logBoltmannFactors);
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-	if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+	if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
 
 	return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }

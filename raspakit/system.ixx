@@ -9,8 +9,10 @@ import <fstream>;
 import <ostream>;
 import <iostream>;
 import <numeric>;
+import <chrono>;
 
 import double3;
+import double3x3;
 import atom;
 import component;
 import simulationbox;
@@ -25,6 +27,7 @@ import cbmc;
 import randomnumbers;
 import property_simulationbox;
 import property_energy;
+import property_pressure;
 import property_loading;
 import property_enthalpy;
 
@@ -43,13 +46,15 @@ export struct System
 	void MD_Loop();
 
 	void computeTotalEnergies() noexcept;
+    void computeTotalGradients() noexcept;
+    std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
-	void computeFrameworkMoleculeVDWEnergy() noexcept;
-	void computeInterMolecularVDWEnergy() noexcept;
+	void computeFrameworkMoleculeEnergy() noexcept;
+	void computeInterMolecularEnergy() noexcept;
     void computeTailCorrectionVDWEnergy() noexcept;
 
-	[[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeVDWEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
-	[[nodiscard]] std::optional<EnergyStatus> computeInterMolecularVDWEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+	[[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+	[[nodiscard]] std::optional<EnergyStatus> computeInterMolecularEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
 	[[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, 
                                                                        std::span<const Atom> oldatoms) const noexcept;
 	[[nodiscard]] std::optional<EnergyStatus> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, 
@@ -64,6 +69,9 @@ export struct System
 	[[nodiscard]] std::vector<double> computeInterMolecularInteractionsEnergy() const noexcept;
 	[[nodiscard]] std::vector<double> computeInterMolecularInteractionsForce() noexcept;
 
+
+    [[nodiscard]] std::pair<EnergyStatus, double3x3> computeInterMolecularMolecularPressure() noexcept;
+
 	size_t randomFramework() { return size_t(RandomNumber::Uniform() * static_cast<double>(numberOfFrameworks)); }
 	size_t randomComponent() { return size_t(RandomNumber::Uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }
 	size_t numerOfAdsorbateComponents() { return components.size() - numberOfFrameworks; }
@@ -75,6 +83,7 @@ export struct System
 	std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule);
     std::span<const Atom> spanOfFrameworkAtoms() const;
     std::span<const Atom> spanOfMoleculeAtoms() const;
+    std::span<Atom> spanOfMoleculeAtoms();
 
 	size_t numberOfMolecules() const {
 		return std::reduce(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
@@ -134,6 +143,7 @@ export struct System
 	void writeMCMoveStatistics();
     std::string writeEnergyAveragesStatistics() const;
     std::string writeEnthalpyOfAdsorption() const;
+    std::string writePressureAveragesStatistics() const;
 
 	size_t systemId{};
 
@@ -182,6 +192,9 @@ export struct System
 	EnergyStatus runningEnergies;
     PropertyEnergy averageEnergies;
 
+    double3x3 currentExcessPressureTensor;
+    PropertyPressure averagePressure;
+
 	SampleMovie sampleMovie;
 	
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
@@ -199,9 +212,9 @@ export struct System
     [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(const Atom& atom, double storedR) const noexcept;
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
-    std::vector<Atom> filterNonOverlappingTrialPositions(std::vector <std::pair<Atom, EnergyStatus>> trialPositions) const noexcept;
 
-    size_t numberOfTrialDirections{16};
+    size_t numberOfTrialDirections{ 8 };
+    double minimumRosenbluthFactor{ 1e-150 };
 
     std::size_t kx_max_unsigned{8};
     std::size_t ky_max_unsigned{8};
@@ -219,6 +232,9 @@ export struct System
     double CoulombicFourierEnergySingleIon{ 0.0 };
     std::vector<int> netCharge;
 
+    bool noCharges{ false };
+    bool omitEwaldFourier { false};
+
     double energy(std::span<Atom> atoms, const SimulationBox &box);
     void computeEwaldFourierEnergy();
     EnergyStatus energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, 
@@ -227,6 +243,9 @@ export struct System
     void acceptEwaldMove();
 
     void sampleProperties(size_t currentBlock);
+    std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
+    std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
+    const std::string writeCPUTimeStatistics() const;
 
 	std::ofstream outputFile{};
 };

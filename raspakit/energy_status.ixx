@@ -9,13 +9,14 @@ import <numeric>;
 import <string>;
 import <sstream>;
 
+import energy_factor;
 import energy_status_intra;
 import energy_status_inter;
 import component;
 
 export struct EnergyStatus
 {
-	EnergyStatus(size_t size) : size(size), totalEnergy(0.0), intraEnergy({}), interEnergy({}),
+	EnergyStatus(size_t size) : size(size), totalEnergy(0.0, 0.0), intraEnergy({}), interEnergy({}),
 		intraEnergies(std::vector<EnergyIntra>(size)),
 		interEnergies(std::vector<EnergyInter>(size * size)),
         dUdlambda(0.0)
@@ -32,15 +33,38 @@ export struct EnergyStatus
 	inline EnergyIntra& operator() (size_t compA) { return intraEnergies[compA]; }
 	inline EnergyInter& operator() (size_t compA, size_t compB) { return interEnergies[compA * size + compB]; }
 
+
+    EnergyFactor interEnergyComponent(size_t compA) 
+    {
+        EnergyFactor sum(0.0, 0.0);
+        for(size_t i=0; i < size; i++)
+        {
+            sum += interEnergies[compA * size + i].totalInter;
+        }
+        return sum;
+    }
+
+    EnergyFactor interEnergyComponentZero() {return interEnergies[0 * size + 0].VanDerWaals + 
+                                                    interEnergies[0 * size + 1].VanDerWaals +
+                                                    interEnergies[0 * size + 2].VanDerWaals;}
+    EnergyFactor interEnergyComponentOne() {return interEnergies[1 * size + 0].VanDerWaals + 
+                                                   interEnergies[1 * size + 1].VanDerWaals +
+                                                   interEnergies[1 * size + 2].VanDerWaals;}
+    EnergyFactor interEnergyComponentTwo() {return interEnergies[2 * size + 0].VanDerWaals + 
+                                                   interEnergies[2 * size + 1].VanDerWaals +
+                                                   interEnergies[2 * size + 2].VanDerWaals;}
+
 	void zero()
 	{
-		totalEnergy = 0.0;
+		totalEnergy = EnergyFactor(0.0, 0.0);
         dUdlambda = 0.0;
 		intraEnergy.zero();
 		interEnergy.zero();
 		std::fill(intraEnergies.begin(), intraEnergies.end(), EnergyIntra());
 		std::fill(interEnergies.begin(), interEnergies.end(), EnergyInter());
 	}
+
+
 
 	void sumTotal()
 	{
@@ -114,7 +138,7 @@ export struct EnergyStatus
 	}
 
 	size_t size;
-	double totalEnergy;
+	EnergyFactor totalEnergy;
 	EnergyIntra intraEnergy;
 	EnergyInter interEnergy;
 	std::vector < EnergyIntra > intraEnergies;

@@ -1,8 +1,6 @@
 export module lambda;
 
 import randomnumbers;
-import dudlambda_histogram;
-import probability_histogram;
 import averages;
 import property_lambda_probability_histogram;
 import property_dudlambda;
@@ -75,12 +73,6 @@ export struct Lambda
     inline void updateHistogram()
     {
       histogram[currentBin] += 1.0;
-    }
-
-    void sampleHistogram()
-    {
-      ProbabilityHistogram v(numberOfBins);
-      v.histogram[currentBin] += 1.0;
     }
 
     void sampleHistogram(size_t blockIndex, double density)

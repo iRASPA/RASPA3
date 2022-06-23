@@ -1,7 +1,7 @@
 SimulationType                MonteCarlo
-NumberOfCycles                10000
+NumberOfCycles                20000
 NumberOfInitializationCycles  1000
-NumberOfEquilibrationCycles   10000
+NumberOfEquilibrationCycles   20000
 PrintEvery                    1000
 
 NumberOfBlocks 5

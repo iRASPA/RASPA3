@@ -16,8 +16,6 @@ import <numbers>;
 import units;
 import print;
 import averages;
-import probability_histogram;
-import dudlambda_histogram;
 
 void Lambda::WangLandauIteration(Lambda::WangLandauPhase phase)
 {

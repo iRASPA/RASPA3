@@ -11,6 +11,7 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
+import energy_factor;
 import energy_status;
 import energy_status_inter;
 import lambda;
@@ -46,7 +47,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::insertionMove(System& system, siz
     EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
     EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
                                         system.computeTailCorrectionVDWOldEnergy();
-    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy + tailEnergyDifference.totalEnergy));
+    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));
 
 
 	double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);

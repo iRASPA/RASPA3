@@ -5,25 +5,27 @@ import <iostream>;
 import <sstream>;
 import <cmath>;
 
+import energy_factor;
+
 export struct EnergyInter
 {
-    double VanDerWaals;
-    double VanDerWaalsTailCorrection;
-    double CoulombicReal;
-    double CoulombicFourier;
-    double totalInter;
+    EnergyFactor VanDerWaals;
+    EnergyFactor VanDerWaalsTailCorrection;
+    EnergyFactor CoulombicReal;
+    EnergyFactor CoulombicFourier;
+    EnergyFactor totalInter;
 
-    EnergyInter() : VanDerWaals(0.0), VanDerWaalsTailCorrection(0.0), CoulombicReal(0.0), CoulombicFourier(0.0), totalInter(0.0)
+    EnergyInter() : VanDerWaals(0.0, 0.0), VanDerWaalsTailCorrection(0.0, 0.0), CoulombicReal(0.0, 0.0), CoulombicFourier(0.0, 0.0), totalInter(0.0, 0.0)
     {
     }
 
     void zero()
     {
-        VanDerWaals = 0.0;
-        VanDerWaalsTailCorrection = 0.0;
-        CoulombicReal = 0.0;
-        CoulombicFourier = 0.0;
-        totalInter = 0.0;
+        VanDerWaals = EnergyFactor(0.0, 0.0);
+        VanDerWaalsTailCorrection = EnergyFactor(0.0, 0.0);
+        CoulombicReal = EnergyFactor(0.0, 0.0);
+        CoulombicFourier = EnergyFactor(0.0, 0.0);
+        totalInter = EnergyFactor(0.0, 0.0);
     }
 
     void sumTotal()
@@ -31,7 +33,12 @@ export struct EnergyInter
       totalInter = VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
     }
 
-    inline double total() const
+    inline EnergyFactor totalEnergyFactor() const
+    {
+        return VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
+    }
+
+    inline EnergyFactor total() const
     {
         return VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
     }
@@ -126,11 +133,11 @@ export inline EnergyInter operator/(const EnergyInter& a, const double& b)
 export inline EnergyInter sqrt(const EnergyInter & a)
 {
     EnergyInter m{};
-    m.VanDerWaals = std::sqrt(a.VanDerWaals);
-    m.VanDerWaalsTailCorrection = std::sqrt(a.VanDerWaalsTailCorrection);
-    m.CoulombicReal = std::sqrt(a.CoulombicReal);
-    m.CoulombicFourier = std::sqrt(a.CoulombicFourier);
-    m.totalInter = std::sqrt(a.totalInter);
+    m.VanDerWaals = sqrt(a.VanDerWaals);
+    m.VanDerWaalsTailCorrection = sqrt(a.VanDerWaalsTailCorrection);
+    m.CoulombicReal = sqrt(a.CoulombicReal);
+    m.CoulombicFourier = sqrt(a.CoulombicFourier);
+    m.totalInter = sqrt(a.totalInter);
     return m;
 }
 

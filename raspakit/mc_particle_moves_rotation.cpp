@@ -11,6 +11,7 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
+import energy_factor;
 import energy_status;
 import energy_status_inter;
 import lambda;
@@ -61,7 +62,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::rotationMove(System& system, size
 
 	system.components[selectedComponent].statistics_RotationMove.constructed[selectedDirection] += 1;
 
-	if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.totalEnergy))
+	if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.totalEnergy.energy))
 	{
 		system.components[selectedComponent].statistics_RotationMove.accepted[selectedDirection] += 1;
 

@@ -3,6 +3,7 @@ module;
 module system;
 
 import component;
+import energy_factor;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;
@@ -48,12 +49,12 @@ std::string System::writeEnergyAveragesStatistics() const
         for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
         {
             EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).totalInter);
+            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).totalInter.energy);
         }
-            std::print(stream, "        -----------------------------------------------------------------------\n");
-            std::print(stream, "        Average  {} +/- {} [K]\n", 
-                    prefactor * computedAverage.first(k,l).totalInter,
-                    prefactor * computedAverage.second(k,l).totalInter);
+        std::print(stream, "        -----------------------------------------------------------------------\n");
+        std::print(stream, "        Average  {} +/- {} [K]\n", 
+                prefactor * computedAverage.first(k,l).totalInter.energy,
+                prefactor * computedAverage.second(k,l).totalInter.energy);
         std::print(stream, "\n");
       }
     }
@@ -83,12 +84,12 @@ std::string System::writeEnergyAveragesStatistics() const
         for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
         {
             EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).VanDerWaals);
+            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).VanDerWaals.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {} +/- {} [K]\n", 
-                prefactor * computedAverage.first(k,l).VanDerWaals,
-                prefactor * computedAverage.second(k,l).VanDerWaals);
+                prefactor * computedAverage.first(k,l).VanDerWaals.energy,
+                prefactor * computedAverage.second(k,l).VanDerWaals.energy);
         std::print(stream, "\n");
       }
     }
@@ -113,12 +114,12 @@ std::string System::writeEnergyAveragesStatistics() const
         for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
         {
             EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).VanDerWaalsTailCorrection);
+            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).VanDerWaalsTailCorrection.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {} +/- {} [K]\n", 
-                prefactor * computedAverage.first(k,l).VanDerWaalsTailCorrection,
-                prefactor * computedAverage.second(k,l).VanDerWaalsTailCorrection);
+                prefactor * computedAverage.first(k,l).VanDerWaalsTailCorrection.energy,
+                prefactor * computedAverage.second(k,l).VanDerWaalsTailCorrection.energy);
         std::print(stream, "\n");
       }
     }
@@ -143,12 +144,12 @@ std::string System::writeEnergyAveragesStatistics() const
         for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
         {
             EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).CoulombicReal);
+            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).CoulombicReal.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {} +/- {} [K]\n", 
-                prefactor * computedAverage.first(k,l).CoulombicReal,
-                prefactor * computedAverage.second(k,l).CoulombicReal);
+                prefactor * computedAverage.first(k,l).CoulombicReal.energy,
+                prefactor * computedAverage.second(k,l).CoulombicReal.energy);
         std::print(stream, "\n");
       }
     }
@@ -173,12 +174,12 @@ std::string System::writeEnergyAveragesStatistics() const
         for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
         {
             EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).CoulombicFourier);
+            std::print(stream, "        Block[ {:2d}] {}\n", i, prefactor * blockAverage(k,l).CoulombicFourier.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {} +/- {} [K]\n", 
-                prefactor * computedAverage.first(k,l).CoulombicFourier,
-                prefactor * computedAverage.second(k,l).CoulombicFourier);
+                prefactor * computedAverage.first(k,l).CoulombicFourier.energy,
+                prefactor * computedAverage.second(k,l).CoulombicFourier.energy);
         std::print(stream, "\n");
       }
     }
@@ -190,10 +191,10 @@ std::string System::writeEnergyAveragesStatistics() const
     for (size_t i = 0; i < averageEnergies.bookKeepingEnergyStatus.size(); ++i)
     {
         EnergyStatus blockAverage = averageEnergies.averagedEnergy(i);
-        std::print(stream, "    Block[ {:2d}] {}\n", i, prefactor * blockAverage.totalEnergy);
+        std::print(stream, "    Block[ {:2d}] {}\n", i, prefactor * blockAverage.totalEnergy.energy);
     }
     std::print(stream, "    ---------------------------------------------------------------------------\n");
-    std::print(stream, "    Average  {} +/- {} [K]\n", prefactor * computedAverage.first.totalEnergy, prefactor * computedAverage.second.totalEnergy);
+    std::print(stream, "    Average  {} +/- {} [K]\n", prefactor * computedAverage.first.totalEnergy.energy, prefactor * computedAverage.second.totalEnergy.energy);
 
     std::print(stream, "\n");
     return stream.str();

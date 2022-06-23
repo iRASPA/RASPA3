@@ -27,6 +27,13 @@ export template<typename T>
 	T constructed{};
 	T accepted{};
 	T maxChange{};
+
+    void clear()
+    {
+        counts = T();
+        constructed = T();
+        accepted = T();
+    }
 };
 
 export struct Component
@@ -36,15 +43,6 @@ export struct Component
 		Framework = 0,
 		Adsorbate = 1,
 		Cation = 2
-	};
-
-	enum class CBMCType : int
-	{
-		SingleBead = 0,
-		RigidUnit = 1,
-		LinearFlexibleChain = 2,
-		BranchedFlexibleChain = 3,
-		CyclicFlexibleChain = 4		
 	};
 
 	enum class BondType: int
@@ -75,6 +73,7 @@ export struct Component
 
 	size_t componentId{ 0 };
 	std::string name{};
+    bool rigid { true };
 
 	double criticalTemperature{ 0.0 };
 	double criticalPressure{ 0.0 };
@@ -151,6 +150,7 @@ export struct Component
 	MoveStatistics<double3> statistics_WidomMove_CBMC{};
 	MoveStatistics<double3> statistics_WidomMove_CFCMC{};
 	MoveStatistics<double3> statistics_WidomMove_CFCMC_CBMC{};
+    void clearMoveStatistics();
 	
 
 	std::chrono::duration<double> cpuTime_TranslationMove{ 0.0 };

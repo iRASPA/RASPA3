@@ -11,6 +11,7 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
+import energy_factor;
 import energy_status;
 import energy_status_inter;
 import lambda;
@@ -48,7 +49,7 @@ std::optional<EnergyStatus> MC_Particle_Moves::reinsertionMove(System& system, s
 
 		ChainData retraceData = system.retraceMoleculeReinsertion(selectedComponent, selectedMolecule, molecule, growData->storedR);
         EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
-        double correctionFactorFourier = std::exp(-system.simulationBox.Beta * energyFourierDifference.totalEnergy);
+        double correctionFactorFourier = std::exp(-system.simulationBox.Beta * energyFourierDifference.totalEnergy.energy);
 
 		if (RandomNumber::Uniform() < correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
 		{

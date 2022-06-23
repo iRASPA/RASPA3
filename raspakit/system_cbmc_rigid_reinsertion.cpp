@@ -12,6 +12,7 @@ import energy_status;
 import cbmc;
 import cbmc_growing_status;
 import forcefield;
+import energy_factor;
 
 import <vector>;
 import <tuple>;
@@ -33,12 +34,14 @@ import <numeric>;
 
 	std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {atom.position += firstBeadData->atom.position; });
 
-	std::optional<ChainData> const rigidRotationData = growChain(startingBead, atoms);
+    if(molecule.size() == 1)
+    {
+	  return ChainData({firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, firstBeadData->storedR);
+    }
 
-	if (!rigidRotationData) return std::nullopt;
-
-	return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, firstBeadData->storedR);
-
+    std::optional<ChainData> rigidRotationData = growChain(startingBead, atoms);
+    if (!rigidRotationData) return std::nullopt;
+    return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, firstBeadData->storedR);
 }
 
 [[nodiscard]] ChainData System::retraceMoleculeReinsertion(size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double storedR) const noexcept
@@ -47,8 +50,12 @@ import <numeric>;
 
 	const FirstBeadData firstBeadData = retraceMultipleFirstBeadReinsertion(molecule[startingBead], storedR);
 
-	const ChainData rigidRotationData = retraceChainReinsertion(startingBead, molecule);
+    if(molecule.size() == 1)
+    {
+	  return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
+    }
 
+    ChainData rigidRotationData = retraceChainReinsertion(startingBead, molecule);
 	return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies, firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
@@ -56,8 +63,6 @@ import <numeric>;
 
 [[nodiscard]] std::optional<FirstBeadData> System::growMultipleFirstBeadReinsertion(const Atom& atom) const noexcept
 {
-   // const double overlapCriteria = forceField.overlapCriteria;
-
 	std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
 	std::for_each(trialPositions.begin(), trialPositions.end(),
 		[&](Atom& a) {a.position = simulationBox.randomPosition();});
@@ -68,14 +73,14 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(externalEnergies.begin(), externalEnergies.end(),
-		std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	size_t selected = selectTrialPosition(logBoltmannFactors);
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-	if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+	if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
 
 	// r=w(n)-exp(-beta U[h_n]) Eq.16 from Esselink et al.
 	double storedR = RosenbluthWeight - std::exp(logBoltmannFactors[selected]);
@@ -91,7 +96,7 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
-		[this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		[this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
@@ -115,7 +120,7 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(std::begin(externalEnergies), std::end(externalEnergies),
-		std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

@@ -83,8 +83,8 @@ export struct SimulationBox
 	double temperature = 300.0;
 	double pressure = 1e4;
 	double Beta = 1.0 / (Units::KB * 300.0);
-    double alpha{0.4};
-    int3 kmax{8,8,8};
+    double alpha{ 0.265058 };
+    int3 kmax{ 8, 8, 8 };
 	Type type = Type::Rectangular;
 
 	inline SimulationBox& operator+=(const SimulationBox& b)

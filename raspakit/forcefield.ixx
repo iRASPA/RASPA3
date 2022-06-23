@@ -62,16 +62,16 @@ export struct ForceField
 	// 2D-vector, size numberOfPseudoAtoms squared
 	std::vector<VDWParameters> data{};
 	double cutOff{ 12.0 };
+    double dualCutOff{ 5.0 };
 	double cutOffCoulomb{ 12.0 };
-    double alpha { 0.4 };
+    double alpha { 0.265058 };
     int3 numberOfWaveVectors{8, 8, 8};
 	size_t numberOfPseudoAtoms{ 0 };
 	std::vector< PseudoAtom> pseudoAtoms;
+
     ChargeMethod chargeMethod { ChargeMethod::Ewald};
 
     double overlapCriteria{ 1e5 };
-    double minimumRosenbluthFactor{ 1e-150 };
-    size_t numberOfTrialDirections{16};
 
 	ForceField(std::string pseudoAtomsFileName, std::string forceFieldmixingFileName, std::string forceFieldOverwriteFileName) noexcept(false);
 	

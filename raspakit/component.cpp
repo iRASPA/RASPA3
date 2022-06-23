@@ -40,7 +40,7 @@ import skcell;
 Component::Component(Component::Type type, size_t currentComponent, const ForceField& forceField, 
                      const std::string& fileName, size_t numberOfBlocks) noexcept(false) :
                      type(type), componentId(currentComponent), name(fileName),
-                     lambda(numberOfBlocks, 11),
+                     lambda(numberOfBlocks, 41),
                      averageRosenbluthWeights(numberOfBlocks)
 {
   switch(type)
@@ -436,3 +436,22 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
     return copied_atoms;
 }
 
+void Component::clearMoveStatistics()
+{
+  statistics_TranslationMove.clear();
+  statistics_RotationMove.clear();
+  statistics_VolumeMove.clear();
+  statistics_ReinsertionMove_CBMC.clear();
+  statistics_IdentityChangeMove_CBMC.clear();
+  statistics_SwapInsertionMove_CBMC.clear();
+  statistics_SwapDeletionMove_CBMC.clear();
+  statistics_SwapMove_CFCMC.clear();
+  statistics_SwapMove_CFCMC_CBMC.clear();
+  statistics_GibbsVolumeMove.clear();
+  statistics_GibbsSwapMove_CBMC.clear();
+  statistics_GibbsSwapMove_CFCMC.clear();
+  statistics_GibbsSwapMove_CFCMC_CBMC.clear();
+  statistics_WidomMove_CBMC.clear();
+  statistics_WidomMove_CFCMC.clear();
+  statistics_WidomMove_CFCMC_CBMC.clear();
+}

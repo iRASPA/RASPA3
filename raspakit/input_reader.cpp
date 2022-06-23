@@ -165,6 +165,20 @@ double3 parseDouble3(const std::string& arguments, const std::string& keyword, s
     throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
+std::string parseString(const std::string& arguments, const std::string& keyword, size_t lineNumber)
+{
+    std::string value{};
+
+    std::string str;
+    std::istringstream ss(arguments);
+
+    if (ss >> value)
+    {
+        return value;
+    };
+
+    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+}
 
 
 InputReader::InputReader(const std::string pseudoAtomsFileName, const std::string forceFieldMixingRulesFileName,
@@ -280,6 +294,21 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
                 systems[numberOfSystems - 1].simulationBox.pressure = value / Units::PressureConversionFactor;
             }
 
+            if (caseInSensStringCompare(keyword, "ChargeMethod"))
+            {
+                requireExistingSystem(keyword, lineNumber);
+                std::string value = parseString(arguments, keyword, lineNumber);
+                if (caseInSensStringCompare(value, "None")) systems[numberOfSystems - 1].noCharges = true;
+                if (caseInSensStringCompare(value, "Ewald")) systems[numberOfSystems - 1].noCharges = false;
+            }
+
+            if (caseInSensStringCompare(keyword, "OmitEwaldFourier"))
+            {
+                requireExistingSystem(keyword, lineNumber);
+                bool value = parseBoolean(arguments, keyword, lineNumber);
+                systems[numberOfSystems - 1].omitEwaldFourier = value;
+            }
+
             if (caseInSensStringCompare(keyword, "Movies"))
             {
                 requireExistingSystem(keyword, lineNumber);
@@ -322,6 +351,19 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
                 for (size_t i = 0; i < systems.size(); ++i)
                 {
                     systems[i].components[numberOfComponents  - 1].initialNumberOfMolecules = values[i];
+                }
+            }
+
+            if (caseInSensStringCompare(keyword, "MolFraction"))
+            {
+                requireExistingSystem(keyword, lineNumber);
+
+                std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+         
+                values.resize(systems.size(), values.front());
+                for (size_t i = 0; i < systems.size(); ++i)
+                {
+                    systems[i].components[numberOfComponents - 1].molFraction = values[i];
                 }
             }
 

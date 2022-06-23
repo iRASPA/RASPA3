@@ -62,7 +62,7 @@ export union double3x3
     static double3x3 identity();
 
     double determinant(void);
-    double trace(void);
+    double trace(void) const;
     double3x3 const inverse();
     static double3x3 inverse(const double3x3& right);
     static double3x3 transpose(const double3x3& right);
@@ -101,6 +101,15 @@ export union double3x3
         this->m11 += b.m11; this->m21 += b.m21; this->m31 += b.m31;
         this->m12 += b.m12; this->m22 += b.m22; this->m32 += b.m32;
         this->m13 += b.m13; this->m23 += b.m23; this->m33 += b.m33;
+
+        return *this;
+    }
+
+    inline double3x3& operator-=(const double3x3& b)
+    {
+        this->m11 -= b.m11; this->m21 -= b.m21; this->m31 -= b.m31;
+        this->m12 -= b.m12; this->m22 -= b.m22; this->m32 -= b.m32;
+        this->m13 -= b.m13; this->m23 -= b.m23; this->m33 -= b.m33;
 
         return *this;
     }
@@ -194,6 +203,17 @@ export inline double3 operator*(const double3x3& a, const double3& b)
     r.x = a.m11 * b.x + a.m12 * b.y + a.m13 * b.z;
     r.y = a.m21 * b.x + a.m22 * b.y + a.m23 * b.z;
     r.z = a.m31 * b.x + a.m32 * b.y + a.m33 * b.z;
+
+    return r;
+}
+
+export inline double3x3 sqr(const double3x3& a)
+{
+    double3x3 r;
+
+    r.m11 = a.m11 * a.m11; r.m21 = a.m21 * a.m21; r.m31 = a.m31 * a.m31;
+    r.m12 = a.m12 * a.m12; r.m22 = a.m22 * a.m22; r.m32 = a.m32 * a.m32;
+    r.m13 = a.m13 * a.m13; r.m23 = a.m23 * a.m23; r.m33 = a.m33 * a.m33;
 
     return r;
 }

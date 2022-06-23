@@ -35,7 +35,8 @@ export struct MC_Particle_Moves
 
 	MC_Particle_Moves() {}
 
-	void performRandomMove(System& selectedSystem, size_t selectedComponent, bool production, size_t currentBlock);
+	void performRandomMove(System& selectedSystem, size_t selectedComponent);
+	void performRandomMoveProduction(System& selectedSystem, size_t selectedComponent, size_t currentBlock);
 
 	std::optional<EnergyStatus> translationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
 	std::optional<EnergyStatus> rotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);

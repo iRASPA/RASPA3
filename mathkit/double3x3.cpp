@@ -84,7 +84,7 @@ double3x3 double3x3::identity()
 }
 
 
-double double3x3::trace(void)
+double double3x3::trace(void) const
 {
     return m11 + m22 + m33;
 }

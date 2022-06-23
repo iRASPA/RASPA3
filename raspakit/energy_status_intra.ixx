@@ -6,6 +6,7 @@ import <sstream>;
 import <cmath>;
 
 import print;
+import energy_factor;
 
 export struct EnergyIntra
 {
@@ -30,11 +31,11 @@ export struct EnergyIntra
 
     }
 
-    inline double total() const
+    inline EnergyFactor total() const
     {
-        return bond + bend + inversionBend + ureyBradley +
+        return EnergyFactor(bond + bend + inversionBend + ureyBradley +
             torsion + improperTorsion + bondBond + bondBend + bondTorsion +
-            bendBend + bendTorsion + intraVDW + intraChargeCharge;
+            bendBend + bendTorsion + intraVDW + intraChargeCharge, 0.0);
     }
 
     void zero()

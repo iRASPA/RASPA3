@@ -11,7 +11,6 @@ import simulationbox;
 import units;
 import loadings;
 import averages;
-import probability_histogram;
 import property_lambda_probability_histogram;
 import property_dudlambda;
 import property_widom;
@@ -112,14 +111,13 @@ void System::writeMCMoveStatistics()
           }
           std::print(outputFile, "\n\n");
 
-          /*
           std::print(outputFile, "    dU/dlambda statistics:\n");
           std::print(outputFile, "    -------------------------------------------------------------------------------\n");
-          std::pair<std::vector<double>, std::vector<double>> dudlambda = component.lambda.dUdlambdaBookKeeping.averageDuDlambda();
+          std::pair<std::vector<double3>, std::vector<double3>> dudlambda = component.lambda.dUdlambdaBookKeeping.averageDuDlambda();
           for (size_t binIndex = 0; binIndex < component.lambda.dUdlambdaBookKeeping.numberOfBins; ++binIndex)
           {
             std::print(outputFile, "{}{:2d}-{:5f} (lambda) <dU/dlambda>: {: .6e} +/- {:.6e} [-]\n",
-                "    ",binIndex, static_cast<double>(binIndex) *  component.lambda.delta, conv * dudlambda.first[binIndex], conv * dudlambda.second[binIndex]);
+                "    ",binIndex, static_cast<double>(binIndex) *  component.lambda.delta, conv * dudlambda.first[binIndex].x, conv * dudlambda.second[binIndex].x);
           }
           std::print(outputFile, "    -----------------------------------------------------------------------\n");
           std::print(outputFile, "    Excess chemical potential: integral du/dlambda over lambda (trapezoidal rule)\n");
@@ -166,7 +164,6 @@ void System::writeMCMoveStatistics()
                     Units::PressureConversionFactor * averageFugacityDUDlambda.second);
           }
           std::print(outputFile, "\n\n");
-          */
         }
 
         if(component.probabilityWidomMove > 0.0)
@@ -231,9 +228,6 @@ void System::writeMCMoveStatistics()
           }
         }
         std::print(outputFile, "\n\n");
-
-
-
 
         ++componentId;
 	}

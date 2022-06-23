@@ -12,6 +12,7 @@ import energy_status;
 import cbmc;
 import cbmc_growing_status;
 import forcefield;
+import energy_factor;
 
 import <vector>;
 import <tuple>;
@@ -29,6 +30,11 @@ import <numeric>;
 
 	const FirstBeadData firstBeadData = retraceMultipleFirstBeadSwapDeletion(molecule[startingBead], scaling, storedR);
 
+    if(molecule.size() == 1)
+    {
+	  return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
+    }
+
 	const ChainData rigidRotationData = retraceChain(startingBead, scaling, molecule);
 
 	return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies, firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
@@ -45,13 +51,12 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
-		[this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		[this](const std::pair<Atom, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
 	return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
-
 }
 
 
@@ -70,7 +75,7 @@ import <numeric>;
 
 	std::vector<double> logBoltmannFactors{};
 	std::transform(std::begin(externalEnergies), std::end(externalEnergies),
-		std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy; });
+		std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, EnergyStatus>& v) {return -simulationBox.Beta * v.second.totalEnergy.energy; });
 
 	double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
 		[](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

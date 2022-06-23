@@ -15,7 +15,8 @@ import <cmath>;
 export struct Atom
 {
 	double3 position;
-	
+    double3 velocity{};	
+    double3 gradient{};	
 	double charge;
 	double scalingVDW{ 1.0 };
 	double scalingCoulomb{ 1.0 };
@@ -36,7 +37,6 @@ export struct Atom
 	{
 		assert(lambda >= 0.0 && lambda <= 1.0);
 		scalingVDW = lambda < 0.5 ? 2.0 * lambda : 1.0;
-        //scalingVDW = lambda;
 		scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
 	};
 
@@ -45,7 +45,6 @@ export struct Atom
 	{
 		assert(lambda >= 0.0 && lambda <= 1.0);
 		scalingVDW = lambda < 0.5 ? 2.0 * lambda : 1.0;
-        //scalingVDW = lambda;
 		scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
 	}
 };

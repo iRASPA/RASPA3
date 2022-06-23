@@ -58,20 +58,29 @@ export struct PropertyWidom
 
   std::pair<double, double> averageRosenbluthWeight() const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedRosenbluthWeight();
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedRosenbluthWeight(blockIndex) - average;
-      sumOfSquares += value * value;
+      if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
+      {
+        double value = averagedRosenbluthWeight(blockIndex) - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -91,20 +100,29 @@ export struct PropertyWidom
 
   std::pair<double, double> averageExcessChemicalPotential(double Beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(Beta);
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedExcessChemicalPotential(blockIndex, Beta) - average;
-      sumOfSquares += value * value;
+      if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
+      {
+        double value = averagedExcessChemicalPotential(blockIndex, Beta) - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -130,20 +148,29 @@ export struct PropertyWidom
 
   std::pair<double, double> averageDensity() const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedDensity();
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedDensity(blockIndex) - average;
-      sumOfSquares += value * value;
+      if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
+      {
+        double value = averagedDensity(blockIndex) - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -169,20 +196,29 @@ export struct PropertyWidom
 
   std::pair<double, double> averageIdealGasChemicalPotential(double Beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedIdealGasChemicalPotential(Beta);
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedIdealGasChemicalPotential(blockIndex, Beta) - average;
-      sumOfSquares += value * value;
+      if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
+      {
+        double value = averagedIdealGasChemicalPotential(blockIndex, Beta) - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
@@ -192,43 +228,59 @@ export struct PropertyWidom
 
   std::pair<double, double> averageTotalChemicalPotential(double Beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta);
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta)) - average;
-      sumOfSquares += value * value;
+      if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
+      {
+        double value = (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta)) - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
 
   std::pair<double, double> averageFugacity(double Beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
     double average = std::exp(Beta*(averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta))) / Beta;
 
     double sumOfSquares = 0.0;
+    size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = std::exp(Beta * (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta))) / Beta - average;
-      sumOfSquares += value * value;
+      if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
+      {
+        double value = std::exp(Beta * (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta))) / Beta - average;
+        sumOfSquares += value * value;
+        ++numberOfSamples;
+      }
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-    double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+
+    double confidenceIntervalError = 0.0;
+    if(numberOfSamples >= 3)
+    {
+      size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
+      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
+    }
 
     return std::make_pair(average, confidenceIntervalError);
   }
-
-
 };

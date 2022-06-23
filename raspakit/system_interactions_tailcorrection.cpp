@@ -7,6 +7,7 @@ import <numbers>;
 import <iostream>;
 
 import forcefield;
+import energy_factor;
 import potential_correction_vdw;
 import energy_status;
 import energy_status_inter;
@@ -45,7 +46,7 @@ void System::computeTailCorrectionVDWEnergy() noexcept
           }
         }
       }
-      runningEnergies(k, l).VanDerWaalsTailCorrection = energy / simulationBox.volume;
+      runningEnergies(k, l).VanDerWaalsTailCorrection = EnergyFactor(energy / simulationBox.volume, 0.0);
     }
   }
 }
@@ -71,7 +72,7 @@ void System::computeTailCorrectionVDWEnergy() noexcept
           }
         }
       }
-      energySum(k, l).VanDerWaalsTailCorrection = energy / simulationBox.volume;
+      energySum(k, l).VanDerWaalsTailCorrection = EnergyFactor(energy / simulationBox.volume, 0.0);
     }
   }
   energySum.sumTotal();
@@ -107,7 +108,7 @@ void System::computeTailCorrectionVDWEnergy() noexcept
           }
         }
       }
-      energySum(k, l).VanDerWaalsTailCorrection = energy / simulationBox.volume;
+      energySum(k, l).VanDerWaalsTailCorrection = EnergyFactor(energy / simulationBox.volume, 0.0);
     }
   }
   energySum.sumTotal();
@@ -144,7 +145,7 @@ void System::computeTailCorrectionVDWEnergy() noexcept
           }
         }
       }
-      energySum(k, l).VanDerWaalsTailCorrection = energy / simulationBox.volume;
+      energySum(k, l).VanDerWaalsTailCorrection = EnergyFactor(energy / simulationBox.volume, 0.0);
     }
   }
   energySum.sumTotal();

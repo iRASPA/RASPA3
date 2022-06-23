@@ -20,6 +20,7 @@ import energy_status_intra;
 import energy_status_inter;
 import atom;
 import double3;
+import double3x3;
 import lambda;
 import property_widom;
 import property_dudlambda;
@@ -112,7 +113,7 @@ void MonteCarlo::initialize()
 			for (size_t k = 0; k != numberOfSteps; k++)
 			{
 				size_t selectedComponent = selectedSystem.randomComponent();
-				particleMoves.performRandomMove(selectedSystem, selectedComponent, false, 0);
+				particleMoves.performRandomMove(selectedSystem, selectedComponent);
 			}
 		}
 
@@ -154,7 +155,7 @@ void MonteCarlo::equilibrate()
 			for (size_t k = 0; k != numberOfSteps; k++)
 			{
 				size_t selectedComponent = selectedSystem.randomComponent();
-				particleMoves.performRandomMove(selectedSystem, selectedComponent, false, 0);
+				particleMoves.performRandomMove(selectedSystem, selectedComponent);
 			}
 		}
 
@@ -201,6 +202,7 @@ void MonteCarlo::production()
 
         for(Component &component : system.components)
         {
+          component.clearMoveStatistics();
           if(component.hasFractionalMolecule)
           {
             component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
@@ -212,11 +214,6 @@ void MonteCarlo::production()
 	{
 		estimation.setCurrentSample(i);
 
-		for (System& system : systems)
-		{
-            system.sampleProperties(estimation.currentBin);
-		}
-
 		for (size_t j = 0; j != systems.size(); ++j)
 		{
 			System& selectedSystem = randomSystem();
@@ -225,8 +222,21 @@ void MonteCarlo::production()
 			for (size_t k = 0; k != numberOfSteps; k++)
 			{
 				size_t selectedComponent = selectedSystem.randomComponent();
-				particleMoves.performRandomMove(selectedSystem, selectedComponent, true, estimation.currentBin);
+				particleMoves.performRandomMoveProduction(selectedSystem, selectedComponent, estimation.currentBin);
 			}
+
+		}
+
+		for (System& system : systems)
+		{
+            std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+            std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+            system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+            std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+            system.cpuTime_Pressure += (time2 - time1);
+
+
+            system.sampleProperties(estimation.currentBin);
 		}
 
 		if (i % printEvery == 0)
@@ -270,16 +280,12 @@ void MonteCarlo::output()
 
 		system.writeToOutputFile("Production run CPU timings of the MC moves\n");
 		system.writeToOutputFile("===============================================================================\n\n");
-		for (int componentId = 0; const Component& component : system.components)
-		{
-			system.writeToOutputFile(std::print("Component {} [{}]\n", componentId, component.name));
-			system.writeToOutputFile(component.writeMCMoveCPUTimeStatistics());
-			componentId++;
-		}
+     	system.writeToOutputFile(system.writeCPUTimeStatistics());
 		std::chrono::duration<double> totalSimulationTime = (t2 - t1);
 		system.writeToOutputFile(std::print("\nTotal simulation time:      {:14f} [s]\n\n\n", totalSimulationTime.count()));
 
 		system.writeToOutputFile(system.writeEnergyAveragesStatistics());
+		system.writeToOutputFile(system.writePressureAveragesStatistics());
 		system.writeToOutputFile(system.writeEnthalpyOfAdsorption());
 	}
 }

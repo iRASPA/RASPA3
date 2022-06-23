@@ -17,6 +17,7 @@ import simulationbox;
 import energy_status;
 import energy_status_inter;
 import units;
+import energy_factor;
 
 // TODO:
 // An Exact Ewald Summation Method in Theory and Practice
@@ -111,6 +112,9 @@ double System::energy(std::span<Atom> atoms, const SimulationBox &box)
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
   size_t numberOfAtoms = atoms.size();
+
+  if(noCharges) return 0.0;
+  if(omitEwaldFourier) return 0.0;
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
   if(numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
@@ -209,6 +213,9 @@ void System::computeEwaldFourierEnergy()
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
+  if(noCharges) return;
+  if(omitEwaldFourier) return;
+
   size_t numberOfAtoms = atomPositions.size();
   size_t numberOfComponents = components.size();
 
@@ -302,8 +309,7 @@ void System::computeEwaldFourierEnergy()
           {
             for(size_t j = 0; j != numberOfComponents; ++j)
             {
-              runningEnergies(i,j).CoulombicFourier += temp * (cksum[i].real() * cksum[j].real() + 
-                                                               cksum[i].imag() * cksum[j].imag());
+              runningEnergies(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + cksum[i].imag() * cksum[j].imag()), 0.0);
             }
           }
 
@@ -324,7 +330,7 @@ void System::computeEwaldFourierEnergy()
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
     size_t comp = static_cast<size_t>(atomPositions[i].componentId);
-    runningEnergies(comp,comp).CoulombicFourier -= prefactor_self * scaling * charge * scaling * charge;
+    runningEnergies(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * charge * scaling * charge, 0.0);
   }
 
   // Subtract exclusion-energy
@@ -346,7 +352,7 @@ void System::computeEwaldFourierEnergy()
               dr = simulationBox.applyPeriodicBoundaryConditions(dr);
               double r = std::sqrt(double3::dot(dr, dr));
 
-              runningEnergies(l,l).CoulombicFourier -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+              runningEnergies(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
             }
           }
       }
@@ -358,7 +364,7 @@ void System::computeEwaldFourierEnergy()
   {
     for(size_t j = 0; j != numberOfComponents; ++j)
     {
-      runningEnergies(i,j).CoulombicFourier += CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j];
+      runningEnergies(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
     }
   }
 }
@@ -374,6 +380,9 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
   size_t numberOfAtoms = newatoms.size() + oldatoms.size();
+
+  if(noCharges) return EnergyStatus(components.size());
+  if(omitEwaldFourier) return EnergyStatus(components.size());
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
   if(numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
@@ -491,16 +500,16 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
           {
             for(size_t j = 0; j != numberOfComponents; ++j)
             {
-              energies(i,j).CoulombicFourier += temp *
+              energies(i,j).CoulombicFourier += EnergyFactor(temp *
                   ((storedWavevectors[i + nvec * numberOfComponents] + cksum_new[i] - cksum_old[i]).real() *
                    (storedWavevectors[j + nvec * numberOfComponents] + cksum_new[j] - cksum_old[j]).real() +
                    (storedWavevectors[i + nvec * numberOfComponents] + cksum_new[i] - cksum_old[i]).imag() *
-                   (storedWavevectors[j + nvec * numberOfComponents] + cksum_new[j] - cksum_old[j]).imag());
-              energies(i,j).CoulombicFourier -= temp *
+                   (storedWavevectors[j + nvec * numberOfComponents] + cksum_new[j] - cksum_old[j]).imag()), 0.0);
+              energies(i,j).CoulombicFourier -= EnergyFactor(temp *
                   ((storedWavevectors[i + nvec * numberOfComponents]).real() *
                    (storedWavevectors[j + nvec * numberOfComponents]).real() +
                    (storedWavevectors[i + nvec * numberOfComponents]).imag() *
-                   (storedWavevectors[j + nvec * numberOfComponents]).imag());
+                   (storedWavevectors[j + nvec * numberOfComponents]).imag()), 0.0);
             }
           }
 
@@ -530,8 +539,8 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      energies(compA,compB).CoulombicFourier += 0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
-      energies(compB,compA).CoulombicFourier += 0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+      energies(compA,compB).CoulombicFourier += EnergyFactor(0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
+      energies(compB,compA).CoulombicFourier += EnergyFactor(0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
     }
   }
 
@@ -550,8 +559,8 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      energies(compA,compB).CoulombicFourier -= 0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
-      energies(compB,compA).CoulombicFourier -= 0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+      energies(compA,compB).CoulombicFourier -= EnergyFactor(0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
+      energies(compB,compA).CoulombicFourier -= EnergyFactor(0.5 * Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
     }
   }
 
@@ -562,14 +571,14 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
     double charge = oldatoms[i].charge;
     double scaling = oldatoms[i].scalingCoulomb;
     size_t comp = static_cast<size_t>(oldatoms[i].componentId);
-    energies(comp,comp).CoulombicFourier += prefactor_self * scaling * scaling * charge * charge;
+    energies(comp,comp).CoulombicFourier += EnergyFactor(prefactor_self * scaling * scaling * charge * charge, 0.0);
   }
   for(size_t i = 0; i != newatoms.size(); ++i)
   {
     double charge = newatoms[i].charge;
     double scaling = newatoms[i].scalingCoulomb;
     size_t comp = static_cast<size_t>(newatoms[i].componentId);
-    energies(comp,comp).CoulombicFourier -= prefactor_self * scaling * scaling * charge * charge;
+    energies(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * scaling * charge * charge, 0.0);
   }
 
   energies.sumTotal();
@@ -578,5 +587,8 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
 
 void System::acceptEwaldMove()
 {
+    if(noCharges) return;
+    if(omitEwaldFourier) return;
+
     storedEik = totalEik;
 }

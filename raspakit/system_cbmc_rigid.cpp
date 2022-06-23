@@ -12,6 +12,7 @@ import energy_status;
 import cbmc;
 import cbmc_growing_status;
 import forcefield;
+import energy_factor;
 
 import <vector>;
 import <tuple>;
@@ -50,18 +51,5 @@ size_t System::selectTrialPosition(std::vector <double> LogBoltzmannFactors) con
 		cumw += ShiftedBoltzmannFactors[++selected];
 
 	return selected;
-}
-
-std::vector<Atom> System::filterNonOverlappingTrialPositions(std::vector <std::pair<Atom, EnergyStatus>> trialPositions) const noexcept
-{
-	std::vector <std::pair<Atom, EnergyStatus>> nonOverlappingAtomEnergies{};
-	std::copy_if(std::begin(trialPositions), std::end(trialPositions),
-		std::back_inserter(nonOverlappingAtomEnergies), [this](const std::pair<Atom, EnergyStatus>& v) {return v.second.totalEnergy < forceField.overlapCriteria; });
-
-	std::vector <Atom> nonOverlappingAtoms{};
-	std::transform(std::begin(nonOverlappingAtomEnergies), std::end(nonOverlappingAtomEnergies),
-		std::back_inserter(nonOverlappingAtoms), [](const std::pair<Atom, EnergyStatus>& v) {return v.first; });
-
-	return nonOverlappingAtoms;
 }
 

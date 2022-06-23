@@ -133,3 +133,7 @@ export inline double3 operator/(const double3& a, double b)
     return double3(a.x / b, a.y / b, a.z / b);
 }
 
+export inline double3 sqrt(const double3& a)
+{
+    return double3(std::sqrt(a.x), std::sqrt(a.y), std::sqrt(a.z));
+}
