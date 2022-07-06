@@ -11,6 +11,7 @@ import double3;
 import units;
 import print;
 import sample_movies;
+import threadpool;
 
 import <filesystem>;
 import <fstream>;
@@ -238,6 +239,11 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
             if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
             {
                 numberOfBlocks = parse<size_t>(arguments);
+            }
+
+            if (caseInSensStringCompare(keyword, std::string("NumberOfThreads")))
+            {
+                numberOfThreads = parse<concurrency_t>(arguments);
             }
 
             if (caseInSensStringCompare(keyword, std::string("Box")))

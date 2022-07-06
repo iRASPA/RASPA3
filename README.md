@@ -26,6 +26,8 @@ Intel Threading Building Blocks
 sudo apt install libtbb-dev
 link with: -ltbb
 
+https://www.intel.com/content/www/us/en/developer/articles/guide/get-started-with-parallel-stl.html
+
 use as:
 #include <execution>
 #include <algorithm>

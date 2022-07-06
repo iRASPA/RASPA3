@@ -373,6 +373,9 @@ void System::computeEwaldFourierEnergy()
 
 EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
+  if(noCharges) return EnergyStatus(components.size());
+  if(omitEwaldFourier) return EnergyStatus(components.size());
+
   double alpha = simulationBox.alpha;
   double alpha_squared = alpha * alpha;
   double3x3 inv_box = simulationBox.inverseUnitCell;
@@ -380,9 +383,6 @@ EnergyStatus System::energyDifferenceEwaldFourier(std::vector<std::complex<doubl
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
   size_t numberOfAtoms = newatoms.size() + oldatoms.size();
-
-  if(noCharges) return EnergyStatus(components.size());
-  if(omitEwaldFourier) return EnergyStatus(components.size());
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
   if(numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));

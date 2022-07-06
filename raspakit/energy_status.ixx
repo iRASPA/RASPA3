@@ -23,6 +23,49 @@ export struct EnergyStatus
 	{
 	}
 
+/*
+    EnergyStatus(const EnergyStatus& a): 
+                 size(a.size), 
+                 totalEnergy(a.totalEnergy),
+                 intraEnergy(a.intraEnergy),
+                 interEnergy(a.interEnergy),
+                 dUdlambda(a.dUdlambda)
+    {
+
+    }
+
+    EnergyStatus& operator=(EnergyStatus& other)
+    {
+        std::swap(size, other.size);
+        std::swap(totalEnergy, other.totalEnergy);
+        std::swap(totalEnergy, other.totalEnergy);
+        std::swap(interEnergy, other.interEnergy);
+        std::swap(interEnergy, other.interEnergy);
+        std::swap(dUdlambda, other.dUdlambda);
+        return *this;
+    }
+
+    EnergyStatus(EnergyStatus&& a): 
+                 size(a.size), 
+                 totalEnergy(a.totalEnergy),
+                 intraEnergy(a.intraEnergy),
+                 interEnergy(a.interEnergy),
+                 dUdlambda(a.dUdlambda)
+    {
+
+    }
+
+    EnergyStatus& operator=(EnergyStatus&& other)
+    {
+        std::swap(size, other.size);
+        std::swap(totalEnergy, other.totalEnergy);
+        std::swap(totalEnergy, other.totalEnergy);
+        std::swap(interEnergy, other.interEnergy);
+        std::swap(interEnergy, other.interEnergy);
+        std::swap(dUdlambda, other.dUdlambda);
+        return *this;
+    }
+*/
     void resize(size_t numberOfComponents)
     {
         size = numberOfComponents;

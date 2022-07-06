@@ -1,5 +1,5 @@
 CXX=clang++-14
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror  -O0 -g -fsanitize=address  -march=native -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
+CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O0 -g -fsanitize=address  -march=native -ffast-math -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
 
 .PHONY: default
 default: libfoundationkit;
@@ -16,12 +16,12 @@ default: libfoundationkit;
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
 
 print: print.o
-threading: threading.o
 characterset: characterset.o 
 indexpath: indexpath.o
 scanner: characterset scanner.o 
+threading: threading.o
 
-libfoundationkit: characterset indexpath scanner print threading
+libfoundationkit: characterset indexpath scanner print threading 
 	ar Scr libfoundationkit.a characterset.o indexpath.o scanner.o print.o threading.o
 	ranlib libfoundationkit.a
 

@@ -16,13 +16,14 @@ default: libfoundationkit;
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
 
 print: print.o
-threading: threading.o
 characterset: characterset.o 
 indexpath: indexpath.o
 scanner: characterset scanner.o 
+threading: threading.o
+threadpool: threadpool.o
 
-libfoundationkit: characterset indexpath scanner print threading
-	ar Scr libfoundationkit.a characterset.o indexpath.o scanner.o print.o threading.o
+libfoundationkit: characterset indexpath scanner print threading threadpool
+	ar Scr libfoundationkit.a characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
 	ranlib libfoundationkit.a
 
 clean:

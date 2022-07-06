@@ -10,6 +10,7 @@ import loadings;
 import enthalpy_of_adsorption;
 import energy_status;
 import averages;
+import threadpool;
 
 import <string>;
 import <unordered_set>;
@@ -57,6 +58,7 @@ export struct InputReader
 	std::size_t printEvery{ 0 };
 
     size_t numberOfBlocks{ 5 };
+    concurrency_t numberOfThreads{ 1 };
 
 	ForceField forceField;
 	std::vector<System> systems{};

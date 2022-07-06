@@ -282,7 +282,7 @@ void MC_Particle_Moves::performRandomMoveProduction(System& selectedSystem, size
       selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, RosenbluthWeight.value_or(0.0), selectedSystem.weight());
 
 	  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-	  selectedSystem.components[selectedComponent].cpuTime_WidomMove += (t2 - t1);
+	  selectedSystem.components[selectedComponent].cpuTime_WidomMove_CBMC += (t2 - t1);
     }
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove_CFCMC)
     {

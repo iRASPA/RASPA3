@@ -54,11 +54,16 @@ export struct System
     void computeTailCorrectionVDWEnergy() noexcept;
 
 	[[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+    [[nodiscard]] std::optional<EnergyStatus> computeFrameworkSpanMoleculeEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const;
+
 	[[nodiscard]] std::optional<EnergyStatus> computeInterMolecularEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
 	[[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, 
                                                                        std::span<const Atom> oldatoms) const noexcept;
+    [[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip, std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator) const noexcept;
 	[[nodiscard]] std::optional<EnergyStatus> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, 
                                                                     std::span<const Atom> oldatoms) const noexcept;
+    [[nodiscard]] std::optional<EnergyStatus> computeInterMolecularSpanEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept;
+
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWOldEnergy() const noexcept;
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWAddEnergy(size_t selectedComponent) const noexcept;
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWRemoveEnergy(size_t selectedComponent) const noexcept;
@@ -71,6 +76,7 @@ export struct System
 
 
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeInterMolecularMolecularPressure() noexcept;
+    [[nodiscard]] std::pair<EnergyStatus, double3x3> computeEwaldFourierMolecularPressure() noexcept;
 
 	size_t randomFramework() { return size_t(RandomNumber::Uniform() * static_cast<double>(numberOfFrameworks)); }
 	size_t randomComponent() { return size_t(RandomNumber::Uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }

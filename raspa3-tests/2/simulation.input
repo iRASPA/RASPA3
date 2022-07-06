@@ -5,6 +5,7 @@ NumberOfEquilibrationCycles   50000
 PrintEvery                    1000
 
 NumberOfBlocks 5
+NumberOfThreads 1
 
 Forcefield                    ExampleMoleculeForceField
 

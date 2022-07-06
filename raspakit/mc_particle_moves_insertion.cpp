@@ -38,13 +38,22 @@ std::optional<EnergyStatus> MC_Particle_Moves::insertionMove(System& system, siz
 	size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
 	system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.counts += 1;
 	
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 	std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
     std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
+
 	if (!growData) return std::nullopt;
 
 	system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.constructed += 1;
 
+    std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+    std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC_Ewald += (u2 - u1);
+
     EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
                                         system.computeTailCorrectionVDWOldEnergy();
     double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));

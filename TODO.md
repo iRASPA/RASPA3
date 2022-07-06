@@ -1,4 +1,4 @@
- 1) compute pressure
+ 1) compute pressure (Ewald)
  2) volume move (NPT)
  3) rescale MC moves max-change 
  4) identity change

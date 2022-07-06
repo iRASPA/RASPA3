@@ -56,9 +56,9 @@ System& MonteCarlo::randomSystem()
 
 void MonteCarlo::run()
 {
-	t1 = std::chrono::system_clock::now();
 	initialize();
 	equilibrate();
+	t1 = std::chrono::system_clock::now();
 	production();
 	t2 = std::chrono::system_clock::now();
 
@@ -203,6 +203,7 @@ void MonteCarlo::production()
         for(Component &component : system.components)
         {
           component.clearMoveStatistics();
+          component.clearTimingStatistics();
           if(component.hasFractionalMolecule)
           {
             component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
@@ -282,7 +283,7 @@ void MonteCarlo::output()
 		system.writeToOutputFile("===============================================================================\n\n");
      	system.writeToOutputFile(system.writeCPUTimeStatistics());
 		std::chrono::duration<double> totalSimulationTime = (t2 - t1);
-		system.writeToOutputFile(std::print("\nTotal simulation time:      {:14f} [s]\n\n\n", totalSimulationTime.count()));
+		system.writeToOutputFile(std::print("\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count()));
 
 		system.writeToOutputFile(system.writeEnergyAveragesStatistics());
 		system.writeToOutputFile(system.writePressureAveragesStatistics());

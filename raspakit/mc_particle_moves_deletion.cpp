@@ -44,9 +44,16 @@ std::optional<EnergyStatus> MC_Particle_Moves::deletionMove(System& system, size
 
 		std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
+        std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 		ChainData retraceData = system.retraceMoleculeSwapDeletion(selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
+        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        system.components[selectedComponent].cpuTime_SwapDeletionMove_CBMC_NonEwald += (t2 - t1);
 
+        std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
         EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
+        std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
+        system.components[selectedComponent].cpuTime_SwapDeletionMove_CBMC_Ewald += (u2 - u1);
+
         EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
                                             system.computeTailCorrectionVDWOldEnergy();
         double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));

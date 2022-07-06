@@ -39,7 +39,10 @@ std::optional<EnergyStatus> MC_Particle_Moves::reinsertionMove(System& system, s
 
 	if (system.numberOfMoleculesPerComponent[selectedComponent] > 0)
 	{
+        std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 		std::optional<ChainData> growData = system.growMoleculeReinsertion(selectedComponent, selectedMolecule, molecule);
+        std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+        system.components[selectedComponent].cpuTime_ReinsertionGrowMove_CBMC_NonEwald += (t2 - t1);
 
 		if (!growData) return std::nullopt;
 
@@ -47,8 +50,16 @@ std::optional<EnergyStatus> MC_Particle_Moves::reinsertionMove(System& system, s
 
 		system.components[selectedComponent].statistics_ReinsertionMove_CBMC.constructed += 1;
 
+        std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
 		ChainData retraceData = system.retraceMoleculeReinsertion(selectedComponent, selectedMolecule, molecule, growData->storedR);
+        std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
+        system.components[selectedComponent].cpuTime_ReinsertionRetraceMove_CBMC_NonEwald += (u2 - u1);
+
+        std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
         EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
+        std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+        system.components[selectedComponent].cpuTime_ReinsertionMove_CBMC_Ewald += (v2 - v1);
+
         double correctionFactorFourier = std::exp(-system.simulationBox.Beta * energyFourierDifference.totalEnergy.energy);
 
 		if (RandomNumber::Uniform() < correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
