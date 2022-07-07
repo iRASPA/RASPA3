@@ -385,6 +385,18 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
                 }
             }
 
+            if (caseInSensStringCompare(keyword, "RandomTranslationProbability"))
+            {
+                requireExistingSystemAndComponent(keyword, lineNumber);
+                std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+         
+                values.resize(systems.size(), values.front());
+                for (size_t i = 0; i < systems.size(); ++i)
+                {
+                    systems[i].components[numberOfComponents - 1].probabilityRandomTranslationMove = values[i];
+                }
+            }
+
             if (caseInSensStringCompare(keyword, "RotationProbability"))
             {
                 requireExistingSystemAndComponent(keyword, lineNumber);
@@ -394,6 +406,18 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
                 for (size_t i = 0; i < systems.size(); ++i)
                 {
                     systems[i].components[numberOfComponents - 1].probabilityRotationMove = values[i];
+                }
+            }
+
+            if (caseInSensStringCompare(keyword, "RandomRotationProbability"))
+            {
+                requireExistingSystemAndComponent(keyword, lineNumber);
+                std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+
+                values.resize(systems.size(), values.front());
+                for (size_t i = 0; i < systems.size(); ++i)
+                {
+                    systems[i].components[numberOfComponents - 1].probabilityRandomRotationMove = values[i];
                 }
             }
 

@@ -103,7 +103,9 @@ export struct Component
     bool hasFractionalMolecule{ false };
 	
 	double probabilityTranslationMove{ 0.0 };
+	double probabilityRandomTranslationMove{ 0.0 };
 	double probabilityRotationMove{ 0.0 };
+	double probabilityRandomRotationMove{ 0.0 };
 	double probabilityVolumeMove{ 0.0 };
 	double probabilityReinsertionMove_CBMC{ 0.0 };
 	double probabilityIdentityChangeMove_CBMC{ 0.0 };
@@ -119,7 +121,9 @@ export struct Component
 	double probabilityWidomMove_CFCMC_CBMC{ 0.0 };
 
 	double accumulatedProbabilityTranslationMove{ 0.0 };
+	double accumulatedProbabilityRandomTranslationMove{ 0.0 };
 	double accumulatedProbabilityRotationMove{ 0.0 };
+	double accumulatedProbabilityRandomRotationMove{ 0.0 };
 	double accumulatedProbabilityVolumeMove{ 0.0 };
 	double accumulatedProbabilityReinsertionMove_CBMC{ 0.0 };
 	double accumulatedProbabilityIdentityChangeMove_CBMC{ 0.0 };
@@ -135,7 +139,9 @@ export struct Component
 	double accumulatedProbabilityWidomMove_CFCMC_CBMC{ 0.0 };
 	
 	MoveStatistics<double3> statistics_TranslationMove{.maxChange = double3(1.0,1.0,1.0)};
+	MoveStatistics<double3> statistics_RandomTranslationMove{};
 	MoveStatistics<double3> statistics_RotationMove{ .maxChange = double3(1.0,1.0,1.0) };
+	MoveStatistics<double3> statistics_RandomRotationMove{};
 	MoveStatistics<double> statistics_VolumeMove{};
 	MoveStatistics<double> statistics_ReinsertionMove_CBMC{};
 	MoveStatistics<double> statistics_IdentityChangeMove_CBMC{};
@@ -153,7 +159,9 @@ export struct Component
     void clearMoveStatistics();
 	
 	std::chrono::duration<double> cpuTime_TranslationMove{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomTranslationMove{ 0.0 };
 	std::chrono::duration<double> cpuTime_RotationMove{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomRotationMove{ 0.0 };
 	std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
 	std::chrono::duration<double> cpuTime_ReinsertionMove_CBMC{ 0.0 };
 	std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC{ 0.0 };
@@ -170,7 +178,9 @@ export struct Component
 	std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC{ 0.0 };
 
 	std::chrono::duration<double> cpuTime_TranslationMove_NonEwald{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomTranslationMove_NonEwald{ 0.0 };
 	std::chrono::duration<double> cpuTime_RotationMove_NonEwald{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomRotationMove_NonEwald{ 0.0 };
 	std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
 	std::chrono::duration<double> cpuTime_ReinsertionGrowMove_CBMC_NonEwald{ 0.0 };
 	std::chrono::duration<double> cpuTime_ReinsertionRetraceMove_CBMC_NonEwald{ 0.0 };
@@ -194,7 +204,9 @@ export struct Component
 	std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_NonEwald{ 0.0 };
  
 	std::chrono::duration<double> cpuTime_TranslationMove_Ewald{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomTranslationMove_Ewald{ 0.0 };
 	std::chrono::duration<double> cpuTime_RotationMove_Ewald{ 0.0 };
+	std::chrono::duration<double> cpuTime_RandomRotationMove_Ewald{ 0.0 };
 	std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
 	std::chrono::duration<double> cpuTime_ReinsertionMove_CBMC_Ewald{ 0.0 };
 	std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC_Ewald{ 0.0 };

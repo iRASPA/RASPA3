@@ -50,6 +50,20 @@ void MC_Particle_Moves::performRandomMove(System& selectedSystem, size_t selecte
 			}
 		}
 	}
+    else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomTranslationMove)
+    {
+	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
+
+		if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+		{
+			std::span<Atom> molecule = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+			std::optional<EnergyStatus> energyDifference = randomTranslationMove(selectedSystem, selectedComponent, molecule);
+			if (energyDifference)
+			{
+				selectedSystem.runningEnergies += *energyDifference;
+			}
+		}
+	}
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRotationMove)
 	{
 	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
@@ -58,6 +72,20 @@ void MC_Particle_Moves::performRandomMove(System& selectedSystem, size_t selecte
 		{
 			std::span<Atom> molecule = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
 			std::optional<EnergyStatus> energyDifference = rotationMove(selectedSystem, selectedComponent, molecule);
+			if (energyDifference)
+			{
+				selectedSystem.runningEnergies += *energyDifference;
+			}
+		}
+	}
+    else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomRotationMove)
+	{
+	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
+
+		if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+		{
+			std::span<Atom> molecule = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+			std::optional<EnergyStatus> energyDifference = randomRotationMove(selectedSystem, selectedComponent, molecule);
 			if (energyDifference)
 			{
 				selectedSystem.runningEnergies += *energyDifference;
@@ -172,6 +200,23 @@ void MC_Particle_Moves::performRandomMoveProduction(System& selectedSystem, size
 		std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 		selectedSystem.components[selectedComponent].cpuTime_TranslationMove += (t2 - t1);
 	}
+    else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomTranslationMove)
+    {
+	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
+		std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+
+		if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+		{
+			std::span<Atom> molecule = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+			std::optional<EnergyStatus> energyDifference = randomTranslationMove(selectedSystem, selectedComponent, molecule);
+			if (energyDifference)
+			{
+				selectedSystem.runningEnergies += *energyDifference;
+			}
+		}
+		std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+		selectedSystem.components[selectedComponent].cpuTime_RandomTranslationMove += (t2 - t1);
+	}
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRotationMove)
 	{
 	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
@@ -188,6 +233,23 @@ void MC_Particle_Moves::performRandomMoveProduction(System& selectedSystem, size
 		}
 		std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 		selectedSystem.components[selectedComponent].cpuTime_RotationMove += (t2 - t1);
+	}
+    else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomRotationMove)
+	{
+	    size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
+		std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+
+		if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
+		{
+			std::span<Atom> molecule = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
+			std::optional<EnergyStatus> energyDifference = randomRotationMove(selectedSystem, selectedComponent, molecule);
+			if (energyDifference)
+			{
+				selectedSystem.runningEnergies += *energyDifference;
+			}
+		}
+		std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+		selectedSystem.components[selectedComponent].cpuTime_RandomRotationMove += (t2 - t1);
 	}
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityVolumeMove)
     {

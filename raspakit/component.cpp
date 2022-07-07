@@ -235,7 +235,9 @@ std::string Component::printStatus(const ForceField& forceField) const
       std::print(stream, "\n");
     }
     std::print(stream, "    Translation-move probability:             {} [-]\n", probabilityTranslationMove);
+    std::print(stream, "    Random translation-move probability:      {} [-]\n", probabilityRandomTranslationMove);
     std::print(stream, "    Rotation-move probability:                {} [-]\n", probabilityRotationMove);
+    std::print(stream, "    Random rotation-move probability:         {} [-]\n", probabilityRandomRotationMove);
     std::print(stream, "    Volume-move probability:                  {} [-]\n", probabilityVolumeMove);
     std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", probabilityReinsertionMove_CBMC);
     std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", probabilityIdentityChangeMove_CBMC);
@@ -256,8 +258,11 @@ std::string Component::printStatus(const ForceField& forceField) const
 
 void Component::normalizeMoveProbabilties()
 {
-    double totalProbability = probabilityTranslationMove +
+    double totalProbability = 
+        probabilityTranslationMove +
+        probabilityRandomTranslationMove +
         probabilityRotationMove +
+        probabilityRandomRotationMove +
         probabilityVolumeMove +
         probabilityReinsertionMove_CBMC +
         probabilityIdentityChangeMove_CBMC +
@@ -276,7 +281,9 @@ void Component::normalizeMoveProbabilties()
     if (totalProbability > 1e-5)
     {
         probabilityTranslationMove /= totalProbability;
+        probabilityRandomTranslationMove /= totalProbability;
         probabilityRotationMove /= totalProbability;
+        probabilityRandomRotationMove /= totalProbability;
         probabilityVolumeMove /= totalProbability;
         probabilityReinsertionMove_CBMC /= totalProbability;
         probabilityIdentityChangeMove_CBMC /= totalProbability;
@@ -293,7 +300,9 @@ void Component::normalizeMoveProbabilties()
     }
 
     accumulatedProbabilityTranslationMove = probabilityTranslationMove;
+    accumulatedProbabilityRandomTranslationMove = probabilityRandomTranslationMove;
     accumulatedProbabilityRotationMove = probabilityRotationMove;
+    accumulatedProbabilityRandomRotationMove = probabilityRandomRotationMove;
     accumulatedProbabilityVolumeMove = probabilityVolumeMove;
     accumulatedProbabilityReinsertionMove_CBMC = probabilityReinsertionMove_CBMC;
     accumulatedProbabilityIdentityChangeMove_CBMC = probabilityIdentityChangeMove_CBMC;
@@ -308,8 +317,10 @@ void Component::normalizeMoveProbabilties()
     accumulatedProbabilityWidomMove_CFCMC = probabilityWidomMove_CFCMC;
     accumulatedProbabilityWidomMove_CFCMC_CBMC = probabilityWidomMove_CFCMC_CBMC;
 
-    accumulatedProbabilityRotationMove += accumulatedProbabilityTranslationMove;
-    accumulatedProbabilityVolumeMove += accumulatedProbabilityRotationMove;
+    accumulatedProbabilityRandomTranslationMove += accumulatedProbabilityTranslationMove;
+    accumulatedProbabilityRotationMove += accumulatedProbabilityRandomTranslationMove;
+    accumulatedProbabilityRandomRotationMove += accumulatedProbabilityRotationMove;
+    accumulatedProbabilityVolumeMove += accumulatedProbabilityRandomRotationMove;
     accumulatedProbabilityReinsertionMove_CBMC += accumulatedProbabilityVolumeMove;
     accumulatedProbabilityIdentityChangeMove_CBMC += accumulatedProbabilityReinsertionMove_CBMC;
     accumulatedProbabilitySwapMove_CBMC += accumulatedProbabilityIdentityChangeMove_CBMC;
@@ -352,7 +363,9 @@ const std::string Component::writeMCMoveStatistics() const
 {
     std::ostringstream stream;
     if(probabilityTranslationMove > 0.0) std::print(stream, formatStatistics("Translation", statistics_TranslationMove));
+    if(probabilityRandomTranslationMove > 0.0) std::print(stream, formatStatistics("Random translation", statistics_RandomTranslationMove));
     if(probabilityRotationMove > 0.0) std::print(stream, formatStatistics("Rotation", statistics_RotationMove));
+    if(probabilityRandomRotationMove > 0.0) std::print(stream, formatStatistics("Random rotation", statistics_RandomRotationMove));
     if(probabilityVolumeMove > 0.0) std::print(stream, formatStatistics("Volume", statistics_VolumeMove));
     if(probabilityReinsertionMove_CBMC > 0.0) std::print(stream, formatStatistics("Reinsertion(CBMC)", statistics_ReinsertionMove_CBMC));
     if(probabilityIdentityChangeMove_CBMC > 0.0) std::print(stream, formatStatistics("Identity Swap (CBMC)", statistics_IdentityChangeMove_CBMC));
@@ -382,12 +395,27 @@ const std::string Component::writeMCMoveCPUTimeStatistics() const
       std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_TranslationMove_Ewald.count());
       std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_TranslationMove.count() - cpuTime_TranslationMove_NonEwald.count() - cpuTime_TranslationMove_Ewald.count());
     }
+    if(cpuTime_RandomTranslationMove.count() > 0.0)
+    {
+      std::print(stream, "    Random translation move:    {:14f} [s]\n", cpuTime_RandomTranslationMove.count());
+      std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_RandomTranslationMove_NonEwald.count());
+      std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_RandomTranslationMove_Ewald.count());
+      std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_RandomTranslationMove.count() - 
+                         cpuTime_RandomTranslationMove_NonEwald.count() - cpuTime_RandomTranslationMove_Ewald.count());
+    }
     if(cpuTime_RotationMove.count() > 0.0)
     {
       std::print(stream, "    Rotation move:          {:14f} [s]\n", cpuTime_RotationMove.count());
       std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_RotationMove_NonEwald.count());
       std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_RotationMove_Ewald.count());
       std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_RotationMove.count() - cpuTime_RotationMove_NonEwald.count() - cpuTime_RotationMove_Ewald.count());
+    }
+    if(cpuTime_RandomRotationMove.count() > 0.0)
+    {
+      std::print(stream, "    Random rotation move:       {:14f} [s]\n", cpuTime_RandomRotationMove.count());
+      std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_RandomRotationMove_NonEwald.count());
+      std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_RandomRotationMove_Ewald.count());
+      std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_RandomRotationMove.count() - cpuTime_RandomRotationMove_NonEwald.count() - cpuTime_RandomRotationMove_Ewald.count());
     }
     if(cpuTime_VolumeMove.count() > 0.0)
     {
@@ -558,7 +586,9 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
 void Component::clearMoveStatistics()
 {
   statistics_TranslationMove.clear();
+  statistics_RandomTranslationMove.clear();
   statistics_RotationMove.clear();
+  statistics_RandomRotationMove.clear();
   statistics_VolumeMove.clear();
   statistics_ReinsertionMove_CBMC.clear();
   statistics_IdentityChangeMove_CBMC.clear();
@@ -578,7 +608,9 @@ void Component::clearMoveStatistics()
 void Component::clearTimingStatistics()
 {
     cpuTime_TranslationMove = std::chrono::duration<double>(0.0);
+    cpuTime_RandomTranslationMove = std::chrono::duration<double>(0.0);
     cpuTime_RotationMove = std::chrono::duration<double>(0.0);
+    cpuTime_RandomRotationMove = std::chrono::duration<double>(0.0);
     cpuTime_VolumeMove = std::chrono::duration<double>(0.0);
     cpuTime_ReinsertionMove_CBMC = std::chrono::duration<double>(0.0);
     cpuTime_IdentityChangeMove_CBMC = std::chrono::duration<double>(0.0);
@@ -595,7 +627,9 @@ void Component::clearTimingStatistics()
     cpuTime_WidomMove_CFCMC_CBMC = std::chrono::duration<double>(0.0);
 
     cpuTime_TranslationMove_NonEwald = std::chrono::duration<double>(0.0);
+    cpuTime_RandomTranslationMove_NonEwald = std::chrono::duration<double>(0.0);
     cpuTime_RotationMove_NonEwald = std::chrono::duration<double>(0.0);
+    cpuTime_RandomRotationMove_NonEwald = std::chrono::duration<double>(0.0);
     cpuTime_VolumeMove_NonEwald = std::chrono::duration<double>(0.0);
     cpuTime_ReinsertionGrowMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
     cpuTime_ReinsertionRetraceMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
@@ -617,7 +651,9 @@ void Component::clearTimingStatistics()
     cpuTime_WidomMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
 
     cpuTime_TranslationMove_Ewald = std::chrono::duration<double>(0.0);
+    cpuTime_RandomTranslationMove_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_RotationMove_Ewald = std::chrono::duration<double>(0.0);
+    cpuTime_RandomRotationMove_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_VolumeMove_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_ReinsertionMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_IdentityChangeMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
