@@ -3,7 +3,7 @@ import <exception>;
 import <iostream>;
 import monte_carlo;
 import input_reader;
-import threadpool;
+//import threadpool;
 
 int main()
 {
@@ -12,7 +12,7 @@ int main()
 		InputReader inputReader("pseudo_atoms.def", "force_field_mixing_rules.def",
 			                    "force_field.def", "simulation.input");
 
-        ThreadPool::getInstanceImpl(inputReader.numberOfThreads);
+        //ThreadPool::getInstanceImpl(inputReader.numberOfThreads);
 
 		switch (inputReader.simulationType)
 		{

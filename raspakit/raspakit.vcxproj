@@ -175,8 +175,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="dudlambda_histogram.cpp" />
-    <ClCompile Include="dudlambda_histogram.ixx" />
+    <ClCompile Include="energy_factor.cpp" />
+    <ClCompile Include="energy_factor.ixx" />
+    <ClCompile Include="energy_interactions_framework_molecule.cpp" />
+    <ClCompile Include="energy_interactions_framework_molecule.ixx" />
+    <ClCompile Include="energy_interactions_intermolecular.cpp" />
+    <ClCompile Include="energy_interactions_intermolecular.ixx" />
     <ClCompile Include="energy_status_inter.cpp" />
     <ClCompile Include="energy_status_inter.ixx" />
     <ClCompile Include="energy_status_intra.cpp" />
@@ -187,6 +191,8 @@
     <ClCompile Include="energy_status.ixx" />
     <ClCompile Include="forcefield.cpp" />
     <ClCompile Include="forcefield.ixx" />
+    <ClCompile Include="force_factor.cpp" />
+    <ClCompile Include="force_factor.ixx" />
     <ClCompile Include="loadings.cpp" />
     <ClCompile Include="loadings.ixx" />
     <ClCompile Include="cbmc.cpp" />
@@ -201,6 +207,8 @@
     <ClCompile Include="lambda.ixx" />
     <ClCompile Include="mc_particle_moves_deletion.cpp" />
     <ClCompile Include="mc_particle_moves_insertion.cpp" />
+    <ClCompile Include="mc_particle_moves_random_rotation.cpp" />
+    <ClCompile Include="mc_particle_moves_random_translation.cpp" />
     <ClCompile Include="mc_particle_moves_reinsertion.cpp" />
     <ClCompile Include="mc_particle_moves_rotation.cpp" />
     <ClCompile Include="mc_particle_moves_swap_cfcmc_cbmc.cpp" />
@@ -210,8 +218,10 @@
     <ClCompile Include="potential_correction_vdw.ixx" />
     <ClCompile Include="potential_energy_coulomb.cpp" />
     <ClCompile Include="potential_energy_coulomb.ixx" />
-    <ClCompile Include="probability_histogram.cpp" />
-    <ClCompile Include="probability_histogram.ixx" />
+    <ClCompile Include="potential_gradient_coulomb.cpp" />
+    <ClCompile Include="potential_gradient_coulomb.ixx" />
+    <ClCompile Include="potential_gradient_vdw.cpp" />
+    <ClCompile Include="potential_gradient_vdw.ixx" />
     <ClCompile Include="property_dudlambda.cpp" />
     <ClCompile Include="property_dudlambda.ixx" />
     <ClCompile Include="property_energy.cpp" />
@@ -222,6 +232,8 @@
     <ClCompile Include="property_lambda_probability_histogram.ixx" />
     <ClCompile Include="property_loading.cpp" />
     <ClCompile Include="property_loading.ixx" />
+    <ClCompile Include="property_pressure.cpp" />
+    <ClCompile Include="property_pressure.ixx" />
     <ClCompile Include="property_simulationbox.cpp" />
     <ClCompile Include="property_simulationbox.ixx" />
     <ClCompile Include="property_widom.cpp" />
@@ -231,6 +243,8 @@
     <ClCompile Include="system_cbmc_rigid_insertion.cpp" />
     <ClCompile Include="system_cbmc_rigid_reinsertion.cpp" />
     <ClCompile Include="system_interactions_ewald.cpp" />
+    <ClCompile Include="system_interactions_ewald_pressure.cpp" />
+    <ClCompile Include="system_interactions_intermolecular_pressure.cpp" />
     <ClCompile Include="system_interactions_tailcorrection.cpp" />
     <ClCompile Include="system_print_energyaverages.cpp" />
     <ClCompile Include="system_print_enthalpy.cpp" />
@@ -238,6 +252,7 @@
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />
     <ClCompile Include="system_compute_fluid_properties.cpp" />
+    <ClCompile Include="system_print_pressure_averages.cpp" />
     <ClCompile Include="units.cpp" />
     <ClCompile Include="system_interactions_framework_molecule.cpp" />
     <ClCompile Include="units.ixx" />

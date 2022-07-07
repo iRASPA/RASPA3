@@ -45,5 +45,11 @@
     <ClCompile Include="threading.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="threadpool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="threadpool.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

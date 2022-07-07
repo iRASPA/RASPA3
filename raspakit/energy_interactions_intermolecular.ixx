@@ -25,7 +25,7 @@ import <cmath>;
 import <optional>;
 import <execution>;
 
-export EnergyStatus computeInterMolecularEnergy(size_t numberOfComponents, const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<const Atom> &moleculeAtoms) noexcept
+export EnergyStatus computeInterMolecularEnergy(size_t numberOfComponents, const ForceField &forceField, const SimulationBox &simulationBox, const std::span<const Atom> &moleculeAtoms) noexcept
 {
 	double3 dr, posA, posB, f;
 	double rr;

@@ -207,22 +207,10 @@
     <ClCompile Include="system_print_enthalpy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dudlambda_histogram.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dudlambda_histogram.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="forcefield.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="forcefield.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="probability_histogram.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="probability_histogram.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mc_particle_moves_deletion.cpp">
@@ -295,6 +283,63 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="system_cbmc_rigid_reinsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="force_factor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="force_factor.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_gradient_coulomb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_gradient_coulomb.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_gradient_vdw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="potential_gradient_vdw.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_pressure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_pressure.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_ewald_pressure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_intermolecular_pressure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_print_pressure_averages.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_factor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_factor.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_interactions_framework_molecule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_interactions_framework_molecule.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_interactions_intermolecular.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="energy_interactions_intermolecular.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_random_rotation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_particle_moves_random_translation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

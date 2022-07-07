@@ -177,6 +177,8 @@
     <ClCompile Include="scanner.ixx" />
     <ClCompile Include="threading.cpp" />
     <ClCompile Include="threading.ixx" />
+    <ClCompile Include="threadpool.cpp" />
+    <ClCompile Include="threadpool.ixx" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
