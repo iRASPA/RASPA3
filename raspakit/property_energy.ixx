@@ -40,9 +40,9 @@ export struct PropertyEnergy
       bookKeepingEnergyStatus = std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, std::make_pair(EnergyStatus(numberOfComponents), 0.0));
   }
 
-  inline void addSample(size_t blockIndex, const EnergyStatus &box, const double &weight)
+  inline void addSample(size_t blockIndex, const EnergyStatus &energyStatus, const double &weight)
   {
-    bookKeepingEnergyStatus[blockIndex].first += weight * box;
+    bookKeepingEnergyStatus[blockIndex].first += weight * energyStatus;
     bookKeepingEnergyStatus[blockIndex].second += weight;
   }
 

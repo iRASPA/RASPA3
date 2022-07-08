@@ -1,517 +1,255 @@
 module;
 
 
-import <atomic>;             // std::atomic
-import <chrono>;             // std::chrono
-import <condition_variable>; // std::condition_variable
-import <exception>;          // std::current_exception
-import <functional>;         // std::function
-import <future>;             // std::future, std::promise
-import <iostream>;           // std::cout, std::ostream
-import <memory>;             // std::make_shared, std::make_unique, std::shared_ptr, std::unique_ptr
-import <mutex>;              // std::mutex, std::scoped_lock, std::unique_lock
-import <queue>;              // std::queue
+import <atomic>;
+import <chrono>;
+import <exception>;
+import <functional>;
+import <future>;
+import <iostream>;
+import <memory>;
+import <mutex>;
+import <queue>;
 import <deque>;
-import <thread>;             // std::thread
-import <type_traits>;        // std::common_type_t, std::decay_t, std::is_void_v, std::invoke_result_t
-import <utility>;            // std::move, std::swap
-import <vector>;             // std::vector
+import <thread>;
+import <type_traits>;
+import <utility>;
+import <optional>;
+import <semaphore>;
+
+import threading;
+
+#include <omp.h>
+
+// https://github.com/DeveloperPaul123/thread-pool
 
 export module threadpool;
 
-export using concurrency_t = std::invoke_result_t<decltype(std::thread::hardware_concurrency)>;
-
-// ============================================================================================= //
-//                                    Begin class multi_future                                    //
-
-/**
- * @brief A helper class to facilitate waiting for and/or getting the results of multiple futures at once.
- */
-export template <typename T>
-class multi_future
+template <typename T>
+class thread_safe_queue 
 {
-public:
-    /**
-     * @brief Construct a multi_future object with the given number of futures.
-     *
-     * @param num_futures_ The desired number of futures to store.
-     */
-    explicit multi_future(const size_t num_futures_ = 0) : f(num_futures_) {}
+  public:
+    using value_type = T;
+    using size_type = typename std::deque<T>::size_type;
 
-    /**
-     * @brief Get the results from all the futures stored in this multi_future object.
-     *
-     * @return A vector containing the results.
-     */
-    std::vector<T> get()
-    {
-        std::vector<T> results(f.size());
-        for (size_t i = 0; i < f.size(); ++i)
-            results[i] = f[i].get();
-        return results;
+    thread_safe_queue() = default;
+
+    void push(T&& value) {
+        std::lock_guard lock(mutex_);
+        data_.push_back(std::forward<T>(value));
     }
 
-    /**
-     * @brief Wait for all the futures stored in this multi_future object.
-     */
-    void wait() const
-    {
-        for (size_t i = 0; i < f.size(); ++i)
-            f[i].wait();
+    [[nodiscard]] bool empty() const {
+        std::lock_guard lock(mutex_);
+        return data_.empty();
     }
 
-    /**
-     * @brief A vector to store the futures.
-     */
-    std::vector<std::future<T>> f;
+    [[nodiscard]] std::optional<T> pop() {
+        std::lock_guard lock(mutex_);
+        if (data_.empty()) return std::nullopt;
+
+        auto front = std::move(data_.front());
+        data_.pop_front();
+        return front;
+    }
+
+    [[nodiscard]] std::optional<T> steal() {
+        std::lock_guard lock(mutex_);
+        if (data_.empty()) return std::nullopt;
+
+        auto back = std::move(data_.back());
+        data_.pop_back();
+        return back;
+    }
+
+  private:
+    using mutex_type = std::mutex;
+    std::deque<T> data_{};
+    mutable mutex_type mutex_{};
 };
 
-//                                     End class multi_future                                     //
-// ============================================================================================= //
 
-// ============================================================================================= //
-//                                    Begin class ThreadPool                                    //
-
-/**
- * @brief A fast, lightweight, and easy-to-use C++17 thread pool class.
- */
-export class ThreadPool
+export class ThreadPool 
 {
-public:
-    // ============================
-    // Constructors and destructors
-    // ============================
-
-
-    static ThreadPool& getInstanceImpl(const concurrency_t thread_count_ = 0)
+  public:
+    enum class ThreadingType : size_t
     {
-      static ThreadPool instance( thread_count_ );
+      Serial = 0,
+      ThreadPool = 1,
+      OpenMP = 2,
+      GPU_Offload = 3
+    };
+
+    explicit ThreadPool(const unsigned int &number_of_threads = std::thread::hardware_concurrency(), ThreadingType type = ThreadingType::ThreadPool) 
+        : threadingType(type), tasks_(number_of_threads) 
+    {
+      if(type == ThreadingType::OpenMP)
+      {
+        omp_set_dynamic(0);     // Explicitly disable dynamic teams
+        omp_set_num_threads(static_cast<int>(number_of_threads + 1));
+      }
+      else 
+      {
+        for (std::size_t i = 0; i < number_of_threads; ++i) 
+        {
+          try 
+          {
+            threads_.emplace_back([&, id = i](const std::stop_token &stop_tok) 
+            {
+              do 
+              {
+                // wait until signaled
+                tasks_[id].signal.acquire();
+
+                do 
+                {
+                  // invoke the task
+                  while (auto task = tasks_[id].tasks.pop()) 
+                  {
+                    try 
+                    {
+                      pending_tasks_.fetch_sub(1, std::memory_order_release);
+                      std::invoke(std::move(task.value()));
+                    } 
+                    catch (...) 
+                    {
+                    }
+                  }
+
+                  // try to steal a task
+                  for (std::size_t j = 1; j < tasks_.size(); ++j) 
+                  {
+                    const std::size_t index = (id + j) % tasks_.size();
+                    if (auto task = tasks_[index].tasks.steal()) 
+                    {
+                      // steal a task
+                      pending_tasks_.fetch_sub(1, std::memory_order_release);
+                      std::invoke(std::move(task.value()));
+                      // stop stealing once we have invoked a stolen task
+                      break;
+                    }
+                  }
+                } while (pending_tasks_.load(std::memory_order_acquire) > 0);
+              } while (!stop_tok.stop_requested());
+            });
+          } 
+          catch (...) 
+          {
+            // catch all
+          }
+        }
+      }
+    }
+
+    static ThreadPool &createPool(size_t count = 1, ThreadingType type = ThreadingType::ThreadPool)
+    {
+      static ThreadPool instance(static_cast<unsigned int>(count > 0 ? count - 1 :  std::thread::hardware_concurrency()), type);
       return instance;
     }
 
     static ThreadPool &instance()
     {
-      return getInstanceImpl();
+      return createPool();
     }
 
-    /**
-     * @brief Construct a new thread pool.
-     *
-     * @param thread_count_ The number of threads to use. The default value is the total number of hardware threads available, as reported by the implementation. This is usually determined by the number of cores in the CPU. If a core is hyperthreaded, it will count as two threads.
-     */
-    explicit ThreadPool(const concurrency_t thread_count_ = std::thread::hardware_concurrency()) : thread_count(thread_count_ ? thread_count_ - 1: std::thread::hardware_concurrency() - 1), threads(std::make_unique<std::thread[]>(thread_count_ ? thread_count_ - 1: std::thread::hardware_concurrency() - 1))
+    size_t getThreadCount() {return tasks_.size();}
+
+    ThreadingType threadingType{ThreadingType::OpenMP};
+
+    ~ThreadPool() 
     {
-        create_threads();
+      // stop all threads
+      for (std::size_t i = 0; i < threads_.size(); ++i) 
+      {
+        threads_[i].request_stop();
+        tasks_[i].signal.release();
+        threads_[i].join();
+      }
     }
 
+    /// thread pool is non-copyable
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool &operator=(const ThreadPool &) = delete;
+
     /**
-     * @brief Destruct the thread pool. Waits for all tasks to complete, then destroys all threads. Note that if the variable paused is set to true, then any tasks still in the queue will never be executed.
+     * @brief Enqueue a task into the thread pool that returns a result.
+     * @tparam Function An invokable type.
+     * @tparam Args Argument parameter pack
+     * @tparam ReturnType The return type of the Function
+     * @param f The callable function
+     * @param args The parameters that will be passed (copied) to the function.
+     * @return A std::future<ReturnType> that can be used to retrieve the returned value.
      */
-    ~ThreadPool()
+    template <typename Function, typename... Args,
+              typename ReturnType = std::invoke_result_t<Function &&, Args &&...>>
+    requires std::invocable<Function, Args...>
+    [[nodiscard]] std::future<ReturnType> enqueue(Function f, Args... args) 
     {
-        wait_for_tasks();
-        destroy_threads();
-    }
-
-    // =======================
-    // Public member functions
-    // =======================
-
-    /**
-     * @brief Get the number of tasks currently waiting in the queue to be executed by the threads.
-     *
-     * @return The number of queued tasks.
-     */
-    size_t get_tasks_queued() const
-    {
-        const std::scoped_lock tasks_lock(tasks_mutex);
-        return tasks.size();
-    }
-
-    /**
-     * @brief Get the number of tasks currently being executed by the threads.
-     *
-     * @return The number of running tasks.
-     */
-    size_t get_tasks_running() const
-    {
-        const std::scoped_lock tasks_lock(tasks_mutex);
-        return tasks_total - tasks.size();
-    }
-
-    /**
-     * @brief Get the total number of unfinished tasks: either still in the queue, or running in a thread. Note that get_tasks_total() == get_tasks_queued() + get_tasks_running().
-     *
-     * @return The total number of tasks.
-     */
-    size_t get_tasks_total() const
-    {
-        return tasks_total;
-    }
-
-    /**
-     * @brief Get the number of threads in the pool.
-     *
-     * @return The number of threads.
-     */
-    concurrency_t get_thread_count() const
-    {
-        return thread_count;
-    }
-
-    /**
-     * @brief Parallelize a loop by automatically splitting it into blocks and submitting each block separately to the queue.
-     *
-     * @tparam F The type of the function to loop through.
-     * @tparam T1 The type of the first index in the loop. Should be a signed or unsigned integer.
-     * @tparam T2 The type of the index after the last index in the loop. Should be a signed or unsigned integer. If T1 is not the same as T2, a common type will be automatically inferred.
-     * @tparam T The common type of T1 and T2.
-     * @tparam R The return value of the loop function F (can be void).
-     * @param first_index The first index in the loop.
-     * @param index_after_last The index after the last index in the loop. The loop will iterate from first_index to (index_after_last - 1) inclusive. In other words, it will be equivalent to "for (T i = first_index; i < index_after_last; ++i)". Note that if first_index == index_after_last, no blocks will be submitted.
-     * @param loop The function to loop through. Will be called once per block. Should take exactly two arguments: the first index in the block and the index after the last index in the block. loop(start, end) should typically involve a loop of the form "for (T i = start; i < end; ++i)".
-     * @param num_blocks The maximum number of blocks to split the loop into. The default is to use the number of threads in the pool.
-     * @return A multi_future object that can be used to wait for all the blocks to finish. If the loop function returns a value, the multi_future object can be used to obtain the values returned by each block.
-     */
-    template <typename F, typename T1, typename T2, typename T = std::common_type_t<T1, T2>, typename R = std::invoke_result_t<std::decay_t<F>, T, T>>
-    multi_future<R> parallelize_loop(const T1& first_index, const T2& index_after_last, const F& loop, size_t num_blocks = 0)
-    {
-        T first_index_T = static_cast<T>(first_index);
-        T index_after_last_T = static_cast<T>(index_after_last);
-        if (first_index_T == index_after_last_T)
-            return multi_future<R>();
-        if (index_after_last_T < first_index_T)
-            std::swap(index_after_last_T, first_index_T);
-        if (num_blocks == 0)
-            num_blocks = thread_count;
-        const size_t total_size = static_cast<size_t>(index_after_last_T - first_index_T);
-        size_t block_size = static_cast<size_t>(total_size / num_blocks);
-        if (block_size == 0)
-        {
-            block_size = 1;
-            num_blocks = total_size > 1 ? total_size : 1;
-        }
-        multi_future<R> mf(num_blocks);
-        for (size_t i = 0; i < num_blocks; ++i)
-        {
-            const T start = (static_cast<T>(i * block_size) + first_index_T);
-            const T end = (i == num_blocks - 1) ? index_after_last_T : (static_cast<T>((i + 1) * block_size) + first_index_T);
-            mf.f[i] = submit(loop, start, end);
-        }
-        return mf;
-    }
-
-    /**
-     * @brief Push a function with zero or more arguments, but no return value, into the task queue.
-     *
-     * @tparam F The type of the function.
-     * @tparam A The types of the arguments.
-     * @param task The function to push.
-     * @param args The arguments to pass to the function.
-     */
-    template <typename F, typename... A>
-    void push_task(const F& task, const A&... args)
-    {
-        {
-            const std::scoped_lock tasks_lock(tasks_mutex);
-            if constexpr (sizeof...(args) == 0)
-                tasks.emplace(std::function<void()>(task));
-            else
-                tasks.emplace(std::function<void()>([task, args...] { task(args...); }));
-        }
-        ++tasks_total;
-        task_available_cv.notify_one();
-    }
-
-    /**
-     * @brief Reset the number of threads in the pool. Waits for all currently running tasks to be completed, then destroys all threads in the pool and creates a new thread pool with the new number of threads. Any tasks that were waiting in the queue before the pool was reset will then be executed by the new threads. If the pool was paused before resetting it, the new pool will be paused as well.
-     *
-     * @param thread_count_ The number of threads to use. The default value is the total number of hardware threads available, as reported by the implementation. This is usually determined by the number of cores in the CPU. If a core is hyperthreaded, it will count as two threads.
-     */
-    void reset(const concurrency_t thread_count_ = std::thread::hardware_concurrency())
-    {
-        const bool was_paused = paused;
-        paused = true;
-        wait_for_tasks();
-        destroy_threads();
-        thread_count = thread_count_ ? thread_count_ : std::thread::hardware_concurrency();
-        threads = std::make_unique<std::thread[]>(thread_count);
-        paused = was_paused;
-        create_threads();
-    }
-
-    /**
-     * @brief Submit a function with zero or more arguments into the task queue. If the function has a return value, get a future for the eventual returned value. If the function has no return value, get an std::future<void> which can be used to wait until the task finishes.
-     *
-     * @tparam F The type of the function.
-     * @tparam A The types of the zero or more arguments to pass to the function.
-     * @tparam R The return type of the function (can be void).
-     * @param task The function to submit.
-     * @param args The zero or more arguments to pass to the function.
-     * @return A future to be used later to wait for the function to finish executing and/or obtain its returned value if it has one.
-     */
-    template <typename F, typename... A, typename R = std::invoke_result_t<std::decay_t<F>, std::decay_t<A>...>>
-    std::future<R> submit(const F& task, const A&... args)
-    {
-        std::shared_ptr<std::promise<R>> task_promise = std::make_shared<std::promise<R>>();
-        push_task(
-            [task, args..., task_promise]
-            {
-                try
-                {
-                    if constexpr (std::is_void_v<R>)
-                    {
-                        task(args...);
-                        task_promise->set_value();
-                    }
-                    else
-                    {
-                        task_promise->set_value(task(args...));
-                    }
-                }
-                catch (...)
-                {
-                    try
-                    {
-                        task_promise->set_exception(std::current_exception());
-                    }
-                    catch (...)
-                    {
-                    }
-                }
-            });
-        return task_promise->get_future();
-    }
-
-    /**
-     * @brief Wait for tasks to be completed. Normally, this function waits for all tasks, both those that are currently running in the threads and those that are still waiting in the queue. However, if the pool is paused, this function only waits for the currently running tasks (otherwise it would wait forever). Note: To wait for just one specific task, use submit() instead, and call the wait() member function of the generated future.
-     */
-    void wait_for_tasks()
-    {
-        waiting = true;
-        std::unique_lock<std::mutex> tasks_lock(tasks_mutex);
-        task_done_cv.wait(tasks_lock, [this] { return (tasks_total == (paused ? tasks.size() : 0)); });
-        waiting = false;
-    }
-
-    // ===========
-    // Public data
-    // ===========
-
-    /**
-     * @brief An atomic variable indicating whether the workers should pause. When set to true, the workers temporarily stop retrieving new tasks out of the queue, although any tasks already executed will keep running until they are finished. Set to false again to resume retrieving tasks.
-     */
-    std::atomic<bool> paused = false;
-
-private:
-    // ========================
-    // Private member functions
-    // ========================
-
-    /**
-     * @brief Create the threads in the pool and assign a worker to each thread.
-     */
-    void create_threads()
-    {
-        running = true;
-        for (concurrency_t i = 0; i < thread_count; ++i)
-        {
-            threads[i] = std::thread(&ThreadPool::worker, this);
-        }
-    }
-
-    /**
-     * @brief Destroy the threads in the pool.
-     */
-    void destroy_threads()
-    {
-        running = false;
-        task_available_cv.notify_all();
-        for (concurrency_t i = 0; i < thread_count; ++i)
-        {
-            threads[i].join();
-        }
-    }
-
-    /**
-     * @brief A worker function to be assigned to each thread in the pool. Waits until it is notified by push_task() that a task is available, and then retrieves the task from the queue and executes it. Once the task finishes, the worker notifies wait_for_tasks() in case it is waiting.
-     */
-    void worker()
-    {
-        while (running)
-        {
-            std::function<void()> task;
-            std::unique_lock<std::mutex> tasks_lock(tasks_mutex);
-            task_available_cv.wait(tasks_lock, [&] { return !tasks.empty() || !running; });
-            if (running && !paused)
-            {
-                task = std::move(tasks.front());
-                tasks.pop();
-                tasks_lock.unlock();
-                task();
-                --tasks_total;
-                if (waiting)
-                    task_done_cv.notify_one();
+        /*
+         * use shared promise here so that we don't break the promise later (until C++23)
+         *
+         * with C++23 we can do the following:
+         *
+         * std::promise<ReturnType> promise;
+         * auto future = promise.get_future();
+         * auto task = [func = std::move(f), ...largs = std::move(args),
+                          promise = std::move(promise)]() mutable {...};
+         */
+        auto shared_promise = std::make_shared<std::promise<ReturnType>>();
+        auto task = [func = std::move(f), ... largs = std::move(args),
+                     promise = shared_promise]() {
+            try {
+                promise->set_value(func(largs...));
+            } catch (...) {
+                promise->set_exception(std::current_exception());
             }
-        }
+        };
+
+        // get the future before enqueuing the task
+        auto future = shared_promise->get_future();
+        // enqueue the task
+        enqueue_task(std::move(task));
+        return future;
     }
 
-    // ============
-    // Private data
-    // ============
-
     /**
-     * @brief An atomic variable indicating to the workers to keep running. When set to false, the workers permanently stop working.
+     * @brief Enqueue a task to be executed in the thread pool that returns void.
+     * @tparam Function An invokable type.
+     * @tparam Args Argument parameter pack for Function
+     * @param func The callable to be executed
+     * @param args Arguments that will be passed to the function.
      */
-    std::atomic<bool> running = false;
+    template <typename Function, typename... Args>
+    requires std::invocable<Function, Args...> &&
+        std::is_same_v<void, std::invoke_result_t<Function &&, Args &&...>>
+    void enqueue_detach(Function &&func, Args &&...args) {
+        enqueue_task(
+            std::move([f = std::forward<Function>(func),
+                       ... largs = std::forward<Args>(args)]() mutable -> decltype(auto) {
+                // suppress exceptions
+                try {
+                    std::invoke(f, largs...);
+                } catch (...) {
+                }
+            }));
+    }
 
-    /**
-     * @brief A condition variable used to notify worker() that a new task has become available.
-     */
-    std::condition_variable task_available_cv = {};
+  private:
+    template <typename Function>
+    void enqueue_task(Function &&f) {
+        const std::size_t i = count_++ % tasks_.size();
+        pending_tasks_.fetch_add(1, std::memory_order_relaxed);
+        tasks_[i].tasks.push(std::forward<Function>(f));
+        tasks_[i].signal.release();
+    }
 
-    /**
-     * @brief A condition variable used to notify wait_for_tasks() that a tasks is done.
-     */
-    std::condition_variable task_done_cv = {};
+    struct task_item {
+        thread_safe_queue<std::function<void()>> tasks{};
+        std::binary_semaphore signal{0};
+    };
 
-    /**
-     * @brief A queue of tasks to be executed by the threads.
-     */
-    std::queue<std::function<void()>, std::deque<std::function<void()>>> tasks = {};
-
-    /**
-     * @brief An atomic variable to keep track of the total number of unfinished tasks - either still in the queue, or running in a thread.
-     */
-    std::atomic<size_t> tasks_total = 0;
-
-    /**
-     * @brief A mutex to synchronize access to the task queue by different threads.
-     */
-    mutable std::mutex tasks_mutex = {};
-
-    /**
-     * @brief The number of threads in the pool.
-     */
-    concurrency_t thread_count = 0;
-
-    /**
-     * @brief A smart pointer to manage the memory allocated for the threads.
-     */
-    std::unique_ptr<std::thread[]> threads = nullptr;
-
-    /**
-     * @brief An atomic variable indicating that wait_for_tasks() is active and expects to be notified whenever a task is done.
-     */
-    std::atomic<bool> waiting = false;
+    std::vector<std::jthread> threads_;
+    std::deque<task_item> tasks_;
+    std::size_t count_{};
+    std::atomic_int_fast64_t pending_tasks_{};
 };
-
-//                                     End class ThreadPool                                     //
-// ============================================================================================= //
-
-// ============================================================================================= //
-//                                   Begin class synced_stream                                   //
-
-/**
- * @brief A helper class to synchronize printing to an output stream by different threads.
- */
-export class synced_stream
-{
-public:
-    /**
-     * @brief Construct a new synced stream.
-     *
-     * @param out_stream_ The output stream to print to. The default value is std::cout.
-     */
-    explicit synced_stream(std::ostream& out_stream_ = std::cout) : out_stream(out_stream_) {};
-
-    /**
-     * @brief Print any number of items into the output stream. Ensures that no other threads print to this stream simultaneously, as long as they all exclusively use the same synced_stream object to print.
-     *
-     * @tparam T The types of the items
-     * @param items The items to print.
-     */
-    template <typename... T>
-    void print(const T&... items)
-    {
-        const std::scoped_lock lock(stream_mutex);
-        (out_stream << ... << items);
-    }
-
-    /**
-     * @brief Print any number of items into the output stream, followed by a newline character. Ensures that no other threads print to this stream simultaneously, as long as they all exclusively use the same synced_stream object to print.
-     *
-     * @tparam T The types of the items
-     * @param items The items to print.
-     */
-    template <typename... T>
-    void println(const T&... items)
-    {
-        print(items..., '\n');
-    }
-
-private:
-    /**
-     * @brief The output stream to print to.
-     */
-    std::ostream& out_stream;
-
-    /**
-     * @brief A mutex to synchronize printing.
-     */
-    mutable std::mutex stream_mutex = {};
-};
-
-//                                    End class synced_stream                                    //
-// ============================================================================================= //
-
-// ============================================================================================= //
-//                                       Begin class timer                                       //
-
-/**
- * @brief A helper class to measure execution time for benchmarking purposes.
- */
-export class timer
-{
-public:
-    /**
-     * @brief Start (or restart) measuring time.
-     */
-    void start()
-    {
-        start_time = std::chrono::steady_clock::now();
-    }
-
-    /**
-     * @brief Stop measuring time and store the elapsed time since start().
-     */
-    void stop()
-    {
-        elapsed_time = std::chrono::steady_clock::now() - start_time;
-    }
-
-    /**
-     * @brief Get the number of milliseconds that have elapsed between start() and stop().
-     *
-     * @return The number of milliseconds.
-     */
-    std::chrono::milliseconds::rep ms() const
-    {
-        return (std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time)).count();
-    }
-
-private:
-    /**
-     * @brief The time point when measuring started.
-     */
-    std::chrono::time_point<std::chrono::steady_clock> start_time = std::chrono::steady_clock::now();
-
-    /**
-     * @brief The duration that has elapsed between start() and stop().
-     */
-    std::chrono::duration<double> elapsed_time = std::chrono::duration<double>::zero();
-};
-
-//                                        End class timer                                        //
-// ============================================================================================= //
-

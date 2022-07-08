@@ -1,5 +1,5 @@
 CXX=clang++-14
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
+CXXFLAGS= -fopenmp -g -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
 
 .PHONY: default
 default: libfoundationkit;
@@ -20,7 +20,7 @@ characterset: characterset.o
 indexpath: indexpath.o
 scanner: characterset scanner.o 
 threading: threading.o
-threadpool: threadpool.o
+threadpool: threading threadpool.o
 
 libfoundationkit: characterset indexpath scanner print threading threadpool
 	ar Scr libfoundationkit.a characterset.o indexpath.o scanner.o print.o threading.o threadpool.o

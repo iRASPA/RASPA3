@@ -22,8 +22,8 @@ import <sstream>;
 
 void System::writeMCMoveStatistics()
 {
-	for (size_t componentId = 0; const Component& component: components)
-	{
+    for (size_t componentId = 0; const Component& component: components)
+    {
         std::print(outputFile,"Component {} [{}]\n", componentId, component.name);
 
         std::print(outputFile, component.writeMCMoveStatistics());
@@ -230,6 +230,6 @@ void System::writeMCMoveStatistics()
         std::print(outputFile, "\n\n");
 
         ++componentId;
-	}
+    }
     std::print(outputFile, "\n\n");
 }

@@ -17,6 +17,7 @@ import energy_status_inter;
 import lambda;
 import property_widom;
 import averages;
+import running_energy;
 
 import <complex>;
 import <vector>;
@@ -36,31 +37,31 @@ import <iomanip>;
 
 std::optional<double> MC_Particle_Moves::WidomMove(System& system, size_t selectedComponent)
 {
-	size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-	system.components[selectedComponent].statistics_WidomMove_CBMC.counts += 1;
-	
+    size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+    system.components[selectedComponent].statistics_WidomMove_CBMC.counts += 1;
+    
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-	std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_WidomMove_CBMC_NonEwald += (t2 - t1);
 
-    std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
-	if (!growData) return std::nullopt;
+    [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+    if (!growData) return std::nullopt;
 
-	system.components[selectedComponent].statistics_WidomMove_CBMC.constructed += 1;
+    system.components[selectedComponent].statistics_WidomMove_CBMC.constructed += 1;
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+    RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_WidomMove_CBMC_Ewald += (u2 - u1);
 
-    EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
-                                        system.computeTailCorrectionVDWOldEnergy();
-    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));
+    //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
+    //                                    system.computeTailCorrectionVDWOldEnergy();
+    RunningEnergy tailEnergyDifference;
+    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
+    double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 
-	double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-
-	return  correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+    return  correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 }
 

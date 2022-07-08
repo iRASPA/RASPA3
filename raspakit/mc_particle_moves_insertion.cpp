@@ -17,6 +17,7 @@ import energy_status_inter;
 import lambda;
 import property_widom;
 import averages;
+import running_energy;
 
 import <complex>;
 import <vector>;
@@ -33,50 +34,51 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<EnergyStatus> MC_Particle_Moves::insertionMove(System& system, size_t selectedComponent)
+std::optional<RunningEnergy> MC_Particle_Moves::insertionMove(System& system, size_t selectedComponent)
 {
-	size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-	system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.counts += 1;
-	
+    size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+    system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.counts += 1;
+    
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-	std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
     std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
 
-	if (!growData) return std::nullopt;
+    if (!growData) return std::nullopt;
 
-	system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.constructed += 1;
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    EnergyStatus energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+    RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC_Ewald += (u2 - u1);
 
-    EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
-                                        system.computeTailCorrectionVDWOldEnergy();
-    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.totalEnergy.energy + tailEnergyDifference.totalEnergy.energy));
+    //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
+    //                                     system.computeTailCorrectionVDWOldEnergy();
+    RunningEnergy tailEnergyDifference;
+    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
 
-	double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-	double preFactor = correctionFactorEwald * system.simulationBox.Beta * system.components[selectedComponent].molFraction * 
+    double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
+    double preFactor = correctionFactorEwald * system.simulationBox.Beta * system.components[selectedComponent].molFraction * 
                        system.simulationBox.pressure * system.simulationBox.volume /
-		               double(1 + system.numberOfMoleculesPerComponent[selectedComponent]);
+                       double(1 + system.numberOfMoleculesPerComponent[selectedComponent]);
 
-	if (RandomNumber::Uniform() < preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight)
-	{
-		system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.accepted += 1;
+    if (RandomNumber::Uniform() < preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight)
+    {
+        system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.accepted += 1;
 
         system.acceptEwaldMove();
-		system.insertMolecule(selectedComponent, growData->atom);
+        system.insertMolecule(selectedComponent, growData->atom);
 
-		// Debug
-		//assert(system.checkMoleculeIds());
+        // Debug
+        //assert(system.checkMoleculeIds());
 
-		return growData->energies + energyFourierDifference + tailEnergyDifference;
-	};
-	
-	return std::nullopt;
+        return growData->energies + energyFourierDifference + tailEnergyDifference;
+    };
+    
+    return std::nullopt;
 }
 

@@ -1,0 +1,39 @@
+SimulationType                MonteCarlo
+NumberOfCycles                100
+NumberOfInitializationCycles  0
+NumberOfEquilibrationCycles   0
+PrintEvery                    100
+
+NumberOfBlocks 5
+
+NumberOfThreads 2
+#ThreadingType Serial
+#ThreadingType ThreadPool
+ThreadingType OpenMP
+#ThreadingType GPU-Offload
+
+
+Forcefield                    ExampleMoleculeForceField
+
+Framework 0
+FrameworkName MFI-4x4x4.poscar
+ChargeMethod Ewald
+OmitEwaldFourier yes
+
+ExternalTemperature 300.0
+ExternalPressure 1e5
+HeliumVoidFraction    0.29
+Movies no
+WriteMoviesEvery 1000
+
+Component 0 MoleculeName               methane
+            MoleculeDefinition         ExampleDefinitions
+            MolFraction                0.0
+            TranslationProbability     0.0
+            RotationProbability        0.0
+            ReinsertionProbability     1.0
+	        SwapProbability            0.0
+	        CFCMC_CBMC_SwapProbability 0.0
+            WidomProbability           0.0
+            CBCFCMCWidomProbability    0.0
+            CreateNumberOfMolecules    900

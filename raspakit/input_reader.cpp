@@ -243,7 +243,20 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
 
             if (caseInSensStringCompare(keyword, std::string("NumberOfThreads")))
             {
-                numberOfThreads = parse<concurrency_t>(arguments);
+                numberOfThreads = parse<size_t>(arguments);
+            }
+
+            if (caseInSensStringCompare(keyword, std::string("ThreadingType")))
+            {
+                std::string str;
+                std::istringstream ss2(arguments);
+                if (ss2 >> str)
+                {
+                    if (caseInSensStringCompare(str, "Serial")) threadingType = ThreadPool::ThreadingType::Serial;
+                    if (caseInSensStringCompare(str, "ThreadPool")) threadingType = ThreadPool::ThreadingType::ThreadPool;
+                    if (caseInSensStringCompare(str, "OpenMP")) threadingType = ThreadPool::ThreadingType::OpenMP;
+                    if (caseInSensStringCompare(str, "GPU-Offload")) threadingType = ThreadPool::ThreadingType::GPU_Offload;
+                };
             }
 
             if (caseInSensStringCompare(keyword, std::string("Box")))

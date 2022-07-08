@@ -547,7 +547,7 @@ std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead() con
     double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
     std::vector<double3> randomPositions{};
     std::transform(std::begin(atoms), std::end(atoms),
-        	std::back_inserter(randomPositions), [&](const Atom& atom) {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
+            std::back_inserter(randomPositions), [&](const Atom& atom) {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
     return randomPositions;
 }
 

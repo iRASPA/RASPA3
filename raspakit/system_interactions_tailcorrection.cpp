@@ -11,12 +11,13 @@ import energy_factor;
 import potential_correction_vdw;
 import energy_status;
 import energy_status_inter;
+import running_energy;
 import component;
 import atom;
 import simulationbox;
 import units;
 
-void System::computeTailCorrectionVDWEnergy() noexcept
+void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept
 {
   for(size_t k = 0; k != components.size(); ++k)
   {
@@ -46,7 +47,7 @@ void System::computeTailCorrectionVDWEnergy() noexcept
           }
         }
       }
-      runningEnergies(k, l).VanDerWaalsTailCorrection = EnergyFactor(energy / simulationBox.volume, 0.0);
+      energyStatus.tail += energy / simulationBox.volume;
     }
   }
 }

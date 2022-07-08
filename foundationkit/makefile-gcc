@@ -1,4 +1,4 @@
-CXX=g++-12
+CXX=g++-mp-11
 CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b
 
 .PHONY: default

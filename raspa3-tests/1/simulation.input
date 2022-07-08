@@ -5,7 +5,12 @@ NumberOfEquilibrationCycles   20000
 PrintEvery                    1000
 
 NumberOfBlocks 5
-NumberOfThreads 1
+
+NumberOfThreads 4
+#ThreadingType Serial
+#ThreadingType ThreadPool
+ThreadingType OpenMP
+#ThreadingType GPU-Offload
 
 Forcefield                    ExampleMoleculeForceField
 

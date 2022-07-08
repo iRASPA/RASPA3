@@ -25,10 +25,10 @@ import <cmath>;
 import <optional>;
 
 
-std::pair<EnergyStatus, double3x3> System::computeInterMolecularMolecularPressure() noexcept
+std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDerivative() noexcept
 {
-	double3 dr, posA, posB;
-	double rr;
+    double3 dr, posA, posB;
+    double rr;
 
     const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
     const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
@@ -37,41 +37,41 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularMolecularPressur
     EnergyStatus energy(components.size());
     double3x3 strainDerivativeTensor;
 
-	std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
-	if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
+    std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
+    if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
 
-	for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
-	{
-		posA = it1->position;
-		size_t molA = static_cast<size_t>(it1->moleculeId);
-		size_t compA = static_cast<size_t>(it1->componentId);
-		size_t typeA = static_cast<size_t>(it1->type);
-		double scaleA = it1->scalingVDW;
-		double chargeA = it1->charge;
-		for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
-		{
-			size_t molB = static_cast<size_t>(it2->moleculeId);
-			size_t compB = static_cast<size_t>(it2->componentId);
+    for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+    {
+        posA = it1->position;
+        size_t molA = static_cast<size_t>(it1->moleculeId);
+        size_t compA = static_cast<size_t>(it1->componentId);
+        size_t typeA = static_cast<size_t>(it1->type);
+        double scaleA = it1->scalingVDW;
+        double chargeA = it1->charge;
+        for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
+        {
+            size_t molB = static_cast<size_t>(it2->moleculeId);
+            size_t compB = static_cast<size_t>(it2->componentId);
 
-			// skip interactions within the same molecule
-			if (!((compA == compB) && (molA == molB)))
-			{
-				posB = it2->position;
-				size_t typeB = static_cast<size_t>(it2->type);
-				double scaleB = it2->scalingVDW;
-				double chargeB = it2->charge;
+            // skip interactions within the same molecule
+            if (!((compA == compB) && (molA == molB)))
+            {
+                posB = it2->position;
+                size_t typeB = static_cast<size_t>(it2->type);
+                double scaleB = it2->scalingVDW;
+                double chargeB = it2->charge;
 
-				dr = posA - posB;
-				dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-				rr = double3::dot(dr, dr);
+                dr = posA - posB;
+                dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+                rr = double3::dot(dr, dr);
 
-				if (rr < cutOffVDWSquared)
-				{
-					double scaling = scaleA * scaleB;
-					ForceFactor forceFactor = potentialVDWGradient(forceField, scaling, rr, typeA, typeB);
-					
-					energy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
-					energy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
+                if (rr < cutOffVDWSquared)
+                {
+                    double scaling = scaleA * scaleB;
+                    ForceFactor forceFactor = potentialVDWGradient(forceField, scaling, rr, typeA, typeB);
+                    
+                    energy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
+                    energy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
 
                     const double3 f = forceFactor.forceFactor * dr;
 
@@ -89,7 +89,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularMolecularPressur
                     strainDerivativeTensor.az += f.x*dr.z;
                     strainDerivativeTensor.bz += f.y*dr.z;
                     strainDerivativeTensor.cz += f.z*dr.z;
-				}
+                }
                 if (!noCharges && rr < cutOffChargeSquared)
                 {
                     double r = std::sqrt(rr);
@@ -116,11 +116,9 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularMolecularPressur
                     strainDerivativeTensor.bz += f.y*dr.z;
                     strainDerivativeTensor.cz += f.z*dr.z;
                 }
-			}
-		}
-	}
-
-
+            }
+        }
+    }
 
     return {energy, strainDerivativeTensor};
 }

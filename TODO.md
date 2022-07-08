@@ -1,17 +1,18 @@
- 1) compute pressure (Ewald)
- 2) volume move (NPT)
- 3) rescale MC moves max-change 
- 4) identity change
- 5) Gibbs ensemble
- 6) Molecular Dynamics
- 7) read framework
- 8) read molecule
- 9) make routines cutoff-dependence for dual-cutoff method
-10) reaction ensemble
-11) polarization
-12) cell-lists for rigid frameworks
-13) grids for rigid frameworks
-14) partial molar volumes
+ 1) Change to return type to 'double' and compute energy with pressure-routine.
+ 2) compute pressure (Ewald)
+ 3) volume move (NPT)
+ 4) rescale MC moves max-change 
+ 5) identity change
+ 6) Gibbs ensemble
+ 7) Molecular Dynamics
+ 8) read framework
+ 9) read molecule
+10) make routines cutoff-dependence for dual-cutoff method
+11) reaction ensemble
+12) polarization
+13) cell-lists for rigid frameworks
+14) grids for rigid frameworks
+15) partial molar volumes
 
 fix
 ===

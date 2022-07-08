@@ -34,6 +34,8 @@ import lambda;
 import property_widom;
 import property_dudlambda;
 import energy_factor;
+import running_energy;
+import threadpool;
 
 import <numbers>;
 import <complex>;
@@ -67,8 +69,9 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::v
                atomPositions({}),
                atomVelocities({}),
                atomForces({}),
-               runningEnergies(c.size()),
+               runningEnergies(),
                averageEnergies(numberOfBlocks, c.size()),
+               currentEnergyStatus(c.size()),
                averagePressure(numberOfBlocks),
                sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size())
@@ -99,6 +102,7 @@ System::System(System&& s) noexcept :
     atomForces(std::move(s.atomForces)),
     runningEnergies(s.runningEnergies),
     averageEnergies(s.averageEnergies),
+    currentEnergyStatus(s.currentEnergyStatus),
     averagePressure(s.averagePressure),
     sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
@@ -118,7 +122,6 @@ void System::addComponent(const Component&& component) noexcept(false)
   numberOfPseudoAtoms.resize(components.size() + 1, std::vector<size_t>(forceField.pseudoAtoms.size()));
   totalNumberOfPseudoAtoms.resize(forceField.pseudoAtoms.size());
 
-  runningEnergies.resize(components.size() + 1);
   averageEnergies.resize(components.size() + 1);
 
   loadings.resize(components.size() + 1);
@@ -512,10 +515,30 @@ void System::writeToOutputFile(const std::string &s)
 
 void System::writeOutputHeader()
 {
-    std::print(outputFile, "Compiler and run-time data\n");
-    std::print(outputFile, "===============================================================================\n");
+  std::print(outputFile, "Compiler and run-time data\n");
+  std::print(outputFile, "===============================================================================\n");
 
-    std::print(outputFile, "RASPA 3.0.0\n\n");
+  std::print(outputFile, "RASPA 3.0.0\n\n");
+
+  ThreadPool &pool = ThreadPool::instance();
+  const size_t numberOfHelperThreads = pool.getThreadCount();
+
+  switch(pool.threadingType)
+  {
+    case ThreadPool::ThreadingType::Serial:
+      std::print(outputFile, "Parallization: Serial, 1 thread\n");
+      break;
+    case ThreadPool::ThreadingType::OpenMP:
+      std::print(outputFile, "Parallization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+      break;
+    case ThreadPool::ThreadingType::ThreadPool:
+      std::print(outputFile, "Parallization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+      break;
+    case ThreadPool::ThreadingType::GPU_Offload:
+      std::print(outputFile, "Parallization: GPU-Offload\n");
+      break;
+  } 
+  std::print(outputFile, "\n");
 }
 
 void System::writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles)
@@ -541,14 +564,18 @@ void System::writeInitializationStatusReport(size_t currentCycle, size_t numberO
     //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
     //double currentPressure = currentIdealPressure + currentExcessPressure;
     //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.totalEnergy.dUdlambda);
+    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 
-    std::print(outputFile, "Total potential energy:   {: .6e} [K]\n", conv * runningEnergies.totalEnergy.energy);
-    std::print(outputFile, "    Van der Waals:        {: .6e} [K]\n", conv * runningEnergies.interEnergy.VanDerWaals.energy);
-    std::print(outputFile, "    Van der Waals (Tail): {: .6e} [K]\n", conv * runningEnergies.interEnergy.VanDerWaalsTailCorrection.energy);
-    std::print(outputFile, "    Coulombic Real:       {: .6e} [K]\n", conv * runningEnergies.interEnergy.CoulombicReal.energy);
-    std::print(outputFile, "    Coulombic Fourier:    {: .6e} [K]\n", conv * runningEnergies.interEnergy.CoulombicFourier.energy);
-    std::print(outputFile, "    Intra:                {: .6e} [K]\n", conv * runningEnergies.intraEnergy.total().energy);
+    std::print(outputFile, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
+    std::print(outputFile, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
+    std::print(outputFile, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
+    std::print(outputFile, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
+    std::print(outputFile, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
+    std::print(outputFile, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
+    std::print(outputFile, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
+    std::print(outputFile, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
+    std::print(outputFile, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
+    std::print(outputFile, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
 
     outputFile << "\n\n\n\n";
@@ -578,14 +605,18 @@ void System::writeEquilibrationStatusReport(size_t currentCycle, size_t numberOf
     //double currentPressure = currentIdealPressure + currentExcessPressure;
     //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
     //
-    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.totalEnergy.dUdlambda);
+    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 
-    std::print(outputFile, "Total potential energy:   {: .6e} [K]\n", conv * runningEnergies.totalEnergy.energy);
-    std::print(outputFile, "    Van der Waals:        {: .6e} [K]\n", conv * runningEnergies.interEnergy.VanDerWaals.energy);
-    std::print(outputFile, "    Van der Waals (Tail): {: .6e} [K]\n", conv * runningEnergies.interEnergy.VanDerWaalsTailCorrection.energy);
-    std::print(outputFile, "    Coulombic Real:       {: .6e} [K]\n", conv * runningEnergies.interEnergy.CoulombicReal.energy);
-    std::print(outputFile, "    Coulombic Fourier:    {: .6e} [K]\n", conv * runningEnergies.interEnergy.CoulombicFourier.energy);
-    std::print(outputFile, "    Intra:                {: .6e} [K]\n", conv * runningEnergies.intraEnergy.total().energy);
+    std::print(outputFile, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
+    std::print(outputFile, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
+    std::print(outputFile, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
+    std::print(outputFile, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
+    std::print(outputFile, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
+    std::print(outputFile, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
+    std::print(outputFile, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
+    std::print(outputFile, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
+    std::print(outputFile, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
+    std::print(outputFile, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
     outputFile << "\n\n\n\n";
 }
@@ -641,34 +672,35 @@ void System::writeProductionStatusReport(size_t currentCycle, size_t numberOfCyc
     std::print(outputFile, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
             1e-5 * Units::PressureConversionFactor * pressure.first, 1e-5 * Units::PressureConversionFactor * pressure.second);
 
-    std::print(outputFile, "dU/dlambda:           {: .6e}\n\n", conv * runningEnergies.totalEnergy.dUdlambda);
+    std::print(outputFile, "dU/dlambda:           {: .6e}\n\n", conv * runningEnergies.dUdlambda);
 
     std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
     std::print(outputFile, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * runningEnergies.totalEnergy.energy, conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy);
+        conv * currentEnergyStatus.totalEnergy.energy, 
+        conv * energyData.first.totalEnergy.energy, 
+        conv * energyData.second.totalEnergy.energy);
     std::print(outputFile, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-        conv * runningEnergies.interEnergy.VanDerWaals.energy,
+        conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
         conv * energyData.first.interEnergy.VanDerWaals.energy,
         conv * energyData.second.interEnergy.VanDerWaals.energy);
-    std::print(outputFile, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-        conv * runningEnergies.interEnergy.VanDerWaalsTailCorrection.energy,
+    std::print(outputFile, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+        conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
         conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
         conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
     std::print(outputFile, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * runningEnergies.interEnergy.CoulombicReal.energy,
+        conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
         conv * energyData.first.interEnergy.CoulombicReal.energy,
         conv * energyData.second.interEnergy.CoulombicReal.energy);
     std::print(outputFile, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * runningEnergies.interEnergy.CoulombicFourier.energy, 
+        conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
         conv * energyData.first.interEnergy.CoulombicFourier.energy, 
         conv * energyData.second.interEnergy.CoulombicFourier.energy);
     std::print(outputFile, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * runningEnergies.intraEnergy.total().energy,
+        conv * currentEnergyStatus.intraEnergy.total().energy,
         conv * energyData.first.intraEnergy.total().energy,
         conv * energyData.second.intraEnergy.total().energy);
-
     
-    std::print(outputFile, "\n\n\n\n");
+    std::print(outputFile, "\n\n\n");
 }
 
 void System::writeComponentStatus()
@@ -689,12 +721,12 @@ void System::sampleProperties(size_t currentBlock)
 
    averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-   averageEnergies.addSample(currentBlock, runningEnergies, w);
+   //averageEnergies.addSample(currentBlock, runningEnergies, w);
 
    loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
    averageLoadings.addSample(currentBlock, loadings, w);
 
-   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(swapableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.totalEnergy.energy, simulationBox.temperature);
+   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(swapableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.total(), simulationBox.temperature);
    averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
    size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
@@ -708,7 +740,7 @@ void System::sampleProperties(size_t currentBlock)
 
      component.lambda.sampleHistogram(currentBlock, density);
      component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
-     component.lambda.sampledUdLambdaHistogram(currentBlock, runningEnergies.totalEnergy.dUdlambda);
+     component.lambda.sampledUdLambdaHistogram(currentBlock, runningEnergies.dUdlambda);
      component.lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
    }
 

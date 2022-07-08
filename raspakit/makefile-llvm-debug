@@ -1,5 +1,5 @@
 CXX=clang++-14
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Werror -O0 -g -fsanitize=address -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../symmetrykit -I/opt/local/include
+CXXFLAGS= -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Werror -O0 -g -fsanitize=address -march=native  -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../symmetrykit -I/opt/local/include -I/opt/local/libexec/llvm-14/include/
 
 .PHONY: default
 default: libraspakit;
@@ -16,6 +16,7 @@ default: libraspakit;
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
 
 units: units.o
+running_energy: running_energy.o
 averages: averages.o
 simulationbox: units averages simulationbox.o
 forcefield: forcefield.o
@@ -47,9 +48,7 @@ input_reader: input_reader.o
 cbmc_growing_status: component cbmc_growing_status.o
 cbmc: atom energy_status cbmc.o
 sample_movies: units atom simulationbox forcefield sample_movies.o
-energy_interactions_intermolecular: potential_energy_vdw potential_energy_coulomb forcefield simulationbox energy_interactions_intermolecular.o
-energy_interactions_framework_molecule: potential_energy_vdw potential_energy_coulomb forcefield simulationbox energy_interactions_framework_molecule.o
-system: energy_interactions_framework_molecule energy_interactions_intermolecular potential_energy_vdw potential_gradient_vdw potential_energy_coulomb potential_gradient_coulomb cbmc cbmc_growing_status averages property_simulationbox property_energy property_pressure property_loading property_enthalpy enthalpy_of_adsorption loadings simulationbox forcefield sample_movies system.o
+system: potential_energy_vdw potential_gradient_vdw potential_energy_coulomb potential_gradient_coulomb cbmc cbmc_growing_status averages property_simulationbox property_energy property_pressure property_loading property_enthalpy enthalpy_of_adsorption loadings simulationbox forcefield sample_movies system.o
 system_dependencies: system
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_hardware_info.cpp -o system_hardware_info.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_integration.cpp -o system_integration.o
@@ -57,6 +56,7 @@ system_dependencies: system
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_intermolecular.cpp -o system_interactions_intermolecular.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_ewald.cpp -o system_interactions_ewald.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_tailcorrection.cpp -o system_interactions_tailcorrection.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_framework_molecule_pressure.cpp -o system_interactions_framework_molecule_pressure.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_intermolecular_pressure.cpp -o system_interactions_intermolecular_pressure.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_ewald_pressure.cpp -o system_interactions_ewald_pressure.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions.cpp -o system_interactions.o
@@ -73,7 +73,9 @@ system_dependencies: system
 mc_particle_moves: system cbmc mc_particle_moves.o
 mc_particle_moves_dependencies: mc_particle_moves
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_translation.cpp -o mc_particle_moves_translation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_random_translation.cpp -o mc_particle_moves_random_translation.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_rotation.cpp -o mc_particle_moves_rotation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_random_rotation.cpp -o mc_particle_moves_random_rotation.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_reinsertion.cpp -o mc_particle_moves_reinsertion.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_insertion.cpp -o mc_particle_moves_insertion.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_deletion.cpp -o mc_particle_moves_deletion.o
@@ -81,8 +83,8 @@ mc_particle_moves_dependencies: mc_particle_moves
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_particle_moves.pcm -c mc_particle_moves_widom.cpp -o mc_particle_moves_widom.o
 monte_carlo: property_enthalpy mc_particle_moves_dependencies monte_carlo.o
 
-libraspakit: units lambda simulationbox atom averages property_widom property_pressure property_simulationbox property_energy property_loading property_enthalpy property_lambda_probability_histogram property_dudlambda forcefield component framework energy_factor force_factor energy_status energy_status_inter energy_status_intra potential_energy_vdw potential_gradient_vdw potential_correction_vdw potential_energy_coulomb potential_energy_coulomb system_dependencies input_reader cbmc cbmc_growing_status energy_interactions_intermolecular energy_interactions_framework_molecule mc_particle_moves_dependencies monte_carlo sample_movies loadings enthalpy_of_adsorption 
-	ar Scr libraspakit.a units.o lambda.o simulationbox.o atom.o averages.o property_widom.o property_pressure.o property_simulationbox.o property_energy.o property_loading.o property_enthalpy.o property_lambda_probability_histogram.o property_dudlambda.o forcefield.o component.o framework.o energy_factor.o force_factor.o energy_status.o energy_status_inter.o energy_status_intra.o potential_energy_vdw.o potential_gradient_vdw.o potential_correction_vdw.o potential_energy_coulomb.o potential_energy_coulomb.o system.o system_integration.o system_interactions_framework_molecule.o system_interactions_intermolecular.o system_interactions_ewald.o system_interactions_tailcorrection.o system_interactions_intermolecular_pressure.o system_interactions_ewald_pressure.o system_interactions.o system_cbmc_rigid.o system_cbmc_rigid_insertion.o system_cbmc_rigid_deletion.o system_cbmc_rigid_reinsertion.o system_compute_fluid_properties.o system_hardware_info.o system_integration.o system_md_loop.o system_print_enthalpy.o system_print_movestatistics.o system_print_energyaverages.o system_print_pressure_averages.o input_reader.o cbmc.o cbmc_growing_status.o energy_interactions_intermolecular.o energy_interactions_framework_molecule.o mc_particle_moves.o mc_particle_moves_translation.o  mc_particle_moves_rotation.o mc_particle_moves_reinsertion.o mc_particle_moves_insertion.o mc_particle_moves_deletion.o mc_particle_moves_swap_cfcmc_cbmc.o mc_particle_moves_widom.o monte_carlo.o sample_movies.o loadings.o enthalpy_of_adsorption.o
+libraspakit: units running_energy lambda simulationbox atom averages property_widom property_pressure property_simulationbox property_energy property_loading property_enthalpy property_lambda_probability_histogram property_dudlambda forcefield component framework energy_factor force_factor energy_status energy_status_inter energy_status_intra potential_energy_vdw potential_gradient_vdw potential_correction_vdw potential_energy_coulomb potential_energy_coulomb system_dependencies input_reader cbmc cbmc_growing_status mc_particle_moves_dependencies monte_carlo sample_movies loadings enthalpy_of_adsorption 
+	ar Scr libraspakit.a units.o running_energy.o lambda.o simulationbox.o atom.o averages.o property_widom.o property_pressure.o property_simulationbox.o property_energy.o property_loading.o property_enthalpy.o property_lambda_probability_histogram.o property_dudlambda.o forcefield.o component.o framework.o energy_factor.o force_factor.o energy_status.o energy_status_inter.o energy_status_intra.o potential_energy_vdw.o potential_gradient_vdw.o potential_correction_vdw.o potential_energy_coulomb.o potential_energy_coulomb.o system.o system_integration.o system_interactions_framework_molecule.o system_interactions_intermolecular.o system_interactions_ewald.o system_interactions_tailcorrection.o system_interactions_framework_molecule_pressure.o system_interactions_intermolecular_pressure.o system_interactions_ewald_pressure.o system_interactions.o system_cbmc_rigid.o system_cbmc_rigid_insertion.o system_cbmc_rigid_deletion.o system_cbmc_rigid_reinsertion.o system_compute_fluid_properties.o system_hardware_info.o system_integration.o system_md_loop.o system_print_enthalpy.o system_print_movestatistics.o system_print_energyaverages.o system_print_pressure_averages.o input_reader.o cbmc.o cbmc_growing_status.o mc_particle_moves.o mc_particle_moves_translation.o mc_particle_moves_random_translation.o  mc_particle_moves_rotation.o mc_particle_moves_random_rotation.o mc_particle_moves_reinsertion.o mc_particle_moves_insertion.o mc_particle_moves_deletion.o mc_particle_moves_swap_cfcmc_cbmc.o mc_particle_moves_widom.o monte_carlo.o sample_movies.o loadings.o enthalpy_of_adsorption.o
 	ranlib libraspakit.a
 	rm *.o 
 

@@ -19,8 +19,7 @@ import energy_status_inter;
 import units;
 import energy_factor;
 
-/*
-void System::computeEwaldFourierEnergy()
+std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDerivative() noexcept
 {
   double alpha = simulationBox.alpha;
   double alpha_squared = alpha * alpha;
@@ -29,8 +28,10 @@ void System::computeEwaldFourierEnergy()
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  if(noCharges) return;
-  if(omitEwaldFourier) return;
+  EnergyStatus energy(components.size());
+  double3x3 strainDerivative;
+
+  if(noCharges || omitEwaldFourier) return std::make_pair(energy, strainDerivative);
 
   size_t numberOfAtoms = atomPositions.size();
   size_t numberOfComponents = components.size();
@@ -40,8 +41,7 @@ void System::computeEwaldFourierEnergy()
   if(numberOfAtoms * (kz_max_unsigned + 1) > eik_z.size()) eik_z.resize(numberOfAtoms * (kz_max_unsigned + 1));
   if(numberOfAtoms > eik_xy.size()) eik_xy.resize(numberOfAtoms);
 
-  size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
-  if(storedEik.size() < components.size() * numberOfWaveVectors) storedEik.resize(components.size() * numberOfWaveVectors);
+  //size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for(size_t i = 0; i != numberOfAtoms; ++i)
@@ -125,14 +125,10 @@ void System::computeEwaldFourierEnergy()
           {
             for(size_t j = 0; j != numberOfComponents; ++j)
             {
-              runningEnergies(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + cksum[i].imag() * cksum[j].imag()), 0.0);
+              energy(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + cksum[i].imag() * cksum[j].imag()), 0.0);
             }
           }
 
-          for(size_t i = 0; i != numberOfComponents; ++i)
-          {
-            storedEik[i + nvec * numberOfComponents] = cksum[i];
-          }
           ++nvec;
         }
       }
@@ -146,7 +142,7 @@ void System::computeEwaldFourierEnergy()
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
     size_t comp = static_cast<size_t>(atomPositions[i].componentId);
-    runningEnergies(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * charge * scaling * charge, 0.0);
+    energy(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * charge * scaling * charge, 0.0);
   }
 
   // Subtract exclusion-energy
@@ -168,7 +164,7 @@ void System::computeEwaldFourierEnergy()
               dr = simulationBox.applyPeriodicBoundaryConditions(dr);
               double r = std::sqrt(double3::dot(dr, dr));
 
-              runningEnergies(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
+              energy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r, 0.0);
             }
           }
       }
@@ -180,10 +176,9 @@ void System::computeEwaldFourierEnergy()
   {
     for(size_t j = 0; j != numberOfComponents; ++j)
     {
-      runningEnergies(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
+      energy(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
     }
   }
+
+  return std::make_pair(energy, strainDerivative);
 }
-*/
-
-

@@ -5,5 +5,5 @@ import double4;
 
 export struct Framework
 {
-	std::vector<double4> atoms_{};
+    std::vector<double4> atoms_{};
 };

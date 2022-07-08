@@ -1,6 +1,5 @@
 export module averages;
 
-
 import <array>;
 import <vector>;
 import <tuple>;
@@ -53,27 +52,28 @@ constexpr double standardNormalDeviate = standardNormalDeviates[numberOfBins - 1
 
 export struct BlockErrorEstimation
 {
-    size_t numberOfBins;
-    size_t currentSample{ 0 };
-    size_t numberOfSamples;
-    size_t currentBin{ 0 };
-    double binSize{};
-    std::vector<size_t> nextBin;
+  size_t numberOfBins;
+  size_t currentSample{ 0 };
+  size_t numberOfSamples;
+  size_t currentBin{ 0 };
+  double binSize{};
+  std::vector<size_t> nextBin;
 
-    BlockErrorEstimation(size_t size, size_t numberOfSamples): numberOfBins(size), numberOfSamples(numberOfSamples), nextBin(size)
+  BlockErrorEstimation(size_t size, size_t numberOfSamples): 
+        numberOfBins(size), numberOfSamples(numberOfSamples), nextBin(size)
+  {
+    binSize = static_cast<double>(numberOfSamples) / static_cast<double>(numberOfBins);
+    for (size_t i = 0; i != numberOfBins; ++i)
     {
-        binSize = static_cast<double>(numberOfSamples) / static_cast<double>(numberOfBins);
-        for (size_t i = 0; i != numberOfBins; ++i)
-        {
-            nextBin[i] = static_cast<size_t>(static_cast<double>(i + 1) * binSize);
-        }
+        nextBin[i] = static_cast<size_t>(static_cast<double>(i + 1) * binSize);
     }
+  }
 
-    void setCurrentSample(size_t sample)
-    {
-        currentSample = sample;
-        if (currentSample == nextBin[currentBin])
-            ++currentBin;
-    }
+  void setCurrentSample(size_t sample)
+  {
+    currentSample = sample;
+    if (currentSample == nextBin[currentBin])
+      ++currentBin;
+  }
 };
 

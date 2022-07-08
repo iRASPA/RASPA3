@@ -1,5 +1,5 @@
 CXX=clang++-14
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -fno-omit-frame-pointer -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../mathkit
+CXXFLAGS= -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -fno-omit-frame-pointer -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../mathkit
 
 .PHONY: default
 default: libsymmetrykit;

@@ -16,7 +16,7 @@ import print;
 
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& components, const std::string &label)
 {
-	std::ostringstream stream;
+    std::ostringstream stream;
 
     double conv = Units::EnergyToKelvin;
     std::print(stream, "Energy status {}\n", label);
@@ -27,9 +27,9 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
     std::print(stream, "    Coulombic Real:       {: .6e}\n", conv * interEnergy.CoulombicReal.energy);
     std::print(stream, "    Coulombic Fourier:    {: .6e}\n", conv * interEnergy.CoulombicFourier.energy);
     std::print(stream, "    dU/dlambda:           {: .6e}\n", conv * totalEnergy.dUdlambda);
-	
-	for (size_t i = 0; i < components.size(); ++i)
-	{
+    
+    for (size_t i = 0; i < components.size(); ++i)
+    {
         std::print(stream, "    Component: {} [{}]\n", i, components[i].name);
         std::print(stream, "    ---------------------------------------------------------------------------\n\n");
         std::print(stream, "    Molecule bond:             {: .6e}\n", conv * (*this)(i).bond);
@@ -45,18 +45,18 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
         std::print(stream, "    Molecule bendTorsion       {: .6e}\n", conv * (*this)(i).bendTorsion);
         std::print(stream, "    Molecule intraVDW          {: .6e}\n", conv * (*this)(i).intraVDW);
         std::print(stream, "    Molecule intraChargeCharge {: .6e}\n\n", conv * (*this)(i).intraChargeCharge);
-		for (size_t j = 0; j < components.size(); ++j)
-		{
-			std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);
+        for (size_t j = 0; j < components.size(); ++j)
+        {
+            std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);
             std::print(stream, "        Van der Waals:        {: .6e}\n", conv * (*this)(i,j).VanDerWaals.energy);
             std::print(stream, "        Van der Waals (Tail): {: .6e}\n", conv * (*this)(i,j).VanDerWaalsTailCorrection.energy);
             std::print(stream, "        Coulombic Real:       {: .6e}\n", conv * (*this)(i,j).CoulombicReal.energy);
             std::print(stream, "        Coulombic Fourier:    {: .6e}\n", conv * (*this)(i,j).CoulombicFourier.energy);
             std::print(stream, "        -----------------------------------------------------------------------\n");
             std::print(stream, "        Sum                   {: .6e}\n\n", conv * (*this)(i,j).totalInter.energy);
-		}
-	}
+        }
+    }
     std::print(stream, "\n");
-	return stream.str();
+    return stream.str();
 }
 

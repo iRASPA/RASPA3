@@ -13,26 +13,19 @@ Prof. Sofia Calero,  Eindhoven University of Technology<br>
 Prof. Thijs Vlugt, Delft University of Technology<br>
 Prof. Randall Q. Snurr, Northwestern University
 
+Contributors
+============
+Zhao Li, Northwestern University, contribution to openmp-implementation
+Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation
+Shrinjay, Delft University of Technology, contribution to the breakthrough implementation
+
 Windows
 =======
 Visual studio 2022 project file included.
 
 Ubuntu 22.04
 ============
-sudo apt install build-essential git clang-14 libc++-dev libc++abi-dev gfortran liblapack-dev libfmt-dev
-
-Intel Threading Building Blocks
-===============================
-sudo apt install libtbb-dev
-link with: -ltbb
-
-https://www.intel.com/content/www/us/en/developer/articles/guide/get-started-with-parallel-stl.html
-
-use as:
-#include <execution>
-#include <algorithm>
-std::sort(std::execution::par_unseq, input.begin(), input.end());
-
+sudo apt install build-essential git clang-14 libc++-dev libc++abi-dev gfortran liblapack-dev libfmt-dev libomp-dev
 
 Modify libfmt
 =============

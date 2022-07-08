@@ -53,8 +53,6 @@ void Lambda::WangLandauIteration(Lambda::WangLandauPhase phase)
       {
         bias -= normalize;
       }
-      // FIX
-      //std::fill(biasFactor.begin(), biasFactor.end(), 0.0);
       break;
   }
 }

@@ -6,6 +6,7 @@ import randomnumbers;
 import mc_particle_moves;
 import input_reader;
 import energy_status;
+import threadpool;
 
 import <vector>;
 import <iostream>;
@@ -13,34 +14,34 @@ import <chrono>;
 
 export struct MonteCarlo
 {
-	enum class WeightingMethod : size_t
-	{
-		LambdaZero = 0,
-		AllLambdas = 1
-	};
+    enum class WeightingMethod : size_t
+    {
+        LambdaZero = 0,
+        AllLambdas = 1
+    };
 
-	MonteCarlo(InputReader& reader) noexcept;
+    MonteCarlo(InputReader& reader) noexcept;
 
-	void run();
-	void initialize();
-	void equilibrate();
-	void production();
-	void output();
-	void cleanup();
+    void run();
+    void initialize();
+    void equilibrate();
+    void production();
+    void output();
+    void cleanup();
 
-	System& randomSystem();
+    System& randomSystem();
 
-	size_t numberOfCycles;
-	size_t numberOfInitializationCycles;
-	size_t numberOfEquilibrationCycles;
-	size_t printEvery;
+    size_t numberOfCycles;
+    size_t numberOfInitializationCycles;
+    size_t numberOfEquilibrationCycles;
+    size_t printEvery;
 
-	std::vector<System> systems;
+    std::vector<System> systems;
 
     BlockErrorEstimation estimation;
 
-	MC_Particle_Moves particleMoves;
+    MC_Particle_Moves particleMoves;
 
-	std::chrono::system_clock::time_point t1;
-	std::chrono::system_clock::time_point t2;
+    std::chrono::system_clock::time_point t1;
+    std::chrono::system_clock::time_point t2;
 };
