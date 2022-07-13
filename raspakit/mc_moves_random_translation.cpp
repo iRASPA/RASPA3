@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -34,7 +34,7 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<RunningEnergy> MC_Particle_Moves::randomTranslationMove(System & system, size_t selectedComponent, std::span<Atom> molecule)
+std::optional<RunningEnergy> MC_Moves::randomTranslationMove(System & system, size_t selectedComponent, std::span<Atom> molecule)
 {
     double3 displacement{};
     double3 maxDisplacement = system.components[selectedComponent].statistics_RandomTranslationMove.maxChange;

@@ -336,6 +336,19 @@ std::span<Atom> System::spanOfMolecule(size_t selectedComponent, size_t selected
     return std::span(&atomPositions[index], size);
 }
 
+const std::span<const Atom> System::spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const
+{
+    size_t index{ 0 };
+    for (size_t i = 0; i < selectedComponent; ++i)
+    {
+        size_t size = components[i].atoms.size();
+        index += size * numberOfMoleculesPerComponent[i];
+    }
+    size_t size = components[selectedComponent].atoms.size();
+    index += size * selectedMolecule;
+    return std::span(&atomPositions[index], size);
+}
+
 size_t System::indexOfFirstMolecule(size_t selectedComponent)
 {
     size_t index{ 0 };
@@ -403,10 +416,16 @@ void System::determineFractionalComponents()
 
 void System::rescaleMoveProbabilities()
 {
-    for (Component& component : components)
-    {
-        component.normalizeMoveProbabilties();
-    }
+  for (Component& component : components)
+  {
+    component.probabilityVolumeMove = probabilityVolumeMove;
+    component.probabilityGibbsVolumeMove = probabilityGibbsVolumeMove;
+    component.probabilityGibbsSwapMove_CBMC = probabilityGibbsVolumeMove;
+    component.probabilityGibbsSwapMove_CFCMC = probabilityGibbsSwapMove_CFCMC;
+    component.probabilityGibbsSwapMove_CFCMC_CBMC = probabilityGibbsSwapMove_CFCMC_CBMC;
+
+    component.normalizeMoveProbabilties();
+  }
 }
 
 void System::removeRedundantMoves()
@@ -751,14 +770,117 @@ void System::sampleProperties(size_t currentBlock)
 
 const std::string System::writeCPUTimeStatistics() const
 {
-   std::ostringstream stream;
-   std::print(stream, "Sampling properties:        {:14f} [s]\n", cpuTime_Sampling.count());
-   std::print(stream, "Pressure computation:       {:14f} [s]\n\n", cpuTime_Pressure.count());
-   for (int componentId = 0; const Component& component : components)
-   {
-      std::print(stream, "Component {} [{}]\n", componentId, component.name);
-      std::print(stream, component.writeMCMoveCPUTimeStatistics());
-      componentId++;
-   }
-   return stream.str();
+  std::ostringstream stream;
+  std::print(stream, "Sampling properties:        {:14f} [s]\n", cpuTime_Sampling.count());
+  std::print(stream, "Pressure computation:       {:14f} [s]\n\n", cpuTime_Pressure.count());
+  for (int componentId = 0; const Component& component : components)
+  {
+    std::print(stream, "Component {} [{}]\n", componentId, component.name);
+    std::print(stream, component.writeMCMoveCPUTimeStatistics());
+    componentId++;
+  }
+
+  if(cpuTime_VolumeMove.count() > 0.0)
+  {
+    std::print(stream, "    Volume move:            {:14f} [s]\n", cpuTime_VolumeMove.count());
+    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_VolumeMove_NonEwald.count());
+    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_VolumeMove_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_VolumeMove.count() - cpuTime_VolumeMove_NonEwald.count() - cpuTime_VolumeMove_Ewald.count());
+  }
+
+  if(cpuTime_GibbsVolumeMove.count() > 0.0)
+  {
+    std::print(stream, "    Gibbs Volume:           {:14f} [s]\n", cpuTime_GibbsVolumeMove.count());
+    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsVolumeMove_NonEwald.count());
+    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsVolumeMove_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsVolumeMove.count() - cpuTime_GibbsVolumeMove_NonEwald.count() - cpuTime_GibbsVolumeMove_Ewald.count());
+  }
+  if(cpuTime_GibbsSwapMove_CBMC.count() > 0.0)
+  {
+    std::print(stream, "    Gibbs swap (CBMC):      {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC.count());
+    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC_NonEwald.count());
+    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC.count() - cpuTime_GibbsSwapMove_CBMC_NonEwald.count() - cpuTime_GibbsSwapMove_CBMC_Ewald.count());
+  }
+  if(cpuTime_GibbsSwapLambdaMove_CFCMC.count() > 0.0)
+  {
+    std::print(stream, "    Gibbs swap (CFCMC):     {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC.count());
+    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald.count());
+    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald.count());
+  }
+  if(cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count() > 0.0)
+  {
+    std::print(stream, "    Gibbs swap (CB/CFCMC):  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count());
+    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald.count());
+    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
+  }
+
+  return stream.str();
 }
+
+std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
+{
+  std::vector<Atom> scaledAtoms;
+  scaledAtoms.reserve(atomPositions.size());
+
+  for(size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    for(size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    {
+      const std::span<const Atom> span = spanOfMolecule(componentId, i);
+
+      double totalMass = 0.0;
+      double3 com(0.0, 0.0, 0.0);
+      for(const Atom& atom: span)
+      {
+        double mass = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].mass;
+        com += mass * atom.position;
+        totalMass += mass;
+      }
+      com = com / totalMass;
+
+      double3 d = com * (scale - 1.0);
+
+      // create copy
+      for(Atom atom: span)
+      {
+        atom.position += d; 
+        scaledAtoms.push_back(atom);
+      }
+    }
+  }
+  return scaledAtoms;
+}
+
+void System::clearMoveStatistics()
+{
+  statistics_VolumeMove.clear();
+  statistics_GibbsVolumeMove.clear();
+  statistics_GibbsSwapMove_CBMC.clear();
+  statistics_GibbsSwapMove_CFCMC.clear();
+  statistics_GibbsSwapMove_CFCMC_CBMC.clear();
+}
+
+void System::clearTimingStatistics()
+{
+  cpuTime_VolumeMove = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsVolumeMove = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapMove_CBMC = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC = std::chrono::duration<double>(0.0);
+
+  cpuTime_VolumeMove_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsVolumeMove_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
+
+  cpuTime_VolumeMove_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsVolumeMove_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
+}
+

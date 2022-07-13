@@ -49,10 +49,10 @@ export struct System
     void computeTotalEnergies() noexcept;
     void computeTotalGradients() noexcept;
 
-    void computeFrameworkMoleculeEnergy(std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
-    void computeInterMolecularEnergy(std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
+    void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
+    void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept;
-    void computeEwaldFourierEnergy(RunningEnergy &energyStatus);
+    void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
@@ -85,7 +85,8 @@ export struct System
 
     size_t indexOfFirstMolecule(size_t selectedComponent);
     std::vector<Atom>::const_iterator iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule);
-    std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule);
+    std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule); 
+    const std::span<const Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const; 
     std::span<const Atom> spanOfFrameworkAtoms() const;
     std::span<const Atom> spanOfMoleculeAtoms() const;
     std::span<Atom> spanOfMoleculeAtoms();
@@ -256,6 +257,41 @@ export struct System
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative() noexcept;
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative() noexcept;
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
+
+    double probabilityVolumeMove{ 0.0 };
+    double probabilityGibbsVolumeMove{ 0.0 };
+    double probabilityGibbsSwapMove_CBMC{ 0.0 };
+    double probabilityGibbsSwapMove_CFCMC{ 0.0 };
+    double probabilityGibbsSwapMove_CFCMC_CBMC{ 0.0 };
+
+    void clearMoveStatistics();
+    void clearTimingStatistics();
+
+    MoveStatistics<double> statistics_VolumeMove{.maxChange = 0.5};
+    MoveStatistics<double> statistics_GibbsVolumeMove{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
+
+    std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
+
+    std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
+
+    std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
+
+    std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
 
     std::ofstream outputFile{};
 };

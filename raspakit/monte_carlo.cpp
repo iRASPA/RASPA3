@@ -4,7 +4,7 @@ module monte_carlo;
 
 import system;
 import randomnumbers;
-import mc_particle_moves;
+import mc_moves;
 import input_reader;
 import component;
 import averages;
@@ -200,6 +200,9 @@ void MonteCarlo::production()
         system.writeToOutputFile(system.runningEnergies.print("Recomputed from scratch"));
         system.sampleMovie.initialize();
 
+        system.clearMoveStatistics();
+        system.clearTimingStatistics();
+
         for(Component &component : system.components)
         {
           component.clearMoveStatistics();
@@ -284,7 +287,7 @@ void MonteCarlo::output()
         system.writeToOutputFile("Monte-Carlo moves statistics\n");
         system.writeToOutputFile("===============================================================================\n\n");
         
-         system.writeMCMoveStatistics();
+        system.writeMCMoveStatistics();
 
         system.writeToOutputFile("Production run CPU timings of the MC moves\n");
         system.writeToOutputFile("===============================================================================\n\n");

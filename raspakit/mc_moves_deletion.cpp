@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -35,7 +35,7 @@ import <iomanip>;
 
 
 
-std::optional<RunningEnergy> MC_Particle_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
+std::optional<RunningEnergy> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
 {
     system.components[selectedComponent].statistics_SwapDeletionMove_CBMC.counts += 1;
     

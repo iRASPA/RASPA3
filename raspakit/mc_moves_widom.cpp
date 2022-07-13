@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -35,7 +35,7 @@ import <iomanip>;
 
 
 
-std::optional<double> MC_Particle_Moves::WidomMove(System& system, size_t selectedComponent)
+std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedComponent)
 {
     size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
     system.components[selectedComponent].statistics_WidomMove_CBMC.counts += 1;

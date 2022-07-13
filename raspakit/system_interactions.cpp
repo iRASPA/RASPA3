@@ -37,12 +37,12 @@ void System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  computeFrameworkMoleculeEnergy(frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
-  computeInterMolecularEnergy(moleculeAtomPositions, runningEnergies);
+  computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
+  computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergies);
 
   computeTailCorrectionVDWEnergy(runningEnergies);
 
-  computeEwaldFourierEnergy(runningEnergies);
+  computeEwaldFourierEnergy(simulationBox, runningEnergies);
 }
 
 void System::computeTotalGradients() noexcept

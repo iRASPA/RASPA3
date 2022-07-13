@@ -104,11 +104,11 @@ void System::registerEwaldFourierEnergySingleIon(double3 position, double charge
   CoulombicFourierEnergySingleIon = (2.0 * std::numbers::pi / simulationBox.volume) * energy_sum; 
 }
 
-void System::computeEwaldFourierEnergy(RunningEnergy &energyStatus)
+void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus)
 {
-  double alpha = simulationBox.alpha;
+  double alpha = box.alpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = box.inverseUnitCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -163,7 +163,7 @@ void System::computeEwaldFourierEnergy(RunningEnergy &energyStatus)
   }
 
   size_t nvec = 0;
-  double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
+  double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / box.volume);
   for(std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
   {
     double3 kvec_x = 2.0 * std::numbers::pi * static_cast<double>(kx) * ax;
@@ -212,7 +212,7 @@ void System::computeEwaldFourierEnergy(RunningEnergy &energyStatus)
   }
 
   // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * simulationBox.alpha / std::sqrt(std::numbers::pi);
+  double prefactor_self = Units::CoulombicConversionFactor * box.alpha / std::sqrt(std::numbers::pi);
   for(size_t i = 0; i != numberOfAtoms; ++i)
   {
     double charge = atomPositions[i].charge;
@@ -236,7 +236,7 @@ void System::computeEwaldFourierEnergy(RunningEnergy &energyStatus)
               double3 posB = span[j].position;
 
               double3 dr = posA - posB;
-              dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+              dr = box.applyPeriodicBoundaryConditions(dr);
               double r = std::sqrt(double3::dot(dr, dr));
 
               energyStatus.ewald -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;

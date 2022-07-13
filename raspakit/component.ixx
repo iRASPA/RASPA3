@@ -142,17 +142,12 @@ export struct Component
     MoveStatistics<double3> statistics_RandomTranslationMove{};
     MoveStatistics<double3> statistics_RotationMove{ .maxChange = double3(1.0,1.0,1.0) };
     MoveStatistics<double3> statistics_RandomRotationMove{};
-    MoveStatistics<double> statistics_VolumeMove{};
     MoveStatistics<double> statistics_ReinsertionMove_CBMC{};
     MoveStatistics<double> statistics_IdentityChangeMove_CBMC{};
     MoveStatistics<double> statistics_SwapInsertionMove_CBMC{};
     MoveStatistics<double> statistics_SwapDeletionMove_CBMC{};
     MoveStatistics<double3> statistics_SwapMove_CFCMC{};
     MoveStatistics<double3> statistics_SwapMove_CFCMC_CBMC{};
-    MoveStatistics<double> statistics_GibbsVolumeMove{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
     MoveStatistics<double3> statistics_WidomMove_CBMC{};
     MoveStatistics<double3> statistics_WidomMove_CFCMC{};
     MoveStatistics<double3> statistics_WidomMove_CFCMC_CBMC{};
@@ -162,17 +157,12 @@ export struct Component
     std::chrono::duration<double> cpuTime_RandomTranslationMove{ 0.0 };
     std::chrono::duration<double> cpuTime_RotationMove{ 0.0 };
     std::chrono::duration<double> cpuTime_RandomRotationMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
     std::chrono::duration<double> cpuTime_ReinsertionMove_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapInsertionMove_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionMove_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapMove_CFCMC{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapMove_CFCMC_CBMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CBMC{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC{ 0.0 };
@@ -181,24 +171,17 @@ export struct Component
     std::chrono::duration<double> cpuTime_RandomTranslationMove_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_RotationMove_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_RandomRotationMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_ReinsertionGrowMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_ReinsertionRetraceMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapInsertionMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapMove_CFCMC_NonEwald{ 0.0 };
-
     std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CBMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC_NonEwald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_NonEwald{ 0.0 };
@@ -207,23 +190,16 @@ export struct Component
     std::chrono::duration<double> cpuTime_RandomTranslationMove_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_RotationMove_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_RandomRotationMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_ReinsertionMove_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapInsertionMove_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionMove_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapMove_CFCMC_Ewald{ 0.0 };
-
     std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CBMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC_Ewald{ 0.0 };
     std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_Ewald{ 0.0 };

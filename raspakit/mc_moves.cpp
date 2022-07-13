@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -33,7 +33,7 @@ import <iostream>;
 import <iomanip>;
 
 
-void MC_Particle_Moves::performRandomMove(System& selectedSystem, size_t selectedComponent)
+void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponent)
 {
     double randomNumber = RandomNumber::Uniform();
 
@@ -95,6 +95,11 @@ void MC_Particle_Moves::performRandomMove(System& selectedSystem, size_t selecte
     }
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityVolumeMove)
     {
+      std::optional<RunningEnergy> energy = volumeMove(selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
     }
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityReinsertionMove_CBMC)
     {
@@ -180,7 +185,7 @@ void MC_Particle_Moves::performRandomMove(System& selectedSystem, size_t selecte
     }
 }
 
-void MC_Particle_Moves::performRandomMoveProduction(System& selectedSystem, size_t selectedComponent, size_t currentBlock)
+void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t selectedComponent, size_t currentBlock)
 {
     double randomNumber = RandomNumber::Uniform();
 
@@ -254,6 +259,14 @@ void MC_Particle_Moves::performRandomMoveProduction(System& selectedSystem, size
     }
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityVolumeMove)
     {
+      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+      std::optional<RunningEnergy> energy = volumeMove(selectedSystem);
+      if (energy)
+      {
+        selectedSystem.runningEnergies = energy.value();
+      }
+      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+      selectedSystem.cpuTime_VolumeMove += (t2 - t1);
     }
     else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityReinsertionMove_CBMC)
     {

@@ -1,4 +1,4 @@
-export module mc_particle_moves;
+export module mc_moves;
 
 import component;
 import atom;
@@ -16,9 +16,9 @@ import <optional>;
 import <span>;
 
 
-export struct MC_Particle_Moves
+export struct MC_Moves
 {
-    MC_Particle_Moves() {}
+    MC_Moves() {}
 
     void performRandomMove(System& selectedSystem, size_t selectedComponent);
     void performRandomMoveProduction(System& selectedSystem, size_t selectedComponent, size_t currentBlock);
@@ -27,6 +27,7 @@ export struct MC_Particle_Moves
     std::optional<RunningEnergy> randomTranslationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
     std::optional<RunningEnergy> rotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
     std::optional<RunningEnergy> randomRotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
+    std::optional<RunningEnergy> volumeMove([[maybe_unused]] System &system) const;
     std::optional<RunningEnergy> reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms);
     std::optional<RunningEnergy> insertionMove(System& system, size_t selectedComponent);
     std::optional<RunningEnergy> deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule);

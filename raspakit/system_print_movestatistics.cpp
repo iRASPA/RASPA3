@@ -20,6 +20,29 @@ import <iostream>;
 import <random>;
 import <sstream>;
 
+inline std::string formatStatistics(const std::string name, MoveStatistics<double>& move)
+{
+    std::ostringstream stream;
+    std::print(stream, "{} total:        {:10}\n", name, move.counts);
+    std::print(stream, "{} constructed:  {:10}\n", name, move.constructed);
+    std::print(stream, "{} accepted:     {:10}\n", name, move.accepted);
+    std::print(stream, "{} fraction:     {:10f}\n", name, move.accepted / std::max(1.0, double(move.counts)));
+    std::print(stream, "{} max-change:   {:10f}\n\n", name, move.maxChange);
+    return stream.str();
+}
+
+inline std::string formatStatistics(const std::string name, MoveStatistics<double3> &move)
+{
+    std::ostringstream stream;
+    std::print(stream, "{} total:        {:10} {:10} {:10}\n", name, move.counts.x, move.counts.y, move.counts.z);
+    std::print(stream, "{} constructed:  {:10} {:10} {:10}\n", name, move.constructed.x, move.constructed.y, move.constructed.z);
+    std::print(stream, "{} accepted:     {:10} {:10} {:10}\n", name, move.accepted.x, move.accepted.y, move.accepted.z);
+    std::print(stream, "{} fraction:     {:10f} {:10f} {:10f}\n", name, move.accepted.x / std::max(1.0, double(move.counts.x)),
+                   move.accepted.y / std::max(1.0, double(move.counts.y)), move.accepted.z / std::max(1.0, double(move.counts.z)));
+    std::print(stream, "{} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
+    return stream.str();
+}
+
 void System::writeMCMoveStatistics()
 {
     for (size_t componentId = 0; const Component& component: components)
@@ -231,5 +254,11 @@ void System::writeMCMoveStatistics()
 
         ++componentId;
     }
+
+    if(probabilityVolumeMove > 0.0) std::print(outputFile, formatStatistics("Volume", statistics_VolumeMove));
+    if(probabilityGibbsVolumeMove > 0.0) std::print(outputFile, formatStatistics("Gibbs Volume", statistics_GibbsVolumeMove));
+    if(probabilityGibbsSwapMove_CBMC > 0.0) std::print(outputFile, formatStatistics("Gibss Swap (CBMC)", statistics_GibbsSwapMove_CBMC));
+    if(probabilityGibbsSwapMove_CFCMC > 0.0) std::print(outputFile, formatStatistics("Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC));
+    if(probabilityGibbsSwapMove_CFCMC_CBMC > 0.0) std::print(outputFile, formatStatistics("Gibbs Swap (CB/CFCMC)", statistics_GibbsSwapMove_CFCMC_CBMC)); 
     std::print(outputFile, "\n\n");
 }

@@ -3,7 +3,7 @@ export module monte_carlo;
 import averages;
 import system;
 import randomnumbers;
-import mc_particle_moves;
+import mc_moves;
 import input_reader;
 import energy_status;
 import threadpool;
@@ -40,7 +40,7 @@ export struct MonteCarlo
 
     BlockErrorEstimation estimation;
 
-    MC_Particle_Moves particleMoves;
+    MC_Moves particleMoves;
 
     std::chrono::system_clock::time_point t1;
     std::chrono::system_clock::time_point t2;

@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -34,7 +34,7 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<RunningEnergy> MC_Particle_Moves::swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule,
+std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule,
          bool insertionDisabled, bool deletionDisabled)
 {
     Lambda& lambda = system.components[selectedComponent].lambda;

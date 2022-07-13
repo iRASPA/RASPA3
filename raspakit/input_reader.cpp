@@ -328,6 +328,13 @@ InputReader::InputReader(const std::string pseudoAtomsFileName, const std::strin
                 systems[numberOfSystems - 1].omitEwaldFourier = value;
             }
 
+            if (caseInSensStringCompare(keyword, "probabilityVolumeMove"))
+            {
+                requireExistingSystem(keyword, lineNumber);
+                double value = parseDouble(arguments, keyword, lineNumber);
+                systems[numberOfSystems - 1].probabilityVolumeMove = value;
+            }
+
             if (caseInSensStringCompare(keyword, "Movies"))
             {
                 requireExistingSystem(keyword, lineNumber);

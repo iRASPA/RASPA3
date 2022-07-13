@@ -1,6 +1,6 @@
 module;
 
-module mc_particle_moves;
+module mc_moves;
 
 import component;
 import atom;
@@ -34,7 +34,7 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<RunningEnergy> MC_Particle_Moves::reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
+std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
 {
     system.components[selectedComponent].statistics_ReinsertionMove_CBMC.counts += 1;
 
