@@ -31,6 +31,7 @@ import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import threadpool;
 
 export struct System
 {
@@ -59,6 +60,9 @@ export struct System
 
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+    template <ThreadPool::ThreadingType T>
+    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+
     RunningEnergy computeFrameworkSpanMoleculeEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip, std::atomic_flag & cancel) const;
 
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
