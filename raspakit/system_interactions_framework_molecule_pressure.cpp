@@ -37,7 +37,7 @@ import <semaphore>;
     double3x3 strainDerivative;
     EnergyStatus energy(components.size());
 
-    const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
+    const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
     const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
     const double prefactor = Units::CoulombicConversionFactor;
 

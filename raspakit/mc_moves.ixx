@@ -35,4 +35,5 @@ export struct MC_Moves
     std::optional<double> WidomMove(System& system, size_t selectedComponent);
 
     double energyOverlapCriteria = 1e6;
+    bool useDualCutOff{ true };
 };

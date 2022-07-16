@@ -61,9 +61,9 @@ export struct ForceField
     
     // 2D-vector, size numberOfPseudoAtoms squared
     std::vector<VDWParameters> data{};
-    double cutOff{ 12.0 };
-    double dualCutOff{ 5.0 };
+    double cutOffVDW{ 12.0 };
     double cutOffCoulomb{ 12.0 };
+    double dualCutOff{ 6.0 };
     double alpha { 0.265058 };
     int3 numberOfWaveVectors{8, 8, 8};
     size_t numberOfPseudoAtoms{ 0 };

@@ -9,7 +9,7 @@ export inline double potentialCorrectionVDW(const ForceField& forcefield, const 
 {
     VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
-    double cutOffVDW = forcefield.cutOff;
+    double cutOffVDW = forcefield.cutOffVDW;
 
     switch (potentialType)
     {

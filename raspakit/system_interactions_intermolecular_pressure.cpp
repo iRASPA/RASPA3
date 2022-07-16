@@ -30,7 +30,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
     double3 dr, posA, posB;
     double rr;
 
-    const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
+    const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
     const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
     const double prefactor = Units::CoulombicConversionFactor;
 

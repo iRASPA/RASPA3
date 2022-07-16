@@ -26,30 +26,30 @@ import <algorithm>;
 import <numeric>;
 
 
-[[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
+[[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {
     size_t startingBead = components[selectedComponent].startingBead;
 
-    const FirstBeadData firstBeadData = retraceMultipleFirstBeadSwapDeletion(molecule[startingBead], scaling, storedR);
+    const FirstBeadData firstBeadData = retraceMultipleFirstBeadSwapDeletion(cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR);
 
     if(molecule.size() == 1)
     {
       return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
     }
 
-    const ChainData rigidRotationData = retraceChain(startingBead, scaling, molecule);
+    const ChainData rigidRotationData = retraceChain(cutOff, cutOffCoulomb, startingBead, scaling, molecule);
 
     return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies, firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] FirstBeadData System::retraceMultipleFirstBeadSwapDeletion(const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
+[[nodiscard]] FirstBeadData System::retraceMultipleFirstBeadSwapDeletion(double cutOff, double cutOffCoulomb, const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
 {
     std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
     for(Atom &trialPosition: trialPositions) {trialPosition.setScaling(scaling);}
     std::for_each(trialPositions.begin() + 1, trialPositions.end(),
             [this](Atom& a) {a.position = simulationBox.randomPosition();});
 
-    const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(trialPositions);
+    const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions);
 
     std::vector<double> logBoltmannFactors{};
     std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
@@ -62,7 +62,7 @@ import <numeric>;
 }
 
 
-[[nodiscard]] ChainData System::retraceChain(size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
+[[nodiscard]] ChainData System::retraceChain(double cutOff, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
 {
     std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
     std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom& a) {a.setScaling(scaling); });
@@ -73,7 +73,7 @@ import <numeric>;
         trialPositions.push_back(rotateRandomlyAround(trialPosition, startingBead));
     };
 
-    const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(trialPositions, std::make_signed_t<std::size_t>(startingBead));
+    const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));
 
     std::vector<double> logBoltmannFactors{};
     std::transform(std::begin(externalEnergies), std::end(externalEnergies),

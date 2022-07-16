@@ -59,22 +59,21 @@ export struct System
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
 
 
-    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
     template <ThreadPool::ThreadingType T>
-    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
 
-    RunningEnergy computeFrameworkSpanMoleculeEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip, std::atomic_flag & cancel) const;
 
-    [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
-    [[nodiscard]] std::optional<EnergyStatus> computeFrameworkMoleculeEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip, std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator) const noexcept;
+    [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
     [[nodiscard]] std::optional<EnergyStatus> computeInterMolecularSpanEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept;
 
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWOldEnergy() const noexcept;
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWAddEnergy(size_t selectedComponent) const noexcept;
     [[nodiscard]] EnergyStatus computeTailCorrectionVDWRemoveEnergy(size_t selectedComponent) const noexcept;
 
-    [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> computeExternalNonOverlappingEnergies(std::vector<Atom>& trialPositions) const noexcept;
-    [[nodiscard]] const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> computeExternalNonOverlappingEnergies(std::vector<std::vector<Atom>>& trialPositions, std::make_signed_t<std::size_t> skip) const noexcept;
+    [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> computeExternalNonOverlappingEnergies(double cutOffVDW, double cutOffCoulomb, std::vector<Atom>& trialPositions) const noexcept;
+    [[nodiscard]] const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> computeExternalNonOverlappingEnergies(double cutOffVDW, double cutOffCoulomb, std::vector<std::vector<Atom>>& trialPositions, std::make_signed_t<std::size_t> skip) const noexcept;
+    const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(double cutOffVDW, double cutOffCoulomb, std::vector<Atom>& trialPositionSet) const noexcept;
 
     [[nodiscard]] std::vector<double> computeInterMolecularInteractionsEnergy() const noexcept;
     [[nodiscard]] std::vector<double> computeInterMolecularInteractionsForce() noexcept;
@@ -208,19 +207,19 @@ export struct System
 
     SampleMovie sampleMovie;
     
-    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
-    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(const Atom& atom) const noexcept;
-    [[nodiscard]] std::optional<ChainData> growChain(size_t startingBead, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
+    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
 
-    [[nodiscard]] ChainData retraceMoleculeSwapDeletion(size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
-    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadSwapDeletion(const Atom& atom, double scaling, double storedR) const noexcept;
-    [[nodiscard]] ChainData retraceChain(size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept;
-    [[nodiscard]] ChainData retraceChainReinsertion(size_t startingBead, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceMoleculeSwapDeletion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
+    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadSwapDeletion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double scaling, double storedR) const noexcept;
+    [[nodiscard]] ChainData retraceChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceChainReinsertion(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::span<Atom> molecule) const noexcept;
 
-    [[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
-    [[nodiscard]] ChainData retraceMoleculeReinsertion(size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
-    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(const Atom& atom) const noexcept;
-    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(const Atom& atom, double storedR) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
+    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
+    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double storedR) const noexcept;
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
 

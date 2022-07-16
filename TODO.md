@@ -1,4 +1,4 @@
- 1) Change to return type to 'double' and compute energy with pressure-routine.
+ 1) move dU/dlambda to system
  2) compute pressure (Ewald)
  3) volume move (NPT)
  4) rescale MC moves max-change 

@@ -33,7 +33,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   double3 dr, posA, posB, f;
   double rr;
 
-  const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
+  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   const double prefactor = Units::CoulombicConversionFactor;
 
@@ -94,7 +94,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   EnergyStatus energySum(components.size());
 
   const double overlapCriteria = forceField.overlapCriteria;
-  const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
+  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   const double prefactor = Units::CoulombicConversionFactor;
 
@@ -154,7 +154,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   return energySum;
 }
 
-[[nodiscard]] std::optional<RunningEnergy> System::computeInterMolecularEnergy(std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
+[[nodiscard]] std::optional<RunningEnergy> System::computeInterMolecularEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -164,8 +164,8 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
 
   const double overlapCriteria = forceField.overlapCriteria;
-  const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
-  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
+  const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
   const double prefactor = Units::CoulombicConversionFactor;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
@@ -273,7 +273,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   RunningEnergy energySum{};
 
   const double overlapCriteria = forceField.overlapCriteria;
-  const double cutOffVDWSquared = forceField.cutOff * forceField.cutOff;
+  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   const double prefactor = Units::CoulombicConversionFactor;
 

@@ -18,6 +18,7 @@ import lambda;
 import property_widom;
 import averages;
 import running_energy;
+import forcefield;
 
 import <complex>;
 import <vector>;
@@ -39,9 +40,12 @@ std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedCompone
 {
     size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
     system.components[selectedComponent].statistics_WidomMove_CBMC.counts += 1;
+
+    double cutOffVDW = system.forceField.cutOffVDW;
+    double cutOffCoulomb = system.forceField.cutOffCoulomb;
     
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(selectedComponent, selectedMolecule, 1.0);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_WidomMove_CBMC_NonEwald += (t2 - t1);
 

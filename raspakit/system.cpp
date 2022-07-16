@@ -257,7 +257,8 @@ void System::createInitialMolecules()
                 std::optional<ChainData> growData = std::nullopt;
                 do
                 {
-                    growData = growMoleculeSwapInsertion(componentId, numberOfMoleculesPerComponent[componentId], 0.0);
+                    growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb, 
+                                        componentId, numberOfMoleculesPerComponent[componentId], 0.0);
 
                 } while (!growData || growData->RosenbluthWeight < 1.0);
 
@@ -271,7 +272,8 @@ void System::createInitialMolecules()
             std::optional<ChainData> growData = std::nullopt;
             do
             {
-                growData = growMoleculeSwapInsertion(componentId, numberOfMoleculesPerComponent[componentId], 1.0);
+                growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb,
+                                    componentId, numberOfMoleculesPerComponent[componentId], 1.0);
 
             } while(!growData || growData->RosenbluthWeight < 1.0);
 
