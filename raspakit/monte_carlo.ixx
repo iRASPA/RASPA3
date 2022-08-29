@@ -10,6 +10,7 @@ import threadpool;
 
 import <vector>;
 import <iostream>;
+import <fstream>;
 import <chrono>;
 
 export struct MonteCarlo
@@ -37,6 +38,7 @@ export struct MonteCarlo
     size_t printEvery;
 
     std::vector<System> systems;
+    std::vector<std::ofstream> streams;
 
     BlockErrorEstimation estimation;
 

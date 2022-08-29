@@ -29,7 +29,7 @@ import <fstream>;
 
 import print;
 
-void System::writeOutputHeaderHardware()
+void System::writeOutputHeaderHardware(std::ostream &outputFile) const
 {
     // see what compiler is used
 #if defined(__GNUC__)

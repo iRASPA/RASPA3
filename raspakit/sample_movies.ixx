@@ -13,12 +13,12 @@ import <string>;
 export struct SampleMovie
 {
     SampleMovie(size_t systemId, const ForceField &forceField, const SimulationBox& simulationBox, const std::vector<Atom>& atomPositions);
-    SampleMovie() noexcept = delete;
-    SampleMovie(const SampleMovie& a) noexcept = delete;
-    SampleMovie& operator=(const SampleMovie& a) noexcept = delete;
+    //SampleMovie() noexcept = default;
+    //SampleMovie(const SampleMovie& a) noexcept = default;
+    //SampleMovie& operator=(const SampleMovie& a) noexcept = default;
     SampleMovie(SampleMovie&& a) noexcept;
-    SampleMovie& operator=(SampleMovie&& a) noexcept = delete;
-    ~SampleMovie() = default;
+    //SampleMovie& operator=(SampleMovie&& a) noexcept = default;
+    //~SampleMovie() = default;
 
     const size_t systemId;
     const ForceField& forceField;
@@ -34,5 +34,5 @@ export struct SampleMovie
 
     int modelNumber{ 1 };
 
-    std::ofstream outputFile{};
+    //std::ofstream outputFile{};
 };

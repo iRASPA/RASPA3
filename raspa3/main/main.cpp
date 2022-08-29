@@ -1,22 +1,28 @@
 
 import <exception>;
 import <iostream>;
+import <fstream>;
 import <vector>;
+import <span>;
 import <deque>;
 import <optional>;
 import <semaphore>;
 
-import monte_carlo;
-import input_reader;
 import threadpool;
 import threading;
+import input_reader;
+import monte_carlo;
+import breakthrough;
+import breakthrough_simulation;
+import mixture_prediction_simulation;
+import isotherm_fitting_simulation;
+import multi_site_isotherm;
 
 int main()
 {
   try
   {
-    InputReader inputReader("pseudo_atoms.def", "force_field_mixing_rules.def",
-                          "force_field.def", "simulation.input");
+    InputReader inputReader{};
 
     ThreadPool::createPool(inputReader.numberOfThreads, inputReader.threadingType);
 
@@ -26,6 +32,24 @@ int main()
       {
         MonteCarlo mc(inputReader);
         mc.run();
+        break;
+      }
+      case InputReader::SimulationType::Breakthrough:
+      {
+        BreakthroughSimulation breakthrough(inputReader);
+        breakthrough.run();
+        break;
+      }
+      case InputReader::SimulationType::IAST:
+      {
+        MixturePredictionSimulation mixture(inputReader);
+        mixture.run();
+        break;
+      }
+      case InputReader::SimulationType::Fitting:
+      {
+        IsothermFittingSimulation fitting(inputReader);
+        fitting.run();
         break;
       }
       default:

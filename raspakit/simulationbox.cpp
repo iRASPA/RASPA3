@@ -6,6 +6,7 @@ import <cmath>;
 import <numbers>;
 import <string>;
 import <iostream>;
+import <ostream>;
 import <sstream>;
 
 import randomnumbers;
@@ -86,33 +87,27 @@ double3 SimulationBox::angles()
                    acos(double3::dot(column1, column2) / (length1 * length2)));
 }
 
-std::string SimulationBox::printParameters()
+void SimulationBox::printParameters(std::ostream &stream) const
 {
-    std::ostringstream stream;
-
-    std::print(stream, "Simulation parameters:\n");
-    std::print(stream, "===============================================================================\n\n");
-    std::print(stream, "Temperature:     {:9.5f} \n", temperature);
-    std::print(stream, "Beta:            {:9.5f} \n", Beta);
-    std::print(stream, "Pressure:        {:9.5f} \n", Units::PressureConversionFactor * pressure);
-    std::print(stream, "\n\n");
-    return stream.str();
+  std::print(stream, "Simulation parameters:\n");
+  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "Temperature:     {:9.5f} \n", temperature);
+  std::print(stream, "Beta:            {:9.5f} \n", Beta);
+  std::print(stream, "Pressure:        {:9.5f} \n", Units::PressureConversionFactor * pressure);
+  std::print(stream, "\n\n");
 }
 
-std::string SimulationBox::printStatus()
+void SimulationBox::printStatus(std::ostream &stream) const
 {
-    std::ostringstream stream;
-    std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ax, unitCell.bx, unitCell.cx);
-    std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ay, unitCell.by, unitCell.cy);
-    std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.az, unitCell.bz, unitCell.cz);
-    std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}\n", lengthA, lengthB, lengthC);
-    double conv = 180.0 / std::numbers::pi;
-    std::print(stream, "Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * angleAlpha, conv * angleBeta, conv * angleGamma);
-
-    return stream.str();
+  std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ax, unitCell.bx, unitCell.cx);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ay, unitCell.by, unitCell.cy);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.az, unitCell.bz, unitCell.cz);
+  std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}\n", lengthA, lengthB, lengthC);
+  double conv = 180.0 / std::numbers::pi;
+  std::print(stream, "Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * angleAlpha, conv * angleBeta, conv * angleGamma);
 }
 
-std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unused]] const SimulationBox& error)
+std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unused]] const SimulationBox& error) const
 {
     std::ostringstream stream;
     std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ax, unitCell.bx, unitCell.cx,

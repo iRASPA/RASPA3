@@ -7,6 +7,7 @@ import <string>;
 import <vector>;
 import <optional>;
 import <cmath>;
+import <ostream>;
 
 export struct Loadings
 {
@@ -48,8 +49,8 @@ export struct Loadings
 
   double& operator() (size_t compA) { return numberOfMolecules[compA]; }
 
-  std::string printStatus(const Component& compA, std::optional<double> frameworkMass);
-  std::string printStatus(const Component &compA, const Loadings& average, const Loadings& error, std::optional<double> frameworkMass);
+  void printStatus(std::ostream &stream, const Component& compA, std::optional<double> frameworkMass) const;
+  void printStatus(std::ostream &stream, const Component &compA, const Loadings& average, const Loadings& error, std::optional<double> frameworkMass) const;
 
   inline Loadings& operator+=(const Loadings& b)
   {

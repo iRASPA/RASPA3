@@ -19,6 +19,8 @@ import forcefield;
 import lambda;
 import simulationbox;
 import property_widom;
+import isotherm;
+import multi_site_isotherm;
 
 export template<typename T>
  struct MoveStatistics
@@ -51,12 +53,14 @@ export struct Component
         NumberOfBondTypes = 1
     };
 
-    Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string& fileName, size_t numberOfBlocks) noexcept(false);
+    Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName, 
+              std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
 
     void readComponent(const ForceField& forceField, const std::string& fileName);
     void readFramework(const ForceField& forceField, const std::string& fileName);
 
-    std::string printStatus(const ForceField& forceField) const;
+    void printStatus(std::ostream &stream, const ForceField& forceField) const;
+    void printBreakthroughStatus(std::ostream &stream) const;
 
     void normalizeMoveProbabilties();
 
@@ -73,6 +77,7 @@ export struct Component
 
     size_t componentId{ 0 };
     std::string name{};
+    std::string filename{};
     bool rigid { true };
 
     double criticalTemperature{ 0.0 };
@@ -206,4 +211,21 @@ export struct Component
     void clearTimingStatistics();
 
     PropertyWidom averageRosenbluthWeights;
+
+    MultiSiteIsotherm isotherm{};      // isotherm information
+    double massTransferCoefficient{ 0.0 };    // breakthrough masstransfer coefficient [1/s]
+    double axialDispersionCoefficient{ 0.0 }; // breakthrough axial disperion coefficient [m^2/s]
+    bool isCarrierGas{ false };        // whether or not this is the carrier-gas
+
+    size_t columnPressure{ 0 };
+    size_t columnLoading{ 1 };
+    size_t columnError{ 2 };
+
+    enum class PressureScale
+    {
+      Log = 0,
+      Normal = 1
+    };
+
+    PressureScale pressureScale{ PressureScale::Log };
 };

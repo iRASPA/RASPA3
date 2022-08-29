@@ -1,20 +1,20 @@
 CXX=clang++-14
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O0 -g -fsanitize=address -fno-omit-frame-pointer -march=native -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=mathkit -fprebuilt-module-path=foundationkit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit/MC
+CXXFLAGS= -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O0 -g -fsanitize=address -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=mathkit -fprebuilt-module-path=foundationkit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit/MC
 
 default: raspa;
 
 mathkit:
-	cd mathkit && $(MAKE) -f makefile-llvm-debug
+	cd mathkit && $(MAKE)
 
 foundationkit:
-	cd foundationkit && $(MAKE) -f makefile-llvm-debug
+	cd foundationkit && $(MAKE)
 
 raspakit:
-	cd raspakit && $(MAKE) -f makefile-llvm-debug
+	cd raspakit && $(MAKE)
 
 raspa: 
 	$(CXX) $(CXXFLAGS) -c raspa3/main/main.cpp -o raspa3/main/main.o
-	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -g -fsanitize=address -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -L/opt/local/lib/lapack -L/opt/local/lib  -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -L/opt/local/lib/gcc11/ -lgfortran -lquadmath
+	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -g -fsanitize=address -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -L/opt/local/lib/lapack -L/opt/local/lib -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -L/opt/local/lib/gcc11/ -lgfortran -lquadmath -fopenmp -Wl,-rpath,/opt/local/lib/libgcc/
 
 all:
 	cd mathkit && $(MAKE) -f makefile-llvm-debug
@@ -22,10 +22,10 @@ all:
 	cd symmetrykit && $(MAKE) -f makefile-llvm-debug
 	cd raspakit && $(MAKE) -f makefile-llvm-debug
 	$(CXX) $(CXXFLAGS) -c raspa3/main/main.cpp -o raspa3/main/main.o
-	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -g -fsanitize=address -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -L/opt/local/lib/lapack -L/opt/local/lib  -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -L/opt/local/lib/gcc11/ -lgfortran -lquadmath
+	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -g -fsanitize=address -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -L/opt/local/lib/lapack -L/opt/local/lib -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -L/opt/local/lib/gcc11/ -lgfortran -lquadmath -fopenmp -Wl,-rpath,/opt/local/lib/libgcc/
 
 clean:
-	rm raspa3.exe
+	rm -f raspa3.exe
 
 allclean:
 	rm -f raspa3.exe

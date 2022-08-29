@@ -22,6 +22,8 @@ Package.StoreAssociation.xml
 *.dll
 *.sobea
 *.dylib
+*.pcm
+*.exe
 
 ### macOS ###
 *.DS_Store

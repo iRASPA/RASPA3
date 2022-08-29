@@ -8,6 +8,7 @@ import <iostream>;
 import <numeric>;
 import <string>;
 import <sstream>;
+import <ostream>;
 
 export struct RunningEnergy
 {
@@ -21,7 +22,7 @@ export struct RunningEnergy
   {
   }
 
-  std::string print(const std::string& label);
+  void print(std::ostream &stream, const std::string& label);
   
   inline double total() const
   {

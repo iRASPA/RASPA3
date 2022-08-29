@@ -38,6 +38,7 @@ import <vector>;
 import <span>;
 import <string>;
 import <optional>;
+import <fstream>;
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
@@ -52,259 +53,271 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept :
 
 System& MonteCarlo::randomSystem()
 {
-    return systems[size_t(RandomNumber::Uniform() * static_cast<double>(systems.size()))];
+  return systems[size_t(RandomNumber::Uniform() * static_cast<double>(systems.size()))];
 }
 
 void MonteCarlo::run()
 {
-    initialize();
-    equilibrate();
-    t1 = std::chrono::system_clock::now();
-    production();
-    t2 = std::chrono::system_clock::now();
+  initialize();
+  equilibrate();
+  t1 = std::chrono::system_clock::now();
+  production();
+  t2 = std::chrono::system_clock::now();
 
-    output();
-    cleanup();
+  output();
+  cleanup();
 }
 
 void MonteCarlo::initialize()
 {
-    for (System &system: systems)
+  for (System &system: systems)
+  {
+    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
+    system.removeRedundantMoves();
+    system.determineSwapableComponents();
+    system.determineFractionalComponents();
+    system.rescaleMoveProbabilities();
+    system.rescaleMolarFractions();
+    system.computeComponentFluidProperties();
+    system.computeFrameworkDensity();
+    system.computeNumberOfPseudoAtoms();
+
+    system.createInitialMolecules();
+
+    system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
+
+    std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
+    std::filesystem::path directoryName{ directoryNameString };
+    std::filesystem::create_directories(directoryName);
+
+    std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
+        system.systemId, system.simulationBox.temperature, system.simulationBox.input_pressure);
+    streams.emplace_back(fileNameString, std::ios::out );
+  }
+
+  for (const System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.writeOutputHeader(stream);
+    system.writeOutputHeaderHardware(stream);
+    Units::printStatus(stream);
+    system.simulationBox.printParameters(stream);
+    system.forceField.printPseudoAtomStatus(stream);
+    system.forceField.printForceFieldStatus(stream);
+    system.writeComponentStatus(stream);
+  }
+
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.computeTotalEnergies();
+    system.runningEnergies.print(stream, "Recomputed from scratch");
+  };
+
+  for (size_t i = 0; i != numberOfInitializationCycles; i++)
+  {
+    for (size_t j = 0; j != systems.size(); ++j)
     {
-        system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
-        system.removeRedundantMoves();
-        system.determineSwapableComponents();
-        system.determineFractionalComponents();
-        system.rescaleMoveProbabilities();
-        system.rescaleMolarFractions();
-        system.computeComponentFluidProperties();
-        system.computeFrameworkDensity();
-        system.computeNumberOfPseudoAtoms();
+      System& selectedSystem = randomSystem();
 
-        system.createInitialMolecules();
-
-        system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
+      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+      for (size_t k = 0; k != numberOfSteps; k++)
+      {
+        size_t selectedComponent = selectedSystem.randomComponent();
+        particleMoves.performRandomMove(selectedSystem, selectedComponent);
+      }
     }
-    for (System& system : systems)
+
+    if (i % printEvery == 0)
     {
-        system.createOutputFile();
-        system.writeOutputHeader();
-        system.writeOutputHeaderHardware();
-        system.writeToOutputFile(Units::printStatus());
-        system.writeToOutputFile(system.simulationBox.printParameters());
-        system.writeToOutputFile(system.forceField.printPseudoAtomStatus());
-        system.writeToOutputFile(system.forceField.printForceFieldStatus());
-        system.writeComponentStatus();
+      for (System& system : systems)
+      {
+        std::ostream stream(streams[system.systemId].rdbuf());
+
+        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system.writeInitializationStatusReport(stream, i, numberOfInitializationCycles);
+      }
     }
-
-    for (System& system : systems)
-    {
-        system.computeTotalEnergies();
-        system.writeToOutputFile(system.runningEnergies.print("Recomputed from scratch"));
-    };
-
-    for (size_t i = 0; i != numberOfInitializationCycles; i++)
-    {
-        for (size_t j = 0; j != systems.size(); ++j)
-        {
-            System& selectedSystem = randomSystem();
-
-            size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
-            for (size_t k = 0; k != numberOfSteps; k++)
-            {
-                size_t selectedComponent = selectedSystem.randomComponent();
-                particleMoves.performRandomMove(selectedSystem, selectedComponent);
-            }
-        }
-
-        if (i % printEvery == 0)
-        {
-            for (System& system : systems)
-            {
-                system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-                system.writeInitializationStatusReport(i, numberOfInitializationCycles);
-            }
-
-            std::cout << "Init iteration: " << i << std::endl;
-
-        }
-    }
+  }
 }
 
 void MonteCarlo::equilibrate()
 {
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.computeTotalEnergies();
+    system.runningEnergies.print(stream, "Recomputed from scratch");
+
+    for(Component &component : system.components)
+    {
+      component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Initialize);
+    }
+  };
+
+  for (size_t i = 0; i != numberOfEquilibrationCycles; i++)
+  {
+    for (size_t j = 0; j != systems.size(); ++j)
+    {
+      System& selectedSystem = randomSystem();
+
+      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+      for (size_t k = 0; k != numberOfSteps; k++)
+      {
+        size_t selectedComponent = selectedSystem.randomComponent();
+        particleMoves.performRandomMove(selectedSystem, selectedComponent);
+      }
+    }
+
     for (System& system : systems)
     {
-        system.computeTotalEnergies();
-        system.writeToOutputFile(system.runningEnergies.print("Recomputed from scratch"));
+      for(Component &component : system.components)
+      {
+        if(component.hasFractionalMolecule)
+        {
+          component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Sample);
+        }
+      }
+    }
 
+    if (i % printEvery == 0)
+    {
+      for (System& system : systems)
+      {
+        std::ostream stream(streams[system.systemId].rdbuf());
+
+        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        system.writeEquilibrationStatusReport(stream, i, numberOfEquilibrationCycles);
         for(Component &component : system.components)
         {
-          component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Initialize);
-        }
-    };
-
-    for (size_t i = 0; i != numberOfEquilibrationCycles; i++)
-    {
-        for (size_t j = 0; j != systems.size(); ++j)
-        {
-            System& selectedSystem = randomSystem();
-
-            size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
-            for (size_t k = 0; k != numberOfSteps; k++)
-            {
-                size_t selectedComponent = selectedSystem.randomComponent();
-                particleMoves.performRandomMove(selectedSystem, selectedComponent);
-            }
-        }
-
-        for (System& system : systems)
-        {
-          for(Component &component : system.components)
+          if(component.hasFractionalMolecule)
           {
-            if(component.hasFractionalMolecule)
-            {
-              component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Sample);
-            }
+            component.lambda.WangLandauIteration(Lambda::WangLandauPhase::AdjustBiasingFactors);
           }
         }
-
-        if (i % printEvery == 0)
-        {
-            for (System& system : systems)
-            {
-                system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-                system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles);
-                for(Component &component : system.components)
-                {
-                   if(component.hasFractionalMolecule)
-                   {
-                     component.lambda.WangLandauIteration(Lambda::WangLandauPhase::AdjustBiasingFactors);
-                   }
-                }
-            }
-
-            std::cout << "Equilibration iteration: " << i << std::endl;
-
-        }
+      }
     }
+  }
 }
 
 void MonteCarlo::production()
 {
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.computeTotalEnergies(); 
+    system.runningEnergies.print(stream, "Recomputed from scratch");
+    //system.sampleMovie.initialize();
+
+    system.clearMoveStatistics();
+    system.clearTimingStatistics();
+
+    for(Component &component : system.components)
+    {
+      component.clearMoveStatistics();
+      component.clearTimingStatistics();
+      if(component.hasFractionalMolecule)
+      {
+        component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
+      }
+    }
+  };
+
+  
+  for (size_t i = 0; i != numberOfCycles; i++)
+  {
+    estimation.setCurrentSample(i);
+
+    for (size_t j = 0; j != systems.size(); ++j)
+    {
+      System& selectedSystem = randomSystem();
+      
+      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+      for (size_t k = 0; k != numberOfSteps; k++)
+      {
+        size_t selectedComponent = selectedSystem.randomComponent();
+        particleMoves.performRandomMoveProduction(selectedSystem, selectedComponent, estimation.currentBin);
+      }
+    }
+
     for (System& system : systems)
     {
-        system.computeTotalEnergies(); 
-        system.writeToOutputFile(system.runningEnergies.print("Recomputed from scratch"));
-        system.sampleMovie.initialize();
+      std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+      std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+      system.currentEnergyStatus = molecularPressure.first;
+      system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+      std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+      system.cpuTime_Pressure += (time2 - time1);
 
-        system.clearMoveStatistics();
-        system.clearTimingStatistics();
+      // add the sample energy to the averages
+      if (i % 10 == 0 || i % printEvery == 0)
+      {
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+      }
 
-        for(Component &component : system.components)
-        {
-          component.clearMoveStatistics();
-          component.clearTimingStatistics();
-          if(component.hasFractionalMolecule)
-          {
-            component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
-          }
-        }
-    };
-
-    
-    for (size_t i = 0; i != numberOfCycles; i++)
-    {
-        estimation.setCurrentSample(i);
-
-        for (size_t j = 0; j != systems.size(); ++j)
-        {
-            System& selectedSystem = randomSystem();
-            
-            size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
-            for (size_t k = 0; k != numberOfSteps; k++)
-            {
-                size_t selectedComponent = selectedSystem.randomComponent();
-                particleMoves.performRandomMoveProduction(selectedSystem, selectedComponent, estimation.currentBin);
-            }
-
-        }
-
-        for (System& system : systems)
-        {
-            std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
-            std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-            system.currentEnergyStatus = molecularPressure.first;
-            system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-            std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-            system.cpuTime_Pressure += (time2 - time1);
-
-            // add the sample energy to the averages
-            if (i % 10 == 0 || i % printEvery == 0)
-            {
-              system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-            }
-
-            system.sampleProperties(estimation.currentBin);
-        }
-
-        if (i % printEvery == 0)
-        {
-            for (System& system : systems)
-            {
-                system.writeProductionStatusReport(i, numberOfCycles);
-            }
-
-            std::cout << "iteration: " << i << std::endl;
-        }
-
-        for (System& system : systems)
-        {
-            system.sampleMovie.update(i);
-        }
+      system.sampleProperties(estimation.currentBin);
     }
+
+    if (i % printEvery == 0)
+    {
+      for (System& system : systems)
+      {
+        std::ostream stream(streams[system.systemId].rdbuf());
+        system.writeProductionStatusReport(stream, i, numberOfCycles);
+      }
+    }
+
+    //for (System& system : systems)
+    //{
+        //system.sampleMovie.update(i);
+    //}
+  }
 
 }
 
 void MonteCarlo::output()
 {
-    for (System& system : systems)
-    {
-        RunningEnergy runningEnergies = system.runningEnergies;
-        system.writeToOutputFile(runningEnergies.print("Running energies"));
-        
-        system.computeTotalEnergies();
-        RunningEnergy recomputedEnergies = system.runningEnergies;
-        system.writeToOutputFile(recomputedEnergies.print("Recomputed from scratch"));
-        
-        RunningEnergy drift = runningEnergies - recomputedEnergies;
-        system.writeToOutputFile(drift.print("Monte-Carlo energy drift"));
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
 
-        system.writeToOutputFile("\n\n");
-        
-        system.writeToOutputFile("Monte-Carlo moves statistics\n");
-        system.writeToOutputFile("===============================================================================\n\n");
-        
-        system.writeMCMoveStatistics();
+    RunningEnergy runningEnergies = system.runningEnergies;
+    runningEnergies.print(stream, "Running energies");
+    
+    system.computeTotalEnergies();
+    RunningEnergy recomputedEnergies = system.runningEnergies;
+    recomputedEnergies.print(stream, "Recomputed from scratch");
+    
+    RunningEnergy drift = runningEnergies - recomputedEnergies;
+    drift.print(stream, "Monte-Carlo energy drift");
 
-        system.writeToOutputFile("Production run CPU timings of the MC moves\n");
-        system.writeToOutputFile("===============================================================================\n\n");
-         system.writeToOutputFile(system.writeCPUTimeStatistics());
-        std::chrono::duration<double> totalSimulationTime = (t2 - t1);
-        system.writeToOutputFile(std::print("\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count()));
+    std::print(stream, "\n\n");
 
-        system.writeToOutputFile(system.writeEnergyAveragesStatistics());
-        system.writeToOutputFile(system.writePressureAveragesStatistics());
-        system.writeToOutputFile(system.writeEnthalpyOfAdsorption());
-    }
+    std::print(stream, "Monte-Carlo moves statistics\n");
+    std::print(stream, "===============================================================================\n\n");
+    
+    system.writeMCMoveStatistics(stream);
+
+    std::print(stream, "Production run CPU timings of the MC moves\n");
+    std::print(stream, "===============================================================================\n\n");
+    system.writeCPUTimeStatistics(stream);
+    std::chrono::duration<double> totalSimulationTime = (t2 - t1);
+    std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
+
+    system.writeEnergyAveragesStatistics(stream);
+    system.writePressureAveragesStatistics(stream);
+    system.writeEnthalpyOfAdsorption(stream);
+  }
 }
 void MonteCarlo::cleanup()
 {
-    for (System& system : systems)
-    {
-        system.closeOutputFile();
-        system.sampleMovie.closeOutputFile();
-    }
+  //for (System& system : systems)
+  //{
+  //  //system.sampleMovie.closeOutputFile();
+  //}
 }

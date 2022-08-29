@@ -36,6 +36,8 @@ import property_dudlambda;
 import energy_factor;
 import running_energy;
 import threadpool;
+import multi_site_isotherm;
+import pressure_range;
 
 import <numbers>;
 import <complex>;
@@ -73,7 +75,7 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::v
                averageEnergies(numberOfBlocks, c.size()),
                currentEnergyStatus(c.size()),
                averagePressure(numberOfBlocks),
-               sampleMovie(systemId, forceField, simulationBox, atomPositions),
+               //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size())
 {
     
@@ -81,7 +83,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::v
 
 System::System(System&& s) noexcept :
     systemId(s.systemId),
-    components(s.components),
+    numberOfFrameworks(s.numberOfFrameworks),
+    components(std::move(s.components)),
     loadings(s.loadings),
     averageLoadings(s.averageLoadings),
     averageEnthalpiesOfAdsorption(s.averageEnthalpiesOfAdsorption),
@@ -104,9 +107,65 @@ System::System(System&& s) noexcept :
     averageEnergies(s.averageEnergies),
     currentEnergyStatus(s.currentEnergyStatus),
     averagePressure(s.averagePressure),
-    sampleMovie(std::move(s.sampleMovie)),
+    //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
-    outputFile(std::move(s.outputFile))
+    //outputFile(std::move(s.outputFile)),
+    columnNumberOfGridPoints(s.columnNumberOfGridPoints),
+    columnTotalPressure(s.columnTotalPressure),
+    columnPressureGradient(s.columnPressureGradient),
+    columnVoidFraction(s.columnVoidFraction),
+    columnParticleDensity(s.columnParticleDensity),
+    columnEntranceVelocity(s.columnEntranceVelocity),
+    columnLength(s.columnLength),
+    columnTimeStep(s.columnTimeStep),
+    columnNumberOfTimeSteps(s.columnNumberOfTimeSteps),
+    columnAutoNumberOfTimeSteps(s.columnAutoNumberOfTimeSteps),
+    mixturePredictionMethod(s.mixturePredictionMethod),
+    pressure_range(s.pressure_range)
+{
+}
+
+System::System(const System&& s) noexcept :
+    systemId(s.systemId),
+    numberOfFrameworks(s.numberOfFrameworks),
+    components(std::move(s.components)),
+    loadings(s.loadings),
+    averageLoadings(s.averageLoadings),
+    averageEnthalpiesOfAdsorption(s.averageEnthalpiesOfAdsorption),
+    swapableComponents(s.swapableComponents),
+    numberOfMoleculesPerComponent(s.numberOfMoleculesPerComponent),
+    numberOfIntegerMoleculesPerComponent(s.numberOfIntegerMoleculesPerComponent),
+    numberOfFractionalMoleculesPerComponent(s.numberOfFractionalMoleculesPerComponent),
+    numberOfReactionMoleculesPerComponent(s.numberOfReactionMoleculesPerComponent),
+    numberOfReactionFractionalMoleculesPerComponent(s.numberOfReactionFractionalMoleculesPerComponent),
+    idealGasEnergiesPerComponent(s.idealGasEnergiesPerComponent),
+    forceField(s.forceField),
+    numberOfPseudoAtoms(s.numberOfPseudoAtoms),
+    totalNumberOfPseudoAtoms(s.totalNumberOfPseudoAtoms),
+    simulationBox(std::move(s.simulationBox)),
+    averageSimulationBox(std::move(s.averageSimulationBox)),
+    atomPositions(std::move(s.atomPositions)),
+    atomVelocities(std::move(s.atomVelocities)),
+    atomForces(std::move(s.atomForces)),
+    runningEnergies(s.runningEnergies),
+    averageEnergies(s.averageEnergies),
+    currentEnergyStatus(s.currentEnergyStatus),
+    averagePressure(s.averagePressure),
+    //sampleMovie(std::move(s.sampleMovie)),
+    netCharge(std::move(s.netCharge)),
+    //outputFile(std::move(s.outputFile)),
+    columnNumberOfGridPoints(s.columnNumberOfGridPoints),
+    columnTotalPressure(s.columnTotalPressure),
+    columnPressureGradient(s.columnPressureGradient),
+    columnVoidFraction(s.columnVoidFraction),
+    columnParticleDensity(s.columnParticleDensity),
+    columnEntranceVelocity(s.columnEntranceVelocity),
+    columnLength(s.columnLength),
+    columnTimeStep(s.columnTimeStep),
+    columnNumberOfTimeSteps(s.columnNumberOfTimeSteps),
+    columnAutoNumberOfTimeSteps(s.columnAutoNumberOfTimeSteps),
+    mixturePredictionMethod(s.mixturePredictionMethod),
+    pressure_range(s.pressure_range)
 {
 }
 
@@ -511,30 +570,7 @@ void System::computeNumberOfPseudoAtoms()
   } 
 }
 
-
-void System::createOutputFile()
-{
-    std::filesystem::path cwd = std::filesystem::current_path();
-
-    std::filesystem::path directoryName = cwd / std::print("Output/System_{}/", systemId);
-    std::filesystem::path fileName = cwd / std::print("Output/System_{}/output_{}_{}.data",
-        systemId, simulationBox.temperature, simulationBox.pressure * Units::PressureConversionFactor);
-    std::filesystem::create_directories(directoryName);
-
-    outputFile = std::ofstream(fileName, std::ios::out);
-}
-
-void System::closeOutputFile()
-{
-     if (outputFile.is_open()) outputFile.close();
-}
-
-void System::writeToOutputFile(const std::string &s) 
-{
-    std::print(outputFile, s);
-}
-
-void System::writeOutputHeader()
+void System::writeOutputHeader(std::ostream &outputFile) const
 {
   std::print(outputFile, "Compiler and run-time data\n");
   std::print(outputFile, "===============================================================================\n");
@@ -562,177 +598,188 @@ void System::writeOutputHeader()
   std::print(outputFile, "\n");
 }
 
-void System::writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles)
+void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
-    std::print(outputFile, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-    std::print(outputFile, "===============================================================================\n\n");
+  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
 
-    std::print(outputFile, simulationBox.printStatus());
-    std::print(outputFile, "\n");
+  simulationBox.printStatus(stream);
+  std::print(stream, "\n");
 
-    std::print(outputFile, "Amount of molecules per component :\n");
-    std::print(outputFile, "-------------------------------------------------------------------------------\n");
-    for (int compA = 0; Component & c : components)
-    {
-        std::print(outputFile, loadings.printStatus(c, frameworkMass));
-        ++compA;
-    }
-    outputFile << "\n";
-    double conv = Units::EnergyToKelvin;
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (int compA = 0; const Component & c : components)
+  {
+    loadings.printStatus(stream, c, frameworkMass);
+    ++compA;
+  }
+  std::print(stream, "\n");
+  double conv = Units::EnergyToKelvin;
 
-    //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-    //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
-    //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
-    //double currentPressure = currentIdealPressure + currentExcessPressure;
-    //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
+  //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
+  //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
+  //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
+  //double currentPressure = currentIdealPressure + currentExcessPressure;
+  //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
+  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 
-    std::print(outputFile, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
-    std::print(outputFile, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
-    std::print(outputFile, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
-    std::print(outputFile, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
-    std::print(outputFile, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
-    std::print(outputFile, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
-    std::print(outputFile, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
-    std::print(outputFile, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
-    std::print(outputFile, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
-    std::print(outputFile, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
+  std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
+  std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
+  std::print(stream, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
+  std::print(stream, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
+  std::print(stream, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
+  std::print(stream, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
+  std::print(stream, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
+  std::print(stream, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
+  std::print(stream, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
+  std::print(stream, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
-
-    outputFile << "\n\n\n\n";
+  std::print(stream, "\n\n\n\n");
 }
 
-void System::writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles)
+void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
-    std::print(outputFile, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-    std::print(outputFile, "===============================================================================\n\n");
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
 
-    std::print(outputFile, simulationBox.printStatus());
-    std::print(outputFile, "\n");
+  simulationBox.printStatus(stream);
+  std::print(stream, "\n");
 
-    std::print(outputFile, "Amount of molecules per component :\n");
-    std::print(outputFile, "-------------------------------------------------------------------------------\n");
-    for (int compA = 0; Component & c : components)
-    {
-        std::print(outputFile, loadings.printStatus(c, frameworkMass));
-        ++compA;
-    }
-    outputFile << "\n";
-    double conv = Units::EnergyToKelvin;
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (int compA = 0; const Component & c : components)
+  {
+    loadings.printStatus(stream, c, frameworkMass);
+    ++compA;
+  }
+  std::print(stream, "\n");
+  double conv = Units::EnergyToKelvin;
 
-    //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-    //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
-    //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
-    //double currentPressure = currentIdealPressure + currentExcessPressure;
-    //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-    //
-    std::print(outputFile, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 
-    std::print(outputFile, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
-    std::print(outputFile, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
-    std::print(outputFile, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
-    std::print(outputFile, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
-    std::print(outputFile, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
-    std::print(outputFile, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
-    std::print(outputFile, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
-    std::print(outputFile, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
-    std::print(outputFile, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
-    std::print(outputFile, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
+  std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
+  std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
+  std::print(stream, "    framework-molecule Real: {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeCharge);
+  std::print(stream, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeVDW);
+  std::print(stream, "    molecule-molecule Real:  {: .6e} [K]\n", conv * runningEnergies.moleculeMoleculeCharge);
+  std::print(stream, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * runningEnergies.tail);
+  std::print(stream, "    Coulombic Fourier:       {: .6e} [K]\n", conv * runningEnergies.ewald);
+  std::print(stream, "    Intra VDW:               {: .6e} [K]\n", conv * runningEnergies.intraVDW);
+  std::print(stream, "    Intra Charge:            {: .6e} [K]\n", conv * runningEnergies.intraCoul);
+  std::print(stream, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
-    outputFile << "\n\n\n\n";
+  std::print(stream, "\n\n\n\n");
 }
 
-void System::writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles)
+void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
-    std::print(outputFile, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-    std::print(outputFile, "===============================================================================\n\n");
+  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
 
-    std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
-    std::print(outputFile, simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
-    std::print(outputFile, "\n");
-    
-    std::print(outputFile, "Amount of molecules per component :\n");
-    std::print(outputFile, "-------------------------------------------------------------------------------\n");
-    std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-    for (int compA = 0; Component & c : components)
-    {
-        std::print(outputFile, loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
-        ++compA;
-    }
-    std::print(outputFile, "\n");
-    double conv = Units::EnergyToKelvin;
+  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
+  std::print(stream, simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
+  std::print(stream, "\n");
+  
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
+  for (int compA = 0; const Component & c : components)
+  {
+    loadings.printStatus(stream, c, loadingData.first, loadingData.second, frameworkMass);
+    ++compA;
+  }
+  std::print(stream, "\n");
+  double conv = Units::EnergyToKelvin;
 
-    //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-    //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
-    //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
-    //double currentPressure = currentIdealPressure + currentExcessPressure;
+  //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
+  //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
+  //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
+  //double currentPressure = currentIdealPressure + currentExcessPressure;
 
-    //std::pair<double, double> pressure = averagePressure.averagePressure();
-    //std::print(outputFile, "Pressure:             {: .6e} ({: .6e} +/- {: .6e}) [bar]\n", 
-    //        1e-5 * Units::PressureConversionFactor * currentPressure,
-    //        1e-5 * Units::PressureConversionFactor * pressure.first,
-    //        1e-5 * Units::PressureConversionFactor * pressure.second);
-    std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-    double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-    double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
-    std::print(outputFile, "Average pressure tensor: \n");
-    std::print(outputFile, "-------------------------------------------------------------------------------\n");
-    std::print(outputFile, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-            pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-    std::print(outputFile, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-            pressureTensor.ay, pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-    std::print(outputFile, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-            pressureTensor.az, pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
-    std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-    std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-    std::pair<double, double> pressure = averagePressure.averagePressure();
-    std::print(outputFile, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
-            1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-    std::print(outputFile, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
-            1e-5 * Units::PressureConversionFactor * excessPressure.first, 1e-5 * Units::PressureConversionFactor * excessPressure.second);
-    std::print(outputFile, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
-            1e-5 * Units::PressureConversionFactor * pressure.first, 1e-5 * Units::PressureConversionFactor * pressure.second);
+  //std::pair<double, double> pressure = averagePressure.averagePressure();
+  //std::print(outputFile, "Pressure:             {: .6e} ({: .6e} +/- {: .6e}) [bar]\n", 
+  //        1e-5 * Units::PressureConversionFactor * currentPressure,
+  //        1e-5 * Units::PressureConversionFactor * pressure.first,
+  //        1e-5 * Units::PressureConversionFactor * pressure.second);
+  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
+  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
+  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+  std::print(stream, "Average pressure tensor: \n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
+  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
+  std::pair<double, double> pressure = averagePressure.averagePressure();
+  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * excessPressure.first, 1e-5 * Units::PressureConversionFactor * excessPressure.second);
+  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
+          1e-5 * Units::PressureConversionFactor * pressure.first, 1e-5 * Units::PressureConversionFactor * pressure.second);
 
-    std::print(outputFile, "dU/dlambda:           {: .6e}\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "dU/dlambda:           {: .6e}\n\n", conv * runningEnergies.dUdlambda);
 
-    std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
-    std::print(outputFile, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * currentEnergyStatus.totalEnergy.energy, 
-        conv * energyData.first.totalEnergy.energy, 
-        conv * energyData.second.totalEnergy.energy);
-    std::print(outputFile, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-        conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
-        conv * energyData.first.interEnergy.VanDerWaals.energy,
-        conv * energyData.second.interEnergy.VanDerWaals.energy);
-    std::print(outputFile, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
-        conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-        conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
-    std::print(outputFile, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
-        conv * energyData.first.interEnergy.CoulombicReal.energy,
-        conv * energyData.second.interEnergy.CoulombicReal.energy);
-    std::print(outputFile, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
-        conv * energyData.first.interEnergy.CoulombicFourier.energy, 
-        conv * energyData.second.interEnergy.CoulombicFourier.energy);
-    std::print(outputFile, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-        conv * currentEnergyStatus.intraEnergy.total().energy,
-        conv * energyData.first.intraEnergy.total().energy,
-        conv * energyData.second.intraEnergy.total().energy);
-    
-    std::print(outputFile, "\n\n\n");
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
+  std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.totalEnergy.energy, 
+      conv * energyData.first.totalEnergy.energy, 
+      conv * energyData.second.totalEnergy.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
+      conv * energyData.first.interEnergy.VanDerWaals.energy,
+      conv * energyData.second.interEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
+      conv * energyData.first.interEnergy.CoulombicReal.energy,
+      conv * energyData.second.interEnergy.CoulombicReal.energy);
+  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
+      conv * energyData.first.interEnergy.CoulombicFourier.energy, 
+      conv * energyData.second.interEnergy.CoulombicFourier.energy);
+  std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.intraEnergy.total().energy,
+      conv * energyData.first.intraEnergy.total().energy,
+      conv * energyData.second.intraEnergy.total().energy);
+  
+  std::print(stream, "\n\n\n");
 }
 
-void System::writeComponentStatus()
+void System::writeComponentStatus(std::ostream &stream) const
 {
-    std::print(outputFile, "Component definitions\n");
-    std::print(outputFile, "===============================================================================\n\n");
-    for (const Component& component : components)
-    {
-        std::print(outputFile, component.printStatus(forceField));
-    }
-    std::print(outputFile, "\n\n\n\n");
+  std::print(stream, "Component definitions\n");
+  std::print(stream, "===============================================================================\n\n");
+  for (const Component& component : components)
+  {
+    component.printStatus(stream, forceField);
+  }
+  std::print(stream, "\n\n\n\n");
+}
+
+void System::writeComponentFittingStatus(std::ostream &stream, [[maybe_unused]] const std::vector<std::pair<double, double>> &rawData) const
+{
+  std::print(stream, "Found {} data points\n", rawData.size());
+  for(const std::pair<double, double> &data : rawData)
+  {
+    std::print(stream, "pressure: {:.8e}  loading: {}\n", data.first, data.second);
+  }
+  std::print(stream, "\n");
+
+  if(!rawData.empty())
+  {
+    std::pair<double, double> pressureRange = std::make_pair(rawData.front().first, rawData.back().first);
+    std::print(stream,"Lowest pressure:     {:.8e}\n", pressureRange.first);
+    std::print(stream,"Highest pressure:    {:.8e}\n", pressureRange.second);
+  }
+  std::print(stream, "\n\n");
 }
 
 void System::sampleProperties(size_t currentBlock)
@@ -770,9 +817,8 @@ void System::sampleProperties(size_t currentBlock)
   cpuTime_Sampling += (t2 - t1);
 }
 
-const std::string System::writeCPUTimeStatistics() const
+void System::writeCPUTimeStatistics(std::ostream &stream) const
 {
-  std::ostringstream stream;
   std::print(stream, "Sampling properties:        {:14f} [s]\n", cpuTime_Sampling.count());
   std::print(stream, "Pressure computation:       {:14f} [s]\n\n", cpuTime_Pressure.count());
   for (int componentId = 0; const Component& component : components)
@@ -818,8 +864,6 @@ const std::string System::writeCPUTimeStatistics() const
     std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
     std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
   }
-
-  return stream.str();
 }
 
 std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const

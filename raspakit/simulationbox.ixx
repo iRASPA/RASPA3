@@ -10,6 +10,7 @@ import <string>;
 import <iostream>;
 import <cmath>;
 import <algorithm>;
+import <ostream>;
 
 #if defined(__GNUC__)
 #define ALWAYS_INLINE __attribute__((__always_inline__)) 
@@ -67,9 +68,9 @@ export struct SimulationBox
     double3 angles();
     double3 randomPosition() const;
 
-    std::string printParameters();
-    std::string printStatus();
-    std::string printStatus(const SimulationBox& average, const SimulationBox& error);
+    void printParameters(std::ostream &stream) const;
+    void printStatus(std::ostream &stream) const;
+    std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
 
     double lengthA;
     double lengthB;
@@ -80,9 +81,10 @@ export struct SimulationBox
     double3x3 unitCell;
     double3x3 inverseUnitCell;
     double volume;
-    double temperature = 300.0;
-    double pressure = 1e4;
-    double Beta = 1.0 / (Units::KB * 300.0);
+    double temperature{ 300.0 };
+    double pressure{ 1e4 };
+    double input_pressure{ 1e4 };
+    double Beta{ 1.0 / (Units::KB * 300.0)};
     double alpha{ 0.265058 };
     int3 kmax{ 8, 8, 8 };
     Type type = Type::Rectangular;

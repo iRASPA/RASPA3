@@ -29,6 +29,7 @@ import atom;
 import lambda;
 import print;
 import property_widom;
+import multi_site_isotherm;
 
 import simulationbox;
 import skparser;
@@ -38,22 +39,27 @@ import skasymmetricatom;
 import skatomcopy;
 import skcell;
 
-Component::Component(Component::Type type, size_t currentComponent, const ForceField& forceField, 
-                     const std::string& fileName, size_t numberOfBlocks) noexcept(false) :
-                     type(type), componentId(currentComponent), name(fileName),
+Component::Component(Component::Type type, size_t currentComponent, const ForceField& forceField, const std::string &componentName,
+                     std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false) :
+                     type(type), 
+                     componentId(currentComponent), 
+                     name(componentName),
                      lambda(numberOfBlocks, 41),
                      averageRosenbluthWeights(numberOfBlocks)
 {
-  switch(type)
+  if(fileName.has_value())
   {
-    case Component::Type::Adsorbate:
-    case Component::Type::Cation:
-      readComponent(forceField, fileName);
-      break;
-    case Component::Type::Framework:
-      readFramework(forceField, fileName);
-      break;
-  }
+    switch(type)
+    {
+      case Component::Type::Adsorbate:
+      case Component::Type::Cation:
+        readComponent(forceField, fileName.value());
+        break;
+      case Component::Type::Framework:
+        readFramework(forceField, fileName.value());
+        break;
+    }
+  } 
 }
 
 void Component::readComponent(const ForceField& forceField, const std::string& fileName)
@@ -61,14 +67,13 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   const char* env_p = std::getenv("RASPA_DIR");
   const std::string& moleculeFileName = fileName + ".def";
 
-
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
   if (!std::filesystem::exists(moleculePathfile)) moleculePathfile = std::filesystem::path(env_p) / moleculeFileName;
 
   if (!std::filesystem::exists(moleculePathfile)) throw std::runtime_error(std::print("File '{}' not found", moleculeFileName));
 
   std::ifstream moleculeFile{ moleculePathfile };
-  if (!moleculeFile) throw std::runtime_error(std::print("File '{}' exists, but error opening file", moleculeFileName));
+  if (!moleculeFile) throw std::runtime_error(std::print("[Component] File '{}' exists, but error opening file", moleculeFileName));
 
   std::string str{};
 
@@ -103,9 +108,6 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   if (n < 0 || n>10000) throw std::runtime_error("Incorrect amount of pseudo=atoms");
 
   atoms.resize(n);
-  //atomTypes.resize(n);
-  //atomCharges.resize(n);
-  //atomPositions.resize(n);
 
   std::getline(moleculeFile, str);
   std::getline(moleculeFile, str);
@@ -126,7 +128,6 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
       std::getline(moleculeFile, str);
       std::istringstream atomStream(str);
       atomStream >> id >> atomTypeString >> pos.x >> pos.y >> pos.z;
-      //atomPositions[i] = pos;
 
       auto it = std::find_if(forceField.pseudoAtoms.begin(), forceField.pseudoAtoms.end(), [&](const PseudoAtom &atom) {return atomTypeString == atom.name; });
       
@@ -203,57 +204,53 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
   }
 }
 
-
-std::string Component::printStatus(const ForceField& forceField) const
+void Component::printStatus(std::ostream &stream, const ForceField& forceField) const
 {
-    std::ostringstream stream;
-    std::print(stream, "Component {} [{}]\n\n", componentId, name);
+  std::print(stream, "Component {} [{}]\n\n", componentId, name);
 
-    std::print(stream, "    Critical temperature:  {} [K]\n", criticalTemperature);
-    std::print(stream, "    Critical pressure:     {} [Pa]\n", criticalPressure);
-    std::print(stream, "    Acentric factor:       {} [-]\n\n", acentricFactor);
+  std::print(stream, "    Critical temperature:  {} [K]\n", criticalTemperature);
+  std::print(stream, "    Critical pressure:     {} [Pa]\n", criticalPressure);
+  std::print(stream, "    Acentric factor:       {} [-]\n\n", acentricFactor);
 
-    std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
-    std::print(stream << std::boolalpha, "    Swapable:                     {}\n\n", swapable);
-    std::print(stream, "    Mass:                         {} [-]\n", mass);
-    std::print(stream << std::boolalpha, "    Compute fugacity-coefficient: {}\n", computeFugacityCoefficient);
-    std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient);
-    std::print(stream, "    Bulk fluid density:           {} [-]\n", bulkFluidDensity);
-    std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
-    std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
+  std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
+  std::print(stream << std::boolalpha, "    Swapable:                     {}\n\n", swapable);
+  std::print(stream, "    Mass:                         {} [-]\n", mass);
+  std::print(stream << std::boolalpha, "    Compute fugacity-coefficient: {}\n", computeFugacityCoefficient);
+  std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient);
+  std::print(stream, "    Bulk fluid density:           {} [-]\n", bulkFluidDensity);
+  std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
+  std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
 
-    std::print(stream, "    number Of Atoms:  {}\n", atoms.size());
-    if(type != Component::Type::Framework)
+  std::print(stream, "    number Of Atoms:  {}\n", atoms.size());
+  if(type != Component::Type::Framework)
+  {
+    for (size_t i = 0; i < atoms.size(); ++i)
     {
-      for (size_t i = 0; i < atoms.size(); ++i)
-      {
-          size_t atomType = static_cast<size_t>(atoms[i].type);
-          std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
-          std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
-                     i, atomTypeString, atoms[i].position.x, atoms[i].position.y, atoms[i].position.z, atoms[i].charge);
-      }
-      std::print(stream, "\n");
+        size_t atomType = static_cast<size_t>(atoms[i].type);
+        std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
+        std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
+                   i, atomTypeString, atoms[i].position.x, atoms[i].position.y, atoms[i].position.z, atoms[i].charge);
     }
-    std::print(stream, "    Translation-move probability:             {} [-]\n", probabilityTranslationMove);
-    std::print(stream, "    Random translation-move probability:      {} [-]\n", probabilityRandomTranslationMove);
-    std::print(stream, "    Rotation-move probability:                {} [-]\n", probabilityRotationMove);
-    std::print(stream, "    Random rotation-move probability:         {} [-]\n", probabilityRandomRotationMove);
-    std::print(stream, "    Volume-move probability:                  {} [-]\n", probabilityVolumeMove);
-    std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", probabilityReinsertionMove_CBMC);
-    std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", probabilityIdentityChangeMove_CBMC);
-    std::print(stream, "    Swap-move (CBMC) probability:             {} [-]\n", probabilitySwapMove_CBMC);
-    std::print(stream, "    Swap-move (CFCMC) probability:            {} [-]\n", probabilitySwapMove_CFCMC);
-    std::print(stream, "    Swap-move (CFCMC/CBMC) probability:       {} [-]\n", probabilitySwapMove_CFCMC_CBMC);
-    std::print(stream, "    Gibbs Volume-move probability:            {} [-]\n", probabilityGibbsVolumeMove);
-    std::print(stream, "    Gibbs Swap-move (CBMC) probability:       {} [-]\n", probabilityGibbsSwapMove_CBMC);
-    std::print(stream, "    Gibbs Swap-move (CFCMC) probability:      {} [-]\n", probabilityGibbsSwapMove_CFCMC);
-    std::print(stream, "    Gibbs Swap-move (CFCMC/CBMC) probability: {} [-]\n", probabilityGibbsSwapMove_CFCMC_CBMC);
-    std::print(stream, "    Widom probability:                        {} [-]\n", probabilityWidomMove);
-    std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", probabilityWidomMove_CFCMC);
-    std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", probabilityWidomMove_CFCMC_CBMC);
     std::print(stream, "\n");
-
-    return stream.str();
+  }
+  std::print(stream, "    Translation-move probability:             {} [-]\n", probabilityTranslationMove);
+  std::print(stream, "    Random translation-move probability:      {} [-]\n", probabilityRandomTranslationMove);
+  std::print(stream, "    Rotation-move probability:                {} [-]\n", probabilityRotationMove);
+  std::print(stream, "    Random rotation-move probability:         {} [-]\n", probabilityRandomRotationMove);
+  std::print(stream, "    Volume-move probability:                  {} [-]\n", probabilityVolumeMove);
+  std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", probabilityReinsertionMove_CBMC);
+  std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", probabilityIdentityChangeMove_CBMC);
+  std::print(stream, "    Swap-move (CBMC) probability:             {} [-]\n", probabilitySwapMove_CBMC);
+  std::print(stream, "    Swap-move (CFCMC) probability:            {} [-]\n", probabilitySwapMove_CFCMC);
+  std::print(stream, "    Swap-move (CFCMC/CBMC) probability:       {} [-]\n", probabilitySwapMove_CFCMC_CBMC);
+  std::print(stream, "    Gibbs Volume-move probability:            {} [-]\n", probabilityGibbsVolumeMove);
+  std::print(stream, "    Gibbs Swap-move (CBMC) probability:       {} [-]\n", probabilityGibbsSwapMove_CBMC);
+  std::print(stream, "    Gibbs Swap-move (CFCMC) probability:      {} [-]\n", probabilityGibbsSwapMove_CFCMC);
+  std::print(stream, "    Gibbs Swap-move (CFCMC/CBMC) probability: {} [-]\n", probabilityGibbsSwapMove_CFCMC_CBMC);
+  std::print(stream, "    Widom probability:                        {} [-]\n", probabilityWidomMove);
+  std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", probabilityWidomMove_CFCMC);
+  std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", probabilityWidomMove_CFCMC_CBMC);
+  std::print(stream, "\n");
 }
 
 void Component::normalizeMoveProbabilties()
@@ -612,4 +609,23 @@ void Component::clearTimingStatistics()
     cpuTime_WidomMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_WidomMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
     cpuTime_WidomMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
+}
+
+void Component::printBreakthroughStatus(std::ostream &stream) const
+{
+  std::print(stream, "Component {} [{}]\n", componentId, name);
+  if(isCarrierGas)
+  {
+    std::print(stream, "    carrier-gas\n");
+
+    std::print(stream, isotherm.print());
+  }
+  std::print(stream, "    mol-fraction in the gas:   {} [-]\n", molFraction);
+  if(!isCarrierGas)
+  {
+    std::print(stream, "    mass-transfer coefficient: {} [1/s]\n", massTransferCoefficient);
+    std::print(stream, "    diffusion coefficient:     {} [m^2/s]\n", axialDispersionCoefficient);
+
+    std::print(stream, isotherm.print());
+  }
 }

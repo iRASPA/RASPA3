@@ -6,14 +6,10 @@ import double3;
 import double4;
 import double3x3;
 import double4x4;
+
 import <array>;
 import <cstdlib>;
 import <algorithm>;
-
-SKBoundingBox::SKBoundingBox() : _minimum(double3(0, 0, 0)), _maximum(double3(20, 20, 20))
-{
-
-}
 
 SKBoundingBox::SKBoundingBox(double3 minimum, double3 maximum) : _minimum(minimum), _maximum(maximum)
 {
@@ -23,8 +19,6 @@ SKBoundingBox::SKBoundingBox(const double3 center, const double3 width, const do
     _minimum(center - (0.5 * scale) * width), _maximum(center + (0.5 * scale) * width)
 {
 }
-
-
 
 double3 SKBoundingBox::widths() const
 {
@@ -231,19 +225,4 @@ SKBoundingBox SKBoundingBox::adjustForTransformation(double4x4 transformation)
         max.z += transformation[2][2] * (this->_minimum.z - centerOfScene.z);
     }
     return SKBoundingBox(min + centerOfScene, max + centerOfScene);
-}
-
-SKBoundingBox operator+(const SKBoundingBox left, const SKBoundingBox right)
-{
-    return SKBoundingBox(left._minimum + right.minimum(), left._maximum + right._maximum);
-}
-
-SKBoundingBox operator+(const SKBoundingBox left, double3 right)
-{
-    return SKBoundingBox(left._minimum + right, left._maximum + right);
-}
-
-SKBoundingBox operator-(const SKBoundingBox left, double3 right)
-{
-    return SKBoundingBox(left._minimum - right, left._maximum - right);
 }

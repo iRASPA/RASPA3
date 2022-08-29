@@ -1,5 +1,5 @@
-CXX=clang++-14 
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O0 -g -fsanitize=address -fno-omit-frame-pointer -march=native -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=.
+CXX=clang++-14
+CXXFLAGS= -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O0 -g -fsanitize=address -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=.
 
 .PHONY: default
 default: libmathkit;
@@ -15,6 +15,7 @@ default: libmathkit;
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
 
+special_functions: special_functions.o
 hashcombine: hashcombine.o
 cubic: cubic.o
 ring: ring.o
@@ -38,8 +39,8 @@ float4x4: float3 float4 double3x3 double4x4 simd_quatd float3x3 float4x4.o
 ringmatrix: int3x3 ringmatrix.o
 matrix: ringmatrix matrix.o
 
-libmathkit: cubic hashcombine randomnumbers int3 bool3 double2 double3 double4 int3x3 double3x3 double4x3 double4x4 float2 float3 float4 simd_quatd float3x3 float3x4 float4x4 ringmatrix matrix
-	ar Scr libmathkit.a cubic.o hashcombine.o randomnumbers.o int3.o bool3.o double2.o double3.o double4.o int3x3.o double3x3.o double4x3.o double4x4.o float2.o float3.o float4.o simd_quatd.o float3x3.o float3x4.o float4x4.o ringmatrix.o matrix.o
+libmathkit: special_functions cubic hashcombine randomnumbers int3 bool3 double2 double3 double4 int3x3 double3x3 double4x3 double4x4 float2 float3 float4 simd_quatd float3x3 float3x4 float4x4 ringmatrix matrix
+	ar Scr libmathkit.a special_functions.o cubic.o hashcombine.o randomnumbers.o int3.o bool3.o double2.o double3.o double4.o int3x3.o double3x3.o double4x3.o double4x4.o float2.o float3.o float4.o simd_quatd.o float3x3.o float3x4.o float4x4.o ringmatrix.o matrix.o
 	ranlib libmathkit.a
 
 clean:

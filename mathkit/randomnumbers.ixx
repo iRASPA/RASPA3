@@ -15,12 +15,16 @@ public:
     {
         return getInstance().normalDistribution_(getInstance().mt);
     }
+    static size_t Integer(size_t i, size_t j)
+    {
+      return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * Uniform());
+    }
 private:
     RandomNumber()
     {
         std::random_device rd;
-        //mt = std::mt19937_64(rd());
-        mt = std::mt19937_64(14);
+        mt = std::mt19937_64(rd());
+        //mt = std::mt19937_64(14);
         uniformDistribution_ = std::uniform_real_distribution<double>(0.0, 1.0);
         normalDistribution_ = std::normal_distribution<double>();
     }

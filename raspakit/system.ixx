@@ -32,6 +32,8 @@ import property_pressure;
 import property_loading;
 import property_enthalpy;
 import threadpool;
+import isotherm;
+import pressure_range;
 
 export struct System
 {
@@ -40,6 +42,7 @@ export struct System
     ~System() = default;
 
     System(const System &s) = delete;
+    System(const System&& s) noexcept;
     System(System&& s) noexcept;
 
     void addComponent(const Component&& component) noexcept(false);
@@ -93,6 +96,8 @@ export struct System
     std::span<const Atom> spanOfFrameworkAtoms() const;
     std::span<const Atom> spanOfMoleculeAtoms() const;
     std::span<Atom> spanOfMoleculeAtoms();
+    std::span<const Component> spanOfAdsorbateComponents() const {return std::span(components.cbegin() + 
+          static_cast<std::vector<Component>::difference_type>(numberOfFrameworks), components.size() - numberOfFrameworks);}
 
     size_t numberOfMolecules() const {
         return std::reduce(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
@@ -139,20 +144,17 @@ export struct System
     void computeFrameworkDensity();
     void computeNumberOfPseudoAtoms();
 
-    void createOutputFile();
-    void closeOutputFile();
-    void writeToOutputFile(const std::string &s);
-    void writeOutputHeader();
-    void writeOutputHeaderHardware();
-    void writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles);
-    void writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles);
-    void writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles);
-    void writeComponentStatus();
+    void writeOutputHeader(std::ostream &outputFile) const;
+    void writeOutputHeaderHardware(std::ostream &outputFile) const;
+    void writeInitializationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
+    void writeEquilibrationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
+    void writeProductionStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
+    void writeComponentStatus(std::ostream &stream) const;
 
-    void writeMCMoveStatistics();
-    std::string writeEnergyAveragesStatistics() const;
-    std::string writeEnthalpyOfAdsorption() const;
-    std::string writePressureAveragesStatistics() const;
+    void writeMCMoveStatistics(std::ostream &stream) const;
+    void writeEnergyAveragesStatistics(std::ostream &stream) const;
+    void writeEnthalpyOfAdsorption(std::ostream &stream) const;
+    void writePressureAveragesStatistics(std::ostream &stream) const;
 
     size_t systemId{};
 
@@ -160,6 +162,15 @@ export struct System
     size_t numberOfFrameworkAtoms{ 0 };
 
     std::vector<Component> components;
+
+    std::vector<Component> nonFrameworkComponents()
+    {
+      std::vector<Component> comps{};
+      std::copy_if(components.begin(), components.end(), std::back_inserter(comps), [](const Component &c){
+          return c.type != Component::Type::Framework;} 
+        );
+      return comps;
+    }
 
     Loadings loadings;
     PropertyLoading averageLoadings;
@@ -205,7 +216,7 @@ export struct System
     EnergyStatus currentEnergyStatus;
     PropertyPressure averagePressure;
 
-    SampleMovie sampleMovie;
+    //SampleMovie sampleMovie;
     
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
     [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
@@ -254,7 +265,7 @@ export struct System
     void sampleProperties(size_t currentBlock);
     std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
     std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
-    const std::string writeCPUTimeStatistics() const;
+    void writeCPUTimeStatistics(std::ostream &stream) const;
 
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative() noexcept;
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative() noexcept;
@@ -296,5 +307,19 @@ export struct System
 
     std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
 
-    std::ofstream outputFile{};
+    void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
+
+    // Breakthrough settings
+    size_t columnNumberOfGridPoints{ 50 };
+    double columnTotalPressure{ 1e5 };
+    double columnPressureGradient{ 0.0 };
+    double columnVoidFraction{ 0.4 };
+    double columnParticleDensity{ 1000 };
+    double columnEntranceVelocity{ 0.1 };
+    double columnLength{ 0.5 };
+    double columnTimeStep{ 0.0005 };
+    size_t columnNumberOfTimeSteps { 0 };
+    bool columnAutoNumberOfTimeSteps{ true };
+    Isotherm::MixturePredictionMethod mixturePredictionMethod{ Isotherm::MixturePredictionMethod::IAST };
+    PressureRange pressure_range;
 };
