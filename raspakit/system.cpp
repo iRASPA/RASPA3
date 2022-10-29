@@ -307,7 +307,7 @@ void System::createInitialMolecules()
 
     for (size_t componentId = 0; const Component & component : components)
     {
-        size_t moleculeIdx = 0;
+        //size_t moleculeIdx = 0;
         if (component.swapable)
         {
             numberOfMoleculesPerComponent[componentId] = 0;
@@ -322,7 +322,7 @@ void System::createInitialMolecules()
                 } while (!growData || growData->RosenbluthWeight < 1.0);
 
                 insertFractionalMolecule(componentId, growData->atom);
-                moleculeIdx++;
+                //moleculeIdx++;
             }
         }
 
@@ -338,7 +338,7 @@ void System::createInitialMolecules()
 
             insertMolecule(componentId, growData->atom);
 
-            moleculeIdx++;
+            //moleculeIdx++;
         }
         componentId++;
     }
@@ -608,10 +608,9 @@ void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unuse
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (int compA = 0; const Component & c : components)
+  for (const Component & c : components)
   {
     loadings.printStatus(stream, c, frameworkMass);
-    ++compA;
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -647,10 +646,9 @@ void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (int compA = 0; const Component & c : components)
+  for (const Component & c : components)
   {
     loadings.printStatus(stream, c, frameworkMass);
-    ++compA;
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -683,10 +681,9 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (int compA = 0; const Component & c : components)
+  for (const Component & c : components)
   {
     loadings.printStatus(stream, c, loadingData.first, loadingData.second, frameworkMass);
-    ++compA;
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;

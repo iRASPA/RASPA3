@@ -1,5 +1,4 @@
-module;
-
+export module threadpool;
 
 import <atomic>;
 import <chrono>;
@@ -22,8 +21,6 @@ import threading;
 #include <omp.h>
 
 // https://github.com/DeveloperPaul123/thread-pool
-
-export module threadpool;
 
 template <typename T>
 class thread_safe_queue 

@@ -1,5 +1,5 @@
-CXX=clang++-14
-CXXFLAGS= -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -fno-omit-frame-pointer -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../mathkit
+CXX=clang++
+CXXFLAGS=-O3 -march=native -ffast-math  -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../mathkit
 
 .PHONY: default
 default: libsymmetrykit;
@@ -14,6 +14,7 @@ default: libsymmetrykit;
 
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
 skatomcopy: skatomcopy.o
 skasymmetricatom: skatomcopy skasymmetricatom.o
@@ -25,8 +26,8 @@ skparser: skstructure skparser.o
 skposcarparser: skparser skposcarparser.o
 
 libsymmetrykit: skelement skposcarparser skparser skstructure skcell skboundingbox skasymmetricatom skatomcopy
-	ar Scr libsymmetrykit.a skelement.o skposcarparser.o skparser.o skstructure.o skcell.o skboundingbox.o skasymmetricatom.o skatomcopy.o
-	ranlib libsymmetrykit.a
+	ar -rs libsymmetrykit.a skelement.pcm.o skelement.o skposcarparser.pcm.o skposcarparser.o skparser.pcm.o skparser.o skstructure.pcm.o skstructure.o skcell.pcm.o skcell.o skboundingbox.pcm.o skboundingbox.o skasymmetricatom.pcm.o skasymmetricatom.o skatomcopy.pcm.o skatomcopy.o
+	ranlib -c libsymmetrykit.a
 
 clean:
 	rm -f *.pcm *.o *.a

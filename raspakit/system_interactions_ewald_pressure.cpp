@@ -78,7 +78,6 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
     }
   }
 
-  size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   std::vector<std::complex<double>> cksum(numberOfComponents, std::complex<double>(0.0, 0.0));
   for(std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
@@ -129,7 +128,6 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             }
           }
 
-          ++nvec;
         }
       }
     }

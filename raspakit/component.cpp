@@ -2,24 +2,6 @@ module;
 
 module component;
 
-import <iostream>;
-import <sstream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <optional>;
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <exception>;
-import <iterator>;
-import <chrono>;
-#if defined(_WIN32)
-  import <cassert>;
-#else 
-  #include <assert.h>
-#endif
-
 import double3;
 import double3x3;
 import skposcarparser;
@@ -38,6 +20,26 @@ import skstructure;
 import skasymmetricatom;
 import skatomcopy;
 import skcell;
+
+import <iostream>;
+import <sstream>;
+import <algorithm>;
+import <vector>;
+import <span>;
+import <optional>;
+import <filesystem>;
+import <fstream>;
+import <cstdlib>;
+import <exception>;
+import <iterator>;
+import <chrono>;
+#if defined(_WIN32)
+  import <cassert>;
+#else 
+  #include <assert.h>
+#endif
+
+
 
 Component::Component(Component::Type type, size_t currentComponent, const ForceField& forceField, const std::string &componentName,
                      std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false) :
@@ -516,8 +518,8 @@ std::vector<Atom> Component::newAtoms(double scaling, size_t moleculeId) const
     //assert(atomPositions.size() == numberOfAtoms);
     //assert(atomCharges.size() == numberOfAtoms);
 #else
-    _LIBCPP_ASSERT(atomPositions.size() == numberOfAtoms, "wrong number of atoms");
-    _LIBCPP_ASSERT(atomCharges.size() == numberOfAtoms, "wrong number of atoms");
+    //_LIBCPP_ASSERT(atomPositions.size() == numberOfAtoms, "wrong number of atoms");
+    //_LIBCPP_ASSERT(atomCharges.size() == numberOfAtoms, "wrong number of atoms");
 #endif
 
     for (size_t i = 0; i < atoms.size(); ++i)

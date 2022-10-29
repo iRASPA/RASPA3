@@ -59,7 +59,7 @@ export namespace Units
 
   // 1 calorie (International Table) = 4.1868 J
   // 1 calorie (thermochemical) = 4.184 J
-  // 1 calorie (15°C) = 4.1855 J
+  // 1 calorie (15C) = 4.1855 J
   inline const double CalToJoule = 4.184;
   inline const double JouleToCal = 1.0 / CalToJoule;
   inline const double EvToKJPerMol = 96.48534;

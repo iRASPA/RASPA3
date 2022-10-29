@@ -1,5 +1,5 @@
-CXX=clang++-14
-CXXFLAGS= -fopenmp -g -Wformat=2 -Wno-gnu-anonymous-struct -Werror -O3 -march=native -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -ffast-math  -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
+CXX=clang++
+CXXFLAGS=-O3 -march=native -ffast-math -std=c++2b -fopenmp -g -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
 
 .PHONY: default
 default: libfoundationkit;
@@ -14,6 +14,7 @@ default: libfoundationkit;
 
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
 print: print.o
 characterset: characterset.o 
@@ -23,8 +24,8 @@ threading: threading.o
 threadpool: threading threadpool.o
 
 libfoundationkit: characterset indexpath scanner print threading threadpool
-	ar Scr libfoundationkit.a characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
-	ranlib libfoundationkit.a
+	ar -rs libfoundationkit.a characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
+	ranlib -c libfoundationkit.a
 
 clean:
 	rm -f *.pcm *.o *.a
