@@ -39,6 +39,7 @@ import <span>;
 import <string>;
 import <optional>;
 import <fstream>;
+import <filesystem>;
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),

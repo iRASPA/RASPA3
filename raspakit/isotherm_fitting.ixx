@@ -5,6 +5,7 @@ import <array>;
 import <vector>;
 import <string>;
 import <unordered_map>;
+import <iostream>;
 
 import input_reader;
 import component;

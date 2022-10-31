@@ -150,5 +150,11 @@
     <ClCompile Include="cubic.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="special_functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="special_functions.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

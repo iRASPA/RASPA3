@@ -1,3 +1,7 @@
+module;
+
+#include <omp.h>
+
 export module threadpool;
 
 import <atomic>;
@@ -18,7 +22,7 @@ import <semaphore>;
 
 import threading;
 
-#include <omp.h>
+
 
 // https://github.com/DeveloperPaul123/thread-pool
 

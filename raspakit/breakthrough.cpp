@@ -90,7 +90,7 @@ Breakthrough::Breakthrough(System &system):
     cachedP0((Ngrid + 1) * Ncomp),
     cachedPsi(Ngrid + 1)
 {
-  std::vector<const Component>::iterator itr = std::find_if(components.begin(), components.end(),
+  auto itr = std::find_if(components.begin(), components.end(),
        [&](const Component &c) {
           return c.isCarrierGas;
        });

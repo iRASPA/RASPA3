@@ -57,12 +57,6 @@
     <ClCompile Include="system_integration.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mc_particle_moves.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="monte_carlo.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -82,12 +76,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mc_cross_system_moves.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_system_moves.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_system_moves.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="potential_energy_vdw.ixx">
@@ -213,27 +201,6 @@
     <ClCompile Include="forcefield.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mc_particle_moves_deletion.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_insertion.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_reinsertion.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_rotation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_swap_cfcmc_cbmc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_translation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mc_particle_moves_widom.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="property_dudlambda.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -324,22 +291,103 @@
     <ClCompile Include="energy_factor.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="energy_interactions_framework_molecule.cpp">
+    <ClCompile Include="breakthrough.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="energy_interactions_framework_molecule.ixx">
+    <ClCompile Include="breakthrough.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="energy_interactions_intermolecular.cpp">
+    <ClCompile Include="breakthrough_simulation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="energy_interactions_intermolecular.ixx">
+    <ClCompile Include="breakthrough_simulation.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mc_particle_moves_random_rotation.cpp">
+    <ClCompile Include="isotherm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mc_particle_moves_random_translation.cpp">
+    <ClCompile Include="isotherm.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_deletion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_insertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_random_rotation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_random_translation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reinsertion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_rotation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_swap_cfcmc_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_translation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_volume.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_widom.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mixture_prediction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mixture_prediction.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mixture_prediction_simulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mixture_prediction_simulation.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multi_site_isotherm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="multi_site_isotherm.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pressure_range.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pressure_range.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="running_energy.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="running_energy.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_interactions_framework_molecule_pressure.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="isotherm_fitting.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="isotherm_fitting.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="isotherm_fitting_simulation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="isotherm_fitting_simulation.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

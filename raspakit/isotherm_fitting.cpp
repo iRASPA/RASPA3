@@ -2,6 +2,7 @@ module;
 
 module isotherm_fitting;
 
+import <string>;
 import <vector>;
 import <iostream>;
 import <fstream>;
@@ -30,17 +31,17 @@ import multi_site_isotherm;
 import system;
 import simulationbox;
 
-bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
+inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {
   return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
         [](int a, int b) {return std::tolower(a) == std::tolower(b); });
 }
 
-bool startsWith(const std::string &str, const std::string &prefix) {
+inline bool startsWith(const std::string &str, const std::string &prefix) {
     return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
 }
 
-std::string trim(const std::string& s)
+inline std::string trim(const std::string& s)
 {
   auto start = s.begin();
   while (start != s.end() && std::isspace(*start)) {
@@ -54,7 +55,6 @@ std::string trim(const std::string& s)
 
   return std::string(start, end + 1);
 }
-
 
 IsothermFitting::IsothermFitting(System &system) noexcept:
   system(system),

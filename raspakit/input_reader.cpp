@@ -29,12 +29,12 @@ import <complex>;
 import <ios>;
 import <optional>;
 
-bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
+inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {
     return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](auto a, auto b) {return std::tolower(a) == std::tolower(b); });
 }
 
-std::string trim(const std::string& s)
+inline std::string trim(const std::string& s)
 {
     auto start = s.begin();
     while (start != s.end() && std::isspace(*start)) {
@@ -338,8 +338,11 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("ForceField")))
       {
-        ForceField f(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
-        systems.back().forceField = f;
+        if (!systems.empty())
+        {
+          ForceField f(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
+          systems.back().forceField = f;
+        }
       }
 
       if (caseInSensStringCompare(keyword, "BoxLengths"))

@@ -241,7 +241,7 @@ template <>
 System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(double cutOffVDW, double cutOffCoulomb, 
         std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
 {
-  std::atomic_flag cancel{false};
+  std::atomic_flag cancel;
 
   ThreadPool &pool = ThreadPool::instance();
   const size_t numberOfHelperThreads = pool.getThreadCount();
@@ -344,7 +344,8 @@ template <>
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
   const double prefactor = Units::CoulombicConversionFactor;
 
-  std::atomic_flag cancel{false};
+  std::atomic_flag cancel;
+  cancel.clear();
 
   RunningEnergy energySum;
   #pragma omp parallel for reduction(+:energySum)
@@ -412,6 +413,7 @@ template <>
   ThreadPool &pool = ThreadPool::instance();
   switch(pool.threadingType)
   {
+    default:
     case ThreadPool::ThreadingType::Serial:
     {
       return computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::Serial>(cutOffVDW, cutOffCoulomb, atoms, skip);

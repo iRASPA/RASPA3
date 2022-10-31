@@ -11,6 +11,7 @@ export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield,
 {
     switch(forcefield.chargeMethod)
     {
+      default:
       case ForceField::ChargeMethod::Ewald:
       {
         double alpha = forcefield.alpha;

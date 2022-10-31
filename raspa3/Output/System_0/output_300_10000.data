@@ -1,0 +1,852 @@
+Compiler and run-time data
+===============================================================================
+RASPA 3.0.0
+
+Parallization: Serial, 1 thread
+
+Compiled as a 64-bits application
+Compiler: Microsoft compiler 1933
+Compile Date = Oct 31 2022, Compile Time = 14:05:36
+
+[From GetVersionExW] Operating System Version : 6.2 build 9200
+[From GetVersionExW] Service Pack :  0.0
+[From Version Helper-Functions] Windows 8
+Microsoft Windows 8 Professional
+Hostname: DESKTOP-QK0N9G4, ip address: 172.26.32.1
+Processor Architecture 64-bit
+CPU Type:Intel(R) Xeon(R) W-3245 CPU @ 3.20GHz
+Total System Memory : 98246 MB
+Number of Cores:  32
+
+Mutual consistent basic set of units:
+===============================================================================
+
+Unit of temperature: Kelvin
+Unit of length:      1e-10 [m]
+Unit of time:        1e-12 [s]
+Unit of mass:        1.6605402e-27 [kg]
+Unit of charge:      1.60217733e-19 [C/particle]
+
+
+Derived units and their conversion factors:
+===============================================================================
+
+Boltzmann constant:          0.8314464919307584 [-]
+Unit of energy:              1.6605402000000002e-23 [J]
+Unit of force:               1.6605402000000002e-13 [N]
+Unit of pressure:            16605402 [Pa]
+Unit of velocity:            100 [m/s]
+Unit of acceleration:        1.0000000000000002e-08 [m^2/s]
+Unit of diffusion:           1.0000000000000002e-08 [m^2/s]
+Unit of dipole moment:       1.60217733e-29 [C.m]
+Unit of electric potential:  0.00010364272224473431 [V]
+Unit of electric field:      1036427.222447343 [V]
+Unit of polarizability:      1.5458657349975198e-35 [-]
+Unit of Coulomb potential:   167101.08000665612 [K]
+Unit of dielectric constant: 1.5458657349975197e-05 [s^2 C^2/(kg m^3)]
+
+
+Derived units and their conversion factors:
+===============================================================================
+
+Boltzmann constant:          0.8314464919307584 [-]
+Unit of energy:              1.6605402000000002e-23 [J]
+Unit of force:               1.6605402000000002e-13 [N]
+Unit of pressure:            16605402 [Pa]
+Unit of velocity:            100 [m/s]
+Unit of acceleration:        1.0000000000000002e-08 [m^2/s]
+Unit of diffusion:           1.0000000000000002e-08 [m^2/s]
+Unit of dipole moment:       1.60217733e-29 [C.m]
+Unit of electric potential:  0.00010364272224473431 [V]
+Unit of electric field:      1036427.222447343 [V]
+Unit of polarizability:      1.5458657349975198e-35 [-]
+Unit of Coulomb potential:   167101.08000665612 [K]
+Unit of dielectric constant: 1.5458657349975197e-05 [s^2 C^2/(kg m^3)]
+
+
+Internal conversion factors:
+===============================================================================
+
+Energy to Kelvin:      1.202724284692786 [-]
+Kelvin to energy:      0.8314457542157568 [-]
+
+
+Simulation parameters:
+===============================================================================
+
+Temperature:     300.00000 
+Beta:              0.00401 
+Pressure:        10000.00000 
+
+
+Pseudo-atoms
+===============================================================================
+
+  0 - O        mass: 15.99900, charge: -1.02500
+  1 - Si       mass: 28.08550, charge:  2.05000
+  2 - CH4      mass: 16.04246, charge:  0.00000
+  3 - C_co2    mass: 12.00000, charge:  0.65120
+  4 - O_co2    mass: 15.99940, charge: -0.32560
+
+Force field status
+===============================================================================
+
+O        - O        Lennard-Jones p_0/k_B: 53.00000 [K], p_1  3.30000 [A]
+                                  shift: -0.09165 [K], tailcorrections: false
+O        - Si       Lennard-Jones p_0/k_B: 34.14674 [K], p_1  2.80000 [A]
+                                  shift: -0.02204 [K], tailcorrections: false
+O        - CH4      Lennard-Jones p_0/k_B: 91.65424 [K], p_1  3.51000 [A]
+                                  shift: -0.22945 [K], tailcorrections: false
+O        - C_co2    Lennard-Jones p_0/k_B: 39.83025 [K], p_1  3.02250 [A]
+                                  shift: -0.04067 [K], tailcorrections: false
+O        - O_co2    Lennard-Jones p_0/k_B: 67.38370 [K], p_1  3.15850 [A]
+                                  shift: -0.08959 [K], tailcorrections: false
+Si       - Si       Lennard-Jones p_0/k_B: 22.00000 [K], p_1  2.30000 [A]
+                                  shift: -0.00436 [K], tailcorrections: false
+Si       - CH4      Lennard-Jones p_0/k_B: 59.05083 [K], p_1  3.01000 [A]
+                                  shift: -0.05882 [K], tailcorrections: false
+Si       - C_co2    Lennard-Jones p_0/k_B: 25.66176 [K], p_1  2.52250 [A]
+                                  shift: -0.00886 [K], tailcorrections: false
+Si       - O_co2    Lennard-Jones p_0/k_B: 43.41385 [K], p_1  2.65850 [A]
+                                  shift: -0.02053 [K], tailcorrections: false
+CH4      - CH4      Lennard-Jones p_0/k_B: 158.50000 [K], p_1  3.72000 [A]
+                                  shift: -0.56218 [K], tailcorrections: false
+CH4      - C_co2    Lennard-Jones p_0/k_B: 68.87946 [K], p_1  3.23250 [A]
+                                  shift: -0.10523 [K], tailcorrections: false
+CH4      - O_co2    Lennard-Jones p_0/k_B: 116.52834 [K], p_1  3.36850 [A]
+                                  shift: -0.22793 [K], tailcorrections: false
+C_co2    - C_co2    Lennard-Jones p_0/k_B: 29.93300 [K], p_1  2.74500 [A]
+                                  shift: -0.01715 [K], tailcorrections: false
+C_co2    - O_co2    Lennard-Jones p_0/k_B: 50.63981 [K], p_1  2.88100 [A]
+                                  shift: -0.03878 [K], tailcorrections: false
+O_co2    - O_co2    Lennard-Jones p_0/k_B: 85.67100 [K], p_1  3.01700 [A]
+                                  shift: -0.08653 [K], tailcorrections: false
+
+Component definitions
+===============================================================================
+
+Component 0 [MFI-2x2x2.poscar]
+
+    Critical temperature:  0 [K]
+    Critical pressure:     0 [Pa]
+    Acentric factor:       0 [-]
+
+    Mol-fraction:                 1 [-]
+    Swapable:                     false
+
+    Mass:                         46144.128000002725 [-]
+    Compute fugacity-coefficient: true
+    Fugacity coefficient:         -1 [-]
+    Bulk fluid density:           0 [-]
+    Compressibility:              0 [-]
+    Excess molecules:             0 [-]
+
+    number Of Atoms:  2304
+    Translation-move probability:             0 [-]
+    Random translation-move probability:      0 [-]
+    Rotation-move probability:                0 [-]
+    Random rotation-move probability:         0 [-]
+    Volume-move probability:                  0 [-]
+    Reinsertion (CBMC) probability:           0 [-]
+    Identity-change (CBMC) probability:       0 [-]
+    Swap-move (CBMC) probability:             0 [-]
+    Swap-move (CFCMC) probability:            0 [-]
+    Swap-move (CFCMC/CBMC) probability:       0 [-]
+    Gibbs Volume-move probability:            0 [-]
+    Gibbs Swap-move (CBMC) probability:       0 [-]
+    Gibbs Swap-move (CFCMC) probability:      0 [-]
+    Gibbs Swap-move (CFCMC/CBMC) probability: 0 [-]
+    Widom probability:                        0 [-]
+    Widom (CFCMC) probability:                0 [-]
+    Widom (CFCMC/CBMC) probability:           0 [-]
+
+Component 1 [methane]
+
+    Critical temperature:  190.564 [K]
+    Critical pressure:     4599200 [Pa]
+    Acentric factor:       0.01142 [-]
+
+    Mol-fraction:                 1 [-]
+    Swapable:                     true
+
+    Mass:                         16.04246 [-]
+    Compute fugacity-coefficient: true
+    Fugacity coefficient:         0.9997824924549973 [-]
+    Bulk fluid density:           0.06432945626579717 [-]
+    Compressibility:              0.9997824858384016 [-]
+    Excess molecules:             0.029872397446404377 [-]
+
+    number Of Atoms:  1
+      0: CH4    position  0.00000  0.00000  0.00000, charge  0.00000
+
+    Translation-move probability:             0.2 [-]
+    Random translation-move probability:      0 [-]
+    Rotation-move probability:                0.2 [-]
+    Random rotation-move probability:         0 [-]
+    Volume-move probability:                  0 [-]
+    Reinsertion (CBMC) probability:           0.2 [-]
+    Identity-change (CBMC) probability:       0 [-]
+    Swap-move (CBMC) probability:             0 [-]
+    Swap-move (CFCMC) probability:            0 [-]
+    Swap-move (CFCMC/CBMC) probability:       0.4 [-]
+    Gibbs Volume-move probability:            0 [-]
+    Gibbs Swap-move (CBMC) probability:       0 [-]
+    Gibbs Swap-move (CFCMC) probability:      0 [-]
+    Gibbs Swap-move (CFCMC/CBMC) probability: 0 [-]
+    Widom probability:                        0 [-]
+    Widom (CFCMC) probability:                0 [-]
+    Widom (CFCMC/CBMC) probability:           0 [-]
+
+
+
+
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy :      1.786509e+07
+    framework-molecule VDW:  -1.891281e+03
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          1.786698e+07
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:               5.476211e+02
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy :      1.786509e+07
+    framework-molecule VDW:  -1.891281e+03
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          1.786698e+07
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:               5.476211e+02
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy :      1.786509e+07
+    framework-molecule VDW:  -1.891281e+03
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          1.786698e+07
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:               5.476211e+02
+
+Current cycle: 0 out of 100
+===============================================================================
+
+Box:      40.04400   0.00000   0.00000  Average:  40.04400   0.00000   0.00000
+           0.00000  39.79800   0.00000             0.00000  39.79800   0.00000
+           0.00000   0.00000  26.76600             0.00000   0.00000  26.76600
+Lengths:  40.04400  39.79800  26.76600  Average:  40.04400  39.79800  26.76600
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (MFI-2x2x2.poscar)
+    density:    1.796318e+03 kg/m^3
+Component 1 (methane)
+    absolute adsorption: 0.000000e+00 molec/uc (0.000000e+00 +/- 0.000000e+00)]
+                         0.000000e+00 mol/kg (0.000000e+00 +/- 0.000000e+00)]
+                         0.000000e+00 mg/g  (0.000000e+00 +/- 0.000000e+00)]
+    excess adsorption:   -2.987240e-02 molec/uc (-2.987240e-02 +/- 0.000000e+00)]
+                         -6.473716e-04 mol/kg (-6.473716e-04 +/- 0.000000e+00)]
+                         -1.038543e-02 mg/g  (-1.038543e-02 +/- 0.000000e+00)]
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 9.7101e-01  0.0000e+00  0.0000e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 0.0000e+00  9.7101e-01  0.0000e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 0.0000e+00  0.0000e+00  9.7101e-01 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   9.710079e-01 +/ 0.000000e+00 [bar]
+Excess pressure:      0.000000e+00 +/ 1.470827e-310 [bar]
+Pressure:             9.710079e-01 +/ 0.000000e+00 [bar]
+
+dU/dlambda:            0.000000e+00
+
+Total potential energy :  -1.845236e+03 (-1.845236e+03 +/- 0.000000e+00) [K]
+    Van der Waals:        -1.845236e+03 (-1.845236e+03 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 50 out of 100
+===============================================================================
+
+Box:      40.04400   0.00000   0.00000  Average:  40.04400   0.00000   0.00000
+           0.00000  39.79800   0.00000             0.00000  39.79800   0.00000
+           0.00000   0.00000  26.76600             0.00000   0.00000  26.76600
+Lengths:  40.04400  39.79800  26.76600  Average:  40.04400  39.79800  26.76600
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (MFI-2x2x2.poscar)
+    density:    1.796318e+03 kg/m^3
+Component 1 (methane)
+    absolute adsorption: 1.000000e+00 molec/uc (9.215686e-01 +/- 2.890914e-01)]
+                         2.167123e-02 mol/kg (1.997153e-02 +/- 6.264967e-03)]
+                         3.476598e-01 mg/g  (3.203924e-01 +/- 1.005055e-01)]
+    excess adsorption:   9.701276e-01 molec/uc (8.916962e-01 +/- 2.890914e-01)]
+                         2.102386e-02 mol/kg (1.932415e-02 +/- 6.264967e-03)]
+                         3.372744e-01 mg/g  (3.100070e-01 +/- 1.005055e-01)]
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.8635e+00 -3.0844e-05  2.9759e-03 +/- 2.8055e-01 1.2689e-02 1.3751e-02 [bar]
+-3.0844e-05  1.8261e+00 -2.3491e-03 +/- 1.2689e-02 4.1021e-01 2.0244e-02 [bar]
+ 2.9759e-03 -2.3491e-03  1.8565e+00 +/- 1.3751e-02 2.0244e-02 2.7319e-01 [bar]
+Ideal-gas pressure:   1.865858e+00 +/ 2.807101e-01 [bar]
+Excess pressure:     -1.712805e-02 +/ 4.173002e-02 [bar]
+Pressure:             1.848730e+00 +/ 3.211469e-01 [bar]
+
+dU/dlambda:           -5.469357e-12
+
+Total potential energy :  -4.600839e+03 (-3.691618e+03 +/- 2.348442e+03) [K]
+    Van der Waals:        -4.600839e+03 (-3.691618e+03 +/- 2.348442e+03) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Energy status Running energies
+===============================================================================
+
+Total potential energy :      1.786274e+07
+    framework-molecule VDW:  -4.239835e+03
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          1.786698e+07
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:              -1.914275e-12
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy :      1.786274e+07
+    framework-molecule VDW:  -4.239835e+03
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          1.786698e+07
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:               0.000000e+00
+
+Energy status Monte-Carlo energy drift
+===============================================================================
+
+Total potential energy :     -1.093871e-12
+    framework-molecule VDW:  -1.093871e-12
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:    0.000000e+00
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda:              -1.914275e-12
+
+
+
+Monte-Carlo moves statistics
+===============================================================================
+
+Component 0 [MFI-2x2x2.poscar]
+
+
+Component 1 [methane]
+    Translation total:               125        133        136
+    Translation constructed:         125        133        136
+    Translation accepted:             98         92         76
+    Translation fraction:       0.784000   0.691729   0.558824
+    Translation max-change:     1.000000   1.000000   1.000000
+
+    Rotation total:               143        132        122
+    Rotation constructed:         143        132        122
+    Rotation accepted:            143        132        122
+    Rotation fraction:       1.000000   1.000000   1.000000
+    Rotation max-change:     1.000000   1.000000   1.000000
+
+    Reinsertion(CBMC) total:               386
+    Reinsertion(CBMC) constructed:         326
+    Reinsertion(CBMC) accepted:             77
+    Reinsertion(CBMC) fraction:       0.199482
+    Reinsertion(CBMC) max-change:     0.000000
+
+    Swap (CB/CFCMC) total:                31          4        788
+    Swap (CB/CFCMC) constructed:          31          4        788
+    Swap (CB/CFCMC) accepted:              4          4        732
+    Swap (CB/CFCMC) fraction:       0.129032   1.000000   0.928934
+    Swap (CB/CFCMC) max-change:     0.000000   0.000000   0.000000
+
+    Lambda histogram and bias:
+    -------------------------------------------------------------------------------
+     0-0.000000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     1-0.025000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     2-0.050000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+     3-0.075000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     4-0.100000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     5-0.125000 (lambda)  P:  2.000000e+00 +/- 2.322568e+00 bias:  0.000000e+00 [-]
+     6-0.150000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     7-0.175000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+     8-0.200000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+     9-0.225000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+    10-0.250000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    11-0.275000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    12-0.300000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+    13-0.325000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+    14-0.350000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    15-0.375000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    16-0.400000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+    17-0.425000 (lambda)  P:  3.000000e+00 +/- 3.511393e+00 bias:  0.000000e+00 [-]
+    18-0.450000 (lambda)  P:  2.000000e+00 +/- 2.482930e+00 bias:  0.000000e+00 [-]
+    19-0.475000 (lambda)  P:  2.000000e+00 +/- 2.322568e+00 bias:  0.000000e+00 [-]
+    20-0.500000 (lambda)  P:  8.000000e+00 +/- 9.165005e+00 bias:  0.000000e+00 [-]
+    21-0.525000 (lambda)  P:  9.000000e+00 +/- 1.019968e+01 bias:  0.000000e+00 [-]
+    22-0.550000 (lambda)  P:  2.000000e+00 +/- 2.322568e+00 bias:  0.000000e+00 [-]
+    23-0.575000 (lambda)  P:  3.000000e+00 +/- 3.399892e+00 bias:  0.000000e+00 [-]
+    24-0.600000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    25-0.625000 (lambda)  P:  7.000000e+00 +/- 7.851714e+00 bias:  0.000000e+00 [-]
+    26-0.650000 (lambda)  P:  1.000000e+00 +/- 1.241465e+00 bias:  0.000000e+00 [-]
+    27-0.675000 (lambda)  P:  5.000000e+00 +/- 5.620972e+00 bias:  0.000000e+00 [-]
+    28-0.700000 (lambda)  P:  3.000000e+00 +/- 3.399892e+00 bias:  0.000000e+00 [-]
+    29-0.725000 (lambda)  P:  3.000000e+00 +/- 3.511393e+00 bias:  0.000000e+00 [-]
+    30-0.750000 (lambda)  P:  6.000000e+00 +/- 6.742881e+00 bias:  0.000000e+00 [-]
+    31-0.775000 (lambda)  P:  3.000000e+00 +/- 3.399892e+00 bias:  0.000000e+00 [-]
+    32-0.800000 (lambda)  P:  0.000000e+00 +/- 0.000000e+00 bias:  0.000000e+00 [-]
+    33-0.825000 (lambda)  P:  4.000000e+00 +/- 4.476166e+00 bias:  0.000000e+00 [-]
+    34-0.850000 (lambda)  P:  2.000000e+00 +/- 2.322568e+00 bias:  0.000000e+00 [-]
+    35-0.875000 (lambda)  P:  8.000000e+00 +/- 9.080533e+00 bias:  0.000000e+00 [-]
+    36-0.900000 (lambda)  P:  4.000000e+00 +/- 4.561433e+00 bias:  0.000000e+00 [-]
+    37-0.925000 (lambda)  P:  5.000000e+00 +/- 5.620972e+00 bias:  0.000000e+00 [-]
+    38-0.950000 (lambda)  P:  4.000000e+00 +/- 4.561433e+00 bias:  0.000000e+00 [-]
+    39-0.975000 (lambda)  P:  4.000000e+00 +/- 4.476166e+00 bias:  0.000000e+00 [-]
+    40-1.000000 (lambda)  P:  3.000000e+00 +/- 3.511393e+00 bias:  0.000000e+00 [-]
+
+
+    Lambda statistics:
+    -------------------------------------------------------------------------------
+     0-0.000000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     1-0.025000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     2-0.050000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+     3-0.075000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     4-0.100000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     5-0.125000 (lambda) Free energy: -2.079443e+02 +/- inf [K]
+     6-0.150000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     7-0.175000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+     8-0.200000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+     9-0.225000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+    10-0.250000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    11-0.275000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    12-0.300000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+    13-0.325000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+    14-0.350000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    15-0.375000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    16-0.400000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+    17-0.425000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    18-0.450000 (lambda) Free energy: -2.079443e+02 +/- inf [K]
+    19-0.475000 (lambda) Free energy: -2.079443e+02 +/- inf [K]
+    20-0.500000 (lambda) Free energy: -6.238330e+02 +/- inf [K]
+    21-0.525000 (lambda) Free energy: -6.591680e+02 +/- inf [K]
+    22-0.550000 (lambda) Free energy: -2.079443e+02 +/- inf [K]
+    23-0.575000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    24-0.600000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    25-0.625000 (lambda) Free energy: -5.837736e+02 +/- inf [K]
+    26-0.650000 (lambda) Free energy: -0.000000e+00 +/- inf [K]
+    27-0.675000 (lambda) Free energy: -4.828318e+02 +/- inf [K]
+    28-0.700000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    29-0.725000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    30-0.750000 (lambda) Free energy: -5.375283e+02 +/- inf [K]
+    31-0.775000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    32-0.800000 (lambda) Free energy:  inf +/- -nan(ind) [K]
+    33-0.825000 (lambda) Free energy: -4.158887e+02 +/- inf [K]
+    34-0.850000 (lambda) Free energy: -2.079443e+02 +/- inf [K]
+    35-0.875000 (lambda) Free energy: -6.238330e+02 +/- inf [K]
+    36-0.900000 (lambda) Free energy: -4.158887e+02 +/- inf [K]
+    37-0.925000 (lambda) Free energy: -4.828318e+02 +/- inf [K]
+    38-0.950000 (lambda) Free energy: -4.158887e+02 +/- inf [K]
+    39-0.975000 (lambda) Free energy: -4.158887e+02 +/- inf [K]
+    40-1.000000 (lambda) Free energy: -3.295840e+02 +/- inf [K]
+    -------------------------------------------------------------------------------
+    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta
+        Block[  0] -inf
+        Block[  1] nan
+        Block[  2] nan
+        Block[  3] -inf
+        Block[  4] nan
+    -------------------------------------------------------------------------------
+    Excess chemical potential:    -inf +/- -nan(ind) [K]
+    Ideal gas chemical potential: -3204.3420355944013 +/- 43.97024705707136 [K]
+    Total chemical potential:     -inf +/- -nan(ind) [K]
+    Imposed chemical potential:   -3880.231159970188 [K]
+    -------------------------------------------------------------------------------
+    Excess chemical potential:    -inf +/- -nan(ind) [kJ/mol]
+    Ideal gas chemical potential: -26.6423894434267 +/- 0.3655890766357829 [kJ/mol]
+    Total chemical potential:     -inf +/- -nan(ind) [kJ/mol]
+    Imposed chemical potential:   -32.262045857182805 [K]
+    -------------------------------------------------------------------------------
+    Imposed fugacity:             10000 [Pa]
+    Measured fugacity:            0 +/- nan [Pa]
+
+
+    dU/dlambda statistics:
+    -------------------------------------------------------------------------------
+     0-0.000000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     1-0.025000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     2-0.050000 (lambda) <dU/dlambda>: -1.599921e+03 +/- 1.986246e+03 [-]
+     3-0.075000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     4-0.100000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     5-0.125000 (lambda) <dU/dlambda>:  3.905540e+03 +/- 4.627714e+03 [-]
+     6-0.150000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     7-0.175000 (lambda) <dU/dlambda>: -2.034068e+03 +/- 2.525224e+03 [-]
+     8-0.200000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+     9-0.225000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+    10-0.250000 (lambda) <dU/dlambda>: -8.994375e+02 +/- 1.116620e+03 [-]
+    11-0.275000 (lambda) <dU/dlambda>: -2.132709e+03 +/- 2.647683e+03 [-]
+    12-0.300000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+    13-0.325000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+    14-0.350000 (lambda) <dU/dlambda>: -2.024440e+03 +/- 2.513271e+03 [-]
+    15-0.375000 (lambda) <dU/dlambda>: -1.750503e+03 +/- 2.173188e+03 [-]
+    16-0.400000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+    17-0.425000 (lambda) <dU/dlambda>: -1.900638e+03 +/- 2.046780e+03 [-]
+    18-0.450000 (lambda) <dU/dlambda>: -2.225280e+03 +/- 2.762607e+03 [-]
+    19-0.475000 (lambda) <dU/dlambda>: -1.645910e+03 +/- 1.784790e+03 [-]
+    20-0.500000 (lambda) <dU/dlambda>: -3.418348e-12 +/- 3.299354e-12 [-]
+    21-0.525000 (lambda) <dU/dlambda>: -2.734678e-12 +/- 2.169627e-12 [-]
+    22-0.550000 (lambda) <dU/dlambda>: -1.914275e-12 +/- 2.180483e-12 [-]
+    23-0.575000 (lambda) <dU/dlambda>: -3.099302e-12 +/- 3.341779e-12 [-]
+    24-0.600000 (lambda) <dU/dlambda>: -8.204035e-13 +/- 1.018502e-12 [-]
+    25-0.625000 (lambda) <dU/dlambda>: -2.930013e-12 +/- 2.312068e-12 [-]
+    26-0.650000 (lambda) <dU/dlambda>: -2.734678e-12 +/- 3.395007e-12 [-]
+    27-0.675000 (lambda) <dU/dlambda>: -2.953453e-12 +/- 3.078057e-12 [-]
+    28-0.700000 (lambda) <dU/dlambda>: -2.461211e-12 +/- 2.540591e-12 [-]
+    29-0.725000 (lambda) <dU/dlambda>: -4.922421e-12 +/- 5.346463e-12 [-]
+    30-0.750000 (lambda) <dU/dlambda>: -3.782972e-12 +/- 3.487694e-12 [-]
+    31-0.775000 (lambda) <dU/dlambda>: -4.010862e-12 +/- 3.722486e-12 [-]
+    32-0.800000 (lambda) <dU/dlambda>:  0.000000e+00 +/- 0.000000e+00 [-]
+    33-0.825000 (lambda) <dU/dlambda>: -3.213247e-12 +/- 2.894791e-12 [-]
+    34-0.850000 (lambda) <dU/dlambda>: -4.102018e-12 +/- 4.570669e-12 [-]
+    35-0.875000 (lambda) <dU/dlambda>: -4.170385e-12 +/- 3.859022e-12 [-]
+    36-0.900000 (lambda) <dU/dlambda>: -3.896917e-12 +/- 3.815845e-12 [-]
+    37-0.925000 (lambda) <dU/dlambda>: -3.500388e-12 +/- 3.334201e-12 [-]
+    38-0.950000 (lambda) <dU/dlambda>: -3.623449e-12 +/- 3.813957e-12 [-]
+    39-0.975000 (lambda) <dU/dlambda>: -3.691816e-12 +/- 3.597947e-12 [-]
+    40-1.000000 (lambda) <dU/dlambda>: -3.463926e-12 +/- 3.758437e-12 [-]
+    -----------------------------------------------------------------------
+    Excess chemical potential: integral du/dlambda over lambda (trapezoidal rule)
+        Block[  0] -64.69992514572405
+        Block[  1] -43.76256993810631
+        Block[  2] -1.6442253949470286e-12
+        Block[  3] 2.241367286144552
+        Block[  4] -190.38709007342533
+    -------------------------------------------------------------------------------
+    Excess chemical potential:   -307.68418835295705 +/- 358.29654232886406 [K]
+    Ideal chemical potential:    -3204.3420355944013 +/- 43.97024705707136 [K]
+    Total chemical potential:    -3512.0262239473586 +/- 0 [K]
+    Imposed chemical potential:   -3880.231159970188 [K]
+    -----------------------------------------------------------------------
+    Excess chemical potential:   -2.55822939019165 +/- 2.9790440317923395 [kJ/mol]
+    Ideal chemical potential:    -26.6423894434267 +/- 0.3655890766357829 [kJ/mol]
+    Total chemical potential:    -29.200618833618353 +/- 0 [kJ/mol]
+    Imposed chemical potential:   -32.262045857182805 [kJ/mol]
+    -------------------------------------------------------------------------------
+    Imposed fugacity:             10000 [Pa]
+    Measured fugacity:            34121.70836878967 +/- 70665.29375290572 [Pa]
+
+
+
+
+
+
+Production run CPU timings of the MC moves
+===============================================================================
+
+Sampling properties:              0.000233 [s]
+Pressure computation:             0.015951 [s]
+
+Component 0 [MFI-2x2x2.poscar]
+
+Component 1 [methane]
+    Translation move:             0.082329 [s]
+        Non-Ewald:                    0.051091 [s]
+        Ewald:                        0.030688 [s]
+        Overhead:                     0.000550 [s]
+    Rotation move:                0.081894 [s]
+        Non-Ewald:                    0.050624 [s]
+        Ewald:                        0.030557 [s]
+        Overhead:                     0.000713 [s]
+    Reinsertion (CBMC):           0.123034 [s]
+        Grow Non-Ewald:               0.042924 [s]
+        Retrace Non-Ewald:            0.008399 [s]
+        Ewald:                        0.025184 [s]
+        Overhead:                     0.046527 [s]
+    Swap (CB/CFCMC):              0.191270 [s]
+        Ins. Non-Ewald:               0.003910 [s]
+        Ins. Ewald:                   0.002367 [s]
+        Ins. Grow Non-Ewald:          0.017052 [s]
+        Ins. Grow Ewald:              0.002015 [s]
+        Del. Retrace Non-Ewald        0.002229 [s]
+        Del. Retrace Ewald:           0.000285 [s]
+        Del. Non-Ewald:               0.000512 [s]
+        Del. Ewald:                   0.000304 [s]
+        Lambda Non-Ewald:             0.100019 [s]
+        Lambda Ewald:                 0.061148 [s]
+        Overhead:                     0.001429 [s]
+
+
+Production simulation time:       0.625800 [s]
+
+
+Energy averages and statistics:
+===============================================================================
+
+Inter-molecular energy:
+-------------------------------------------------------------------------------
+
+    Inter-molecular energy 0-0 [MFI-2x2x2.poscar-MFI-2x2x2.poscar]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Inter-molecular energy 0-1 + 1-0 [MFI-2x2x2.poscar-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] -2671.157372385526
+        Block[  1] -3866.310622802924
+        Block[  2] -4537.385044839549
+        Block[  3] -4327.913173439253
+        Block[  4] -4380.6067529481425
+        -----------------------------------------------------------------------
+        Average  -3956.6745932830786 +/- 944.5503397754095 [K]
+
+    Inter-molecular energy 1-1 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] -0.6730587170140384
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  -0.13461174340280768 +/- 0.3736821996861941 [K]
+
+
+
+Inter-molecular energy contributions per energy type:
+-------------------------------------------------------------------------------
+
+    Van der Waals energy 0-0 [MFI-2x2x2.poscar-MFI-2x2x2.poscar]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Van der Waals energy 0-1 + 1-0 [MFI-2x2x2.poscar-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] -2671.157372385526
+        Block[  1] -3866.310622802924
+        Block[  2] -4537.385044839549
+        Block[  3] -4327.913173439253
+        Block[  4] -4380.6067529481425
+        -----------------------------------------------------------------------
+        Average  -3956.6745932830786 +/- 944.5503397754095 [K]
+
+    Van der Waals energy 1-1 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] -0.6730587170140384
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  -0.13461174340280768 +/- 0.3736821996861941 [K]
+
+    VDW Tail-Correction energy 0-0 [MFI-2x2x2.poscar-MFI-2x2x2.poscar]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    VDW Tail-Correction energy 0-1 + 1-0 [MFI-2x2x2.poscar-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    VDW Tail-Correction energy 1-1 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Real energy 0-0 [MFI-2x2x2.poscar-MFI-2x2x2.poscar]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Real energy 0-1 + 1-0 [MFI-2x2x2.poscar-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Real energy 1-1 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Fourier energy 0-0 [MFI-2x2x2.poscar-MFI-2x2x2.poscar]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Fourier energy 0-1 + 1-0 [MFI-2x2x2.poscar-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+    Coulomb Fourier energy 1-1 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] 0
+        Block[  1] 0
+        Block[  2] 0
+        Block[  3] 0
+        Block[  4] 0
+        -----------------------------------------------------------------------
+        Average  0 +/- 0 [K]
+
+
+Total energy:
+-------------------------------------------------------------------------------
+    Block[  0] -2671.157372385526
+    Block[  1] -3866.310622802924
+    Block[  2] -4537.385044839549
+    Block[  3] -4328.586232156268
+    Block[  4] -4380.6067529481425
+    ---------------------------------------------------------------------------
+    Average  -3956.809205026482 +/- 944.6523353351616 [K]
+
+Pressure averages and statistics:
+===============================================================================
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9212e+00  2.4213e-04  8.8287e-04 +/- 1.3270e-01 4.5418e-03 5.6543e-03 [bar]
+ 2.4213e-04  1.9020e+00 -2.6797e-04 +/- 4.5418e-03 1.8022e-01 7.6797e-03 [bar]
+ 8.8287e-04 -2.6797e-04  1.9156e+00 +/- 5.6543e-03 7.6797e-03 1.3166e-01 [bar]
+
+    Block[  0] 174781.42866396028
+    Block[  1] 194201.5874044003
+    Block[  2] 194201.5874044003
+    Block[  3] 203911.66677462036
+    Block[  4] 194201.5874044003
+    -----------------------------------------------------------------------
+    Ideal gas pressure  192259.5715303563 +/- 0.0007952404613564355 [Pa]
+                        1.9225957153035633 +/- 0.13205287547489078 [bar]
+
+
+    Block[  0] -3316.5937949831778
+    Block[  1] -986.0178387957329
+    Block[  2] -418.12140828100695
+    Block[  3] -126.63996799285816
+    Block[  4] 0
+    -----------------------------------------------------------------------
+    Excess pressure  -969.4746020105551 +/- 1695.8024557000656 [Pa]
+                     -0.009694746020105552 +/- 0.016958024557000656 [bar]
+
+
+    Block[  0] 171464.8348689771
+    Block[  1] 193215.5695656046
+    Block[  2] 193783.4659961193
+    Block[  3] 203785.0268066275
+    Block[  4] 194201.5874044003
+    -----------------------------------------------------------------------
+    Pressure average  191290.09692834577 +/- 0.0008905596743606248 [Pa]
+                      1.9129009692834575 +/- 0.1478810139774727 [bar]
+
+
+Enthalpy of adsorption
+===============================================================================
+
+Component 1 [methane]
+-------------------------------------------------------------------------------
+    Block[  0] -1951.9448300594884
+    Block[  1] -299.99999999999983
+    Block[  2] -299.99999999999983
+    Block[  3] 177.60817396599933
+    Block[  4] -299.99999999999983
+    ---------------------------------------------------------------------------
+    Enthalpy of adsorption: -534.8673312186978 +/- 1016.4137345229016 [K]
+                            -4.447135661737017 +/- 8.450936338880446 [kJ/mol]
+    Warning: need to subtract the ideal-gas energy.
+

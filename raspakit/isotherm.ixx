@@ -7,6 +7,7 @@ import <cmath>;
 import <iostream>;
 import <string>;
 import <exception>;
+import <numbers>;
 
 import special_functions;
 import randomnumbers;
@@ -176,7 +177,7 @@ export struct Isotherm
         else 
         {
           double prefactor = terms[0] / terms[2];
-          double temp = M_PI / (std::pow(terms[1], 1.0/terms[2]) * std::sin(M_PI * 1.0/terms[2]));
+          double temp = std::numbers::pi / (std::pow(terms[1], 1.0/terms[2]) * std::sin(std::numbers::pi * 1.0/terms[2]));
 
           double term1 = -1.0/(terms[1] * std::pow(pressure, terms[2]));
           double numerator = 1.0;

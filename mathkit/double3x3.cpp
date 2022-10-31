@@ -4,14 +4,14 @@ module;
 #define sqr( x ) (( x )*( x ))
 #define SIGN(a,b) ((b)>=0.0?fabs(a):-fabs(a))
 
+module double3x3;
+
 /* DSYEV prototype */
 extern "C"
 {
-    void dsyev_( char* jobz, char* uplo, int* n, double* a, int* lda,
-        double* w, double* work, int* lwork, int* info );
+    void dsyev_(char* jobz, char* uplo, int* n, double* a, int* lda,
+        double* w, double* work, int* lwork, int* info);
 }
-
-module double3x3;
 
 import <cmath>;
 import <numbers>;
