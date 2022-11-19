@@ -31,7 +31,6 @@ ForceField::ForceField(std::string pseudoAtomsFileName,
 void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false)
 {
   const char* env_p = std::getenv("RASPA_DIR");
-  std::cout << "RASPA_DIR" << env_p << std::endl;
   if (!env_p) throw std::runtime_error("Environment variable 'RASPA_DIR' not set");
 
   std::filesystem::path pseudoAtomsPathfile = std::filesystem::path(pseudoAtomsFileName);

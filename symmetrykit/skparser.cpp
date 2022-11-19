@@ -38,7 +38,7 @@ std::vector<std::tuple<double3, int, double> > SKParser::firstTestFrame()
         {
             for (const std::shared_ptr<SKAsymmetricAtom>& atom : structure->atoms)
             {
-                std::tuple<double3, int, double> atomTuple = std::make_tuple<double3, int, double>(atom->position(), atom->elementIdentifier(), 1.0);
+                std::tuple<double3, int, double> atomTuple = std::make_tuple<double3, int, double>(atom->position(), static_cast<int>(atom->elementIdentifier()), 1.0);
                 atoms.push_back(atomTuple);
             }
         }

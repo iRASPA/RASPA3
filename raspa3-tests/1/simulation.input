@@ -30,8 +30,8 @@ Component 0 MoleculeName               CO2
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
-	        SwapProbability            0.0
-	        CFCMC_CBMC_SwapProbability 1.0
+            SwapProbability            0.0
+            CFCMC_CBMC_SwapProbability 1.0
             WidomProbability           1.0
             CBCFCMCWidomProbability    1.0
             CreateNumberOfMolecules    0

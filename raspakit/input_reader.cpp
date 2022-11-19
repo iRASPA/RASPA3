@@ -259,6 +259,8 @@ InputReader::InputReader()
 
   std::size_t numberOfSystems{ 0 };
   size_t lineNumber{ 0 };
+
+  ForceField currentForceField;
  
   while (std::getline(fileInput, line))
   {
@@ -334,14 +336,15 @@ InputReader::InputReader()
       {
         numberOfSystems += 1;
         systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
+        systems.back().forceField = currentForceField;
       }
 
       if (caseInSensStringCompare(keyword, std::string("ForceField")))
       {
+        currentForceField = ForceField(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
         if (!systems.empty())
         {
-          ForceField f(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
-          systems.back().forceField = f;
+          systems.back().forceField = currentForceField;
         }
       }
 
@@ -363,6 +366,7 @@ InputReader::InputReader()
       {
         numberOfSystems += 1;
         systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
+        systems.back().forceField = currentForceField;
       }
 
       if (caseInSensStringCompare(keyword, std::string("FrameworkName")))
