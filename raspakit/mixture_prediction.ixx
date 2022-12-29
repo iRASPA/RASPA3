@@ -55,7 +55,7 @@ export class MixturePrediction
     std::vector<std::reference_wrapper<const Component>> sortedComponents;
     const size_t Ncomp;
     const size_t Nsorted;
-    size_t numberOfCarrierGases;
+    size_t numberOfCarrierGases{ 0 };
     size_t carrierGasComponent{ 0 };
     MultiSiteIsotherm::PredictionMethod predictionMethod;
     IASTMethod iastMethod;

@@ -1164,14 +1164,11 @@ void MixturePrediction::print() const
 
 void MixturePrediction::run(std::ostream &stream)
 {
-  std::cout << "Run: " << Ncomp << std::endl;
   std::vector<double> Yi(Ncomp);
   std::vector<double> Xi(Ncomp);
   std::vector<double> Ni(Ncomp);
   std::vector<double> cachedP0(Ncomp * maxIsothermTerms);
   std::vector<double> cachedPsi(maxIsothermTerms);
-
-  std::cout << "Run after: " << std::endl;
 
   for(size_t i = 0; i < Ncomp; ++i)
   {
@@ -1235,7 +1232,7 @@ void MixturePrediction::run(std::ostream &stream)
     for (size_t j = 0; j < Ncomp; j++)
     {
       double p_star =  Yi[j] * pressures[i] / Xi[j];
-      std::print(streams[j], "{} {} {} {} {}\n", pressures[i], components[j].isotherm.value(pressures[i]), Ni[j], Yi[j], Xi[j]);
+      std::print(streams[j], "{} {} {} {} {} {} {}\n", pressures[i], components[j].isotherm.value(pressures[i]), Ni[j], Yi[j], Xi[j], p_star, components[j].isotherm.psiForPressure(p_star));
       streams[j] << pressures[i] << " " << components[j].isotherm.value(pressures[i]) << " " << Ni[j] 
                  << " " << Yi[j] << " " << Xi[j] << " " 
                  << components[j].isotherm.psiForPressure(p_star) << "\n";
@@ -1395,6 +1392,8 @@ void MixturePrediction::createPlotScript()
     stream_graphs << "gnuplot.exe plot_pure_components\n";
     stream_graphs << "gnuplot.exe plot_mixture\n";
     stream_graphs << "gnuplot.exe plot_mixture_mol_fractions\n";
+    std::filesystem::path path{ "make_graphs.bat" };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
     std::ofstream stream_graphs("make_graphs");
     stream_graphs << "#!/bin/sh\n";
@@ -1402,15 +1401,11 @@ void MixturePrediction::createPlotScript()
     stream_graphs << "gnuplot plot_pure_components\n";
     stream_graphs << "gnuplot plot_mixture\n";
     stream_graphs << "gnuplot plot_mixture_mol_fractions\n";
-  #endif
-
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_graphs"};
+    std::filesystem::path path{ "make_graphs" };
     std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_graphs", S_IRWXU);
   #endif
 
+ 
 }
 
 void MixturePrediction::printErrorStatus(double psi_value, double sum, double P, const std::vector<double> Yi, double cachedP0[])

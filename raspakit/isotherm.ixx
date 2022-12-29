@@ -170,7 +170,7 @@ export struct Isotherm
         else 
         {
           double prefactor = parameters[0] / parameters[2];
-          double temp = M_PI / (std::pow(parameters[1], 1.0 / parameters[2]) * std::sin(M_PI * 1.0 / parameters[2]));
+          double temp = std::numbers::pi / (std::pow(parameters[1], 1.0 / parameters[2]) * std::sin(std::numbers::pi * 1.0 / parameters[2]));
 
           double term1 = -1.0/(parameters[1] * std::pow(pressure, parameters[2]));
           double numerator = 1.0;

@@ -243,12 +243,12 @@ std::string parseString(const std::string& arguments, const std::string& keyword
 
 InputReader::InputReader()
 {
-  const char* env_p = std::getenv("RASPA_DIR");
+  char* env_p = std::getenv("RASPA_DIR");
 
   // environment variable 'RASPA_DIR' not set, assume current working directory
   if(!env_p)
   {
-    env_p = std::filesystem::current_path().c_str();
+   // env_p = std::filesystem::current_path().c_str();
   }
 
   std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
@@ -653,9 +653,10 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
-          if (caseInSensStringCompare(values[i], "Linear")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
-          if (caseInSensStringCompare(values[i], "Normal")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
+            // FIX!! no components exists yet
+          //if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
+          //if (caseInSensStringCompare(values[i], "Linear")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
+          //if (caseInSensStringCompare(values[i], "Normal")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
         }
       }
       if (caseInSensStringCompare(keyword, "CarrierGas"))

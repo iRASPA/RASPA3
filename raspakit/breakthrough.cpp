@@ -551,12 +551,8 @@ void Breakthrough::createPlotScript([[maybe_unused]]std::string directoryName)
     stream_graphs << "gnuplot plot_breakthrough\n";
   #endif
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{directoryName + "make_graphs"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else 
-    chmod(directoryName + "make_graphs", S_IRWXU);
-  #endif
+  std::filesystem::path path{directoryName + "make_graphs"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream(directoryName + "plot_breakthrough");
   stream << "set encoding utf8\n";
@@ -642,12 +638,8 @@ void Breakthrough::createMovieScripts([[maybe_unused]] std::string directoryName
     makeMovieStream << "./make_movie_Dqdt \"$@\"\n";
   #endif
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{directoryName + "make_movies"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else 
-    chmod(directoryName + "make_movies", S_IRWXU);
-  #endif
+  std::filesystem::path path{directoryName + "make_movies"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   createMovieScriptColumnV();
   createMovieScriptColumnPt();
@@ -713,12 +705,8 @@ void Breakthrough::createMovieScriptColumnV()
   #endif
   makeMovieStream << movieScriptTemplate("V");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_V"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_V", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_V"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_V");
 
@@ -776,12 +764,8 @@ void Breakthrough::createMovieScriptColumnPt()
   #endif
   makeMovieStream << movieScriptTemplate("Pt");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Pt"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Pt", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Pt"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_Pt");
 
@@ -838,12 +822,8 @@ void Breakthrough::createMovieScriptColumnQ()
   #endif
   makeMovieStream << movieScriptTemplate("Q");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Q"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Q", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Q"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_Q");
 
@@ -915,12 +895,8 @@ void Breakthrough::createMovieScriptColumnQeq()
   #endif
   makeMovieStream << movieScriptTemplate("Qeq");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Qeq"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Qeq", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Qeq"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_Qeq");
 
@@ -992,12 +968,8 @@ void Breakthrough::createMovieScriptColumnP()
   #endif
   makeMovieStream << movieScriptTemplate("P");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_P"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_P", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_P"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_P");
 
@@ -1069,12 +1041,9 @@ void Breakthrough::createMovieScriptColumnPnormalized()
   #endif
   makeMovieStream << movieScriptTemplate("Pnorm");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Pnorm"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Pnorm", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Pnorm"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
   std::ofstream stream("plot_column_Pnorm");
 
@@ -1146,12 +1115,8 @@ void Breakthrough::createMovieScriptColumnDpdt()
   #endif
   makeMovieStream << movieScriptTemplate("Dpdt");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Dpdt"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Dpdt", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Dpdt"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 
   std::ofstream stream("plot_column_Dpdt");
 
@@ -1227,12 +1192,9 @@ void Breakthrough::createMovieScriptColumnDqdt()
   #endif
   makeMovieStream << movieScriptTemplate("Dqdt");
 
-  #if (__cplusplus >= 201703L)
-    std::filesystem::path path{"make_movie_Dqdt"};
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-  #else
-    chmod("make_movie_Dqdt", S_IRWXU);
-  #endif
+  std::filesystem::path path{"make_movie_Dqdt"};
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
   std::ofstream stream("plot_column_Dqdt");
 
