@@ -33,6 +33,7 @@ import property_loading;
 import property_enthalpy;
 import threadpool;
 import isotherm;
+import multi_site_isotherm;
 import pressure_range;
 
 export struct System
@@ -320,6 +321,8 @@ export struct System
     double columnTimeStep{ 0.0005 };
     size_t columnNumberOfTimeSteps { 0 };
     bool columnAutoNumberOfTimeSteps{ true };
-    Isotherm::MixturePredictionMethod mixturePredictionMethod{ Isotherm::MixturePredictionMethod::IAST };
+    MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{ MultiSiteIsotherm::PredictionMethod::IAST };
     PressureRange pressure_range;
+    size_t numberOfCarrierGases{ 0 };
+    size_t maxIsothermTerms{ 0 };
 };

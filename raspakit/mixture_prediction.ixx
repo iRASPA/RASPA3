@@ -5,6 +5,7 @@ import <span>;
 import <tuple>;
 import <string>;
 import <ostream>;
+import <functional>;
 
 import atom;
 import isotherm;
@@ -12,66 +13,125 @@ import multi_site_isotherm;
 import component;
 import system;
 
-export struct MixturePrediction
+export class MixturePrediction
 {
-  enum class PressureScale
-  {
-    Log = 0,
-    Normal = 1
-  };
+  public:
+    enum class IASTMethod
+    {
+      FastIAST = 0,
+      NestedLoopBisection = 1
+    };
 
-  MixturePrediction(const System &system, double pressureStart, double pressureEnd,
-                    size_t numberOfPressurePoints, MixturePrediction::PressureScale pressureScale);
+    MixturePrediction(const System &system, double pressureStart, double pressureEnd,
+                    size_t numberOfPressurePoints, Component::PressureScale pressureScale);
 
-  MixturePrediction(const System &system);
+    MixturePrediction(const System &system);
 
-  void writeHeader(std::ostream &stream) const;
+    void writeHeader(std::ostream &stream) const;
 
-  // Yi  = gas phase mol-fraction
-  // P   = total pressure
-  // Xi  = adsorbed phase mol-fraction
-  // Ni  = number of adsorbed molecules of component i
-  std::pair<size_t, size_t> predictMixture(const std::vector<double> &Yi,
-                                           const double &P,
-                                           std::vector<double> &Xi,
-                                           std::vector<double> &Ni,
-                                           double *cachedP0,
-                                           double &cachedPsi);
-  void run(std::ostream &stream);
-  void createPureComponentsPlotScript(std::string directoryNameString);
-  void createMixturePlotScript(std::string directoryNameString);
-  void createMixtureAdsorbedMolFractionPlotScript(std::string directoryNameString);
+    void print() const;
+    void run(std::ostream &stream);
+    void createPureComponentsPlotScript();
+    void createMixturePlotScript();
+    void createMixtureAdsorbedMolFractionPlotScript();
+    void createPlotScript();
 
-  const System &system;
-  std::string displayName;
-  std::span<const Component> components;
-  std::vector<size_t> sortedComponentIndices;
-  std::vector<std::reference_wrapper<const Component>> sortedComponents;
-  const size_t Ncomp;
-  Isotherm::MixturePredictionMethod predictionMethod;
+    // Yi  = gas phase mol-fraction
+    // P   = total pressure
+    // Xi  = adsorbed phase mol-fraction
+    // Ni  = number of adsorbed molecules of component i
+    std::pair<size_t, size_t> predictMixture(const std::vector<double> &Yi,
+                                             const double &P,
+                                             std::vector<double> &Xi,
+                                             std::vector<double> &Ni,
+                                             double *cachedP0,
+                                             double *cachedPsi);
 
-  std::vector<double> alpha1;
-  std::vector<double> alpha2;
-  std::vector<double> alpha_prod;
-  std::vector<double> x;
+  private:
+    const System &system;
+    std::string displayName;
+    std::span<const Component> components;
+    std::vector<size_t> sortedComponentIndices;
+    std::vector<std::reference_wrapper<const Component>> sortedComponents;
+    const size_t Ncomp;
+    const size_t Nsorted;
+    size_t numberOfCarrierGases;
+    size_t carrierGasComponent{ 0 };
+    MultiSiteIsotherm::PredictionMethod predictionMethod;
+    IASTMethod iastMethod;
+    size_t maxIsothermTerms{ 2 };
+    std::vector<std::vector<Component>> segregatedSortedComponents;
 
-  double temperature{ 300.0 };
-  double pressureStart{ 1e3 };
-  double pressureEnd{ 1e7 };
-  size_t numberOfPressurePoints{ 100 };
-  PressureScale pressureScale{ PressureScale::Log };
+    std::vector<double> alpha1;
+    std::vector<double> alpha2;
+    std::vector<double> alpha_prod;
+    std::vector<double> x;
 
-  std::pair<size_t, size_t> computeIAST(const std::vector<double> &Yi,
-                                    const double &P,
-                                    std::vector<double> &Xi,
-                                    std::vector<double> &Ni,
-                                    double *cachedP0,
-                                    double &cachedPsi);
-  std::pair<size_t, size_t> computeExplicitLangmuir(const std::vector<double> &Yi,
-                                                    const double &P,
-                                                    std::vector<double> &Xi,
-                                                    std::vector<double> &Ni);
+    std::vector<double> pstar;
+    std::vector<double> psi;
+    std::vector<double> G;
+    std::vector<double> delta;
+    std::vector<double> Phi;
 
-  void printErrorStatus(double psi, double sum, double P, const std::vector<double> Yi, double cachedP0[]) const;
+    double temperature{ 300.0 };
+    double pressureStart{ 1e3 };
+    double pressureEnd{ 1e8 };
+    size_t numberOfPressurePoints{ 100 };
+    Component::PressureScale pressureScale{ Component::PressureScale::Log };
+
+
+    std::pair<size_t, size_t> computeFastIAST(const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+    std::pair<size_t, size_t> computeFastSIAST(const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+    std::pair<size_t, size_t> computeFastSIAST(size_t term,
+                                      const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+
+    std::pair<size_t, size_t> computeIASTNestedLoopBisection(const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+    std::pair<size_t, size_t> computeSIASTNestedLoopBisection(const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+    std::pair<size_t, size_t> computeSIASTNestedLoopBisection(size_t term,
+                                      const std::vector<double> &Yi,
+                                      const double &P,
+                                      std::vector<double> &Xi,
+                                      std::vector<double> &Ni,
+                                      double *cachedP0,
+                                      double *cachedPsi);
+    std::pair<size_t, size_t> computeExplicitIsotherm(const std::vector<double> &Yi,
+                                                      const double &P,
+                                                      std::vector<double> &Xi,
+                                                      std::vector<double> &Ni);
+    std::pair<size_t, size_t> computeSegratedExplicitIsotherm(const std::vector<double> &Yi,
+                                                      const double &P,
+                                                      std::vector<double> &Xi,
+                                                      std::vector<double> &Ni);
+    std::pair<size_t, size_t> computeSegratedExplicitIsotherm(size_t site, const std::vector<double> &Yi,
+                                                      const double &P,
+                                                      std::vector<double> &Xi,
+                                                      std::vector<double> &Ni);
+
+    void printErrorStatus(double psi, double sum, double P, const std::vector<double> Yi, double cachedP0[]);
 };
 

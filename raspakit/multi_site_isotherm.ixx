@@ -10,29 +10,42 @@ import hashcombine;
 
 export struct MultiSiteIsotherm
 {
-  MultiSiteIsotherm() noexcept = default;
-  MultiSiteIsotherm(const MultiSiteIsotherm &a) noexcept = default;
-  MultiSiteIsotherm& operator=(const MultiSiteIsotherm& a) noexcept = default;
-  MultiSiteIsotherm(MultiSiteIsotherm&& a) noexcept = default;
-  MultiSiteIsotherm& operator=(MultiSiteIsotherm&& a) noexcept = default;
-  ~MultiSiteIsotherm() noexcept = default;
+  enum class PredictionMethod
+  {
+    IAST = 0,
+    SIAST = 1,
+    EI = 2,
+    SEI = 3
+  };
 
   size_t numberOfSites{ 0 };
   std::vector<Isotherm> sites{};
 
-  std::vector<double> parameters{};
+  size_t numberOfParameters { 0 };
+  std::vector<std::pair<size_t, size_t>> parameterIndices{};
   std::vector<size_t> siteParameterIndex{};
+  double& parameters(size_t i) 
+  { 
+    std::pair<size_t, size_t> index = parameterIndices[i];
+    return sites[index.first].parameters[index.second];
+  }
+  const double& parameters(size_t i) const
+  { 
+    std::pair<size_t, size_t> index = parameterIndices[i];
+    return sites[index.first].parameters[index.second];
+  }
+
+  void add(const Isotherm &isotherm);
 
   std::string print() const;
   std::string printAsInputFormat() const;
-  void add(const Isotherm &isotherm, const std::vector<double> &params);
 
   MultiSiteIsotherm randomized(double maximumLoading)
   {
     MultiSiteIsotherm copy(*this);
     for(size_t i = 0; i < numberOfSites; ++i)
     {
-      copy.sites[i].randomize(&parameters[siteParameterIndex[i]], maximumLoading);
+      copy.sites[i].randomize(maximumLoading);
     }
     return copy;
   }
@@ -42,9 +55,18 @@ export struct MultiSiteIsotherm
     double sum = 0.0;
     for(size_t i = 0; i < numberOfSites; ++i)
     {
-      sum += sites[i].value(pressure, &parameters[siteParameterIndex[i]]);
+      sum += sites[i].value(pressure);
     }
     return sum;
+  }
+
+  inline double value(size_t site, double pressure) const
+  {
+    if(site < numberOfSites)
+    {
+      return sites[site].value(pressure);
+    }
+    return 0.0;
   }
 
   // computed reduced grand potential for pressure
@@ -53,27 +75,49 @@ export struct MultiSiteIsotherm
     double sum = 0.0;
     for(size_t i = 0; i < numberOfSites; ++i)
     {
-      sum += sites[i].psiForPressure(pressure, &parameters[siteParameterIndex[i]]);
+      sum += sites[i].psiForPressure(pressure);
     }
     return sum;
   }
 
+  // computed reduced grand potential for pressure
+  inline double psiForPressure(size_t site, double pressure) const
+  {
+    if(site < numberOfSites)
+    {
+      return sites[site].psiForPressure(pressure);
+    }
+    return 0.0;
+  }
+
   double inversePressureForPsi(double reduced_grand_potential, double &cachedP0) const;
+
+  double inversePressureForPsi(size_t site, double reduced_grand_potential, double &cachedP0) const
+  {
+    if(site < numberOfSites)
+    {
+      return sites[site].inversePressureForPsi(reduced_grand_potential, cachedP0);
+    }
+    return 0.0;
+  }
 
   double fitness() const;
   std::string gnuplotFunctionString(char s) const;
 };
 
-export namespace std
+namespace std
 {
   template <> struct hash<MultiSiteIsotherm>
   {
     size_t operator()(const MultiSiteIsotherm& k) const
     {
       std::size_t h=0;
-      for(const double &parameter: k.parameters)
+      for(const Isotherm &isotherm: k.sites)
       {
-        hash_combine(h, parameter);
+        for(size_t i = 0; i < isotherm.numberOfParameters; ++i)
+        {
+          hash_combine(h, isotherm.parameters[i]);
+        }
       }
       return h;
     }

@@ -55,6 +55,7 @@ export struct IsothermFitting
   DNA newCitizen(size_t Id, const std::vector<std::pair<double, double>> &rawData);
   void updateCitizen(DNA &citizen, const std::vector<std::pair<double, double>> &rawData);
   double fitness(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData);
+  double RCorrelation(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData);
   size_t biodiversity(size_t Id, const std::vector<DNA> &citizens);
   void nuclearDisaster(size_t Id, const std::vector<std::pair<double, double>> &rawData);
   void elitism();
@@ -63,7 +64,8 @@ export struct IsothermFitting
   void chooseRandomly(size_t kk1,size_t kk2,size_t jj1,size_t jj2, size_t &ii1, size_t &ii2);
   void mate(size_t Id, const std::vector<std::pair<double, double>> &rawData);
   void sortByFitness();
-  void writeCitizen(std::ostream &stream, size_t componentId, size_t citizen, size_t step, size_t variety, size_t fullfilledCondition);
+  void writeCitizen(std::ostream &stream, size_t componentId, size_t citizen, size_t step, size_t variety, 
+                    size_t fullfilledCondition, const std::vector<std::pair<double, double>> &rawData);
   DNA fit(std::ostream &stream, size_t Id, const std::vector<std::pair<double, double>> &rawData);
   const DNA simplex(std::ostream &stream, DNA citizen, double scale, const std::vector<std::pair<double, double>> &rawData);
   void printSolution(std::ostream &stream, size_t componentId, const DNA &citizen);

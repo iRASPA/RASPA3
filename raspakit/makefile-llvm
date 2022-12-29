@@ -51,7 +51,7 @@ framework: framework.o
 cbmc_growing_status: component running_energy cbmc_growing_status.o
 cbmc: atom running_energy energy_status cbmc.o
 sample_movies: units atom simulationbox forcefield sample_movies.o
-system: pressure_range potential_energy_vdw potential_gradient_vdw potential_energy_coulomb potential_gradient_coulomb cbmc cbmc_growing_status averages property_simulationbox property_energy property_pressure property_loading property_enthalpy enthalpy_of_adsorption loadings simulationbox forcefield sample_movies system.o
+system: multi_site_isotherm isotherm pressure_range potential_energy_vdw potential_gradient_vdw potential_energy_coulomb potential_gradient_coulomb cbmc cbmc_growing_status averages property_simulationbox property_energy property_pressure property_loading property_enthalpy enthalpy_of_adsorption loadings simulationbox forcefield sample_movies system.o
 system_dependencies: system
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_hardware_info.cpp -o system_hardware_info.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_integration.cpp -o system_integration.o

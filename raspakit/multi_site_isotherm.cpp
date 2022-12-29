@@ -2,7 +2,6 @@ module;
 
 module multi_site_isotherm;
 
-
 import <sstream>;
 import <cmath>;
 import <vector>;
@@ -12,12 +11,6 @@ import special_functions;
 import isotherm;
 import print;
 
-void MultiSiteIsotherm::add(const Isotherm &isotherm, const std::vector<double> &p)
-{
-  siteParameterIndex.push_back(parameters.size());
-  parameters.insert(parameters.end(), p.begin(), p.end());
-  sites.push_back(isotherm);
-}
 
 std::string MultiSiteIsotherm::print() const
 {
@@ -25,7 +18,7 @@ std::string MultiSiteIsotherm::print() const
   std::print(stream, std::print("    number of isotherm sites:  {}\n", numberOfSites));
   for(size_t i = 0; i < numberOfSites; ++i)
   {
-    std::print(stream, sites[i].print(&parameters[siteParameterIndex[i]]));
+    std::print(stream, sites[i].print());
   }
   return stream.str();
 }
@@ -35,9 +28,21 @@ std::string MultiSiteIsotherm::printAsInputFormat() const
   std::ostringstream stream;
   for(size_t i = 0; i < numberOfSites; ++i)
   {
-    std::print(stream, sites[i].printAsInputFormat(&parameters[siteParameterIndex[i]]));
+    std::print(stream, sites[i].printAsInputFormat());
   }
   return stream.str();
+}
+
+void MultiSiteIsotherm::add(const Isotherm &isotherm)
+{
+  siteParameterIndex.push_back(numberOfParameters);
+  sites.push_back(isotherm);
+
+  numberOfParameters += isotherm.numberOfParameters;
+  for(size_t i = 0; i < isotherm.numberOfParameters; ++i)
+  {
+    parameterIndices.emplace_back(sites.size() - 1, i);
+  }
 }
 
 // returns the inverse-pressure (1/P) that corresponds to the given reduced_grand_potential psi
@@ -52,34 +57,7 @@ double MultiSiteIsotherm::inversePressureForPsi(double reduced_grand_potential, 
   // For a single Langmuir or Langmuir-Freundlich site, the inverse can be handled analytically
   if(numberOfSites == 1)
   {
-    switch(sites[0].type)
-    {
-      case Isotherm::Type::Langmuir:
-      {
-        double denominator = std::exp(reduced_grand_potential / parameters[0]) - 1.0;
-        return parameters[1] / denominator;
-      }
-      case Isotherm::Type::Henry:
-      {
-        return parameters[0] / reduced_grand_potential;
-      }
-      case Isotherm::Type::Freundlich:
-      {
-        return std::pow((parameters[0] * parameters[1])/reduced_grand_potential, parameters[1]);
-      }
-      case Isotherm::Type::Sips:
-      {
-        return parameters[1] / std::pow((std::exp(reduced_grand_potential/
-                (parameters[2] * parameters[0])) - 1.0), parameters[2]);
-      }
-      case Isotherm::Type::Langmuir_Freundlich:
-      {
-        double denominator = std::exp(reduced_grand_potential * parameters[2] / parameters[0]) - 1.0;
-        return std::pow(parameters[1] / denominator, 1.0 / parameters[2]);
-      }
-      default:
-        break;
-    }
+    return sites[0].inversePressureForPsi(reduced_grand_potential, cachedP0);
   }
 
   // from here on, work with pressure, and return 1.0 / pressure at the end of the routine
@@ -177,12 +155,12 @@ double MultiSiteIsotherm::fitness() const
   const double penaltyCost = 50.0;
   for(size_t i = 0; i < numberOfSites; ++i)
   {
-    if(sites[i].isUnphysical(&parameters[siteParameterIndex[i]])) return penaltyCost;
+    if(sites[i].isUnphysical()) return penaltyCost;
   }
   return 0.0;
 }
 
-std::string MultiSiteIsotherm::gnuplotFunctionString(char s) const
+std::string MultiSiteIsotherm::gnuplotFunctionString([[maybe_unused]]char s) const
 {
   std::ostringstream stream;
   for(size_t i = 0; i < numberOfSites; ++i)

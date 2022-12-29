@@ -70,6 +70,8 @@ Breakthrough::Breakthrough(System &system):
     dt(system.columnTimeStep),
     Nsteps(system.columnNumberOfTimeSteps),
     autoSteps(system.columnAutoNumberOfTimeSteps),
+    mixture(system),
+    maxIsothermTerms(5), // FIX
     prefactor(Ncomp),
     Yi(Ncomp),
     Xi(Ncomp),
@@ -87,81 +89,15 @@ Breakthrough::Breakthrough(System &system):
     Dpdtnew((Ngrid + 1) * Ncomp),
     Dqdt((Ngrid + 1) * Ncomp),
     Dqdtnew((Ngrid + 1) * Ncomp),
-    cachedP0((Ngrid + 1) * Ncomp),
+    cachedP0((Ngrid + 1) * Ncomp * maxIsothermTerms),
     cachedPsi(Ngrid + 1)
 {
-  auto itr = std::find_if(components.begin(), components.end(),
-       [&](const Component &c) {
-          return c.isCarrierGas;
-       });
-
-  if (itr == components.end())
-  {
-    throw std::runtime_error("Error [Breakthrough]: no carrier gas component present");
-  }
-  carrierGasComponent = static_cast<size_t>(std::distance(components.begin(), itr));
 }
 
-void Breakthrough::writeHeader(std::ostream &stream)
+void Breakthrough::initialize()
 {
-  std::print(stream, "\nColumn properties\n");
-  std::print(stream, "=======================================================\n");
-  std::print(stream, "Display-name:                          {}\n", displayName);
-  std::print(stream, "Temperature:                           {} [K]\n", T);
-  std::print(stream, "Column length:                         {} [m]\n", L);
-  std::print(stream, "Column void-fraction:                  {} [-]\n", epsilon);
-  std::print(stream, "Particle density:                      {} [kg/m^3]\n", rho_p);
-  std::print(stream, "Total pressure:                        {} [Pa]\n", p_total);
-  std::print(stream, "Pressure gradient:                     {} [Pa/m]\n", dptdx);
-  std::print(stream, "Column entrance interstitial velocity: {} [m/s]\n", v_in);
-  std::print(stream, "\n\n");
-
-  std::print("Breakthrough settings\n");
-  std::print("=======================================================\n");
-  std::print("Number of time steps:          {}\n", Nsteps);
-  std::print("Print every step:              {}\n", printEvery);
-  std::print("Write data every step:         {}\n", writeEvery);
-  std::print("\n\n");
-
-  std::print(stream, "Integration details\n");
-  std::print(stream, "=======================================================\n");
-  std::print(stream, "Time step:                     {} [s]\n", dt);
-  std::print(stream, "Number of column grid points:  {} [-]\n", Ngrid);
-  std::print(stream, "Column spacing:                {} [m]\n", dx);
-  std::print(stream, "\n\n");
-
-  std::print("Component data\n");
-  std::print("=======================================================\n");
-  for(size_t i = 0; i < Ncomp; ++i)
-  {
-    components[i].printBreakthroughStatus(stream);
-    std::print(stream, "\n");
-  }
-}
-
-void Breakthrough::run(std::ostream &stream)
-{
-  MixturePrediction mixture(system, 0.0, 0.0, 100, MixturePrediction::PressureScale::Log);
-
-  std::string directoryNameString = std::print("Breakthrough/System_{}/", system.systemId);;
-  std::filesystem::path directoryName{ directoryNameString };
-  std::filesystem::create_directories(directoryName);
-
-  // create the output files
-  std::vector<std::ofstream> streams;
-  for (const Component &component: components)
-  {
-    std::string fileName = directoryNameString + "component_" + std::to_string(component.componentId) + "_" + component.name + ".data";
-    streams.emplace_back(std::ofstream{ fileName });
-  }
-
-  std::ofstream movieStream(directoryNameString + "column.data");
-
-  createPlotScript(directoryNameString);
-  createMovieScripts(directoryNameString);
-
   // precomputed factor for mass transfer
-  for(size_t j = 0; j < components.size(); ++j)
+  for(size_t j = 0; j < Ncomp; ++j)
   {
     prefactor[j] = R * T * ((1.0 - epsilon) / epsilon) * rho_p * components[j].massTransferCoefficient;
   }
@@ -206,7 +142,6 @@ void Breakthrough::run(std::ostream &stream)
   // the K of the carrier gas is chosen as zero 
   // so Qeq is zero for all components in the column after the entrance
   // only the values for Yi at the entrance are effected by adsorption
-  // Note: for non-zero K of the carrier gas the IAST does not converge
   for(size_t i = 0; i < Ngrid + 1; ++i)
   {
     double sum = 0.0;
@@ -220,7 +155,8 @@ void Breakthrough::run(std::ostream &stream)
       Yi[j] /= sum;
     }
 
-    iastPerformance += mixture.predictMixture(Yi, pt_init[i], Xi, Ni, &cachedP0[i * Ncomp], cachedPsi[i]);
+    iastPerformance += mixture.predictMixture(Yi, pt_init[i], Xi, Ni, 
+        &cachedP0[i * Ncomp * maxIsothermTerms], &cachedPsi[i * maxIsothermTerms]);
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
@@ -233,14 +169,83 @@ void Breakthrough::run(std::ostream &stream)
     Pt[i] = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Pt[i] += P[i * Ncomp + j];
+      Pt[i] += std::max(0.0, P[i * Ncomp + j]);
     }
   }
+}
 
+void Breakthrough::writeHeader(std::ostream &stream)
+{
+  std::print(stream, "\nColumn properties\n");
+  std::print(stream, "=======================================================\n");
+  std::print(stream, "Display-name:                          {}\n", displayName);
+  std::print(stream, "Temperature:                           {} [K]\n", T);
+  std::print(stream, "Column length:                         {} [m]\n", L);
+  std::print(stream, "Column void-fraction:                  {} [-]\n", epsilon);
+  std::print(stream, "Particle density:                      {} [kg/m^3]\n", rho_p);
+  std::print(stream, "Total pressure:                        {} [Pa]\n", p_total);
+  std::print(stream, "Pressure gradient:                     {} [Pa/m]\n", dptdx);
+  std::print(stream, "Column entrance interstitial velocity: {} [m/s]\n", v_in);
+  std::print(stream, "\n\n");
+
+  std::print("Breakthrough settings\n");
+  std::print("=======================================================\n");
+  std::print("Number of time steps:          {}\n", Nsteps);
+  std::print("Print every step:              {}\n", printEvery);
+  std::print("Write data every step:         {}\n", writeEvery);
+  std::print("\n\n");
+
+  std::print(stream, "Integration details\n");
+  std::print(stream, "=======================================================\n");
+  std::print(stream, "Time step:                     {} [s]\n", dt);
+  std::print(stream, "Number of column grid points:  {} [-]\n", Ngrid);
+  std::print(stream, "Column spacing:                {} [m]\n", dx);
+  std::print(stream, "\n\n");
+
+  std::print("Component data\n");
+  std::print("=======================================================\n");
+  for(size_t i = 0; i < Ncomp; ++i)
+  {
+    components[i].printBreakthroughStatus(stream);
+    std::print(stream, "\n");
+  }
+}
+
+
+void Breakthrough::run([[maybe_unused]]std::ostream &stream)
+{
+  // create the output files
+  std::vector<std::ofstream> streams;
+  for (size_t i = 0; i < Ncomp; i++)
+  {
+    std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".data";
+    streams.emplace_back(std::ofstream{ fileName });
+  }
+
+  std::ofstream movieStream("column.data");
 
   for(size_t step = 0; (step < Nsteps || autoSteps); ++step)
   {
     double t = static_cast<double>(step) * dt;
+
+    // pulse boundary condition
+    if (pulse == true)
+    {
+      if(t > tpulse)
+      {
+        for(size_t j = 0; j < Ncomp; ++j)
+        {
+          if (j == carrierGasComponent)
+          {
+            P[0 * Ncomp + j] = p_total;
+          }
+          else
+          {
+            P[0 * Ncomp + j] = 0.0;
+          }
+        }
+      }
+    }
 
     if(step % writeEvery == 0)
     {
@@ -250,29 +255,37 @@ void Breakthrough::run(std::ostream &stream)
       // column 3: normalized partial pressure
       for(size_t j = 0; j < Ncomp; ++j)
       {
-        std::print(streams[j], "{} {} {}\n", t * v_in / L,  t/60.0, 
-            P[Ngrid * Ncomp + j] / (p_total * components[j].molFraction));
+        streams[j] << t * v_in / L << " " <<
+                      t/60.0 << " " <<
+                      P[Ngrid * Ncomp + j] / ((p_total + dptdx * L) * components[j].molFraction) << std::endl;
       }
 
       for(size_t i = 0; i < Ngrid + 1; ++i)
       {
-        std::print(movieStream, "{} {} {}", static_cast<double>(i) * dx, V[i], Pt[i]);
+        movieStream << static_cast<double>(i) * dx << " ";
+        movieStream << V[i] << " ";
+        movieStream << Pt[i] << " ";
         for(size_t j = 0; j < Ncomp; ++j)
         {
-          std::print(movieStream, " {} {} {} {} {} {}", Q[i * Ncomp + j], Qeq[i * Ncomp + j], P[i * Ncomp + j],
-              P[i * Ncomp + j] / (p_total * components[j].molFraction), Dpdt[i * Ncomp + j], Dqdt[i * Ncomp + j]);
+          movieStream << Q[i * Ncomp + j] << " " <<
+                         Qeq[i * Ncomp + j] << " " <<
+                         P[i * Ncomp + j] << " " <<
+                         P[i * Ncomp + j] / (Pt[i] * components[j].molFraction) << " " <<
+                         Dpdt[i * Ncomp + j] << " " <<
+                         Dqdt[i * Ncomp + j] << " ";
         }
-        std::print(movieStream, "\n");
+        movieStream << "\n";
       }
-      std::print(movieStream, "\n\n");
+      movieStream << "\n\n";
     }
 
 
     if(step % printEvery == 0)
     {
-      std::print(stream, "Timestep {}, time: {} [s]\n", std::to_string(step), std::to_string(t));
-      std::print(stream, "    Average number of IAST steps: {}\n", std::to_string(static_cast<double>(iastPerformance.first)/
-                   static_cast<double>(iastPerformance.second)));
+      std::cout << "Timestep " + std::to_string(step) + ", time: " + std::to_string(t) + " [s]" << std::endl;
+      std::cout << "    Average number of mixture-prediction steps: " + 
+                   std::to_string(static_cast<double>(iastPerformance.first)/
+                   static_cast<double>(iastPerformance.second)) << std::endl;
     }
 
     // check if we can set the expected end-time based on 10% longer time than when all 
@@ -280,18 +293,17 @@ void Breakthrough::run(std::ostream &stream)
     if(autoSteps)
     {
       double tolerance = 0.0;
-      for(size_t i = 0; i < Ngrid + 1; ++i)
+      for(size_t j = 0; j < Ncomp; ++j)
       {
-        for(size_t j = 0; j < Ncomp; ++j)
-        {
-          tolerance = std::max(tolerance, std::abs((P[i * Ncomp + j] / (p_total * components[j].molFraction)) - 1.0));
-        }
+        tolerance = std::max(tolerance, std::abs((P[Ngrid * Ncomp + j] / 
+                            ((p_total + dptdx * L) * components[j].molFraction)) - 1.0));
       }
+
       // consider 1% as being visibily indistinguishable from 'converged'
       // use a 10% longer time for display purposes
       if(tolerance < 0.01)
       {
-        std::print(stream, "\nConvergence criteria reached, running 10% longer\n\n");
+        std::cout << "\nConvergence criteria reached, running 10% longer\n\n" << std::endl;
         Nsteps = static_cast<size_t>(1.1 * static_cast<double>(step));
         autoSteps = false;
       }
@@ -315,7 +327,7 @@ void Breakthrough::run(std::ostream &stream)
       }
     }
 
-    computeEquilibriumLoadings(mixture);
+    computeEquilibriumLoadings();
 
     computeVelocity();
 
@@ -337,13 +349,13 @@ void Breakthrough::run(std::ostream &stream)
       }
     }
 
-    computeEquilibriumLoadings(mixture);
+    computeEquilibriumLoadings();
 
     computeVelocity();
 
     // SSP-RK Step 3
     // ======================================================================
-
+ 
     for(size_t i = 0; i < Ngrid + 1; ++i)
     {
       for(size_t j = 0; j < Ncomp; ++j)
@@ -355,7 +367,7 @@ void Breakthrough::run(std::ostream &stream)
       }
     }
 
-    computeEquilibriumLoadings(mixture);
+    computeEquilibriumLoadings();
 
     computeVelocity();
 
@@ -366,10 +378,10 @@ void Breakthrough::run(std::ostream &stream)
     std::copy(Vnew.begin(), Vnew.end(), V.begin());
   }
 
-  std::print(stream, "Final timestep {}, time: {}\n", std::to_string(Nsteps), std::to_string(dt * static_cast<double>(Nsteps)));
+  std::cout << "Final timestep " + std::to_string(Nsteps) + ", time: " + std::to_string(dt * static_cast<double>(Nsteps)) + " [s]" << std::endl;
 }
 
-void Breakthrough::computeEquilibriumLoadings(MixturePrediction &mixture)
+void Breakthrough::computeEquilibriumLoadings()
 {
     // calculate new equilibrium loadings Qeqnew corresponding to the new timestep
   for(size_t i = 0; i < Ngrid + 1; ++i)
@@ -378,7 +390,7 @@ void Breakthrough::computeEquilibriumLoadings(MixturePrediction &mixture)
     Pt[i] = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Pt[i] += Pnew[i * Ncomp + j];
+      Pt[i] += std::max(0.0, Pnew[i * Ncomp + j]);
     }
 
     // compute gas-phase mol-fractions
@@ -394,9 +406,9 @@ void Breakthrough::computeEquilibriumLoadings(MixturePrediction &mixture)
       Yi[j] /= sum;
     }
 
-
-    // use Yi and Pt[i] to compute the loadings in the adsorption mixture
-    iastPerformance += mixture.predictMixture(Yi, Pt[i], Xi, Ni, &cachedP0[i * Ncomp], cachedPsi[i]);
+    // use Yi and Pt[i] to compute the loadings in the adsorption mixture via mixture prediction
+    iastPerformance += mixture.predictMixture(Yi, Pt[i], Xi, Ni, 
+        &cachedP0[i * Ncomp * maxIsothermTerms], &cachedPsi[i * maxIsothermTerms]);
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
@@ -446,11 +458,10 @@ void Breakthrough::computeFirstDerivatives(std::vector<double> &dqdt,
   for(size_t j = 0; j < Ncomp; ++j)
   {
     dqdt[Ngrid * Ncomp + j] = components[j].massTransferCoefficient * (q_eq[Ngrid * Ncomp + j] - q[Ngrid * Ncomp + j]);
-    dpdt[Ngrid * Ncomp + j] = (v[Ngrid - 1] * p[(Ngrid - 1) * Ncomp + j] - v[Ngrid] * P[Ngrid * Ncomp + j]) * idx
+    dpdt[Ngrid * Ncomp + j] = (v[Ngrid - 1] * p[(Ngrid - 1) * Ncomp + j] - v[Ngrid] * p[Ngrid * Ncomp + j]) * idx
                               + components[j].axialDispersionCoefficient * (p[(Ngrid - 1) * Ncomp + j] - p[Ngrid * Ncomp + j]) * idx2
                               - prefactor[j] * (q_eq[Ngrid * Ncomp + j] - q[Ngrid * Ncomp + j]);
   }
-
 }
 
 // calculate new velocity Vnew from Qnew, Qeqnew, Pnew, Pt
@@ -488,64 +499,164 @@ void Breakthrough::computeVelocity()
   Vnew[Ngrid] = Vnew[Ngrid-1] + dx * (sum - Vnew[Ngrid - 1] * dptdx) / Pt[Ngrid];
 }
 
-void Breakthrough::createPlotScript(std::string directoryName)
+void Breakthrough::print() const
 {
-  std::ofstream stream(directoryName + "plot_breakthrough");
+  std::cout << "Column properties\n";
+  std::cout << "=======================================================\n";
+  std::cout << "Display-name:                          " << displayName << "\n";
+  std::cout << "Temperature:                           " << T << " [K]\n";
+  std::cout << "Column length:                         " << L << " [m]\n";
+  std::cout << "Column void-fraction:                  " << epsilon << " [-]\n";
+  std::cout << "Particle density:                      " << rho_p << " [kg/m^3]\n";
+  std::cout << "Total pressure:                        " << p_total << " [Pa]\n";
+  std::cout << "Pressure gradient:                     " << dptdx << " [Pa/m]\n";
+  std::cout << "Column entrance interstitial velocity: " << v_in << " [m/s]\n";
+  std::cout << "\n\n";
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set xlabel 'Dimensionless time, {{/Helvetica-Italic τ}}={{/Helvetica-Italic tv/L}} / [-]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Concentration exit gas, {{/Helvetica-Italic c}}_i/{{/Helvetica-Italic c}}_{{i,0}} / [-]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set yrange[0:]\n");
+  std::cout << "Breakthrough settings\n";
+  std::cout << "=======================================================\n";
+  std::cout << "Number of time steps:          " << Nsteps << "\n";
+  std::cout << "Print every step:              " << printEvery << "\n";
+  std::cout << "Write data every step:         " << writeEvery << "\n";
+  std::cout << "\n\n";
 
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
+  std::cout << "Integration details\n";
+  std::cout << "=======================================================\n";
+  std::cout << "Time step:                     " << dt << " [s]\n";
+  std::cout << "Number of column grid points:  " << Ngrid << "\n";
+  std::cout << "Column spacing:                " << dx << " [m]\n";
+  std::cout << "\n\n";
 
-  std::print(stream, "set output 'breakthrough_dimensionless.pdf'\n");
-  std::print(stream, "set term pdf color solid\n");
-
-  std::print(stream, "ev=1\n");
-  std::print(stream, "plot \\\n");
-  for (size_t i = 0; i < Ncomp; i++)
+  std::cout << "Component data\n";
+  std::cout << "=======================================================\n";
+  std::cout << "maximum isotherm terms:        " << maxIsothermTerms << "\n";
+  for(size_t i = 0; i < Ncomp; ++i)
   {
-    std::string fileName = "component_" + std::to_string(components[i].componentId) + "_" + components[i].name + ".data";
-    std::print(stream, "    '{}' us ($1):($3) every ev title '{} (y_i={})' with li lw 2{}\n",
-               fileName, components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
-  }
-  std::print(stream, "set output 'breakthrough.pdf'\n");
-  std::print(stream, "set xlabel 'Time, {{/Helvetica-Italic t}} / [min.]' font 'Helvetica,18'\n");
-  std::print(stream, "plot \\\n");
-  for (size_t i = 0; i < Ncomp; i++)
-  {
-    std::string fileName = "component_" + std::to_string(components[i].componentId) + "_" + components[i].name + ".data";
-    std::print(stream, "    '{}' us ($2):($3) every ev title '{} (y_i={})' with li lw 2{}\n",
-               fileName, components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    // FIX
+    //components[i].print(i);
+    std::cout << "\n";
   }
 }
 
-void Breakthrough::createMovieScripts(std::string directoryName)
+void Breakthrough::createPlotScript([[maybe_unused]]std::string directoryName)
 {
-  std::ofstream makeMovieStream(directoryName + "make_movies");
-  std::print(makeMovieStream, "./make_movie_V \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Pt \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Q \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Qeq \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_P \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Pnorm \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Dpdt \"$@\"\n");
-  std::print(makeMovieStream, "./make_movie_Dqdt \"$@\"\n");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream stream_graphs(directoryName + "make_graphs.bat");
+    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    stream_graphs << "gnuplot.exe plot_breakthrough\n";
+  #else
+    std::ofstream stream_graphs(directoryName + "make_graphs");
+    stream_graphs << "#!/bin/sh\n";
+    stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
+    stream_graphs << "gnuplot plot_breakthrough\n";
+  #endif
 
-  std::filesystem::path path{directoryName + "make_movies"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{directoryName + "make_graphs"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else 
+    chmod(directoryName + "make_graphs", S_IRWXU);
+  #endif
 
-  createMovieScriptColumnV(directoryName);
-  createMovieScriptColumnPt(directoryName);
-  createMovieScriptColumnQ(directoryName);
-  createMovieScriptColumnQeq(directoryName);
-  createMovieScriptColumnP(directoryName);
-  createMovieScriptColumnDpdt(directoryName);
-  createMovieScriptColumnDqdt(directoryName);
-  createMovieScriptColumnPnormalized(directoryName);
+  std::ofstream stream(directoryName + "plot_breakthrough");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set xlabel 'Dimensionless time, {/Arial-Italic τ}={/Arial-Italic tv/L} / [-]' font \"Arial,14\"\n";
+    stream << "set ylabel 'Concentration exit gas, {/Arial-Italic c}_i/{/Arial-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Arial,14\"\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set xlabel 'Dimensionless time, {/Helvetica-Italic τ}={/Helvetica-Italic tv/L} / [-]' font \"Helvetica,18\"\n";
+    stream << "set ylabel 'Concentration exit gas, {/Helvetica-Italic c}_i/{/Helvetica-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Helvetica,18\"\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+  stream << "set bmargin 4\n";
+  stream << "set yrange[0:]\n";
+
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+
+  stream << "set output 'breakthrough_dimensionless.pdf'\n";
+  stream << "set term pdf color solid\n";
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "ev=1\n";
+  stream << "plot \\\n";
+  for (size_t i = 0; i < Ncomp; i++)
+  {
+    std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".data";
+    stream << "    " << "\"" << fileName << "\"" << " us ($1):($3) every ev" << " title \""
+           << components[i].name << " (y_i=" << components[i].molFraction << ")\""
+           << " with li lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+  }
+  stream << "set output 'breakthrough.pdf'\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+     stream << "set xlabel 'Time, {/Arial-Italic t} / [min.]' font \"Arial,14\"\n";
+  #else
+     stream << "set xlabel 'Time, {/Helvetica-Italic t} / [min.]' font \"Helvetica,18\"\n";
+  #endif
+  stream << "plot \\\n";
+  for (size_t i = 0; i < Ncomp; i++)
+  {
+    std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".data";
+    stream << "    " << "\"" << fileName << "\"" << " us ($2):($3) every ev" << " title \""
+           << components[i].name << " (y_i=" << components[i].molFraction << ")\""
+           << " with li lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+  }
+}
+
+void Breakthrough::createMovieScripts([[maybe_unused]] std::string directoryName)
+{
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream(directoryName + "make_movies.bat");
+    makeMovieStream << "CALL make_movie_V.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Pt.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Q.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Qeq.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_P.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Pnorm.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Dpdt.bat %1 %2 %3 %4\n";
+    makeMovieStream << "CALL make_movie_Dqdt.bat %1 %2 %3 %4\n";
+  #else
+    std::ofstream makeMovieStream(directoryName + "make_movies");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+    makeMovieStream << "./make_movie_V \"$@\"\n";
+    makeMovieStream << "./make_movie_Pt \"$@\"\n";
+    makeMovieStream << "./make_movie_Q \"$@\"\n";
+    makeMovieStream << "./make_movie_Qeq \"$@\"\n";
+    makeMovieStream << "./make_movie_P \"$@\"\n";
+    makeMovieStream << "./make_movie_Pnorm \"$@\"\n";
+    makeMovieStream << "./make_movie_Dpdt \"$@\"\n";
+    makeMovieStream << "./make_movie_Dqdt \"$@\"\n";
+  #endif
+
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{directoryName + "make_movies"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else 
+    chmod(directoryName + "make_movies", S_IRWXU);
+  #endif
+
+  createMovieScriptColumnV();
+  createMovieScriptColumnPt();
+  createMovieScriptColumnQ();
+  createMovieScriptColumnQeq();
+  createMovieScriptColumnP();
+  createMovieScriptColumnDpdt();
+  createMovieScriptColumnDqdt();
+  createMovieScriptColumnPnormalized();
 }
 
 // -crf 18: the range of the CRF scale is 0–51, where 0 is lossless, 23 is the default, 
@@ -555,350 +666,634 @@ std::string movieScriptTemplate(std::string s)
 {
   std::ostringstream stream;
 
-  std::print(stream, "rm -f column_movie_{}.mp4\n", s);
-  std::print(stream, "every=1\n");
-  std::print(stream, "format='-c:v libx265 -tag:v hvc1'\n");
-  std::print(stream, "width=800\n");
-  std::print(stream, "height=600\n");
-  std::print(stream, "quality=18\n");
-  std::print(stream, "while getopts e:w:h:q:l flag\n");
-  std::print(stream, "do\n");
-  std::print(stream, "    case \"${{flag}}\" in\n");
-  std::print(stream, "        e) every=${{OPTARG}};;\n");
-  std::print(stream, "        w) width=${{OPTARG}};;\n");
-  std::print(stream, "        h) height=${{OPTARG}};;\n");
-  std::print(stream, "        q) quality=${{OPTARG}};;\n");
-  std::print(stream, "        l) format=\"-c:v libx264\";;\n");
-  std::print(stream, "    esac\n");
-  std::print(stream, "done\n");
-  std::print(stream, "gnuplot -c plot_column_{} $every $width $height | ffmpeg -f png_pipe -s:v \"${{width}},${{height}}\" -i pipe: $format -pix_fmt yuv420p -crf $quality -c:a aac column_movie_{}.mp4\n", s, s);
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "del column_movie_" << s << ".mp4\n";
+    stream << "set /A argVec[1]=1\n";
+    stream << "set /A argVec[2]=1200\n";
+    stream << "set /A argVec[3]=800\n";
+    stream << "set /A argVec[4]=18\n";
+    stream << "setlocal enabledelayedexpansion\n";
+    stream << "set argCount=0\n";
+    stream << "for %%x in (%*) do (\n";
+    stream << "   set /A argCount+=1\n";
+    stream << "   set \"argVec[!argCount!]=%%~x\"'n";
+    stream << ")\n";
+    stream << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    stream << "gnuplot.exe -c plot_column_" << s << " %argVec[1]% %argVec[2]% %argVec[3]% | ffmpeg.exe -f png_pipe -s:v \"%argVec[2]%,%argVec[3]%\" -i pipe: -c:v libx264 -pix_fmt yuv420p -crf %argVec[4]% -c:a aac column_movie_" << s + ".mp4\n";
+  #else
+    stream << "rm -f " << "column_movie_" << s << ".mp4\n";
+    stream << "every=1\n";
+    stream << "format=\"-c:v libx265 -tag:v hvc1\"\n";
+    stream << "width=1200\n";
+    stream << "height=800\n";
+    stream << "quality=18\n";
+    stream << "while getopts e:w:h:q:l flag\n";
+    stream << "do\n";
+    stream << "    case \"${flag}\" in\n";
+    stream << "        e) every=${OPTARG};;\n";
+    stream << "        w) width=${OPTARG};;\n";
+    stream << "        h) height=${OPTARG};;\n";
+    stream << "        q) quality=${OPTARG};;\n";
+    stream << "        l) format=\"-c:v libx264\";;\n";
+    stream << "    esac\n";
+    stream << "done\n";
+    stream << "gnuplot -c plot_column_" << s << " $every $width $height | ffmpeg -f png_pipe -s:v \"${width},${height}\" -i pipe: $format -pix_fmt yuv420p -crf $quality -c:a aac column_movie_" << s + ".mp4\n";
+  #endif
   return stream.str();
 }
 
-void Breakthrough::createMovieScriptColumnV(std::string directoryName)
+void Breakthrough::createMovieScriptColumnV()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_V");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_V.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_V");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("V");
 
-  std::filesystem::path path{directoryName + "make_movie_V"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_V"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_V", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_V");
+  std::ofstream stream("plot_column_V");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Interstitial velocity, {{/Helvetica-Italic v}} / [m/s]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' us 2 nooutput\n");
-  std::print(stream, "max=STATS_max\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
-  std::print(stream, "    'column.data' us 1:2 index ev*i notitle with li lw 2,\\\n");
-  std::print(stream, "    'column.data' us 1:2 index ev*i notitle with po\n");
-  std::print(stream, "}}\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Interstitial velocity, {/Arial-Italic v} / [m/s]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Interstitial velocity, {/Helvetica-Italic v} / [m/s]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' us 2 nooutput\n";
+  stream << "max=STATS_max\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
+  stream << "    " << "'column.data'" << " us 1:2 index ev*i notitle with li lt 1,\\\n";
+  stream << "    " << "'column.data'" << " us 1:2 index ev*i notitle with po lt 1\n";
+  stream << "}\n";
 }
 
 
-void Breakthrough::createMovieScriptColumnPt(std::string directoryName)
+void Breakthrough::createMovieScriptColumnPt()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Pt");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Pt.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Pt");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Pt");
 
-  std::filesystem::path path{directoryName + "make_movie_Pt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Pt"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Pt", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Pt");
+  std::ofstream stream("plot_column_Pt");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Total Pressure, {{/Helvetica-Italic p_t}} / [Pa]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' us 3 nooutput\n");
-  std::print(stream, "max=STATS_max\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
-  std::print(stream, "    'column.data' us 1:3 index ev*i notitle with li lw 2,\\\n");
-  std::print(stream, "    'column.data' us 1:3 index ev*i notitle with po\n");
-  std::print(stream, "}}\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Total Pressure, {/Arial-Italic p_t} / [Pa]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else 
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Total Pressure, {/Helvetica-Italic p_t} / [Pa]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' us 3 nooutput\n";
+  stream << "max=STATS_max\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
+  stream << "    " << "'column.data'" << " us 1:3 index ev*i notitle with li lt 1,\\\n";
+  stream << "    " << "'column.data'" << " us 1:3 index ev*i notitle with po lt 1\n";
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnQ(std::string directoryName)
+void Breakthrough::createMovieScriptColumnQ()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Q");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Q.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Q");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Q");
 
-  std::filesystem::path path{directoryName + "make_movie_Q"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Q"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Q", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Q");
+  std::ofstream stream("plot_column_Q");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Concentration, {{/Helvetica-Italic c}}_i / [mol/kg]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = 0.0;\n");
-  std::print(stream, "do for [i=4:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (max<STATS_max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Concentration, {/Arial-Italic c}_i / [mol/kg]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Concentration, {/Helvetica-Italic c}_i / [mol/kg]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = 0.0;\n";
+  stream << "do for [i=4:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (max<STATS_max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(4 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(4 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-               std::to_string(4 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(4 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnQeq(std::string directoryName)
+void Breakthrough::createMovieScriptColumnQeq()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Qeq");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Qeq.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Qeq");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Qeq");
 
-  std::filesystem::path path{directoryName + "make_movie_Qeq"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Qeq"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Qeq", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Qeq");
+  std::ofstream stream("plot_column_Qeq");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Concentration, {{/Helvetica-Italic c}}_i / [mol/kg]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = 0.0;\n");
-  std::print(stream, "do for [i=5:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (max<STATS_max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Concentration, {/Arial-Italic c}_i / [mol/kg]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Concentration, {/Helvetica-Italic c}_i / [mol/kg]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+  
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = 0.0;\n";
+  stream << "do for [i=5:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (max<STATS_max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(5 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(5 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-               std::to_string(5 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(5 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnP(std::string directoryName)
+void Breakthrough::createMovieScriptColumnP()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_P");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_P.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_P");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("P");
 
-  std::filesystem::path path{directoryName + "make_movie_P"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_P"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_P", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_P");
+  std::ofstream stream("plot_column_P");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Partial pressure, {{/Helvetica-Italic p}}_i / [Pa]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = 0.0;\n");
-  std::print(stream, "do for [i=6:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (max<STATS_max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Partial pressure, {/Arial-Italic p}_i / [Pa]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Partial pressure, {/Helvetica-Italic p}_i / [Pa]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = 0.0;\n";
+  stream << "do for [i=6:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (max<STATS_max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(6 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(6 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-               std::to_string(6 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));;
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(6 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnPnormalized(std::string directoryName)
+void Breakthrough::createMovieScriptColumnPnormalized()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Pnorm");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Pnorm.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Pnorm");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Pnorm");
 
-  std::filesystem::path path{directoryName + "make_movie_Pnorm"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Pnorm"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Pnorm", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Pnorm");
+  std::ofstream stream("plot_column_Pnorm");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Partial pressure, {{/Helvetica-Italic p}}_i / [-]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = 0.0;\n");
-  std::print(stream, "do for [i=7:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (max<STATS_max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[0:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Partial pressure, {/Arial-Italic p}_i / [-]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Partial pressure, {/Helvetica-Italic p}_i / [-]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = 0.0;\n";
+  stream << "do for [i=7:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (max<STATS_max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[0:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(7 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(7 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-               std::to_string(7 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(7 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnDpdt(std::string directoryName)
+void Breakthrough::createMovieScriptColumnDpdt()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Dpdt");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Dpdt.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Dpdt");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Dpdt");
 
-  std::filesystem::path path{directoryName + "make_movie_Dpdt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Dpdt"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Dpdt", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Dpdt");
+  std::ofstream stream("plot_column_Dpdt");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Pressure derivative, {{/Helvetica-Italic dp_/dt}} / [Pa/s]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = -1e10;\n");
-  std::print(stream, "min = 1e10;\n");
-  std::print(stream, "do for [i=8:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (STATS_max>max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "  if (STATS_min<min) {{\n");
-  std::print(stream, "    min=STATS_min\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[1.1*min:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Pressure derivative, {/Arial-Italic dp_/dt} / [Pa/s]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Pressure derivative, {/Helvetica-Italic dp_/dt} / [Pa/s]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = -1e10;\n";
+  stream << "min = 1e10;\n";
+  stream << "do for [i=8:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (STATS_max>max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "  if (STATS_min<min) {\n";
+  stream << "    min=STATS_min\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[1.1*min:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(8 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(8 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-               std::to_string(8 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(8 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }
 
-void Breakthrough::createMovieScriptColumnDqdt(std::string directoryName)
+void Breakthrough::createMovieScriptColumnDqdt()
 {
-  std::ofstream makeMovieStream(directoryName + "make_movie_Dqdt");
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::ofstream makeMovieStream("make_movie_Dqdt.bat");
+  #else
+    std::ofstream makeMovieStream("make_movie_Dqdt");
+    makeMovieStream << "#!/bin/sh\n";
+    makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+  #endif
   makeMovieStream << movieScriptTemplate("Dqdt");
 
-  std::filesystem::path path{directoryName + "make_movie_Dqdt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #if (__cplusplus >= 201703L)
+    std::filesystem::path path{"make_movie_Dqdt"};
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  #else
+    chmod("make_movie_Dqdt", S_IRWXU);
+  #endif
 
-  std::ofstream stream(directoryName + "plot_column_Dqdt");
+  std::ofstream stream("plot_column_Dqdt");
 
-  std::print(stream, "set encoding utf8\n");
-  std::print(stream, "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n");
-  std::print(stream, "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Loading derivative, {{/Helvetica-Italic dq_i/dt}} / [mol/kg/s]' offset 0.0,0 font 'Helvetica,18'\n");
-  std::print(stream, "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n");
-  std::print(stream, "set bmargin 4\n");
-  std::print(stream, "set key title '{} {{/:Italic T}}={} K, {{/:Italic p_t}}={} kPa'\n", displayName, T, p_total * 1e-3);
-  std::print(stream, "stats 'column.data' nooutput\n");
-  std::print(stream, "max = -1e10;\n");
-  std::print(stream, "min = 1e10;\n");
-  std::print(stream, "min = 10000000000000.0;\n");
-  std::print(stream, "do for [i=9:STATS_columns:6] {{\n");
-  std::print(stream, "  stats 'column.data' us i nooutput\n");
-  std::print(stream, "  if (STATS_max>max) {{\n");
-  std::print(stream, "    max=STATS_max\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "  if (STATS_min<min) {{\n");
-  std::print(stream, "    min=STATS_min\n");
-  std::print(stream, "  }}\n");
-  std::print(stream, "}}\n");
-  std::print(stream, "stats 'column.data' us 1 nooutput\n");
-  std::print(stream, "set xrange[0:STATS_max]\n");
-  std::print(stream, "set yrange[1.1*min:1.1*max]\n");
-  std::print(stream, "ev=int(ARG1)\n");
-  std::print(stream, "do for [i=0:int((STATS_blocks-2)/ev)] {{\n");
-  std::print(stream, "  plot \\\n");
+  stream << "set encoding utf8\n";
+  #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Arial,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Arial,14'\n";
+    stream << "set ylabel 'Loading derivative, {/Arial-Italic dq_i/dt} / [mol/kg/s]' offset 0.0,0 font 'Arial,14'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
+  #else
+    stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
+    stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
+    stream << "set ylabel 'Loading derivative, {/Helvetica-Italic dq_i/dt} / [mol/kg/s]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
+  #endif
+
+  // colorscheme from book 'gnuplot in action', listing 12.7
+  stream << "set linetype 1 pt 5 ps 1 lw 4 lc rgb '0xee0000'\n";
+  stream << "set linetype 2 pt 7 ps 1 lw 4 lc rgb '0x008b00'\n";
+  stream << "set linetype 3 pt 9 ps 1 lw 4 lc rgb '0x0000cd'\n";
+  stream << "set linetype 4 pt 11 ps 1 lw 4 lc rgb '0xff3fb3'\n";
+  stream << "set linetype 5 pt 13 ps 1 lw 4 lc rgb '0x00cdcd'\n";
+  stream << "set linetype 6 pt 15 ps 1 lw 4 lc rgb '0xcd9b1d'\n";
+  stream << "set linetype 7 pt  4 ps 1 lw 4 lc rgb '0x8968ed'\n";
+  stream << "set linetype 8 pt  6 ps 1 lw 4 lc rgb '0x8b8b83'\n";
+  stream << "set linetype 9 pt  8 ps 1 lw 4 lc rgb '0x00bb00'\n";
+  stream << "set linetype 10 pt 10 ps 1 lw 4 lc rgb '0x1e90ff'\n";
+  stream << "set linetype 11 pt 12 ps 1 lw 4 lc rgb '0x8b2500'\n";
+  stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
+
+  stream << "set bmargin 4\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "stats 'column.data' nooutput\n";
+  stream << "max = -1e10;\n";
+  stream << "min = 1e10;\n";
+  stream << "min = 10000000000000.0;\n";
+  stream << "do for [i=9:STATS_columns:6] {\n";
+  stream << "  stats 'column.data' us i nooutput\n";
+  stream << "  if (STATS_max>max) {\n";
+  stream << "    max=STATS_max\n";
+  stream << "  }\n";
+  stream << "  if (STATS_min<min) {\n";
+  stream << "    min=STATS_min\n";
+  stream << "  }\n";
+  stream << "}\n";
+  stream << "stats 'column.data' us 1 nooutput\n";
+  stream << "set xrange[0:STATS_max]\n";
+  stream << "set yrange[1.1*min:1.1*max]\n";
+  stream << "ev=int(ARG1)\n";
+  stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
+  stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::print(stream, "    'column.data' us 1:{} index ev*i notitle with li lw 2,\\\n", std::to_string(9 + i * 6));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(9 + i * 6) << " index ev*i notitle " 
+           << " with li lt " << i+1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-  std::print(stream, "    'column.data' us 1:{} index ev*i title '{} (y_i={})' with po{}\n",
-             std::to_string(9 + i * 6), components[i].name, components[i].molFraction, (i < Ncomp - 1 ? ",\\" : ""));
+    stream << "    " << "'column.data'" << " us 1:" << std::to_string(9 + i * 6) << " index ev*i title '"
+           << components[i].name << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i+1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
-  std::print(stream, "}}\n");
+  stream << "}\n";
 }

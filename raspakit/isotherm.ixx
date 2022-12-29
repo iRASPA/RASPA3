@@ -12,6 +12,8 @@ import <numbers>;
 import special_functions;
 import randomnumbers;
 
+constexpr size_t maxTerms = 5;
+
 // Langmuir:
 // parameter 0: K
 // parameter 1: N
@@ -26,110 +28,97 @@ export struct Isotherm
   enum class Type
   {
     Langmuir = 0,
-    BET = 1,
-    Henry = 2,
-    Freundlich = 3,
-    Sips = 4,
-    Langmuir_Freundlich = 5,
-    Redlich_Peterson = 6,
-    Toth = 7,
-    Unilan = 8,
-    OBrien_Myers = 9,
-    Quadratic = 10,
-    Temkin = 11
+    Anti_Langmuir = 1,
+    BET = 2,
+    Henry = 3,
+    Freundlich = 4,
+    Sips = 5,
+    Langmuir_Freundlich = 6,
+    Redlich_Peterson = 7,
+    Toth = 8,
+    Unilan = 9,
+    OBrien_Myers = 10,
+    Quadratic = 11,
+    Temkin = 12
   };
 
-  enum class MixturePredictionMethod
-  {
-    IAST = 0,
-    ExplicitLangmuir = 1
-  };
-
-  struct PressureRange 
-  {
-    double startPressure;
-    double endPressure;
-    size_t numberOfPoints;
-  };
-
-  Isotherm(Isotherm::Type type);
-
-  Isotherm() noexcept = default;
-  Isotherm(const Isotherm &a) noexcept = default;
-  Isotherm& operator=(const Isotherm& a) noexcept = default;
-  Isotherm(Isotherm&& a) noexcept = default;
-  Isotherm& operator=(Isotherm&& a) noexcept = default;
-  ~Isotherm() noexcept = default;
+  Isotherm(Isotherm::Type type, const std::vector<double> &values, size_t numberOfValues);
 
   Isotherm::Type type;
+  std::vector<double> parameters;
+  size_t numberOfParameters;
 
-  std::string print(const double terms[]) const;
-  std::string printAsInputFormat(const double terms[]) const;
+  std::string print() const;
+  std::string printAsInputFormat() const;
 
-  inline double value(double pressure, const double terms[]) const
+  inline double value(double pressure) const
   {
     switch(type)
     {
       case Isotherm::Type::Langmuir:
       {
-        double temp = terms[1] * pressure;
-        return terms[0] * temp / (1.0 + temp);
+        double temp = parameters[1] * pressure;
+        return parameters[0] * temp / (1.0 + temp);
+      }
+      case Isotherm::Type::Anti_Langmuir:
+      {
+        return parameters[0] * pressure / (1.0 - parameters[1] * pressure);
       }
       case Isotherm::Type::BET:
       {
-        return terms[0] * terms[1] * pressure /
-               ((1.0 - terms[2] * pressure) * (1.0 - terms[2] + terms[1] * pressure));
+        return parameters[0] * parameters[1] * pressure /
+               ((1.0 - parameters[2] * pressure) * (1.0 - parameters[2] + parameters[1] * pressure));
       }
       case Isotherm::Type::Henry:
       {
-        return terms[0] * pressure;
+        return parameters[0] * pressure;
       }
       case Isotherm::Type::Freundlich:
       {
-        return terms[0] * std::pow(pressure, 1.0/terms[1]);
+        return parameters[0] * std::pow(pressure, 1.0 / parameters[1]);
       }
       case Isotherm::Type::Sips:
       {
-        double temp = std::pow(terms[1] * pressure, 1.0/terms[2]);
-        return terms[0] * temp / (1.0 + temp);
+        double temp = std::pow(parameters[1] * pressure, 1.0 / parameters[2]);
+        return parameters[0] * temp / (1.0 + temp);
       }
       case Isotherm::Type::Langmuir_Freundlich:
       {
-        double temp = terms[1] * std::pow(pressure, terms[2]);
-        return terms[0] * temp / (1.0 + temp);
+        double temp = parameters[1] * std::pow(pressure, parameters[2]);
+        return parameters[0] * temp / (1.0 + temp);
       }
       case Isotherm::Type::Redlich_Peterson:
       {
-        return terms[0] * pressure / (1.0 + terms[1] * std::pow(pressure, terms[2]));
+        return parameters[0] * pressure / (1.0 + parameters[1] * std::pow(pressure, parameters[2]));
       }
       case Isotherm::Type::Toth:
       {
-        double temp = terms[1] * pressure;
-        return terms[0] * temp / std::pow(1.0 + std::pow(temp, terms[2]), 1.0/terms[2]);
+        double temp = parameters[1] * pressure;
+        return parameters[0] * temp / std::pow(1.0 + std::pow(temp, parameters[2]), 1.0 / parameters[2]);
       }
       case Isotherm::Type::Unilan:
       {
-        double temp1 =  1.0 + terms[1] * std::exp(terms[2]) * pressure;
-        double temp2 =  1.0 + terms[1] * std::exp(-terms[2]) * pressure;
-        return terms[0] * (0.5 / terms[2]) * std::log(temp1 / temp2);
+        double temp1 =  1.0 + parameters[1] * std::exp(parameters[2]) * pressure;
+        double temp2 =  1.0 + parameters[1] * std::exp(-parameters[2]) * pressure;
+        return parameters[0] * (0.5 / parameters[2]) * std::log(temp1 / temp2);
       }
       case Isotherm::Type::OBrien_Myers:
       {
-        double temp1 = terms[1] * pressure;
+        double temp1 = parameters[1] * pressure;
         double temp2 = 1.0 + temp1;
-        return terms[0] * (temp1 / temp2 + terms[2] * terms[2] * temp1 * (1.0 - temp1) / (temp2 * temp2 * temp2));
+        return parameters[0] * (temp1 / temp2 + parameters[2] * parameters[2] * temp1 * (1.0 - temp1) / (temp2 * temp2 * temp2));
       }
       case Isotherm::Type::Quadratic:
       {
-        double temp1 = terms[1] * pressure;
-        double temp2 = terms[2] * pressure * pressure;
-        return terms[0] * (temp1 + 2.0 * temp2) / (1.0 + temp1 + temp2);
+        double temp1 = parameters[1] * pressure;
+        double temp2 = parameters[2] * pressure * pressure;
+        return parameters[0] * (temp1 + 2.0 * temp2) / (1.0 + temp1 + temp2);
       }
       case Isotherm::Type::Temkin:
       {
-        double temp = terms[1] * pressure;
+        double temp = parameters[1] * pressure;
         double temp1 = temp / (1.0 + temp);
-        return terms[0] * (temp1 + terms[2] * temp1 * temp1 * (temp1 - 1.0));
+        return parameters[0] * (temp1 + parameters[2] * temp1 * temp1 * (temp1 - 1.0));
       }
       default:
         throw std::runtime_error("Error: unkown isotherm type");
@@ -137,74 +126,78 @@ export struct Isotherm
   }
 
   // the reduced grand potential psi (spreading pressure) for this pressure
-  inline double psiForPressure(double pressure, const double terms[]) const
+  inline double psiForPressure(double pressure) const
   {
     switch(type)
     {
       case Isotherm::Type::Langmuir:
       {
-        return terms[0] * std::log(1.0 + terms[1] * pressure);
+        return parameters[0] * std::log(1.0 + parameters[1] * pressure);
+      }
+      case Isotherm::Type::Anti_Langmuir:
+      {
+        return -(parameters[0] / parameters[1]) * std::log(1.0 - parameters[1] * pressure);
       }
       case Isotherm::Type::BET:
       {
-        return (terms[0] * terms[1]) * std::log((1.0 - terms[2] + terms[1] * pressure) /
-                                               ((1.0 - terms[2]) * (1.0 - terms[2] * pressure))) / 
-               (terms[1] + terms[2] - terms[2] * terms[2]);
+        return (parameters[0] * parameters[1]) * std::log((1.0 - parameters[2] + parameters[1] * pressure) /
+                                               ((1.0 - parameters[2]) * (1.0 - parameters[2] * pressure))) / 
+               (parameters[1] + parameters[2] - parameters[2] * parameters[2]);
       }
       case Isotherm::Type::Henry:
       {
-        return terms[0] * pressure;
+        return parameters[0] * pressure;
       }
       case Isotherm::Type::Freundlich:
       {
-        return terms[0] * terms[1] * std::pow(pressure, 1.0/terms[1]);
+        return parameters[0] * parameters[1] * std::pow(pressure, 1.0/parameters[1]);
       }
       case Isotherm::Type::Sips:
       {
-        return terms[2] * terms[0] * std::log(1.0 + std::pow(terms[1]*pressure, 1.0/terms[2]));
+        return parameters[2] * parameters[0] * std::log(1.0 + std::pow(parameters[1] * pressure, 1.0/parameters[2]));
       }
       case Isotherm::Type::Langmuir_Freundlich:
       {
-        return terms[0] * terms[3] * std::log(1.0 + terms[1] * std::pow(pressure, terms[2]));
+        return (parameters[0] / parameters[2]) * std::log(1.0 + parameters[1] * std::pow(pressure, parameters[2]));
       }
       case Isotherm::Type::Redlich_Peterson:
       {
-        if(terms[1]  * std::pow(pressure,terms[2]) < 1.0)
+        if(parameters[1]  * std::pow(pressure, parameters[2]) < 1.0)
         {
-          return terms[0] * pressure * hypergeometric2F1(1.0, 1.0/terms[2], 1.0 + 1.0/terms[2],
-                       -terms[1] * std::pow(pressure,terms[2]));
+          return parameters[0] * pressure * hypergeometric2F1(1.0, 1.0 / parameters[2], 1.0 + 1.0 / parameters[2],
+                       -parameters[1] * std::pow(pressure, parameters[2]));
         }
         else 
         {
-          double prefactor = terms[0] / terms[2];
-          double temp = std::numbers::pi / (std::pow(terms[1], 1.0/terms[2]) * std::sin(std::numbers::pi * 1.0/terms[2]));
+          double prefactor = parameters[0] / parameters[2];
+          double temp = M_PI / (std::pow(parameters[1], 1.0 / parameters[2]) * std::sin(M_PI * 1.0 / parameters[2]));
 
-          double term1 = -1.0/(terms[1] * std::pow(pressure, terms[2]));
+          double term1 = -1.0/(parameters[1] * std::pow(pressure, parameters[2]));
           double numerator = 1.0;
           double sum=0.0;
           // quickly converging sum
           for(size_t k = 1; k <= 15; k++)
           {
             numerator *= term1;
-            sum += numerator / (static_cast<double>(k) * terms[2] - 1.0);
+            sum += numerator / (static_cast<double>(k) * parameters[2] - 1.0);
           }
-          return prefactor * (temp + pressure * terms[2] * sum);
+          return prefactor * (temp + pressure * parameters[2] * sum);
         }
       }
       case Isotherm::Type::Toth:
       {
-        double temp = terms[1] * pressure;
-        double theta = temp / std::pow(1.0 + std::pow(temp, terms[2]), 1.0/terms[2]);
-        double theta_pow = std::pow(theta, terms[2]);
-        double psi = terms[0] * (theta - (theta / terms[2]) * std::log(1.0-theta_pow));
+        double temp = parameters[1] * pressure;
+        double theta = temp / std::pow(1.0 + std::pow(temp, parameters[2]), 1.0 / parameters[2]);
+        double theta_pow = std::pow(theta, parameters[2]);
+        double psi = parameters[0] * (theta - (theta / parameters[2]) * std::log(1.0-theta_pow));
 
         // use the first 100 terms of the sum
-        double temp1 = terms[0] * theta;
+        double temp1 = parameters[0] * theta;
         double temp2 = 0.0;
         for(size_t k = 1; k <= 100; ++k)
         {
           temp1 *= theta_pow;
-          temp2 += terms[2];
+          temp2 += parameters[2];
           psi -= temp1 / (temp2 * (temp2 + 1.0));
         }
 
@@ -212,36 +205,165 @@ export struct Isotherm
       }
       case Isotherm::Type::Unilan:
       {
-        return (0.5 * terms[0] / terms[2]) * (li2(-terms[1] * std::exp(-terms[2]) * pressure) - 
-                                              li2(-terms[1] * std::exp(terms[2]) * pressure));
+        return (0.5 * parameters[0] / parameters[2]) * (li2(-parameters[1] * std::exp(-parameters[2]) * pressure) - 
+                                              li2(-parameters[1] * std::exp(parameters[2]) * pressure));
       }
       case Isotherm::Type::OBrien_Myers:
       {
-        double temp1 = terms[1] * pressure;
+        double temp1 = parameters[1] * pressure;
         double temp2 = 1.0 + temp1;
-        return terms[0] * (std::log(temp2) + 0.5 * terms[2] * terms[2] * temp1 / (temp2 * temp2));
+        return parameters[0] * (std::log(temp2) + 0.5 * parameters[2] * parameters[2] * temp1 / (temp2 * temp2));
       }
       case Isotherm::Type::Quadratic:
       {
-        double temp1 = terms[1] * pressure;
-        double temp2 = terms[2] * pressure * pressure;
-        return terms[0] * std::log(1.0 + temp1 + temp2);
+        double temp1 = parameters[1] * pressure;
+        double temp2 = parameters[2] * pressure * pressure;
+        return parameters[0] * std::log(1.0 + temp1 + temp2);
       }
       case Isotherm::Type::Temkin:
       {
-        double temp = terms[1] * pressure;
+        double temp = parameters[1] * pressure;
         double temp1 = temp / (1.0 + temp);
-        return terms[0] * (std::log(1.0 + temp) - 0.5 * terms[2] * temp1 * temp1);
+        return parameters[0] * (std::log(1.0 + temp) - 0.5 * parameters[2] * temp1 * temp1);
       }
       default:
         throw std::runtime_error("Error: unkown isotherm type");
     }
   }
 
-  void randomize(double params[], double maximumLoading);
+  inline double inversePressureForPsi(double reduced_grand_potential, double &cachedP0) const
+  {
+    switch(type)
+    {
+      case Isotherm::Type::Langmuir:
+      {
+        double denominator = std::exp(reduced_grand_potential / parameters[0]) - 1.0;
+        return parameters[1] / denominator;
+      }
+      case Isotherm::Type::Anti_Langmuir:
+      {
+        double denominator = 1.0 - std::exp(-parameters[1] * reduced_grand_potential / parameters[0]);
+        return parameters[1] / denominator;
+      }
+      case Isotherm::Type::Henry:
+      {
+        return parameters[0] / reduced_grand_potential;
+      }
+      case Isotherm::Type::Freundlich:
+      {
+        return std::pow((parameters[0] * parameters[1])/reduced_grand_potential, parameters[1]);
+      }
+      case Isotherm::Type::Sips:
+      {
+        return parameters[1] / std::pow((std::exp(reduced_grand_potential/
+                (parameters[2] * parameters[0])) - 1.0), parameters[2]);
+      }
+      case Isotherm::Type::Langmuir_Freundlich:
+      {
+        double denominator = std::exp(reduced_grand_potential * parameters[2] / parameters[0]) - 1.0;
+        return std::pow(parameters[1] / denominator, 1.0 / parameters[2]);
+      }
+      default:
+      {
+        const double tiny = 1.0e-15;
 
-  bool isUnphysical(const double terms[]) const;
+        // from here on, work with pressure, and return 1.0 / pressure at the end of the routine
+        double p_start;
+        if(cachedP0 <= 0.0)
+        {
+          p_start = 5.0;
+        }
+        else
+        {
+          // use the last value of Pi0
+          p_start = cachedP0;
+        }
+
+        // use bisection algorithm
+        double s = psiForPressure(p_start);
+
+        size_t nr_steps = 0;
+        double left_bracket = p_start;
+        double right_bracket = p_start;
+
+        if(s < reduced_grand_potential)
+        {
+          // find the bracket on the right
+          do
+          {
+            right_bracket *= 2.0;
+            s = psiForPressure(right_bracket);
+
+            ++nr_steps;
+            if(nr_steps>100000)
+            {
+              std::cout << "reduced_grand_potential: " << reduced_grand_potential << std::endl;
+              std::cout << "psi: " << s << std::endl;
+              std::cout << "p_start: " << p_start << std::endl;
+              std::cout << "Left bracket: " << left_bracket << std::endl;
+              std::cout << "Right bracket: " << right_bracket << std::endl;
+              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) does NOT converge\n");
+            }
+          }
+          while(s < reduced_grand_potential);
+        }
+        else
+        {
+          // find the bracket on the left
+          do
+          {
+            left_bracket *= 0.5;
+            s = psiForPressure(left_bracket);
+
+            ++nr_steps;
+            if(nr_steps>100000)
+            {
+              std::cout << "reduced_grand_potential: " << reduced_grand_potential << std::endl;
+              std::cout << "psi: " << s << std::endl;
+              std::cout << "p_start: " << p_start << std::endl;
+              std::cout << "Left bracket: " << left_bracket << std::endl;
+              std::cout << "Right bracket: " << right_bracket << std::endl;
+              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum > 1) does NOT converge\n");
+            }
+          }
+          while(s > reduced_grand_potential);
+        }
+
+        do
+        {
+          double middle = 0.5 * (left_bracket + right_bracket);
+          s = psiForPressure(middle);
+
+          if(s > reduced_grand_potential)
+             right_bracket = middle;
+          else
+             left_bracket = middle;
+
+          ++nr_steps;
+          if(nr_steps>100000)
+          {
+            std::cout << "Left bracket: " << left_bracket << std::endl;
+            std::cout << "Right bracket: " << right_bracket << std::endl;
+            throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) does NOT converge\n");
+          }
+        }
+        while(std::abs(left_bracket - right_bracket) / std::abs(left_bracket + right_bracket) > tiny);
+
+        double middle = 0.5 * (left_bracket + right_bracket);
+
+        //  Store the last value of Pi0
+        cachedP0 = middle;
+
+        return 1.0 / middle;
+      }
+    }
+  }
+
+  void randomize(double maximumLoading);
+
+  bool isUnphysical() const;
 
   std::string gnuplotFunctionString(char s, size_t i) const;
 };
+
 

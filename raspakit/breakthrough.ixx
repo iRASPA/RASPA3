@@ -16,6 +16,9 @@ export struct Breakthrough
   public:
     Breakthrough(System &system);
 
+    void print() const;
+    void initialize();
+
     void writeHeader(std::ostream &stream);
     void run(std::ostream &stream);
 
@@ -24,8 +27,8 @@ export struct Breakthrough
 
   private:
     const System &system;
-    std::string displayName;
-    std::span<const Component> components;
+    const std::string displayName;
+    const std::span<const Component> components;
     size_t carrierGasComponent{ 0 }; 
     size_t Ncomp;      // number of components
     size_t Ngrid;      // number of grid points
@@ -33,7 +36,7 @@ export struct Breakthrough
     size_t printEvery; // print time step to the screen every printEvery steps
     size_t writeEvery; // write data to files every writeEvery steps
 
-    double T;
+    double T;          // absolute temperature [K]
     double p_total;    // total pressure column [Pa]
     double dptdx;      // pressure gradient [N/m3]
     double epsilon;    // void-fraction of the column [-]
@@ -45,6 +48,11 @@ export struct Breakthrough
     double dt;         // timestep integration
     size_t Nsteps;     // total number of steps
     bool autoSteps;    // use automatic number of steps
+    bool pulse;        // pulsed inlet condition for breakthrough
+    double tpulse;     // pulse time
+    MixturePrediction mixture;
+    size_t maxIsothermTerms;
+    std::pair<size_t, size_t> iastPerformance{ 0, 0 };
     
     // vector of size 'Ncomp'
     std::vector<double> prefactor;
@@ -71,7 +79,12 @@ export struct Breakthrough
     std::vector<double> cachedP0;  // cached hypothetical pressure
     std::vector<double> cachedPsi; // cached reduced grand potential over the column
 
-    std::pair<size_t, size_t> iastPerformance{ 0, 0 };
+
+    enum class IntegrationScheme
+    {
+      SSP_RK = 0,
+      Iterative = 1
+    };
 
     void computeFirstDerivatives(std::vector<double> &dqdt,
                                  std::vector<double> &dpdt,
@@ -80,16 +93,16 @@ export struct Breakthrough
                                  const std::vector<double> &v,
                                  const std::vector<double> &p);
 
-    void computeEquilibriumLoadings(MixturePrediction &mixture);
+    void computeEquilibriumLoadings();
 
     void computeVelocity();
 
-    void createMovieScriptColumnV(std::string directoryName);
-    void createMovieScriptColumnPt(std::string directoryName);
-    void createMovieScriptColumnQ(std::string directoryName);
-    void createMovieScriptColumnQeq(std::string directoryName);
-    void createMovieScriptColumnP(std::string directoryName);
-    void createMovieScriptColumnDpdt(std::string directoryName);
-    void createMovieScriptColumnDqdt(std::string directoryName);
-    void createMovieScriptColumnPnormalized(std::string directoryName);
+    void createMovieScriptColumnV();
+    void createMovieScriptColumnPt();
+    void createMovieScriptColumnQ();
+    void createMovieScriptColumnQeq();
+    void createMovieScriptColumnP();
+    void createMovieScriptColumnDpdt();
+    void createMovieScriptColumnDqdt();
+    void createMovieScriptColumnPnormalized();
 };

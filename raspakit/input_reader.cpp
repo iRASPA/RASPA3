@@ -245,10 +245,19 @@ InputReader::InputReader()
 {
   const char* env_p = std::getenv("RASPA_DIR");
 
-  std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
-  if (!std::filesystem::exists(pathfile)) pathfile = std::filesystem::path(env_p) / simulationSettingsFileName;
+  // environment variable 'RASPA_DIR' not set, assume current working directory
+  if(!env_p)
+  {
+    env_p = std::filesystem::current_path().c_str();
+  }
 
-  if (!std::filesystem::exists(pathfile)) throw std::runtime_error("simulation.input' not found");
+  std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
+  if (!std::filesystem::exists(pathfile)) 
+  {
+    pathfile = std::filesystem::path(env_p) / simulationSettingsFileName;
+  }
+
+  if (!std::filesystem::exists(pathfile)) throw std::runtime_error("'simulation.input' not found");
 
   std::ifstream fileInput{ pathfile };
   if (!fileInput) throw std::runtime_error("File 'simulation.input' exists, but error opening file");
@@ -283,7 +292,7 @@ InputReader::InputReader()
           if (caseInSensStringCompare(str, "MolecularDynamics")) simulationType = SimulationType::MolecularDynamics;
           if (caseInSensStringCompare(str, "Breakthrough")) simulationType = SimulationType::Breakthrough;
           if (caseInSensStringCompare(str, "Minimization")) simulationType = SimulationType::Minimization;
-          if (caseInSensStringCompare(str, "IAST")) simulationType = SimulationType::IAST;
+          if (caseInSensStringCompare(str, "MixturePrediction")) simulationType = SimulationType::MixturePrediction;
           if (caseInSensStringCompare(str, "Fitting")) simulationType = SimulationType::Fitting;
           if (caseInSensStringCompare(str, "Test")) simulationType = SimulationType::Test;
         };
@@ -388,7 +397,7 @@ InputReader::InputReader()
             break;
           }
           case SimulationType::Breakthrough:
-          case SimulationType::IAST:
+          case SimulationType::MixturePrediction:
           case SimulationType::Fitting:
           {
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
@@ -549,10 +558,21 @@ InputReader::InputReader()
         std::istringstream ss(arguments);
         if (ss >> str)
         {
-          if (caseInSensStringCompare(str, "IAST")) systems.back().mixturePredictionMethod = Isotherm::MixturePredictionMethod::IAST;
-          if (caseInSensStringCompare(str, "ExplicitLangmuir")) 
+          if (caseInSensStringCompare(str, "IAST")) 
           {
-            systems.back().mixturePredictionMethod = Isotherm::MixturePredictionMethod::ExplicitLangmuir;
+            systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::IAST;
+          }
+          if (caseInSensStringCompare(str, "SIAST")) 
+          {
+            systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::SIAST;
+          }
+          if (caseInSensStringCompare(str, "EI")) 
+          {
+            systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::EI;
+          }
+          if (caseInSensStringCompare(str, "SEI")) 
+          {
+            systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::SEI;
           }
         };
       }
@@ -580,7 +600,7 @@ InputReader::InputReader()
                     systems[numberOfSystems - 1].forceField, values[i], values[i], numberOfBlocks));
               break;
             case SimulationType::Breakthrough:
-            case SimulationType::IAST:
+            case SimulationType::MixturePrediction:
             case SimulationType::Fitting:
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
                     ForceField(), values[i], std::nullopt, numberOfBlocks));
@@ -848,10 +868,24 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Langmuir requires two parameters");
         }
         values.resize(2);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
+        }
+      }
+      if (caseInSensStringCompare(keyword, "Anti-Langmuir"))
+      {
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+        if(values.size() < 2)
+        {
+          throw std::runtime_error("Error: Anti-Langmuir requires two parameters");
+        }
+        values.resize(2);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Anti_Langmuir, values, 2);
+        for (size_t i = 0; i < systems.size(); ++i)
+        {
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "BET"))
@@ -862,10 +896,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: BET requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::BET);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::BET, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Henry"))
@@ -876,10 +910,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Henry requires one parameter");
         }
         values.resize(1);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Henry);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Henry, values, 1);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Freundlich"))
@@ -890,10 +924,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Freundlich requires two parameters");
         }
         values.resize(2);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Freundlich);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Freundlich, values, 2);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Sips"))
@@ -904,10 +938,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Sips requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Sips);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Sips, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Langmuir-Freundlich"))
@@ -918,10 +952,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Langmuir requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir_Freundlich);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir_Freundlich, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Redlich-Peterson"))
@@ -932,10 +966,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Redlich-Peterson requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Redlich_Peterson);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Redlich_Peterson, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Toth"))
@@ -946,10 +980,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Toth requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Toth);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Toth, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Unilan"))
@@ -960,10 +994,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Unilan requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Unilan);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Unilan, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "O'Brien&Myers"))
@@ -974,10 +1008,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: O'Brien&Myers requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::OBrien_Myers);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::OBrien_Myers, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Quadratic"))
@@ -988,10 +1022,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Quadratic requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Quadratic);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Quadratic, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "Temkin"))
@@ -1002,10 +1036,10 @@ InputReader::InputReader()
           throw std::runtime_error("Error: Temkin requires three parameters");
         }
         values.resize(3);
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Temkin);
+        const Isotherm isotherm = Isotherm(Isotherm::Type::Temkin, values, 3);
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().isotherm.add(isotherm, values);
+          systems[i].components.back().isotherm.add(isotherm);
         }
       }
       if (caseInSensStringCompare(keyword, "ColumnPressure"))
@@ -1041,6 +1075,26 @@ InputReader::InputReader()
     }
   }
 
+  // Post-compute
+  // ========================================================
+  
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    systems[i].maxIsothermTerms = 0;
+    if(!systems[i].components.empty())
+    {
+      std::vector<Component>::iterator maxIsothermTermsIterator = 
+            std::max_element(systems[i].components.begin(), systems[i].components.end(),
+              [] (Component& lhs, Component& rhs) {
+                  return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites;
+              });
+      systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
+    }
+  }
+
+  // Checks
+  // ========================================================
+    
   for (size_t i = 0; i < systems.size(); ++i)
   {
     double sum = 0.0;
@@ -1075,11 +1129,9 @@ InputReader::InputReader()
         if(systems[i].components[j].isCarrierGas)
         {
           carrierGasComponent = j;
-          systems[i].components[carrierGasComponent].isotherm.parameters.clear();
-          systems[i].components[carrierGasComponent].isotherm.siteParameterIndex.clear();
-          const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir);
           std::vector<double> values{1.0, 0.0};
-          systems[i].components[carrierGasComponent].isotherm.add(isotherm, values);
+          const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
+          systems[i].components[carrierGasComponent].isotherm.add(isotherm);
           systems[i].components[carrierGasComponent].isotherm.numberOfSites = 1;
 
           ++numberOfCarrierGases;

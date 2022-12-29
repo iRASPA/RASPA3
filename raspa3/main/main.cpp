@@ -40,7 +40,7 @@ int main()
         breakthrough.run();
         break;
       }
-      case InputReader::SimulationType::IAST:
+      case InputReader::SimulationType::MixturePrediction:
       {
         MixturePredictionSimulation mixture(inputReader);
         mixture.run();

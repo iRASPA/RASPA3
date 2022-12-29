@@ -44,7 +44,7 @@ export struct InputReader
         Minimization = 2,
         Test = 3,
         Breakthrough = 4,
-        IAST = 5,
+        MixturePrediction = 5,
         Fitting = 6
     };
     InputReader();

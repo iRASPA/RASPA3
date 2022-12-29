@@ -81,7 +81,7 @@ void IsothermFitting::writeHeader(std::ostream &stream)
 {
   for(size_t i = 0; i < system.components.size(); ++i)
   {
-    std::print(stream, std::print("Number of isotherm parameters: {}\n", system.components[i].isotherm.parameters.size()));
+    std::print(stream, std::print("Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters));
     std::print(stream, system.components[i].isotherm.print());
     std::print(stream, "\n");
   }
@@ -186,18 +186,18 @@ std::vector<std::pair<double, double>> IsothermFitting::readData(size_t componen
 // create a new citizen in the Ensemble
 IsothermFitting::DNA IsothermFitting::newCitizen(size_t Id, const std::vector<std::pair<double, double>> &rawData)
 {
-  DNA citizen;
+    DNA citizen;
 
   citizen.phenotype = isotherms[Id].randomized(maximumLoading);
 
   citizen.genotype.clear();
   citizen.genotype.reserve((sizeof(double) * CHAR_BIT) *
-                  citizen.phenotype.parameters.size());
-  for(size_t i = 0; i < citizen.phenotype.parameters.size(); ++i)
+                  citizen.phenotype.numberOfParameters);
+  for(size_t i = 0; i < citizen.phenotype.numberOfParameters; ++i)
   {
     // convert from double to bitset
     uint64_t p;
-    std::memcpy(&p, &citizen.phenotype.parameters[i], sizeof(double));
+    std::memcpy(&p, &citizen.phenotype.parameters(i), sizeof(double));
     std::bitset<sizeof(double) * CHAR_BIT> bitset(p);
 
     // add the bit-string to the genotype representation
@@ -225,17 +225,17 @@ inline bool my_isnan(double val)
 double IsothermFitting::fitness(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData)
 {
   double fitnessValue = phenotype.fitness();
-
-  std::pair<double, double> pressureRange = std::make_pair(rawData.front().first, rawData.back().first);
-
+  size_t m = rawData.size();              // number of observations
+  size_t p = phenotype.numberOfParameters; // number of adjustable parameters
   for(std::pair<double, double> dataPoint: rawData)
   {
     double pressure = dataPoint.first;
     double loading = dataPoint.second;
     double difference = loading - phenotype.value(pressure);
-    fitnessValue += 0.5 * difference * difference /
-                    std::log(pressureRange.second - pressureRange.first + 1.0);
+    double weight = 1.0;
+    fitnessValue += weight * difference * difference;
   }
+  fitnessValue = sqrt(fitnessValue / static_cast<double>(m - p));
 
   if(my_isnan(fitnessValue)) fitnessValue = 99999999.999999;
   if(fitnessValue==0.0000000000) fitnessValue = 99999999.999999;
@@ -243,16 +243,48 @@ double IsothermFitting::fitness(const MultiSiteIsotherm &phenotype, const std::v
   return fitnessValue;
 }
 
+double IsothermFitting::RCorrelation(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData)
+{
+  double RCorrelationValue = phenotype.fitness();
+  size_t m = rawData.size();
+  double loading_avg_o = 0.0;
+  double loading_avg_e = 0.0;
+  double tmp1 = 0.0;
+  double tmp2 = 0.0;
+  double tmp3 = 0.0;
+
+  for(std::pair<double, double> dataPoint: rawData)
+  {
+    double pressure = dataPoint.first;
+    double loading = dataPoint.second;
+    loading_avg_o += loading / static_cast<double>(m);
+    loading_avg_e += phenotype.value(pressure) / static_cast<double>(m);
+  }
+
+  for(std::pair<double, double> dataPoint: rawData)
+  {
+    double pressure = dataPoint.first;
+    double loading = dataPoint.second;
+    tmp1 += (loading-loading_avg_o)*(phenotype.value(pressure)-loading_avg_e);
+    tmp2 += (loading-loading_avg_o)*(loading-loading_avg_o);
+    tmp3 += (phenotype.value(pressure)-loading_avg_e)*(phenotype.value(pressure)-loading_avg_e);
+  }
+  RCorrelationValue = tmp1/sqrt(tmp2*tmp3);
+
+  return RCorrelationValue;
+}
+
+
 size_t IsothermFitting::biodiversity([[maybe_unused]] size_t Id, const std::vector<DNA> &citizens)
 {
   std::map<size_t, size_t> counts;
-  for(const DNA &dna: citizens) 
+  for(const DNA &dna: citizens)
   {
     if(counts.find(dna.hash) != counts.end())
     {
       ++counts[dna.hash];
     }
-    else 
+    else
     {
       counts[dna.hash] = 1;
     }
@@ -285,12 +317,12 @@ void IsothermFitting::elitism()
 void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] size_t Id)
 {
   mutant.genotype.clear();
-  mutant.genotype.reserve((sizeof(double) * CHAR_BIT) * mutant.phenotype.parameters.size());
-  for(size_t i = 0; i < mutant.phenotype.parameters.size(); ++i)
+  mutant.genotype.reserve((sizeof(double) * CHAR_BIT) * mutant.phenotype.numberOfParameters);
+  for(size_t i = 0; i < mutant.phenotype.numberOfParameters; ++i)
   {
     // convert from double to bitset
     uint64_t p;
-    std::memcpy(&p, &mutant.phenotype.parameters[i], sizeof(double));
+    std::memcpy(&p, &mutant.phenotype.parameters(i), sizeof(double));
     std::bitset<sizeof(double) * CHAR_BIT> bitset(p);
 
     // mutation: randomly flip bit
@@ -298,7 +330,7 @@ void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] size_t Id)
 
     // convert from bitset to double
     p = bitset.to_ullong();
-    std::memcpy(&mutant.phenotype.parameters[i], &p, sizeof(double));
+    std::memcpy(&mutant.phenotype.parameters(i), &p, sizeof(double));
 
     // add the bit-string to the genotype representation
     mutant.genotype += bitset.to_string();
@@ -318,48 +350,102 @@ void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] size_t Id)
 //----------------------------------------------
 void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_t i2, size_t j1, size_t j2)
 {
-  size_t k1,k2;
+    size_t k1,k2;
+  double  tmp1;
   for(size_t i = s1; i < s2; ++i)
   {
     chooseRandomly(i1, i2, j1, j2, k1, k2);
-
+    tmp1 = RandomNumber::Uniform();
     // choose between single cross-over using bit-strings or random parameter-swap
-    if(RandomNumber::Uniform() < 0.5)
+    if(tmp1 < 0.490)
+      // One-point crossover:
+      // --------------------
     {
       // remove the extreme values 0 and 32*Npar - 1 (they are not valid for crossover)
-      size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].parameters.size();
+      size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].numberOfParameters;
       size_t spos = RandomNumber::Integer(1, bitStringSize - 2);
       children[i].genotype = parents[k1].genotype.substr(0, spos) +
                              parents[k2].genotype.substr(spos, bitStringSize - spos);
 
       // convert the bit-strings to doubles
-      for(size_t j = 0; j < children[i].phenotype.parameters.size(); ++j)
+      for(size_t j = 0; j < children[i].phenotype.numberOfParameters; ++j)
       {
         size_t pos = j * (sizeof(double) * CHAR_BIT);
         size_t size = sizeof(double) * CHAR_BIT;
         std::bitset<sizeof(double) * CHAR_BIT> bitset(children[i].genotype, pos, size);
         uint64_t p = bitset.to_ullong();
-        std::memcpy(&children[i].phenotype.parameters[j], &p, sizeof(double));
+        std::memcpy(&children[i].phenotype.parameters(j), &p, sizeof(double));
       }
     }
-    else 
+    else if ( tmp1 < 0.499)
+      // Two-point crossover:
+      // --------------------
+      {
+      size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].numberOfParameters;
+      size_t spos1 = RandomNumber::Integer(1, bitStringSize - 3);
+      size_t spos2 = RandomNumber::Integer(spos1, bitStringSize - 2);
+      children[i].genotype = parents[k1].genotype.substr(0, spos1) +
+                             parents[k2].genotype.substr(spos1, spos2 - spos1) +
+                             parents[k1].genotype.substr(spos2, bitStringSize - spos2);
+      // convert the bit-strings to doubles
+      for(size_t j = 0; j < children[i].phenotype.numberOfParameters; ++j)
+      {
+        size_t pos = j * (sizeof(double) * CHAR_BIT);
+        size_t size = sizeof(double) * CHAR_BIT;
+        std::bitset<sizeof(double) * CHAR_BIT> bitset(children[i].genotype, pos, size);
+        uint64_t p = bitset.to_ullong();
+        std::memcpy(&children[i].phenotype.parameters(j), &p, sizeof(double));
+      }
+    }
+    else if (tmp1 < 0.500)
+    {
+      // Uniform crossover:
+      // ------------------
+      size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].numberOfParameters;
+      size_t rolling_k = k1;
+      for (size_t j = 0; j < bitStringSize; j++)
+      {
+        if(RandomNumber::Uniform() < 0.25 )
+        {
+           if(rolling_k == k1)
+           {
+             rolling_k = k2;
+           }
+           else
+           {
+             rolling_k = k1;
+           }
+        }
+        children[i].genotype.substr(j,1) = parents[rolling_k].genotype.substr(j,1);
+      }
+      // convert the bit-strings to doubles
+      for(size_t j = 0; j < children[i].phenotype.numberOfParameters; ++j)
+      {
+        size_t pos = j * (sizeof(double) * CHAR_BIT);
+        size_t size = sizeof(double) * CHAR_BIT;
+        std::bitset<sizeof(double) * CHAR_BIT> bitset(children[i].genotype, pos, size);
+        uint64_t p = bitset.to_ullong();
+        std::memcpy(&children[i].phenotype.parameters(j), &p, sizeof(double));
+      }
+    }
+    else
     {
       children[i].genotype.clear();
-      for(size_t j = 0; j < children[i].phenotype.parameters.size(); ++j)
+      for(size_t j = 0; j < children[i].phenotype.numberOfParameters; ++j)
       {
         // randomly choose whether the parameter comes from parent k1 or k2
         if(RandomNumber::Uniform() < 0.5)
         {
-          children[i].phenotype.parameters[j] = parents[k1].phenotype.parameters[j];
+          children[i].phenotype.parameters(j) = parents[k1].phenotype.parameters(j);
         }
-        else 
+        else
         {
-          children[i].phenotype.parameters[j] = parents[k2].phenotype.parameters[j];
+          children[i].phenotype.parameters(j) = parents[k2].phenotype.parameters(j);
         }
 
         // convert from double to bitString
         uint64_t p;
-        std::memcpy(&p, &children[i].phenotype.parameters[j], sizeof(double));
+        std::memcpy(&p, &children[i].phenotype.parameters(j), sizeof(double));
         std::bitset<sizeof(double) * CHAR_BIT> bitset(p);
         children[i].genotype += bitset.to_string();
       }
@@ -381,15 +467,15 @@ void IsothermFitting::chooseRandomly(size_t kk1,size_t kk2,size_t jj1,size_t jj2
 
 void IsothermFitting::mate(size_t Id, const std::vector<std::pair<double, double>> &rawData)
 {
-  // retain the first 25% of the children
+    // retain the first 25% of the children
   elitism();
 
-  // mates from GA_Elitists to (GA_Size - 500)
-  crossover(Id, GA_Elitists, GA_Elitists + GA_Motleists/2, 0, GA_Elitists, 0, GA_Elitists);
-  crossover(Id, GA_Elitists + GA_Motleists/2 + 1, GA_Size - 500, 0, GA_Elitists, GA_Elitists, GA_Size - 1);
+  // mates from GA_Elitists to (GA_Size - GA_Elitists)
+  crossover(Id, GA_Elitists, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5), 0, GA_Elitists, 0, GA_Elitists);
+  crossover(Id, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5) + 1, GA_Size - GA_Elitists, 0, GA_Elitists, GA_Elitists, GA_Size - 1);
 
-    // mutation from GA_Elitists to (GA_Size - 500) with "GA_MutationRate" probability
-  for(size_t i = GA_Elitists; i < GA_Size - 500; ++i)
+  // mutation from GA_Elitists to (GA_Size - GA_Elitists) with "GA_MutationRate" probability
+  for(size_t i = GA_Elitists; i < GA_Size - GA_Elitists; ++i)
   {
     if(RandomNumber::Uniform() < GA_MutationRate)
     {
@@ -398,8 +484,8 @@ void IsothermFitting::mate(size_t Id, const std::vector<std::pair<double, double
     updateCitizen(children[i], rawData);
   }
 
-  // replace the last 500 of the children by new children
-  for(size_t i = GA_Size - 500; i < GA_Size; ++i)
+  // replace the last GA_Elitists (the worst) of the children by new children
+  for(size_t i = GA_Size - GA_Elitists; i < GA_Size; ++i)
   {
     children[i] = newCitizen(Id, rawData);
   }
@@ -416,27 +502,30 @@ void IsothermFitting::sortByFitness()
   std::sort(parents.begin(), parents.end());
 }
 
+
 void IsothermFitting::writeCitizen(std::ostream &stream, size_t componentId, size_t citizen, size_t step, 
-                           size_t variety, size_t fullfilledCondition)
+                           size_t variety, size_t fullfilledCondition, const std::vector<std::pair<double, double>> &rawData)
 {
   if(fullfilledCondition > 0)
   {
     std::print(stream, 
-        "mol: {:2d} step: {:5d} Fitness: {:8.5f} Similarity: {:5d}/{:<5d} Finishing: {:3d}/{:<3d}\n",
-        componentId, step, parents[citizen].fitness, variety, GA_Size, fullfilledCondition, 100);
+        "mol: {:2d} step: {:5d} Fitness: {:8.5f} R^2: {:8.5f} Similarity: {:5d}/{:<5d} Finishing: {:3d}/{:<3d}\n",
+        componentId, step, parents[citizen].fitness, std::pow(RCorrelation(parents[citizen].phenotype, rawData),2), 
+        variety, GA_Size, fullfilledCondition, 100);
   }
   else 
   {
     std::print(stream,
-         "mol: {:2d} step: {:5d} Fitness: {:8.5f} Similarity: {:2d}/{:<5d}\n", 
-         componentId, step, parents[citizen].fitness, variety, GA_Size);
+         "mol: {:2d} step: {:5d} Fitness: {:8.5f} R^2: {:8.5f} Similarity: {:2d}/{:<5d}\n", 
+         componentId, step, parents[citizen].fitness, std::pow(RCorrelation(parents[citizen].phenotype, rawData),2), 
+         variety, GA_Size);
   }
-  std::print(stream, "number of parameters: {}\n", parents[citizen].phenotype.parameters.size());
-  for(size_t i = 0; i < parents[citizen].phenotype.parameters.size(); ++i)
+  std::print(stream, "number of parameters: {}\n", parents[citizen].phenotype.numberOfParameters);
+  for(size_t i = 0; i < parents[citizen].phenotype.numberOfParameters; ++i)
   { 
     std::print(stream, "      genotype: {}  parameter: {}\n",
                parents[citizen].genotype.substr(64*i,64),
-               parents[citizen].phenotype.parameters[i]);
+               parents[citizen].phenotype.parameters(i));
   }
   std::print(stream, "\n");
 }
@@ -454,12 +543,10 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
   const double toleranceEqualFitness{ 1e-3 };
   const size_t minstep{ 10 };
 
-  fullFilledConditionStep = 0; 
+  fullFilledConditionStep = 0;
   optimisationStep = 0;
 
-  std::print(stream, "Starting Genetic Algorithm optimization\n");
-
-  for(size_t i = 0; i < GA_Size; ++i)
+  for(size_t i = 0; i < popAlpha.size(); ++i)
   {
     popAlpha[i] = newCitizen(componentId, rawData);
     popBeta[i] = newCitizen(componentId, rawData);
@@ -471,21 +558,21 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
   sortByFitness();
 
   // print Initial (and unsorted) population
-  writeCitizen(stream, componentId, 0, 0, 0.0, 0);
+  writeCitizen(stream, componentId, 0, 0, 0.0, 0, rawData);
 
   if(refittingFlag)
   {
-    std::print(stream, "Refitting activated\n\n");
+    std::cout << "Refitting activated\n";
     for(size_t citizen = 0; citizen < 2; ++citizen)
     {
       parents[citizen].genotype.clear();
-      parents[citizen].genotype.reserve((sizeof(double) * CHAR_BIT) * 
-                      parents[citizen].phenotype.parameters.size());
-      for(size_t i = 0; i < parents[citizen].phenotype.parameters.size(); ++i)
+      parents[citizen].genotype.reserve((sizeof(double) * CHAR_BIT) *
+                      parents[citizen].phenotype.numberOfParameters);
+      for(size_t i = 0; i < parents[citizen].phenotype.numberOfParameters; ++i)
       {
         // convert from double to bitset
         uint64_t p;
-        std::memcpy(&p, &parents[citizen].phenotype.parameters[i], sizeof(double));
+        std::memcpy(&p, &parents[citizen].phenotype.parameters(i), sizeof(double));
         std::bitset<sizeof(double) * CHAR_BIT> bitset(p);
 
         // add the bit-string to the genotype representation
@@ -505,14 +592,17 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
 
   isotherms[componentId] = parents[0].phenotype;
 
+
+  std::cout << "Starting Genetic Algorithm optimization\n";
+
   bool continueCondition = true;
-  do 
+  do
   {
     sortByFitness();
 
     tempVarietyValue = biodiversity(componentId, children);
 
-    writeCitizen(stream, componentId, 0, optimisationStep,tempVarietyValue, fullFilledConditionStep);
+    writeCitizen(stream, componentId, 0, optimisationStep,tempVarietyValue, fullFilledConditionStep, rawData);
 
     if( optimisationStep >= minstep &&
         parents[0].fitness <= minimumFitness &&
@@ -543,7 +633,7 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
 
   }while(continueCondition);
 
-  writeCitizen(stream, componentId, 0, optimisationStep,tempVarietyValue, fullFilledConditionStep);
+  writeCitizen(stream, componentId, 0, optimisationStep,tempVarietyValue, fullFilledConditionStep, rawData);
 
   return parents[0];
 }
@@ -560,7 +650,7 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
 // 6) Check convergence
 const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA citizen, double scale, const std::vector<std::pair<double, double>> &rawData)
 {
-  size_t n = citizen.phenotype.parameters.size();
+  size_t n = citizen.phenotype.numberOfParameters;
   std::vector<std::vector<double>> v(n + 1, std::vector<double>(n)); // holds vertices of simplex
   std::vector<double> f(n + 1);  // value of function at each vertex
   std::vector<double> vr(n);     // reflection - coordinates
@@ -585,11 +675,12 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
 
   for(size_t i = 0 ; i < n; ++i)
   {
-    v[0][i] = citizen.phenotype.parameters[i];
+    v[0][i] = citizen.phenotype.parameters(i);
   }
 
   // values used to create initial simplex
-  double pn = scale * (std::sqrt(static_cast<double>(n) + 1.0) - 1.0 + static_cast<double>(n)) / (static_cast<double>(n) * sqrt(2.0));
+  double pn = scale * (std::sqrt(static_cast<double>(n) + 1.0) - 1.0 + static_cast<double>(n)) / 
+              (static_cast<double>(n) * sqrt(2.0));
   double qn = scale * (std::sqrt(static_cast<double>(n) + 1.0) - 1.0) / (static_cast<double>(n) * sqrt(2.0));
   for(size_t i = 1; i <= n; ++i)
   {
@@ -597,11 +688,11 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
     {
       if (i - 1 == j)
       {
-        v[i][j] = pn + citizen.phenotype.parameters[j];
+        v[i][j] = pn + citizen.phenotype.parameters(j);
       }
       else 
       {
-        v[i][j] = qn + citizen.phenotype.parameters[j];
+        v[i][j] = qn + citizen.phenotype.parameters(j);
       }
     }
   }
@@ -610,7 +701,7 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
   {
     for(size_t j = 0; j < n; ++j)
     {
-      citizen.phenotype.parameters[j] = v[i][j];
+      citizen.phenotype.parameters(j) = v[i][j];
     }
     f[i] = fitness(citizen.phenotype, rawData);
   }
@@ -666,7 +757,7 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
     for(size_t j = 0; j < n; ++j)
     {
       vr[j] = (1.0 + ALPHA) * vm[j] - ALPHA * v[vg][j];
-      citizen.phenotype.parameters[j] = vr[j];
+      citizen.phenotype.parameters(j) = vr[j];
     }
     fr = fitness(citizen.phenotype, rawData);
 
@@ -686,7 +777,7 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
       for(size_t j = 0; j < n; ++j)
       {
         ve[j] = GAMMA * vr[j] + (1.0 - GAMMA) * vm[j];
-        citizen.phenotype.parameters[j] = ve[j];
+        citizen.phenotype.parameters(j) = ve[j];
       }
       fe = fitness(citizen.phenotype, rawData);
 
@@ -718,7 +809,7 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
       for(size_t j = 0; j < n; ++j)
       {
         vc[j] = BETA * v[vg][j] + (1.0 - BETA) * vm[j];
-        citizen.phenotype.parameters[j] = vc[j];
+        citizen.phenotype.parameters(j) = vc[j];
       }
       fc = fitness(citizen.phenotype, rawData);
       if (fc < f[vg])
@@ -749,14 +840,14 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
         for(size_t m = 0; m < n; ++m)
         {
           vtmp[m] = v[vg][m];
-          citizen.phenotype.parameters[m] = vtmp[m];
+          citizen.phenotype.parameters(m) = vtmp[m];
         }
         f[vg] = fitness(citizen.phenotype, rawData);
 
         for(size_t m = 0; m < n; ++m)
         {
           vtmp[m] = v[vh][m];
-          citizen.phenotype.parameters[m] = vtmp[m];
+          citizen.phenotype.parameters(m) = vtmp[m];
         }
         f[vh] = fitness(citizen.phenotype, rawData);
       }
@@ -783,15 +874,15 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
       {
         std::print(stream, "Reached maximum number of steps: {} = {}\n\n", itr, MAX_IT);
       }
-      
+
       // find the index of the smallest value
       sortIndexes = sort_indexes(f);
       vs = sortIndexes[0];   // index of smallest
       for(size_t m = 0; m < n; ++m)
       {
-        citizen.phenotype.parameters[m] = v[vs][m];
+        citizen.phenotype.parameters(m) = v[vs][m];
       }
-      [[maybe_unused]] double min = fitness(citizen.phenotype, rawData);
+      double min = fitness(citizen.phenotype, rawData);
 
       std::print(stream, "Final Values: \n");
       for(size_t j = 0; j < n; ++j)
@@ -849,15 +940,15 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
   std::print(stream, "set output 'isotherms_fit_{}.pdf'\n", componentName);
   std::print(stream, "set term pdf color solid\n");
 
-  std::print(stream, "array s[{}]\n", system.components[componentId].isotherm.parameters.size());
-  for(size_t i = 0; i < system.components[componentId].isotherm.parameters.size(); ++i)
+  std::print(stream, "array s[{}]\n", system.components[componentId].isotherm.numberOfParameters);
+  for(size_t i = 0; i < system.components[componentId].isotherm.numberOfParameters; ++i)
   {
-    std::print(stream, "s[{}]={}\n", i+1, system.components[componentId].isotherm.parameters[i]);
+    std::print(stream, "s[{}]={}\n", i+1, system.components[componentId].isotherm.parameters(i));
   }
-  std::print(stream, "array p[{}]\n", citizen.phenotype.parameters.size());
-  for(size_t i = 0; i < citizen.phenotype.parameters.size(); ++i)
+  std::print(stream, "array p[{}]\n", citizen.phenotype.numberOfParameters);
+  for(size_t i = 0; i < citizen.phenotype.numberOfParameters; ++i)
   {
-    std::print(stream, "p[{}]={}\n", i + 1, citizen.phenotype.parameters[i]);
+    std::print(stream, "p[{}]={}\n", i + 1, citizen.phenotype.parameters(i));
   }
   std::print(stream, "plot \\\n");
   std::print(stream, "{} title 'start f(x)' with li dt 2 lw 2,\\\n",
