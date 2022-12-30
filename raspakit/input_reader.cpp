@@ -251,13 +251,14 @@ InputReader::InputReader()
    // env_p = std::filesystem::current_path().c_str();
   }
 
+  std::cout << "Path: " << std::filesystem::current_path() << std::endl;
   std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
   if (!std::filesystem::exists(pathfile)) 
   {
-    pathfile = std::filesystem::path(env_p) / simulationSettingsFileName;
+    //pathfile = std::filesystem::path(env_p) / simulationSettingsFileName;
   }
 
-  if (!std::filesystem::exists(pathfile)) throw std::runtime_error("'simulation.input' not found");
+  if (!std::filesystem::exists(pathfile)) throw std::runtime_error("Required file 'simulation.input' not found");
 
   std::ifstream fileInput{ pathfile };
   if (!fileInput) throw std::runtime_error("File 'simulation.input' exists, but error opening file");
