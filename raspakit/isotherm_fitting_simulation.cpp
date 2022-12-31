@@ -51,6 +51,8 @@ void IsothermFittingSimulation::run()
     system.writeOutputHeaderHardware(stream);
     fitting.writeHeader(stream);
 
+    fitting.createPlotScript();
+
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
     fitting.run(stream);

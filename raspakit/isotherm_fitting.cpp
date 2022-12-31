@@ -959,3 +959,39 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
   size_t columnLoading = system.components[componentId].columnLoading + 1;
   std::print(stream, "'{}' us {}:{} title 'raw data' with po pt 5 ps 0.5\n", rawDataFileName, columnPressure, columnLoading);
 }
+
+void IsothermFitting::createPlotScript()
+{
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    std::filesystem::create_directory("IsothermFitting");
+    std::filesystem::create_directory(std::print("IsothermFitting/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::print("IsothermFitting/System_{}/make_graphs.bat", system.systemId));
+    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    for(size_t i = 0; i < system.components.size(); ++i)
+    { 
+      if(system.components[i].isotherm.numberOfParameters > 0)
+      {
+        std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", std::to_string(i), system.components[i].name);
+      }
+    }
+    std::filesystem::path path{ "make_graphs.bat" };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+#else
+    std::filesystem::create_directory("IsothermFitting");
+    std::filesystem::create_directory(std::print("IsothermFitting/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::print("IsothermFitting/System_{}/make_graphs", system.systemId));
+    stream_graphs << "#!/bin/sh\n";
+    stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
+    for (size_t i = 0; i < system.components.size(); ++i)
+    {
+      if (system.components[i].isotherm.numberOfParameters > 0)
+      {
+        std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", std::to_string(i), system.components[i].name);
+      }
+    }
+    std::filesystem::path path{ "make_graphs" };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+#endif
+
+
+}
