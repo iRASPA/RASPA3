@@ -207,7 +207,7 @@ void Breakthrough::writeHeader(std::ostream &stream)
 }
 
 
-void Breakthrough::run([[maybe_unused]]std::ostream &stream)
+void Breakthrough::run(std::ostream &stream)
 {
   std::filesystem::create_directory("Breakthrough");
   std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
@@ -280,10 +280,10 @@ void Breakthrough::run([[maybe_unused]]std::ostream &stream)
 
     if(step % printEvery == 0)
     {
-      std::cout << "Timestep " + std::to_string(step) + ", time: " + std::to_string(t) + " [s]" << std::endl;
-      std::cout << "    Average number of mixture-prediction steps: " + 
+      std::print(stream, "Timestep {}, time: {} [s]\n", std::to_string(step), std::to_string(t));
+      std::print(stream, "    Average number of mixture-prediction steps: {}\n",
                    std::to_string(static_cast<double>(iastPerformance.first)/
-                   static_cast<double>(iastPerformance.second)) << std::endl;
+                   static_cast<double>(iastPerformance.second)));
     }
 
     // check if we can set the expected end-time based on 10% longer time than when all 
@@ -301,7 +301,7 @@ void Breakthrough::run([[maybe_unused]]std::ostream &stream)
       // use a 10% longer time for display purposes
       if(tolerance < 0.01)
       {
-        std::cout << "\nConvergence criteria reached, running 10% longer\n\n" << std::endl;
+        std::print(stream, "\nConvergence criteria reached, running 10% longer\n\n");
         Nsteps = static_cast<size_t>(1.1 * static_cast<double>(step));
         autoSteps = false;
       }

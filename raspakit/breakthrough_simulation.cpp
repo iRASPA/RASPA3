@@ -44,8 +44,8 @@ void BreakthroughSimulation::run()
     std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
         system.systemId, system.simulationBox.temperature, system.simulationBox.input_pressure);
     std::ofstream fstream(fileNameString, std::ios::out );
-    //std::ostream stream(fstream.rdbuf());
-    std::ostream stream(std::cout.rdbuf());
+    std::ostream stream(fstream.rdbuf());
+    //std::ostream stream(std::cout.rdbuf());
 
     system.writeOutputHeader(stream);
     system.writeOutputHeaderHardware(stream);
