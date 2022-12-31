@@ -51,6 +51,9 @@ void BreakthroughSimulation::run()
     system.writeOutputHeaderHardware(stream);
     breakthrough.writeHeader(stream);
 
+    breakthrough.createPlotScript();
+    breakthrough.createMovieScripts();
+
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
     breakthrough.run(stream);

@@ -311,18 +311,19 @@ export struct System
     void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
     // Breakthrough settings
-    size_t columnNumberOfGridPoints{ 50 };
+    size_t columnNumberOfGridPoints{ 100 };
     double columnTotalPressure{ 1e5 };
     double columnPressureGradient{ 0.0 };
     double columnVoidFraction{ 0.4 };
     double columnParticleDensity{ 1000 };
     double columnEntranceVelocity{ 0.1 };
-    double columnLength{ 0.5 };
+    double columnLength{ 0.3 };
     double columnTimeStep{ 0.0005 };
     size_t columnNumberOfTimeSteps { 0 };
     bool columnAutoNumberOfTimeSteps{ true };
     MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{ MultiSiteIsotherm::PredictionMethod::IAST };
     PressureRange pressure_range;
     size_t numberOfCarrierGases{ 0 };
+    size_t carrierGasComponent{ 0 };
     size_t maxIsothermTerms{ 0 };
 };

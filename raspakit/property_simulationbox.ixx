@@ -23,7 +23,7 @@ export struct PropertySimulationBox
 {
   PropertySimulationBox(size_t numberOfBlocks) :
       numberOfBlocks(numberOfBlocks),
-      bookKeepingSimulationBox(numberOfBlocks)
+      bookKeepingSimulationBox(numberOfBlocks, std::make_pair(SimulationBox(1.0, 1.0, 1.0, 90.0, 90.0, 90.0), 0.0))
   {
   }
 

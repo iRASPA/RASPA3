@@ -64,61 +64,7 @@ std::vector<size_t> sortedIndices(const std::span<const Component> &v)
   return idx;
 }
 
-MixturePrediction::MixturePrediction(const System &system, double pressureStart, double pressureEnd,
-                   size_t numberOfPressurePoints, Component::PressureScale pressureScale):
-   system(system),
-   displayName(system.components.front().name),
-   components(system.spanOfAdsorbateComponents()),
-   sortedComponentIndices(sortedIndices(components)),
-   sortedComponents(components.begin(),components.end()),
-   Ncomp(components.size()),
-   Nsorted(components.size() - system.numberOfCarrierGases),
-   predictionMethod(system.mixturePredictionMethod),
-   maxIsothermTerms(system.maxIsothermTerms),
-   alpha1(Ncomp),
-   alpha2(Ncomp),
-   alpha_prod(Ncomp),
-   x(Ncomp),
-   pstar(Nsorted),
-   psi(Nsorted),
-   G(Nsorted),
-   delta(Nsorted),
-   Phi(Nsorted * Nsorted),
-   temperature(system.simulationBox.temperature),
-   pressureStart(pressureStart),
-   pressureEnd(pressureEnd),
-   numberOfPressurePoints(numberOfPressurePoints),
-   pressureScale(pressureScale)
-{
-  if(predictionMethod == MultiSiteIsotherm::PredictionMethod::EI)
-  {
-    std::sort(sortedComponents.begin(), sortedComponents.end(), &LangmuirLoadingSorter);
-  }
-  else if(predictionMethod == MultiSiteIsotherm::PredictionMethod::SEI)
-  {
-    for(size_t i = 0; i < maxIsothermTerms; ++i)
-    {
-      for(size_t j = 0; j < Ncomp; ++j)
-      {
-        if(j != carrierGasComponent)
-        {
-          segregatedSortedComponents[i][j].isotherm.sites[0] = components[j].isotherm.sites[i];
-          segregatedSortedComponents[i][j].isotherm.numberOfSites = 1;
-        }
-      }
-    }
-    for(size_t i = 0; i < maxIsothermTerms; ++i)
-    {
-      std::sort(segregatedSortedComponents[i].begin(), segregatedSortedComponents[i].end(), &LangmuirLoadingSorter);
-    }
-  }
-  else 
-  {
-    auto it = sortedComponents.begin() + static_cast<std::ptrdiff_t>(carrierGasComponent);
-    std::rotate(it, it + 1, sortedComponents.end());
-  }
 
-}
 
 MixturePrediction::MixturePrediction(const System &system) :
                                      system(system),
@@ -140,10 +86,6 @@ MixturePrediction::MixturePrediction(const System &system) :
                                      delta(Nsorted),
                                      Phi(Nsorted*Nsorted),
                                      temperature(system.simulationBox.temperature)
-                                     //pressureStart(inputreader.pressureStart),
-                                     //pressureEnd(inputreader.pressureEnd),
-                                     //numberOfPressurePoints(inputreader.numberOfPressurePoints),
-                                     //pressureScale(PressureScale(inputreader.pressureScale))
 {
   if(predictionMethod == MultiSiteIsotherm::PredictionMethod::EI)
   {
@@ -155,7 +97,7 @@ MixturePrediction::MixturePrediction(const System &system) :
     {
       for(size_t j = 0; j < Ncomp; ++j)
       {
-        if(j != carrierGasComponent)
+        if(j != system.carrierGasComponent)
         {
           segregatedSortedComponents[i][j].isotherm.sites[0] = components[j].isotherm.sites[i];
           segregatedSortedComponents[i][j].isotherm.numberOfSites = 1;
@@ -169,7 +111,7 @@ MixturePrediction::MixturePrediction(const System &system) :
   }
   else 
   {
-    auto it = sortedComponents.begin() + static_cast<std::ptrdiff_t>(carrierGasComponent);
+    auto it = sortedComponents.begin() + static_cast<std::ptrdiff_t>(system.carrierGasComponent);
     std::rotate(it, it + 1, sortedComponents.end());
   }
 }
@@ -229,7 +171,7 @@ std::pair<size_t, size_t> MixturePrediction::predictMixture(const std::vector<do
 
   // if only an inert component present
   // this happens at the beginning of the simulation when the whole column is filled with the carrier gas
-  if(std::abs(Yi[carrierGasComponent] - 1.0) < tiny)
+  if(std::abs(Yi[system.carrierGasComponent] - 1.0) < tiny)
   {
     for(size_t i = 0; i < Ncomp; ++i)
     {
@@ -403,9 +345,9 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
     Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / pstar[i];
 
   }
-  if(numberOfCarrierGases > 0)
+  if(system.numberOfCarrierGases > 0)
   {
-    Xi[carrierGasComponent] = 0.0;
+    Xi[system.carrierGasComponent] = 0.0;
   }
 
   double sum = 0.0;
@@ -427,9 +369,9 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
   {
     Ni[i] = Xi[i] / inverse_q_total;
   }
-  if(numberOfCarrierGases > 0)
+  if(system.numberOfCarrierGases > 0)
   {
-    Ni[carrierGasComponent] = 0.0;
+    Ni[system.carrierGasComponent] = 0.0;
   }
 
   return std::make_pair(numberOfIASTSteps, 1);
@@ -603,9 +545,9 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
   {
     Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / pstar[i];
   }
-  if(numberOfCarrierGases > 0)
+  if(system.numberOfCarrierGases > 0)
   {
-    Xi[carrierGasComponent] = 0.0;
+    Xi[system.carrierGasComponent] = 0.0;
   }
 
   double sum = 0.0;
@@ -627,9 +569,9 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
   {
     Ni[i] += Xi[i] / inverse_q_total;
   }
-  if(numberOfCarrierGases > 0)
+  if(system.numberOfCarrierGases > 0)
   {
-    Ni[carrierGasComponent] = 0.0;
+    Ni[system.carrierGasComponent] = 0.0;
   }
 
   return std::make_pair(numberOfIASTSteps, 1);
@@ -1175,40 +1117,13 @@ void MixturePrediction::run(std::ostream &stream)
     Yi[i] = components[i].molFraction;
   }
   
-  std::vector<double> pressures(numberOfPressurePoints);
-
-  if(numberOfPressurePoints > 1)
-  {
-    switch(pressureScale)
-    {
-      case Component::PressureScale::Log:
-      default:
-        for(size_t i = 0; i < numberOfPressurePoints; ++i)
-        {
-          pressures[i] = std::pow(10, std::log10(pressureStart) + 
-                         ((std::log10(pressureEnd) - log10(pressureStart)) * 
-                         (static_cast<double>(i) / static_cast<double>(numberOfPressurePoints - 1))));
-        }
-        break;
-      case Component::PressureScale::Normal:
-        for(size_t i = 0; i < numberOfPressurePoints; ++i)
-        {
-          pressures[i] = pressureStart + (pressureEnd - pressureStart) * (static_cast<double>(i) /
-                         static_cast<double>(numberOfPressurePoints - 1));
-        }
-        break;
-    }
-  }
-  else 
-  {
-    pressures[0] = pressureStart;
-  }
-
   // create the output files
+  std::filesystem::create_directory("MixturePrediction");
+  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
   std::vector<std::ofstream> streams;
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".data";
+    std::string fileName = std::print("MixturePrediction/System_{}/component_{}_{}.data", system.systemId, std::to_string(i),components[i].name);
     streams.emplace_back(std::ofstream{ fileName });
   }
 
@@ -1224,16 +1139,16 @@ void MixturePrediction::run(std::ostream &stream)
     streams[i] << std::setprecision(14);
   }
 
-  for(size_t i = 0; i < numberOfPressurePoints; ++i)
+  for(const double &pressure: system.pressure_range.pressures())
   {
-    std::pair<double, double> performance = predictMixture(Yi, pressures[i], Xi, Ni, &cachedP0[0], &cachedPsi[0]);
-    std::print(stream, "Pressure: {:10e}  iterations: {}\n", pressures[i], performance.first);
+    std::pair<double, double> performance = predictMixture(Yi, pressure, Xi, Ni, &cachedP0[0], &cachedPsi[0]);
+    std::print(stream, "Pressure: {:10e}  iterations: {}\n", pressure, performance.first);
 
     for (size_t j = 0; j < Ncomp; j++)
     {
-      double p_star =  Yi[j] * pressures[i] / Xi[j];
-      std::print(streams[j], "{} {} {} {} {} {} {}\n", pressures[i], components[j].isotherm.value(pressures[i]), Ni[j], Yi[j], Xi[j], p_star, components[j].isotherm.psiForPressure(p_star));
-      streams[j] << pressures[i] << " " << components[j].isotherm.value(pressures[i]) << " " << Ni[j] 
+      double p_star =  Yi[j] * pressure / Xi[j];
+      std::print(streams[j], "{} {} {} {} {} {} {}\n", pressure, components[j].isotherm.value(pressure), Ni[j], Yi[j], Xi[j], p_star, components[j].isotherm.psiForPressure(p_star));
+      streams[j] << pressure << " " << components[j].isotherm.value(pressure) << " " << Ni[j] 
                  << " " << Yi[j] << " " << Xi[j] << " " 
                  << components[j].isotherm.psiForPressure(p_star) << "\n";
     }
@@ -1243,18 +1158,20 @@ void MixturePrediction::run(std::ostream &stream)
 
 void MixturePrediction::createPureComponentsPlotScript()
 {
-  std::ofstream stream("plot_pure_components");
+  std::filesystem::create_directory("MixturePrediction");
+  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_pure_components", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
   stream << "set ylabel 'Absolute loading, {/Helvetica-Italic q}_i' offset 0.0,0 font \"Helvetica,18\"\n";
   stream << "set bmargin 4\n";
-  if(pressureScale == Component::PressureScale::Log) 
+  if(system.pressure_range.scale == PressureRange::Scale::Log)
   {
     stream << "set key top left width 2 samplen 2.5 height 0.5 spacing 1.5 font \"Helvetica, 10\" maxcolumns 2\n";
     stream << "set log x\n";
     stream << "set format x \"10^{%T}\"\n";
-    stream << "set xrange[" << pressureStart << ":]\n";
+    stream << "set xrange[" << system.pressure_range.pressureStart << ":]\n";
   }
   else 
   {
@@ -1290,18 +1207,20 @@ void MixturePrediction::createPureComponentsPlotScript()
 
 void MixturePrediction::createMixturePlotScript()
 {
-  std::ofstream stream("plot_mixture");
+  std::filesystem::create_directory("MixturePrediction");
+  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_mixture", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
   stream << "set ylabel 'Absolute loading, {/Helvetica-Italic q}_i' offset 0.0,0 font \"Helvetica,18\"\n";
   stream << "set bmargin 4\n";
-  if(pressureScale == Component::PressureScale::Log) 
+  if(system.pressure_range.scale == PressureRange::Scale::Log) 
   {
     stream << "set key top left samplen 2.5 height 0.5 spacing 1.5 font \"Helvetica, 10\" maxcolumns 2\n";
     stream << "set log x\n";
     stream << "set format x \"10^{%T}\"\n";
-    stream << "set xrange[" << pressureStart << ":]\n";
+    stream << "set xrange[" << system.pressure_range.pressureStart << ":]\n";
   }
   else 
   {
@@ -1338,18 +1257,20 @@ void MixturePrediction::createMixturePlotScript()
 
 void MixturePrediction::createMixtureAdsorbedMolFractionPlotScript()
 {
-  std::ofstream stream("plot_mixture_mol_fractions");
+  std::filesystem::create_directory("MixturePrediction");
+  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_mixture_mol_fractions", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
   stream << "set ylabel 'Adsorbed mol-fraction, {/Helvetica-Italic Y}_i / [-]' offset 0.0,0 font \"Helvetica,18\"\n";
   stream << "set bmargin 4\n";
-  if(pressureScale == Component::PressureScale::Log) 
+  if(system.pressure_range.scale == PressureRange::Scale::Log)
   {
     stream << "set key outside right samplen 2.5 height 0.5 spacing 1.5 font \"Helvetica, 10\" maxcolumns 2\n";
     stream << "set log x\n";
     stream << "set format x \"10^{%T}\"\n";
-    stream << "set xrange[" << pressureStart << ":]\n";
+    stream << "set xrange[" << system.pressure_range.pressureStart << ":]\n";
   }
   else 
   {
@@ -1387,7 +1308,9 @@ void MixturePrediction::createMixtureAdsorbedMolFractionPlotScript()
 void MixturePrediction::createPlotScript()
 {
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream stream_graphs("make_graphs.bat");
+    std::filesystem::create_directory("MixturePrediction");
+    std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::print("MixturePrediction/System_{}/make_graphs.bat", system.systemId));
     stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     stream_graphs << "gnuplot.exe plot_pure_components\n";
     stream_graphs << "gnuplot.exe plot_mixture\n";
@@ -1395,7 +1318,9 @@ void MixturePrediction::createPlotScript()
     std::filesystem::path path{ "make_graphs.bat" };
     std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream stream_graphs("make_graphs");
+    std::filesystem::create_directory("MixturePrediction");
+    std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::print("MixturePrediction/System_{}/make_graphs", system.systemId));
     stream_graphs << "#!/bin/sh\n";
     stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
     stream_graphs << "gnuplot plot_pure_components\n";

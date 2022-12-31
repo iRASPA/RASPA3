@@ -71,7 +71,6 @@ Breakthrough::Breakthrough(System &system):
     Nsteps(system.columnNumberOfTimeSteps),
     autoSteps(system.columnAutoNumberOfTimeSteps),
     mixture(system),
-    maxIsothermTerms(5), // FIX
     prefactor(Ncomp),
     Yi(Ncomp),
     Xi(Ncomp),
@@ -89,12 +88,8 @@ Breakthrough::Breakthrough(System &system):
     Dpdtnew((Ngrid + 1) * Ncomp),
     Dqdt((Ngrid + 1) * Ncomp),
     Dqdtnew((Ngrid + 1) * Ncomp),
-    cachedP0((Ngrid + 1) * Ncomp * maxIsothermTerms),
-    cachedPsi(Ngrid + 1)
-{
-}
-
-void Breakthrough::initialize()
+    cachedP0((Ngrid + 1) * Ncomp * system.maxIsothermTerms),
+    cachedPsi((Ngrid + 1) * system.maxIsothermTerms)
 {
   // precomputed factor for mass transfer
   for(size_t j = 0; j < Ncomp; ++j)
@@ -125,7 +120,7 @@ void Breakthrough::initialize()
   // for the column except for the entrance (i=0)
   for(size_t i = 1; i < Ngrid + 1; ++i)
   {
-    P[i * Ncomp + carrierGasComponent] = pt_init[i];
+    P[i * Ncomp + system.carrierGasComponent] = pt_init[i];
   }
 
   // at the column entrance, the mol-fractions of the components in the gas phase are fixed
@@ -156,7 +151,7 @@ void Breakthrough::initialize()
     }
 
     iastPerformance += mixture.predictMixture(Yi, pt_init[i], Xi, Ni, 
-        &cachedP0[i * Ncomp * maxIsothermTerms], &cachedPsi[i * maxIsothermTerms]);
+        &cachedP0[i * Ncomp * system.maxIsothermTerms], &cachedPsi[i * system.maxIsothermTerms]);
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
@@ -214,15 +209,18 @@ void Breakthrough::writeHeader(std::ostream &stream)
 
 void Breakthrough::run([[maybe_unused]]std::ostream &stream)
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   // create the output files
   std::vector<std::ofstream> streams;
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".data";
+    std::string fileName = std::print("Breakthrough/System_{}/component_{}_{}.data", system.systemId, std::to_string(i), components[i].name);
     streams.emplace_back(std::ofstream{ fileName });
   }
 
-  std::ofstream movieStream("column.data");
+  std::ofstream movieStream(std::print("Breakthrough/System_{}/column.data", system.systemId));
 
   for(size_t step = 0; (step < Nsteps || autoSteps); ++step)
   {
@@ -235,7 +233,7 @@ void Breakthrough::run([[maybe_unused]]std::ostream &stream)
       {
         for(size_t j = 0; j < Ncomp; ++j)
         {
-          if (j == carrierGasComponent)
+          if (j == system.carrierGasComponent)
           {
             P[0 * Ncomp + j] = p_total;
           }
@@ -408,7 +406,7 @@ void Breakthrough::computeEquilibriumLoadings()
 
     // use Yi and Pt[i] to compute the loadings in the adsorption mixture via mixture prediction
     iastPerformance += mixture.predictMixture(Yi, Pt[i], Xi, Ni, 
-        &cachedP0[i * Ncomp * maxIsothermTerms], &cachedPsi[i * maxIsothermTerms]);
+        &cachedP0[i * Ncomp * system.maxIsothermTerms], &cachedPsi[i * system.maxIsothermTerms]);
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
@@ -529,7 +527,7 @@ void Breakthrough::print() const
 
   std::cout << "Component data\n";
   std::cout << "=======================================================\n";
-  std::cout << "maximum isotherm terms:        " << maxIsothermTerms << "\n";
+  std::cout << "maximum isotherm terms:        " << system.maxIsothermTerms << "\n";
   for(size_t i = 0; i < Ncomp; ++i)
   {
     // FIX
@@ -538,23 +536,31 @@ void Breakthrough::print() const
   }
 }
 
-void Breakthrough::createPlotScript([[maybe_unused]]std::string directoryName)
+void Breakthrough::createPlotScript()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream stream_graphs(directoryName + "make_graphs.bat");
+    std::ofstream stream_graphs(std::print("Breakthrough/System_{}/make_graphs.bat", system.systemId));
     stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     stream_graphs << "gnuplot.exe plot_breakthrough\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_graphs.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream stream_graphs(directoryName + "make_graphs");
+    std::ofstream stream_graphs(std::print("Breakthrough/System_{}/make_graphs", system.systemId));
     stream_graphs << "#!/bin/sh\n";
     stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
     stream_graphs << "gnuplot plot_breakthrough\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_graphs", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
 
-  std::filesystem::path path{directoryName + "make_graphs"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
-  std::ofstream stream(directoryName + "plot_breakthrough");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_breakthrough", system.systemId));
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     stream << "set xlabel 'Dimensionless time, {/Arial-Italic τ}={/Arial-Italic tv/L} / [-]' font \"Arial,14\"\n";
@@ -612,10 +618,13 @@ void Breakthrough::createPlotScript([[maybe_unused]]std::string directoryName)
   }
 }
 
-void Breakthrough::createMovieScripts([[maybe_unused]] std::string directoryName)
+void Breakthrough::createMovieScripts()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream(directoryName + "make_movies.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movies.bat", system.systemId));
     makeMovieStream << "CALL make_movie_V.bat %1 %2 %3 %4\n";
     makeMovieStream << "CALL make_movie_Pt.bat %1 %2 %3 %4\n";
     makeMovieStream << "CALL make_movie_Q.bat %1 %2 %3 %4\n";
@@ -624,8 +633,11 @@ void Breakthrough::createMovieScripts([[maybe_unused]] std::string directoryName
     makeMovieStream << "CALL make_movie_Pnorm.bat %1 %2 %3 %4\n";
     makeMovieStream << "CALL make_movie_Dpdt.bat %1 %2 %3 %4\n";
     makeMovieStream << "CALL make_movie_Dqdt.bat %1 %2 %3 %4\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movies.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream(directoryName + "make_movies");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movies", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
     makeMovieStream << "./make_movie_V \"$@\"\n";
@@ -636,19 +648,21 @@ void Breakthrough::createMovieScripts([[maybe_unused]] std::string directoryName
     makeMovieStream << "./make_movie_Pnorm \"$@\"\n";
     makeMovieStream << "./make_movie_Dpdt \"$@\"\n";
     makeMovieStream << "./make_movie_Dqdt \"$@\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movies", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
 
-  std::filesystem::path path{directoryName + "make_movies"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
-  createMovieScriptColumnV();
-  createMovieScriptColumnPt();
-  createMovieScriptColumnQ();
-  createMovieScriptColumnQeq();
-  createMovieScriptColumnP();
-  createMovieScriptColumnDpdt();
-  createMovieScriptColumnDqdt();
-  createMovieScriptColumnPnormalized();
+ createMovieScriptColumnV();
+ createMovieScriptColumnPt();
+ createMovieScriptColumnQ();
+ createMovieScriptColumnQeq();
+ createMovieScriptColumnP();
+ createMovieScriptColumnDpdt();
+ createMovieScriptColumnDqdt();
+ createMovieScriptColumnPnormalized();
 }
 
 // -crf 18: the range of the CRF scale is 0–51, where 0 is lossless, 23 is the default, 
@@ -696,19 +710,25 @@ std::string movieScriptTemplate(std::string s)
 
 void Breakthrough::createMovieScriptColumnV()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_V.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_V.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_V", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_V");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_V", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_V", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("V");
 
-  std::filesystem::path path{"make_movie_V"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-
-  std::ofstream stream("plot_column_V");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_V", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -755,19 +775,27 @@ void Breakthrough::createMovieScriptColumnV()
 
 void Breakthrough::createMovieScriptColumnPt()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Pt.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Pt.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Pt.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Pt");
+  std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Pt.bat", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Pt.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Pt");
 
-  std::filesystem::path path{"make_movie_Pt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+ 
 
-  std::ofstream stream("plot_column_Pt");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Pt", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -813,19 +841,27 @@ void Breakthrough::createMovieScriptColumnPt()
 
 void Breakthrough::createMovieScriptColumnQ()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Q.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Q.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Q.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Q");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Q", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Q", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Q");
 
-  std::filesystem::path path{"make_movie_Q"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+ 
 
-  std::ofstream stream("plot_column_Q");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Q", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -886,19 +922,27 @@ void Breakthrough::createMovieScriptColumnQ()
 
 void Breakthrough::createMovieScriptColumnQeq()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Qeq.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Qeq.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Qeq.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Qeq");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Qeq", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Qeq", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Qeq");
 
-  std::filesystem::path path{"make_movie_Qeq"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
-  std::ofstream stream("plot_column_Qeq");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Qeq", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -959,19 +1003,27 @@ void Breakthrough::createMovieScriptColumnQeq()
 
 void Breakthrough::createMovieScriptColumnP()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_P.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_P.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_P.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_P");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_P", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_P", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("P");
 
-  std::filesystem::path path{"make_movie_P"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  
 
-  std::ofstream stream("plot_column_P");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_P", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -1032,20 +1084,27 @@ void Breakthrough::createMovieScriptColumnP()
 
 void Breakthrough::createMovieScriptColumnPnormalized()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Pnorm.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Pnorm.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Pnorm.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Pnorm");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Pnorm", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Pnorm", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Pnorm");
 
-  std::filesystem::path path{"make_movie_Pnorm"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   
 
-  std::ofstream stream("plot_column_Pnorm");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Pnorm", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -1106,19 +1165,27 @@ void Breakthrough::createMovieScriptColumnPnormalized()
 
 void Breakthrough::createMovieScriptColumnDpdt()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Dpdt.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Dpdt.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Dpdt.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Dpdt");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Dpdt", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Dpdt", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Dpdt");
 
-  std::filesystem::path path{"make_movie_Dpdt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+ 
 
-  std::ofstream stream("plot_column_Dpdt");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Dpdt", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -1183,20 +1250,27 @@ void Breakthrough::createMovieScriptColumnDpdt()
 
 void Breakthrough::createMovieScriptColumnDqdt()
 {
+  std::filesystem::create_directory("Breakthrough");
+  std::filesystem::create_directory(std::print("Breakthrough/System_{}", system.systemId));
+  
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::ofstream makeMovieStream("make_movie_Dqdt.bat");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Dqdt.bat", system.systemId));
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Dqdt.bat", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
-    std::ofstream makeMovieStream("make_movie_Dqdt");
+    std::ofstream makeMovieStream(std::print("Breakthrough/System_{}/make_movie_Dqdt", system.systemId));
     makeMovieStream << "#!/bin/sh\n";
     makeMovieStream << "cd -- \"$(dirname \"$0\")\"\n";
+
+    std::filesystem::path path{ std::print("Breakthrough/System_{}/make_movie_Dqdt", system.systemId) };
+    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
   makeMovieStream << movieScriptTemplate("Dqdt");
 
-  std::filesystem::path path{"make_movie_Dqdt"};
-  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   
 
-  std::ofstream stream("plot_column_Dqdt");
+  std::ofstream stream(std::print("Breakthrough/System_{}/plot_column_Dqdt", system.systemId));
 
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)

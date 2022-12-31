@@ -24,8 +24,15 @@ SimulationBox::SimulationBox(double a, double b, double c, double alpha, double 
     double3 v2 = double3(b * cos(gamma), b * sin(gamma), 0.0);
     double3 v3 = double3(c * cos(beta), c * temp, c * sqrt(1.0 - cos(beta) * cos(beta) - temp * temp));
     unitCell = double3x3(v1, v2, v3);
-    inverseUnitCell = unitCell.inverse();
-    volume = unitCell.determinant();
+    if(a != 0.0 && b != 0.0 && c != 0.0)
+    {
+      inverseUnitCell = unitCell.inverse();
+      volume = unitCell.determinant();
+    }
+    else
+    {
+      volume = 0.0;
+    }
 }
 
 double3 SimulationBox::randomPosition() const

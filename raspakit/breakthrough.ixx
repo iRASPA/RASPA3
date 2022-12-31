@@ -17,19 +17,18 @@ export struct Breakthrough
     Breakthrough(System &system);
 
     void print() const;
-    void initialize();
 
     void writeHeader(std::ostream &stream);
     void run(std::ostream &stream);
 
-    void createPlotScript(std::string directoryName);
-    void createMovieScripts(std::string directoryName);
+    void createPlotScript();
+    void createMovieScripts();
 
   private:
     const System &system;
     const std::string displayName;
     const std::span<const Component> components;
-    size_t carrierGasComponent{ 0 }; 
+    //size_t carrierGasComponent{ 0 }; 
     size_t Ncomp;      // number of components
     size_t Ngrid;      // number of grid points
 
@@ -51,7 +50,6 @@ export struct Breakthrough
     bool pulse;        // pulsed inlet condition for breakthrough
     double tpulse;     // pulse time
     MixturePrediction mixture;
-    size_t maxIsothermTerms;
     std::pair<size_t, size_t> iastPerformance{ 0, 0 };
     
     // vector of size 'Ncomp'

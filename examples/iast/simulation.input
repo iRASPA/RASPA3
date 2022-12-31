@@ -1,8 +1,9 @@
 SimulationType           MixturePrediction
 
 // Column settings
-Framework 0              MAF-X8
-Temperature              443.0   // [K]
+Framework                0
+FrameworkName            MAF-X8
+ExternalTemperature      443.0   // [K]
 PressureStart            1e-8    // lowest pressure
 PressureEnd              1e4     // highest pressure
 NumberOfPressurePoints   100     // number of points equally spaced in log-scale or linear scale

@@ -2,7 +2,7 @@ SimulationType           Breakthrough
 
 // Column settings
 Framework 0              MAF-X8
-Temperature              443.0           // [K]
+ExternalTemperature      443.0           // [K]
 ColumnVoidFraction       0.4             // [-]
 ParticleDensity          954.29          // [kg/m^3]
 TotalPressure            2.5e6           // [Pa]

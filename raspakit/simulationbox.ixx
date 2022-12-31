@@ -36,7 +36,7 @@ export struct SimulationBox
     {
     };
 
-    SimulationBox(double a, double b, double c, double alpha, double beta, double gamma);
+    explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma);
         
 
     ALWAYS_INLINE inline double3 applyPeriodicBoundaryConditions(const double3& dr) const

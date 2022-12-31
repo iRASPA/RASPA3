@@ -289,44 +289,78 @@ InputReader::InputReader()
         std::istringstream ss(arguments);
         if (ss >> str)
         {
-          if (caseInSensStringCompare(str, "MonteCarlo")) simulationType = SimulationType::MonteCarlo;
-          if (caseInSensStringCompare(str, "MolecularDynamics")) simulationType = SimulationType::MolecularDynamics;
-          if (caseInSensStringCompare(str, "Breakthrough")) simulationType = SimulationType::Breakthrough;
-          if (caseInSensStringCompare(str, "Minimization")) simulationType = SimulationType::Minimization;
-          if (caseInSensStringCompare(str, "MixturePrediction")) simulationType = SimulationType::MixturePrediction;
-          if (caseInSensStringCompare(str, "Fitting")) simulationType = SimulationType::Fitting;
-          if (caseInSensStringCompare(str, "Test")) simulationType = SimulationType::Test;
+          if (caseInSensStringCompare(str, "MonteCarlo"))
+          {
+            simulationType = SimulationType::MonteCarlo;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "MolecularDynamics"))
+          {
+            simulationType = SimulationType::MolecularDynamics;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "Breakthrough"))
+          {
+            simulationType = SimulationType::Breakthrough;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "Minimization"))
+          {
+            simulationType = SimulationType::Minimization;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "MixturePrediction"))
+          {
+            simulationType = SimulationType::MixturePrediction;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "Fitting"))
+          {
+            simulationType = SimulationType::Fitting;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "Test"))
+          {
+            simulationType = SimulationType::Test;
+            continue;
+          }
         };
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfCycles")))
       {
         numberOfCycles = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfInitializationCycles")))
       {
         numberOfInitializationCycles = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfEquilibrationCycles")))
       {
         numberOfEquilibrationCycles = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("PrintEvery")))
       {
         printEvery = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
       {
         numberOfBlocks = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfThreads")))
       {
         numberOfThreads = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("ThreadingType")))
@@ -335,10 +369,26 @@ InputReader::InputReader()
         std::istringstream ss2(arguments);
         if (ss2 >> str)
         {
-          if (caseInSensStringCompare(str, "Serial")) threadingType = ThreadPool::ThreadingType::Serial;
-          if (caseInSensStringCompare(str, "ThreadPool")) threadingType = ThreadPool::ThreadingType::ThreadPool;
-          if (caseInSensStringCompare(str, "OpenMP")) threadingType = ThreadPool::ThreadingType::OpenMP;
-          if (caseInSensStringCompare(str, "GPU-Offload")) threadingType = ThreadPool::ThreadingType::GPU_Offload;
+          if (caseInSensStringCompare(str, "Serial")) 
+          {
+            threadingType = ThreadPool::ThreadingType::Serial;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "ThreadPool")) 
+          {
+            threadingType = ThreadPool::ThreadingType::ThreadPool;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "OpenMP")) 
+          {
+            threadingType = ThreadPool::ThreadingType::OpenMP;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "GPU-Offload"))
+          {
+            threadingType = ThreadPool::ThreadingType::GPU_Offload;
+            continue;
+          }
         };
       }
 
@@ -347,6 +397,7 @@ InputReader::InputReader()
         numberOfSystems += 1;
         systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
         systems.back().forceField = currentForceField;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("ForceField")))
@@ -356,6 +407,7 @@ InputReader::InputReader()
         {
           systems.back().forceField = currentForceField;
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "BoxLengths"))
@@ -363,6 +415,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double3 value = parseDouble3(arguments, keyword, lineNumber);
         systems.back().simulationBox.setBoxLengths(value);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "BoxAngles"))
@@ -370,6 +423,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double3 value = parseDouble3(arguments, keyword, lineNumber);
         systems.back().simulationBox.setBoxAngles((std::numbers::pi / 180.0) * value);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("Framework")))
@@ -377,6 +431,7 @@ InputReader::InputReader()
         numberOfSystems += 1;
         systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
         systems.back().forceField = currentForceField;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, std::string("FrameworkName")))
@@ -395,6 +450,7 @@ InputReader::InputReader()
 
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
                                         systems.back().forceField, frameworkName, frameworkName, numberOfBlocks));
+            continue;
             break;
           }
           case SimulationType::Breakthrough:
@@ -403,6 +459,7 @@ InputReader::InputReader()
           {
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
                                         ForceField(), frameworkName, std::nullopt, numberOfBlocks));
+            continue;
             break;
           }
         }
@@ -413,7 +470,8 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().simulationBox.temperature = value;
-        systems.back().simulationBox.Beta = 1.0/(0.8314464919 * value); 
+        systems.back().simulationBox.Beta = 1.0/(0.8314464919 * value);
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "ExternalPressure"))
@@ -422,14 +480,23 @@ InputReader::InputReader()
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().simulationBox.input_pressure = value;
         systems.back().simulationBox.pressure = value / Units::PressureConversionFactor;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "ChargeMethod"))
       {
         requireExistingSystem(keyword, lineNumber);
         std::string value = parseString(arguments, keyword, lineNumber);
-        if (caseInSensStringCompare(value, "None")) systems.back().noCharges = true;
-        if (caseInSensStringCompare(value, "Ewald")) systems.back().noCharges = false;
+        if (caseInSensStringCompare(value, "None"))
+        {
+          systems.back().noCharges = true;
+          continue;
+        }
+        if (caseInSensStringCompare(value, "Ewald")) 
+        {
+          systems.back().noCharges = false;
+          continue;
+        }
       }
 
       if (caseInSensStringCompare(keyword, "OmitEwaldFourier"))
@@ -437,6 +504,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         bool value = parseBoolean(arguments, keyword, lineNumber);
         systems.back().omitEwaldFourier = value;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "probabilityVolumeMove"))
@@ -444,6 +512,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().probabilityVolumeMove = value;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "Movies"))
@@ -451,6 +520,7 @@ InputReader::InputReader()
         //requireExistingSystem(keyword, lineNumber);
         //bool value = parseBoolean(arguments, keyword, lineNumber);
         //systems.back().sampleMovie.sample = value;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "WriteMoviesEvery"))
@@ -458,6 +528,7 @@ InputReader::InputReader()
         //requireExistingSystem(keyword, lineNumber);
         //size_t value = parseInteger(arguments, keyword, lineNumber);
         //systems.back().sampleMovie.writeEvery = value;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "PressureStart"))
@@ -465,18 +536,40 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().pressure_range.pressureStart = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "PressureEnd"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().pressure_range.pressureEnd = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "NumberOfPressurePoints"))
       {
         requireExistingSystem(keyword, lineNumber);
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
         systems.back().pressure_range.numberOfPoints = value;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, "PressureScale"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        std::string str;
+        std::istringstream ss(arguments);
+        if (ss >> str)
+        {
+          if (caseInSensStringCompare(str, "Log"))
+          {
+            systems.back().pressure_range.scale = PressureRange::Scale::Log;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "Linear"))
+          {
+            systems.back().pressure_range.scale = PressureRange::Scale::Linear;
+            continue;
+          }
+        }
       }
 
       if (caseInSensStringCompare(keyword, "ColumnVoidFraction"))
@@ -484,36 +577,42 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnVoidFraction = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "ParticleDensity"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnParticleDensity = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "TotalPressure"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnTotalPressure = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "PressureGradient"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnPressureGradient = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "ColumnEntranceVelocity"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnEntranceVelocity = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "TimeStep"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnTimeStep = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "NumberOfTimeSteps"))
       {
@@ -532,24 +631,28 @@ InputReader::InputReader()
             systems.back().columnNumberOfTimeSteps = value;
             systems.back().columnAutoNumberOfTimeSteps = false;
           }
+          continue;
         }
       }
       if (caseInSensStringCompare(keyword, "WriteEvery"))
       {
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
         this->writeEvery = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "ColumnLength"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().columnLength = value;
+        continue;
       }
       if (caseInSensStringCompare(keyword, "NumberOfGridPoints"))
       {
         requireExistingSystem(keyword, lineNumber);
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
         systems.back().columnNumberOfGridPoints = value;
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "MixturePredictionMethod"))
@@ -562,18 +665,22 @@ InputReader::InputReader()
           if (caseInSensStringCompare(str, "IAST")) 
           {
             systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::IAST;
+            continue;
           }
           if (caseInSensStringCompare(str, "SIAST")) 
           {
             systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::SIAST;
+            continue;
           }
           if (caseInSensStringCompare(str, "EI")) 
           {
             systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::EI;
+            continue;
           }
           if (caseInSensStringCompare(str, "SEI")) 
           {
             systems.back().mixturePredictionMethod = MultiSiteIsotherm::PredictionMethod::SEI;
+            continue;
           }
         };
       }
@@ -608,6 +715,7 @@ InputReader::InputReader()
               break;
           }
         }
+        continue;
       }
 
       
@@ -621,6 +729,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().initialNumberOfMolecules = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "MolFraction"))
@@ -634,6 +743,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().molFraction = values[i];
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "FileName"))
       {
@@ -645,21 +755,23 @@ InputReader::InputReader()
           {
             systems[i].components.back().filename = str;
           }
+          continue;
         }
       }
-      if (caseInSensStringCompare(keyword, "PressureScale"))
-      {
-        std::istringstream ss(arguments);
-        std::vector<std::string> values = parseListOfSystemValues<std::string>(arguments, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
-        {
-            // FIX!! no components exists yet
-          //if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
-          //if (caseInSensStringCompare(values[i], "Linear")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
-          //if (caseInSensStringCompare(values[i], "Normal")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
-        }
-      }
+      //if (caseInSensStringCompare(keyword, "PressureScale"))
+      //{
+      //  std::istringstream ss(arguments);
+      //  std::vector<std::string> values = parseListOfSystemValues<std::string>(arguments, keyword, lineNumber);
+      //  values.resize(systems.size(), values.back());
+      //  for (size_t i = 0; i < systems.size(); ++i)
+      //  {
+      //      // FIX!! no components exists yet
+      //    //if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
+      //    //if (caseInSensStringCompare(values[i], "Linear")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
+      //    //if (caseInSensStringCompare(values[i], "Normal")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
+      //  }
+      //  continue;
+      //}
       if (caseInSensStringCompare(keyword, "CarrierGas"))
       {
         requireExistingSystem(keyword, lineNumber);
@@ -671,6 +783,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isCarrierGas = values[i];
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "MassTransferCoefficient"))
       {
@@ -683,6 +796,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().massTransferCoefficient = values[i];
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "AxialDispersionCoefficient"))
       {
@@ -695,6 +809,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().axialDispersionCoefficient = values[i];
         }
+        continue;
       }
 
 
@@ -708,6 +823,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityTranslationMove = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "RandomTranslationProbability"))
@@ -720,6 +836,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityRandomTranslationMove = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "RotationProbability"))
@@ -732,6 +849,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityRotationMove = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "RandomRotationProbability"))
@@ -744,6 +862,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityRandomRotationMove = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "ReinsertionProbability"))
@@ -756,6 +875,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityReinsertionMove_CBMC = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "SwapProbability"))
@@ -768,6 +888,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilitySwapMove_CBMC = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "GibbsSwapProbability"))
@@ -780,6 +901,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityGibbsSwapMove_CBMC = values[i];
         }
+        continue;
       }
 
       
@@ -793,6 +915,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilitySwapMove_CFCMC_CBMC = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "WidomProbability"))
@@ -805,6 +928,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityWidomMove = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "CFCMCWidomProbability"))
@@ -817,6 +941,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityWidomMove_CFCMC = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "CBCFCMCWidomProbability"))
@@ -829,6 +954,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().probabilityWidomMove_CFCMC_CBMC = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "MassTransferCoefficient"))
@@ -841,6 +967,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().massTransferCoefficient = values[i];
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "AxialDispersionCoefficient"))
       {
@@ -852,6 +979,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().axialDispersionCoefficient = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "NumberOfIsothermSites"))
@@ -861,6 +989,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.numberOfSites = value;
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Langmuir"))
       {
@@ -875,6 +1004,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Anti-Langmuir"))
       {
@@ -889,6 +1019,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "BET"))
       {
@@ -903,6 +1034,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Henry"))
       {
@@ -917,6 +1049,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Freundlich"))
       {
@@ -931,6 +1064,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Sips"))
       {
@@ -945,6 +1079,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Langmuir-Freundlich"))
       {
@@ -959,6 +1094,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Redlich-Peterson"))
       {
@@ -973,6 +1109,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Toth"))
       {
@@ -987,6 +1124,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Unilan"))
       {
@@ -1001,6 +1139,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "O'Brien&Myers"))
       {
@@ -1015,6 +1154,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Quadratic"))
       {
@@ -1029,6 +1169,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "Temkin"))
       {
@@ -1043,6 +1184,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "ColumnPressure"))
       {
@@ -1052,6 +1194,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().columnPressure = values[i];
         }
+        continue;
       }
       if (caseInSensStringCompare(keyword, "ColumnLoading"))
       {
@@ -1061,6 +1204,7 @@ InputReader::InputReader()
         {
           systems[i].components.back().columnLoading = values[i];
         }
+        continue;
       }
 
       if (caseInSensStringCompare(keyword, "ColumnError"))
@@ -1071,10 +1215,16 @@ InputReader::InputReader()
         {
           systems[i].components.back().columnError = values[i];
         }
+        continue;
       }
 
+      if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
+      {
+          throw std::runtime_error(std::print("Error [Input]: unrecognized keyword '{}' at line: {}", keyword, lineNumber));
+      }
 
     }
+
   }
 
   // Post-compute
@@ -1122,32 +1272,32 @@ InputReader::InputReader()
 
   for (size_t i = 0; i < systems.size(); ++i)
   {
-    size_t numberOfCarrierGases = 0;
-    carrierGasComponent = 0;
+    systems[i].numberOfCarrierGases = 0;
+    systems[i].carrierGasComponent = 0;
     for(size_t j = 0; j < systems[i].components.size(); ++j)
     {
       if(systems[i].components[j].type != Component::Type::Framework)
       {
         if(systems[i].components[j].isCarrierGas)
         {
-          carrierGasComponent = j;
+          systems[i].carrierGasComponent = j;
           std::vector<double> values{1.0, 0.0};
           const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
-          systems[i].components[carrierGasComponent].isotherm.add(isotherm);
-          systems[i].components[carrierGasComponent].isotherm.numberOfSites = 1;
+          systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
+          systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
 
-          ++numberOfCarrierGases;
+          systems[i].numberOfCarrierGases++;
         }
       }
     }
 
     if(simulationType == SimulationType::Breakthrough)
     {
-      if(numberOfCarrierGases == 0)
+      if(systems[i].numberOfCarrierGases == 0)
       {
         throw std::runtime_error("Error [Breakthrough]: no carrier gas component present");
       }
-      if(numberOfCarrierGases > 1)
+      if(systems[i].numberOfCarrierGases > 1)
       {
         throw std::runtime_error("Error [Breakthrough]: multiple carrier gas component present (there can be only one)");
       }

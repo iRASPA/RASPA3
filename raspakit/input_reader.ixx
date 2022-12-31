@@ -72,7 +72,7 @@ export struct InputReader
     ForceField forceField;
     std::vector<System> systems{};
 
-    size_t carrierGasComponent{ 0 };
+   // size_t carrierGasComponent{ 0 };
     std::string displayName{"Column"};
     double temperature{ -1.0 };
 

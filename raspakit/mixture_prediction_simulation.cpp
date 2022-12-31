@@ -51,6 +51,11 @@ void MixturePredictionSimulation::run()
     system.writeOutputHeaderHardware(stream);
     mixture.writeHeader(stream);
 
+    mixture.createPureComponentsPlotScript();
+    mixture.createMixturePlotScript();
+    mixture.createMixtureAdsorbedMolFractionPlotScript();
+    mixture.createPlotScript();
+
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
     mixture.run(stream);

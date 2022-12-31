@@ -22,9 +22,6 @@ export class MixturePrediction
       NestedLoopBisection = 1
     };
 
-    MixturePrediction(const System &system, double pressureStart, double pressureEnd,
-                    size_t numberOfPressurePoints, Component::PressureScale pressureScale);
-
     MixturePrediction(const System &system);
 
     void writeHeader(std::ostream &stream) const;
@@ -55,8 +52,8 @@ export class MixturePrediction
     std::vector<std::reference_wrapper<const Component>> sortedComponents;
     const size_t Ncomp;
     const size_t Nsorted;
-    size_t numberOfCarrierGases{ 0 };
-    size_t carrierGasComponent{ 0 };
+    //size_t numberOfCarrierGases{ 0 };
+    //size_t carrierGasComponent{ 0 };
     MultiSiteIsotherm::PredictionMethod predictionMethod;
     IASTMethod iastMethod;
     size_t maxIsothermTerms{ 2 };
@@ -74,11 +71,6 @@ export class MixturePrediction
     std::vector<double> Phi;
 
     double temperature{ 300.0 };
-    double pressureStart{ 1e3 };
-    double pressureEnd{ 1e8 };
-    size_t numberOfPressurePoints{ 100 };
-    Component::PressureScale pressureScale{ Component::PressureScale::Log };
-
 
     std::pair<size_t, size_t> computeFastIAST(const std::vector<double> &Yi,
                                       const double &P,

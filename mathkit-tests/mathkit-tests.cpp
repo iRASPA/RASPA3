@@ -20,7 +20,7 @@ namespace mathkittests
                     for (int count = 0; count < 500; count++)
                     {
                         RingMatrix m = RingMatrix::createRandomRingMatrix(rows, rows, 4);
-                        std::tuple<RingMatrix, RingMatrix, std::vector<int>> hnf = m.HermiteNormalForm();
+                        std::tuple<RingMatrix, RingMatrix, std::vector<size_t>> hnf = m.HermiteNormalForm();
                         const RingMatrix U = std::get<0>(hnf);
                         const RingMatrix A = std::get<1>(hnf);
                         if (!(U * m == A))
