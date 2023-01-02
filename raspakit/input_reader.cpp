@@ -449,7 +449,7 @@ InputReader::InputReader()
           {
 
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        systems.back().forceField, frameworkName, frameworkName, numberOfBlocks));
+                                        frameworkName, frameworkName, numberOfBlocks));
             continue;
             break;
           }
@@ -458,7 +458,7 @@ InputReader::InputReader()
           case SimulationType::Fitting:
           {
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        ForceField(), frameworkName, std::nullopt, numberOfBlocks));
+                                        frameworkName, std::nullopt, numberOfBlocks));
             continue;
             break;
           }
@@ -705,13 +705,13 @@ InputReader::InputReader()
             case SimulationType::Minimization:
             case SimulationType::Test:
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
-                    systems[numberOfSystems - 1].forceField, values[i], values[i], numberOfBlocks));
+                    values[i], values[i], numberOfBlocks));
               break;
             case SimulationType::Breakthrough:
             case SimulationType::MixturePrediction:
             case SimulationType::Fitting:
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
-                    ForceField(), values[i], std::nullopt, numberOfBlocks));
+                    values[i], std::nullopt, numberOfBlocks));
               break;
           }
         }
@@ -1230,6 +1230,11 @@ InputReader::InputReader()
   // Post-compute
   // ========================================================
   
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    systems[i].initializeComponents();
+  }
+
   for (size_t i = 0; i < systems.size(); ++i)
   {
     systems[i].maxIsothermTerms = 0;

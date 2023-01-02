@@ -30,6 +30,12 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
+void System::precomputeTotalRigidEnergy() noexcept
+{
+  rigidEnergies.zero();
+  computeEwaldFourierRigidEnergy(simulationBox, rigidEnergies);
+}
+
 void System::computeTotalEnergies() noexcept
 {
   runningEnergies.zero();
@@ -43,6 +49,9 @@ void System::computeTotalEnergies() noexcept
   computeTailCorrectionVDWEnergy(runningEnergies);
 
   computeEwaldFourierEnergy(simulationBox, runningEnergies);
+
+  // correct for the energy of rigid parts
+  runningEnergies -= rigidEnergies;
 }
 
 void System::computeTotalGradients() noexcept
@@ -58,7 +67,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   std::pair<EnergyStatus, double3x3> pressureInfo = computeFrameworkMoleculeEnergyStrainDerivative();
 
   pressureInfo = pair_acc(pressureInfo, computeInterMolecularEnergyStrainDerivative());
-  //pressureInfo = pair_acc(pressureInfo, computeEwaldFourierEnergyStrainDerivative());
+  pressureInfo = pair_acc(pressureInfo, computeEwaldFourierEnergyStrainDerivative());
 
   pressureInfo.first.sumTotal();
 

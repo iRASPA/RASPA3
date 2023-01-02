@@ -109,7 +109,6 @@ System::System(System&& s) noexcept :
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
-    //outputFile(std::move(s.outputFile)),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -153,7 +152,6 @@ System::System(const System&& s) noexcept :
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
-    //outputFile(std::move(s.outputFile)),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -188,31 +186,65 @@ void System::addComponent(const Component&& component) noexcept(false)
 
   netCharge.resize(components.size() + 1);
 
-  switch (component.type)
-  {
-    case Component::Type::Framework:
-    {
-      for(const Atom& atom: component.atoms)
-      {
-          atomPositions.push_back(atom);
-      }
-      numberOfFrameworkAtoms += component.atoms.size();
-      numberOfMoleculesPerComponent[component.componentId] += 1;
-      numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
-      numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
-      ++numberOfFrameworks;
-      if(component.simulationBox.has_value())
-      {
-        // For multiple framework, the simulation box is the union of the boxes
-        simulationBox = max(simulationBox, component.simulationBox.value());
-      }
-    }
-    default:
-      break;
-  }
-
   // Move the component to the system
   components.push_back(std::move(component));
+}
+
+// read the component from file if needed and initialize
+void System::initializeComponents()
+{
+  // sort components, order: rigid frameworks, flexible frameworks, adsorbates, cations
+  std::sort(components.begin(), components.end(), [](const Component& a, const Component& b)
+        {
+          if (a.type == b.type)
+          {
+            if (a.rigid) return true; else return false;
+          }
+          else
+          {
+            return a.type < b.type;
+          }
+        });
+
+  // read components from file
+  for (Component& component : components)
+  {
+      if (component.filenameData.has_value())
+      {
+         switch (component.type)
+         {
+         case Component::Type::Adsorbate:
+         case Component::Type::Cation:
+           component.readComponent(forceField, component.filenameData.value());
+           break;
+         case Component::Type::Framework:
+           component.readFramework(forceField, component.filenameData.value());
+
+           numberOfMoleculesPerComponent[component.componentId] += 1;
+           numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
+           numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
+           ++numberOfFrameworks;
+
+           // add Framework-atoms to the atomPositions-list
+           for (const Atom& atom : component.atoms)
+           {
+             atomPositions.push_back(atom);
+           }
+           numberOfFrameworkAtoms += component.atoms.size();
+           if (component.rigid)
+           {
+             numberOfRigidFrameworkAtoms += component.atoms.size();
+           }
+
+           if (component.simulationBox.has_value())
+           {
+             // For multiple framework, the simulation box is the union of the boxes
+             simulationBox = max(simulationBox, component.simulationBox.value());
+           }
+           break;
+         }
+      }
+  }
 }
 
 void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms)
@@ -373,6 +405,18 @@ std::span<const Atom> System::spanOfFrameworkAtoms() const
 {
   return std::span(atomPositions.begin(), atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
+
+std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
+{
+    return std::span(atomPositions.begin(), atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfRigidFrameworkAtoms));
+}
+
+
+std::span<const Atom> System::spanOfFlexibleAtoms() const
+{
+    return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfRigidFrameworkAtoms), atomPositions.end());
+}
+
 
 std::span<const Atom> System::spanOfMoleculeAtoms() const
 {

@@ -53,7 +53,7 @@ export struct Component
         NumberOfBondTypes = 1
     };
 
-    Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName, 
+    Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
               std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
 
     void readComponent(const ForceField& forceField, const std::string& fileName);
@@ -77,6 +77,7 @@ export struct Component
 
     size_t componentId{ 0 };
     std::string name{};
+    std::optional<std::string> filenameData{};
     std::string filename{};
     bool rigid { true };
 

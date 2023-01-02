@@ -33,7 +33,8 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
 
   if(noCharges || omitEwaldFourier) return std::make_pair(energy, strainDerivative);
 
-  size_t numberOfAtoms = atomPositions.size();
+  std::span<const Atom> atoms = spanOfFlexibleAtoms();
+  size_t numberOfAtoms = atoms.size();
   size_t numberOfComponents = components.size();
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
@@ -42,6 +43,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
   if(numberOfAtoms > eik_xy.size()) eik_xy.resize(numberOfAtoms);
 
   //size_t numberOfWaveVectors = (kx_max_unsigned + 1) * 2 * (ky_max_unsigned + 1) * 2 * (kz_max_unsigned + 1);
+  //if (fixedFrameworkStoredEik.size() < numberOfWaveVectors) fixedFrameworkStoredEik.resize(numberOfWaveVectors);
 
   // Construct exp(ik.r) for atoms and k-vectors kx, ky, kz = 0, 1 explicitly
   for(size_t i = 0; i != numberOfAtoms; ++i)
@@ -49,7 +51,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
     eik_x[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
     eik_y[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
     eik_z[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
-    double3 s = 2.0 * std::numbers::pi * (inv_box * atomPositions[i].position);
+    double3 s = 2.0 * std::numbers::pi * (inv_box * atoms[i].position);
     eik_x[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.x), std::sin(s.x));
     eik_y[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.y), std::sin(s.y));
     eik_z[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.z), std::sin(s.z));
@@ -78,6 +80,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
     }
   }
 
+  size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   std::vector<std::complex<double>> cksum(numberOfComponents, std::complex<double>(0.0, 0.0));
   for(std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
@@ -111,12 +114,13 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz>=0 ? eikz_temp.imag() : -eikz_temp.imag());
-            size_t comp = static_cast<size_t>(atomPositions[i].componentId);
-            double charge = atomPositions[i].charge;
-            double scaling = atomPositions[i].scalingCoulomb;
+            size_t comp = static_cast<size_t>(atoms[i].componentId);
+            double charge = atoms[i].charge;
+            double scaling = atoms[i].scalingCoulomb;
             cksum[comp] += scaling * charge * (eik_xy[i] * eikz_temp);
           }
 
+          cksum[0] += fixedFrameworkStoredEik[nvec];
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
@@ -128,6 +132,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             }
           }
 
+          ++nvec;
         }
       }
     }
@@ -135,7 +140,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
 
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * simulationBox.alpha / std::sqrt(std::numbers::pi);
-  for(size_t i = 0; i != numberOfAtoms; ++i)
+  for(size_t i = 0; i != atomPositions.size(); ++i)
   {
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
@@ -146,6 +151,8 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
   // Subtract exclusion-energy
   for(size_t l = 0; l != components.size(); ++l)
   {
+    if (!(components[l].type == Component::Type::Framework && components[l].rigid))
+    {
       for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
           std::span<Atom> span = spanOfMolecule(l, m);
@@ -166,6 +173,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             }
           }
       }
+    }
   }
 
 
@@ -175,6 +183,14 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
     for(size_t j = 0; j != numberOfComponents; ++j)
     {
       energy(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
+    }
+  }
+
+  for (size_t i = 0; i != numberOfComponents; ++i)
+  {
+    if((components[i].type == Component::Type::Framework && components[i].rigid))
+    {
+      energy(i, i).zero();
     }
   }
 

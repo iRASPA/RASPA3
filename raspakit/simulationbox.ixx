@@ -86,7 +86,7 @@ export struct SimulationBox
     double input_pressure{ 1e4 };
     double Beta{ 1.0 / (Units::KB * 300.0)};
     double alpha{ 0.265058 };
-    int3 kmax{ 8, 8, 8 };
+    int3 kmax{ 11, 11, 7 };
     Type type = Type::Rectangular;
 
     inline SimulationBox& operator+=(const SimulationBox& b)
@@ -260,10 +260,17 @@ export inline SimulationBox sqrt(const SimulationBox& a)
 
 export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
 {
-    return SimulationBox(std::max(a.lengthA, b.lengthA),
+    SimulationBox c = SimulationBox(std::max(a.lengthA, b.lengthA),
                          std::max(a.lengthB, b.lengthB),
                          std::max(a.lengthC, b.lengthC),
                          std::max(a.angleAlpha, b.angleAlpha),
                          std::max(a.angleBeta, b.angleBeta),
                          std::max(a.angleGamma, b.angleGamma));
+    c.temperature = a.temperature;
+    c.Beta = a.Beta;
+    c.pressure = a.pressure;
+    c.alpha = a.alpha;
+    c.kmax = a.kmax;
+
+    return c;
 }

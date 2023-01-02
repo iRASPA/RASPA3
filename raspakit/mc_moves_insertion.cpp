@@ -45,13 +45,14 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0);
+  if (!growData) return std::nullopt;
+
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
 
-  if (!growData) return std::nullopt;
-
+  
   system.components[selectedComponent].statistics_SwapInsertionMove_CBMC.constructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();

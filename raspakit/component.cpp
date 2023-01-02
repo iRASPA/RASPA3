@@ -41,27 +41,15 @@ import <chrono>;
 
 
 
-Component::Component(Component::Type type, size_t currentComponent, const ForceField& forceField, const std::string &componentName,
+Component::Component(Component::Type type, size_t currentComponent, const std::string &componentName,
                      std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false) :
                      type(type), 
                      componentId(currentComponent), 
                      name(componentName),
+                     filenameData(fileName),
                      lambda(numberOfBlocks, 41),
                      averageRosenbluthWeights(numberOfBlocks)
 {
-  if(fileName.has_value())
-  {
-    switch(type)
-    {
-      case Component::Type::Adsorbate:
-      case Component::Type::Cation:
-        readComponent(forceField, fileName.value());
-        break;
-      case Component::Type::Framework:
-        readFramework(forceField, fileName.value());
-        break;
-    }
-  } 
 }
 
 void Component::readComponent(const ForceField& forceField, const std::string& fileName)

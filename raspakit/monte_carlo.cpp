@@ -113,10 +113,11 @@ void MonteCarlo::initialize()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
+    system.precomputeTotalRigidEnergy();
     system.computeTotalEnergies();
     system.runningEnergies.print(stream, "Recomputed from scratch");
   };
-
+  
   for (size_t i = 0; i != numberOfInitializationCycles; i++)
   {
     for (size_t j = 0; j != systems.size(); ++j)
