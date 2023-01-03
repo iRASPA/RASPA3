@@ -244,16 +244,16 @@ export inline SimulationBox sqrt(const SimulationBox& a)
 {
     SimulationBox m;
 
-    m.lengthA = sqrt(a.lengthA);
-    m.lengthB = sqrt(a.lengthB);
-    m.lengthC = sqrt(a.lengthC);
-    m.angleAlpha = sqrt(a.angleAlpha);
-    m.angleBeta = sqrt(a.angleBeta);
-    m.angleGamma = sqrt(a.angleGamma);
+    m.lengthA = std::sqrt(a.lengthA);
+    m.lengthB = std::sqrt(a.lengthB);
+    m.lengthC = std::sqrt(a.lengthC);
+    m.angleAlpha = std::sqrt(a.angleAlpha);
+    m.angleBeta = std::sqrt(a.angleBeta);
+    m.angleGamma = std::sqrt(a.angleGamma);
     m.unitCell = sqrt(a.unitCell);
-    m.volume = sqrt(a.volume);
-    m.temperature = sqrt(a.temperature);
-    m.pressure = sqrt(a.pressure);
+    m.volume = std::sqrt(a.volume);
+    m.temperature = std::sqrt(a.temperature);
+    m.pressure = std::sqrt(a.pressure);
 
     return m;
 }
