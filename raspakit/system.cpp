@@ -231,16 +231,14 @@ void System::initializeComponents()
              atomPositions.push_back(atom);
            }
            numberOfFrameworkAtoms += component.atoms.size();
+
            if (component.rigid)
            {
-             numberOfRigidFrameworkAtoms += component.atoms.size();
+               numberOfRigidFrameworkAtoms += component.atoms.size();
            }
-
-           if (component.simulationBox.has_value())
-           {
-             // For multiple framework, the simulation box is the union of the boxes
-             simulationBox = max(simulationBox, component.simulationBox.value());
-           }
+           
+           // For multiple framework, the simulation box is the union of the boxes
+           simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
            break;
          }
       }
@@ -763,7 +761,7 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * pressure.first, 1e-5 * Units::PressureConversionFactor * pressure.second);
 
-  std::print(stream, "dU/dlambda:           {: .6e}\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -829,8 +827,6 @@ void System::sampleProperties(size_t currentBlock)
    double w = weight();
 
    averageSimulationBox.addSample(currentBlock, simulationBox, w);
-
-   //averageEnergies.addSample(currentBlock, runningEnergies, w);
 
    loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
    averageLoadings.addSample(currentBlock, loadings, w);

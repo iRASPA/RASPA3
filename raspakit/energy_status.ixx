@@ -291,7 +291,7 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
 {
     EnergyStatus m(a.size);
     m.totalEnergy = sqrt(a.totalEnergy);
-    m.dUdlambda = sqrt(a.dUdlambda);
+    m.dUdlambda = std::sqrt(a.dUdlambda);
     m.intraEnergy = sqrt(a.intraEnergy);
     m.interEnergy = sqrt(a.interEnergy);
     for (size_t i = 0; i < a.intraEnergies.size(); ++i)

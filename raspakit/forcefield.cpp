@@ -19,6 +19,7 @@ import <map>;
 import <cmath>;
 import <string>;
 import <string_view>;
+import <optional>;
 
 
 ForceField::ForceField(std::string pseudoAtomsFileName,
@@ -195,4 +196,18 @@ void ForceField::printForceFieldStatus(std::ostream &stream) const
     }
   }
   std::print(stream, "\n");
+}
+
+
+std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
+{
+  std::vector<PseudoAtom>::const_iterator it = std::find_if(
+        pseudoAtoms.begin(), pseudoAtoms.end(),
+        [&name](const PseudoAtom& x) { return x.name == name; });
+  if (it != std::end(pseudoAtoms))
+  {
+    return (it - pseudoAtoms.begin());
+  }
+ 
+  return std::nullopt;
 }

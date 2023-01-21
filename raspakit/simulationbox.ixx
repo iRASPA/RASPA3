@@ -36,6 +36,7 @@ export struct SimulationBox
     {
     };
 
+    explicit SimulationBox(double a, double b, double c);
     explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma);
         
 
@@ -120,6 +121,21 @@ export struct SimulationBox
       volume = unitCell.determinant();
     }
 
+    void scale(int3 scale)
+    {
+        lengthA *= static_cast<double>(scale.x);
+        lengthB *= static_cast<double>(scale.y);
+        lengthC *= static_cast<double>(scale.z);
+
+        double temp = (cos(angleAlpha) - cos(angleGamma) * cos(angleBeta)) / sin(angleGamma);
+        double3 v1 = double3(lengthA, 0.0, 0.0);
+        double3 v2 = double3(lengthB * cos(angleGamma), lengthB * sin(angleGamma), 0.0);
+        double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp, lengthC * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
+        unitCell = double3x3(v1, v2, v3);
+        inverseUnitCell = unitCell.inverse();
+        volume = unitCell.determinant();
+    }
+
     SimulationBox scaled(double scale)
     {
       SimulationBox v;
@@ -147,6 +163,35 @@ export struct SimulationBox
       v.type = type;
 
       return v;
+    }
+
+    SimulationBox scaled(int3 scale)
+    {
+        SimulationBox v;
+
+        v.lengthA = static_cast<double>(scale.x) * lengthA;
+        v.lengthB = static_cast<double>(scale.y) * lengthB;
+        v.lengthC = static_cast<double>(scale.z) * lengthC;
+        v.angleAlpha = angleAlpha;
+        v.angleBeta = angleBeta;
+        v.angleGamma = angleGamma;
+
+        double temp = (cos(v.angleAlpha) - cos(v.angleGamma) * cos(v.angleBeta)) / sin(v.angleGamma);
+        double3 v1 = double3(v.lengthA, 0.0, 0.0);
+        double3 v2 = double3(v.lengthB * cos(v.angleGamma), v.lengthB * sin(v.angleGamma), 0.0);
+        double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp, v.lengthC * sqrt(1.0 - cos(v.angleBeta) * cos(v.angleBeta) - temp * temp));
+        v.unitCell = double3x3(v1, v2, v3);
+        v.inverseUnitCell = v.unitCell.inverse();
+        v.volume = v.unitCell.determinant();
+
+        v.temperature = temperature;
+        v.pressure = pressure;
+        v.Beta = Beta;
+        v.alpha = alpha;
+        v.kmax = kmax;
+        v.type = type;
+
+        return v;
     }
 };
 

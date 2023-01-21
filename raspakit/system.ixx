@@ -110,6 +110,7 @@ export struct System
             [](const size_t& acc, const size_t& b) { return acc + b; });
     }
 
+    // The system weight is the sum of the weights of all the components
     double weight() const 
     {
       return std::transform_reduce(components.begin(), components.end(), 0.0,

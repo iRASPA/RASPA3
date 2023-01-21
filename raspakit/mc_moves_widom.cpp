@@ -49,8 +49,10 @@ std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedCompone
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_WidomMove_CBMC_NonEwald += (t2 - t1);
 
-    [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
     if (!growData) return std::nullopt;
+
+    [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+    
 
     system.components[selectedComponent].statistics_WidomMove_CBMC.constructed += 1;
 

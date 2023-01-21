@@ -1,12 +1,14 @@
 export module forcefield;
 
-import double4;
-import int3;
 import <vector>;
 import <string>;
 import <algorithm>;
 import <iostream>;
 import <ostream>;
+import <optional>;
+
+import double4;
+import int3;
 
 export struct VDWParameters
 {
@@ -96,4 +98,6 @@ export struct ForceField
 
   void printPseudoAtomStatus(std::ostream &stream) const;
   void printForceFieldStatus(std::ostream &stream) const;
+
+  std::optional<size_t> findPseudoAtom(const std::string &name) const;
 };

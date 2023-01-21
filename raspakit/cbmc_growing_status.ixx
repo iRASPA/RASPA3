@@ -17,8 +17,8 @@ export struct GrowingStatus
 
         for (size_t i = 0; i != component.bonds.size(); ++i)
         {
-            connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
-            connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;
+            //connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
+            //connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;
         }
 
         for (size_t i = 0; i != placedBeads.size(); ++i)

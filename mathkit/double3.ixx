@@ -33,7 +33,7 @@ export union double3
     inline const double& operator [] (size_t i) const { return v[i]; }
 
     double3 normalise();
-    double3 fract();
+    double3 fract() const;
     static double3 randomVectorOnUnitSphere();
 
     inline double length() { return sqrt(x * x + y * y + z * z); }

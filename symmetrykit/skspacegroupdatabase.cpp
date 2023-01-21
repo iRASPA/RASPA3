@@ -16,7 +16,7 @@ SKSpaceGroupDataBase::SKSpaceGroupDataBase()
 //     std::vector<int3> latticeTranslations, qint64 pointGroupNumber, std::string schoenflies, std::string generators,
 //     std::string encoding, SKAsymmetricUnit asymmetricUnit, SKTransformationMatrix transformationMatrix
 
-const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData = std::array<SKSpaceGroupSetting, 531>{
+const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
 
     SKSpaceGroupSetting{ 0, 0, 0, 0, "abc", "unknown", "unknown", false, {0,0,0}, Symmorphicity::symmorphic, false, Centring::primitive, {{0,0,0}}, 0, "" , "012", "", {{0,0},{0,0},{0,0}}, SKTransformationMatrix::identity },
 

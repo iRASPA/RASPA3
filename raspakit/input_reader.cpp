@@ -225,6 +225,21 @@ double3 parseDouble3(const std::string& arguments, const std::string& keyword, s
     throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
+int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
+{
+    int3 value{};
+
+    std::string str;
+    std::istringstream ss(arguments);
+
+    if (ss >> value.x >> value.y >> value.z)
+    {
+        return value;
+    };
+
+    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+}
+
 std::string parseString(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
     std::string value{};
@@ -463,6 +478,15 @@ InputReader::InputReader()
             break;
           }
         }
+      }
+
+
+      if (caseInSensStringCompare(keyword, "NumberOfUnitCells"))
+      {
+          requireExistingSystemAndComponent(keyword, lineNumber);
+          int3 value = parseInt3(arguments, keyword, lineNumber);
+          systems.back().components.back().numberOfUnitCells = value;
+          continue;
       }
 
       if (caseInSensStringCompare(keyword, "ExternalTemperature"))
@@ -1230,6 +1254,7 @@ InputReader::InputReader()
   // Post-compute
   // ========================================================
   
+  // read and initialize the components from file
   for (size_t i = 0; i < systems.size(); ++i)
   {
     systems[i].initializeComponents();

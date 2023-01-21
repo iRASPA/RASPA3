@@ -179,10 +179,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bond_potential.cpp" />
+    <ClCompile Include="bond_potential.ixx" />
     <ClCompile Include="breakthrough.cpp" />
     <ClCompile Include="breakthrough.ixx" />
     <ClCompile Include="breakthrough_simulation.cpp" />
     <ClCompile Include="breakthrough_simulation.ixx" />
+    <ClCompile Include="cif_reader.cpp" />
+    <ClCompile Include="cif_reader.ixx" />
     <ClCompile Include="energy_factor.cpp" />
     <ClCompile Include="energy_factor.ixx" />
     <ClCompile Include="energy_status_inter.cpp" />

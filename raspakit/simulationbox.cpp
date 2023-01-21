@@ -15,6 +15,23 @@ import double3;
 import units;
 import print;
 
+SimulationBox::SimulationBox(double a, double b, double c)
+{
+    double3 v1 = double3(a,   0.0, 0.0);
+    double3 v2 = double3(0.0, b,   0.0);
+    double3 v3 = double3(0.0, 0.0, c);
+    unitCell = double3x3(v1, v2, v3);
+    if (a != 0.0 && b != 0.0 && c != 0.0)
+    {
+        inverseUnitCell = unitCell.inverse();
+        volume = unitCell.determinant();
+    }
+    else
+    {
+        volume = 0.0;
+    }
+}
+
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma):
     lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma)
 {

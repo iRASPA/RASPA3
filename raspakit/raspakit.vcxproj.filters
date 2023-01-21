@@ -390,5 +390,17 @@
     <ClCompile Include="isotherm_fitting_simulation.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="bond_potential.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="bond_potential.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cif_reader.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cif_reader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

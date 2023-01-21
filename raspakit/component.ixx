@@ -9,9 +9,12 @@ import <cstdint>;
 import <fstream>;
 import <ostream>;
 import <vector>;
+import <array>;
+import <map>;
 import <optional>;
 import <span>;
 
+import int3;
 import double3;
 import averages;
 import atom;
@@ -21,6 +24,8 @@ import simulationbox;
 import property_widom;
 import isotherm;
 import multi_site_isotherm;
+
+import bond_potential;
 
 export template<typename T>
  struct MoveStatistics
@@ -47,11 +52,7 @@ export struct Component
         Cation = 2
     };
 
-    enum class BondType: int
-    {
-        Harmonic = 0,
-        NumberOfBondTypes = 1
-    };
+    
 
     Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
               std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
@@ -73,12 +74,16 @@ export struct Component
     std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
     
     Type type;
-    std::optional<SimulationBox> simulationBox{ std::nullopt };
+
+    SimulationBox simulationBox{30.0, 30.0 , 30.0};
+    size_t spaceGroupHallNumber{ 1 };
+    int3 numberOfUnitCells{ 1, 1, 1};
 
     size_t componentId{ 0 };
     std::string name{};
     std::optional<std::string> filenameData{};
     std::string filename{};
+
     bool rigid { true };
 
     double criticalTemperature{ 0.0 };
@@ -99,14 +104,33 @@ export struct Component
     std::optional<double> idealGasRosenbluthWeight{};
     std::optional<double> idealGasEnergy{};
 
+    double netCharge{ 0.0 };
     size_t startingBead{ 0 };
+    std::vector<Atom> definedAtoms{};
     std::vector<Atom> atoms{};
-    std::vector<std::pair<size_t, size_t>> bonds{ {0,1}, {1,2} };
 
     size_t initialNumberOfMolecules{ 0 };
 
     Lambda lambda;
     bool hasFractionalMolecule{ false };
+
+    std::vector<size_t> chiralCenters{};
+    std::vector<BondPotential> bonds{};
+    std::vector<std::pair<size_t, size_t>> bondDipoles{};
+    std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+    std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+    std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+    std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+    std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+    std::vector<std::pair<size_t, size_t>> intraVDW{};
+    std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+    std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+    std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
     
     double probabilityTranslationMove{ 0.0 };
     double probabilityRandomTranslationMove{ 0.0 };

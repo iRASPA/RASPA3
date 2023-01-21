@@ -19,7 +19,7 @@ double3 double3::normalise()
     return *this;
 }
 
-double3 double3::fract()
+double3 double3::fract() const
 {
     double3 s = double3(x, y, z);
     s.x -= std::rint(x);

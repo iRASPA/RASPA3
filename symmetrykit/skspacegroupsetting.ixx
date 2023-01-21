@@ -14,6 +14,7 @@ import skintegersymmetryoperationset;
 export class SKSpaceGroupSetting
 {
 public:
+   // SKSpaceGroupSetting() {}
     SKSpaceGroupSetting(int64_t number, int64_t spaceGroupNumber, int64_t order, char ext, std::string qualifier, std::string HM, std::string Hall,
         bool inversionAtOrigin, int3 inversionCenter, Symmorphicity symmorphicity, bool standard, Centring centring,
         std::vector<int3> latticeTranslations, int64_t pointGroupNumber, std::string schoenflies, std::string generators,
