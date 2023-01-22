@@ -14,8 +14,7 @@ export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, 
       default:
       case ForceField::ChargeMethod::Ewald:
       {
-        double alpha = forcefield.alpha;
-        double term = chargeA * chargeB * std::erfc(alpha * r);
+        double term = chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r);
         return EnergyFactor(scaling * term / r, 0.0);
       }
       case ForceField::ChargeMethod::Coulomb:
@@ -24,11 +23,11 @@ export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, 
       }
       case ForceField::ChargeMethod::Wolf:
       {
-        return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0);
+        return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
       }
       case ForceField::ChargeMethod::ModifiedWolf:
       {
-        return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0);
+        return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
       }
     }
 };

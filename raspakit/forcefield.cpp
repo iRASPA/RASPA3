@@ -20,6 +20,7 @@ import <cmath>;
 import <string>;
 import <string_view>;
 import <optional>;
+import <numbers>;
 
 
 ForceField::ForceField(std::string pseudoAtomsFileName,
@@ -196,6 +197,18 @@ void ForceField::printForceFieldStatus(std::ostream &stream) const
     }
   }
   std::print(stream, "\n");
+  if(automaticEwald)
+  {
+    std::print(stream, "Ewald precision: {}\n", EwaldPrecision);
+    std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+  }
+  else
+  {
+    std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+  }
+  std::print(stream, "\n\n");
 }
 
 
@@ -210,4 +223,26 @@ std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
   }
  
   return std::nullopt;
+}
+
+void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
+{
+    if (automaticEwald)
+    {
+        // compute the alpha-parameter and max k-vectors from the relative precision
+        double eps = std::min(fabs(EwaldPrecision), 0.5);
+
+        double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
+
+        EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
+        double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
+
+        numberOfWaveVectors = int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+                                   static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+                                   static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+
+        //numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
+        //if (ReciprocalCutOffSquared[i] < 0.0)
+        //    ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
+    }
 }

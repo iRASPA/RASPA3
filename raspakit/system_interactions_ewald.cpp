@@ -31,11 +31,19 @@ import running_energy;
 //
 void System::registerEwaldFourierEnergySingleIon(double3 position, double charge)
 {
-  double alpha_squared = simulationBox.alpha * simulationBox.alpha;
+  double alpha_squared = forceField.EwaldAlpha * forceField.EwaldAlpha;
   double3x3 inv_box = simulationBox.inverseUnitCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
+
+  size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
+  size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
+  size_t kz_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.z);
+
+  std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
+  std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
+  std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
 
   if(eik_x.size() < (kx_max_unsigned + 1)) eik_x.resize(kx_max_unsigned + 1);
   if(eik_y.size() < (kx_max_unsigned + 1)) eik_y.resize(ky_max_unsigned + 1);
@@ -104,9 +112,10 @@ void System::registerEwaldFourierEnergySingleIon(double3 position, double charge
   CoulombicFourierEnergySingleIon = (2.0 * std::numbers::pi / simulationBox.volume) * energy_sum; 
 }
 
+
 void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus)
 {
-    double alpha = box.alpha;
+    double alpha = forceField.EwaldAlpha;
     double alpha_squared = alpha * alpha;
     double3x3 inv_box = box.inverseUnitCell;
     double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
@@ -118,6 +127,14 @@ void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEne
 
     std::span<const Atom> atoms = spanOfRigidFrameworkAtoms();
     size_t numberOfAtoms = atoms.size();
+
+    size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
+    size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
+    size_t kz_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.z);
+
+    std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
+    std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
+    std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
 
     if (numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
     if (numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
@@ -215,7 +232,7 @@ void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEne
     }
 
     // Subtract self-energy
-    double prefactor_self = Units::CoulombicConversionFactor * box.alpha / std::sqrt(std::numbers::pi);
+    double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
     for (size_t i = 0; i != numberOfAtoms; ++i)
     {
         double charge = atoms[i].charge;
@@ -226,7 +243,7 @@ void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEne
 
 void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus)
 {
-  double alpha = box.alpha;
+  double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
   double3x3 inv_box = box.inverseUnitCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
@@ -237,6 +254,14 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
   if(omitEwaldFourier) return;
 
   size_t numberOfAtoms = atomPositions.size();
+
+  size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
+  size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
+  size_t kz_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.z);
+
+  std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
+  std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
+  std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
   if(numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
@@ -331,7 +356,7 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
   }
 
   // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * box.alpha / std::sqrt(std::numbers::pi);
+  double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
   for(size_t i = 0; i != numberOfAtoms; ++i)
   {
     double charge = atomPositions[i].charge;
@@ -387,13 +412,21 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
   if(noCharges) return energy;
   if(omitEwaldFourier) return energy;
 
-  double alpha = simulationBox.alpha;
+  double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
   double3x3 inv_box = simulationBox.inverseUnitCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
   size_t numberOfAtoms = newatoms.size() + oldatoms.size();
+
+  size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
+  size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
+  size_t kz_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.z);
+
+  std::make_signed_t<std::size_t> kx_max = static_cast<std::make_signed_t<std::size_t>>(kx_max_unsigned);
+  std::make_signed_t<std::size_t> ky_max = static_cast<std::make_signed_t<std::size_t>>(ky_max_unsigned);
+  std::make_signed_t<std::size_t> kz_max = static_cast<std::make_signed_t<std::size_t>>(kz_max_unsigned);
 
   if(numberOfAtoms * (kx_max_unsigned + 1) > eik_x.size()) eik_x.resize(numberOfAtoms * (kx_max_unsigned + 1));
   if(numberOfAtoms * (ky_max_unsigned + 1) > eik_y.size()) eik_y.resize(numberOfAtoms * (ky_max_unsigned + 1));
@@ -548,7 +581,7 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
   }
 
    // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * simulationBox.alpha / std::sqrt(std::numbers::pi);
+  double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
   for(size_t i = 0; i != oldatoms.size(); ++i)
   {
     double charge = oldatoms[i].charge;

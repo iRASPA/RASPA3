@@ -9,6 +9,7 @@ Framework 0
 Forcefield ExampleMoleculeForceField
 FrameworkName MFI_SI
 NumberOfUnitCells 2 2 2
+EwaldPrecision 1e-6
 ChargeMethod Ewald
 OmitEwaldFourier no
 
@@ -18,7 +19,7 @@ ExternalPressure 1e4
 #Movies no
 #WriteMoviesEvery 1000
 
-Component 0 MoleculeName               methane
+Component 0 MoleculeName               CO2
 #           MoleculeDefinition         ExampleDefinitions
             TranslationProbability     1.0
             RotationProbability        1.0

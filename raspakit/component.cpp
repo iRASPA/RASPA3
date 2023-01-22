@@ -321,11 +321,6 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
       mass += forceField.pseudoAtoms[atomType].mass;
   }
 
-  std::cout << "Number of atoms " << atoms.size() << std::endl;
-
-
- 
-  
   for (size_t i = 0; i < atoms.size(); ++i)
   {
     atoms[i].componentId = static_cast<short>(componentId);

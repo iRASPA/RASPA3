@@ -68,6 +68,7 @@ export struct SimulationBox
     double3 lengths();
     double3 angles();
     double3 randomPosition() const;
+    double3 perpendicularWidths() const;
 
     void printParameters(std::ostream &stream) const;
     void printStatus(std::ostream &stream) const;
@@ -86,8 +87,6 @@ export struct SimulationBox
     double pressure{ 1e4 };
     double input_pressure{ 1e4 };
     double Beta{ 1.0 / (Units::KB * 300.0)};
-    double alpha{ 0.265058 };
-    int3 kmax{ 11, 11, 7 };
     Type type = Type::Rectangular;
 
     inline SimulationBox& operator+=(const SimulationBox& b)
@@ -158,8 +157,6 @@ export struct SimulationBox
       v.temperature = temperature;
       v.pressure = pressure;
       v.Beta = Beta;
-      v.alpha = alpha;
-      v.kmax = kmax;
       v.type = type;
 
       return v;
@@ -187,8 +184,6 @@ export struct SimulationBox
         v.temperature = temperature;
         v.pressure = pressure;
         v.Beta = Beta;
-        v.alpha = alpha;
-        v.kmax = kmax;
         v.type = type;
 
         return v;
@@ -314,8 +309,6 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
     c.temperature = a.temperature;
     c.Beta = a.Beta;
     c.pressure = a.pressure;
-    c.alpha = a.alpha;
-    c.kmax = a.kmax;
 
     return c;
 }

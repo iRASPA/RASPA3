@@ -8,6 +8,7 @@ import <ostream>;
 import <optional>;
 
 import double4;
+import double3;
 import int3;
 
 export struct VDWParameters
@@ -67,14 +68,18 @@ export struct ForceField
   double cutOffVDW{ 12.0 };
   double cutOffCoulomb{ 12.0 };
   double dualCutOff{ 6.0 };
-  double alpha { 0.265058 };
-  int3 numberOfWaveVectors{8, 8, 8};
+  
   size_t numberOfPseudoAtoms{ 0 };
   std::vector< PseudoAtom> pseudoAtoms{};
 
   ChargeMethod chargeMethod { ChargeMethod::Ewald};
 
   double overlapCriteria{ 1e5 };
+
+  double EwaldPrecision{ 1e-6 };
+  double EwaldAlpha{ 0.265058 };
+  int3 numberOfWaveVectors{ 8, 8, 8 };
+  bool automaticEwald{ true };
 
   ForceField(std::string pseudoAtomsFileName, std::string forceFieldmixingFileName, std::string forceFieldOverwriteFileName) noexcept(false);
 
@@ -100,4 +105,6 @@ export struct ForceField
   void printForceFieldStatus(std::ostream &stream) const;
 
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
+
+  void initializeEwaldParameters(double3 perpendicularWidths);
 };

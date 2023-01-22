@@ -59,6 +59,28 @@ double3 SimulationBox::randomPosition() const
                    unitCell.cz * RandomNumber::Uniform());
 }
 
+double3 SimulationBox::perpendicularWidths() const
+{
+  //double lengthA = unitCell[0].length();
+  //double lengthB = unitCell[1].length();
+  //double lengthC = unitCell[2].length();
+  //
+  //double cosineCellAngleA = double3::dot(unitCell[1], unitCell[2]) / (unitCell[1] * unitCell[2]);
+  //double cosineCellAngleB = double3::dot(unitCell[0], unitCell[2]) / (unitCell[0] * unitCell[2]);
+  //double cosineCellAngleC = double3::dot(unitCell[0], unitCell[1]) / (unitCell[0] * unitCell[1]);
+
+  double3 c1 = double3::cross(unitCell[0], unitCell[1]);
+  double3 c2 = double3::cross(unitCell[1], unitCell[2]);
+  double3 c3 = double3::cross(unitCell[0], unitCell[2]);
+
+  double volume = std::fabs(unitCell[0].x * c2.x + unitCell[0].y * c2.y + unitCell[0].z * c2.z);
+
+  // calculate cell perpendicular widths
+  return double3(volume / std::sqrt(double3::dot(c2, c2)),
+                 volume / std::sqrt(double3::dot(c3, c3)),
+                 volume / std::sqrt(double3::dot(c1, c1)));
+}
+
 void SimulationBox::setBoxLengths(double3 lengths)
 {
     lengthA = lengths.x;

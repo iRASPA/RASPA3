@@ -14,7 +14,7 @@ export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield,
       default:
       case ForceField::ChargeMethod::Ewald:
       {
-        double alpha = forcefield.alpha;
+        double alpha = forcefield.EwaldAlpha;
         return ForceFactor(scaling * chargeA * chargeB * std::erfc(alpha * r) / r, 
               scaling * chargeA * chargeB * ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) * std::numbers::inv_sqrtpi_v<double>) / (r * r * r)), 0.0);
 
@@ -28,11 +28,11 @@ export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield,
       }
       case ForceField::ChargeMethod::Wolf:
       {
-        return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0, 0.0);
+        return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0, 0.0);
       }
       case ForceField::ChargeMethod::ModifiedWolf:
       {
-        return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.alpha * r) / r, 0.0, 0.0);
+        return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0, 0.0);
       }
     }
 };

@@ -523,6 +523,32 @@ InputReader::InputReader()
         }
       }
 
+      if (caseInSensStringCompare(keyword, "EwaldPrecision"))
+      {
+          requireExistingSystem(keyword, lineNumber);
+          double value = parseDouble(arguments, keyword, lineNumber);
+          systems.back().forceField.automaticEwald = true;
+          systems.back().forceField.EwaldPrecision = value;
+          continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "EwaldParameters"))
+      {
+          requireExistingSystem(keyword, lineNumber);
+          systems.back().forceField.automaticEwald = false;
+
+          std::istringstream iss(arguments);
+          std::string alpha, kvectors;
+          iss >> alpha;
+          std::getline(iss, kvectors);
+
+          double value = parseDouble(alpha, keyword, lineNumber);
+          systems.back().forceField.EwaldAlpha = value;
+          int3 values = parseInt3(kvectors, keyword, lineNumber);
+          systems.back().forceField.numberOfWaveVectors = values;
+          continue;
+      }
+
       if (caseInSensStringCompare(keyword, "OmitEwaldFourier"))
       {
         requireExistingSystem(keyword, lineNumber);

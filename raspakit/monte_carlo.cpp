@@ -83,6 +83,9 @@ void MonteCarlo::initialize()
     system.computeFrameworkDensity();
     system.computeNumberOfPseudoAtoms();
 
+    double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
+    system.forceField.initializeEwaldParameters(perpendicularWidths);
+
     system.createInitialMolecules();
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());

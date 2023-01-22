@@ -246,13 +246,6 @@ export struct System
     size_t numberOfTrialDirections{ 10 };
     double minimumRosenbluthFactor{ 1e-150 };
 
-    std::size_t kx_max_unsigned{8};
-    std::size_t ky_max_unsigned{8};
-    std::size_t kz_max_unsigned{8};
-    size_t numberOfWavevectors;
-    std::make_signed_t<std::size_t> kx_max{8};
-    std::make_signed_t<std::size_t> ky_max{8};
-    std::make_signed_t<std::size_t> kz_max{8};
     std::vector<std::complex<double>> eik_xy;
     std::vector<std::complex<double>> eik_x;
     std::vector<std::complex<double>> eik_y;
