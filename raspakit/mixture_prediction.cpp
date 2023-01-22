@@ -85,7 +85,7 @@ MixturePrediction::MixturePrediction(const System &system) :
                                      G(Nsorted),
                                      delta(Nsorted),
                                      Phi(Nsorted*Nsorted),
-                                     temperature(system.simulationBox.temperature)
+                                     temperature(system.temperature)
 {
   if(predictionMethod == MultiSiteIsotherm::PredictionMethod::EI)
   {

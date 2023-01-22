@@ -48,9 +48,9 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
     std::print(stream, component.writeMCMoveStatistics());
 
     double conv = Units::EnergyToKelvin;
-    double Beta = simulationBox.Beta;
-    double imposedChemicalPotential = std::log(simulationBox.Beta * component.molFraction * simulationBox.pressure) / simulationBox.Beta;
-    double imposedFugacity = component.molFraction * simulationBox.pressure;
+    double Beta = Beta;
+    double imposedChemicalPotential = std::log(Beta * component.molFraction * pressure) / Beta;
+    double imposedFugacity = component.molFraction * pressure;
 
     if(component.hasFractionalMolecule)
     {
@@ -71,14 +71,14 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
       std::print(stream, "\n\n");
 
       std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-      std::pair<double, double> idealGasChemicalPotential = component.lambda.newHistogram.averageIdealGasChemicalPotential(simulationBox.Beta);
+      std::pair<double, double> idealGasChemicalPotential = component.lambda.newHistogram.averageIdealGasChemicalPotential(Beta);
 
-      std::pair<std::vector<double>, std::vector<double>> freeEnergy = component.lambda.newHistogram.averageLandauFreeEnergyHistogram(simulationBox.Beta);
-      std::pair<double, double> excessChemicalPotential = component.lambda.newHistogram.averageExcessChemicalPotential(simulationBox.Beta);
-      double excessChemicalPotentialBias = (component.lambda.biasFactor[lastBin] - component.lambda.biasFactor[0]) / simulationBox.Beta;
-      std::pair<double, double> totalChemicalPotential = component.lambda.newHistogram.averageTotalChemicalPotential(simulationBox.Beta, excessChemicalPotentialBias);
+      std::pair<std::vector<double>, std::vector<double>> freeEnergy = component.lambda.newHistogram.averageLandauFreeEnergyHistogram(Beta);
+      std::pair<double, double> excessChemicalPotential = component.lambda.newHistogram.averageExcessChemicalPotential(Beta);
+      double excessChemicalPotentialBias = (component.lambda.biasFactor[lastBin] - component.lambda.biasFactor[0]) / Beta;
+      std::pair<double, double> totalChemicalPotential = component.lambda.newHistogram.averageTotalChemicalPotential(Beta, excessChemicalPotentialBias);
 
-      std::pair<double, double> measuredFugacity = component.lambda.newHistogram.averageFugacity(simulationBox.Beta, excessChemicalPotentialBias);
+      std::pair<double, double> measuredFugacity = component.lambda.newHistogram.averageFugacity(Beta, excessChemicalPotentialBias);
 
       std::print(stream, "    Lambda statistics:\n");
       std::print(stream, "    -------------------------------------------------------------------------------\n");
@@ -92,7 +92,7 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
       for (size_t blockIndex = 0; blockIndex < component.lambda.newHistogram.numberOfBlocks; ++blockIndex)
       {
-        double blockAverage = component.lambda.newHistogram.averagedExcessChemicalPotential(blockIndex, simulationBox.Beta);
+        double blockAverage = component.lambda.newHistogram.averagedExcessChemicalPotential(blockIndex, Beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
       }
       std::print(stream, "    -------------------------------------------------------------------------------\n");
@@ -147,9 +147,9 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
       }
       std::print(stream, "    -------------------------------------------------------------------------------\n");
       std::pair<double, double> averageExcessChemicalPotentialDUDlambda = component.lambda.dUdlambdaBookKeeping.averageExcessChemicalPotential();
-      std::pair<double, double> averageIdealGasChemicalPotentialDUDlambda = component.lambda.dUdlambdaBookKeeping.averageIdealGasChemicalPotential(simulationBox.Beta);
-      std::pair<double, double> averageTotalChemicalPotentialDUDlambda = component.lambda.dUdlambdaBookKeeping.averageTotalChemicalPotential(simulationBox.Beta);
-      std::pair<double, double> averageFugacityDUDlambda = component.lambda.dUdlambdaBookKeeping.averageFugacity(simulationBox.Beta);
+      std::pair<double, double> averageIdealGasChemicalPotentialDUDlambda = component.lambda.dUdlambdaBookKeeping.averageIdealGasChemicalPotential(Beta);
+      std::pair<double, double> averageTotalChemicalPotentialDUDlambda = component.lambda.dUdlambdaBookKeeping.averageTotalChemicalPotential(Beta);
+      std::pair<double, double> averageFugacityDUDlambda = component.lambda.dUdlambdaBookKeeping.averageFugacity(Beta);
       std::print(stream, "    Excess chemical potential:   {} +/- {} [K]\n", 
               Units::EnergyToKelvin * averageExcessChemicalPotentialDUDlambda.first, 
               Units::EnergyToKelvin * averageExcessChemicalPotentialDUDlambda.second);
@@ -210,9 +210,9 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
       }
       std::print(stream, "    -----------------------------------------------------------------------\n");
       std::pair<double, double> averageExcessWidomChemicalPotential = component.averageRosenbluthWeights.averageExcessChemicalPotential(Beta);
-      std::pair<double, double> averageIdealGasWidomChemicalPotential = component.averageRosenbluthWeights.averageIdealGasChemicalPotential(simulationBox.Beta);
-      std::pair<double, double> averageTotalWidomChemicalPotential = component.averageRosenbluthWeights.averageTotalChemicalPotential(simulationBox.Beta);
-      std::pair<double, double> averageWidomFugacity = component.averageRosenbluthWeights.averageFugacity(simulationBox.Beta);
+      std::pair<double, double> averageIdealGasWidomChemicalPotential = component.averageRosenbluthWeights.averageIdealGasChemicalPotential(Beta);
+      std::pair<double, double> averageTotalWidomChemicalPotential = component.averageRosenbluthWeights.averageTotalChemicalPotential(Beta);
+      std::pair<double, double> averageWidomFugacity = component.averageRosenbluthWeights.averageFugacity(Beta);
       std::print(stream, "    Excess chemical potential:   {} +/- {} [K]\n", 
               Units::EnergyToKelvin *  averageExcessWidomChemicalPotential.first,
               Units::EnergyToKelvin *  averageExcessWidomChemicalPotential.second);

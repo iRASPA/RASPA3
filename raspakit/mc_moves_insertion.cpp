@@ -63,12 +63,12 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
   //                                     system.computeTailCorrectionVDWOldEnergy();
   RunningEnergy tailEnergyDifference;
-  double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+  double correctionFactorEwald = std::exp(-system.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-  double preFactor = correctionFactorEwald * system.simulationBox.Beta * system.components[selectedComponent].molFraction * 
-                     system.simulationBox.pressure * system.simulationBox.volume /
+  double preFactor = correctionFactorEwald * system.Beta * system.components[selectedComponent].molFraction * 
+                     system.pressure * system.simulationBox.volume /
                      double(1 + system.numberOfMoleculesPerComponent[selectedComponent]);
 
   if (RandomNumber::Uniform() < preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight)

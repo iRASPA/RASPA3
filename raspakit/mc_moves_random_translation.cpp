@@ -67,7 +67,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(System & system, si
 
     system.components[selectedComponent].statistics_RandomTranslationMove.constructed[selectedDirection] += 1;
 
-    if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.total()))
+    if (RandomNumber::Uniform() < std::exp(-system.Beta * energyDifference.total()))
     {
         system.components[selectedComponent].statistics_RandomTranslationMove.accepted[selectedDirection] += 1;
 

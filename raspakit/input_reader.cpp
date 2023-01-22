@@ -493,8 +493,8 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
-        systems.back().simulationBox.temperature = value;
-        systems.back().simulationBox.Beta = 1.0/(0.8314464919 * value);
+        systems.back().temperature = value;
+        systems.back().Beta = 1.0/(0.8314464919 * value);
         continue;
       }
 
@@ -502,8 +502,8 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
-        systems.back().simulationBox.input_pressure = value;
-        systems.back().simulationBox.pressure = value / Units::PressureConversionFactor;
+        systems.back().input_pressure = value;
+        systems.back().pressure = value / Units::PressureConversionFactor;
         continue;
       }
 

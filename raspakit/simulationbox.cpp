@@ -137,10 +137,10 @@ void SimulationBox::printParameters(std::ostream &stream) const
 {
   std::print(stream, "Simulation parameters:\n");
   std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Temperature:     {:9.5f} \n", temperature);
-  std::print(stream, "Beta:            {:9.5f} \n", Beta);
-  std::print(stream, "Pressure:        {:9.5f} \n", Units::PressureConversionFactor * pressure);
-  std::print(stream, "\n\n");
+  //std::print(stream, "Temperature:     {:9.5f} \n", temperature);
+  //std::print(stream, "Beta:            {:9.5f} \n", Beta);
+  //std::print(stream, "Pressure:        {:9.5f} \n", Units::PressureConversionFactor * pressure);
+  //std::print(stream, "\n\n");
 }
 
 void SimulationBox::printStatus(std::ostream &stream) const

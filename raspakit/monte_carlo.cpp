@@ -95,7 +95,7 @@ void MonteCarlo::initialize()
     std::filesystem::create_directories(directoryName);
 
     std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
-        system.systemId, system.simulationBox.temperature, system.simulationBox.input_pressure);
+        system.systemId, system.temperature, system.input_pressure);
     streams.emplace_back(fileNameString, std::ios::out );
   }
 

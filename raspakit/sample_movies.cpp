@@ -43,8 +43,8 @@ void SampleMovie::initialize()
     {
         std::filesystem::path cwd = std::filesystem::current_path();
         std::filesystem::path directoryName = cwd / std::print("Movies/System_{}/", systemId);
-        std::filesystem::path fileName = cwd / std::print("Movies/System_{}/movie_all_{}_{}.pdb",
-            systemId, simulationBox.temperature, simulationBox.pressure * Units::PressureConversionFactor);
+        //std::filesystem::path fileName = cwd / std::print("Movies/System_{}/movie_all_{}_{}.pdb",
+        //    systemId, temperature, pressure * Units::PressureConversionFactor);
         std::filesystem::create_directories(directoryName);
 
         //outputFile = std::ofstream(fileName, std::ios::out);

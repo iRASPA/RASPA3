@@ -72,10 +72,10 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
     {
       energyNew = system.computeExternalNonOverlappingEnergyDualCutOff(system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, growData->atom);
       energyOld = system.computeExternalNonOverlappingEnergyDualCutOff(system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, retraceData.atom);
-      correctionFactorDualCutOff = std::exp(-system.simulationBox.Beta * (energyNew->total() - growData->energies.total() - (energyOld->total() - retraceData.energies.total())) );
+      correctionFactorDualCutOff = std::exp(-system.Beta * (energyNew->total() - growData->energies.total() - (energyOld->total() - retraceData.energies.total())) );
     }
 
-    double correctionFactorFourier = std::exp(-system.simulationBox.Beta * energyFourierDifference.total());
+    double correctionFactorFourier = std::exp(-system.Beta * energyFourierDifference.total());
 
     if (RandomNumber::Uniform() < correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
     {

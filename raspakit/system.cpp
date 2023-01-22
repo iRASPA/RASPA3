@@ -831,11 +831,11 @@ void System::sampleProperties(size_t currentBlock)
    loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
    averageLoadings.addSample(currentBlock, loadings, w);
 
-   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(swapableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.total(), simulationBox.temperature);
+   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(swapableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.total(), temperature);
    averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
    size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-   double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
+   double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(Beta * simulationBox.volume);
 
    averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 

@@ -74,7 +74,7 @@ import <numeric>;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
-      std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom, RunningEnergy>& v) {return -simulationBox.Beta * v.second.total(); });
+      std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom, RunningEnergy>& v) {return -Beta * v.second.total(); });
 
   size_t selected = selectTrialPosition(logBoltmannFactors);
 
@@ -97,7 +97,7 @@ import <numeric>;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
-      [this](const std::pair<Atom, RunningEnergy>& v) {return -simulationBox.Beta * v.second.total(); });
+      [this](const std::pair<Atom, RunningEnergy>& v) {return -Beta * v.second.total(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
@@ -120,7 +120,7 @@ import <numeric>;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies),
-      std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -simulationBox.Beta * v.second.total(); });
+      std::back_inserter(logBoltmannFactors), [this](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -Beta * v.second.total(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

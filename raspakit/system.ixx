@@ -35,6 +35,7 @@ import threadpool;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;
+import units;
 
 export struct System
 {
@@ -45,6 +46,11 @@ export struct System
     System(const System &s) = delete;
     System(const System&& s) noexcept;
     System(System&& s) noexcept;
+
+    double temperature{ 300.0 };
+    double pressure{ 1e4 };
+    double input_pressure{ 1e4 };
+    double Beta{ 1.0 / (Units::KB * 300.0) };
 
     void addComponent(const Component&& component) noexcept(false);
     void initializeComponents();

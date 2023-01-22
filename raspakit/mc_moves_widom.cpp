@@ -64,7 +64,7 @@ std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedCompone
     //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
     //                                    system.computeTailCorrectionVDWOldEnergy();
     RunningEnergy tailEnergyDifference;
-    double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+    double correctionFactorEwald = std::exp(-system.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 

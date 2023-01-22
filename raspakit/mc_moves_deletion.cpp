@@ -62,12 +62,12 @@ std::optional<RunningEnergy> MC_Moves::deletionMove(System& system, size_t selec
       //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
       //                                    system.computeTailCorrectionVDWOldEnergy();
       RunningEnergy tailEnergyDifference;
-      double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+      double correctionFactorEwald = std::exp(-system.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
       double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
       double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /
-                         (system.simulationBox.Beta * system.components[selectedComponent].molFraction * 
-                          system.simulationBox.pressure * system.simulationBox.volume);
+                         (system.Beta * system.components[selectedComponent].molFraction * 
+                          system.pressure * system.simulationBox.volume);
       if (RandomNumber::Uniform() < preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight)
       {
           system.components[selectedComponent].statistics_SwapDeletionMove_CBMC.accepted += 1;

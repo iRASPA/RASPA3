@@ -912,7 +912,7 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
 {
   std::string rawDataFileName = system.components[componentId].filename;
   std::string componentName = system.components[componentId].name;
-  double T = system.simulationBox.temperature;
+  double T = system.temperature;
 
   std::filesystem::path directoryName = std::print("IsothermFitting/System_{}/", system.systemId);
   std::filesystem::path plotFileName = std::print("IsothermFitting/System_{}/{}", system.systemId,

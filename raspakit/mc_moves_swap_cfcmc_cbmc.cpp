@@ -123,13 +123,13 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
         //                                    system.computeTailCorrectionVDWOldEnergy();
         RunningEnergy tailEnergyDifference;
-        double correctionFactorEwald = std::exp(-system.simulationBox.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+        double correctionFactorEwald = std::exp(-system.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
         double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-        double preFactor = correctionFactorEwald * system.simulationBox.Beta * system.components[selectedComponent].molFraction * system.simulationBox.pressure * system.simulationBox.volume /
+        double preFactor = correctionFactorEwald * system.Beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume /
             static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
         double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-        if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.total() + biasTerm))
+        if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.Beta * energyDifference.total() + biasTerm))
         {
             system.acceptEwaldMove();
 
@@ -190,7 +190,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
             system.components[selectedComponent].cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_Ewald += (u2 - u1);
 
-            double correctionFactorEwald = std::exp(-system.simulationBox.Beta * energyFourierDifference.total());
+            double correctionFactorEwald = std::exp(-system.Beta * energyFourierDifference.total());
 
             for (Atom &atom : fractionalMolecule) { atom.setScaling(0.0); }
 
@@ -238,9 +238,9 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
 
             double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
             double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                (system.simulationBox.Beta * system.components[selectedComponent].molFraction * system.simulationBox.pressure * system.simulationBox.volume);
+                (system.Beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume);
             double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-            if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.simulationBox.Beta * energyDifference.total() + biasTerm))
+            if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.Beta * energyDifference.total() + biasTerm))
             {
                 system.acceptEwaldMove();
                 system.components[selectedComponent].lambda.setCurrentBin(newBin);
@@ -309,7 +309,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
 
 
         double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-        if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.total() + biasTerm))
+        if (RandomNumber::Uniform() < std::exp(-system.Beta * energyDifference.total() + biasTerm))
         {
             system.acceptEwaldMove();
             system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;

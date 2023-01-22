@@ -60,7 +60,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
   system.statistics_VolumeMove.constructed += 1;
 
   if(RandomNumber::Uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
-        - (system.simulationBox.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.simulationBox.Beta))
+        - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.Beta))
   {
     system.statistics_VolumeMove.accepted += 1;
 

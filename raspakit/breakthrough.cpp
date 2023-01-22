@@ -59,7 +59,7 @@ Breakthrough::Breakthrough(System &system):
     Ngrid(system.columnNumberOfGridPoints),
     printEvery(10000),
     writeEvery(5000),
-    T(system.simulationBox.temperature),
+    T(system.temperature),
     p_total(system.columnTotalPressure),
     dptdx(system.columnPressureGradient),
     epsilon(system.columnVoidFraction),

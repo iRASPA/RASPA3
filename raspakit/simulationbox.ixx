@@ -83,10 +83,6 @@ export struct SimulationBox
     double3x3 unitCell;
     double3x3 inverseUnitCell;
     double volume;
-    double temperature{ 300.0 };
-    double pressure{ 1e4 };
-    double input_pressure{ 1e4 };
-    double Beta{ 1.0 / (Units::KB * 300.0)};
     Type type = Type::Rectangular;
 
     inline SimulationBox& operator+=(const SimulationBox& b)
@@ -99,8 +95,6 @@ export struct SimulationBox
         angleGamma += b.angleGamma;
         unitCell += b.unitCell;
         volume += volume;
-        temperature += b.temperature;
-        pressure += b.pressure;
 
         return *this;
     }
@@ -153,10 +147,6 @@ export struct SimulationBox
       v.unitCell = double3x3(v1, v2, v3);
       v.inverseUnitCell = v.unitCell.inverse();
       v.volume = v.unitCell.determinant();
-
-      v.temperature = temperature;
-      v.pressure = pressure;
-      v.Beta = Beta;
       v.type = type;
 
       return v;
@@ -180,10 +170,6 @@ export struct SimulationBox
         v.unitCell = double3x3(v1, v2, v3);
         v.inverseUnitCell = v.unitCell.inverse();
         v.volume = v.unitCell.determinant();
-
-        v.temperature = temperature;
-        v.pressure = pressure;
-        v.Beta = Beta;
         v.type = type;
 
         return v;
@@ -202,8 +188,6 @@ export inline SimulationBox operator+(const SimulationBox& a, const SimulationBo
     m.angleGamma = a.angleGamma + b.angleGamma;
     m.unitCell = a.unitCell + b.unitCell;
     m.volume = a.volume + b.volume;
-    m.temperature = a.temperature + b.temperature;
-    m.pressure = a.pressure + b.pressure;
 
     return m;
 }
@@ -220,8 +204,6 @@ export inline SimulationBox operator-(const SimulationBox& a, const SimulationBo
     m.angleGamma = a.angleGamma - b.angleGamma;
     m.unitCell = a.unitCell - b.unitCell;
     m.volume = a.volume - b.volume;
-    m.temperature = a.temperature - b.temperature;
-    m.pressure = a.pressure - b.pressure;
 
     return m;
 }
@@ -238,8 +220,6 @@ export inline SimulationBox operator*(const SimulationBox& a, const SimulationBo
     m.angleGamma = a.angleGamma * b.angleGamma;
     m.unitCell = a.unitCell * b.unitCell;
     m.volume = a.volume * b.volume;
-    m.temperature = a.temperature * b.temperature;
-    m.pressure = a.pressure * b.pressure;
     return m;
 }
 
@@ -255,8 +235,6 @@ export inline SimulationBox operator*(const double& a, const SimulationBox& b)
     m.angleGamma = a * b.angleGamma;
     m.unitCell = a * b.unitCell;
     m.volume = a * b.volume;
-    m.temperature = a * b.temperature;
-    m.pressure = a * b.pressure;
     return m;
 }
 
@@ -274,8 +252,6 @@ export inline SimulationBox operator/(const SimulationBox& a, const double& b)
     m.angleGamma = a.angleGamma * temp;
     m.unitCell = a.unitCell * temp;
     m.volume = a.volume * temp;
-    m.temperature = a.temperature * temp;
-    m.pressure = a.pressure * temp;
     return m;
 }
 
@@ -292,8 +268,6 @@ export inline SimulationBox sqrt(const SimulationBox& a)
     m.angleGamma = std::sqrt(a.angleGamma);
     m.unitCell = sqrt(a.unitCell);
     m.volume = std::sqrt(a.volume);
-    m.temperature = std::sqrt(a.temperature);
-    m.pressure = std::sqrt(a.pressure);
 
     return m;
 }
@@ -306,9 +280,6 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
                          std::max(a.angleAlpha, b.angleAlpha),
                          std::max(a.angleBeta, b.angleBeta),
                          std::max(a.angleGamma, b.angleGamma));
-    c.temperature = a.temperature;
-    c.Beta = a.Beta;
-    c.pressure = a.pressure;
 
     return c;
 }

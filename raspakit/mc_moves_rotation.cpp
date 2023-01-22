@@ -69,7 +69,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(System& system, size_t selec
 
     system.components[selectedComponent].statistics_RotationMove.constructed[selectedDirection] += 1;
 
-    if (RandomNumber::Uniform() < std::exp(-system.simulationBox.Beta * energyDifference.total()))
+    if (RandomNumber::Uniform() < std::exp(-system.Beta * energyDifference.total()))
     {
         system.components[selectedComponent].statistics_RotationMove.accepted[selectedDirection] += 1;
 
