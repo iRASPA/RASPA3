@@ -23,6 +23,7 @@ import multi_site_isotherm;
 import system;
 import simulationbox;
 import pressure_range;
+import bond_potential;
 
 bool LangmuirLoadingSorter(Component const& lhs, Component const& rhs)
 {

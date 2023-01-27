@@ -2,6 +2,7 @@ export module cif_reader;
 
 import <string>;
 import <optional>;
+import <vector>;
 
 import scanner;
 import characterset;

@@ -2,6 +2,7 @@ module;
 
 module component;
 
+import int3;
 import double3;
 import double3x3;
 import skposcarparser;

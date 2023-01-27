@@ -10,6 +10,7 @@ import <vector>;
 import <iostream>;
 import <algorithm>;
 
+import int3;
 import double3;
 import double3x3;
 import atom;
@@ -19,6 +20,7 @@ import energy_status_inter;
 import units;
 import energy_factor;
 import component;
+import forcefield;
 
 std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDerivative() noexcept
 {

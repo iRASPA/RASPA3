@@ -12,6 +12,7 @@ import isotherm;
 import multi_site_isotherm;
 import component;
 import system;
+import bond_potential;
 
 export class MixturePrediction
 {

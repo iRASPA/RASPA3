@@ -36,6 +36,7 @@ import isotherm;
 import multi_site_isotherm;
 import pressure_range;
 import units;
+import bond_potential;
 
 export struct System
 {

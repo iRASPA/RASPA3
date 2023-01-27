@@ -10,6 +10,7 @@ Forcefield ExampleMoleculeForceField
 FrameworkName MFI_SI
 NumberOfUnitCells 2 2 2
 ChargeMethod Ewald
+EwaldPrecision 1e-6
 OmitEwaldFourier no
 
 ExternalTemperature 300.0

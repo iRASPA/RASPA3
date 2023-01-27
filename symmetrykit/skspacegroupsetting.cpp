@@ -4,6 +4,8 @@ module;
 
 module skspacegroupsetting;
 
+import <vector>;
+
 import int3;
 import int3x3;
 import double3;
@@ -11,6 +13,7 @@ import double3x3;
 
 import skdefinitions;
 import skasymmetricunit;
+import skrotationmatrix;
 import sktransformationmatrix;
 import skintegersymmetryoperationset;
 import skseitzintegermatrix;

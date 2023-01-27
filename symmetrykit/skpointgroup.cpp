@@ -9,6 +9,7 @@ module skpointgroup;
 import <map>;
 import <string>;
 import <unordered_set>;
+import <vector>;
 
 import int3;
 import int3x3;

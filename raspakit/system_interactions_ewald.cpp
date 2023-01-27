@@ -10,6 +10,7 @@ import <vector>;
 import <iostream>;
 import <algorithm>;
 
+import int3;
 import double3;
 import double3x3;
 import atom;
@@ -20,6 +21,7 @@ import units;
 import energy_factor;
 import running_energy;
 import component;
+import forcefield;
 
 // TODO:
 // An Exact Ewald Summation Method in Theory and Practice

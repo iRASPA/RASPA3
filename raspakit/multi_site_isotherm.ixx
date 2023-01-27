@@ -107,7 +107,7 @@ export struct MultiSiteIsotherm
 
 namespace std
 {
-  template <> struct hash<MultiSiteIsotherm>
+  export template <> struct hash<MultiSiteIsotherm>
   {
     size_t operator()(const MultiSiteIsotherm& k) const
     {

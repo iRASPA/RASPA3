@@ -3,6 +3,7 @@ module;
 module system;
 
 import randomnumbers;
+import int3;
 import double3;
 import cubic;
 import atom;
@@ -36,8 +37,10 @@ import property_dudlambda;
 import energy_factor;
 import running_energy;
 import threadpool;
+import isotherm;
 import multi_site_isotherm;
 import pressure_range;
+import bond_potential;
 
 import <numbers>;
 import <complex>;

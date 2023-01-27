@@ -12,6 +12,7 @@ import double3;
 
 import skdefinitions;
 import skrotationmatrix;
+import skasymmetricunit;
 import sktransformationmatrix;
 import skspacegroupsetting;
 

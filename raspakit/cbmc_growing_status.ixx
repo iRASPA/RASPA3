@@ -3,6 +3,7 @@ export module cbmc_growing_status;
 import <vector>;
 import component;
 import atom;
+import bond_potential;
 
 export struct GrowingStatus
 {

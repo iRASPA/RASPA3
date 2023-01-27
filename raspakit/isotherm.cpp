@@ -6,6 +6,7 @@ import <cstdlib>;
 import <iostream>;
 import <sstream>;
 import <cmath>;
+import <vector>;
 
 import randomnumbers;
 import print;

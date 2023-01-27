@@ -353,6 +353,10 @@ void Breakthrough::run(std::ostream &stream)
 
     // SSP-RK Step 3
     // ======================================================================
+    
+    // calculate new derivatives at new (current) timestep
+    // calculate the derivatives Dq/dt and Dp/dt based on Qeq, Q, V, and P at new (current) timestep
+    computeFirstDerivatives(Dqdtnew,Dpdtnew,Qeqnew,Qnew,Vnew,Pnew);
  
     for(size_t i = 0; i < Ngrid + 1; ++i)
     {

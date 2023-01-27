@@ -7,6 +7,8 @@ module sksymmetryoperationset;
 import <vector>;
 
 import double3;
+import int3x3;
+
 import skdefinitions;
 import skseitzmatrix;
 import skrotationmatrix;
