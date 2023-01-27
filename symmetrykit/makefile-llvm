@@ -16,17 +16,35 @@ default: libsymmetrykit;
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
 	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
+skdefinitions: skdefinitions.o
 skatomcopy: skatomcopy.o
 skasymmetricatom: skatomcopy skasymmetricatom.o
 skelement: skelement.o
 skboundingbox: skboundingbox.o
 skcell: skboundingbox skcell.o
+skasymmetricunit: skasymmetricunit.o
 skstructure: skcell skasymmetricatom skstructure.o
 skparser: skstructure skparser.o
 skposcarparser: skparser skposcarparser.o
+skrotationaloccurancetable: skrotationaloccurancetable.o
+skrotationmatrix: skrotationmatrix.o
+sktransformationmatrix: skrotationmatrix sktransformationmatrix.o
+skintegerchangeofbasis: sktransformationmatrix skintegerchangeofbasis.o
+skonethirdseitzmatrix: skonethirdseitzmatrix.o
+skseitzintegermatrix: skrotationmatrix skonethirdseitzmatrix skseitzintegermatrix.o
+skintegersymmetryoperationset: skdefinitions sksymmetrycell skseitzintegermatrix skintegersymmetryoperationset.o
+skseitzmatrix: skrotationmatrix skonethirdseitzmatrix skseitzmatrix.o
+skpointsymmetryset: skrotationmatrix skpointsymmetryset.o
+sksymmetryoperationset: skdefinitions skpointgroup skrotationmatrix sktransformationmatrix skseitzmatrix sksymmetrycell sksymmetryoperationset.o
+skpointgroup: skdefinitions skrotationaloccurancetable skrotationmatrix skpointsymmetryset sktransformationmatrix skpointgroup.o
+skspacegroupsetting: skdefinitions skasymmetricunit sktransformationmatrix skintegersymmetryoperationset skseitzintegermatrix skpointgroup skspacegroupsetting.o
+skrotationalchangeofbasis: skrotationmatrix skseitzintegermatrix skrotationalchangeofbasis.o
+skspacegroupdatabase: skspacegroupsetting skspacegroupdatabase.o
+sksymmetrycell: skdefinitions skrotationmatrix sktransformationmatrix skpointsymmetryset skpointgroup sksymmetrycell.o
+skspacegroup: skseitzmatrix skpointgroup skpointsymmetryset sksymmetryoperationset skspacegroupsetting skrotationalchangeofbasis skspacegroupdatabase sksymmetrycell skspacegroup.o
 
-libsymmetrykit: skelement skposcarparser skparser skstructure skcell skboundingbox skasymmetricatom skatomcopy
-	ar -rs libsymmetrykit.a skelement.pcm.o skelement.o skposcarparser.pcm.o skposcarparser.o skparser.pcm.o skparser.o skstructure.pcm.o skstructure.o skcell.pcm.o skcell.o skboundingbox.pcm.o skboundingbox.o skasymmetricatom.pcm.o skasymmetricatom.o skatomcopy.pcm.o skatomcopy.o
+libsymmetrykit: skdefinitions skelement skposcarparser skparser skstructure skasymmetricunit skcell skboundingbox skasymmetricatom skatomcopy sktransformationmatrix skintegerchangeofbasis skintegersymmetryoperationset skrotationaloccurancetable skrotationmatrix skonethirdseitzmatrix skseitzintegermatrix skseitzmatrix skpointgroup skpointsymmetryset sksymmetryoperationset skspacegroupsetting skrotationalchangeofbasis skspacegroupdatabase sksymmetrycell skspacegroup 
+	ar -rs libsymmetrykit.a skdefinitions.pcm.o skdefinitions.o skelement.pcm.o skelement.o skposcarparser.pcm.o skposcarparser.o skparser.pcm.o skparser.o skstructure.pcm.o skstructure.o skasymmetricunit.pcm.o skasymmetricunit.o skcell.pcm.o skcell.o skboundingbox.pcm.o skboundingbox.o skasymmetricatom.pcm.o skasymmetricatom.o skatomcopy.pcm.o skatomcopy.o sktransformationmatrix.pcm.o sktransformationmatrix.o skintegerchangeofbasis.pcm.o skintegerchangeofbasis.o skintegersymmetryoperationset.pcm.o skintegersymmetryoperationset.o skrotationaloccurancetable.pcm.o skrotationaloccurancetable.o skrotationmatrix.pcm.o skrotationmatrix.o skonethirdseitzmatrix.pcm.o skonethirdseitzmatrix.o skseitzintegermatrix.pcm.o skseitzintegermatrix.o skseitzmatrix.pcm.o skseitzmatrix.o skpointgroup.pcm.o skpointgroup.o skpointsymmetryset.pcm.o skpointsymmetryset.o sksymmetryoperationset.pcm.o sksymmetryoperationset.o skspacegroupsetting.pcm.o skspacegroupsetting.o skrotationalchangeofbasis.pcm.o skrotationalchangeofbasis.o skspacegroupdatabase.pcm.o skspacegroupdatabase.o sksymmetrycell.pcm.o sksymmetrycell.o skspacegroup.pcm.o skspacegroup.o
 	ranlib -c libsymmetrykit.a
 
 clean:

@@ -3,7 +3,17 @@ module;
 
 module skspacegroupdatabase;
 
+import <vector>;
+import <array>;
+import <string>;
 
+import int3;
+import double3;
+
+import skdefinitions;
+import skrotationmatrix;
+import sktransformationmatrix;
+import skspacegroupsetting;
 
 SKSpaceGroupDataBase::SKSpaceGroupDataBase()
 {
@@ -803,7 +813,7 @@ const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
         SKSpaceGroupSetting{ 530, 230, 96, 0, "", "I a -3 d", "-I 4bd 2c 3", true, {0,0,0}, Symmorphicity::asymmorphic, true, Centring::body, {{0,0,0}, {12,12,12}}, 32, "Oh^10" , "P<D201345", "012:UA:GRDAMUA:P<D?KG2011204S023NN235I1S0415I04SI153N2?<XPKUDP<UPKKG?KUP", { {0,6}, {-6,0}, {7,43}}, SKTransformationMatrix::identity }
 };
 
-const std::vector<std::vector<int>> SKSpaceGroupDataBase::spaceGroupHallData =
+const std::vector<std::vector<size_t>> SKSpaceGroupDataBase::spaceGroupHallData =
 {
  {0},
  {1},

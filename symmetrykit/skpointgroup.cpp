@@ -6,13 +6,24 @@ module;
 
 module skpointgroup;
 
-import mathkit;
-import sksymmetrycell;
-import skspacegroup;
-import sksymmetryoperationset;
+import <map>;
+import <string>;
+import <unordered_set>;
+
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import skdefinitions;
+import sktransformationmatrix;
+import skrotationmatrix;
+import skrotationaloccurancetable;
+//import sksymmetrycell;
+//import sksymmetryoperationset;
 import skpointsymmetryset;
 
-SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, int64_t number, std::string symbol, std::string schoenflies, Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic) :
+SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, size_t number, std::string symbol, std::string schoenflies, Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic) :
     _table(table), _number(number), _symbol(symbol), _schoenflies(schoenflies), _holohedry(holohedry), _laue(laue), _centrosymmetric(centrosymmetric), _enantiomorphic(enantiomorphic)
 {
 }
@@ -25,7 +36,7 @@ SKPointGroup::SKPointGroup(SKPointSymmetrySet pointSymmetry) : _table(0, 0, 0, 0
 
     for (const SKRotationMatrix& rotation : rotationMatrices)
     {
-        int64_t type = static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(rotation.type());
+        std::make_signed_t<std::size_t> type = static_cast<typename std::underlying_type<SKRotationMatrix::RotationType>::type>(rotation.type());
         table.occurance[type] += 1;
     }
 
@@ -233,46 +244,6 @@ SKTransformationMatrix SKPointGroup::computeBasisCorrection(SKTransformationMatr
 }
 
 
-std::optional<SKPointGroup> SKPointGroup::findPointGroup(double3x3 unitCell, std::vector<std::tuple<double3, int, double> > atoms, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
-{
-    std::vector<std::tuple<double3, int, double> > reducedAtoms{};
-
-    if (allowPartialOccupancies)
-    {
-        reducedAtoms = atoms;
-    }
-    else
-    {
-        std::map<int, int> histogram{};
-        for (const std::tuple<double3, int, double>& atom : atoms)
-        {
-            histogram[std::get<1>(atom)] = histogram[std::get<1>(atom)] + 1;
-        }
-        std::map<int, int>::iterator index = std::min_element(histogram.begin(), histogram.end(),
-            [](const auto& l, const auto& r) { return l.second < r.second; });
-        int leastOccuringAtomType = index->first;
-
-        std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, int, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
-    }
-    double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell, allowPartialOccupancies, symmetryPrecision);
-
-    std::optional<double3x3> primitiveDelaunayUnitCell = SKSymmetryCell::computeDelaunayReducedCell(smallestUnitCell, symmetryPrecision);
-
-    if (primitiveDelaunayUnitCell)
-    {
-        SKPointSymmetrySet latticeSymmetries = SKSymmetryCell::findLatticeSymmetry(*primitiveDelaunayUnitCell, symmetryPrecision);
-
-        std::vector<std::tuple<double3, int, double> >positionInPrimitiveCell = SKSymmetryCell::trim(atoms, unitCell, *primitiveDelaunayUnitCell, allowPartialOccupancies, symmetryPrecision);
-
-        SKSymmetryOperationSet spaceGroupSymmetries = SKSpaceGroup::findSpaceGroupSymmetry(unitCell, positionInPrimitiveCell, positionInPrimitiveCell, latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
-
-        SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
-
-        return SKPointGroup(pointSymmetry);
-    }
-    return std::nullopt;
-}
-
 const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(std::vector<SKRotationMatrix> properRotations) const
 {
     switch (_laue)
@@ -325,7 +296,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(std::vec
     case Laue::laue_m3:
     case Laue::laue_m3m:
     {
-        int rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
+        size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
 
         // look for all proper rotation matrices of the wanted rotation type
         std::vector<SKRotationMatrix> filteredProperRotations{};
@@ -364,7 +335,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(std::vec
     case Laue::laue_6m:
     case Laue::laue_6mmm:
     {
-        int rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
+        size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
 
         // look for all proper rotation matrices of the wanted rotation type
         std::vector<SKRotationMatrix> properRotationMatrices{};
@@ -434,7 +405,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(std::vec
  ///     m-3                     2                3, 2
  ///     m-3m                  2                3, 4
  /// Ref: R.W. Grosse-Kunstleve, "Algorithms for deriving crystallographic space-group information", Acta Cryst. A55, 383-395, 1999
-std::map<Laue, int> SKPointGroup::rotationTypeForBasis =
+std::map<Laue, size_t> SKPointGroup::rotationTypeForBasis =
 {
   std::pair(Laue::laue_1, 0),
   std::pair(Laue::laue_2m, 2),

@@ -4,7 +4,13 @@ module;
 
 module skrotationmatrix;
 
-import sktransformationmatrix;
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import <vector>;
+import <iostream>;
 
 SKRotationMatrix::SKRotationMatrix()
 {
@@ -14,19 +20,19 @@ SKRotationMatrix::SKRotationMatrix()
 //SKRotationMatrix::SKRotationMatrix(const SKTransformationMatrix &m)
 //{
 //    assert(abs(m.determinant()) == 1);
-//    this->int3x3 = m.transformation;
+//    this->int3x3_m = m.transformation;
 //}
 
 SKRotationMatrix::SKRotationMatrix(int3 v1, int3 v2, int3 v3)
 {
-    this->int3x3.m11 = v1.x; this->int3x3.m21 = v1.y; this->int3x3.m31 = v1.z;
-    this->int3x3.m12 = v2.x; this->int3x3.m22 = v2.y; this->int3x3.m32 = v2.z;
-    this->int3x3.m13 = v3.x; this->int3x3.m23 = v3.y; this->int3x3.m33 = v3.z;
+    this->int3x3_m.m11 = v1.x; this->int3x3_m.m21 = v1.y; this->int3x3_m.m31 = v1.z;
+    this->int3x3_m.m12 = v2.x; this->int3x3_m.m22 = v2.y; this->int3x3_m.m32 = v2.z;
+    this->int3x3_m.m13 = v3.x; this->int3x3_m.m23 = v3.y; this->int3x3_m.m33 = v3.z;
 }
 
 const SKRotationMatrix SKRotationMatrix::proper() const
 {
-    if (this->int3x3.determinant() == 1)
+    if (this->int3x3_m.determinant() == 1)
     {
         return *this;
     }
@@ -38,11 +44,11 @@ const SKRotationMatrix SKRotationMatrix::proper() const
 
 SKRotationMatrix::RotationType SKRotationMatrix::type() const
 {
-    int determinant = this->int3x3.determinant();
+    int determinant = this->int3x3_m.determinant();
 
     if (determinant == -1)
     {
-        switch (this->int3x3.trace())
+        switch (this->int3x3_m.trace())
         {
         case -3:
             return RotationType::axis_1m;
@@ -61,7 +67,7 @@ SKRotationMatrix::RotationType SKRotationMatrix::type() const
     }
     else
     {
-        switch (this->int3x3.trace())
+        switch (this->int3x3_m.trace())
         {
         case -1:
             return RotationType::axis_2;
@@ -85,7 +91,7 @@ int3 SKRotationMatrix::rotationAxis() const
     for (size_t i = 0; i < SKRotationMatrix::allPossibleRotationAxes.size(); i++)
     {
         int3 axis = SKRotationMatrix::allPossibleRotationAxes[i];
-        if ((this->int3x3 * axis) == axis)
+        if ((this->int3x3_m * axis) == axis)
         {
             return axis;
         }
@@ -105,7 +111,7 @@ int3 SKRotationMatrix::rotationAxis() const
 /// Ref: R.W. Grosse-Kunstleve, "Algorithms for deriving crystallographic space-group information", Acta Cryst. A55, 383-395, 1999
 ///
 /// The algorithm of Atsushi Togo is used: a search over all possible rotation axes.
-std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(int rotationOrder)
+std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(size_t rotationOrder)
 {
     std::vector<int3> orthoAxes{};
 
@@ -113,7 +119,7 @@ std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(int rotationOrder)
     SKRotationMatrix sumRot = SKRotationMatrix::identity;
     SKRotationMatrix rot = SKRotationMatrix::identity;
 
-    for (int i = 0; i < rotationOrder - 1; i++)
+    for (size_t i = 0; i < rotationOrder - 1; i++)
     {
         rot = rot * properRotation;
         sumRot = sumRot + rot;
@@ -132,24 +138,24 @@ std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(int rotationOrder)
 
 std::ostream& operator<<(std::ostream& os, const SKRotationMatrix& m)
 {
-    os << "SKRotationMatrix: " << m.int3x3.m11 << '/' << m.int3x3.m12 << '/' << m.int3x3.m13 << '/' << m.int3x3.m21 << '/' << m.int3x3.m22 << '/' << m.int3x3.m23 << '/' << m.int3x3.m31 << '/' << m.int3x3.m32 << '/' << m.int3x3.m33 << '/';
+    os << "SKRotationMatrix: " << m.int3x3_m.m11 << '/' << m.int3x3_m.m12 << '/' << m.int3x3_m.m13 << '/' << m.int3x3_m.m21 << '/' << m.int3x3_m.m22 << '/' << m.int3x3_m.m23 << '/' << m.int3x3_m.m31 << '/' << m.int3x3_m.m32 << '/' << m.int3x3_m.m33 << '/';
     return os;
 }
 
 /// Inverse of the matrix if the determinant = 1 or -1, otherwise the contents of the resulting matrix are undefined.
 SKRotationMatrix  SKRotationMatrix::inverse()
 {
-    int determinant = int3x3.determinant();
+    int determinant = int3x3_m.determinant();
 
-    int3 c1 = int3(-this->int3x3[1][2] * int3x3[2][1] + this->int3x3[1][1] * this->int3x3[2][2],
-        this->int3x3[0][2] * this->int3x3[2][1] - this->int3x3[0][1] * this->int3x3[2][2],
-        -this->int3x3[0][2] * this->int3x3[1][1] + this->int3x3[0][1] * this->int3x3[1][2]);
-    int3 c2 = int3(this->int3x3[1][2] * int3x3[2][0] - this->int3x3[1][0] * this->int3x3[2][2],
-        -this->int3x3[0][2] * this->int3x3[2][0] + this->int3x3[0][0] * this->int3x3[2][2],
-        this->int3x3[0][2] * this->int3x3[1][0] - this->int3x3[0][0] * this->int3x3[1][2]);
-    int3 c3 = int3(-this->int3x3[1][1] * int3x3[2][0] + this->int3x3[1][0] * this->int3x3[2][1],
-        this->int3x3[0][1] * this->int3x3[2][0] - this->int3x3[0][0] * this->int3x3[2][1],
-        -this->int3x3[0][1] * this->int3x3[1][0] + this->int3x3[0][0] * this->int3x3[1][1]);
+    int3 c1 = int3(-this->int3x3_m[1][2] * int3x3_m[2][1] + this->int3x3_m[1][1] * this->int3x3_m[2][2],
+        this->int3x3_m[0][2] * this->int3x3_m[2][1] - this->int3x3_m[0][1] * this->int3x3_m[2][2],
+        -this->int3x3_m[0][2] * this->int3x3_m[1][1] + this->int3x3_m[0][1] * this->int3x3_m[1][2]);
+    int3 c2 = int3(this->int3x3_m[1][2] * int3x3_m[2][0] - this->int3x3_m[1][0] * this->int3x3_m[2][2],
+        -this->int3x3_m[0][2] * this->int3x3_m[2][0] + this->int3x3_m[0][0] * this->int3x3_m[2][2],
+        this->int3x3_m[0][2] * this->int3x3_m[1][0] - this->int3x3_m[0][0] * this->int3x3_m[1][2]);
+    int3 c3 = int3(-this->int3x3_m[1][1] * int3x3_m[2][0] + this->int3x3_m[1][0] * this->int3x3_m[2][1],
+        this->int3x3_m[0][1] * this->int3x3_m[2][0] - this->int3x3_m[0][0] * this->int3x3_m[2][1],
+        -this->int3x3_m[0][1] * this->int3x3_m[1][0] + this->int3x3_m[0][0] * this->int3x3_m[1][1]);
 
     switch (determinant)
     {

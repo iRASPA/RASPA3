@@ -1,8 +1,12 @@
 export module skrotationalchangeofbasis;
 
+import <vector>;
+
+import int3;
+import int3x3;
+import double3;
 import skrotationmatrix;
 import skseitzintegermatrix;
-import mathkit;
 
 export struct SKRotationalChangeOfBasis
 {

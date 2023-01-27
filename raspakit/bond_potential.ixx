@@ -48,7 +48,7 @@ export std::vector<size_t> numberOfBondParameters{ 0, 0, 2 };
 
 struct comp {
     bool operator() (const std::string& lhs, const std::string& rhs) const {
-        return stricmp(lhs.c_str(), rhs.c_str()) < 0;
+        return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
     }
 };
 

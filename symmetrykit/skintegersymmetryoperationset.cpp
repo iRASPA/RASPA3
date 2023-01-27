@@ -4,8 +4,19 @@ module;
 
 module skintegersymmetryoperationset;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import <tuple>;
+import <vector>;
+import <unordered_set>;
+
 import sksymmetrycell;
-import skspacegroup;
+import skrotationmatrix;
+import skseitzintegermatrix;
+//import skspacegroup;
 
 SKIntegerSymmetryOperationSet::SKIntegerSymmetryOperationSet()
 {
@@ -28,9 +39,9 @@ SKIntegerSymmetryOperationSet SKIntegerSymmetryOperationSet::fullSeitzMatrices()
     return SKIntegerSymmetryOperationSet();
 }
 
-std::vector<std::tuple<double3, int, double>>  SKIntegerSymmetryOperationSet::symmetrize(double3x3 lattice, std::vector<std::tuple<double3, int, double>> atoms, double symmetryPrecision = 1e-2)
+std::vector<std::tuple<double3, size_t, double>>  SKIntegerSymmetryOperationSet::symmetrize(double3x3 lattice, std::vector<std::tuple<double3, size_t, double>> atoms, double symmetryPrecision = 1e-2)
 {
-    std::vector<std::tuple<double3, int, double>> symmetrizedAtoms{};
+    std::vector<std::tuple<double3, size_t, double>> symmetrizedAtoms{};
     symmetrizedAtoms.reserve(atoms.size());
 
     for (size_t i = 0; i < atoms.size(); i++)
@@ -52,95 +63,95 @@ std::vector<std::tuple<double3, int, double>>  SKIntegerSymmetryOperationSet::sy
             }
         }
 
-        double3x3 averagedRotation = double3x3(averageRotation.int3x3) / double(count);
+        double3x3 averagedRotation = double3x3(averageRotation.int3x3_m) / double(count);
         double3 averagedTranslation = double3(double(averageTranslation.x), double(averageTranslation.y), double(averageTranslation.z)) / double(count);
 
-        std::tuple<double3, int, double> symmetrizedAtom = std::make_tuple(averagedRotation * std::get<0>(atoms[i]) + averagedTranslation, std::get<1>(atoms[i]), std::get<2>(atoms[i]));
+        std::tuple<double3, size_t, double> symmetrizedAtom = std::make_tuple(averagedRotation * std::get<0>(atoms[i]) + averagedTranslation, std::get<1>(atoms[i]), std::get<2>(atoms[i]));
         symmetrizedAtoms.push_back(symmetrizedAtom);
     }
 
     return symmetrizedAtoms;
 }
 
-std::vector<std::tuple<double3, int, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(int HallNumber, std::vector<std::tuple<double3, int, double>>& atoms, double3x3 lattice, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+std::vector<std::tuple<double3, size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms([[maybe_unused]] size_t HallNumber, std::vector<std::tuple<double3, size_t, double>>& atoms, double3x3 lattice, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
-    std::vector<std::tuple<double3, int, double, int>> atomData{};
+    std::vector<std::tuple<double3, size_t, double, std::make_signed_t<std::size_t>>> atomData{};
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(atomData),
-        [](const std::tuple<double3, int, double>& atom) {return std::make_tuple(std::get<0>(atom), std::get<1>(atom), std::get<2>(atom), -1); });
+        [](const std::tuple<double3, size_t, double>& atom) {return std::make_tuple(std::get<0>(atom), std::get<1>(atom), std::get<2>(atom), -1); });
 
     if (atoms.empty()) return {};
 
-    std::vector<std::tuple<double3, int, double>> asymmetricAtoms = {};
+    std::vector<std::tuple<double3, size_t, double>> asymmetricAtoms = {};
     //std::get<3>(atomData[0]) = 0;
 
     // loop over all atoms
-loop: for (size_t i = 0; i < atoms.size(); i++)
-{
-    // skip if already tagged
-    if (std::get<3>(atomData[i]) == -1)
+    loop: for (size_t i = 0; i < atoms.size(); i++)
     {
-        // loop over all current asymmetric atoms, and see if one of the symmetry-copies matches with an asymmetric atom
-        for (size_t j = 0; j < asymmetricAtoms.size(); j++)
+        // skip if already tagged
+        if (std::get<3>(atomData[i]) == -1)
         {
-            if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
+            // loop over all current asymmetric atoms, and see if one of the symmetry-copies matches with an asymmetric atom
+            for (size_t j = 0; j < asymmetricAtoms.size(); j++)
             {
-                for (const SKSeitzIntegerMatrix& operation : this->operations)
+                if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
                 {
-                    double3 position = operation.rotation * std::get<0>(atomData[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
-                    if (SKSymmetryCell::isOverlap(position, std::get<0>(asymmetricAtoms[j]), lattice, symmetryPrecision))
+                    for (const SKSeitzIntegerMatrix& operation : this->operations)
                     {
-                        // overlap and of the same type: the atom is therefore a copy of the asymmetric atom 'j'
-                        std::get<3>(atomData[i]) = j;
-                        break;
+                        double3 position = operation.rotation * std::get<0>(atomData[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
+                        if (SKSymmetryCell::isOverlap(position, std::get<0>(asymmetricAtoms[j]), lattice, symmetryPrecision))
+                        {
+                            // overlap and of the same type: the atom is therefore a copy of the asymmetric atom 'j'
+                            std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(j);
+                            break;
+                        }
                     }
                 }
             }
-        }
-
-        // not typed yet
-        if (std::get<3>(atomData[i]) == -1)
-        {
-            asymmetricAtoms.push_back(std::make_tuple(std::get<0>(atomData[i]), std::get<1>(atomData[i]), std::get<2>(atomData[i])));
-            std::get<3>(atomData[i]) = asymmetricAtoms.size() - 1;
-            goto loop;
-        }
-    }
-}
-
-
-for (size_t i = 0; i < asymmetricAtoms.size(); i++)
-{
-    bool found = false;
-    for (const SKSeitzIntegerMatrix& operation : operations)
-    {
-        double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
-
-        // if directly inside the asymmetric unit cell, overwrite the position and break
-        if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
-        {
-            std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
-            found = true;
-            break;
-        }
-    }
-
-    // if directly inside the asymmetric unit cell including a small epsilon, overwrite the position and break
-    if (!found)
-    {
-        for (const SKSeitzIntegerMatrix& operation : operations)
-        {
-            double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
-
-            //let spaceGroupNumber = SKSpacegroup.spaceGroupData[HallNumber].spaceGroupNumber
-            //if SKAsymmetricUnit.isInsideIUCAsymmetricUnitCell(number: spaceGroupNumber, point: position, precision: symmetryPrecision)
-            if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
+    
+            // not typed yet
+            if (std::get<3>(atomData[i]) == -1)
             {
-                std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
-                break;
+                asymmetricAtoms.push_back(std::make_tuple(std::get<0>(atomData[i]), std::get<1>(atomData[i]), std::get<2>(atomData[i])));
+                std::get<3>(atomData[i]) = static_cast<std::make_signed_t<std::size_t>>(asymmetricAtoms.size() - 1);
+                goto loop;
             }
         }
     }
-}
 
-return asymmetricAtoms;
-}
+
+    for (size_t i = 0; i < asymmetricAtoms.size(); i++)
+    {
+        bool found = false;
+        for (const SKSeitzIntegerMatrix& operation : operations)
+        {
+            [[maybe_unused]] double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
+    
+            // if directly inside the asymmetric unit cell, overwrite the position and break
+            // FIX 27-jan 2023
+            //if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
+            //{
+            //    std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
+            //    found = true;
+            //    break;
+            //}
+        }
+    
+        // if directly inside the asymmetric unit cell including a small epsilon, overwrite the position and break
+        if (!found)
+        {
+            for (const SKSeitzIntegerMatrix& operation : operations)
+            {
+                [[maybe_unused]] double3 position = operation.rotation * std::get<0>(asymmetricAtoms[i]) + double3(double(operation.translation.x) / 24.0, double(operation.translation.y) / 24.0, double(operation.translation.z) / 24.0);
+    
+                // FIX 27-jan 2023
+                //if (SKSpaceGroup(HallNumber).spaceGroupSetting().asymmetricUnit().contains(position))
+                //{
+                //    std::get<0>(asymmetricAtoms[i]) = double3::fract(position);
+                //    break;
+                //}
+            }
+        }
+    }
+    
+    return asymmetricAtoms;
+  }

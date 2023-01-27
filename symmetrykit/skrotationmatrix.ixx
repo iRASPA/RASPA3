@@ -2,29 +2,29 @@ export module skrotationmatrix;
 
 import <ostream>;
 import <vector>;
-import mathkit;
+import int3;
+import double3;
+import int3x3;
+import double3x3;
 import hashcombine;
-
-struct SKTransformationMatrix;
 
 export struct SKRotationMatrix
 {
-    union int3x3 int3x3;
+    int3x3 int3x3_m;
 
-    enum class RotationType : int64_t
+    enum class RotationType : std::make_signed_t<std::size_t>
     {
         axis_6m = -6, axis_4m = -4, axis_3m = -3, axis_2m = -2, axis_1m = -1, none = 0, axis_1 = 1, axis_2 = 2, axis_3 = 3, axis_4 = 4, axis_6 = 6
     };
 
-    enum class SymmetryType : int64_t
+    enum class SymmetryType : std::size_t
     {
         unknown = 0, identity = 1, translation = 2, inversion = 3, pure_rotation = 4, pure_reflection = 5, screw_rotation = 6, glide_reflection = 7
     };
 
 
     SKRotationMatrix();
-    //SKRotationMatrix(const SKTransformationMatrix &m);
-    SKRotationMatrix(union int3x3 m) { this->int3x3 = m; }
+    SKRotationMatrix(int3x3 m) { this->int3x3_m = m; }
     SKRotationMatrix(int3 v1, int3 v2, int3 v3);
 
 
@@ -32,25 +32,25 @@ export struct SKRotationMatrix
     const SKRotationMatrix proper() const;
     SKRotationMatrix::RotationType type() const;
     int3 rotationAxis() const;
-    std::vector<int3> orthogonalToAxisDirection(int rotationOrder);
+    std::vector<int3> orthogonalToAxisDirection(size_t rotationOrder);
 
-    inline int determinant() { return this->int3x3.determinant(); }
-    inline SKRotationMatrix operator-() const { return -this->int3x3; }
-    inline bool operator==(const SKRotationMatrix& b) const { return this->int3x3 == b.int3x3; }
+    inline int determinant() { return this->int3x3_m.determinant(); }
+    inline SKRotationMatrix operator-() const { return -this->int3x3_m; }
+    inline bool operator==(const SKRotationMatrix& b) const { return this->int3x3_m == b.int3x3_m; }
 
     struct hashFunction {
         std::size_t operator()(const SKRotationMatrix& k) const
         {
             std::size_t h = 0;
-            hash_combine(h, k.int3x3.m11);
-            hash_combine(h, k.int3x3.m12);
-            hash_combine(h, k.int3x3.m13);
-            hash_combine(h, k.int3x3.m21);
-            hash_combine(h, k.int3x3.m22);
-            hash_combine(h, k.int3x3.m23);
-            hash_combine(h, k.int3x3.m31);
-            hash_combine(h, k.int3x3.m32);
-            hash_combine(h, k.int3x3.m33);
+            hash_combine(h, k.int3x3_m.m11);
+            hash_combine(h, k.int3x3_m.m12);
+            hash_combine(h, k.int3x3_m.m13);
+            hash_combine(h, k.int3x3_m.m21);
+            hash_combine(h, k.int3x3_m.m22);
+            hash_combine(h, k.int3x3_m.m23);
+            hash_combine(h, k.int3x3_m.m31);
+            hash_combine(h, k.int3x3_m.m32);
+            hash_combine(h, k.int3x3_m.m33);
             return h;
         }
     };
@@ -128,33 +128,33 @@ export struct SKRotationMatrix
 
 export inline SKRotationMatrix operator * (const SKRotationMatrix& a, const SKRotationMatrix& b)
 {
-    return SKRotationMatrix(a.int3x3 * b.int3x3);
+    return SKRotationMatrix(a.int3x3_m * b.int3x3_m);
 }
 
 export inline int3 operator * (const SKRotationMatrix& a, const int3& b)
 {
-    return a.int3x3 * b;
+    return a.int3x3_m * b;
 }
 
 export inline double3 operator * (const SKRotationMatrix& a, const double3& b)
 {
-    return a.int3x3 * b;
+    return a.int3x3_m * b;
 }
 
 export inline SKRotationMatrix operator + (const SKRotationMatrix& a, const SKRotationMatrix& b)
 {
-    return a.int3x3 + b.int3x3;
+    return a.int3x3_m + b.int3x3_m;
 }
 
 export inline double3x3 operator*(const double3x3& v1, const SKRotationMatrix& v2)
 {
-    const int3x3 value = v2.int3x3;
+    const int3x3 value = v2.int3x3_m;
     return v1 * double3x3(value);
 }
 
 export inline SKRotationMatrix operator-(const SKRotationMatrix& v1, const SKRotationMatrix& v2)
 {
-    return SKRotationMatrix(v1.int3x3 - v2.int3x3);
+    return SKRotationMatrix(v1.int3x3_m - v2.int3x3_m);
 }
 
 /*
@@ -165,7 +165,7 @@ namespace std
         size_t operator()(const SKRotationMatrix& k) const
         {
             std::hash<int3x3> hash_fn;
-            return hash_fn(k.int3x3);
+            return hash_fn(k.int3x3_m);
         }
     };
 }*/

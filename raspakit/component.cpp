@@ -29,6 +29,9 @@ import <iostream>;
 import <sstream>;
 import <algorithm>;
 import <vector>;
+import <array>;
+import <map>;
+import <string>;
 import <span>;
 import <optional>;
 import <filesystem>;
@@ -168,7 +171,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::istringstream rigidStream(str);
   std::string rigidString;
   rigidStream >> rigidString;
-  if (stricmp(rigidString.c_str(), "flexible"))
+  if (strcasecmp(rigidString.c_str(), "flexible"))
   {
     rigid = false;
   }
@@ -189,11 +192,14 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
 
       // find atom-type based on read 'atomTypeString'
       auto it = std::find_if(forceField.pseudoAtoms.begin(), forceField.pseudoAtoms.end(), 
-                             [&](const PseudoAtom &atom) {return atomTypeString == atom.name; });
+                             [&](const PseudoAtom &atom) 
+                             {
+                               return atomTypeString == atom.name; 
+                             });
       
       if (it == forceField.pseudoAtoms.end())
       {
-        throw std::runtime_error(std::print("Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
+        throw std::runtime_error(std::print("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
       }
       
       size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
@@ -258,8 +264,8 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
   definedAtoms = parser.fractionalAtoms;
 
   // expand the fractional atoms based on the space-group
-  size_t spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
-  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+  size_t number = parser._spaceGroupHallNumber.value_or(1);
+  SKSpaceGroup spaceGroup = SKSpaceGroup(number);
   std::vector<Atom> expandedAtoms;
   expandedAtoms.reserve(parser.fractionalAtoms.size() * 256);
   for (const Atom &atom : definedAtoms)

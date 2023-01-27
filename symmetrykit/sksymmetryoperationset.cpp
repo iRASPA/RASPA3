@@ -4,6 +4,14 @@ module;
 
 module sksymmetryoperationset;
 
+import <vector>;
+
+import double3;
+import skdefinitions;
+import skseitzmatrix;
+import skrotationmatrix;
+import sktransformationmatrix;
+
 SKSymmetryOperationSet::SKSymmetryOperationSet()
 {
 

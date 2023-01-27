@@ -48,7 +48,6 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
     std::print(stream, component.writeMCMoveStatistics());
 
     double conv = Units::EnergyToKelvin;
-    double Beta = Beta;
     double imposedChemicalPotential = std::log(Beta * component.molFraction * pressure) / Beta;
     double imposedFugacity = component.molFraction * pressure;
 

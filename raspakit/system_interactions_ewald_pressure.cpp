@@ -18,6 +18,7 @@ import energy_status;
 import energy_status_inter;
 import units;
 import energy_factor;
+import component;
 
 std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDerivative() noexcept
 {

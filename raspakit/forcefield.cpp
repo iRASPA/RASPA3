@@ -4,6 +4,8 @@ module forcefield;
 
 import skelement;
 import units;
+import int3;
+import double3;
 import double4;
 import print;
 

@@ -2,12 +2,17 @@ module;
 
 module sktransformationmatrix;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
 SKTransformationMatrix::SKTransformationMatrix() : transformation(), translation(int3(0, 0, 0))
 {
 
 }
 
-SKTransformationMatrix::SKTransformationMatrix(union int3x3 m) : transformation(m), translation(int3(0, 0, 0))
+SKTransformationMatrix::SKTransformationMatrix(int3x3 m) : transformation(m), translation(int3(0, 0, 0))
 {
 }
 

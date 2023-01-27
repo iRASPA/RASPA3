@@ -2,8 +2,14 @@ module;
 
 module skasymmetricunit;
 
-
 import <cmath>;
+import <tuple>;
+
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
 
 SKAsymmetricUnit::SKAsymmetricUnit()
 {

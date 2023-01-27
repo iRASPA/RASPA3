@@ -4,6 +4,16 @@ module;
 
 module skseitzintegermatrix;
 
+import <vector>;
+import <string>;
+
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+import skonethirdseitzmatrix;
+import skrotationmatrix;
+
 SKSeitzIntegerMatrix::SKSeitzIntegerMatrix()
 {
 

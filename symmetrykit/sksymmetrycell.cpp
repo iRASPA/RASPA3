@@ -11,10 +11,20 @@ module sksymmetrycell;
 
 import <array>;
 import <vector>;
+import <string>;
+import <optional>;
 
-import skspacegroup;
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+import double4x3;
+
+import skdefinitions;
+import skrotationmatrix;
 import skpointgroup;
-
+import skpointsymmetryset;
+import sktransformationmatrix;
 
 SKSymmetryCell::SKSymmetryCell()
 {
@@ -66,7 +76,7 @@ SKSymmetryCell SKSymmetryCell::createFromUnitCell(double3x3 unitCell)
 }
 
 
-SKSymmetryCell SKSymmetryCell::idealized(int pointGroupNumber, std::string qualifier)
+SKSymmetryCell SKSymmetryCell::idealized(size_t pointGroupNumber, std::string qualifier)
 {
     //int pointGroupNumber = spaceGroup.spaceGroupSetting().pointGroupNumber();
     Holohedry holohedry = SKPointGroup::pointGroupData[pointGroupNumber].holohedry();
@@ -157,7 +167,7 @@ bool SKSymmetryCell::isOverlap(double3 a, double3 b, double3x3 lattice, double s
     return false;
 }
 
-double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<double3, int, double>> reducedAtoms, std::vector<std::tuple<double3, int, double>> atoms,
+double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<double3, size_t, double>> reducedAtoms, std::vector<std::tuple<double3, size_t, double>> atoms,
     double3x3 unitCell, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
     std::vector<double3> translationVectors{};
@@ -225,7 +235,7 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
     return smallestCell;
 }
 
-bool SKSymmetryCell::testTranslationalSymmetry(double3 translationVector, std::vector<std::tuple<double3, int, double>> atoms, double3x3 unitCell, bool allowPartialOccupancies, double precision = 1e-2)
+bool SKSymmetryCell::testTranslationalSymmetry(double3 translationVector, std::vector<std::tuple<double3, size_t, double>> atoms, double3x3 unitCell, bool allowPartialOccupancies, double precision = 1e-2)
 {
     double squared_precision = precision * precision;
 
@@ -259,7 +269,7 @@ bool SKSymmetryCell::testTranslationalSymmetry(double3 translationVector, std::v
     return true;
 }
 
-bool SKSymmetryCell::testSymmetry(double3 translationVector, SKRotationMatrix rotationMatrix, std::vector<std::tuple<double3, int, double>> atoms, double3x3 unitCell, bool allowPartialOccupancies, double precision = 1e-2)
+bool SKSymmetryCell::testSymmetry(double3 translationVector, SKRotationMatrix rotationMatrix, std::vector<std::tuple<double3, size_t, double>> atoms, double3x3 unitCell, bool allowPartialOccupancies, double precision = 1e-2)
 {
     for (size_t i = 0; i < atoms.size(); i++)
     {
@@ -300,7 +310,7 @@ bool SKSymmetryCell::testSymmetry(double3 translationVector, SKRotationMatrix ro
 /// - parameter symmetryPrecision:   the precision of the search (default: 1e-2)
 ///
 /// - returns: the list of translation vectors, including (0,0,0)
-std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(double3x3 unitCell, std::vector<std::tuple<double3, int, double>> reducedAtoms, std::vector<std::tuple<double3, int, double>> atoms, SKRotationMatrix rotationMatrix, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+std::vector<double3> SKSymmetryCell::primitiveTranslationVectors(double3x3 unitCell, std::vector<std::tuple<double3, size_t, double>> reducedAtoms, std::vector<std::tuple<double3, size_t, double>> atoms, SKRotationMatrix rotationMatrix, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
     std::vector<double3> translationVectors{};
 
@@ -352,8 +362,8 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 un
     {
         somePositive = false;
         // (i,j) in (0,1), (0,2), (0,3), (1,2), (1,3), (2,3); k,l denote the other two vectors
-        std::vector<std::tuple<int, int, int, int>> basisIndices = { std::make_tuple(0,1,2,3), std::make_tuple(0,2,1,3), std::make_tuple(0,3,1,2), std::make_tuple(1,2,0,3), std::make_tuple(1,3,0,2), std::make_tuple(2,3,0,1) };
-        for (auto& [i, j, k, l] : basisIndices)
+        std::vector<std::tuple<size_t, size_t, size_t, size_t>> basisIndices = { std::make_tuple(0,1,2,3), std::make_tuple(0,2,1,3), std::make_tuple(0,3,1,2), std::make_tuple(1,2,0,3), std::make_tuple(1,3,0,2), std::make_tuple(2,3,0,1) };
+        for (const auto& [i, j, k, l] : basisIndices)
         {
             if (double3::dot(extendedBasis[i], extendedBasis[j]) > symmetryPrecision)
             {
@@ -381,7 +391,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 un
         });
 
     // take the first two vectors, combined with a vector that has a non-zero, positive volume
-    for (int i = 2; i < 7; i++)
+    for (size_t i = 2; i < 7; i++)
     {
         double3x3 trialUnitCell = double3x3(b[0], b[1], b[i]);
         double volume = trialUnitCell.determinant();
@@ -408,7 +418,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
     {
         somePositive = false;
         // (i,j) in (0,1), (0,2), (1,2); k denote the other two vectors
-        std::vector<std::tuple<int, int, int>> basisIndices = { std::make_tuple(0,1,2), std::make_tuple(0,2,1), std::make_tuple(1,2,0) };
+        std::vector<std::tuple<size_t, size_t, size_t>> basisIndices = { std::make_tuple(0,1,2), std::make_tuple(0,2,1), std::make_tuple(1,2,0) };
         for (auto& [i, j, k] : basisIndices)
         {
             if (double3::dot(extendedBasis[i], extendedBasis[j]) > symmetryPrecision)
@@ -431,7 +441,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
             return a.length_squared() + 1e-10 < b.length_squared();
         });
 
-    for (int i = 1; i < 4; i++)
+    for (size_t i = 1; i < 4; i++)
     {
         double3x3 tmpmat = double3x3(b[0], unitCell[1], b[i]);
 
@@ -512,7 +522,7 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
                 // if the determinant is 1 or -1 we have a (proper) rotation  (6960 proper rotations)
                 if (determinant == 1 || determinant == -1)
                 {
-                    double3x3 transformationMatrix = double3x3(axes.int3x3);
+                    double3x3 transformationMatrix = double3x3(axes.int3x3_m);
 
                     // the inverse of a rotation matrix is its transpose, so we use the transpose here
                     double3x3 newLattice = reducedLattice * transformationMatrix;
@@ -531,7 +541,7 @@ SKPointSymmetrySet SKSymmetryCell::findLatticeSymmetry(double3x3 reducedLattice,
     std::vector<SKRotationMatrix> newpointSymmetries{};
     for (const SKRotationMatrix& pointSymmetry : pointSymmetries)
     {
-        double3x3 temp = transform.inverse() * double3x3(pointSymmetry.int3x3) * transform;
+        double3x3 temp = transform.inverse() * double3x3(pointSymmetry.int3x3_m) * transform;
         SKRotationMatrix mat = SKRotationMatrix(temp.toInt3x3());
 
         // avoid duplicate rotation matrices
@@ -571,19 +581,19 @@ bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, do
     return true;
 }
 
-std::vector<std::tuple<double3, int, double>> SKSymmetryCell::trim(std::vector<std::tuple<double3, int, double>> atoms, double3x3 from, double3x3 to, bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+std::vector<std::tuple<double3, size_t, double>> SKSymmetryCell::trim(std::vector<std::tuple<double3, size_t, double>> atoms, double3x3 from, double3x3 to, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
     double3x3 changeOfBasis = to.inverse() * from;
 
-    std::vector<std::tuple<double3, int, double>> trimmedAtoms{};
+    std::vector<std::tuple<double3, size_t, double>> trimmedAtoms{};
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(trimmedAtoms),
-        [changeOfBasis](const std::tuple<double3, int, double>& atom) -> std::tuple<double3, int, double>
+        [changeOfBasis](const std::tuple<double3, size_t, double>& atom) -> std::tuple<double3, size_t, double>
         {return std::make_tuple(double3::fract(changeOfBasis * std::get<0>(atom)), std::get<1>(atom), std::get<2>(atom)); });
 
     std::vector<size_t> overlapTable = std::vector<size_t>(trimmedAtoms.size());
     std::fill(overlapTable.begin(), overlapTable.end(), -1);
 
-    std::vector<std::tuple<double3, int, double>> result{};
+    std::vector<std::tuple<double3, size_t, double>> result{};
 
     for (size_t i = 0; i < trimmedAtoms.size(); i++)
     {
@@ -648,8 +658,8 @@ bool  SKSymmetryCell::isEqualTo(double x, double y)
 
 bool SKSymmetryCell::isLargerThenZeroXiEtaZeta(double xi, double eta, double zeta)
 {
-    int n_positive = 0;
-    int n_zero = 0;
+    size_t n_positive = 0;
+    size_t n_zero = 0;
 
     if (isSmallerThen(0, xi)) { n_positive += 1; }
     else if (!isSmallerThen(xi, 0.0)) { n_zero += 1; }
@@ -732,7 +742,7 @@ algorithmStart:
         }
         else // step 4:
         {
-            int p = -1;
+            size_t p = 0;
             std::array<int, 3> f = { 1,1,1 };
             if (SKSymmetryCell::isLargerThen(xi, 0.0)) { f[0] = -1; }
             else if (!SKSymmetryCell::isSmallerThen(xi, 0.0)) { p = 0; }

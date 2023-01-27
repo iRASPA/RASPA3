@@ -5,9 +5,9 @@ import <map>;
 
 export struct SKRotationalOccuranceTable
 {
-    std::map<int, int> occurance;
+    std::map<std::make_signed_t<std::size_t>, std::make_signed_t<std::size_t>> occurance;
 
-    SKRotationalOccuranceTable(int axis_6m, int axis_4m, int axis_3m, int axis_2m, int axis_1m, int axis_1, int axis_2, int axis_3, int axis_4, int axis_6);
+    SKRotationalOccuranceTable(std::make_signed_t<std::size_t> axis_6m, std::make_signed_t<std::size_t> axis_4m, std::make_signed_t<std::size_t> axis_3m, std::make_signed_t<std::size_t> axis_2m, std::make_signed_t<std::size_t> axis_1m, std::make_signed_t<std::size_t> axis_1, std::make_signed_t<std::size_t> axis_2, std::make_signed_t<std::size_t> axis_3, std::make_signed_t<std::size_t> axis_4, std::make_signed_t<std::size_t> axis_6);
 
     inline bool operator==(const SKRotationalOccuranceTable& b) const
     {

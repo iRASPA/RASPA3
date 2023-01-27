@@ -2,6 +2,21 @@ module;
 
 module input_reader;
 
+import <filesystem>;
+import <fstream>;
+import <cstdlib>;
+import <iostream>;
+import <sstream>;
+import <exception>;
+import <numbers>;
+import <vector>;
+import <array>;
+import <complex>;
+import <ios>;
+import <optional>;
+
+import int3;
+
 import system;
 import atom;
 import component;
@@ -16,18 +31,6 @@ import isotherm;
 import multi_site_isotherm;
 import pressure_range;
 
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <iostream>;
-import <sstream>;
-import <exception>;
-import <numbers>;
-import <vector>;
-import <array>;
-import <complex>;
-import <ios>;
-import <optional>;
 
 inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {
@@ -537,10 +540,10 @@ InputReader::InputReader()
           requireExistingSystem(keyword, lineNumber);
           systems.back().forceField.automaticEwald = false;
 
-          std::istringstream iss(arguments);
+          std::istringstream iss1(arguments);
           std::string alpha, kvectors;
-          iss >> alpha;
-          std::getline(iss, kvectors);
+          iss1 >> alpha;
+          std::getline(iss1, kvectors);
 
           double value = parseDouble(alpha, keyword, lineNumber);
           systems.back().forceField.EwaldAlpha = value;

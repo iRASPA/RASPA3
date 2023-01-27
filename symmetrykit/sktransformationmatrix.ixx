@@ -1,18 +1,23 @@
 export module sktransformationmatrix;
 
 import skrotationmatrix;
-import mathkit;
+import int3;
+import int3x3;
+import double3;
+import double3x3;
 import hashcombine;
+
+import <vector>;
 
 export struct SKTransformationMatrix
 {
-    union int3x3 transformation;
+    int3x3 transformation;
     int3 translation;
 
     SKTransformationMatrix();
     SKTransformationMatrix(int3x3 m);
     SKTransformationMatrix(int3 v1, int3 v2, int3 v3);
-    SKTransformationMatrix(SKRotationMatrix m, int3 t) : transformation(m.int3x3), translation(t) {};
+    SKTransformationMatrix(SKRotationMatrix m, int3 t) : transformation(m.int3x3_m), translation(t) {};
 
     inline int3& operator [] (int i) { return this->transformation.v[i]; }
     inline const int3& operator [] (int i) const { return this->transformation.v[i]; }
@@ -114,7 +119,7 @@ export inline SKTransformationMatrix operator * (const SKTransformationMatrix& a
 
 export inline SKTransformationMatrix operator * (const SKTransformationMatrix& a, const SKRotationMatrix& b)
 {
-    return SKTransformationMatrix(a.transformation * b.int3x3);
+    return SKTransformationMatrix(a.transformation * b.int3x3_m);
 }
 
 export inline SKTransformationMatrix operator + (const SKTransformationMatrix& a, const SKTransformationMatrix& b)

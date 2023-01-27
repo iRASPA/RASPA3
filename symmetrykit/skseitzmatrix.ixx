@@ -2,9 +2,14 @@ export module skseitzmatrix;
 
 import <string>;
 import <vector>;
-import mathkit;
+import int3;
+import int3x3;
+import double3;
+import double3x3;
 import skrotationmatrix;
 import skonethirdseitzmatrix;
+
+import <cmath>;
 
 export struct SKSeitzMatrix
 {

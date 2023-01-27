@@ -1,6 +1,5 @@
 export module int3x3;
 
-
 import int3;
 import double3;
 import hashcombine;

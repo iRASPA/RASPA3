@@ -1,8 +1,12 @@
 export module skseitzintegermatrix;
 
 import <vector>;
+
 import skrotationmatrix;
-import mathkit;
+import int3;
+import int3x3;
+import double3;
+import double3x3;
 import skonethirdseitzmatrix;
 import hashcombine;
 
@@ -31,15 +35,15 @@ export struct SKSeitzIntegerMatrix
         std::size_t operator()(const SKSeitzIntegerMatrix& k) const
         {
             std::size_t h = 0;
-            hash_combine(h, k.rotation.int3x3.m11);
-            hash_combine(h, k.rotation.int3x3.m12);
-            hash_combine(h, k.rotation.int3x3.m13);
-            hash_combine(h, k.rotation.int3x3.m21);
-            hash_combine(h, k.rotation.int3x3.m22);
-            hash_combine(h, k.rotation.int3x3.m23);
-            hash_combine(h, k.rotation.int3x3.m31);
-            hash_combine(h, k.rotation.int3x3.m32);
-            hash_combine(h, k.rotation.int3x3.m33);
+            hash_combine(h, k.rotation.int3x3_m.m11);
+            hash_combine(h, k.rotation.int3x3_m.m12);
+            hash_combine(h, k.rotation.int3x3_m.m13);
+            hash_combine(h, k.rotation.int3x3_m.m21);
+            hash_combine(h, k.rotation.int3x3_m.m22);
+            hash_combine(h, k.rotation.int3x3_m.m23);
+            hash_combine(h, k.rotation.int3x3_m.m31);
+            hash_combine(h, k.rotation.int3x3_m.m32);
+            hash_combine(h, k.rotation.int3x3_m.m33);
             hash_combine(h, k.translation.x);
             hash_combine(h, k.translation.y);
             hash_combine(h, k.translation.z);

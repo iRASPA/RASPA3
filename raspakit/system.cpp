@@ -753,13 +753,13 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
           pressureTensor.az, pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
   std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
   std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-  std::pair<double, double> pressure = averagePressure.averagePressure();
+  std::pair<double, double> p = averagePressure.averagePressure();
   std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
           1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
   std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
           1e-5 * Units::PressureConversionFactor * excessPressure.first, 1e-5 * Units::PressureConversionFactor * excessPressure.second);
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
-          1e-5 * Units::PressureConversionFactor * pressure.first, 1e-5 * Units::PressureConversionFactor * pressure.second);
+          1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
   std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
 

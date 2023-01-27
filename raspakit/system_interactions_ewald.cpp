@@ -19,6 +19,7 @@ import energy_status_inter;
 import units;
 import energy_factor;
 import running_energy;
+import component;
 
 // TODO:
 // An Exact Ewald Summation Method in Theory and Practice

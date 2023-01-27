@@ -73,12 +73,12 @@ double3 SimulationBox::perpendicularWidths() const
   double3 c2 = double3::cross(unitCell[1], unitCell[2]);
   double3 c3 = double3::cross(unitCell[0], unitCell[2]);
 
-  double volume = std::fabs(unitCell[0].x * c2.x + unitCell[0].y * c2.y + unitCell[0].z * c2.z);
+  double v = std::fabs(unitCell[0].x * c2.x + unitCell[0].y * c2.y + unitCell[0].z * c2.z);
 
   // calculate cell perpendicular widths
-  return double3(volume / std::sqrt(double3::dot(c2, c2)),
-                 volume / std::sqrt(double3::dot(c3, c3)),
-                 volume / std::sqrt(double3::dot(c1, c1)));
+  return double3(v / std::sqrt(double3::dot(c2, c2)),
+                 v / std::sqrt(double3::dot(c3, c3)),
+                 v / std::sqrt(double3::dot(c1, c1)));
 }
 
 void SimulationBox::setBoxLengths(double3 lengths)

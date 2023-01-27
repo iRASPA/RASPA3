@@ -2,6 +2,13 @@ module;
 
 module skintegerchangeofbasis;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import sktransformationmatrix;
+
 SKIntegerChangeOfBasis::SKIntegerChangeOfBasis(SKTransformationMatrix inversionTransformation)
 {
     _inverseChangeOfBasis = inversionTransformation;

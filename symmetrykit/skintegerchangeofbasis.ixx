@@ -1,7 +1,11 @@
 export module skintegerchangeofbasis;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
 import sktransformationmatrix;
-import mathkit;
 
 export class SKIntegerChangeOfBasis
 {

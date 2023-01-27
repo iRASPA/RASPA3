@@ -4,11 +4,21 @@ module;
 
 module skspacegroupsetting;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import skdefinitions;
+import skasymmetricunit;
+import sktransformationmatrix;
+import skintegersymmetryoperationset;
+import skseitzintegermatrix;
 import skpointgroup;
 
-SKSpaceGroupSetting::SKSpaceGroupSetting(int64_t number, int64_t spaceGroupNumber, int64_t order, char ext, std::string qualifier, std::string HM, std::string Hall,
+SKSpaceGroupSetting::SKSpaceGroupSetting(size_t number, size_t spaceGroupNumber, size_t order, char ext, std::string qualifier, std::string HM, std::string Hall,
     bool inversionAtOrigin, int3 inversionCenter, Symmorphicity symmorphicity, bool standard, Centring centring,
-    std::vector<int3> latticeTranslations, int64_t pointGroupNumber, std::string schoenflies, std::string generators,
+    std::vector<int3> latticeTranslations, size_t pointGroupNumber, std::string schoenflies, std::string generators,
     std::string encoding, SKAsymmetricUnit asymmetricUnit, SKTransformationMatrix transformationMatrix)
 {
     _HallNumber = number;
@@ -88,7 +98,7 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
     assert(_encodedSeitz.size() % 3 == 0);
     assert(_encodedSeitz.size() > 0);
 
-    bool centrosymmetric = SKPointGroup::pointGroupData[_pointGroupNumber].centrosymmetric();
+    bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<size_t>(_pointGroupNumber)].centrosymmetric();
     size_t m = _encodedSeitz.size() / 3;
 
     size_t size = centrosymmetric ? 2 * m : m;
@@ -138,7 +148,7 @@ std::vector<SKSeitzIntegerMatrix> SKSpaceGroupSetting::SeitzMatricesWithoutTrans
     assert(_encodedSeitz.size() % 3 == 0);
     assert(_encodedSeitz.size() > 0);
 
-    bool centrosymmetric = SKPointGroup::pointGroupData[_pointGroupNumber].centrosymmetric();
+    bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<size_t>(_pointGroupNumber)].centrosymmetric();
     size_t m = _encodedSeitz.size() / 3;
 
     size_t size = centrosymmetric ? 2 * m : m;

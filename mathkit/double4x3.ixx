@@ -1,5 +1,7 @@
 export module double4x3;
 
+import <cstddef>;
+
 import double3;
 import double4;
 
@@ -23,6 +25,6 @@ export union double4x3
 
     double4x3(double3 v1, double3 v2, double3 v3, double3 v4) : v{ v1,v2,v3,v4 } {}
 
-    inline double3& operator [] (int i) { return v[i]; }
-    inline const double3& operator [] (int i) const { return v[i]; }
+    inline double3& operator [] (size_t i) { return v[i]; }
+    inline const double3& operator [] (size_t i) const { return v[i]; }
 };

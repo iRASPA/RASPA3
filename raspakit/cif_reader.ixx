@@ -13,13 +13,13 @@ export struct CIFReader
 {
   CIFReader(const std::string& content, const ForceField& forceField);
  
-  void parseLine(std::string);
+  void parseLine(std::string &string);
   void parseAudit(std::string& string);
   void parseChemical(std::string& string);
   void parseCell(std::string& string);
   void parseSymmetry(std::string& string);
   void parseName(std::string& string);
-  void parseLoop(std::string& string, const ForceField& forceField);
+  void parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField);
   void skipComment();
 
   std::optional<std::string> parseValue();

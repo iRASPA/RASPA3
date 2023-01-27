@@ -2,6 +2,13 @@ module;
 
 module skseitzmatrix;
 
+import int3;
+import int3x3;
+import double3;
+import double3x3;
+
+import skrotationmatrix;
+
 SKSeitzMatrix::SKSeitzMatrix()
 {
 
