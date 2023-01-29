@@ -1,5 +1,6 @@
 CXX=clang++
-CXXFLAGS=-O0 -fsanitize=address -march=native -ffast-math -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=.
+OPT=-O0 -fsanitize=address -march=native -ffast-math
+CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=.
 
 .PHONY: default
 default: libmathkit;
@@ -9,38 +10,66 @@ default: libmathkit;
 
 .SECONDARY:
 
-%.o: %.cpp %.pcm 
-	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
-
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
-special_functions: special_functions.o
-hashcombine: hashcombine.o
-cubic: cubic.o
-ring: ring.o
-int3: hashcombine ring int3.o
-bool3: bool3.o
-float2: float2.o
-double2: double2.o
-double4: double4.o
-float3: int3 float3.o
-double3: hashcombine int3 bool3 double3.o
-randomnumbers: double3 randomnumbers.o
-float4: float3 double3 double4 float4.o
-int3x3: hashcombine int3 double3 int3x3.o
-double3x3: double3 int3x3 simd_quatd double3x3.o 
-double4x3: double3 double4 double4x3.o
-double4x4: double3 double4 simd_quatd double3x3 double4x4.o
-simd_quatd: randomnumbers double3 simd_quatd.o
-float3x3: float3 simd_quatd float3x3.o
-float3x4: float3 float4 float3x4.o
-float4x4: float3 float4 double3x3 double4x4 simd_quatd float3x3 float4x4.o 
-ringmatrix: int3x3 ringmatrix.o
-matrix: ringmatrix matrix.o
+%.pcm.o: %.ixx
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@
 
-libmathkit: special_functions cubic hashcombine randomnumbers int3 bool3 double2 double3 double4 int3x3 double3x3 double4x3 double4x4 float2 float3 float4 simd_quatd float3x3 float3x4 float4x4 ring ringmatrix matrix
+%.o: %.pcm %.pcm.o
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+
+# dependencies
+int3.pcm: hashcombine.o ring.o 
+float3.pcm: int3.o 
+double3.pcm: hashcombine.o int3.o bool3.o
+randomnumbers.pcm: double3.o
+float4.pcm: float3.o double3.o double4.o 
+int3x3.pcm: hashcombine.o int3.o double3.o
+double3x3.pcm: double3.o int3x3.o simd_quatd.o
+double4x3.pcm: double3.o double4.o 
+double4x4.pcm: double3.o double4.o simd_quatd.o double3x3.o 
+simd_quatd.pcm: randomnumbers.o double3.o 
+float3x3.pcm: float3.o simd_quatd.o 
+float3x4.pcm: float3.o float4.o 
+float4x4.pcm: float3.o float4.o double3x3.o double4x4.o simd_quatd.o float3x3.o 
+ringmatrix.pcm: int3x3.o
+matrix.pcm: ringmatrix.o
+
+int3.pcm.o: hashcombine.o ring.o 
+float3.pcm.o: int3.o 
+double3.pcm.o: hashcombine.o int3.o bool3.o
+randomnumbers.pcm.o: double3.o
+float4.pcm.o: float3.o double3.o double4.o 
+int3x3.pcm.o: hashcombine.o int3.o double3.o
+double3x3.pcm.o: double3.o int3x3.o simd_quatd.o
+double4x3.pcm.o: double3.o double4.o 
+double4x4.pcm.o: double3.o double4.o simd_quatd.o double3x3.o 
+simd_quatd.pcm.o: randomnumbers.o double3.o 
+float3x3.pcm.o: float3.o simd_quatd.o 
+float3x4.pcm.o: float3.o float4.o 
+float4x4.pcm.o: float3.o float4.o double3x3.o double4x4.o simd_quatd.o float3x3.o 
+ringmatrix.pcm.o: int3x3.o
+matrix.pcm.o: ringmatrix.o
+
+int3.o: hashcombine.o ring.o 
+float3.o: int3.o 
+double3.o: hashcombine.o int3.o bool3.o
+randomnumbers.o: double3.o
+float4.o: float3.o double3.o double4.o 
+int3x3.o: hashcombine.o int3.o double3.o
+double3x3.o: double3.o int3x3.o simd_quatd.o
+double4x3.o: double3.o double4.o 
+double4x4.o: double3.o double4.o simd_quatd.o double3x3.o 
+simd_quatd.o: randomnumbers.o double3.o 
+float3x3.o: float3.o simd_quatd.o 
+float3x4.o: float3.o float4.o 
+float4x4.o: float3.o float4.o double3x3.o double4x4.o simd_quatd.o float3x3.o 
+ringmatrix.o: int3x3.o
+matrix.o: ringmatrix.o
+
+libmathkit: special_functions.o cubic.o hashcombine.o randomnumbers.o int3.o bool3.o double2.o double3.o double4.o int3x3.o double3x3.o double4x3.o double4x4.o float2.o float3.o float4.o simd_quatd.o float3x3.o float3x4.o float4x4.o ring.o ringmatrix.o matrix.o
 	ar -rs libmathkit.a special_functions.pcm.o special_functions.o cubic.pcm.o cubic.o hashcombine.pcm.o hashcombine.o randomnumbers.pcm.o randomnumbers.o int3.pcm.o int3.o bool3.pcm.o bool3.o double2.pcm.o double2.o double3.pcm.o double3.o double4.pcm.o double4.o int3x3.pcm.o int3x3.o double3x3.pcm.o double3x3.o double4x3.pcm.o double4x3.o double4x4.pcm.o double4x4.o float2.pcm.o float2.o float3.pcm.o float3.o float4.pcm.o float4.o simd_quatd.pcm.o simd_quatd.o float3x3.pcm.o float3x3.o float3x4.pcm.o float3x4.o float4x4.pcm.o float4x4.o ring.pcm.o ring.o ringmatrix.pcm.o ringmatrix.o matrix.pcm.o matrix.o
 	ranlib -c libmathkit.a
 

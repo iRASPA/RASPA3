@@ -195,7 +195,7 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
       }
       std::print(stream, "    -----------------------------------------------------------------------\n");
       std::pair<double, double> averageRosenbluthWeight = component.averageRosenbluthWeights.averageRosenbluthWeight();
-      std::print(stream, "    Average Rosenbluth eight:   {} +/- {} [-]\n", 
+      std::print(stream, "    Average Rosenbluth weight:   {} +/- {} [-]\n", 
               averageRosenbluthWeight.first, averageRosenbluthWeight.second);
       std::print(stream, "\n\n");
 

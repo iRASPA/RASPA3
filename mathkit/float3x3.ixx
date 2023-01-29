@@ -1,8 +1,9 @@
 export module float3x3;
 
+import <vector>;
+
 import float3;
 import simd_quatd;
-import <vector>;
 
 export union float3x3
 {

@@ -1,5 +1,6 @@
 CXX=clang++
-CXXFLAGS=-O0 -fsanitize=address -march=native -ffast-math  -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../symmetrykit
+OPT=-O0 -fsanitize=address -march=native -ffast-math
+CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../symmetrykit
 
 .PHONY: default
 default: libraspakit;
@@ -9,12 +10,14 @@ default: libraspakit;
 
 .SECONDARY:
 
-%.o: %.cpp %.pcm
-	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
-
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
+
+%.pcm.o: %.ixx
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@
+
+%.o: %.pcm %.pcm.o %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 bond_potential: bond_potential.o
 isotherm: isotherm.o

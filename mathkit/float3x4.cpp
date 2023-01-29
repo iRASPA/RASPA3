@@ -4,11 +4,7 @@ module;
 #include <iostream>
 #include <ostream>
 
-
-
 module float3x4;
-
-
 
 float3x4::float3x4(const float3x4& a)  // copy constructor
 {

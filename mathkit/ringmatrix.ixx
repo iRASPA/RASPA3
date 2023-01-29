@@ -3,9 +3,10 @@ export module ringmatrix;
 import <vector>;
 import <optional>;
 import <any>;
-import int3x3;
 import <variant>;
 import <string>;
+
+import int3x3;
 
 export class RingMatrix
 {

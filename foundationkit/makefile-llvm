@@ -1,5 +1,6 @@
 CXX=clang++
-CXXFLAGS=-O3 -march=native -ffast-math -std=c++2b -fopenmp -g -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -I/usr/local/src/fmt/include
+OPT=-O3 -march=native -ffast-math
+CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. 
 
 .PHONY: default
 default: libfoundationkit;
@@ -9,21 +10,25 @@ default: libfoundationkit;
 
 .SECONDARY:
 
-%.o: %.cpp %.pcm
-	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
-
 %.pcm: %.ixx
-	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
+	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -x c++-module --precompile $< -o $@
 
-print: print.o
-characterset: characterset.o 
-indexpath: indexpath.o
-scanner: characterset scanner.o 
-threading: threading.o
-threadpool: threading threadpool.o
+%.pcm.o: %.ixx
+	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -x c++-module -c $< -o $@
 
-libfoundationkit: characterset indexpath scanner print threading threadpool
+%.o: %.pcm %.pcm.o
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+scanner.pcm: characterset.o
+threadpool.pcm: threading.o
+
+scanner.pcm.o: characterset.o
+threadpool.pcm.o: threading.o
+
+scanner.o: characterset.o
+threadpool.o: threading.o
+
+libfoundationkit: characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
 	ar -rs libfoundationkit.a characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
 	ranlib -c libfoundationkit.a
 

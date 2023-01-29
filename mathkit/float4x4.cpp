@@ -5,10 +5,11 @@ module;
 
 module float4x4;
 
+import float3;
+import float4;
 import float3x3;
 import double3x3;
 import double4x4;
-import float3;
 import simd_quatd;
 
 float4x4::float4x4(const float4x4& a)  // copy constructor

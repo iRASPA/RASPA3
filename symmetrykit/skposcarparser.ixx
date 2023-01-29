@@ -1,12 +1,12 @@
 export module skposcarparser;
 
-
 import <string>;
 import <optional>;
 import <memory>;
 
 import scanner;
 import characterset;
+
 import skparser;
 import skstructure;
 import skcell;

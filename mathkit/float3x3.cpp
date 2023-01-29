@@ -6,6 +6,7 @@ module float3x3;
 
 import <vector>;
 import <cmath>;
+
 import simd_quatd;
 import float3;
 
