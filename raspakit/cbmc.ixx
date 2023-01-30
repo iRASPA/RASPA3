@@ -1,9 +1,10 @@
 export module cbmc;
 
 import atom;
-import energy_status;
 import double3x3;
 import double3;
+
+import energy_status;
 import energy_status_intra;
 import energy_status_inter;
 import running_energy;

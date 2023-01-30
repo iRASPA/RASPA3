@@ -1,11 +1,13 @@
 export module potential_gradient_vdw;
 
+import <cmath>;
+import <iostream>;
+
+import double4;
+
 import forcefield;
 import force_factor;
 
-import double4;
-import <cmath>;
-import <iostream>;
 
 export inline ForceFactor potentialVDWGradient(const ForceField& forcefield, const double& scaling, const double& rr, const size_t& typeA, const size_t& typeB)
 {

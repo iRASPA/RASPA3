@@ -6,6 +6,7 @@ import <vector>;
 
 import scanner;
 import characterset;
+
 import atom;
 import simulationbox;
 import forcefield;

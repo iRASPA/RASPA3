@@ -5,8 +5,9 @@ import <array>;
 import <vector>;
 import <iostream>;
 
-import isotherm;
 import hashcombine;
+
+import isotherm;
 
 export struct MultiSiteIsotherm
 {

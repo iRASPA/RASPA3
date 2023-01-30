@@ -1,11 +1,13 @@
 export module potential_gradient_coulomb;
 
+import <cmath>;
+import <numbers>;
+
+import double4;
+
 import forcefield;
 import force_factor;
 
-import double4;
-import <cmath>;
-import <numbers>;
 
 export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield, const double& scaling, const double& r, const double& chargeA, const double& chargeB)
 {

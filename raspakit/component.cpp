@@ -7,14 +7,7 @@ import double3;
 import double3x3;
 import skposcarparser;
 import characterset;
-import forcefield;
-import atom;
-import lambda;
-import print;
-import property_widom;
-import multi_site_isotherm;
 
-import simulationbox;
 import skparser;
 import skposcarparser;
 import skstructure;
@@ -22,6 +15,14 @@ import skasymmetricatom;
 import skatomcopy;
 import skcell;
 import skspacegroup;
+
+import forcefield;
+import atom;
+import lambda;
+import print;
+import property_widom;
+import multi_site_isotherm;
+import simulationbox;
 import cif_reader;
 
 import bond_potential;

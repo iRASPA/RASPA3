@@ -1,13 +1,13 @@
 export module loadings;
 
-import simulationbox;
-import component;
-
 import <string>;
 import <vector>;
 import <optional>;
 import <cmath>;
 import <ostream>;
+
+import simulationbox;
+import component;
 
 export struct Loadings
 {

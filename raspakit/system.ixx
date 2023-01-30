@@ -13,6 +13,11 @@ import <chrono>;
 
 import double3;
 import double3x3;
+
+import randomnumbers;
+import threadpool;
+
+
 import atom;
 import component;
 import simulationbox;
@@ -25,18 +30,16 @@ import sample_movies;
 import enthalpy_of_adsorption;
 import lambda;
 import cbmc;
-import randomnumbers;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
-import threadpool;
-import isotherm;
 import multi_site_isotherm;
 import pressure_range;
 import units;
 import bond_potential;
+import isotherm;
 
 export struct System
 {

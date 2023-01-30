@@ -1,17 +1,5 @@
 export module input_reader;
 
-import system;
-import atom;
-import component;
-import simulationbox;
-import forcefield;
-import double3;
-import loadings;
-import enthalpy_of_adsorption;
-import energy_status;
-import averages;
-import threadpool;
-
 import <string>;
 import <unordered_set>;
 import <map>;
@@ -22,6 +10,20 @@ import <algorithm>;
 import <cctype>;
 import <optional>;
 import <fstream>;
+
+import double3;
+import threadpool;
+
+import system;
+import atom;
+import component;
+import simulationbox;
+import forcefield;
+import loadings;
+import enthalpy_of_adsorption;
+import energy_status;
+import averages;
+
 
 struct Hash {
     size_t operator()([[maybe_unused]] const std::string& str) const {

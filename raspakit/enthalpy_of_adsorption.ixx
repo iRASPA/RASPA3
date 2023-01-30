@@ -1,10 +1,10 @@
 export module enthalpy_of_adsorption;
 
+import matrix;
+
 import energy_status;
 import averages;
-import matrix;
 import units;
-
 import <vector>;
 import <numeric>;
 import <fstream>;
@@ -17,6 +17,7 @@ import <iostream>;
 #else
   #include <assert.h>
 #endif
+
 
 export struct EnthalpyOfAdsorption
 {
