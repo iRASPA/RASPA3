@@ -10,15 +10,12 @@ default: libmathkit;
 
 .SECONDARY:
 
+%.o: %.cpp %.pcm 
+	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
-
-%.pcm.o: %.ixx
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@
-
-%.o: %.pcm %.pcm.o
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
 # dependencies
 int3.pcm: hashcombine.o ring.o 
@@ -36,22 +33,6 @@ float3x4.pcm: float3.o float4.o
 float4x4.pcm: float3.o float4.o double3x3.o double4x4.o simd_quatd.o float3x3.o 
 ringmatrix.pcm: int3x3.o
 matrix.pcm: ringmatrix.o
-
-int3.pcm.o: hashcombine.o ring.o 
-float3.pcm.o: int3.o 
-double3.pcm.o: hashcombine.o int3.o bool3.o
-randomnumbers.pcm.o: double3.o
-float4.pcm.o: float3.o double3.o double4.o 
-int3x3.pcm.o: hashcombine.o int3.o double3.o
-double3x3.pcm.o: double3.o int3x3.o simd_quatd.o
-double4x3.pcm.o: double3.o double4.o 
-double4x4.pcm.o: double3.o double4.o simd_quatd.o double3x3.o 
-simd_quatd.pcm.o: randomnumbers.o double3.o 
-float3x3.pcm.o: float3.o simd_quatd.o 
-float3x4.pcm.o: float3.o float4.o 
-float4x4.pcm.o: float3.o float4.o double3x3.o double4x4.o simd_quatd.o float3x3.o 
-ringmatrix.pcm.o: int3x3.o
-matrix.pcm.o: ringmatrix.o
 
 int3.o: hashcombine.o ring.o 
 float3.o: int3.o 

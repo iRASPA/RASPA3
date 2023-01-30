@@ -18,7 +18,7 @@ CharacterSet::CharacterSet(std::string chars)
 // \x0B   \e    Escape (ESC)
 // \x0C   \f    Formfeed (FF)
 // \x0D   \r    Carriage return (CR)
-// \x85   …
+// \x85   
 
 CharacterSet CharacterSet::newlineCharacter()
 {

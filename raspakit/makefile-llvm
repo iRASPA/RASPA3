@@ -1,5 +1,5 @@
 CXX=clang++
-OPT=-O0 -fsanitize=address -march=native -ffast-math
+OPT=-O3 -march=native -ffast-math 
 CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit -fprebuilt-module-path=../symmetrykit
 
 .PHONY: default
@@ -10,14 +10,13 @@ default: libraspakit;
 
 .SECONDARY:
 
+%.o: %.cpp %.pcm
+	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
-%.pcm.o: %.ixx
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@
-
-%.o: %.pcm %.pcm.o %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 multi_site_isotherm.pcm: isotherm.o
 simulationbox.pcm: units.o averages.o
@@ -56,44 +55,6 @@ mixture_prediction.pcm: atom.o isotherm.o multi_site_isotherm.o component.o bond
 mixture_prediction_simulation.pcm: input_reader.o component.o system.o multi_site_isotherm.o mixture_prediction.o
 breakthrough.pcm: component.o input_reader.o mixture_prediction.o system.o
 breakthrough_simulation.pcm: breakthrough.o input_reader.o mixture_prediction.o system.o simulationbox.o component.o
-
-multi_site_isotherm.pcm.o: isotherm.o
-simulationbox.pcm.o: units.o averages.o
-forcefield.pcm.o: units.o 
-property_lambda_probability_histogram.pcm.o: simulationbox.o averages.o 
-property_dudlambda.pcm.o: averages.o
-lambda.pcm.o: property_dudlambda.o property_lambda_probability_histogram.o averages.o
-property_widom.pcm.o: averages.o
-component.pcm.o: cif_reader.o bond_potential.o multi_site_isotherm.o atom.o averages.o property_widom.o lambda.o forcefield.o
-energy_status_inter.pcm.o: energy_factor.o
-energy_status_intra.pcm.o: energy_factor.o
-energy_status.pcm.o: component.o energy_status_inter.o energy_status_intra.o
-property_energy.pcm.o: energy_status.o energy_status_inter.o energy_status_intra.o averages.o
-loadings.pcm.o: simulationbox.o component.o
-property_loading.pcm.o: loadings.o averages.o
-enthalpy_of_adsorption.pcm.o: units.o averages.o energy_status.o
-property_enthalpy.pcm.o: enthalpy_of_adsorption.o averages.o loadings.o
-property_pressure.pcm.o: averages.o
-cif_reader.pcm.o: forcefield.o simulationbox.o atom.o
-potential_energy_vdw.pcm.o: energy_factor.o forcefield.o
-potential_gradient_vdw.pcm.o: force_factor.o forcefield.o
-potential_correction_vdw.pcm.o: forcefield.o
-potential_energy_coulomb.pcm.o: energy_factor.o forcefield.o
-potential_gradient_coulomb.pcm.o: force_factor.o forcefield.o
-cbmc_growing_status.pcm.o: atom.o component.o running_energy.o bond_potential.o 
-cbmc.pcm.o: atom.o running_energy.o energy_status.o energy_status_intra.o energy_status_inter.o
-sample_movies.pcm.o: units.o atom.o simulationbox.o forcefield.o
-property_simulationbox.pcm.o: averages.o simulationbox.o
-system.pcm.o: atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o lambda.o property_widom.o property_dudlambda.o energy_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
-mc_moves.pcm.o: system.o cbmc.o component.o atom.o simulationbox.o energy_status.o running_energy.o
-monte_carlo.pcm.o: averages.o system.o property_enthalpy.o mc_moves.o input_reader.o energy_status.o
-input_reader.pcm.o: system.o atom.o component.o simulationbox.o forcefield.o loadings.o enthalpy_of_adsorption.o energy_status.o averages.o
-isotherm_fitting.pcm.o: multi_site_isotherm.o component.o input_reader.o system.o
-isotherm_fitting_simulation.pcm.o: isotherm_fitting.o input_reader.o component.o system.o multi_site_isotherm.o
-mixture_prediction.pcm.o: atom.o isotherm.o multi_site_isotherm.o component.o bond_potential.o system.o
-mixture_prediction_simulation.pcm.o: input_reader.o component.o system.o multi_site_isotherm.o mixture_prediction.o
-breakthrough.pcm.o: component.o input_reader.o mixture_prediction.o system.o
-breakthrough_simulation.pcm.o: breakthrough.o input_reader.o mixture_prediction.o system.o simulationbox.o component.o
 
 multi_site_isotherm.o: isotherm.o
 simulationbox.o: units.o averages.o

@@ -10,14 +10,13 @@ default: libsymmetrykit;
 
 .SECONDARY:
 
+%.o: %.cpp %.pcm
+	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
-%.pcm.o: %.ixx
-	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@
-
-%.o: %.pcm %.pcm.o %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # dependencies pcm-interface on previous object files
 skasymmetricatom.pcm: skatomcopy.o
@@ -39,27 +38,6 @@ skrotationalchangeofbasis.pcm: skrotationmatrix.o skseitzintegermatrix.o
 skspacegroupdatabase.pcm: skspacegroupsetting.o
 sksymmetrycell.pcm: skdefinitions.o skrotationmatrix.o sktransformationmatrix.o skpointsymmetryset.o skpointgroup.o
 skspacegroup.pcm: skseitzmatrix.o skpointgroup.o skpointsymmetryset.o sksymmetryoperationset.o skspacegroupsetting.o skrotationalchangeofbasis.o skspacegroupdatabase.o sksymmetrycell.o
-
-# dependencies compiled pcm-interface on previous object files
-skasymmetricatom.pcm.o: skatomcopy.o
-skcell.pcm.o: skboundingbox.o
-skstructure.pcm.o: skcell.o skasymmetricatom.o
-skparser.pcm.o: skstructure.o
-skposcarparser.pcm.o: skparser.o
-skposcarlegacyparser.pcm.o: skparser.o skstructure.o skcell.o
-sktransformationmatrix.pcm.o: skrotationmatrix.o
-skintegerchangeofbasis.pcm.o: sktransformationmatrix.o
-skseitzintegermatrix.pcm.o: skrotationmatrix.o skonethirdseitzmatrix.o
-skintegersymmetryoperationset.pcm.o: skdefinitions.o sksymmetrycell.o skseitzintegermatrix.o
-skseitzmatrix.pcm.o: skrotationmatrix.o skonethirdseitzmatrix.o
-skpointsymmetryset.pcm.o: skrotationmatrix.o
-sksymmetryoperationset.pcm.o: skdefinitions.o skpointgroup.o skrotationmatrix.o sktransformationmatrix.o skseitzmatrix.o sksymmetrycell.o
-skpointgroup.pcm.o: skdefinitions.o skrotationaloccurancetable.o skrotationmatrix.o skpointsymmetryset.o sktransformationmatrix.o
-skspacegroupsetting.pcm.o: skdefinitions.o skasymmetricunit.o sktransformationmatrix.o skintegersymmetryoperationset.o skseitzintegermatrix.o skpointgroup.o 
-skrotationalchangeofbasis.pcm.o: skrotationmatrix.o skseitzintegermatrix.o
-skspacegroupdatabase.pcm.o: skspacegroupsetting.o
-sksymmetrycell.pcm.o: skdefinitions.o skrotationmatrix.o sktransformationmatrix.o skpointsymmetryset.o skpointgroup.o
-skspacegroup.pcm.o: skseitzmatrix.o skpointgroup.o skpointsymmetryset.o sksymmetryoperationset.o skspacegroupsetting.o skrotationalchangeofbasis.o skspacegroupdatabase.o sksymmetrycell.o
 
 # dependencies compiled cpp-files on previous object files
 skasymmetricatom.o: skatomcopy.o

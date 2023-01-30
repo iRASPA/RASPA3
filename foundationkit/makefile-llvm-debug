@@ -10,20 +10,16 @@ default: libfoundationkit;
 
 .SECONDARY:
 
+%.o: %.cpp %.pcm
+	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+
 %.pcm: %.ixx
-	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -I/usr/local/include -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -I/usr/local/include -x c++-module -c $< -o $@.o
 
-%.pcm.o: %.ixx
-	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -x c++-module -c $< -o $@
-
-%.o: %.pcm %.pcm.o
-	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 scanner.pcm: characterset.o
 threadpool.pcm: threading.o
-
-scanner.pcm.o: characterset.o
-threadpool.pcm.o: threading.o
 
 scanner.o: characterset.o
 threadpool.o: threading.o
