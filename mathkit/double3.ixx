@@ -5,7 +5,7 @@ import <ostream>;
 
 #if defined(WIN32)
     import <intrin.h>;
-#else
+#elif defined(__AVX__)
     import <immintrin.h>;
 #endif
 
@@ -17,15 +17,16 @@ import hashcombine;
 
 export union double3
 {
-    __m256d vec;
+    #ifdef __AVX__
+      __m256d vec;
+    #endif
     double v[4];
     struct { double x, y, z, w; };
 
-    double3(__m256d const& v): vec(v) {}
-    double3& operator = (__m256d const& x) { vec = x; return *this; }
-//#ifdef __AVX__
-//    double3& load(double const* p) { vec = _mm256_load_pd(p); return *this; }
-//#endif
+    #ifdef __AVX__
+      double3(__m256d const& v): vec(v) {}
+      double3& operator = (__m256d const& x) { vec = x; return *this; }
+    #endif
     double3(double x = 0, double y = 0, double z = 0): x(x), y(y), z(z), w(0.0) {}
     double3(int3 a) :x(double(a.x)), y(double(a.y)), z(double(a.z)), w(0.0) {}
 

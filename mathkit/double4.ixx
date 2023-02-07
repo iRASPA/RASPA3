@@ -2,13 +2,15 @@ export module double4;
 
 #if defined(WIN32)
     import <intrin.h>;
-#else
+#elif defined(__AVX__)
     import <immintrin.h>;
 #endif
 
 export union double4
 {
-    __m256d value;
+    #ifdef __AVX__
+      __m256d value;
+    #endif
     double v[4];
     struct { double x, y, z, w; };
 

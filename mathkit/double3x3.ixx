@@ -2,7 +2,7 @@ export module double3x3;
 
 #if defined(WIN32)
     import <intrin.h>;
-#else
+#elif defined(__AVX__)
     import <immintrin.h>;
 #endif
 
@@ -15,7 +15,9 @@ import int3x3;
 
 export union double3x3
 {
-    __m256d columns[4];
+    #ifdef __AVX__
+      __m256d columns[4];
+    #endif
     double m[16];
     double mm[4][4];
     double3 v[4];
