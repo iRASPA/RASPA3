@@ -1,0 +1,27 @@
+SimulationType                MonteCarlo
+NumberOfCycles                100
+NumberOfInitializationCycles  0
+NumberOfEquilibrationCycles   0
+PrintEvery                    1000
+NumberOfBlocks                5
+
+Box 0
+BoxLengths 30 30 30
+ChargeMethod Ewald
+EwaldPrecision 1e-6
+OmitEwaldFourier no
+
+ExternalTemperature 300.0
+ExternalPressure 1e4
+
+VolumeMoveProbability 0.01
+
+Component 0 MoleculeName               methane
+            TranslationProbability     0.5
+            RotationProbability        0.5
+            ReinsertionProbability     0.5
+            SwapProbability            1.0
+            CFCMC_CBMC_SwapProbability 0.0
+            WidomProbability           1.0
+            CBCFCMCWidomProbability    0.0
+            CreateNumberOfMolecules    100

@@ -27,12 +27,14 @@ export struct MC_Moves
     std::optional<RunningEnergy> randomTranslationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
     std::optional<RunningEnergy> rotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
     std::optional<RunningEnergy> randomRotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
-    std::optional<RunningEnergy> volumeMove([[maybe_unused]] System &system) const;
     std::optional<RunningEnergy> reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms);
     std::optional<RunningEnergy> insertionMove(System& system, size_t selectedComponent);
     std::optional<RunningEnergy> deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule);
     std::optional<RunningEnergy> swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule, bool insertionDisabled=false, bool deletionDisabled=false);
     std::optional<double> WidomMove(System& system, size_t selectedComponent);
+
+    std::optional<RunningEnergy> volumeMove(System &system) const;
+    std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(System &systemA, System &systemB) const;
 
     double energyOverlapCriteria = 1e6;
     bool useDualCutOff{ true };

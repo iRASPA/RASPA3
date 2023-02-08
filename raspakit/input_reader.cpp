@@ -412,6 +412,7 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("Box")))
       {
+        currentForceField = ForceField(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
         numberOfSystems += 1;
         systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
         systems.back().forceField = currentForceField;
@@ -560,7 +561,7 @@ InputReader::InputReader()
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "probabilityVolumeMove"))
+      if (caseInSensStringCompare(keyword, "VolumeMoveProbability"))
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);

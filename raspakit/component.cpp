@@ -155,7 +155,6 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   // skip comment line
   std::getline(moleculeFile, str);
   
-
   // read number of pseudo-atoms
   size_t n;
   std::getline(moleculeFile, str);

@@ -28,6 +28,7 @@ import <numbers>;
 ForceField::ForceField(std::string pseudoAtomsFileName,
     std::string forceFieldMixingFileName, [[maybe_unused]] std::string forceFieldOverwriteFileName) noexcept(false)
 {
+  std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingFileName << std::endl;
   ReadPseudoAtoms(pseudoAtomsFileName);
   ReadForceFieldMixing(forceFieldMixingFileName);
 }
