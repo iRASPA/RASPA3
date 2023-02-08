@@ -72,7 +72,6 @@
     <ClCompile Include="sksymmetryoperationset.ixx" />
     <ClCompile Include="sktransformationmatrix.cpp" />
     <ClCompile Include="sktransformationmatrix.ixx" />
-    <ClCompile Include="symmetrykit.ixx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\foundationkit\foundationkit.vcxproj">

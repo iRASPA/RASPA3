@@ -24,7 +24,7 @@ export struct BondPotential
   std::array<double, maximumNumberOfBondParameters> parameters;
 
   BondPotential(): bondType(BondType::Undefined), bondIds(0,0) {}
-  BondPotential(BondType bondType, std::pair<size_t, size_t> bondIds): bondType(bondType), bondIds(bondIds) {}
+  BondPotential(const BondType bondType, std::pair<size_t, size_t> bondIds): bondType(bondType), bondIds(bondIds) {}
 
   std::string print() const
   {
@@ -40,20 +40,26 @@ export struct BondPotential
           return "Unknown potential";
       }
   }
+
+  static inline std::vector<size_t> numberOfBondParameters{ 0, 0, 2 };
+
+
+  struct comp {
+      bool operator() (const std::string& lhs, const std::string& rhs) const {
+#if defined(_WIN32)
+          return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
+#else
+          return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+#endif
+
+      }
+  };
+
+  static inline std::map<std::string, BondType, comp> bondDefinitionForString{
+    {"FIXED_BOND", BondType::Fixed} ,
+    {"RIGID_BOND", BondType::Rigid} ,
+    {"HARMONIC_BOND", BondType::Harmonic} };
+
 };
 
-export std::vector<size_t> numberOfBondParameters{ 0, 0, 2 };
-//export std::vector<std::string> bondDefinitionStrings{ "Fixed potential" "Harmonic potential" };
-
-
-struct comp {
-    bool operator() (const std::string& lhs, const std::string& rhs) const {
-        return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-    }
-};
-
-export std::map<std::string, BondType, comp> bondDefinitionForString{ 
-  {"FIXED_BOND", BondType::Fixed} , 
-  {"RIGID_BOND", BondType::Rigid} ,
-  {"HARMONIC_BOND", BondType::Harmonic} };
 

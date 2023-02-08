@@ -172,7 +172,11 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::istringstream rigidStream(str);
   std::string rigidString;
   rigidStream >> rigidString;
+#if defined(_WIN32)
+  if (_stricmp(rigidString.c_str(), "flexible"))
+#else
   if (strcasecmp(rigidString.c_str(), "flexible"))
+#endif
   {
     rigid = false;
   }
@@ -240,7 +244,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
 
       std::vector<double> parameters = parseListOfParameters<double>(parameterString, 0);
 
-      bonds[i] = BondPotential(bondDefinitionForString[bondTypeString], std::make_pair(idA, idB));
+      bonds[i] = BondPotential(BondPotential::bondDefinitionForString[bondTypeString], std::make_pair(idA, idB));
       std::copy(parameters.begin(), parameters.end(), bonds[i].parameters.begin());
     }
   }

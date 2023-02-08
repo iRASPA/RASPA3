@@ -120,9 +120,6 @@
     <ClCompile Include="sktransformationmatrix.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="symmetrykit.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="skparser.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
