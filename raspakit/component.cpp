@@ -24,7 +24,7 @@ import property_widom;
 import multi_site_isotherm;
 import simulationbox;
 import cif_reader;
-
+import move_statistics;
 import bond_potential;
 
 import <iostream>;

@@ -41,6 +41,7 @@ import isotherm;
 import multi_site_isotherm;
 import pressure_range;
 import bond_potential;
+import move_statistics;
 
 import <numbers>;
 import <complex>;

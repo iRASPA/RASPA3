@@ -40,6 +40,7 @@ import pressure_range;
 import units;
 import bond_potential;
 import isotherm;
+import move_statistics;
 
 export struct System
 {

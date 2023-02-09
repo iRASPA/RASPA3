@@ -15,6 +15,7 @@ import property_lambda_probability_histogram;
 import property_dudlambda;
 import property_widom;
 import property_loading;
+import move_statistics;
 
 import <iostream>;
 import <random>;
