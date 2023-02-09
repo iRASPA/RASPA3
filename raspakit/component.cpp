@@ -699,6 +699,12 @@ void Component::clearMoveStatistics()
   statistics_WidomMove_CFCMC_CBMC.clear();
 }
 
+void Component::optimizeMCMoves()
+{
+    statistics_TranslationMove.optimizeAcceptance();
+    statistics_RotationMove.optimizeAcceptance();
+}
+
 void Component::clearTimingStatistics()
 {
     cpuTime_TranslationMove = std::chrono::duration<double>(0.0);

@@ -26,22 +26,7 @@ import property_widom;
 import isotherm;
 import multi_site_isotherm;
 import bond_potential;
-
-export template<typename T>
- struct MoveStatistics
-{
-    T counts{};
-    T constructed{};
-    T accepted{};
-    T maxChange{};
-
-    void clear()
-    {
-        counts = T();
-        constructed = T();
-        accepted = T();
-    }
-};
+import move_statistics;
 
 export struct Component
 {
@@ -182,6 +167,7 @@ export struct Component
     MoveStatistics<double3> statistics_WidomMove_CFCMC{};
     MoveStatistics<double3> statistics_WidomMove_CFCMC_CBMC{};
     void clearMoveStatistics();
+    void optimizeMCMoves();
     
     std::chrono::duration<double> cpuTime_TranslationMove{ 0.0 };
     std::chrono::duration<double> cpuTime_RandomTranslationMove{ 0.0 };

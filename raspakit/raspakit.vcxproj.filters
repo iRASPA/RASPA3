@@ -402,5 +402,11 @@
     <ClCompile Include="cif_reader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="move_statistics.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="move_statistics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

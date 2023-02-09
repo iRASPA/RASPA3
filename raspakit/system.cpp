@@ -552,6 +552,15 @@ void System::removeRedundantMoves()
   }
 }
 
+void System::optimizeMCMoves()
+{
+  statistics_VolumeMove.optimizeAcceptance();
+  for (Component& component : components)
+  {
+    component.optimizeMCMoves();
+  }
+}
+
 void System::rescaleMolarFractions()
 {
     double totalMolfraction = 0.0;

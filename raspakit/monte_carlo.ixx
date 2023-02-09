@@ -36,6 +36,7 @@ export struct MonteCarlo
     size_t numberOfCycles;
     size_t numberOfInitializationCycles;
     size_t numberOfEquilibrationCycles;
+    size_t optimizeMCMovesEvery{ 5000 };
     size_t printEvery;
 
     std::vector<System> systems;

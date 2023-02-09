@@ -145,6 +145,14 @@ void MonteCarlo::initialize()
         system.writeInitializationStatusReport(stream, i, numberOfInitializationCycles);
       }
     }
+
+    if (i % optimizeMCMovesEvery == 0)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
   }
 }
 
@@ -204,6 +212,14 @@ void MonteCarlo::equilibrate()
             component.lambda.WangLandauIteration(Lambda::WangLandauPhase::AdjustBiasingFactors);
           }
         }
+      }
+    }
+
+    if (i % optimizeMCMovesEvery == 0)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
       }
     }
   }
@@ -274,6 +290,14 @@ void MonteCarlo::production()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
         system.writeProductionStatusReport(stream, i, numberOfCycles);
+      }
+    }
+
+    if (i % optimizeMCMovesEvery == 0)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
       }
     }
 

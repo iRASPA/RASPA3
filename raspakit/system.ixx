@@ -160,6 +160,7 @@ export struct System
     void computeComponentFluidProperties();
     void computeFrameworkDensity();
     void computeNumberOfPseudoAtoms();
+    void optimizeMCMoves();
 
     void writeOutputHeader(std::ostream &outputFile) const;
     void writeOutputHeaderHardware(std::ostream &outputFile) const;

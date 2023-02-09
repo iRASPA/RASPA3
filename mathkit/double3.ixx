@@ -1,6 +1,7 @@
 export module double3;
 
 import <cmath>;
+import <algorithm>;
 import <ostream>;
 
 #if defined(WIN32)
@@ -27,7 +28,9 @@ export union double3
       double3(__m256d const& v): vec(v) {}
       double3& operator = (__m256d const& x) { vec = x; return *this; }
     #endif
-    double3(double x = 0, double y = 0, double z = 0): x(x), y(y), z(z), w(0.0) {}
+    double3() : x(0.0), y(0.0), z(0.0), w(0.0) {}
+    double3(double v) : x(v), y(v), z(v), w(0.0) {}
+    double3(double x, double y, double z): x(x), y(y), z(z), w(0.0) {}
     double3(int3 a) :x(double(a.x)), y(double(a.y)), z(double(a.z)), w(0.0) {}
 
     inline double& operator [] (size_t i) { return v[i]; }
@@ -137,4 +140,9 @@ export inline double3 operator/(const double3& a, double b)
 export inline double3 sqrt(const double3& a)
 {
     return double3(std::sqrt(a.x), std::sqrt(a.y), std::sqrt(a.z));
+}
+
+export double3 clamp(double3 value, double3 low, double3 high)
+{
+    return double3(std::clamp(value.x, low.x, high.x), std::clamp(value.y, low.y, high.y), std::clamp(value.z, low.z, high.z));
 }

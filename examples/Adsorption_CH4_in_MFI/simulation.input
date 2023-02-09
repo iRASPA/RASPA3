@@ -19,7 +19,7 @@ ExternalPressure 1e4
 #Movies no
 #WriteMoviesEvery 1000
 
-Component 0 MoleculeName               CO2
+Component 0 MoleculeName               methane
 #           MoleculeDefinition         ExampleDefinitions
             TranslationProbability     1.0
             RotationProbability        1.0

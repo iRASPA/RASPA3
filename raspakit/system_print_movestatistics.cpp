@@ -41,6 +41,12 @@ inline void formatStatistics(std::ostream &stream, const std::string name, const
 
 void System::writeMCMoveStatistics(std::ostream &stream) const
 {
+  if (probabilityVolumeMove > 0.0) formatStatistics(stream, "Volume", statistics_VolumeMove);
+  if (probabilityGibbsVolumeMove > 0.0) formatStatistics(stream, "Gibbs Volume", statistics_GibbsVolumeMove);
+  if (probabilityGibbsSwapMove_CBMC > 0.0) formatStatistics(stream, "Gibss Swap (CBMC)", statistics_GibbsSwapMove_CBMC);
+  if (probabilityGibbsSwapMove_CFCMC > 0.0) formatStatistics(stream, "Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC);
+  if (probabilityGibbsSwapMove_CFCMC_CBMC > 0.0) formatStatistics(stream, "Gibbs Swap (CB/CFCMC)", statistics_GibbsSwapMove_CFCMC_CBMC);
+
   for (size_t componentId = 0; const Component& component: components)
   {
     std::print(stream,"Component {} [{}]\n", componentId, component.name);
@@ -250,10 +256,6 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
     ++componentId;
   }
 
-  if(probabilityVolumeMove > 0.0) formatStatistics(stream, "Volume", statistics_VolumeMove);
-  if(probabilityGibbsVolumeMove > 0.0) formatStatistics(stream, "Gibbs Volume", statistics_GibbsVolumeMove);
-  if(probabilityGibbsSwapMove_CBMC > 0.0) formatStatistics(stream, "Gibss Swap (CBMC)", statistics_GibbsSwapMove_CBMC);
-  if(probabilityGibbsSwapMove_CFCMC > 0.0) formatStatistics(stream, "Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC);
-  if(probabilityGibbsSwapMove_CFCMC_CBMC > 0.0) formatStatistics(stream, "Gibbs Swap (CB/CFCMC)", statistics_GibbsSwapMove_CFCMC_CBMC); 
+ 
   std::print(stream, "\n\n");
 }

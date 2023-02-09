@@ -235,6 +235,8 @@
     <ClCompile Include="mixture_prediction.ixx" />
     <ClCompile Include="mixture_prediction_simulation.cpp" />
     <ClCompile Include="mixture_prediction_simulation.ixx" />
+    <ClCompile Include="move_statistics.cpp" />
+    <ClCompile Include="move_statistics.ixx" />
     <ClCompile Include="multi_site_isotherm.cpp" />
     <ClCompile Include="multi_site_isotherm.ixx" />
     <ClCompile Include="potential_correction_vdw.cpp" />
