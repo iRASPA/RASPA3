@@ -18,6 +18,7 @@ import running_energy;
 import lambda;
 import property_widom;
 import averages;
+import move_statistics;
 
 import <complex>;
 import <vector>;

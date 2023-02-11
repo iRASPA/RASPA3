@@ -19,6 +19,7 @@ import lambda;
 import property_widom;
 import averages;
 import forcefield;
+import move_statistics;
 
 import <complex>;
 import <vector>;
