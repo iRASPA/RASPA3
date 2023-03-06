@@ -22,7 +22,7 @@ public:
     virtual void startParsing() noexcept(false) = 0;
     std::vector<std::vector<std::shared_ptr<SKStructure>>> movies();
 
-    std::vector<std::tuple<double3, int, double> > firstTestFrame();
+    std::vector<std::tuple<double3, size_t, double> > firstTestFrame();
 protected:
     double _a, _b, _c;
     double _alpha, _beta, _gamma;

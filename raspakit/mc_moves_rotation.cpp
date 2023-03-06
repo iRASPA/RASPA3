@@ -51,19 +51,18 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(System& system, size_t selec
     std::transform(molecule.begin(), molecule.end(), trialPositions.begin(),
             [&](Atom a) { a.position = rotationMatrix * (a.position - molecule[startingBead].position) 
                           + molecule[startingBead].position; return a; });
-    std::span<Atom> newMolecule{trialPositions.begin(), trialPositions.end()};
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(newMolecule, molecule);
+    std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
     if (!frameworkMolecule.has_value()) return std::nullopt;
 
-    std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(newMolecule, molecule);
+    std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
     if (!interMolecule.has_value()) return std::nullopt;
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_RotationMove_NonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
+    RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].cpuTime_RotationMove_Ewald += (u2 - u1);
     RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;

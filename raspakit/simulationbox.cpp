@@ -17,6 +17,13 @@ import print;
 
 SimulationBox::SimulationBox(double a, double b, double c)
 {
+  lengthA = a;
+  lengthB = b;
+  lengthC = c;
+  angleAlpha = std::numbers::pi * 90.0 / 180.0;
+  angleBeta = std::numbers::pi * 90.0 / 180.0;
+  angleGamma = std::numbers::pi * 90.0 / 180.0;
+
     double3 v1 = double3(a,   0.0, 0.0);
     double3 v2 = double3(0.0, b,   0.0);
     double3 v3 = double3(0.0, 0.0, c);
@@ -35,6 +42,13 @@ SimulationBox::SimulationBox(double a, double b, double c)
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma):
     lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma)
 {
+    lengthA = a;
+    lengthB = b;
+    lengthC = c;
+    angleAlpha = std::numbers::pi * 90.0 / 180.0;
+    angleBeta = std::numbers::pi * 90.0 / 180.0;
+    angleGamma = std::numbers::pi * 90.0 / 180.0;
+
     double temp = (cos(alpha) - cos(gamma) * cos(beta)) / sin(gamma);
 
     double3 v1 = double3(a, 0.0, 0.0);

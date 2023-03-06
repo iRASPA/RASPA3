@@ -57,7 +57,8 @@ export struct SKSeitzIntegerMatrix
 export inline double3 operator*(const SKSeitzIntegerMatrix& a, const double3& b)
 {
     double3 v = a.rotation * b;
-    return v + double3(a.translation.x / 24.0, a.translation.y / 24.0, a.translation.z / 24.0);
+    double3 trans = double3(static_cast<double>(a.translation.x) / 24.0, static_cast<double>(a.translation.y) / 24.0, static_cast<double>(a.translation.z) / 24.0);
+    return v + trans;
 }
 
 export inline SKSeitzIntegerMatrix operator*(const SKSeitzIntegerMatrix& a, const SKSeitzIntegerMatrix& b)

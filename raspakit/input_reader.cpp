@@ -498,7 +498,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().temperature = value;
-        systems.back().Beta = 1.0/(0.8314464919 * value);
+        systems.back().Beta = 1.0 / (Units::KB * value);
         continue;
       }
 
@@ -782,6 +782,7 @@ InputReader::InputReader()
         for (size_t i = 0; i < systems.size(); ++i)
         {
           systems[i].components.back().initialNumberOfMolecules = values[i];
+          systems[i].initialNumberOfMolecules[systems[i].components.size() - 1] = values[i];
         }
         continue;
       }

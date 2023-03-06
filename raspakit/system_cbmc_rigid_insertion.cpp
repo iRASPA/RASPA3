@@ -62,6 +62,7 @@ import <numeric>;
   std::transform(externalEnergies.begin(), externalEnergies.end(),
       std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,RunningEnergy>& v) {return -Beta * v.second.total(); });
 
+
   size_t selected = selectTrialPosition(logBoltmannFactors);
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,

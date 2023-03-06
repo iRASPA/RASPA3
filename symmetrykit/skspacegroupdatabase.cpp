@@ -29,7 +29,7 @@ SKSpaceGroupDataBase::SKSpaceGroupDataBase()
 
 const std::array<SKSpaceGroupSetting, 531> SKSpaceGroupDataBase::spaceGroupData{
 
-    SKSpaceGroupSetting{ 0, 0, 0, 0, "abc", "unknown", "unknown", false, {0,0,0}, Symmorphicity::symmorphic, false, Centring::primitive, {{0,0,0}}, 0, "" , "012", "", {{0,0},{0,0},{0,0}}, SKTransformationMatrix::identity },
+        SKSpaceGroupSetting{ 0, 0, 0, 0, "abc", "unknown", "unknown", false, {0,0,0}, Symmorphicity::symmorphic, false, Centring::primitive, {{0,0,0}}, 0, "" , "012", "", {{0,0},{0,0},{0,0}}, SKTransformationMatrix::identity },
 
         // TRICLINIC GROUPS
         // ================

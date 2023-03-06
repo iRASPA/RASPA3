@@ -2,7 +2,7 @@ SimulationType                MonteCarlo
 NumberOfCycles                20000
 NumberOfInitializationCycles  1000
 NumberOfEquilibrationCycles   20000
-PrintEvery                    1000
+PrintEvery                    100
 NumberOfBlocks                5
 
 Framework 0

@@ -37,5 +37,5 @@ export struct MC_Moves
     std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(System &systemA, System &systemB) const;
 
     double energyOverlapCriteria = 1e6;
-    bool useDualCutOff{ true };
+    bool useDualCutOff{ false };
 };

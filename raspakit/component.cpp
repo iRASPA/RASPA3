@@ -48,7 +48,99 @@ import <chrono>;
   #include <assert.h>
 #endif
 
+Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
+    std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
+    type(Type::Adsorbate),
+    mass(mass),
+    simulationBox(simulationBox),
+    criticalTemperature(T_c),
+    criticalPressure(P_c),
+    acentricFactor(w),
+    definedAtoms(definedAtoms),
+    componentId(componentId),
+    name(componentName),
+    lambda(numberOfBlocks, 41),
+    averageRosenbluthWeights(numberOfBlocks)
+{
+  atoms = definedAtoms;
+}
 
+Component::Component(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false) :
+    type(Type::Framework),
+    mass(mass),
+    componentId(componentId),
+    name(fileName),
+    simulationBox(simulationBox),
+    definedAtoms(definedAtoms),
+    spaceGroupHallNumber(spaceGroupHallNumber),
+    numberOfUnitCells(numberOfUnitCells),
+    filenameData(fileName),
+    lambda(numberOfBlocks, 41),
+    averageRosenbluthWeights(numberOfBlocks)
+{
+  // expand the fractional atoms based on the space-group
+  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+  std::vector<Atom> expandedAtoms;
+  expandedAtoms.reserve(definedAtoms.size() * 256);
+  for (const Atom& atom : definedAtoms)
+  {
+    Atom atomCopy = atom;
+
+    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
+    for (const double3& pos : listOfPositions)
+    {
+      atomCopy.position = simulationBox.unitCell * pos.fract();
+      expandedAtoms.push_back(atomCopy);
+    }
+  }
+
+  // eliminate duplicates
+  std::vector<Atom> unitCellAtoms;
+  for (size_t i = 0; i < expandedAtoms.size(); ++i)
+  {
+    bool overLap = false;
+    for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
+    {
+      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+      if (rr < 0.1)
+      {
+        overLap = true;
+        break;
+      }
+    }
+    if (!overLap)
+    {
+      unitCellAtoms.push_back(expandedAtoms[i]);
+    }
+  }
+
+
+
+  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
+  {
+    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
+    {
+      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
+      {
+        for (const Atom& atom : unitCellAtoms)
+        {
+          Atom atomCopy = atom;
+          atomCopy.position += simulationBox.unitCell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atoms.push_back(atomCopy);
+        }
+      }
+    }
+  }
+
+
+  for (size_t i = 0; i < atoms.size(); ++i)
+  {
+    atoms[i].componentId = static_cast<short>(componentId);
+    atoms[i].moleculeId = 0;
+  }
+}
 
 Component::Component(Component::Type type, size_t currentComponent, const std::string &componentName,
                      std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false) :
@@ -294,7 +386,7 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
         double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
         double rr = double3::dot(dr, dr);
-        if (rr < 0.01)
+        if (rr < 0.1)
         {
             overLap = true;
             break;

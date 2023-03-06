@@ -23,6 +23,42 @@ import <string>;
 import <string_view>;
 import <optional>;
 import <numbers>;
+import <algorithm>;
+
+ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false) :
+    cutOffVDW(cutOff), numberOfPseudoAtoms(pseudoAtoms.size()), pseudoAtoms(pseudoAtoms),
+    data(selfInteractions.size()* selfInteractions.size(), VDWParameters(0.0, 0.0)),
+    tailCorrections(selfInteractions.size()* selfInteractions.size(), tailCorrecions),
+    shiftPotentials(selfInteractions.size()* selfInteractions.size(), shifted)
+{
+    for (size_t i = 0; i < selfInteractions.size(); ++i)
+    {
+        data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
+    }
+
+    for (size_t i = 0; i < selfInteractions.size(); ++i)
+    {
+        for (size_t j = i + 1; j < selfInteractions.size(); ++j)
+        {
+            double mix0 = std::sqrt(selfInteractions[i].parameters.x * selfInteractions[j].parameters.x);
+            double mix1 = 0.5 * (selfInteractions[i].parameters.y + selfInteractions[j].parameters.y);
+
+            data[i + numberOfPseudoAtoms * j] = VDWParameters(mix0, mix1);
+            data[j + numberOfPseudoAtoms * i] = VDWParameters(mix0, mix1);
+        }
+    }
+
+    for (size_t i = 0; i < selfInteractions.size(); ++i)
+    {
+        for (size_t j = 0; j < selfInteractions.size(); ++j)
+        {
+          if(shiftPotentials[i * numberOfPseudoAtoms + j])
+          {
+            data[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cutOffVDW);
+          }
+        }
+    }
+}
 
 
 ForceField::ForceField(std::string pseudoAtomsFileName,
@@ -87,6 +123,8 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
   }
 
   data = std::vector<VDWParameters>(numberOfPseudoAtoms * numberOfPseudoAtoms);
+  tailCorrections = std::vector<bool>(numberOfPseudoAtoms * numberOfPseudoAtoms, false);
+  shiftPotentials = std::vector<bool>(numberOfPseudoAtoms * numberOfPseudoAtoms, true);
 }
 
 void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noexcept(false)
@@ -108,7 +146,12 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
 
   // read shifted or trunacted
   std::getline(forceFieldFile, str);
-  //std::istringstream my_stream(str);
+  
+  // FIX
+  if (str == "truncated")
+  {
+    std::fill(shiftPotentials.begin(), shiftPotentials.end(), false);
+  }
 
   //skip comment line
   std::getline(forceFieldFile, str);
@@ -157,6 +200,14 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
       data[j * numberOfPseudoAtoms + i] = VDWParameters(mix0, mix1);
     }
   }
+
+  for (size_t i = 0; i < data.size(); ++i)
+  {
+    if (shiftPotentials[i])
+    {
+      data[i].computeShiftAtCutOff(cutOffVDW);
+    }
+  }
 }
 
 
@@ -177,7 +228,6 @@ void ForceField::printForceFieldStatus(std::ostream &stream) const
   std::print(stream, "Force field status\n");
   std::print(stream, "===============================================================================\n\n");
 
-  double conv = Units::EnergyToKelvin;
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     for (size_t j = i; j < numberOfPseudoAtoms; ++j)
@@ -187,12 +237,12 @@ void ForceField::printForceFieldStatus(std::ostream &stream) const
       case VDWParameters::Type::LennardJones:
         std::print(stream, "{:8} - {:8} {} p_0/k_B: {:8.5f} [K], p_1 {:8.5f} [A]\n",
             pseudoAtoms[i].name, pseudoAtoms[j].name, "Lennard-Jones",
-            conv * data[i * numberOfPseudoAtoms + j].parameters.x,
+            Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
             data[i * numberOfPseudoAtoms + j].parameters.y);
         std::print(stream, "{:33} shift: {:8.5f} [K], tailcorrections: {}\n",
             "",
-            conv * data[i * numberOfPseudoAtoms + j].shift,
-            data[i * numberOfPseudoAtoms + j].tailCorrection);
+          Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
+          tailCorrections[i * numberOfPseudoAtoms + j]);
         break;
       default:
         break;

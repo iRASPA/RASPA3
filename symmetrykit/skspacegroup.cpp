@@ -142,17 +142,17 @@ std::optional<size_t> SKSpaceGroup::HallNumberFromSpaceGroupNumber([[maybe_unuse
 
 std::vector<double3> SKSpaceGroup::listOfSymmetricPositions(double3 pos)
 {
-    std::unordered_set<SKSeitzIntegerMatrix, SKSeitzIntegerMatrix::hashFunction> seitzMatrices = _spaceGroupSetting.fullSeitzMatrices().operations;
-    size_t m = seitzMatrices.size();
+  std::unordered_set<SKSeitzIntegerMatrix, SKSeitzIntegerMatrix::hashFunction> seitzMatrices = _spaceGroupSetting.fullSeitzMatrices().operations;
+  size_t m = seitzMatrices.size();
 
-    std::vector<double3> positions = std::vector<double3>{};
-    positions.reserve(m);
+  std::vector<double3> positions = std::vector<double3>{};
+  positions.reserve(m);
 
-    for (const auto& elem : seitzMatrices)
-    {
-        positions.push_back(elem * pos);
-    }
-    return positions;
+  for (const SKSeitzIntegerMatrix& elem : seitzMatrices)
+  {
+    positions.push_back(elem * pos);
+  }
+  return positions;
 }
 
 std::vector<std::string> SKSpaceGroup::latticeTranslationStrings(size_t HallNumber)

@@ -45,6 +45,7 @@ import move_statistics;
 export struct System
 {
     System() = delete;
+    System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
     System(size_t s, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
     ~System() = default;
 
@@ -198,6 +199,7 @@ export struct System
     PropertyEnthalpy averageEnthalpiesOfAdsorption;
 
     std::vector<size_t> swapableComponents{};
+    std::vector<size_t> initialNumberOfMolecules{};
     std::vector<size_t> numberOfMoleculesPerComponent{};                    // includes all molecules
     std::vector<size_t> numberOfIntegerMoleculesPerComponent{};             // integer molecules
     std::vector<size_t> numberOfFractionalMoleculesPerComponent{};          // fractional molecules

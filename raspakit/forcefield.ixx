@@ -25,19 +25,28 @@ export struct VDWParameters
 
   double4 parameters;      // for LJ: epsilon, sigma, for Buckingham: 3 parameters
   double shift;
-  double reserved;
-  double reserved2;
   Type type{ 0 };
-  bool tailCorrection;
-  bool shiftPotential;
 
   VDWParameters(): parameters(double4(158.5/ 1.2027242847,3.72,0.0,0.0)), shift(-0.56217796) {}
-  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), type(Type::LennardJones), tailCorrection(false), shiftPotential(true)
+
+  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), type(Type::LennardJones), shift(0.0)
   {
+    //double scaling = 1.0;
+    //double arg1 = epsilon;
+    //double arg2 = sigma * sigma;
+    //double rr = 12.0 * 12.0;
+    //double temp = (rr / arg2);
+    //double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
+    //shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
+  }
+
+  void computeShiftAtCutOff(double cutOff)
+  {
+    shift = 0.0;
     double scaling = 1.0;
-    double arg1 = epsilon;
-    double arg2 = sigma * sigma;
-    double rr = 12.0 * 12.0;
+    double arg1 = parameters.x;
+    double arg2 = parameters.y * parameters.y;
+    double rr = cutOff * cutOff;
     double temp = (rr / arg2);
     double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
     shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
@@ -62,9 +71,16 @@ export struct ForceField
     Wolf = 2,
     ModifiedWolf = 3
   };
+
+  enum class MixingRule : int
+  {
+      Lorentz_Berthelot = 0
+  };
   
   // 2D-vector, size numberOfPseudoAtoms squared
   std::vector<VDWParameters> data{};
+  std::vector<bool> tailCorrections{};
+  std::vector<bool> shiftPotentials{};
   double cutOffVDW{ 12.0 };
   double cutOffCoulomb{ 12.0 };
   double dualCutOff{ 6.0 };
@@ -81,6 +97,7 @@ export struct ForceField
   int3 numberOfWaveVectors{ 8, 8, 8 };
   bool automaticEwald{ true };
 
+  ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false);
   ForceField(std::string pseudoAtomsFileName, std::string forceFieldmixingFileName, std::string forceFieldOverwriteFileName) noexcept(false);
 
   ForceField() noexcept = default;

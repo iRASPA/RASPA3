@@ -29,7 +29,7 @@ void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcep
       {
         for(size_t j = 0; j != forceField.pseudoAtoms.size(); ++j)
         {
-          if(forceField(i,j).tailCorrection)
+          if(forceField.tailCorrections[i + forceField.pseudoAtoms.size() * j])
           {
             energy += 2.0 * std::numbers::pi * static_cast<double>(numberOfPseudoAtoms[k][i]) * 
                                                static_cast<double>(numberOfPseudoAtoms[l][j]) * 
@@ -38,7 +38,7 @@ void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcep
             //                         (NumberOfPseudoAtomsType[CurrentSystem][j]-NumberOfFractionalPseudoAtomsType[CurrentSystem][j])*
             //                         PotentialCorrectionPressure(i,j,CutOffVDW);
           }
-          else if(!forceField(i,j).shiftPotential)
+          else if(!forceField.shiftPotentials[i + forceField.pseudoAtoms.size() * j])
           {
             // impulsive correction
             //pressure+=(2.0/3.0)*M_PI*(NumberOfPseudoAtomsType[CurrentSystem][i]-NumberOfFractionalPseudoAtomsType[CurrentSystem][i])*
@@ -65,7 +65,7 @@ void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcep
       {
         for(size_t j = 0; j != forceField.pseudoAtoms.size(); ++j)
         {
-          if(forceField(i,j).tailCorrection)
+          if(forceField.tailCorrections[i + forceField.pseudoAtoms.size() * j])
           {
             energy += 2.0 * std::numbers::pi * static_cast<double>(numberOfPseudoAtoms[k][i]) * 
                                                static_cast<double>(numberOfPseudoAtoms[l][j]) * 
@@ -101,7 +101,7 @@ void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcep
       {
         for(size_t j = 0; j != forceField.pseudoAtoms.size(); ++j)
         {
-          if(forceField(i,j).tailCorrection)
+          if(forceField.tailCorrections[i + forceField.pseudoAtoms.size() * j])
           {
             energy += 2.0 * std::numbers::pi * static_cast<double>(newNumberOfPseudoAtoms[k][i]) * 
                                                static_cast<double>(newNumberOfPseudoAtoms[l][j]) * 
@@ -138,7 +138,7 @@ void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcep
       {
         for(size_t j = 0; j != forceField.pseudoAtoms.size(); ++j)
         {
-          if(forceField(i,j).tailCorrection)
+          if(forceField.tailCorrections[i + forceField.pseudoAtoms.size() * j])
           {
             energy += 2.0 * std::numbers::pi * static_cast<double>(newNumberOfPseudoAtoms[k][i]) * 
                                                static_cast<double>(newNumberOfPseudoAtoms[l][j]) * 

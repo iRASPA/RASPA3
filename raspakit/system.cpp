@@ -57,6 +57,83 @@ import <optional>;
 import <cmath>;
 import <chrono>;
 
+System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
+    temperature(T),
+    pressure(P / Units::PressureConversionFactor),
+    input_pressure(P),
+    Beta(1.0 / (Units::KB * T)),
+    systemId(id),
+    components(c),
+    loadings(c.size()),
+    averageLoadings(numberOfBlocks, c.size()),
+    averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
+    swapableComponents(),
+    initialNumberOfMolecules(initialNumberOfMolecules),
+    numberOfMoleculesPerComponent(c.size()),
+    numberOfIntegerMoleculesPerComponent(c.size()),
+    numberOfFractionalMoleculesPerComponent(c.size()),
+    numberOfReactionMoleculesPerComponent(c.size()),
+    numberOfReactionFractionalMoleculesPerComponent(c.size()),
+    idealGasEnergiesPerComponent(c.size()),
+    forceField(forcefield),
+    numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
+    totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
+    averageSimulationBox(numberOfBlocks),
+    atomPositions({}),
+    atomVelocities({}),
+    atomForces({}),
+    runningEnergies(),
+    averageEnergies(numberOfBlocks, c.size()),
+    currentEnergyStatus(c.size()),
+    averagePressure(numberOfBlocks),
+    netCharge(c.size())
+{
+
+  for (Component& component : components)
+  {
+     if(component.type == Component::Type::Framework)
+     {  
+        numberOfMoleculesPerComponent[component.componentId] += 1;
+        numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
+        numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
+        ++numberOfFrameworks;
+
+        // add Framework-atoms to the atomPositions-list
+        for (const Atom& atom : component.atoms)
+        {
+            atomPositions.push_back(atom);
+        }
+        numberOfFrameworkAtoms += component.atoms.size();
+
+        if (component.rigid)
+        {
+            numberOfRigidFrameworkAtoms += component.atoms.size();
+        }
+     }
+
+     // For multiple framework, the simulation box is the union of the boxes
+     simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
+  }
+
+  registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
+  removeRedundantMoves();
+  determineSwapableComponents();
+  determineFractionalComponents();
+  rescaleMoveProbabilities();
+  rescaleMolarFractions();
+  computeComponentFluidProperties();
+  computeFrameworkDensity();
+  computeNumberOfPseudoAtoms();
+
+  double3 perpendicularWidths = simulationBox.perpendicularWidths();
+  forceField.initializeEwaldParameters(perpendicularWidths);
+
+  createInitialMolecules();
+
+  averageEnthalpiesOfAdsorption.resize(swapableComponents.size());
+}
+
+
 System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
                systemId(s),
                components(c),
@@ -64,7 +141,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::v
                averageLoadings(numberOfBlocks, c.size()),
                averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
                swapableComponents(),
-               numberOfMoleculesPerComponent(initialNumberOfMolecules),
+               initialNumberOfMolecules(c.size()),
+               numberOfMoleculesPerComponent(c.size()),
                numberOfIntegerMoleculesPerComponent(c.size()),
                idealGasEnergiesPerComponent(c.size()),
                forceField(forcefield),
@@ -93,6 +171,7 @@ System::System(System&& s) noexcept :
     averageLoadings(s.averageLoadings),
     averageEnthalpiesOfAdsorption(s.averageEnthalpiesOfAdsorption),
     swapableComponents(s.swapableComponents),
+    initialNumberOfMolecules(s.initialNumberOfMolecules),
     numberOfMoleculesPerComponent(s.numberOfMoleculesPerComponent),
     numberOfIntegerMoleculesPerComponent(s.numberOfIntegerMoleculesPerComponent),
     numberOfFractionalMoleculesPerComponent(s.numberOfFractionalMoleculesPerComponent),
@@ -136,6 +215,7 @@ System::System(const System&& s) noexcept :
     averageLoadings(s.averageLoadings),
     averageEnthalpiesOfAdsorption(s.averageEnthalpiesOfAdsorption),
     swapableComponents(s.swapableComponents),
+    initialNumberOfMolecules(s.initialNumberOfMolecules),
     numberOfMoleculesPerComponent(s.numberOfMoleculesPerComponent),
     numberOfIntegerMoleculesPerComponent(s.numberOfIntegerMoleculesPerComponent),
     numberOfFractionalMoleculesPerComponent(s.numberOfFractionalMoleculesPerComponent),
@@ -173,6 +253,7 @@ System::System(const System&& s) noexcept :
 
 void System::addComponent(const Component&& component) noexcept(false)
 {
+  initialNumberOfMolecules.resize(components.size() + 1);
   numberOfMoleculesPerComponent.resize(components.size() + 1);
   numberOfIntegerMoleculesPerComponent.resize(components.size() + 1);
   numberOfFractionalMoleculesPerComponent.resize(components.size() + 1);
@@ -337,7 +418,7 @@ bool System::checkMoleculeIds()
 void System::createInitialMolecules()
 {
     // Make vectors same size and assume to number of atoms are zero if too short.
-    numberOfMoleculesPerComponent.resize(components.size(), 0);
+    //numberOfMoleculesPerComponent.resize(components.size(), 0);
 
     for (size_t componentId = 0; const Component & component : components)
     {
@@ -360,7 +441,7 @@ void System::createInitialMolecules()
             }
         }
 
-        for (size_t i = 0; i < component.initialNumberOfMolecules; ++i)
+        for (size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
         {
             std::optional<ChainData> growData = std::nullopt;
             do

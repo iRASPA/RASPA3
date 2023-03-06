@@ -20,7 +20,7 @@ struct MoveStatistics
 
     void optimizeAcceptance()
     {
-      T ratio = accepted / counts;
+      T ratio = accepted / (counts + T(1.0));
       if constexpr (std::is_same_v<double, T>) 
       {
         T scaling = std::clamp( ratio / targetAcceptance, T(0.5), T(1.5) );

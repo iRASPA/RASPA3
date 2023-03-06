@@ -137,12 +137,10 @@ const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> System::computeExt
 
     for (std::vector<Atom> trialPositionSet : trialPositionSets)
     {
-        std::span<Atom> span = std::span<Atom>(trialPositionSet.begin(), trialPositionSet.end());
-
-        std::optional<RunningEnergy> interEnergy = computeInterMolecularEnergy(cutOffVDW, cutOffCoulomb, span, skip);
+        std::optional<RunningEnergy> interEnergy = computeInterMolecularEnergy(cutOffVDW, cutOffCoulomb, trialPositionSet, skip);
         if(!interEnergy.has_value()) continue;
 
-        std::optional<RunningEnergy> frameworkEnergy = computeFrameworkMoleculeEnergy(cutOffVDW, cutOffCoulomb, span, skip);
+        std::optional<RunningEnergy> frameworkEnergy = computeFrameworkMoleculeEnergy(cutOffVDW, cutOffCoulomb, trialPositionSet, skip);
         if(!frameworkEnergy.has_value()) continue;
 
         energies.push_back(std::make_pair(trialPositionSet, interEnergy.value() + frameworkEnergy.value()));
@@ -154,12 +152,10 @@ const std::optional<RunningEnergy> System::computeExternalNonOverlappingEnergyDu
 {
   std::pair<std::vector<Atom>,RunningEnergy> energies;
 
-  std::span<Atom> span = std::span<Atom>(trialPositionSet.begin(), trialPositionSet.end());
-
-  std::optional<RunningEnergy> interEnergy = computeInterMolecularEnergy(cutOffVDW, cutOffCoulomb, span, -1);
+  std::optional<RunningEnergy> interEnergy = computeInterMolecularEnergy(cutOffVDW, cutOffCoulomb, trialPositionSet, -1);
   if(!interEnergy.has_value()) return std::nullopt;
 
-  std::optional<RunningEnergy> frameworkEnergy = computeFrameworkMoleculeEnergy(cutOffVDW, cutOffCoulomb, span, -1);
+  std::optional<RunningEnergy> frameworkEnergy = computeFrameworkMoleculeEnergy(cutOffVDW, cutOffCoulomb, trialPositionSet, -1);
   if(!frameworkEnergy.has_value()) return std::nullopt;
 
   return interEnergy.value() + frameworkEnergy.value();

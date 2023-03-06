@@ -37,7 +37,8 @@ export struct Component
         Cation = 2
     };
 
-    
+    Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false);
+    Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false);
 
     Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
               std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
@@ -60,7 +61,7 @@ export struct Component
     
     Type type;
 
-    SimulationBox simulationBox{30.0, 30.0 , 30.0};
+    SimulationBox simulationBox;
     size_t spaceGroupHallNumber{ 1 };
     int3 numberOfUnitCells{ 1, 1, 1};
 
