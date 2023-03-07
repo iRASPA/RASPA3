@@ -25,11 +25,13 @@ import <optional>;
 import <numbers>;
 import <algorithm>;
 
-ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false) :
-    cutOffVDW(cutOff), numberOfPseudoAtoms(pseudoAtoms.size()), pseudoAtoms(pseudoAtoms),
+ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false) :
     data(selfInteractions.size()* selfInteractions.size(), VDWParameters(0.0, 0.0)),
     tailCorrections(selfInteractions.size()* selfInteractions.size(), tailCorrecions),
-    shiftPotentials(selfInteractions.size()* selfInteractions.size(), shifted)
+    shiftPotentials(selfInteractions.size()* selfInteractions.size(), shifted),
+    cutOffVDW(cutOff), 
+    numberOfPseudoAtoms(pseudoAtoms.size()), 
+    pseudoAtoms(pseudoAtoms)
 {
     for (size_t i = 0; i < selfInteractions.size(); ++i)
     {

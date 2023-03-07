@@ -134,7 +134,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
 }
 
 
-System::System(size_t s, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
+System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[maybe_unused]] std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
                systemId(s),
                components(c),
                loadings(c.size()),

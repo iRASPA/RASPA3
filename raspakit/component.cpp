@@ -51,14 +51,14 @@ import <chrono>;
 Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
     std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
     type(Type::Adsorbate),
-    mass(mass),
     simulationBox(simulationBox),
+    componentId(componentId),
+    name(componentName),
     criticalTemperature(T_c),
     criticalPressure(P_c),
     acentricFactor(w),
+    mass(mass),
     definedAtoms(definedAtoms),
-    componentId(componentId),
-    name(componentName),
     lambda(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {
@@ -67,14 +67,14 @@ Component::Component(size_t componentId, std::string componentName, double mass,
 
 Component::Component(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false) :
     type(Type::Framework),
-    mass(mass),
-    componentId(componentId),
-    name(fileName),
     simulationBox(simulationBox),
-    definedAtoms(definedAtoms),
     spaceGroupHallNumber(spaceGroupHallNumber),
     numberOfUnitCells(numberOfUnitCells),
+    componentId(componentId),
+    name(fileName),
     filenameData(fileName),
+    mass(mass),
+    definedAtoms(definedAtoms),
     lambda(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {

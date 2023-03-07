@@ -29,7 +29,7 @@ export struct VDWParameters
 
   VDWParameters(): parameters(double4(158.5/ 1.2027242847,3.72,0.0,0.0)), shift(-0.56217796) {}
 
-  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), type(Type::LennardJones), shift(0.0)
+  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), type(Type::LennardJones)
   {
     //double scaling = 1.0;
     //double arg1 = epsilon;
