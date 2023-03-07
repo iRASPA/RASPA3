@@ -33,6 +33,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="gradients.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="static_energy.cpp" />
   </ItemGroup>

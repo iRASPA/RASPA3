@@ -25,6 +25,7 @@ import forcefield;
 import averages;
 import running_energy;
 import energy_status;
+import energy_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
@@ -67,6 +68,8 @@ export struct System
     void precomputeTotalRigidEnergy() noexcept;
     void computeTotalEnergies() noexcept;
     void computeTotalGradients() noexcept;
+
+    EnergyFactor computeInterMolecularGradient() noexcept;
 
     void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
