@@ -35,6 +35,7 @@
   <ItemGroup>
     <ClCompile Include="gradients.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="spacegroup.cpp" />
     <ClCompile Include="static_energy.cpp" />
   </ItemGroup>
   <ItemGroup>
