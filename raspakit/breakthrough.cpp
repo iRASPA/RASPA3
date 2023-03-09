@@ -16,6 +16,7 @@ import <sstream>;
 import <chrono>;
 
 import print;
+import mdspan;
 import input_reader;
 import component;
 import system;
@@ -122,6 +123,8 @@ Breakthrough::Breakthrough(System &system):
   {
     P[i * Ncomp + system.carrierGasComponent] = pt_init[i];
   }
+
+  auto st = std::experimental::mdspan(P.data(), 2, 6);
 
   // at the column entrance, the mol-fractions of the components in the gas phase are fixed
   // the partial pressures of the components at the entrance are the mol-fractions times the 

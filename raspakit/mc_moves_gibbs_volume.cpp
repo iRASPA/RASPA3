@@ -80,7 +80,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   systemB.statistics_GibbsVolumeMove.constructed += 1;
 
-  if(RandomNumber::Uniform() < std::exp(-systemA.Beta * (
+  if(RandomNumber::Uniform() < std::exp(-systemA.beta * (
            ((newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total())) +
            ((numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
            ((numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) )))

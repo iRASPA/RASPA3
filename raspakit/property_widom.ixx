@@ -87,20 +87,20 @@ export struct PropertyWidom
 
   //====================================================================================================================
 
-  double averagedExcessChemicalPotential(size_t blockIndex, double Beta) const
+  double averagedExcessChemicalPotential(size_t blockIndex, double beta) const
   {
-    return -(1.0/Beta) * std::log((bookKeepingWidom[blockIndex].first / bookKeepingWidom[blockIndex].second));
+    return -(1.0/beta) * std::log((bookKeepingWidom[blockIndex].first / bookKeepingWidom[blockIndex].second));
   }
 
-  double averagedExcessChemicalPotential(double Beta) const
+  double averagedExcessChemicalPotential(double beta) const
   {
     std::pair<double,double> summedBlocks = std::accumulate (bookKeepingWidom.begin(), bookKeepingWidom.end(), std::make_pair(0.0, 0.0), pair_acc);
-    return -(1.0/Beta) * std::log((summedBlocks.first / summedBlocks.second));
+    return -(1.0/beta) * std::log((summedBlocks.first / summedBlocks.second));
   }
 
-  std::pair<double, double> averageExcessChemicalPotential(double Beta) const
+  std::pair<double, double> averageExcessChemicalPotential(double beta) const
   {
-    double average = averagedExcessChemicalPotential(Beta);
+    double average = averagedExcessChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     size_t numberOfSamples = 0;
@@ -108,7 +108,7 @@ export struct PropertyWidom
     {
       if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
       {
-        double value = averagedExcessChemicalPotential(blockIndex, Beta) - average;
+        double value = averagedExcessChemicalPotential(blockIndex, beta) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
@@ -177,12 +177,12 @@ export struct PropertyWidom
 
   //====================================================================================================================
 
-  double averagedIdealGasChemicalPotential(size_t blockIndex, double Beta) const
+  double averagedIdealGasChemicalPotential(size_t blockIndex, double beta) const
   {
-    return std::log(bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second) / Beta;
+    return std::log(bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second) / beta;
   }
 
-  double averagedIdealGasChemicalPotential(double Beta) const
+  double averagedIdealGasChemicalPotential(double beta) const
   {
     std::pair<double,double> summedBlocks{0.0, 0.0};
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
@@ -191,12 +191,12 @@ export struct PropertyWidom
         summedBlocks.second += bookKeepingDensity[blockIndex].second;
     }
 
-    return std::log(summedBlocks.first / summedBlocks.second) / Beta;
+    return std::log(summedBlocks.first / summedBlocks.second) / beta;
   }
 
-  std::pair<double, double> averageIdealGasChemicalPotential(double Beta) const
+  std::pair<double, double> averageIdealGasChemicalPotential(double beta) const
   {
-    double average = averagedIdealGasChemicalPotential(Beta);
+    double average = averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     size_t numberOfSamples = 0;
@@ -204,7 +204,7 @@ export struct PropertyWidom
     {
       if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
       {
-        double value = averagedIdealGasChemicalPotential(blockIndex, Beta) - average;
+        double value = averagedIdealGasChemicalPotential(blockIndex, beta) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
@@ -226,9 +226,9 @@ export struct PropertyWidom
 
   //====================================================================================================================
 
-  std::pair<double, double> averageTotalChemicalPotential(double Beta) const
+  std::pair<double, double> averageTotalChemicalPotential(double beta) const
   {
-    double average = averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta);
+    double average = averagedExcessChemicalPotential(beta)  + averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     size_t numberOfSamples = 0;
@@ -236,7 +236,7 @@ export struct PropertyWidom
     {
       if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
       {
-        double value = (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta)) - average;
+        double value = (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta)) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }
@@ -255,9 +255,9 @@ export struct PropertyWidom
     return std::make_pair(average, confidenceIntervalError);
   }
 
-  std::pair<double, double> averageFugacity(double Beta) const
+  std::pair<double, double> averageFugacity(double beta) const
   {
-    double average = std::exp(Beta*(averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta))) / Beta;
+    double average = std::exp(beta*(averagedExcessChemicalPotential(beta)  + averagedIdealGasChemicalPotential(beta))) / beta;
 
     double sumOfSquares = 0.0;
     size_t numberOfSamples = 0;
@@ -265,7 +265,7 @@ export struct PropertyWidom
     {
       if (bookKeepingWidom[blockIndex].second / bookKeepingWidom[0].second > 0.5)
       {
-        double value = std::exp(Beta * (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta))) / Beta - average;
+        double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta))) / beta - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
       }

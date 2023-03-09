@@ -5,6 +5,8 @@ module system;
 import energy_status;
 import potential_energy_vdw;
 import potential_energy_coulomb;
+import potential_gradient_vdw;
+import potential_gradient_coulomb;
 import simulationbox;
 import double3;
 import double3x3;
@@ -16,6 +18,8 @@ import running_energy;
 import units;
 import threadpool;
 import threading;
+import energy_factor;
+import force_factor;
 
 import <optional>;
 import <iostream>;
@@ -78,6 +82,65 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
       }
     }
   }
+}
+
+EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
+{
+  double3 dr, posA, posB, f;
+  double rr;
+
+  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const double prefactor = Units::CoulombicConversionFactor;
+
+  std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
+  std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+
+  EnergyFactor energy{ 0.0, 0.0 };
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    posA = it1->position;
+    size_t typeA = static_cast<size_t>(it1->type);
+    double scaleA = it1->scalingVDW;
+    double chargeA = it1->charge;
+    for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
+    {
+      posB = it2->position;
+      size_t typeB = static_cast<size_t>(it2->type);
+      double scaleB = it2->scalingVDW;
+      double chargeB = it2->charge;
+
+      dr = posA - posB;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      rr = double3::dot(dr, dr);
+
+      if (rr < cutOffVDWSquared)
+      {
+        double scaling = scaleA * scaleB;
+        ForceFactor forceFactor = potentialVDWGradient(forceField, scaling, rr, typeA, typeB);
+
+        energy += EnergyFactor(forceFactor.energy, 0.0);
+
+        const double3 factor = forceFactor.forceFactor * dr;
+
+        it2->gradient += factor;
+      }
+      if (!noCharges && rr < cutOffChargeSquared)
+      {
+        double r = std::sqrt(rr);
+        double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
+        ForceFactor energyFactor = prefactor * potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
+
+        energy += EnergyFactor(energyFactor.energy, 0);
+
+        const double3 factor = energyFactor.forceFactor * dr;
+
+        it2->gradient += factor;
+      }
+    }
+  }
+  return energy;
 }
 
 // Used in Translation and Rotation

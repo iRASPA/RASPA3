@@ -57,7 +57,7 @@ export struct System
     double temperature{ 300.0 };
     double pressure{ 1e4 };
     double input_pressure{ 1e4 };
-    double Beta{ 1.0 / (Units::KB * 300.0) };
+    double beta{ 1.0 / (Units::KB * 300.0) };
 
     double HeliumVoidFraction{ 0.29 };
     enum class FluidState : int
@@ -210,6 +210,7 @@ export struct System
     void computeTotalGradients() noexcept;
 
     EnergyFactor computeInterMolecularGradient() noexcept;
+    EnergyFactor computeFrameworkMoleculeGradient() noexcept;
 
     void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;

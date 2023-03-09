@@ -61,7 +61,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     temperature(T),
     pressure(P / Units::PressureConversionFactor),
     input_pressure(P),
-    Beta(1.0 / (Units::KB * T)),
+    beta(1.0 / (Units::KB * T)),
     systemId(id),
     components(c),
     loadings(c.size()),
@@ -552,17 +552,17 @@ void System::determineSwapableComponents()
 {
     for (Component& component : components)
     {
-        if (component.probabilitySwapMove_CBMC > 0.0)
+        if (component.mc_moves_probabilities.probabilitySwapMove_CBMC > 0.0)
         {
             component.swapable = true;
         }
         
-        if (component.probabilitySwapMove_CFCMC > 0.0)
+        if (component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0)
         {
             component.swapable = true;
         }
 
-        if (component.probabilitySwapMove_CFCMC_CBMC > 0.0)
+        if (component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
         {
             component.swapable = true;
         }
@@ -578,23 +578,23 @@ void System::determineFractionalComponents()
 {
     for (size_t i = 0; i < components.size(); ++i)
     {
-        if (components[i].probabilitySwapMove_CFCMC> 0.0)
+        if (components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC> 0.0)
         {
             numberOfFractionalMoleculesPerComponent[i] = 1;
             components[i].hasFractionalMolecule = true;
         }
-        if (components[i].probabilitySwapMove_CFCMC_CBMC > 0.0)
+        if (components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
         {
             numberOfFractionalMoleculesPerComponent[i] = 1;
             components[i].hasFractionalMolecule = true;
         }
 
-        if (components[i].probabilityWidomMove_CFCMC > 0.0)
+        if (components[i].mc_moves_probabilities.probabilityWidomMove_CFCMC > 0.0)
         {
             numberOfFractionalMoleculesPerComponent[i] = 1;
             components[i].hasFractionalMolecule = true;
         }
-        if (components[i].probabilityWidomMove_CFCMC_CBMC > 0.0)
+        if (components[i].mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC > 0.0)
         {
             numberOfFractionalMoleculesPerComponent[i] = 1;
             components[i].hasFractionalMolecule = true;
@@ -606,13 +606,13 @@ void System::rescaleMoveProbabilities()
 {
   for (Component& component : components)
   {
-    component.probabilityVolumeMove = probabilityVolumeMove;
-    component.probabilityGibbsVolumeMove = probabilityGibbsVolumeMove;
-    component.probabilityGibbsSwapMove_CBMC = probabilityGibbsVolumeMove;
-    component.probabilityGibbsSwapMove_CFCMC = probabilityGibbsSwapMove_CFCMC;
-    component.probabilityGibbsSwapMove_CFCMC_CBMC = probabilityGibbsSwapMove_CFCMC_CBMC;
+    component.mc_moves_probabilities.probabilityVolumeMove = probabilityVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsVolumeMove = probabilityGibbsVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = probabilityGibbsVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC = probabilityGibbsSwapMove_CFCMC;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC = probabilityGibbsSwapMove_CFCMC_CBMC;
 
-    component.normalizeMoveProbabilties();
+    component.mc_moves_probabilities.normalizeMoveProbabilties();
   }
 }
 
@@ -621,15 +621,15 @@ void System::removeRedundantMoves()
   for (Component& component : components)
   {
       // WidomMove_CFCMC already done when using SwapMove_CFCMC
-      if(component.probabilityWidomMove_CFCMC > 0.0 && component.probabilitySwapMove_CFCMC > 0.0)
+      if(component.mc_moves_probabilities.probabilityWidomMove_CFCMC > 0.0 && component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0)
       {
-          component.probabilityWidomMove_CFCMC = 0.0;
+          component.mc_moves_probabilities.probabilityWidomMove_CFCMC = 0.0;
       }
 
       // WidomMove_CFCMC_CBMC already done when using SwapMove_CFCMC_CBMC
-      if(component.probabilityWidomMove_CFCMC_CBMC > 0.0 && component.probabilitySwapMove_CFCMC_CBMC > 0.0)
+      if(component.mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC > 0.0 && component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
       {
-          component.probabilityWidomMove_CFCMC_CBMC = 0.0;
+          component.mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC = 0.0;
       }
   }
 }
@@ -639,7 +639,7 @@ void System::optimizeMCMoves()
   statistics_VolumeMove.optimizeAcceptance();
   for (Component& component : components)
   {
-    component.optimizeMCMoves();
+    component.mc_moves_probabilities.optimizeMCMoves();
   }
 }
 
@@ -929,7 +929,7 @@ void System::sampleProperties(size_t currentBlock)
    averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
    size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-   double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(Beta * simulationBox.volume);
+   double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(beta * simulationBox.volume);
 
    averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 
@@ -955,7 +955,7 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
   for (int componentId = 0; const Component& component : components)
   {
     std::print(stream, "Component {} [{}]\n", componentId, component.name);
-    std::print(stream, component.writeMCMoveCPUTimeStatistics());
+    std::print(stream, component.mc_moves_timings.writeMCMoveCPUTimeStatistics());
     componentId++;
   }
 

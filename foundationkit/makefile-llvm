@@ -1,6 +1,6 @@
 CXX=clang++
 OPT=-O3 -march=native -ffast-math
-CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. 
+CXXFLAGS=$(OPT) -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=. 
 
 .PHONY: default
 default: libfoundationkit;
@@ -23,8 +23,8 @@ threadpool.pcm: threading.o
 scanner.o: characterset.o
 threadpool.o: threading.o
 
-libfoundationkit: stringutils.o characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
-	ar -rs libfoundationkit.a stringutils.pcm.o stringutils.o characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
+libfoundationkit: mdspan.o stringutils.o characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
+	ar -rs libfoundationkit.a mdspan.pcm.o mdspan.o stringutils.pcm.o stringutils.o characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
 	ranlib -c libfoundationkit.a
 
 clean:

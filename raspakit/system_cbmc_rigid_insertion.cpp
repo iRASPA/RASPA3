@@ -60,7 +60,7 @@ import <numeric>;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
-      std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,RunningEnergy>& v) {return -Beta * v.second.total(); });
+      std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,RunningEnergy>& v) {return -beta * v.second.total(); });
 
 
   size_t selected = selectTrialPosition(logBoltmannFactors);
@@ -87,7 +87,7 @@ import <numeric>;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
-      std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -Beta * v.second.total(); });
+      std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -beta * v.second.total(); });
 
   size_t selected = selectTrialPosition(logBoltmannFactors);
 

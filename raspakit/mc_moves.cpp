@@ -37,7 +37,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
 {
   double randomNumber = RandomNumber::Uniform();
 
-  if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityTranslationMove)
+  if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityTranslationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -51,7 +51,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomTranslationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRandomTranslationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -65,7 +65,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRotationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRotationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -79,7 +79,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomRotationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRandomRotationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -93,7 +93,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityVolumeMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityVolumeMove)
   {
     std::optional<RunningEnergy> energy = volumeMove(selectedSystem);
     if (energy)
@@ -101,7 +101,7 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       selectedSystem.runningEnergies = energy.value();
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityReinsertionMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityReinsertionMove_CBMC)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -116,10 +116,10 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityIdentityChangeMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityIdentityChangeMove_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CBMC)
   {
     if (RandomNumber::Uniform() < 0.5)
     {
@@ -142,10 +142,10 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       }
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CFCMC_CBMC)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
 
@@ -155,25 +155,25 @@ void MC_Moves::performRandomMove(System& selectedSystem, size_t selectedComponen
       selectedSystem.runningEnergies += energyDifference.value();
     }
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsVolumeMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsVolumeMove)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove_CFCMC_CBMC)
   {
     std::optional<RunningEnergy> energyDifference = swapMove_CFCMC_CBMC(selectedSystem, selectedComponent, 0, true, true);
     if (energyDifference)
@@ -187,7 +187,7 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
 {
   double randomNumber = RandomNumber::Uniform();
 
-  if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityTranslationMove)
+  if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityTranslationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -202,9 +202,9 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
     }
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_TranslationMove += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_TranslationMove += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomTranslationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRandomTranslationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -219,9 +219,9 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
     }
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_RandomTranslationMove += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_RandomTranslationMove += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRotationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRotationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -236,9 +236,9 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
     }
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_RotationMove += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_RotationMove += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityRandomRotationMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityRandomRotationMove)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -253,9 +253,9 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
     }
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_RandomRotationMove += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_RandomRotationMove += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityVolumeMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityVolumeMove)
   {
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     std::optional<RunningEnergy> energy = volumeMove(selectedSystem);
@@ -266,7 +266,7 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     selectedSystem.cpuTime_VolumeMove += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityReinsertionMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityReinsertionMove_CBMC)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -282,12 +282,12 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
     }
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_ReinsertionMove_CBMC += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_ReinsertionMove_CBMC += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityIdentityChangeMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityIdentityChangeMove_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CBMC)
   {
     if (RandomNumber::Uniform() < 0.5)
     {
@@ -300,7 +300,7 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
         selectedSystem.runningEnergies += energyDifference.value();
       }
       std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      selectedSystem.components[selectedComponent].cpuTime_SwapInsertionMove_CBMC += (t2 - t1);
+      selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CBMC += (t2 - t1);
     }
     else
     {
@@ -315,14 +315,14 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
       }
       
       std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      selectedSystem.components[selectedComponent].cpuTime_SwapDeletionMove_CBMC += (t2 - t1);
+      selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionMove_CBMC += (t2 - t1);
     }
       
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilitySwapMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilitySwapMove_CFCMC_CBMC)
   {
     size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(selectedComponent);
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -334,21 +334,21 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
     }
 
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_SwapMove_CFCMC_CBMC += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_SwapMove_CFCMC_CBMC += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsVolumeMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsVolumeMove)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove)
   {
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
@@ -356,12 +356,12 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
     selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, RosenbluthWeight.value_or(0.0), selectedSystem.weight());
 
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_WidomMove_CBMC += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_WidomMove_CBMC += (t2 - t1);
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove_CFCMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove_CFCMC)
   {
   }
-  else if (randomNumber < selectedSystem.components[selectedComponent].accumulatedProbabilityWidomMove_CFCMC_CBMC)
+  else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityWidomMove_CFCMC_CBMC)
   {
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
@@ -372,7 +372,7 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, size_t select
     }
 
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.components[selectedComponent].cpuTime_WidomMove_CFCMC_CBMC += (t2 - t1);
+    selectedSystem.components[selectedComponent].mc_moves_timings.cpuTime_WidomMove_CFCMC_CBMC += (t2 - t1);
   }
 }
 

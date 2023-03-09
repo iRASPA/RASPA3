@@ -240,8 +240,8 @@ void MonteCarlo::production()
 
     for(Component &component : system.components)
     {
-      component.clearMoveStatistics();
-      component.clearTimingStatistics();
+      component.mc_moves_probabilities.clearMoveStatistics();
+      component.mc_moves_timings.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
         component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);

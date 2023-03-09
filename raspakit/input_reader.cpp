@@ -481,7 +481,7 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().temperature = value;
-        systems.back().Beta = 1.0 / (Units::KB * value);
+        systems.back().beta = 1.0 / (Units::KB * value);
         continue;
       }
 
@@ -859,7 +859,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityTranslationMove = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityTranslationMove = values[i];
         }
         continue;
       }
@@ -872,7 +872,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityRandomTranslationMove = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityRandomTranslationMove = values[i];
         }
         continue;
       }
@@ -885,7 +885,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityRotationMove = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityRotationMove = values[i];
         }
         continue;
       }
@@ -898,7 +898,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityRandomRotationMove = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityRandomRotationMove = values[i];
         }
         continue;
       }
@@ -911,7 +911,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityReinsertionMove_CBMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityReinsertionMove_CBMC = values[i];
         }
         continue;
       }
@@ -924,7 +924,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilitySwapMove_CBMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CBMC = values[i];
         }
         continue;
       }
@@ -937,7 +937,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityGibbsSwapMove_CBMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = values[i];
         }
         continue;
       }
@@ -951,7 +951,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilitySwapMove_CFCMC_CBMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC = values[i];
         }
         continue;
       }
@@ -964,7 +964,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityWidomMove = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityWidomMove = values[i];
         }
         continue;
       }
@@ -977,7 +977,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityWidomMove_CFCMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityWidomMove_CFCMC = values[i];
         }
         continue;
       }
@@ -990,7 +990,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().probabilityWidomMove_CFCMC_CBMC = values[i];
+          systems[i].components.back().mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC = values[i];
         }
         continue;
       }

@@ -63,7 +63,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         size_t newBin = static_cast<size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfBins));
         double newLambda = deltaLambda * static_cast<double>(newBin);
 
-        system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.counts[0] += 1;
+        system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[0] += 1;
 
         std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, 0);
 
@@ -76,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
         std::optional<RunningEnergy> frameworkDifference = system.computeFrameworkMoleculeEnergyDifference(fractionalMolecule, spanOfOldFractionalMolecule);
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald += (t2 - t1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald += (t2 - t1);
 
         if(!frameworkDifference.has_value())
         {
@@ -87,7 +87,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
         std::optional<RunningEnergy> moleculeDifference = system.computeInterMolecularEnergyDifference(fractionalMolecule, spanOfOldFractionalMolecule);
         std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald += (u2 - u1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald += (u2 - u1);
 
         if(!moleculeDifference.has_value())
         {
@@ -98,7 +98,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
         RunningEnergy EwaldEnergyDifference = system.energyDifferenceEwaldFourier(system.storedEik, fractionalMolecule, spanOfOldFractionalMolecule);
         std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_SwapInsertionMove_CFCMC_CBMC_Ewald += (v2 - v1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CFCMC_CBMC_Ewald += (v2 - v1);
 
         RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference;
 
@@ -106,7 +106,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
         std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda);
         std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald += (w2 - w1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald += (w2 - w1);
 
         if (!growData)
         {
@@ -114,23 +114,23 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             return std::nullopt;
         }
 
-        system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.constructed[0] += 1;
+        system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[0] += 1;
 
         std::chrono::system_clock::time_point y1 = std::chrono::system_clock::now();
         RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.totalEik, std::span(growData->atom.begin(), growData->atom.end()), {});
         std::chrono::system_clock::time_point y2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald += (y2 - y1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald += (y2 - y1);
 
         //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
         //                                    system.computeTailCorrectionVDWOldEnergy();
         RunningEnergy tailEnergyDifference;
-        double correctionFactorEwald = std::exp(-system.Beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+        double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
         double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-        double preFactor = correctionFactorEwald * system.Beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume /
+        double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume /
             static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
         double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-        if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.Beta * energyDifference.total() + biasTerm))
+        if (RandomNumber::Uniform() < preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * exp(-system.beta * energyDifference.total() + biasTerm))
         {
             system.acceptEwaldMove();
 
@@ -147,7 +147,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             for (Atom& atom : fractionalMolecule) { atom.moleculeId = 0; }
             for (Atom& atom : lastMolecule) { atom.moleculeId = static_cast<short>(lastMoleculeId); }
             
-            system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.accepted[0] += 1;
+            system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[0] += 1;
 
             return growData->energies + energyDifference + energyFourierDifference + tailEnergyDifference;
         };
@@ -175,7 +175,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
 
             selectedMolecule = system.randomIntegerMoleculeOfComponent(selectedComponent);
 
-            system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.counts[1] += 1;
+            system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[1] += 1;
 
             std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, 0);
             std::span<Atom> newFractionalMolecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -184,14 +184,14 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
             ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, 0, fractionalMolecule, oldLambda, 0.0);            
             std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-            system.components[selectedComponent].cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_NonEwald += (t2 - t1);
+            system.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_NonEwald += (t2 - t1);
 
             std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
             RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, fractionalMolecule);
             std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-            system.components[selectedComponent].cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_Ewald += (u2 - u1);
+            system.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_Ewald += (u2 - u1);
 
-            double correctionFactorEwald = std::exp(-system.Beta * energyFourierDifference.total());
+            double correctionFactorEwald = std::exp(-system.beta * energyFourierDifference.total());
 
             for (Atom &atom : fractionalMolecule) { atom.setScaling(0.0); }
 
@@ -206,7 +206,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
             std::optional<RunningEnergy> frameworkDifference = system.computeFrameworkMoleculeEnergyDifference(newFractionalMolecule, spanOfTestFractionalMolecule);
             std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
-            system.components[selectedComponent].cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald += (v2 - v1);
+            system.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald += (v2 - v1);
             if(!frameworkDifference.has_value())
             {
               for (Atom& atom : fractionalMolecule) { atom.setScaling(oldLambda); }
@@ -217,7 +217,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
             std::optional<RunningEnergy> moleculeDifference = system.computeInterMolecularEnergyDifference(newFractionalMolecule, spanOfTestFractionalMolecule);
             std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
-            system.components[selectedComponent].cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald += (w2 - w1);
+            system.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald += (w2 - w1);
             if(!moleculeDifference.has_value())
             {
               for (Atom& atom : fractionalMolecule) { atom.setScaling(oldLambda); }
@@ -228,20 +228,20 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             std::chrono::system_clock::time_point y1 = std::chrono::system_clock::now();
             RunningEnergy EwaldEnergyDifference = system.energyDifferenceEwaldFourier(system.totalEik, newFractionalMolecule, spanOfTestFractionalMolecule);
             std::chrono::system_clock::time_point y2 = std::chrono::system_clock::now();
-            system.components[selectedComponent].cpuTime_SwapDeletionMove_CFCMC_CBMC_Ewald += (y2 - y1);
+            system.components[selectedComponent].mc_moves_timings.cpuTime_SwapDeletionMove_CFCMC_CBMC_Ewald += (y2 - y1);
 
             //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
             //                                    system.computeTailCorrectionVDWOldEnergy();
             RunningEnergy tailEnergyDifference;
             RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
 
-            system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.constructed[1] += 1;
+            system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[1] += 1;
 
             double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
             double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                (system.Beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume);
+                (system.beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume);
             double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-            if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.Beta * energyDifference.total() + biasTerm))
+            if (RandomNumber::Uniform() < preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) * exp(-system.beta * energyDifference.total() + biasTerm))
             {
                 system.acceptEwaldMove();
                 system.components[selectedComponent].lambda.setCurrentBin(newBin);
@@ -252,7 +252,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             
                 system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
             
-                system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.accepted[1] += 1;
+                system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[1] += 1;
 
             
                 return energyDifference + energyFourierDifference - retraceData.energies;
@@ -273,7 +273,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         size_t newBin = static_cast<size_t>(selectedNewBin);
         double newLambda = deltaLambda * static_cast<double>(newBin);
 
-        system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.counts[2] += 1;
+        system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[2] += 1;
 
         std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, 0);
 
@@ -285,35 +285,35 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
         std::optional<RunningEnergy> frameworkEnergyDifference = system.computeFrameworkMoleculeEnergyDifference(newMolecule, molecule);
         std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_WidomMove_CFCMC_CBMC_NonEwald += (t2 - t1);
-        system.components[selectedComponent].cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald += (t2 - t1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_WidomMove_CFCMC_CBMC_NonEwald += (t2 - t1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald += (t2 - t1);
 
         if(!frameworkEnergyDifference.has_value()) return std::nullopt;
 
         std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
         std::optional<RunningEnergy> interEnergyDifference = system.computeInterMolecularEnergyDifference(newMolecule, molecule);
         std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_WidomMove_CFCMC_CBMC_NonEwald += (u2 - u1);
-        system.components[selectedComponent].cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald += (u2 - u1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_WidomMove_CFCMC_CBMC_NonEwald += (u2 - u1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald += (u2 - u1);
 
         if(!interEnergyDifference.has_value()) return std::nullopt;
 
         std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
         RunningEnergy EwaldFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
         std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
-        system.components[selectedComponent].cpuTime_WidomMove_CFCMC_CBMC_Ewald += (v2 - v1);
-        system.components[selectedComponent].cpuTime_SwapLambdaMove_CFCMC_CBMC_Ewald += (v2 - v1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_WidomMove_CFCMC_CBMC_Ewald += (v2 - v1);
+        system.components[selectedComponent].mc_moves_timings.cpuTime_SwapLambdaMove_CFCMC_CBMC_Ewald += (v2 - v1);
 
         RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference;
 
-        system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.constructed[2] += 1;
+        system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[2] += 1;
 
 
         double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-        if (RandomNumber::Uniform() < std::exp(-system.Beta * energyDifference.total() + biasTerm))
+        if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
         {
             system.acceptEwaldMove();
-            system.components[selectedComponent].statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;
+            system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;
             
             std::span<Atom> span = system.spanOfMolecule(selectedComponent, 0);
             std::copy(trialPositions.cbegin(), trialPositions.cend(), span.begin());

@@ -82,12 +82,12 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedIdealGasChemicalPotential(size_t blockIndex, double Beta) const
+  double averagedIdealGasChemicalPotential(size_t blockIndex, double beta) const
   {
-    return -std::log(1.0 / (sumWeightedDensity[blockIndex].first / sumWeightedDensity[blockIndex].second)) / Beta;
+    return -std::log(1.0 / (sumWeightedDensity[blockIndex].first / sumWeightedDensity[blockIndex].second)) / beta;
   }
 
-  double averagedIdealGasChemicalPotential(double Beta) const
+  double averagedIdealGasChemicalPotential(double beta) const
   {
     std::pair<double,double> summedBlocks{0.0, 0.0};
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
@@ -96,19 +96,19 @@ export struct PropertyLambdaProbabilityHistogram
         summedBlocks.second += sumWeightedDensity[blockIndex].second;
     }
 
-    return -std::log(1.0 / (summedBlocks.first / summedBlocks.second)) / Beta;
+    return -std::log(1.0 / (summedBlocks.first / summedBlocks.second)) / beta;
   }
 
-  std::pair<double, double> averageIdealGasChemicalPotential(double Beta) const
+  std::pair<double, double> averageIdealGasChemicalPotential(double beta) const
   {
     size_t numberOfSamples = numberOfBlocks;
     size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = averagedIdealGasChemicalPotential(Beta);
+    double average = averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedIdealGasChemicalPotential(blockIndex, Beta) - average;
+      double value = averagedIdealGasChemicalPotential(blockIndex, beta) - average;
       sumOfSquares += value * value;
     }
     double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
@@ -234,15 +234,15 @@ export struct PropertyLambdaProbabilityHistogram
 */
   //===============
 
-  std::vector<double> averagedLandauFreeEnergyHistogram(size_t blockIndex, double Beta) const
+  std::vector<double> averagedLandauFreeEnergyHistogram(size_t blockIndex, double beta) const
   {
     std::vector<double> averagedData(numberOfBins);
     std::transform(sumProperty[blockIndex].cbegin(), sumProperty[blockIndex].cend(), averagedData.begin(),
-                   [&](const double &sample){return -std::log(sample) / Beta;});
+                   [&](const double &sample){return -std::log(sample) / beta;});
     return averagedData;
   }
 
-  std::vector<double> averagedLandauFreeEnergyHistogram(double Beta) const
+  std::vector<double> averagedLandauFreeEnergyHistogram(double beta) const
   {
     // sum all blocks into one
     std::vector<double> summedBlocks(numberOfBins);
@@ -254,20 +254,20 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double> averagedData(numberOfBins);
     std::transform(summedBlocks.cbegin(), summedBlocks.cend(), averagedData.begin(),
-                   [&](const double &sample){return -std::log(sample) / Beta;});
+                   [&](const double &sample){return -std::log(sample) / beta;});
     return averagedData;
   }
 
-  std::pair<std::vector<double>, std::vector<double>> averageLandauFreeEnergyHistogram(double Beta) const
+  std::pair<std::vector<double>, std::vector<double>> averageLandauFreeEnergyHistogram(double beta) const
   {
     size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-    std::vector<double> average = averagedLandauFreeEnergyHistogram(Beta);
+    std::vector<double> average = averagedLandauFreeEnergyHistogram(beta);
 
     std::vector<double> sumOfSquares(numberOfBins);
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      std::vector<double> blockAverage = averagedLandauFreeEnergyHistogram(blockIndex, Beta);
+      std::vector<double> blockAverage = averagedLandauFreeEnergyHistogram(blockIndex, beta);
       for(size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
       {
         double value = blockAverage[binIndex] - average[binIndex];
@@ -291,15 +291,15 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedExcessChemicalPotential(size_t blockIndex, double Beta) const
+  double averagedExcessChemicalPotential(size_t blockIndex, double beta) const
   {
     size_t lastBin = numberOfBins - 1;
     double averagedProbabilityFirstValue = sumProperty[blockIndex][0];
     double averagedProbabilityLastValue = sumProperty[blockIndex][lastBin];
-    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / Beta;
+    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
   }
 
-  double averagedExcessChemicalPotential(double Beta) const
+  double averagedExcessChemicalPotential(double beta) const
   {
     std::vector<double> summedBlocks(numberOfBins);
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
@@ -311,19 +311,19 @@ export struct PropertyLambdaProbabilityHistogram
     size_t lastBin = numberOfBins - 1;
     double averagedProbabilityFirstValue = summedBlocks[0];
     double averagedProbabilityLastValue = summedBlocks[lastBin];
-    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / Beta;
+    return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
   }
 
-  std::pair<double, double> averageExcessChemicalPotential(double Beta) const
+  std::pair<double, double> averageExcessChemicalPotential(double beta) const
   {
     size_t numberOfSamples = numberOfBlocks;
     size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = averagedExcessChemicalPotential(Beta);
+    double average = averagedExcessChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = averagedExcessChemicalPotential(blockIndex, Beta) - average;
+      double value = averagedExcessChemicalPotential(blockIndex, beta) - average;
       sumOfSquares += value * value;
     }
     double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
@@ -336,16 +336,16 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  std::pair<double, double> averageTotalChemicalPotential(double Beta, double bias) const
+  std::pair<double, double> averageTotalChemicalPotential(double beta, double bias) const
   {
     size_t numberOfSamples = numberOfBlocks;
     size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta) + bias;
+    double average = averagedExcessChemicalPotential(beta)  + averagedIdealGasChemicalPotential(beta) + bias;
 
     double sumOfSquares = 0.0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta) + bias) - average;
+      double value = (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta) + bias) - average;
       sumOfSquares += value * value;
     }
     double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
@@ -356,16 +356,16 @@ export struct PropertyLambdaProbabilityHistogram
     return std::make_pair(average, confidenceIntervalError);
   }
 
-  std::pair<double, double> averageFugacity(double Beta, double bias) const
+  std::pair<double, double> averageFugacity(double beta, double bias) const
   {
     size_t numberOfSamples = numberOfBlocks;
     size_t degreesOfFreedom = numberOfSamples - 1;
-    double average = std::exp(Beta*(averagedExcessChemicalPotential(Beta)  + averagedIdealGasChemicalPotential(Beta) + bias)) / Beta;
+    double average = std::exp(beta*(averagedExcessChemicalPotential(beta)  + averagedIdealGasChemicalPotential(beta) + bias)) / beta;
 
     double sumOfSquares = 0.0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      double value = std::exp(Beta * (averagedExcessChemicalPotential(blockIndex, Beta) + averagedIdealGasChemicalPotential(blockIndex, Beta) + bias)) / Beta - average;
+      double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) + averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) / beta - average;
       sumOfSquares += value * value;
     }
     double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
