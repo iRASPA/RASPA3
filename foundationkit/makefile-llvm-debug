@@ -20,12 +20,11 @@ default: libfoundationkit;
 
 scanner.pcm: characterset.o
 threadpool.pcm: threading.o
-
 scanner.o: characterset.o
 threadpool.o: threading.o
 
-libfoundationkit: characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
-	ar -rs libfoundationkit.a characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
+libfoundationkit: stringutils.o characterset.o indexpath.o scanner.o print.o threading.o threadpool.o
+	ar -rs libfoundationkit.a stringutils.pcm.o stringutils.o characterset.pcm.o characterset.o indexpath.pcm.o indexpath.o scanner.pcm.o scanner.o print.pcm.o print.o threading.pcm.o threading.o threadpool.pcm.o threadpool.o
 	ranlib -c libfoundationkit.a
 
 clean:

@@ -8,6 +8,7 @@ import int3;
 import double3;
 import double4;
 import print;
+import stringutils;
 
 import <filesystem>;
 import <fstream>;
@@ -149,10 +150,13 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
   // read shifted or trunacted
   std::getline(forceFieldFile, str);
   
-  // FIX
-  if (str == "truncated")
+  if (caseInSensStringCompare(str, "truncated"))
   {
     std::fill(shiftPotentials.begin(), shiftPotentials.end(), false);
+  }
+  if (caseInSensStringCompare(str, "shifted"))
+  {
+    std::fill(shiftPotentials.begin(), shiftPotentials.end(), true);
   }
 
   //skip comment line
@@ -160,7 +164,14 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
 
   // read tail-corrections yes/no
   std::getline(forceFieldFile, str);
-  //std::istringstream my_stream(str);
+  if (caseInSensStringCompare(str, "yes"))
+  {
+    std::fill(tailCorrections.begin(), tailCorrections.end(), true);
+  }
+  if (caseInSensStringCompare(str, "no"))
+  {
+    std::fill(tailCorrections.begin(), tailCorrections.end(), false);
+  }
 
   //skip comment line
   std::getline(forceFieldFile, str);
@@ -195,7 +206,7 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
   {
     for (size_t j = i + 1; j < numberOfSelfInteractions; ++j)
     {
-      double mix0 = std::sqrt (data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
+      double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
       double mix1 = 0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
       
       data[i * numberOfPseudoAtoms + j] = VDWParameters(mix0, mix1);

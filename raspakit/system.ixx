@@ -59,6 +59,146 @@ export struct System
     double input_pressure{ 1e4 };
     double Beta{ 1.0 / (Units::KB * 300.0) };
 
+    double HeliumVoidFraction{ 0.29 };
+    enum class FluidState : int
+    {
+      Unknown = 0,
+      SuperCriticalFluid = 1,
+      Vapor = 2,
+      Liquid = 3,
+      VaporLiquid = 4
+    };
+    FluidState fluidState = FluidState::Unknown;
+    enum class EquationOfState : int
+    {
+      PengRobinson = 0,
+      PengRobinsonGasem = 1,
+      SoaveRedlichKwong = 2
+    };
+    EquationOfState equationOfState = EquationOfState::PengRobinson;
+
+    enum class MultiComponentMixingRules : int
+    {
+      VanDerWaals = 0
+    };
+    MultiComponentMixingRules multiComponentMixingRules = MultiComponentMixingRules::VanDerWaals;
+
+    size_t systemId{};
+
+    size_t numberOfFrameworks{ 0 };
+    size_t numberOfFrameworkAtoms{ 0 };
+    size_t numberOfRigidFrameworkAtoms{ 0 };
+
+    std::vector<Component> components;
+
+    Loadings loadings;
+    PropertyLoading averageLoadings;
+
+    PropertyEnthalpy averageEnthalpiesOfAdsorption;
+
+    std::vector<size_t> swapableComponents{};
+    std::vector<size_t> initialNumberOfMolecules{};
+    std::vector<size_t> numberOfMoleculesPerComponent{};                    // includes all molecules
+    std::vector<size_t> numberOfIntegerMoleculesPerComponent{};             // integer molecules
+    std::vector<size_t> numberOfFractionalMoleculesPerComponent{};          // fractional molecules
+    std::vector<size_t> numberOfReactionMoleculesPerComponent{};            // reaction molecules
+    std::vector<size_t> numberOfReactionFractionalMoleculesPerComponent{};  // reaction fractional molecules
+    std::vector<double> idealGasEnergiesPerComponent{};
+
+    ForceField forceField;
+
+    std::vector<std::vector<size_t>> numberOfPseudoAtoms;
+    std::vector<size_t> totalNumberOfPseudoAtoms;
+
+    std::optional<double> frameworkMass{ std::nullopt };
+
+    double timeStep{ 0.0005 };
+
+    SimulationBox simulationBox;
+    PropertySimulationBox averageSimulationBox;
+
+    // A contiguous list of adsorbate atoms per component for easy and fast looping
+    // The atoms-order is defined as increasing per component and molecule.
+    // Because the number of atoms is fixed per component it is easy to access the n-th molecule
+    std::vector<Atom> atomPositions;
+    std::vector<double3> atomVelocities;
+    std::vector<double3> atomForces;
+
+    RunningEnergy runningEnergies;
+    RunningEnergy rigidEnergies;
+    PropertyEnergy averageEnergies;
+
+    double3x3 currentExcessPressureTensor;
+    EnergyStatus currentEnergyStatus;
+    PropertyPressure averagePressure;
+
+    size_t numberOfTrialDirections{ 10 };
+    double minimumRosenbluthFactor{ 1e-150 };
+
+    std::vector<std::complex<double>> eik_xy;
+    std::vector<std::complex<double>> eik_x;
+    std::vector<std::complex<double>> eik_y;
+    std::vector<std::complex<double>> eik_z;
+    std::vector<std::complex<double>> storedEik;
+    std::vector<std::complex<double>> fixedFrameworkStoredEik;
+    std::vector<std::complex<double>> totalEik;
+    double CoulombicFourierEnergySingleIon{ 0.0 };
+    std::vector<int> netCharge;
+
+    bool noCharges{ false };
+    bool omitEwaldFourier{ false };
+
+    std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
+    std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
+
+    double probabilityVolumeMove{ 0.0 };
+    double probabilityGibbsVolumeMove{ 0.0 };
+    double probabilityGibbsSwapMove_CBMC{ 0.0 };
+    double probabilityGibbsSwapMove_CFCMC{ 0.0 };
+    double probabilityGibbsSwapMove_CFCMC_CBMC{ 0.0 };
+
+    MoveStatistics<double> statistics_VolumeMove{ .maxChange = 0.5 };
+    MoveStatistics<double> statistics_GibbsVolumeMove{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
+    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
+
+    std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
+
+    std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
+
+    std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
+    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
+
+    // Breakthrough settings
+    size_t columnNumberOfGridPoints{ 100 };
+    double columnTotalPressure{ 1e5 };
+    double columnPressureGradient{ 0.0 };
+    double columnVoidFraction{ 0.4 };
+    double columnParticleDensity{ 1000 };
+    double columnEntranceVelocity{ 0.1 };
+    double columnLength{ 0.3 };
+    double columnTimeStep{ 0.0005 };
+    size_t columnNumberOfTimeSteps{ 0 };
+    bool columnAutoNumberOfTimeSteps{ true };
+    MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{ MultiSiteIsotherm::PredictionMethod::IAST };
+    PressureRange pressure_range;
+    size_t numberOfCarrierGases{ 0 };
+    size_t carrierGasComponent{ 0 };
+    size_t maxIsothermTerms{ 0 };
+
+
     void addComponent(const Component&& component) noexcept(false);
     void initializeComponents();
     void createInitialMolecules();
@@ -100,8 +240,6 @@ export struct System
     [[nodiscard]] std::vector<double> computeInterMolecularInteractionsEnergy() const noexcept;
     [[nodiscard]] std::vector<double> computeInterMolecularInteractionsForce() noexcept;
 
-
-
     size_t randomFramework() { return size_t(RandomNumber::Uniform() * static_cast<double>(numberOfFrameworks)); }
     size_t randomComponent() { return size_t(RandomNumber::Uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }
     size_t numerOfAdsorbateComponents() { return components.size() - numberOfFrameworks; }
@@ -133,29 +271,7 @@ export struct System
                [](const Component& component) { return component.lambda.weight();});
     }
 
-    double HeliumVoidFraction{ 0.29 };
-    enum class FluidState : int
-    {
-        Unknown = 0,
-        SuperCriticalFluid = 1,
-        Vapor = 2,
-        Liquid = 3,
-        VaporLiquid = 4
-    };
-    FluidState fluidState = FluidState::Unknown;
-    enum class EquationOfState : int
-    {
-        PengRobinson = 0,
-        PengRobinsonGasem = 1,
-        SoaveRedlichKwong = 2
-    };
-    EquationOfState equationOfState = EquationOfState::PengRobinson;
-
-    enum class MultiComponentMixingRules : int
-    {
-        VanDerWaals = 0
-    };
-    MultiComponentMixingRules multiComponentMixingRules = MultiComponentMixingRules::VanDerWaals;
+    
 
     void removeRedundantMoves();
     void rescaleMoveProbabilities();
@@ -179,13 +295,7 @@ export struct System
     void writeEnthalpyOfAdsorption(std::ostream &stream) const;
     void writePressureAveragesStatistics(std::ostream &stream) const;
 
-    size_t systemId{};
-
-    size_t numberOfFrameworks{ 0 };
-    size_t numberOfFrameworkAtoms{ 0 };
-    size_t numberOfRigidFrameworkAtoms{ 0 };
-
-    std::vector<Component> components;
+    
 
     std::vector<Component> nonFrameworkComponents()
     {
@@ -196,52 +306,11 @@ export struct System
       return comps;
     }
 
-    Loadings loadings;
-    PropertyLoading averageLoadings;
-
-    PropertyEnthalpy averageEnthalpiesOfAdsorption;
-
-    std::vector<size_t> swapableComponents{};
-    std::vector<size_t> initialNumberOfMolecules{};
-    std::vector<size_t> numberOfMoleculesPerComponent{};                    // includes all molecules
-    std::vector<size_t> numberOfIntegerMoleculesPerComponent{};             // integer molecules
-    std::vector<size_t> numberOfFractionalMoleculesPerComponent{};          // fractional molecules
-    std::vector<size_t> numberOfReactionMoleculesPerComponent{};            // reaction molecules
-    std::vector<size_t> numberOfReactionFractionalMoleculesPerComponent{};  // reaction fractional molecules
-    std::vector<double> idealGasEnergiesPerComponent{};
-
-    ForceField forceField;
-
-    std::vector<std::vector<size_t>> numberOfPseudoAtoms;
-    std::vector<size_t> totalNumberOfPseudoAtoms;
-
-    std::optional<double> frameworkMass{ std::nullopt };
-    
-    double timeStep{ 0.0005 };
-
-    SimulationBox simulationBox;
-    PropertySimulationBox averageSimulationBox;
-
-    // A contiguous list of adsorbate atoms per component for easy and fast looping
-    // The atoms-order is defined as increasing per component and molecule.
-    // Because the number of atoms is fixed per component it is easy to access the n-th molecule
-    std::vector<Atom> atomPositions;
-    std::vector<double3> atomVelocities;
-    std::vector<double3> atomForces;
-
     void insertMolecule(size_t selectedComponent, std::vector<Atom> atoms);
     void insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms);
     void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom>& molecule);
     bool checkMoleculeIds();
     
-    RunningEnergy runningEnergies;
-    RunningEnergy rigidEnergies;
-    PropertyEnergy averageEnergies;
-
-    double3x3 currentExcessPressureTensor;
-    EnergyStatus currentEnergyStatus;
-    PropertyPressure averagePressure;
-
     //SampleMovie sampleMovie;
     
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
@@ -260,30 +329,13 @@ export struct System
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
 
-    size_t numberOfTrialDirections{ 10 };
-    double minimumRosenbluthFactor{ 1e-150 };
-
-    std::vector<std::complex<double>> eik_xy;
-    std::vector<std::complex<double>> eik_x;
-    std::vector<std::complex<double>> eik_y;
-    std::vector<std::complex<double>> eik_z;
-    std::vector<std::complex<double>> storedEik;
-    std::vector<std::complex<double>> fixedFrameworkStoredEik;
-    std::vector<std::complex<double>> totalEik;
-    double CoulombicFourierEnergySingleIon{ 0.0 };
-    std::vector<int> netCharge;
-
-    bool noCharges{ false };
-    bool omitEwaldFourier { false};
-
     RunningEnergy energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, 
                                                std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
     void registerEwaldFourierEnergySingleIon(double3 position, double charge);
     void acceptEwaldMove();
 
     void sampleProperties(size_t currentBlock);
-    std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
-    std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
+    
     void writeCPUTimeStatistics(std::ostream &stream) const;
 
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative() noexcept;
@@ -291,57 +343,12 @@ export struct System
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative() noexcept;
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
-    double probabilityVolumeMove{ 0.0 };
-    double probabilityGibbsVolumeMove{ 0.0 };
-    double probabilityGibbsSwapMove_CBMC{ 0.0 };
-    double probabilityGibbsSwapMove_CFCMC{ 0.0 };
-    double probabilityGibbsSwapMove_CFCMC_CBMC{ 0.0 };
-
     void clearMoveStatistics();
     void clearTimingStatistics();
-
-    MoveStatistics<double> statistics_VolumeMove{.maxChange = 0.5};
-    MoveStatistics<double> statistics_GibbsVolumeMove{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
-
-    std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
 
     std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
 
     void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
-    // Breakthrough settings
-    size_t columnNumberOfGridPoints{ 100 };
-    double columnTotalPressure{ 1e5 };
-    double columnPressureGradient{ 0.0 };
-    double columnVoidFraction{ 0.4 };
-    double columnParticleDensity{ 1000 };
-    double columnEntranceVelocity{ 0.1 };
-    double columnLength{ 0.3 };
-    double columnTimeStep{ 0.0005 };
-    size_t columnNumberOfTimeSteps { 0 };
-    bool columnAutoNumberOfTimeSteps{ true };
-    MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{ MultiSiteIsotherm::PredictionMethod::IAST };
-    PressureRange pressure_range;
-    size_t numberOfCarrierGases{ 0 };
-    size_t carrierGasComponent{ 0 };
-    size_t maxIsothermTerms{ 0 };
+    
 };

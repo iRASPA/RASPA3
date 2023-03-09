@@ -106,11 +106,6 @@ export struct ForceField
   ForceField(ForceField&& a) noexcept = default;
   ForceField& operator=(ForceField&& a) noexcept = default;
   ~ForceField() noexcept = default;
-  
-  ForceField(size_t size) : data(size* size)
-  {
-      std::fill(data.begin(), data.end(), VDWParameters(158.5/ 1.2027242847,3.72));
-  }
 
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }

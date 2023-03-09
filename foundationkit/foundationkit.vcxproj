@@ -183,6 +183,8 @@
     <ClCompile Include="print.ixx" />
     <ClCompile Include="scanner.cpp" />
     <ClCompile Include="scanner.ixx" />
+    <ClCompile Include="stringutils.cpp" />
+    <ClCompile Include="stringutils.ixx" />
     <ClCompile Include="threading.cpp" />
     <ClCompile Include="threading.ixx" />
     <ClCompile Include="threadpool.cpp" />

@@ -11,8 +11,11 @@ import <cctype>;
 import <optional>;
 import <fstream>;
 
+import stringutils;
+
 import double3;
 import threadpool;
+
 
 import system;
 import atom;
@@ -23,19 +26,6 @@ import loadings;
 import enthalpy_of_adsorption;
 import energy_status;
 import averages;
-
-
-struct Hash {
-    size_t operator()([[maybe_unused]] const std::string& str) const {
-        return 0;
-    }
-};
-
-struct InsensitiveCompare {
-    bool operator() (const std::string& str1, const std::string& str2) const {
-        return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](auto a, auto b) {return std::tolower(a) == std::tolower(b); });
-    }
-};
 
 export struct InputReader
 {

@@ -16,6 +16,7 @@ import <ios>;
 import <optional>;
 
 import int3;
+import stringutils;
 
 import system;
 import atom;
@@ -32,25 +33,7 @@ import multi_site_isotherm;
 import pressure_range;
 
 
-inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
-{
-    return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](auto a, auto b) {return std::tolower(a) == std::tolower(b); });
-}
 
-inline std::string trim(const std::string& s)
-{
-    auto start = s.begin();
-    while (start != s.end() && std::isspace(*start)) {
-        start++;
-    }
-
-    auto end = s.end();
-    do {
-        end--;
-    } while (std::distance(start, end) > 0 && std::isspace(*end));
-
-    return std::string(start, end + 1);
-}
 
 template<class T>
 T parse(const std::string& arguments, [[maybe_unused]] const std::string& keyword, [[maybe_unused]] size_t lineNumber)

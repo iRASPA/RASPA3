@@ -51,5 +51,11 @@
     <ClCompile Include="threadpool.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="stringutils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="stringutils.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
