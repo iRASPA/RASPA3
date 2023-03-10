@@ -1,6 +1,10 @@
 module;
 
+#include "mdspan.h"
+
 module breakthrough;
+
+
 
 import <vector>;
 import <span>;
@@ -16,7 +20,6 @@ import <sstream>;
 import <chrono>;
 
 import print;
-import mdspan;
 import input_reader;
 import component;
 import system;
@@ -125,6 +128,7 @@ Breakthrough::Breakthrough(System &system):
   }
 
   auto st = std::experimental::mdspan(P.data(), 2, 6);
+  //std::experimental::mdspan<double, std::experimental::extents<size_t, 20, 10>> m(P.data(), 16, 32);
 
   // at the column entrance, the mol-fractions of the components in the gas phase are fixed
   // the partial pressures of the components at the entrance are the mol-fractions times the 

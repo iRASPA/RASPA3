@@ -1,18 +1,78 @@
-export module mdspan;
+#ifndef _MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
+#define _MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 
-#include <stdexcept>
-#include <cstddef> // size_t
-#include <limits>   // numeric_limits
-#include <array>
-#include <type_traits> // std::is_void
-#include <tuple>
-#include <utility> // index_sequence
-#ifdef __cpp_lib_span
-#include <span>
-#endif
-#include <algorithm>
-#include <numeric>
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdarray
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdspan
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/default_accessor.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/macros.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/config.hpp
 //@HEADER
 // ************************************************************************
 //
@@ -286,7 +346,9 @@ static_assert(_MDSPAN_CPLUSPLUS >= MDSPAN_CXX_STD_14, "mdspan requires C++14 or 
 #  define __MDSPAN_OP5(mds, a, b, c, d, e) mds(a,b,c,d,e)
 #  define __MDSPAN_OP6(mds, a, b, c, d, e, f) mds(a,b,c,d,e,f)
 #endif
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/config.hpp
 
+#include <type_traits> // std::is_void
 
 #ifndef _MDSPAN_HOST_DEVICE
 #  if defined(_MDSPAN_HAS_CUDA) || defined(_MDSPAN_HAS_HIP)
@@ -542,7 +604,6 @@ struct __mdspan_enable_fold_comma { };
 #  define _MDSPAN_FOLD_PLUS_RIGHT(PACK, ...) (PACK + ... + (__VA_ARGS__))
 #  define _MDSPAN_FOLD_COMMA(...) ((__VA_ARGS__), ...)
 #else
-
 
 namespace std {
 
@@ -895,7 +956,9 @@ struct __bools;
 
 // </editor-fold> end Pre-C++14 constexpr }}}1
 //==============================================================================
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/macros.hpp
 
+#include <cstddef> // size_t
 
 namespace std {
 namespace experimental {
@@ -934,6 +997,24 @@ struct default_accessor {
 
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/default_accessor.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/full_extent_t.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
 
 namespace std {
 namespace experimental {
@@ -944,10 +1025,64 @@ _MDSPAN_INLINE_VARIABLE constexpr auto full_extent = full_extent_t{ };
 
 } // end namespace experimental
 } // namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/full_extent_t.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/mdspan.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_right.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/trait_backports.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 #ifndef MDSPAN_INCLUDE_EXPERIMENTAL_BITS_TRAIT_BACKPORTS_HPP_
 #define MDSPAN_INCLUDE_EXPERIMENTAL_BITS_TRAIT_BACKPORTS_HPP_
 
+
+#include <type_traits>
+#include <utility> // integer_sequence
 
 //==============================================================================
 // <editor-fold desc="Variable template trait backports (e.g., is_void_v)"> {{{1
@@ -1057,7 +1192,62 @@ using enable_if_t = typename enable_if<_B, _T>::type;
 //==============================================================================
 
 #endif //MDSPAN_INCLUDE_EXPERIMENTAL_BITS_TRAIT_BACKPORTS_HPP_
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/trait_backports.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/extents.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/static_array.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/dynamic_extent.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+#include <cstddef>  // size_t
+#include <limits>   // numeric_limits
 
 namespace std {
 namespace experimental {
@@ -1067,7 +1257,44 @@ _MDSPAN_INLINE_VARIABLE constexpr auto dynamic_extent = std::numeric_limits<size
 } // end namespace experimental
 } // namespace std
 
+//==============================================================================================================
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/dynamic_extent.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/maybe_static_value.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
 #if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/no_unique_address.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
 
 namespace std {
 namespace experimental {
@@ -1148,7 +1375,7 @@ struct __no_unique_address_emulation<
 } // end namespace detail
 } // end namespace experimental
 } // end namespace std
-
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/no_unique_address.hpp
 #endif
 
 // This is only needed for the non-standard-layout version of partially
@@ -1252,9 +1479,43 @@ struct __maybe_static_value<_dynamic_t, _static_t, __is_dynamic_sentinal, __is_d
 } // end namespace std
 
 #endif // !_MDSPAN_PRESERVE_STANDARD_LAYOUT
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/maybe_static_value.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/standard_layout_static_array.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/compressed_pair.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
 
 #if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
-#  include "no_unique_address.hpp"
 #endif
 
 namespace std {
@@ -1430,11 +1691,17 @@ struct __compressed_pair<
 } // end namespace detail
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/compressed_pair.hpp
 
 #if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
-#  include "no_unique_address.hpp"
 #endif
 
+#include <array>
+#ifdef __cpp_lib_span
+#include <span>
+#endif
+#include <utility> // integer_sequence
+#include <cstddef>
 
 namespace std {
 namespace experimental {
@@ -2060,6 +2327,24 @@ public:
 } // end namespace detail
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/standard_layout_static_array.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/type_list.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
 
 namespace std {
 namespace experimental {
@@ -2131,8 +2416,13 @@ struct __type_at<3, __type_list<_T0, _T1, _T2, _T3, _Ts...>> {
 } // end namespace experimental
 } // end namespace std
 
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/type_list.hpp
+
 // Needs to be after the includes above to work with the single header generator
 #if !_MDSPAN_PRESERVE_STANDARD_LAYOUT
+#include <cstddef> // size_t
+#include <utility> // integer_sequence
+#include <array>
 
 namespace std {
 namespace experimental {
@@ -2361,242 +2651,13 @@ using __partially_static_sizes_tagged = __partially_static_sizes<T, _static_t, _
 } // end namespace std
 
 #endif // !_MDSPAN_PRESERVE_STANDARD_LAYOUT
-
-// Needs to be after the includes above to work with the single header generator
-#if !_MDSPAN_PRESERVE_STANDARD_LAYOUT
-
-namespace std {
-namespace experimental {
-namespace detail {
-
-//==============================================================================
-
-template <class _T, _T _Val, bool _Mask> struct __mask_element {};
-
-template <class _T, _T... _Result>
-struct __mask_sequence_assign_op {
-  template <_T _V>
-  __mask_sequence_assign_op<_T, _Result..., _V>
-  operator=(__mask_element<_T, _V, true>&&);
-  template <_T _V>
-  __mask_sequence_assign_op<_T, _Result...>
-  operator=(__mask_element<_T, _V, false>&&);
-  using __result = integer_sequence<_T, _Result...>;
-};
-
-template <class _Seq, class _Mask>
-struct __mask_sequence;
-
-template <class _T, _T... _Vals, bool... _Masks>
-struct __mask_sequence<integer_sequence<_T, _Vals...>, integer_sequence<bool, _Masks...>>
-{
-  using type = typename decltype(
-    _MDSPAN_FOLD_ASSIGN_LEFT(
-      __mask_sequence_assign_op<_T>{}, /* = ... = */ __mask_element<_T, _Vals, _Masks>{}
-    )
-  )::__result;
-};
-
-//==============================================================================
-
-template <class _T, class _static_t, class _Vals, _static_t __sentinal,
-          class _Idxs, class _IdxsDynamic, class _IdxsDynamicIdxs>
-class __partially_static_array_impl;
-
-template <
-  class _T, class _static_t,
-  _static_t... __values_or_sentinals, _static_t __sentinal,
-  size_t... _Idxs,
-  size_t... _IdxsDynamic,
-  size_t... _IdxsDynamicIdxs
->
-class __partially_static_array_impl<
-  _T,
-  _static_t,
-  integer_sequence<_static_t, __values_or_sentinals...>,
-  __sentinal,
-  integer_sequence<size_t, _Idxs...>,
-  integer_sequence<size_t, _IdxsDynamic...>,
-  integer_sequence<size_t, _IdxsDynamicIdxs...>
->
-    : private __maybe_static_value<_T, _static_t, __values_or_sentinals, __sentinal,
-                                   _Idxs>... {
-private:
-
-  template <size_t _N>
-  using __base_n = typename __type_at<_N,
-    __type_list<__maybe_static_value<_T, _static_t, __values_or_sentinals, __sentinal, _Idxs>...>
-  >::type;
-
-public:
-
-  static constexpr auto __size = sizeof...(_Idxs);
-  static constexpr auto __size_dynamic =
-    _MDSPAN_FOLD_PLUS_RIGHT(static_cast<int>((__values_or_sentinals == __sentinal)), /* + ... + */ 0);
-
-  //--------------------------------------------------------------------------
-
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  constexpr __partially_static_array_impl() = default;
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  constexpr __partially_static_array_impl(
-      __partially_static_array_impl const &) noexcept = default;
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  constexpr __partially_static_array_impl(
-      __partially_static_array_impl &&) noexcept = default;
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  _MDSPAN_CONSTEXPR_14_DEFAULTED __partially_static_array_impl &
-  operator=(__partially_static_array_impl const &) noexcept = default;
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  _MDSPAN_CONSTEXPR_14_DEFAULTED __partially_static_array_impl &
-  operator=(__partially_static_array_impl &&) noexcept = default;
-  MDSPAN_INLINE_FUNCTION_DEFAULTED
-  ~__partially_static_array_impl() noexcept = default;
-
-  MDSPAN_INLINE_FUNCTION
-  constexpr __partially_static_array_impl(
-      __construct_psa_from_all_exts_values_tag_t,
-      __repeated_with_idxs<_Idxs, _T> const &... __vals) noexcept
-      : __base_n<_Idxs>(__base_n<_Idxs>{{__vals}})... {}
-
-  MDSPAN_INLINE_FUNCTION
-  constexpr __partially_static_array_impl(
-      __construct_psa_from_dynamic_exts_values_tag_t,
-      __repeated_with_idxs<_IdxsDynamicIdxs, _T> const &... __vals) noexcept
-      : __base_n<_IdxsDynamic>(__base_n<_IdxsDynamic>{{__vals}})... {}
-
-  MDSPAN_INLINE_FUNCTION constexpr explicit __partially_static_array_impl(
-    array<_T, sizeof...(_Idxs)> const& __vals) noexcept
-    : __partially_static_array_impl(
-        __construct_psa_from_all_exts_values_tag,
-        ::std::get<_Idxs>(__vals)...) {}
-
-  // clang-format off
-  MDSPAN_FUNCTION_REQUIRES(
-    (MDSPAN_INLINE_FUNCTION constexpr explicit),
-    __partially_static_array_impl,
-    (array<_T, __size_dynamic> const &__vals), noexcept,
-    /* requires */
-      (sizeof...(_Idxs) != __size_dynamic)
-  ): __partially_static_array_impl(
-       __construct_psa_from_dynamic_exts_values_tag,
-       ::std::get<_IdxsDynamicIdxs>(__vals)...) {}
-  // clang-format on
-
-  template <class _U, class _static_u, class _UValsSeq, _static_u __u_sentinal, class _UIdxsSeq,
-            class _UIdxsDynamicSeq, class _UIdxsDynamicIdxsSeq>
-  MDSPAN_INLINE_FUNCTION constexpr __partially_static_array_impl(
-    __partially_static_array_impl<
-      _U, _static_u, _UValsSeq, __u_sentinal, _UIdxsSeq,
-     _UIdxsDynamicSeq, _UIdxsDynamicIdxsSeq> const &__rhs) noexcept
-    : __partially_static_array_impl(
-        __construct_psa_from_all_exts_values_tag,
-        __rhs.template __get_n<_Idxs>()...) {}
-
-  //--------------------------------------------------------------------------
-
-  // See comment in the previous partial specialization for why this is
-  // necessary.  Or just trust me that it's messy.
-  MDSPAN_FORCE_INLINE_FUNCTION
-  constexpr __partially_static_array_impl const &__enable_psa_conversion() const
-  noexcept {
-      return *this;
-  }
-
-  template <size_t _I>
-  MDSPAN_FORCE_INLINE_FUNCTION constexpr _T __get_n() const noexcept {
-    return static_cast<__base_n<_I> const*>(this)->__value();
-  }
-
-  template <class _U, size_t _I>
-  MDSPAN_FORCE_INLINE_FUNCTION _MDSPAN_CONSTEXPR_14 void __set_n(_U&& __rhs) noexcept {
-    static_cast<__base_n<_I>*>(this)->__set_value((_U&&)__rhs);
-  }
-
-  template <size_t _I, _static_t __default = __sentinal>
-  MDSPAN_FORCE_INLINE_FUNCTION static constexpr _static_t
-  __get_static_n() noexcept {
-    return __base_n<_I>::__static_value == __sentinal ?
-      __default : __base_n<_I>::__static_value;
-  }
-
-  MDSPAN_FORCE_INLINE_FUNCTION constexpr _T
-  __get(size_t __n) const noexcept {
-    return _MDSPAN_FOLD_PLUS_RIGHT(
-      (_T(_Idxs == __n) * __get_n<_Idxs>()), /* + ... + */ _T(0)
-    );
-  }
-
-};
-
-//==============================================================================
-
-template <class _T, class _static_t, class _ValSeq, _static_t __sentinal, class _Idxs = make_index_sequence<_ValSeq::size()>>
-struct __partially_static_array_impl_maker;
-
-template <
-  class _T, class _static_t,  _static_t... _Vals, _static_t __sentinal, size_t... _Idxs
->
-struct __partially_static_array_impl_maker<
-  _T, _static_t, integer_sequence<_static_t, _Vals...>, __sentinal, integer_sequence<size_t, _Idxs...>
->
-{
-  using __dynamic_idxs = typename __mask_sequence<
-    integer_sequence<size_t, _Idxs...>,
-    integer_sequence<bool, (_Vals == __sentinal)...>
-  >::type;
-  using __impl_base =
-    __partially_static_array_impl<_T, _static_t,
-      integer_sequence<_static_t, _Vals...>,
-      __sentinal, integer_sequence<size_t, _Idxs...>,
-      __dynamic_idxs,
-      make_index_sequence<__dynamic_idxs::size()>
-    >;
-};
-
-template <class _T, class _static_t, class _ValsSeq, _static_t __sentinal = dynamic_extent>
-class __partially_static_array_with_sentinal
-  : public __partially_static_array_impl_maker<_T, _static_t, _ValsSeq, __sentinal>::__impl_base
-{
-private:
-  using __base_t = typename __partially_static_array_impl_maker<_T, _static_t, _ValsSeq, __sentinal>::__impl_base;
-public:
-  using __base_t::__base_t;
-};
-
-//==============================================================================
-
-template <class T, class _static_t, _static_t... __values_or_sentinals>
-struct __partially_static_sizes :
-  __partially_static_array_with_sentinal<
-    T, _static_t, ::std::integer_sequence<_static_t, __values_or_sentinals...>>
-{
-private:
-  using __base_t = __partially_static_array_with_sentinal<
-    T, _static_t, ::std::integer_sequence<_static_t, __values_or_sentinals...>>;
-public:
-  using __base_t::__base_t;
-  template <class _UTag>
-  MDSPAN_FORCE_INLINE_FUNCTION constexpr __partially_static_sizes<T, _static_t, __values_or_sentinals...>
-  __with_tag() const noexcept {
-    return *this;
-  }
-};
-
-// Tags are needed for the standard layout version, but not here
-template <class T, class _static_t, _static_t... __values_or_sentinals>
-using __partially_static_sizes_tagged = __partially_static_sizes<T, _static_t, __values_or_sentinals...>;
-
-} // end namespace detail
-} // end namespace experimental
-} // end namespace std
-
-#endif // !_MDSPAN_PRESERVE_STANDARD_LAYOUT
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/static_array.hpp
 
 #if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
-#  include "no_unique_address.hpp"
 #endif
 
+#include <array>
+#include <cstddef>
 
 namespace std {
 namespace experimental {
@@ -3086,7 +3147,35 @@ using __extents_to_partially_static_sizes_t = typename __extents_to_partially_st
 } // end namespace detail
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/extents.hpp
+#include <stdexcept>
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_stride.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 
+
+#if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
+#endif
+
+#include <algorithm>
+#include <numeric>
+#include <array>
+#ifdef __cpp_lib_span
+#include <span>
+#endif
 #if defined(_MDSPAN_USE_CONCEPTS) && MDSPAN_HAS_CXX_20
 #include<concepts>
 #endif
@@ -3566,6 +3655,7 @@ struct layout_stride {
 
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_stride.hpp
 
 namespace std {
 namespace experimental {
@@ -3768,10 +3858,12 @@ private:
 } // end namespace experimental
 } // end namespace std
 
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_right.hpp
+
 namespace std {
 namespace experimental {
 
-export template <
+template <
   class ElementType,
   class Extents,
   class LayoutPolicy = layout_right,
@@ -4167,6 +4259,282 @@ MDSPAN_DEDUCTION_GUIDE mdspan(const typename AccessorType::data_handle_type, con
 
 } // end namespace experimental
 } // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/mdspan.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_left.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+namespace std {
+namespace experimental {
+
+//==============================================================================
+
+template <class Extents>
+class layout_left::mapping {
+  public:
+    using extents_type = Extents;
+    using index_type = typename extents_type::index_type;
+    using size_type = typename extents_type::size_type;
+    using rank_type = typename extents_type::rank_type;
+    using layout_type = layout_left;
+  private:
+
+    static_assert(detail::__is_extents_v<extents_type>, "std::experimental::layout_left::mapping must be instantiated with a specialization of std::experimental::extents.");
+
+    template <class>
+    friend class mapping;
+
+    // i0+(i1 + E(1)*(i2 + E(2)*i3))
+    template <size_t r, size_t Rank>
+    struct __rank_count {};
+
+    template <size_t r, size_t Rank, class I, class... Indices>
+    _MDSPAN_HOST_DEVICE
+    constexpr index_type __compute_offset(
+      __rank_count<r,Rank>, const I& i, Indices... idx) const {
+      return __compute_offset(__rank_count<r+1,Rank>(), idx...) *
+                 __extents.template __extent<r>() + i;
+    }
+
+    template<class I>
+    _MDSPAN_HOST_DEVICE
+    constexpr index_type __compute_offset(
+      __rank_count<extents_type::rank()-1,extents_type::rank()>, const I& i) const {
+      return i;
+    }
+
+    _MDSPAN_HOST_DEVICE
+    constexpr index_type __compute_offset(__rank_count<0,0>) const { return 0; }
+
+  public:
+
+    //--------------------------------------------------------------------------------
+
+    MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mapping() noexcept = default;
+    MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mapping(mapping const&) noexcept = default;
+
+    _MDSPAN_HOST_DEVICE
+    constexpr mapping(extents_type const& __exts) noexcept
+      :__extents(__exts)
+    { }
+
+    MDSPAN_TEMPLATE_REQUIRES(
+      class OtherExtents,
+      /* requires */ (
+        _MDSPAN_TRAIT(is_constructible, extents_type, OtherExtents)
+      )
+    )
+    MDSPAN_CONDITIONAL_EXPLICIT((!is_convertible<OtherExtents, extents_type>::value)) // needs two () due to comma
+    MDSPAN_INLINE_FUNCTION _MDSPAN_CONSTEXPR_14
+    mapping(mapping<OtherExtents> const& other) noexcept // NOLINT(google-explicit-constructor)
+      :__extents(other.extents())
+    {
+       /*
+        * TODO: check precondition
+        * other.required_span_size() is a representable value of type index_type
+        */
+    }
+
+    MDSPAN_TEMPLATE_REQUIRES(
+      class OtherExtents,
+      /* requires */ (
+        _MDSPAN_TRAIT(is_constructible, extents_type, OtherExtents) &&
+        (extents_type::rank() <= 1)
+      )
+    )
+    MDSPAN_CONDITIONAL_EXPLICIT((!is_convertible<OtherExtents, extents_type>::value)) // needs two () due to comma
+    MDSPAN_INLINE_FUNCTION _MDSPAN_CONSTEXPR_14
+    mapping(layout_right::mapping<OtherExtents> const& other) noexcept // NOLINT(google-explicit-constructor)
+      :__extents(other.extents())
+    {
+       /*
+        * TODO: check precondition
+        * other.required_span_size() is a representable value of type index_type
+        */
+    }
+
+    MDSPAN_TEMPLATE_REQUIRES(
+      class OtherExtents,
+      /* requires */ (
+        _MDSPAN_TRAIT(is_constructible, extents_type, OtherExtents)
+      )
+    )
+    MDSPAN_CONDITIONAL_EXPLICIT((extents_type::rank() > 0))
+    MDSPAN_INLINE_FUNCTION _MDSPAN_CONSTEXPR_14
+    mapping(layout_stride::mapping<OtherExtents> const& other) noexcept // NOLINT(google-explicit-constructor)
+      :__extents(other.extents())
+    {
+       /*
+        * TODO: check precondition
+        * other.required_span_size() is a representable value of type index_type
+        */
+       #if !defined(_MDSPAN_HAS_CUDA) && !defined(_MDSPAN_HAS_HIP) && !defined(NDEBUG)
+       index_type stride = 1;
+       for(rank_type r=0; r<__extents.rank(); r++) {
+         if(stride != static_cast<index_type>(other.stride(r))) {
+           // Note this throw will lead to a terminate if triggered since this function is marked noexcept
+           throw std::runtime_error("Assigning layout_stride to layout_left with invalid strides.");
+         }
+         stride *= __extents.extent(r);
+       }
+       #endif
+    }
+
+    MDSPAN_INLINE_FUNCTION_DEFAULTED _MDSPAN_CONSTEXPR_14_DEFAULTED mapping& operator=(mapping const&) noexcept = default;
+
+    MDSPAN_INLINE_FUNCTION
+    constexpr const extents_type& extents() const noexcept {
+      return __extents;
+    }
+
+    MDSPAN_INLINE_FUNCTION
+    constexpr index_type required_span_size() const noexcept {
+      index_type value = 1;
+      for(rank_type r=0; r<extents_type::rank(); r++) value*=__extents.extent(r);
+      return value;
+    }
+
+    //--------------------------------------------------------------------------------
+
+    MDSPAN_TEMPLATE_REQUIRES(
+      class... Indices,
+      /* requires */ (
+        (sizeof...(Indices) == extents_type::rank()) &&
+        _MDSPAN_FOLD_AND(
+           (_MDSPAN_TRAIT(is_convertible, Indices, index_type) &&
+            _MDSPAN_TRAIT(is_nothrow_constructible, index_type, Indices))
+        )
+      )
+    )
+    _MDSPAN_HOST_DEVICE
+    constexpr index_type operator()(Indices... idxs) const noexcept {
+      return __compute_offset(__rank_count<0, extents_type::rank()>(), idxs...);
+    }
+
+
+
+    MDSPAN_INLINE_FUNCTION static constexpr bool is_always_unique() noexcept { return true; }
+    MDSPAN_INLINE_FUNCTION static constexpr bool is_always_exhaustive() noexcept { return true; }
+    MDSPAN_INLINE_FUNCTION static constexpr bool is_always_strided() noexcept { return true; }
+
+    MDSPAN_INLINE_FUNCTION constexpr bool is_unique() const noexcept { return true; }
+    MDSPAN_INLINE_FUNCTION constexpr bool is_exhaustive() const noexcept { return true; }
+    MDSPAN_INLINE_FUNCTION constexpr bool is_strided() const noexcept { return true; }
+
+    MDSPAN_INLINE_FUNCTION
+    constexpr index_type stride(rank_type i) const noexcept
+#if MDSPAN_HAS_CXX_20
+      requires ( Extents::rank() > 0 )
+#endif
+    {
+      index_type value = 1;
+      for(rank_type r=0; r<i; r++) value*=__extents.extent(r);
+      return value;
+    }
+
+    template<class OtherExtents>
+    MDSPAN_INLINE_FUNCTION
+    friend constexpr bool operator==(mapping const& lhs, mapping<OtherExtents> const& rhs) noexcept {
+      return lhs.extents() == rhs.extents();
+    }
+
+    // In C++ 20 the not equal exists if equal is found
+#if !(MDSPAN_HAS_CXX_20)
+    template<class OtherExtents>
+    MDSPAN_INLINE_FUNCTION
+    friend constexpr bool operator!=(mapping const& lhs, mapping<OtherExtents> const& rhs) noexcept {
+      return lhs.extents() != rhs.extents();
+    }
+#endif
+
+    // Not really public, but currently needed to implement fully constexpr useable submdspan:
+    template<size_t N, class SizeType, size_t ... E, size_t ... Idx>
+    constexpr index_type __get_stride(std::experimental::extents<SizeType, E...>,integer_sequence<size_t, Idx...>) const {
+      return _MDSPAN_FOLD_TIMES_RIGHT((Idx<N? __extents.template __extent<Idx>():1),1);
+    }
+    template<size_t N>
+    constexpr index_type __stride() const noexcept {
+      return __get_stride<N>(__extents, make_index_sequence<extents_type::rank()>());
+    }
+
+private:
+   _MDSPAN_NO_UNIQUE_ADDRESS extents_type __extents{};
+
+};
+
+
+} // end namespace experimental
+} // end namespace std
+
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p0009_bits/layout_left.hpp
+#if MDSPAN_HAS_CXX_17
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan_extents.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/strided_slice.hpp
+
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+#include <type_traits>
 
 namespace std {
 namespace experimental {
@@ -4196,7 +4564,7 @@ struct strided_slice {
 
 } // experimental
 } // std
-
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/strided_slice.hpp
 namespace std {
 namespace experimental {
 namespace detail {
@@ -4499,7 +4867,28 @@ constexpr auto submdspan_extents(const extents<IndexType, Extents...> &src_exts,
 }
 } // namespace experimental
 } // namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan_extents.hpp
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan_mapping.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
 
+#include <array>
+#include <type_traits>
+#include <tuple>
+#include <utility> // index_sequence
 
 namespace std {
 namespace experimental {
@@ -4760,6 +5149,7 @@ submdspan_mapping(const layout_stride::mapping<Extents> &src_mapping,
 }
 } // namespace experimental
 } // namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan_mapping.hpp
 
 namespace std {
 namespace experimental {
@@ -4782,4 +5172,521 @@ submdspan(const mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy> &src,
 }
 } // namespace experimental
 } // namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p2630_bits/submdspan.hpp
+#endif
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdspan
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p1684_bits/mdarray.hpp
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+//BEGIN_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p1684_bits/../mdspan
+//@HEADER
+// ************************************************************************
+//
+//                        Kokkos v. 4.0
+//       Copyright (2022) National Technology & Engineering
+//               Solutions of Sandia, LLC (NTESS).
+//
+// Under the terms of Contract DE-NA0003525 with NTESS,
+// the U.S. Government retains certain rights in this software.
+//
+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
+// See https://kokkos.org/LICENSE for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//@HEADER
+
+
+#if MDSPAN_HAS_CXX_17
+#endif
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p1684_bits/../mdspan
+#include <cassert>
+#include <vector>
+
+namespace std {
+namespace experimental {
+
+namespace {
+  template<class Extents>
+  struct size_of_extents;
+
+  template<class IndexType, size_t ... Extents>
+  struct size_of_extents<extents<IndexType, Extents...>> {
+    constexpr static size_t value() {
+      size_t size = 1;
+      for(size_t r=0; r<extents<IndexType, Extents...>::rank(); r++)
+        size *= extents<IndexType, Extents...>::static_extent(r);
+      return size;
+    }
+  };
+}
+
+namespace {
+  template<class C>
+  struct container_is_array : false_type {
+    template<class M>
+    static constexpr C construct(const M& m) { return C(m.required_span_size()); }
+  };
+  template<class T, size_t N>
+  struct container_is_array<array<T,N>> : true_type {
+    template<class M>
+    static constexpr array<T,N> construct(const M&) { return array<T,N>(); }
+  };
+}
+
+template <
+  class ElementType,
+  class Extents,
+  class LayoutPolicy = layout_right,
+  class Container = vector<ElementType>
+>
+class mdarray {
+private:
+  static_assert(detail::__is_extents_v<Extents>, "std::experimental::mdspan's Extents template parameter must be a specialization of std::experimental::extents.");
+
+
+public:
+
+  //--------------------------------------------------------------------------------
+  // Domain and codomain types
+
+  using extents_type = Extents;
+  using layout_type = LayoutPolicy;
+  using container_type = Container;
+  using mapping_type = typename layout_type::template mapping<extents_type>;
+  using element_type = ElementType;
+  using mdspan_type = mdspan<element_type, extents_type, layout_type>;
+  using const_mdspan_type = mdspan<const element_type, extents_type, layout_type>;
+  using value_type = remove_cv_t<element_type>;
+  using index_type = typename Extents::index_type;
+  using size_type = typename Extents::size_type;
+  using rank_type = typename Extents::rank_type;
+  using pointer = typename container_type::pointer;
+  using reference = typename container_type::reference;
+  using const_pointer = typename container_type::const_pointer;
+  using const_reference = typename container_type::const_reference;
+
+public:
+
+  //--------------------------------------------------------------------------------
+  // [mdspan.basic.cons], mdspan constructors, assignment, and destructor
+
+#if !(MDSPAN_HAS_CXX_20)
+  MDSPAN_FUNCTION_REQUIRES(
+    (MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr),
+    mdarray, (), ,
+    /* requires */ (extents_type::rank_dynamic()!=0)) {}
+#else
+  MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mdarray() requires(extents_type::rank_dynamic()!=0) = default;
+#endif
+  MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mdarray(const mdarray&) = default;
+  MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mdarray(mdarray&&) = default;
+
+  // Constructors for container types constructible from a size
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      _MDSPAN_TRAIT(is_constructible, extents_type, SizeTypes...) &&
+      _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type) &&
+      (_MDSPAN_TRAIT(is_constructible, container_type, size_t) ||
+       container_is_array<container_type>::value) &&
+      (extents_type::rank()>0 || extents_type::rank_dynamic()==0)
+    )
+  )
+  MDSPAN_INLINE_FUNCTION
+  explicit constexpr mdarray(SizeTypes... dynamic_extents)
+    : map_(extents_type(dynamic_extents...)), ctr_(container_is_array<container_type>::construct(map_))
+  { }
+
+  MDSPAN_FUNCTION_REQUIRES(
+    (MDSPAN_INLINE_FUNCTION constexpr),
+    mdarray, (const extents_type& exts), ,
+    /* requires */ ((_MDSPAN_TRAIT(is_constructible, container_type, size_t) ||
+                     container_is_array<container_type>::value) &&
+                    _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  ) : map_(exts), ctr_(container_is_array<container_type>::construct(map_))
+  { }
+
+  MDSPAN_FUNCTION_REQUIRES(
+    (MDSPAN_INLINE_FUNCTION constexpr),
+    mdarray, (const mapping_type& m), ,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, size_t) ||
+                    container_is_array<container_type>::value)
+  ) : map_(m), ctr_(container_is_array<container_type>::construct(map_))
+  { }
+
+  // Constructors from container
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      _MDSPAN_TRAIT(is_constructible, extents_type, SizeTypes...) &&
+      _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type)
+    )
+  )
+  MDSPAN_INLINE_FUNCTION
+  explicit constexpr mdarray(const container_type& ctr, SizeTypes... dynamic_extents)
+    : map_(extents_type(dynamic_extents...)), ctr_(ctr)
+  { assert(ctr.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+
+  MDSPAN_FUNCTION_REQUIRES(
+    (MDSPAN_INLINE_FUNCTION constexpr),
+    mdarray, (const container_type& ctr, const extents_type& exts), ,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  ) : map_(exts), ctr_(ctr)
+  { assert(ctr.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+  constexpr mdarray(const container_type& ctr, const mapping_type& m)
+    : map_(m), ctr_(ctr)
+  { assert(ctr.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+
+  // Constructors from container
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      _MDSPAN_TRAIT(is_constructible, extents_type, SizeTypes...) &&
+      _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type)
+    )
+  )
+  MDSPAN_INLINE_FUNCTION
+  explicit constexpr mdarray(container_type&& ctr, SizeTypes... dynamic_extents)
+    : map_(extents_type(dynamic_extents...)), ctr_(std::move(ctr))
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+
+  MDSPAN_FUNCTION_REQUIRES(
+    (MDSPAN_INLINE_FUNCTION constexpr),
+    mdarray, (container_type&& ctr, const extents_type& exts), ,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  ) : map_(exts), ctr_(std::move(ctr))
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+  constexpr mdarray(container_type&& ctr, const mapping_type& m)
+    : map_(m), ctr_(std::move(ctr))
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherElementType, class OtherExtents, class OtherLayoutPolicy, class OtherContainer,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_constructible, mapping_type, typename OtherLayoutPolicy::template mapping<OtherExtents>) &&
+      _MDSPAN_TRAIT(is_constructible, container_type, OtherContainer)
+    )
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const mdarray<OtherElementType, OtherExtents, OtherLayoutPolicy, OtherContainer>& other)
+    : map_(other.mapping()), ctr_(other.container())
+  {
+    static_assert(is_constructible<extents_type, OtherExtents>::value, "");
+  }
+
+  // Constructors for container types constructible from a size and allocator
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, size_t, Alloc) &&
+                    _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const extents_type& exts, const Alloc& a)
+    : map_(exts), ctr_(map_.required_span_size(), a)
+  { }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, size_t, Alloc))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const mapping_type& map, const Alloc& a)
+    : map_(map), ctr_(map_.required_span_size(), a)
+  { }
+
+  // Constructors for container types constructible from a container and allocator
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, container_type, Alloc) &&
+                    _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const container_type& ctr, const extents_type& exts, const Alloc& a)
+    : map_(exts), ctr_(ctr, a)
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, size_t, Alloc))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const container_type& ctr, const mapping_type& map, const Alloc& a)
+    : map_(map), ctr_(ctr, a)
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, container_type, Alloc) &&
+                    _MDSPAN_TRAIT(is_constructible, mapping_type, extents_type))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(container_type&& ctr, const extents_type& exts, const Alloc& a)
+    : map_(exts), ctr_(std::move(ctr), a)
+  { assert(ctr_.size() >= static_cast<size_t>(map_.required_span_size())); }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class Alloc,
+    /* requires */ (_MDSPAN_TRAIT(is_constructible, container_type, size_t, Alloc))
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(container_type&& ctr, const mapping_type& map, const Alloc& a)
+    : map_(map), ctr_(std::move(ctr), a)
+  { assert(ctr_.size() >= map_.required_span_size()); }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherElementType, class OtherExtents, class OtherLayoutPolicy, class OtherContainer, class Alloc,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_constructible, mapping_type, typename OtherLayoutPolicy::template mapping<OtherExtents>) &&
+      _MDSPAN_TRAIT(is_constructible, container_type, OtherContainer, Alloc)
+    )
+  )
+  MDSPAN_INLINE_FUNCTION
+  constexpr mdarray(const mdarray<OtherElementType, OtherExtents, OtherLayoutPolicy, OtherContainer>& other, const Alloc& a)
+    : map_(other.mapping()), ctr_(other.container(), a)
+  {
+    static_assert(is_constructible<extents_type, OtherExtents>::value, "");
+  }
+
+  MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mdarray& operator= (const mdarray&) = default;
+  MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr mdarray& operator= (mdarray&&) = default;
+  MDSPAN_INLINE_FUNCTION_DEFAULTED
+  ~mdarray() = default;
+
+  //--------------------------------------------------------------------------------
+  // [mdspan.basic.mapping], mdspan mapping domain multidimensional index to access codomain element
+
+  #if MDSPAN_USE_BRACKET_OPERATOR
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      extents_type::rank() == sizeof...(SizeTypes)
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr const_reference operator[](SizeTypes... indices) const noexcept
+  {
+    return ctr_[map_(static_cast<index_type>(std::move(indices))...)];
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      extents_type::rank() == sizeof...(SizeTypes)
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr reference operator[](SizeTypes... indices) noexcept
+  {
+    return ctr_[map_(static_cast<index_type>(std::move(indices))...)];
+  }
+  #endif
+
+#if 0
+  MDSPAN_TEMPLATE_REQUIRES(
+    class SizeType, size_t N,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_convertible, SizeType, index_type) &&
+      N == extents_type::rank()
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr const_reference operator[](const array<SizeType, N>& indices) const noexcept
+  {
+    return __impl::template __callop<reference>(*this, indices);
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class SizeType, size_t N,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_convertible, SizeType, index_type) &&
+      N == extents_type::rank()
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr reference operator[](const array<SizeType, N>& indices) noexcept
+  {
+    return __impl::template __callop<reference>(*this, indices);
+  }
+#endif
+
+
+  #if MDSPAN_USE_PAREN_OPERATOR
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      extents_type::rank() == sizeof...(SizeTypes)
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr const_reference operator()(SizeTypes... indices) const noexcept
+  {
+    return ctr_[map_(static_cast<index_type>(std::move(indices))...)];
+  }
+  MDSPAN_TEMPLATE_REQUIRES(
+    class... SizeTypes,
+    /* requires */ (
+      _MDSPAN_FOLD_AND(_MDSPAN_TRAIT(is_convertible, SizeTypes, index_type) /* && ... */) &&
+      extents_type::rank() == sizeof...(SizeTypes)
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr reference operator()(SizeTypes... indices) noexcept
+  {
+    return ctr_[map_(static_cast<index_type>(std::move(indices))...)];
+  }
+
+#if 0
+  MDSPAN_TEMPLATE_REQUIRES(
+    class SizeType, size_t N,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_convertible, SizeType, index_type) &&
+      N == extents_type::rank()
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr const_reference operator()(const array<SizeType, N>& indices) const noexcept
+  {
+    return __impl::template __callop<reference>(*this, indices);
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class SizeType, size_t N,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_convertible, SizeType, index_type) &&
+      N == extents_type::rank()
+    )
+  )
+  MDSPAN_FORCE_INLINE_FUNCTION
+  constexpr reference operator()(const array<SizeType, N>& indices) noexcept
+  {
+    return __impl::template __callop<reference>(*this, indices);
+  }
+#endif
+  #endif
+
+  MDSPAN_INLINE_FUNCTION constexpr pointer data() noexcept { return ctr_.data(); };
+  MDSPAN_INLINE_FUNCTION constexpr const_pointer data() const noexcept { return ctr_.data(); };
+  MDSPAN_INLINE_FUNCTION constexpr container_type& container() noexcept { return ctr_; };
+  MDSPAN_INLINE_FUNCTION constexpr const container_type& container() const noexcept { return ctr_; };
+
+  //--------------------------------------------------------------------------------
+  // [mdspan.basic.domobs], mdspan observers of the domain multidimensional index space
+
+  MDSPAN_INLINE_FUNCTION static constexpr rank_type rank() noexcept { return extents_type::rank(); }
+  MDSPAN_INLINE_FUNCTION static constexpr rank_type rank_dynamic() noexcept { return extents_type::rank_dynamic(); }
+  MDSPAN_INLINE_FUNCTION static constexpr size_t static_extent(size_t r) noexcept { return extents_type::static_extent(r); }
+
+  MDSPAN_INLINE_FUNCTION constexpr const extents_type& extents() const noexcept { return map_.extents(); };
+  MDSPAN_INLINE_FUNCTION constexpr index_type extent(size_t r) const noexcept { return map_.extents().extent(r); };
+  MDSPAN_INLINE_FUNCTION constexpr index_type size() const noexcept {
+//    return __impl::__size(*this);
+    return ctr_.size();
+  };
+
+
+  //--------------------------------------------------------------------------------
+  // [mdspan.basic.obs], mdspan observers of the mapping
+
+  MDSPAN_INLINE_FUNCTION static constexpr bool is_always_unique() noexcept { return mapping_type::is_always_unique(); };
+  MDSPAN_INLINE_FUNCTION static constexpr bool is_always_exhaustive() noexcept { return mapping_type::is_always_exhaustive(); };
+  MDSPAN_INLINE_FUNCTION static constexpr bool is_always_strided() noexcept { return mapping_type::is_always_strided(); };
+
+  MDSPAN_INLINE_FUNCTION constexpr const mapping_type& mapping() const noexcept { return map_; };
+  MDSPAN_INLINE_FUNCTION constexpr bool is_unique() const noexcept { return map_.is_unique(); };
+  MDSPAN_INLINE_FUNCTION constexpr bool is_exhaustive() const noexcept { return map_.is_exhaustive(); };
+  MDSPAN_INLINE_FUNCTION constexpr bool is_strided() const noexcept { return map_.is_strided(); };
+  MDSPAN_INLINE_FUNCTION constexpr index_type stride(size_t r) const { return map_.stride(r); };
+
+  // Converstion to mdspan
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherElementType, class OtherExtents,
+    class OtherLayoutType, class OtherAccessorType,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_assignable, mdspan_type,
+                       mdspan<OtherElementType, OtherExtents, OtherLayoutType, OtherAccessorType>)
+    )
+  )
+  constexpr operator mdspan<OtherElementType, OtherExtents, OtherLayoutType, OtherAccessorType> () {
+    return mdspan_type(data(), map_);
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherElementType, class OtherExtents,
+    class OtherLayoutType, class OtherAccessorType,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_assignable, const_mdspan_type,
+                      mdspan<OtherElementType, OtherExtents, OtherLayoutType, OtherAccessorType>)
+    )
+  )
+  constexpr operator mdspan<OtherElementType, OtherExtents, OtherLayoutType, OtherAccessorType> () const {
+    return const_mdspan_type(data(), map_);
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherAccessorType = default_accessor<element_type>,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_assignable, mdspan_type,
+                      mdspan<element_type, extents_type, layout_type, OtherAccessorType>)
+    )
+  )
+  constexpr mdspan<element_type, extents_type, layout_type, OtherAccessorType>
+    to_mdspan(const OtherAccessorType& a = default_accessor<element_type>()) {
+      return mdspan<element_type, extents_type, layout_type, OtherAccessorType>(data(), map_, a);
+  }
+
+  MDSPAN_TEMPLATE_REQUIRES(
+    class OtherAccessorType = default_accessor<const element_type>,
+    /* requires */ (
+      _MDSPAN_TRAIT(is_assignable, const_mdspan_type,
+                      mdspan<const element_type, extents_type, layout_type, OtherAccessorType>)
+    )
+  )
+  constexpr mdspan<const element_type, extents_type, layout_type, OtherAccessorType>
+    to_mdspan(const OtherAccessorType& a = default_accessor<const element_type>()) const {
+      return mdspan<const element_type, extents_type, layout_type, OtherAccessorType>(data(), map_, a);
+  }
+
+private:
+  mapping_type map_;
+  container_type ctr_;
+
+  template <class, class, class, class>
+  friend class mdarray;
+};
+
+
+} // end namespace experimental
+} // end namespace std
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/__p1684_bits/mdarray.hpp
+
+//END_FILE_INCLUDE: /home/runner/work/mdspan/mdspan/include/experimental/mdarray
+#endif // _MDSPAN_SINGLE_HEADER_INCLUDE_GUARD_
 
