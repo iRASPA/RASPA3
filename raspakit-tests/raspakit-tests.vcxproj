@@ -33,6 +33,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClCompile Include="ewald.cpp" />
     <ClCompile Include="gradients.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="spacegroup.cpp" />

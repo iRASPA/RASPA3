@@ -48,7 +48,7 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, std::opt
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
     std::print(stream, "    molecules:        {: .6e} molec/uc\n", numberOfMolecules[comp.componentId]);
     std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[comp.componentId]);
-    std::print(stream, "    density:          {: .6e} kg/m^3\n", densityConversionFactor * numberDensities[comp.componentId]);
+    std::print(stream, "    density:          {: .6e} kg/m^3\n", densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
   }
 }
 
@@ -100,8 +100,8 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, const Lo
     std::print(stream, "    number density: {: .6} molec./A^3 ({: .6} +/- {: .6})\n",
         numberDensities[comp.componentId], average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
     std::print(stream, "    density: {: .6} kg/m^3 ({: .6} +/- {: .6})\n",
-        densityConversionFactor * numberDensities[comp.componentId], densityConversionFactor * average.numberDensities[comp.componentId], 
-        densityConversionFactor * error.numberDensities[comp.componentId]);
+        densityConversionFactor * comp.mass * numberDensities[comp.componentId], densityConversionFactor * comp.mass * average.numberDensities[comp.componentId],
+        densityConversionFactor * comp.mass * error.numberDensities[comp.componentId]);
   }
 }
 

@@ -381,7 +381,6 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
     numberOfMoleculesPerComponent[selectedComponent] -= 1;
     numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
 
-
     size_t index = 0; // indexOfFirstMolecule(selectedComponent);
     for (size_t componentId = 0; componentId < components.size(); componentId++)
     {

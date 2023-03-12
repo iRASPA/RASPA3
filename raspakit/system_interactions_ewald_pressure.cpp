@@ -120,6 +120,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
 
+          std::complex<double> test{0.0, 0.0};
           std::fill(cksum.begin(), cksum.end(), std::complex<double>(0.0, 0.0));
           for(size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -129,6 +130,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             double charge = atoms[i].charge;
             double scaling = atoms[i].scalingCoulomb;
             cksum[comp] += scaling * charge * (eik_xy[i] * eikz_temp);
+            test += scaling * charge * (eik_xy[i] * eikz_temp);
           }
 
           cksum[0] += fixedFrameworkStoredEik[nvec];
@@ -141,6 +143,29 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             {
               energy(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + cksum[i].imag() * cksum[j].imag()), 0.0);
             }
+          }
+
+          for (size_t i = 0; i != numberOfAtoms; ++i)
+          {
+            std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
+            eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
+            std::complex<double> cki = eik_xy[i] * eikz_temp;
+            double charge = atomPositions[i].charge;
+            double scaling = atomPositions[i].scalingCoulomb;
+
+            atomPositions[i].gradient -= scaling * charge * 2.0 * temp * (cki.imag() * test.real() - cki.real() * test.imag()) * (kvec_x + kvec_y + kvec_z);
+            
+            //strainDerivativeTensor.ax += f.x * dr.x;
+            //strainDerivativeTensor.bx += f.y * dr.x;
+            //strainDerivativeTensor.cx += f.z * dr.x;
+            //
+            //strainDerivativeTensor.ay += f.x * dr.y;
+            //strainDerivativeTensor.by += f.y * dr.y;
+            //strainDerivativeTensor.cy += f.z * dr.y;
+            //
+            //strainDerivativeTensor.az += f.x * dr.z;
+            //strainDerivativeTensor.bz += f.y * dr.z;
+            //strainDerivativeTensor.cz += f.z * dr.z;
           }
 
           ++nvec;

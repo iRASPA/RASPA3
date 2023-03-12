@@ -73,17 +73,17 @@ import <semaphore>;
 				energy(compA, compB).VanDerWaals += 0.5 * energyFactor;
 				energy(compB, compA).VanDerWaals += 0.5 * energyFactor;
 			}
-            if (!noCharges && rr < cutOffChargeSquared)
-            {
-                double r = std::sqrt(rr);
-                double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-                EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+      if (!noCharges && rr < cutOffChargeSquared)
+      {
+        double r = std::sqrt(rr);
+        double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
+        EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
-                energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
-                energy(compB, compA).CoulombicReal += 0.5 * energyFactor;
-            }
+        energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
+        energy(compB, compA).CoulombicReal += 0.5 * energyFactor;
+      }
 		}
 	}
 
-    return std::make_pair(energy, strainDerivative);
+  return std::make_pair(energy, strainDerivative);
 }

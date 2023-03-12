@@ -54,9 +54,15 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
 
   RunningEnergy newTotalEnergy;
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  system.computeInterMolecularEnergy(newBox, std::span(newPositions.begin(), newPositions.end()), newTotalEnergy);
+  system.computeInterMolecularEnergy(newBox, newPositions, newTotalEnergy);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.cpuTime_VolumeMove_NonEwald += (t2 - t1);
+
+  std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+  system.computeEwaldFourierEnergy(newBox, newPositions, newTotalEnergy);
+  std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
+  system.cpuTime_VolumeMove_Ewald += (t4 - t3);
+
 
   system.statistics_VolumeMove.constructed += 1;
 
@@ -67,6 +73,9 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
 
     system.simulationBox = newBox;
     std::copy(newPositions.begin(), newPositions.end(), system.atomPositions.begin());
+
+    system.acceptEwaldMove();
+
     return newTotalEnergy;
   }
 

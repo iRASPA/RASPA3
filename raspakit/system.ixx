@@ -216,7 +216,9 @@ export struct System
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept;
     void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
+    void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
     void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
+    EnergyFactor computeEwaldFourierGradient();
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
