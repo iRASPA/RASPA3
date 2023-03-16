@@ -1,8 +1,8 @@
 SimulationType                MonteCarlo
-NumberOfCycles                20000
-NumberOfInitializationCycles  10000
+NumberOfCycles                40000
+NumberOfInitializationCycles  5000
 NumberOfEquilibrationCycles   0
-PrintEvery                    1000
+PrintEvery                    100
 NumberOfBlocks                5
 
 Box 0
@@ -12,7 +12,7 @@ EwaldPrecision 1e-6
 OmitEwaldFourier no
 
 ExternalTemperature 300.0
-ExternalPressure 1e6
+ExternalPressure 200e5
 
 VolumeMoveProbability 0.01
 
@@ -22,6 +22,6 @@ Component 0 MoleculeName               CO2
             ReinsertionProbability     0.5
             SwapProbability            0.0
             CFCMC_CBMC_SwapProbability 0.0
-            WidomProbability           1.0
+            WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
-            CreateNumberOfMolecules    100
+            CreateNumberOfMolecules    256

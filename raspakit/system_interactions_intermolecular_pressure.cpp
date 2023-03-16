@@ -32,10 +32,9 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   EnergyStatus energy(components.size());
-  double3x3 strainDerivativeTensor;
+  double3x3 strainDerivativeTensor{};
 
   std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
   if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
@@ -73,48 +72,48 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
           energy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
           energy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
 
-          const double3 f = forceFactor.forceFactor * dr;
+          const double3 g = forceFactor.forceFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          it1->gradient += g;
+          it2->gradient -= g;
 
-          strainDerivativeTensor.ax += f.x*dr.x;
-          strainDerivativeTensor.bx += f.y*dr.x;
-          strainDerivativeTensor.cx += f.z*dr.x;
-
-          strainDerivativeTensor.ay += f.x*dr.y;
-          strainDerivativeTensor.by += f.y*dr.y;
-          strainDerivativeTensor.cy += f.z*dr.y;
-
-          strainDerivativeTensor.az += f.x*dr.z;
-          strainDerivativeTensor.bz += f.y*dr.z;
-          strainDerivativeTensor.cz += f.z*dr.z;
+          strainDerivativeTensor.ax += g.x*dr.x;
+          strainDerivativeTensor.bx += g.y*dr.x;
+          strainDerivativeTensor.cx += g.z*dr.x;
+  
+          strainDerivativeTensor.ay += g.x*dr.y;
+          strainDerivativeTensor.by += g.y*dr.y;
+          strainDerivativeTensor.cy += g.z*dr.y;
+ 
+          strainDerivativeTensor.az += g.x*dr.z;
+          strainDerivativeTensor.bz += g.y*dr.z;
+          strainDerivativeTensor.cz += g.z*dr.z;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
           double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-          ForceFactor energyFactor = prefactor * potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
+          ForceFactor energyFactor = potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
 
           energy(compA, compB).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
           energy(compB, compA).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
 
-          const double3 f = energyFactor.forceFactor * dr;
+          const double3 g = energyFactor.forceFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          it1->gradient += g;
+          it2->gradient -= g;
 
-          strainDerivativeTensor.ax += f.x*dr.x;
-          strainDerivativeTensor.bx += f.y*dr.x;
-          strainDerivativeTensor.cx += f.z*dr.x;
+          strainDerivativeTensor.ax += g.x*dr.x;
+          strainDerivativeTensor.bx += g.y*dr.x;
+          strainDerivativeTensor.cx += g.z*dr.x;
 
-          strainDerivativeTensor.ay += f.x*dr.y;
-          strainDerivativeTensor.by += f.y*dr.y;
-          strainDerivativeTensor.cy += f.z*dr.y;
+          strainDerivativeTensor.ay += g.x*dr.y;
+          strainDerivativeTensor.by += g.y*dr.y;
+          strainDerivativeTensor.cy += g.z*dr.y;
 
-          strainDerivativeTensor.az += f.x*dr.z;
-          strainDerivativeTensor.bz += f.y*dr.z;
-          strainDerivativeTensor.cz += f.z*dr.z;
+          strainDerivativeTensor.az += g.x*dr.z;
+          strainDerivativeTensor.bz += g.y*dr.z;
+          strainDerivativeTensor.cz += g.z*dr.z;
         }
       }
     }

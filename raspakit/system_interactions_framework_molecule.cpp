@@ -42,7 +42,6 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   if (moleculeAtomPositions.empty()) return;
 
@@ -75,7 +74,7 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
       {
         double r = std::sqrt(rr);
         double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-        EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
         energyStatus.frameworkMoleculeCharge += energyFactor.energy;
         energyStatus.dUdlambda += energyFactor.dUdlambda;
@@ -91,7 +90,6 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
@@ -124,19 +122,19 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
 
         const double3 factor = forceFactor.forceFactor * dr;
 
-        it2->gradient += factor;
+        it2->gradient -= factor;
       }
       if (!noCharges && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
         double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-        ForceFactor energyFactor = prefactor * potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
+        ForceFactor energyFactor = potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
 
         energy += EnergyFactor(energyFactor.energy, 0);
 
         const double3 factor = energyFactor.forceFactor * dr;
 
-        it2->gradient += factor;
+        it2->gradient -= factor;
       }
     }
   }
@@ -156,7 +154,6 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
   const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
 
@@ -193,7 +190,7 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
       {
         double r = std::sqrt(rr);
         double scaling = scalingCoulombA * scalingCoulombB;
-        EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge += energyFactor.energy;
         energySum.dUdlambda += energyFactor.dUdlambda;
@@ -224,7 +221,7 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
       {
         double r = std::sqrt(rr);
         double scaling = scalingCoulombA * scalingCoulombB;
-        EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge -= energyFactor.energy;
         energySum.dUdlambda -= energyFactor.dUdlambda;
@@ -247,7 +244,6 @@ template <>
   [[maybe_unused]] const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   RunningEnergy energySum;
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
@@ -287,7 +283,7 @@ template <>
         {
           double r = std::sqrt(rr);
           double scaling = scalingCoulombA * scalingCoulombB;
-          EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+          EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge += energyFactor.energy;
           energySum.dUdlambda += energyFactor.dUdlambda;
@@ -322,7 +318,6 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
         const double overlapCriteria = forceField.overlapCriteria;
         const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
         const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-        const double prefactor = Units::CoulombicConversionFactor;
 
         for (std::span<const Atom>::iterator it1 = startIterator; it1 != endIterator; ++it1)
         {
@@ -364,7 +359,7 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
               {
                 double r = std::sqrt(rr);
                 double scaling = scalingCoulombA * scalingCoulombB;
-                EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+                EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
                 energySum.frameworkMoleculeCharge += energyFactor.energy;
                 energySum.dUdlambda += energyFactor.dUdlambda;
@@ -405,7 +400,6 @@ template <>
   [[maybe_unused]] const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   std::atomic_flag cancel;
   cancel.clear();
@@ -451,7 +445,7 @@ template <>
           {
             double r = std::sqrt(rr);
             double scaling = scalingCoulombA * scalingCoulombB;
-            EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
             energySum.dUdlambda += energyFactor.dUdlambda;

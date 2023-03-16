@@ -108,7 +108,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       }
     }
   }
-  pressureInfo.second -= correctionTerm;
+  pressureInfo.second = -(pressureInfo.second - correctionTerm);
 
   return pressureInfo;
 }

@@ -35,7 +35,6 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   if (moleculeAtomPositions.empty()) return;
 
@@ -76,7 +75,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
         {
           double r = std::sqrt(rr);
           double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-          EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+          EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
           energyStatus.moleculeMoleculeCharge += energyFactor.energy;
           energyStatus.dUdlambda += energyFactor.dUdlambda;
@@ -96,7 +95,6 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   for (std::span<const Atom>::iterator it1 = startIterator; it1 != endIterator; ++it1)
   {
@@ -140,7 +138,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
           {
             double r = std::sqrt(rr);
             double scaling = scalingCoulombA * scalingCoulombB;
-            EnergyFactor energy = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+            EnergyFactor energy = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
             energySum(compA, compB).CoulombicReal += 0.5 * energy;
             energySum(compB, compA).CoulombicReal += 0.5 * energy;
@@ -166,7 +164,6 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
   const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
@@ -209,7 +206,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
           {
             double r = std::sqrt(rr);
             double scaling = scalingCoulombA * scalingCoulombB;
-            EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
             energySum.moleculeMoleculeCharge += energyFactor.energy;
             energySum.dUdlambda += energyFactor.dUdlambda;
@@ -271,7 +268,6 @@ EnergyFactor System::computeInterMolecularGradient() noexcept
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   EnergyFactor energy{ 0.0, 0.0 };
 
@@ -312,21 +308,21 @@ EnergyFactor System::computeInterMolecularGradient() noexcept
 
           const double3 f = forceFactor.forceFactor * dr;
 
-          it1->gradient -= f;
-          it2->gradient += f;
+          it1->gradient += f;
+          it2->gradient -= f;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
           double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-          ForceFactor energyFactor = prefactor * potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
+          ForceFactor energyFactor = potentialCoulombGradient(forceField, scaling, r, chargeA, chargeB);
 
           energy += EnergyFactor(energyFactor.energy, 0);
 
           const double3 f = energyFactor.forceFactor * dr;
 
-          it1->gradient -= f;
-          it2->gradient += f;
+          it1->gradient += f;
+          it2->gradient -= f;
         }
       }
     }
@@ -346,7 +342,6 @@ EnergyFactor System::computeInterMolecularGradient() noexcept
   const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-  const double prefactor = Units::CoulombicConversionFactor;
 
   std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
 
@@ -390,7 +385,7 @@ EnergyFactor System::computeInterMolecularGradient() noexcept
         {
           double r = std::sqrt(rr);
           double scaling = scalingCoulombA * scalingCoulombB;
-          EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+          EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
           energySum.moleculeMoleculeCharge += energyFactor.energy;
           energySum.dUdlambda += energyFactor.dUdlambda;
@@ -427,7 +422,7 @@ EnergyFactor System::computeInterMolecularGradient() noexcept
         {
           double r = std::sqrt(rr);
           double scaling = scalingCoulombA * scalingCoulombB;
-          EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+          EnergyFactor energyFactor =  potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
           energySum.moleculeMoleculeCharge -= energyFactor.energy;
           energySum.dUdlambda -= energyFactor.dUdlambda;

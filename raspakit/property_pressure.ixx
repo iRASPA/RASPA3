@@ -65,7 +65,7 @@ export struct PropertyPressure
   {
     double3x3 average = averagedExcessPressureTensor();
 
-    double3x3 sumOfSquares = 0.0;
+    double3x3 sumOfSquares{ 0.0 };
     size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
@@ -77,7 +77,7 @@ export struct PropertyPressure
       }
     }
 
-    double3x3 confidenceIntervalError;
+    double3x3 confidenceIntervalError{ 0.0 };
     if(numberOfSamples >= 3)
     {
       size_t degreesOfFreedom = numberOfSamples - 1;
@@ -102,8 +102,8 @@ export struct PropertyPressure
     std::pair<double3x3,double> summedBlocks{0.0, 0.0};
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-        summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first * double3x3::identity();;
-        summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
+      summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first * double3x3::identity();
+      summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
     }
 
     return (summedBlocks.first / summedBlocks.second);
@@ -194,7 +194,7 @@ export struct PropertyPressure
   {
     double average = averagedExcessPressure();
 
-    double sumOfSquares = 0.0;
+    double sumOfSquares{ 0.0 };
     size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
@@ -206,7 +206,7 @@ export struct PropertyPressure
       }
     }
 
-    double confidenceIntervalError;
+    double confidenceIntervalError{0.0};
     if(numberOfSamples >= 3)
     {
       size_t degreesOfFreedom = numberOfSamples - 1;

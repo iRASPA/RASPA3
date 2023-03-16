@@ -37,8 +37,9 @@ export struct SimulationBox
     {
     };
 
-    explicit SimulationBox(double a, double b, double c);
-    explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma);
+    explicit SimulationBox(double a, double b, double c, Type type = Type::Rectangular);
+    explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma, Type type = Type::Rectangular);
+    explicit SimulationBox(double3x3 m, Type type = Type::Rectangular);
         
 
     ALWAYS_INLINE inline double3 applyPeriodicBoundaryConditions(const double3& dr) const
@@ -48,18 +49,21 @@ export struct SimulationBox
         case SimulationBox::Type::Rectangular:
         {
             double3 s;
-            s.x = dr.x - static_cast<int>(dr.x * inverseUnitCell.ax + ((dr.x >= 0.0) ? 0.5 : -0.5)) * unitCell.ax;
-            s.y = dr.y - static_cast<int>(dr.y * inverseUnitCell.by + ((dr.y >= 0.0) ? 0.5 : -0.5)) * unitCell.by;
-            s.z = dr.z - static_cast<int>(dr.z * inverseUnitCell.cz + ((dr.z >= 0.0) ? 0.5 : -0.5)) * unitCell.cz;
+            s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseUnitCell.ax + ((dr.x >= 0.0) ? 0.5 : -0.5))) * unitCell.ax;
+            s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseUnitCell.by + ((dr.y >= 0.0) ? 0.5 : -0.5))) * unitCell.by;
+            s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseUnitCell.cz + ((dr.z >= 0.0) ? 0.5 : -0.5))) * unitCell.cz;
             return s;
         }
         default:
         {
             double3 s = inverseUnitCell * dr;
-            s.x -= static_cast<int>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5));
-            s.y -= static_cast<int>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5));
-            s.z -= static_cast<int>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5));
-            return unitCell * s;
+            s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
+            s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
+            s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
+
+            // compute value in variable first to avoid microsoft compiler bug
+            double3 r = unitCell * s;
+            return r;
         }
         }
     }
@@ -283,4 +287,9 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
                          std::max(a.angleGamma, b.angleGamma));
 
     return c;
+}
+
+export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b)
+{
+  return SimulationBox(a * b.unitCell);
 }

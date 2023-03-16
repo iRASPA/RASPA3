@@ -1552,7 +1552,7 @@ template <class _T, class _U, class _Enable = void> struct __compressed_pair {
   ~__compressed_pair() noexcept = default;
   template <class _TLike, class _ULike>
   MDSPAN_INLINE_FUNCTION constexpr __compressed_pair(_TLike &&__t, _ULike &&__u)
-      : __t_val((_TLike &&) __t), __u_val((_ULike &&) __u) {}
+      : __t_val(static_cast<_TLike &&>(__t)), __u_val(static_cast<_ULike &&>(__u)) {}
 };
 
 #if !defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)

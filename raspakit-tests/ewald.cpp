@@ -60,7 +60,8 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, 90.54613836, 1e-6);
 }
 
-TEST(Ewald, Test_2_CO2_in_Box_10_10_10_Gradient)
+/*
+TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -82,7 +83,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10_Gradient)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(15.0, 15.0, 15.0),
+    SimulationBox(10.0, 10.0, 10.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 3, 0, 0),
@@ -90,7 +91,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10_Gradient)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(20.0, 20.0, 20.0),
+    SimulationBox(10.0, 10.0, 10.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 4, 1, 0),
@@ -158,7 +159,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10_Gradient)
     EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
   }
 
-}
+}*/
 
 TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
 {
@@ -471,4 +472,261 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 6309.7866899037, 1e-6);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1197.23909965, 1e-6);
+}
+
+
+TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
+{
+  ForceField forceField = ForceField(
+    { PseudoAtom("Si",   28.0855,   2.05,  14, false),
+      PseudoAtom("O",    15.999,   -1.025,  8, false),
+      PseudoAtom("CH4",  16.04246,  0.0,    6, false),
+      PseudoAtom("Na+",  12.0,      0.0, 6, false),
+      PseudoAtom("Cl-",  15.9994,   0.0, 8, false),
+    },
+    { VDWParameters(22.0 / 1.2027242847, 2.30),
+      VDWParameters(53.0 / 1.2027242847, 3.3),
+      VDWParameters(158.5 / 1.2027242847, 3.72),
+      VDWParameters(15.0966 / 1.2027242847, 2.65755),
+      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    },
+    ForceField::MixingRule::Lorentz_Berthelot,
+    12.0,
+    true,
+    false);
+  Component na = Component(0,
+    "Na",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+    }, 5);
+  Component cl = Component(1,
+    "Cl",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+    }, 5);
+
+  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+
+  //std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
+
+  std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
+
+  for (Atom& atom : atomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+  for (size_t i = 0; i < 20; ++i)
+  {
+    atomPositions[i].charge = 1.0;
+    system.atomPositions[i].charge = 1.0;
+  }
+  for (size_t i = 0; i < 20; ++i)
+  {
+    atomPositions[i + 20].charge = -1.0;
+    system.atomPositions[i + 20].charge = -1.0;
+  }
+
+  for (Atom& atom : atomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+
+
+  RunningEnergy energy, rigidenergy;
+  //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
+  //system.forceField.initializeEwaldParameters(perpendicularWidths);
+  system.forceField.EwaldAlpha = 0.25;
+  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+  system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+  system.computeEwaldFourierRigidEnergy(system.simulationBox, rigidenergy);
+
+  EnergyFactor factor = system.computeEwaldFourierGradient();
+
+  double delta = 1e-4;
+  double tolerance = 1e-4;
+  double3 gradient;
+  for (size_t i = 0; i < atomPositions.size(); ++i)
+  {
+    RunningEnergy forward1_x, forward2_x, backward1_x, backward2_x;
+    RunningEnergy forward1_y, forward2_y, backward1_y, backward2_y;
+    RunningEnergy forward1_z, forward2_z, backward1_z, backward2_z;
+
+    // finite difference x
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward2_x);
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward1_x);
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward1_x);
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward2_x);
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
+
+    // finite difference y
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward2_y);
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward1_y);
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward1_y);
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward2_y);
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
+
+    // finite difference z
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward2_z);
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), forward1_z);
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward1_z);
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 1.0 * delta;
+    system.computeEwaldFourierEnergy(system.simulationBox, std::span<const Atom>(atomPositions), backward2_z);
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
+
+    gradient.x = (-forward2_x.ewald + 8.0 * forward1_x.ewald - 8.0 * backward1_x.ewald + backward2_x.ewald) / (6.0 * delta);
+    gradient.y = (-forward2_y.ewald + 8.0 * forward1_y.ewald - 8.0 * backward1_y.ewald + backward2_y.ewald) / (6.0 * delta);
+    gradient.z = (-forward2_z.ewald + 8.0 * forward1_z.ewald - 8.0 * backward1_z.ewald + backward2_z.ewald) / (6.0 * delta);
+
+    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance) << "Wrong x-gradient";
+    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance) << "Wrong y-gradient";
+    EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
+  }
+}
+
+TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
+{
+  double delta = 1e-4;
+  double tolerance = 1e-3;
+
+  ForceField forceField = ForceField(
+    { PseudoAtom("Si",   28.0855,   2.05,  14, false),
+      PseudoAtom("O",    15.999,   -1.025,  8, false),
+      PseudoAtom("CH4",  16.04246,  0.0,    6, false),
+      PseudoAtom("Na+",  12.0,      0.0, 6, false),
+      PseudoAtom("Cl-",  15.9994,   0.0, 8, false),
+    },
+    { VDWParameters(22.0 / 1.2027242847, 2.30),
+      VDWParameters(53.0 / 1.2027242847, 3.3),
+      VDWParameters(158.5 / 1.2027242847, 3.72),
+      VDWParameters(15.0966 / 1.2027242847, 2.65755),
+      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    },
+    ForceField::MixingRule::Lorentz_Berthelot,
+    12.0,
+    true,
+    false);
+  Component na = Component(0,
+    "Na",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+    }, 5);
+  Component cl = Component(1,
+    "Cl",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+    }, 5);
+
+  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+
+  //std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
+
+  std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+
+  for (Atom& atom : moleculeAtomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+  for (size_t i = 0; i < 20; ++i)
+  {
+    moleculeAtomPositions[i].charge = 1.0;
+    system.atomPositions[i].charge = 1.0;
+  }
+  for (size_t i = 0; i < 20; ++i)
+  {
+    moleculeAtomPositions[i + 20].charge = -1.0;
+    system.atomPositions[i + 20].charge = -1.0;
+  }
+
+  for (Atom& atom : moleculeAtomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+  RunningEnergy energy, rigidenergy;
+  //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
+  //system.forceField.initializeEwaldParameters(perpendicularWidths);
+  system.forceField.EwaldAlpha = 0.25;
+  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+  system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+  system.computeEwaldFourierRigidEnergy(system.simulationBox, rigidenergy);
+
+  std::pair<EnergyStatus, double3x3> pressureInfo = system.computeEwaldFourierEnergyStrainDerivative();
+
+  std::vector<std::pair<double3x3, double>> strains{
+     std::pair{double3x3{double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.ax},
+     std::pair{double3x3{double3{0.0, delta, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.bx},
+     std::pair{double3x3{double3{0.0, 0.0, delta}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.cx},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.ay},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, delta, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.by},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, delta}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.cy},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{delta, 0.0, 0.0} }, pressureInfo.second.az},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, delta, 0.0} }, pressureInfo.second.bz},
+     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, delta} }, pressureInfo.second.cz}
+  };
+
+  double3x3 inv = system.simulationBox.inverseUnitCell;
+  double3x3 identity{ double3{1.0, 0.0, 0.0}, double3{0.0, 1.0, 0.0}, double3{0.0, 0.0, 1.0} };
+
+  for (const std::pair<double3x3, double> strain : strains)
+  {
+    SimulationBox strainBox_forward2 = SimulationBox((identity + strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
+    std::vector<Atom> moleculeAtomPositions_forward2{};
+    std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward2),
+      [&strainBox_forward2, &inv](const Atom& m) { return Atom(strainBox_forward2.unitCell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+    RunningEnergy EnergyForward2;
+    system.computeEwaldFourierEnergy(strainBox_forward2, moleculeAtomPositions_forward2, EnergyForward2);
+
+    SimulationBox strainBox_forward1 = SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
+    std::vector<Atom> moleculeAtomPositions_forward1{};
+    std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward1),
+      [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.unitCell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+    RunningEnergy EnergyForward1;
+    system.computeEwaldFourierEnergy(strainBox_forward1, moleculeAtomPositions_forward1, EnergyForward1);
+
+
+    SimulationBox strainBox_backward1 = SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
+    std::vector<Atom> moleculeAtomPositions_backward1{};
+    std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward1),
+      [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.unitCell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+    RunningEnergy EnergyBackward1;
+    system.computeEwaldFourierEnergy(strainBox_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
+
+    SimulationBox strainBox_backward2 = SimulationBox((identity - strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
+    std::vector<Atom> moleculeAtomPositions_backward2{};
+    std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward2),
+      [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.unitCell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+    RunningEnergy EnergyBackward2;
+    system.computeEwaldFourierEnergy(strainBox_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
+
+    double strainDerivativeApproximation = (-EnergyForward2.total() + 8.0 * EnergyForward1.total() - 8.0 * EnergyBackward1.total() + EnergyBackward2.total()) / (6.0 * delta);
+
+    EXPECT_NEAR(strainDerivativeApproximation, strain.second, tolerance) << "Wrong strainDerivative";
+  }
 }

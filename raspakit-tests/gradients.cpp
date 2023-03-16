@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <vector>
+
 import double3;
 
 import forcefield;
@@ -8,7 +11,7 @@ import system;
 import simulationbox;
 import energy_factor;
 
-TEST(Gradients, Test_CH4_in_ITQ_29)
+TEST(Gradients, Test_CH4_in_Box_25x25x25)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
@@ -166,7 +169,7 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
-  std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
+  std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end()); 
 
   for (Atom& atom : atomPositions)
   {
@@ -223,5 +226,107 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
     EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.x, gradient.x, tolerance);
     EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.y, gradient.y, tolerance);
     EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance);
+  }
+}
+
+TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
+{
+  ForceField forceField = ForceField(
+    { PseudoAtom("Si",   28.0855,   2.05,  14, false),
+      PseudoAtom("O",    15.999,   -1.025,  8, false),
+      PseudoAtom("CH4",  16.04246,  0.0,    6, false),
+      PseudoAtom("Na+",  12.0,      0.0, 6, false),
+      PseudoAtom("Cl-",  15.9994,   0.0, 8, false),
+    },
+    { VDWParameters(22.0 / 1.2027242847, 2.30),
+      VDWParameters(53.0 / 1.2027242847, 3.3),
+      VDWParameters(158.5 / 1.2027242847, 3.72),
+      VDWParameters(15.0966 / 1.2027242847, 2.65755),
+      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    },
+    ForceField::MixingRule::Lorentz_Berthelot,
+    12.0,
+    true,
+    false);
+  Component na = Component(0,
+    "Na",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+    }, 5);
+  Component cl = Component(1,
+    "Cl",
+    43.9988,
+    SimulationBox(25.0, 25.0, 25.0),
+    304.1282, 7377300.0, 0.22394,
+    {
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+    }, 5);
+
+  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+
+  //std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
+
+  std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
+  std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
+
+  for (Atom& atom : atomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+  for (size_t i = 0; i < 20; ++i)
+  {
+    atomPositions[i].charge = 1.0;
+    system.atomPositions[i].charge = 1.0;
+  }
+  for (size_t i = 0; i < 20; ++i)
+  {
+    atomPositions[i + 20].charge = -1.0;
+    system.atomPositions[i + 20].charge = -1.0;
+  }
+
+  EnergyFactor factor = system.computeInterMolecularGradient();
+
+  double delta = 1e-5;
+  double tolerance = 1e-5;
+  double3 gradient;
+  for (size_t i = 0; i < atomPositions.size(); ++i)
+  {
+    RunningEnergy x1, x2, y1, y2, z1, z2;
+
+    // finite difference x
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), x2);
+
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), x1);
+    atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
+
+    // finite difference y
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), y2);
+
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), y1);
+    atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
+
+    // finite difference z
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), z2);
+
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
+    system.computeInterMolecularEnergy(system.simulationBox, std::span<const Atom>(atomPositions), z1);
+    atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
+
+    gradient.x = (x2.moleculeMoleculeVDW + x2.moleculeMoleculeCharge - (x1.moleculeMoleculeVDW + x1.moleculeMoleculeCharge)) / delta;
+    gradient.y = (y2.moleculeMoleculeVDW + y2.moleculeMoleculeCharge - (y1.moleculeMoleculeVDW + y1.moleculeMoleculeCharge)) / delta;
+    gradient.z = (z2.moleculeMoleculeVDW + z2.moleculeMoleculeCharge - (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge)) / delta;
+
+    EXPECT_NEAR(system.atomPositions[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(system.atomPositions[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(system.atomPositions[i].gradient.z, gradient.z, tolerance);
   }
 }

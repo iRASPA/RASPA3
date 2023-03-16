@@ -478,7 +478,7 @@ EnergyFactor System::computeEwaldFourierGradient()
 
   
 
-  size_t nvec = 0;
+  //size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   for (std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
   {
@@ -505,6 +505,8 @@ EnergyFactor System::computeEwaldFourierGradient()
         if ((kx * kx + ky * ky + kz * kz) != 0)
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
+          double3 rk = kvec_x + kvec_y + kvec_z;
+          double rksq = rk.length_squared();
 
           std::complex<double> cksum(0.0, 0.0);
           for (size_t i = 0; i != numberOfAtoms; ++i)
@@ -516,7 +518,7 @@ EnergyFactor System::computeEwaldFourierGradient()
             cksum += scaling * charge * (eik_xy[i] * eikz_temp);
           }
 
-          double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
+          
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
 
@@ -527,11 +529,11 @@ EnergyFactor System::computeEwaldFourierGradient()
             std::complex<double> cki = eik_xy[i] * eikz_temp;
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
-            atomPositions[i].gradient -= scaling * charge * 2.0 * temp * (cki.imag() * cksum.real() - cki.real() * cksum.imag()) * (kvec_x + kvec_y + kvec_z);
+            atomPositions[i].gradient -= scaling * charge * 2.0 * temp * (cki.imag() * cksum.real() - cki.real() * cksum.imag()) * rk;
           }
 
           //storedEik[nvec] = cksum;
-          ++nvec;
+//          ++nvec;
         }
       }
     }

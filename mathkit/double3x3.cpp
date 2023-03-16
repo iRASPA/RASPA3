@@ -64,7 +64,7 @@ double3x3::double3x3(const int3x3 &m)
 double double3x3::determinant(void)
 {
     double determinant =
-        +m11 * (m22 * m33 - m23 * m32)
+          m11 * (m22 * m33 - m23 * m32)
         - m12 * (m21 * m33 - m23 * m31)
         + m13 * (m21 * m32 - m22 * m31);
 
@@ -92,20 +92,20 @@ double double3x3::trace(void) const
 const double3x3 double3x3::inverse()
 {
     double determinant =
-        +m11 * (m22 * m33 - m23 * m32)
+          m11 * (m22 * m33 - m23 * m32)
         - m12 * (m21 * m33 - m23 * m31)
         + m13 * (m21 * m32 - m22 * m31);
 
     double3x3 inverse;
-    inverse.m11 = +(m22 * m33 - m32 * m23) / determinant;
+    inverse.m11 =  (m22 * m33 - m32 * m23) / determinant;
     inverse.m21 = -(m21 * m33 - m31 * m23) / determinant;
-    inverse.m31 = +(m21 * m32 - m31 * m22) / determinant;
+    inverse.m31 =  (m21 * m32 - m31 * m22) / determinant;
     inverse.m12 = -(m12 * m33 - m32 * m13) / determinant;
-    inverse.m22 = +(m11 * m33 - m31 * m13) / determinant;
+    inverse.m22 =  (m11 * m33 - m31 * m13) / determinant;
     inverse.m32 = -(m11 * m32 - m31 * m12) / determinant;
-    inverse.m13 = +(m12 * m23 - m22 * m13) / determinant;
+    inverse.m13 =  (m12 * m23 - m22 * m13) / determinant;
     inverse.m23 = -(m11 * m23 - m21 * m13) / determinant;
-    inverse.m33 = +(m11 * m22 - m21 * m12) / determinant;
+    inverse.m33 =  (m11 * m22 - m21 * m12) / determinant;
 
     return inverse;
 }
@@ -113,7 +113,7 @@ const double3x3 double3x3::inverse()
 double3x3 double3x3::inverse(const double3x3& a)
 {
     double determinant =
-        +a.m11 * (a.m22 * a.m33 - a.m23 * a.m32)
+          a.m11 * (a.m22 * a.m33 - a.m23 * a.m32)
         - a.m12 * (a.m21 * a.m33 - a.m23 * a.m31)
         + a.m13 * (a.m21 * a.m32 - a.m22 * a.m31);
 

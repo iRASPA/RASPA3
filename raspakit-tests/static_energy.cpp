@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <vector>
+
 import double3;
 
 import forcefield;
@@ -269,3 +272,5 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
   system.computeEwaldFourierEnergy(system.simulationBox, energy);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1197.23909965, 1e-6);
 }
+
+

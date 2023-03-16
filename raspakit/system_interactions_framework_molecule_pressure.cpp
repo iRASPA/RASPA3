@@ -34,15 +34,14 @@ import <semaphore>;
 	double3 dr, posA, posB, f;
 	double rr;
 
-    double3x3 strainDerivative;
-    EnergyStatus energy(components.size());
+  double3x3 strainDerivative;
+  EnergyStatus energy(components.size());
 
-    const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
-    const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-    const double prefactor = Units::CoulombicConversionFactor;
+  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-    std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
-    std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+  std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
 	if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivative);
 
 	for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
@@ -77,7 +76,7 @@ import <semaphore>;
       {
         double r = std::sqrt(rr);
         double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-        EnergyFactor energyFactor = prefactor * potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
 
         energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
         energy(compB, compA).CoulombicReal += 0.5 * energyFactor;

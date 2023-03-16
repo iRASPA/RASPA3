@@ -5,9 +5,11 @@ import <numbers>;
 
 import double4;
 
+import units;
 import forcefield;
 import force_factor;
 
+// return D[U[r],r] / r
 
 export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield, const double& scaling, const double& r, const double& chargeA, const double& chargeB)
 {
@@ -17,12 +19,9 @@ export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield,
       case ForceField::ChargeMethod::Ewald:
       {
         double alpha = forcefield.EwaldAlpha;
-        return ForceFactor(scaling * chargeA * chargeB * std::erfc(alpha * r) / r, 
-              scaling * chargeA * chargeB * ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) * std::numbers::inv_sqrtpi_v<double>) / (r * r * r)), 0.0);
-
-        //-COULOMBIC_CONVERSION_FACTOR*chargeA*chargeB*
-        //     (erfc(Alpha[CurrentSystem]*r)+2.0*Alpha[CurrentSystem]*r*exp(-SQR(Alpha[CurrentSystem])*rr)/sqrt(M_PI))/
-        //     (r*rr);
+        ForceFactor result =  ForceFactor(Units::CoulombicConversionFactor * scaling * chargeA * chargeB * std::erfc(alpha * r) / r,
+              -Units::CoulombicConversionFactor *  scaling * chargeA * chargeB * ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) * std::numbers::inv_sqrtpi_v<double>) / (r * r * r)), 0.0);
+        return result;
       }
       case ForceField::ChargeMethod::Coulomb:
       {

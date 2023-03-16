@@ -823,16 +823,6 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-  //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
-  //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
-  //double currentPressure = currentIdealPressure + currentExcessPressure;
-
-  //std::pair<double, double> pressure = averagePressure.averagePressure();
-  //std::print(outputFile, "Pressure:             {: .6e} ({: .6e} +/- {: .6e}) [bar]\n", 
-  //        1e-5 * Units::PressureConversionFactor * currentPressure,
-  //        1e-5 * Units::PressureConversionFactor * pressure.first,
-  //        1e-5 * Units::PressureConversionFactor * pressure.second);
   std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
   double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;

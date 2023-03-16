@@ -119,6 +119,9 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
         if((kx * kx + ky * ky + kz * kz) != 0)
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
+          double3 rk = kvec_x + kvec_y + kvec_z;
+          double rksq = rk.length_squared();
+          double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
 
           std::complex<double> test{0.0, 0.0};
           std::fill(cksum.begin(), cksum.end(), std::complex<double>(0.0, 0.0));
@@ -134,14 +137,17 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
           }
 
           cksum[0] += fixedFrameworkStoredEik[nvec];
+          double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
 
-          double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
-          double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+          
+          
           for(size_t i = 0; i != numberOfComponents; ++i)
           {
+            
             for(size_t j = 0; j != numberOfComponents; ++j)
             {
               energy(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + cksum[i].imag() * cksum[j].imag()), 0.0);
+              
             }
           }
 
@@ -155,18 +161,22 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
 
             atomPositions[i].gradient -= scaling * charge * 2.0 * temp * (cki.imag() * test.real() - cki.real() * test.imag()) * (kvec_x + kvec_y + kvec_z);
             
-            //strainDerivativeTensor.ax += f.x * dr.x;
-            //strainDerivativeTensor.bx += f.y * dr.x;
-            //strainDerivativeTensor.cx += f.z * dr.x;
-            //
-            //strainDerivativeTensor.ay += f.x * dr.y;
-            //strainDerivativeTensor.by += f.y * dr.y;
-            //strainDerivativeTensor.cy += f.z * dr.y;
-            //
-            //strainDerivativeTensor.az += f.x * dr.z;
-            //strainDerivativeTensor.bz += f.y * dr.z;
-            //strainDerivativeTensor.cz += f.z * dr.z;
-          }
+            
+            }
+
+          double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
+            strainDerivative.ax += fac * rk.x * rk.x - currentEnergy;
+            strainDerivative.bx += fac * rk.x * rk.y;
+            strainDerivative.cx += fac * rk.x * rk.z;
+          
+            strainDerivative.ay += fac * rk.y * rk.x;
+            strainDerivative.by += fac * rk.y * rk.y - currentEnergy;
+            strainDerivative.cy += fac * rk.y * rk.z;
+       
+            strainDerivative.az += fac * rk.z * rk.x;
+            strainDerivative.bz += fac * rk.z * rk.y;
+            strainDerivative.cz += fac * rk.z * rk.z - currentEnergy;
+          
 
           ++nvec;
         }
@@ -218,7 +228,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
   {
     for(size_t j = 0; j != numberOfComponents; ++j)
     {
-      energy(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
+      //energy(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
     }
   }
 

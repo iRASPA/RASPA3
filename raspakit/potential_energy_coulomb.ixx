@@ -2,6 +2,7 @@ export module potential_energy_coulomb;
 
 import forcefield;
 import energy_factor;
+import units;
 
 import double4;
 import <cmath>;
@@ -14,8 +15,8 @@ export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, 
       default:
       case ForceField::ChargeMethod::Ewald:
       {
-        double term = chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r);
-        return EnergyFactor(scaling * term / r, 0.0);
+        EnergyFactor result(Units::CoulombicConversionFactor *  scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
+        return  result;
       }
       case ForceField::ChargeMethod::Coulomb:
       {
