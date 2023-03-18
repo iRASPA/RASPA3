@@ -39,8 +39,8 @@ import <iomanip>;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(System &systemA, System &systemB) const
 {
-  systemA.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
-  systemB.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
+  systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.counts += 1;
+  systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.counts += 1;
 
   // determine New box-volumes leaving the total volume constant
   double oldVolumeA = systemA.simulationBox.volume;
@@ -57,11 +57,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double scaleA = std::pow(newVolumeA/oldVolumeA, 1.0/3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::vector<Atom> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
+
   RunningEnergy newTotalEnergyA;
   std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
-  systemA.computeInterMolecularEnergy(newBoxA, std::span(newPositionsA.begin(), newPositionsA.end()), newTotalEnergyA);
+  systemA.computeInterMolecularEnergy(newBoxA, newPositionsA, newTotalEnergyA);
   std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
   systemA.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2A - t1A);
+
+  std::chrono::system_clock::time_point t3A = std::chrono::system_clock::now();
+  systemA.computeEwaldFourierEnergy(newBoxA, newPositionsA, newTotalEnergyA);
+  std::chrono::system_clock::time_point t4A = std::chrono::system_clock::now();
+  systemA.mc_moves_probabilities.cpuTime_GibbsVolumeMove_Ewald += (t4A - t3A);
 
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 
@@ -72,16 +78,24 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double scaleB = std::pow(newVolumeB/oldVolumeB, 1.0/3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
   std::vector<Atom> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
+
+
   RunningEnergy newTotalEnergyB;
   std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
-  systemB.computeInterMolecularEnergy(newBoxB, std::span(newPositionsB.begin(), newPositionsB.end()), newTotalEnergyB);
+  systemB.computeInterMolecularEnergy(newBoxB, newPositionsB, newTotalEnergyB);
   std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
   systemB.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2B - t1B);
 
+  std::chrono::system_clock::time_point t3B = std::chrono::system_clock::now();
+  systemB.computeEwaldFourierEnergy(newBoxB, newPositionsB, newTotalEnergyB);
+  std::chrono::system_clock::time_point t4B = std::chrono::system_clock::now();
+  systemB.mc_moves_probabilities.cpuTime_GibbsVolumeMove_Ewald += (t4B - t3B);
+
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 
-  if(RandomNumber::Uniform() < std::exp(-systemA.beta * (
-           ((newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total())) +
+  double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total());
+
+  if(RandomNumber::Uniform() < std::exp(-systemA.beta * (deltaU +
            ((numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
            ((numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) )))
   {
@@ -89,11 +103,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.begin(), newPositionsA.end(), systemA.atomPositions.begin());
+    systemA.acceptEwaldMove();
 
     systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.begin(), newPositionsB.end(), systemB.atomPositions.begin());
+    systemB.acceptEwaldMove();
 
     return std::make_pair(newTotalEnergyA, newTotalEnergyB);
   }

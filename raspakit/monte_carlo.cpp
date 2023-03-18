@@ -126,12 +126,13 @@ void MonteCarlo::initialize()
     for (size_t j = 0; j != systems.size(); ++j)
     {
       System& selectedSystem = randomSystem();
+      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectedComponent);
+        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent);
       }
     }
 
@@ -176,12 +177,13 @@ void MonteCarlo::equilibrate()
     for (size_t j = 0; j != systems.size(); ++j)
     {
       System& selectedSystem = randomSystem();
+      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectedComponent);
+        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent);
       }
     }
 
@@ -257,12 +259,13 @@ void MonteCarlo::production()
     for (size_t j = 0; j != systems.size(); ++j)
     {
       System& selectedSystem = randomSystem();
+      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
       
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMoveProduction(selectedSystem, selectedComponent, estimation.currentBin);
+        particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, estimation.currentBin);
       }
     }
 

@@ -14,8 +14,8 @@ export struct MCMoveProbabilitiesSystem
   double probabilityGibbsSwapMove_CFCMC{ 0.0 };
   double probabilityGibbsSwapMove_CFCMC_CBMC{ 0.0 };
 
-  MoveStatistics<double> statistics_VolumeMove{ .maxChange = 0.5 };
-  MoveStatistics<double> statistics_GibbsVolumeMove{};
+  MoveStatistics<double> statistics_VolumeMove{ .maxChange = 0.1 };
+  MoveStatistics<double> statistics_GibbsVolumeMove{ .maxChange = 0.1 };
   MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
   MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
   MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};

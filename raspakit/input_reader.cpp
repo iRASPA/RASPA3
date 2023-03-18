@@ -552,6 +552,14 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "GibbsVolumeMoveProbability"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        double value = parseDouble(arguments, keyword, lineNumber);
+        systems.back().mc_moves_probabilities.probabilityGibbsVolumeMove = value;
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "Movies"))
       {
         //requireExistingSystem(keyword, lineNumber);

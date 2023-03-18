@@ -22,6 +22,7 @@ void MCMoveProbabilitiesSystem::clear()
 void MCMoveProbabilitiesSystem::optimizeAcceptance()
 {
   statistics_VolumeMove.optimizeAcceptance();
+  statistics_GibbsVolumeMove.optimizeAcceptance();
 }
 
 void MCMoveProbabilitiesSystem::clearTimingStatistics()
