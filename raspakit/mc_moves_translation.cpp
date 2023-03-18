@@ -57,12 +57,12 @@ std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t se
     if (!interMolecule.has_value()) return std::nullopt;
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
-    system.components[selectedComponent].mc_moves_timings.cpuTime_TranslationMove_NonEwald += (t2 - t1);
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_TranslationMove_NonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_timings.cpuTime_TranslationMove_Ewald += (u2 - u1);
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_TranslationMove_Ewald += (u2 - u1);
 
     RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 

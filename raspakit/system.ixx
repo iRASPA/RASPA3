@@ -42,6 +42,7 @@ import units;
 import bond_potential;
 import isotherm;
 import move_statistics;
+import mc_moves_probabilities_system;
 
 export struct System
 {
@@ -54,12 +55,7 @@ export struct System
     System(const System&& s) noexcept;
     System(System&& s) noexcept;
 
-    double temperature{ 300.0 };
-    double pressure{ 1e4 };
-    double input_pressure{ 1e4 };
-    double beta{ 1.0 / (Units::KB * 300.0) };
-
-    double HeliumVoidFraction{ 0.29 };
+   
     enum class FluidState : int
     {
       Unknown = 0,
@@ -84,6 +80,13 @@ export struct System
     MultiComponentMixingRules multiComponentMixingRules = MultiComponentMixingRules::VanDerWaals;
 
     size_t systemId{};
+
+    double temperature{ 300.0 };
+    double pressure{ 1e4 };
+    double input_pressure{ 1e4 };
+    double beta{ 1.0 / (Units::KB * 300.0) };
+
+    double HeliumVoidFraction{ 0.29 };
 
     size_t numberOfFrameworks{ 0 };
     size_t numberOfFrameworkAtoms{ 0 };
@@ -121,8 +124,6 @@ export struct System
     // The atoms-order is defined as increasing per component and molecule.
     // Because the number of atoms is fixed per component it is easy to access the n-th molecule
     std::vector<Atom> atomPositions;
-    std::vector<double3> atomVelocities;
-    std::vector<double3> atomForces;
 
     RunningEnergy runningEnergies;
     RunningEnergy rigidEnergies;
@@ -151,35 +152,7 @@ export struct System
     std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
     std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
 
-    double probabilityVolumeMove{ 0.0 };
-    double probabilityGibbsVolumeMove{ 0.0 };
-    double probabilityGibbsSwapMove_CBMC{ 0.0 };
-    double probabilityGibbsSwapMove_CFCMC{ 0.0 };
-    double probabilityGibbsSwapMove_CFCMC_CBMC{ 0.0 };
-
-    MoveStatistics<double> statistics_VolumeMove{ .maxChange = 0.5 };
-    MoveStatistics<double> statistics_GibbsVolumeMove{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CBMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
-    MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
-
-    std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
-
-    std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
-    std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
+    MCMoveProbabilitiesSystem mc_moves_probabilities;
 
     // Breakthrough settings
     size_t columnNumberOfGridPoints{ 100 };

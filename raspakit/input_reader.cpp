@@ -548,7 +548,7 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
-        systems.back().probabilityVolumeMove = value;
+        systems.back().mc_moves_probabilities.probabilityVolumeMove = value;
         continue;
       }
 

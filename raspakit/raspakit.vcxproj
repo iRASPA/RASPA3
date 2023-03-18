@@ -221,12 +221,13 @@
     <ClCompile Include="lambda.ixx" />
     <ClCompile Include="mc_moves.cpp" />
     <ClCompile Include="mc_moves.ixx" />
-    <ClCompile Include="mc_moves_cputime.cpp" />
-    <ClCompile Include="mc_moves_cputime.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />
+    <ClCompile Include="mc_moves_gibbs_volume.cpp" />
     <ClCompile Include="mc_moves_insertion.cpp" />
-    <ClCompile Include="mc_moves_probabilities.cpp" />
-    <ClCompile Include="mc_moves_probabilities.ixx" />
+    <ClCompile Include="mc_moves_probabilities_particles.cpp" />
+    <ClCompile Include="mc_moves_probabilities_particles.ixx" />
+    <ClCompile Include="mc_moves_probabilities_system.cpp" />
+    <ClCompile Include="mc_moves_probabilities_system.ixx" />
     <ClCompile Include="mc_moves_random_rotation.cpp" />
     <ClCompile Include="mc_moves_random_translation.cpp" />
     <ClCompile Include="mc_moves_reinsertion.cpp" />

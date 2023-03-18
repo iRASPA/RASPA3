@@ -60,12 +60,12 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(System& system, size_t
     std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(newMolecule, molecule);
     if (!interMolecule.has_value()) return std::nullopt;
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_timings.cpuTime_RandomRotationMove_NonEwald += (t2 - t1);
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_RandomRotationMove_NonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_timings.cpuTime_RandomRotationMove_Ewald += (u2 - u1);
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_RandomRotationMove_Ewald += (u2 - u1);
     RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.constructed[selectedDirection] += 1;

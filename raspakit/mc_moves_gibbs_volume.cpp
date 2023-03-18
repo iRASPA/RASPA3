@@ -39,12 +39,12 @@ import <iomanip>;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(System &systemA, System &systemB) const
 {
-  systemA.statistics_VolumeMove.counts += 1;
-  systemB.statistics_VolumeMove.counts += 1;
+  systemA.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
+  systemB.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
 
   // determine New box-volumes leaving the total volume constant
   double oldVolumeA = systemA.simulationBox.volume;
-  double maxVolumeChangeA = systemA.statistics_GibbsVolumeMove.maxChange;
+  double maxVolumeChangeA = systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.maxChange;
   double oldVolumeB = systemB.simulationBox.volume;
   double totalVolume = oldVolumeA + oldVolumeB;
   double expdv = std::exp(std::log(oldVolumeA/oldVolumeB) + maxVolumeChangeA * (2.0 * RandomNumber::Uniform() - 1.0));
@@ -61,9 +61,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
   systemA.computeInterMolecularEnergy(newBoxA, std::span(newPositionsA.begin(), newPositionsA.end()), newTotalEnergyA);
   std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
-  systemA.cpuTime_GibbsVolumeMove_NonEwald += (t2A - t1A);
+  systemA.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2A - t1A);
 
-  systemA.statistics_GibbsVolumeMove.constructed += 1;
+  systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 
 
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
@@ -76,21 +76,21 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
   systemB.computeInterMolecularEnergy(newBoxB, std::span(newPositionsB.begin(), newPositionsB.end()), newTotalEnergyB);
   std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
-  systemB.cpuTime_GibbsVolumeMove_NonEwald += (t2B - t1B);
+  systemB.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2B - t1B);
 
-  systemB.statistics_GibbsVolumeMove.constructed += 1;
+  systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 
   if(RandomNumber::Uniform() < std::exp(-systemA.beta * (
            ((newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total())) +
            ((numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
            ((numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) )))
   {
-    systemA.statistics_GibbsVolumeMove.accepted += 1;
+    systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.begin(), newPositionsA.end(), systemA.atomPositions.begin());
 
-    systemB.statistics_GibbsVolumeMove.accepted += 1;
+    systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.begin(), newPositionsB.end(), systemB.atomPositions.begin());

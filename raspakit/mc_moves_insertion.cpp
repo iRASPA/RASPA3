@@ -51,7 +51,7 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
+  system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
 
   
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.constructed += 1;
@@ -59,7 +59,7 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_timings.cpuTime_SwapInsertionMove_CBMC_Ewald += (u2 - u1);
+  system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionMove_CBMC_Ewald += (u2 - u1);
 
   //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
   //                                     system.computeTailCorrectionVDWOldEnergy();

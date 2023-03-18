@@ -58,11 +58,11 @@ import <cmath>;
 import <chrono>;
 
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
+    systemId(id), 
     temperature(T),
     pressure(P / Units::PressureConversionFactor),
     input_pressure(P),
     beta(1.0 / (Units::KB * T)),
-    systemId(id),
     components(c),
     loadings(c.size()),
     averageLoadings(numberOfBlocks, c.size()),
@@ -80,8 +80,6 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
     averageSimulationBox(numberOfBlocks),
     atomPositions({}),
-    atomVelocities({}),
-    atomForces({}),
     runningEnergies(),
     averageEnergies(numberOfBlocks, c.size()),
     currentEnergyStatus(c.size()),
@@ -151,20 +149,23 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                simulationBox(0.0, 0.0, 0.0, 90.0 * std::numbers::pi / 180.0, 90.0 * std::numbers::pi / 180.0, 90.0 * std::numbers::pi / 180.0),
                averageSimulationBox(numberOfBlocks),
                atomPositions({}),
-               atomVelocities({}),
-               atomForces({}),
                runningEnergies(),
                averageEnergies(numberOfBlocks, c.size()),
                currentEnergyStatus(c.size()),
                averagePressure(numberOfBlocks),
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
-               netCharge(c.size())
+               netCharge(c.size()),
+               mc_moves_probabilities()
 {
     
 }
 
 System::System(System&& s) noexcept :
     systemId(s.systemId),
+    temperature(s.temperature),
+    pressure(s.pressure),
+    input_pressure(s.input_pressure),
+    beta(s.beta),
     numberOfFrameworks(s.numberOfFrameworks),
     components(std::move(s.components)),
     loadings(s.loadings),
@@ -184,14 +185,13 @@ System::System(System&& s) noexcept :
     simulationBox(std::move(s.simulationBox)),
     averageSimulationBox(std::move(s.averageSimulationBox)),
     atomPositions(std::move(s.atomPositions)),
-    atomVelocities(std::move(s.atomVelocities)),
-    atomForces(std::move(s.atomForces)),
     runningEnergies(s.runningEnergies),
     averageEnergies(s.averageEnergies),
     currentEnergyStatus(s.currentEnergyStatus),
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
+    mc_moves_probabilities(s.mc_moves_probabilities),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -209,6 +209,10 @@ System::System(System&& s) noexcept :
 
 System::System(const System&& s) noexcept :
     systemId(s.systemId),
+    temperature(s.temperature),
+    pressure(s.pressure),
+    input_pressure(s.input_pressure),
+    beta(s.beta),
     numberOfFrameworks(s.numberOfFrameworks),
     components(std::move(s.components)),
     loadings(s.loadings),
@@ -228,14 +232,15 @@ System::System(const System&& s) noexcept :
     simulationBox(std::move(s.simulationBox)),
     averageSimulationBox(std::move(s.averageSimulationBox)),
     atomPositions(std::move(s.atomPositions)),
-    atomVelocities(std::move(s.atomVelocities)),
-    atomForces(std::move(s.atomForces)),
+    //atomVelocities(std::move(s.atomVelocities)),
+    //atomForces(std::move(s.atomForces)),
     runningEnergies(s.runningEnergies),
     averageEnergies(s.averageEnergies),
     currentEnergyStatus(s.currentEnergyStatus),
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
+    mc_moves_probabilities(s.mc_moves_probabilities),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -605,11 +610,11 @@ void System::rescaleMoveProbabilities()
 {
   for (Component& component : components)
   {
-    component.mc_moves_probabilities.probabilityVolumeMove = probabilityVolumeMove;
-    component.mc_moves_probabilities.probabilityGibbsVolumeMove = probabilityGibbsVolumeMove;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = probabilityGibbsVolumeMove;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC = probabilityGibbsSwapMove_CFCMC;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC = probabilityGibbsSwapMove_CFCMC_CBMC;
+    component.mc_moves_probabilities.probabilityVolumeMove = mc_moves_probabilities.probabilityVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsVolumeMove = mc_moves_probabilities.probabilityGibbsVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = mc_moves_probabilities.probabilityGibbsVolumeMove;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC = mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC;
+    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC = mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC;
 
     component.mc_moves_probabilities.normalizeMoveProbabilties();
   }
@@ -635,7 +640,7 @@ void System::removeRedundantMoves()
 
 void System::optimizeMCMoves()
 {
-  statistics_VolumeMove.optimizeAcceptance();
+  mc_moves_probabilities.optimizeAcceptance();
   for (Component& component : components)
   {
     component.mc_moves_probabilities.optimizeMCMoves();
@@ -944,46 +949,13 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
   for (int componentId = 0; const Component& component : components)
   {
     std::print(stream, "Component {} [{}]\n", componentId, component.name);
-    std::print(stream, component.mc_moves_timings.writeMCMoveCPUTimeStatistics());
+    std::print(stream, component.mc_moves_probabilities.writeMCMoveCPUTimeStatistics());
     componentId++;
   }
 
-  if(cpuTime_VolumeMove.count() > 0.0)
-  {
-    std::print(stream, "    Volume move:            {:14f} [s]\n", cpuTime_VolumeMove.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_VolumeMove_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_VolumeMove_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_VolumeMove.count() - cpuTime_VolumeMove_NonEwald.count() - cpuTime_VolumeMove_Ewald.count());
-  }
+  mc_moves_probabilities.writeMCMoveCPUTimeStatistics();
 
-  if(cpuTime_GibbsVolumeMove.count() > 0.0)
-  {
-    std::print(stream, "    Gibbs Volume:           {:14f} [s]\n", cpuTime_GibbsVolumeMove.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsVolumeMove_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsVolumeMove_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsVolumeMove.count() - cpuTime_GibbsVolumeMove_NonEwald.count() - cpuTime_GibbsVolumeMove_Ewald.count());
-  }
-  if(cpuTime_GibbsSwapMove_CBMC.count() > 0.0)
-  {
-    std::print(stream, "    Gibbs swap (CBMC):      {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapMove_CBMC.count() - cpuTime_GibbsSwapMove_CBMC_NonEwald.count() - cpuTime_GibbsSwapMove_CBMC_Ewald.count());
-  }
-  if(cpuTime_GibbsSwapLambdaMove_CFCMC.count() > 0.0)
-  {
-    std::print(stream, "    Gibbs swap (CFCMC):     {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald.count());
-  }
-  if(cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count() > 0.0)
-  {
-    std::print(stream, "    Gibbs swap (CB/CFCMC):  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald.count() - cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald.count());
-  }
+ 
 }
 
 std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
@@ -1022,31 +994,11 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
 
 void System::clearMoveStatistics()
 {
-  statistics_VolumeMove.clear();
-  statistics_GibbsVolumeMove.clear();
-  statistics_GibbsSwapMove_CBMC.clear();
-  statistics_GibbsSwapMove_CFCMC.clear();
-  statistics_GibbsSwapMove_CFCMC_CBMC.clear();
+  mc_moves_probabilities.clear();
 }
 
 void System::clearTimingStatistics()
 {
-  cpuTime_VolumeMove = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsVolumeMove = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapMove_CBMC = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC = std::chrono::duration<double>(0.0);
-
-  cpuTime_VolumeMove_NonEwald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsVolumeMove_NonEwald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
-
-  cpuTime_VolumeMove_Ewald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsVolumeMove_Ewald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
-  cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
+  mc_moves_probabilities.clearTimingStatistics();
 }
 

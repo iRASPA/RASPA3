@@ -27,8 +27,7 @@ import isotherm;
 import multi_site_isotherm;
 import bond_potential;
 import move_statistics;
-import mc_moves_cputime;
-import mc_moves_probabilities;
+import mc_moves_probabilities_particles;
 
 export struct Component
 {
@@ -104,8 +103,7 @@ export struct Component
     std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
     std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
     
-    MC_Move_Probabilities mc_moves_probabilities;
-    MC_Move_CPUtimings mc_moves_timings;
+    MCMoveProbabilitiesParticles mc_moves_probabilities;
 
     PropertyWidom averageRosenbluthWeights;
 
