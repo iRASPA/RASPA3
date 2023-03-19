@@ -222,6 +222,7 @@
     <ClCompile Include="mc_moves.cpp" />
     <ClCompile Include="mc_moves.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />
+    <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_volume.cpp" />
     <ClCompile Include="mc_moves_insertion.cpp" />
     <ClCompile Include="mc_moves_probabilities_particles.cpp" />

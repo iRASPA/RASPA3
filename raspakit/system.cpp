@@ -612,10 +612,7 @@ void System::rescaleMoveProbabilities()
   {
     component.mc_moves_probabilities.probabilityVolumeMove = mc_moves_probabilities.probabilityVolumeMove;
     component.mc_moves_probabilities.probabilityGibbsVolumeMove = mc_moves_probabilities.probabilityGibbsVolumeMove;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = mc_moves_probabilities.probabilityGibbsSwapMove_CBMC;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC = mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC;
-    component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC = mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC;
-
+  
     component.mc_moves_probabilities.normalizeMoveProbabilties();
   }
 }

@@ -95,9 +95,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total());
 
-  if(RandomNumber::Uniform() < std::exp(-systemA.beta * (deltaU +
-           ((numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
-           ((numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) )))
+  if(RandomNumber::Uniform() < std::exp(-systemA.beta * deltaU +
+           (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
+           (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) ))
   {
     systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
 

@@ -157,18 +157,33 @@ void MC_Moves::performRandomMove(System& selectedSystem, System& selectedSecondS
   }
   else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsVolumeMove)
   {
-    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     std::optional<std::pair<RunningEnergy,RunningEnergy>> energy = GibbsVolumeMove(selectedSystem, selectedSecondSystem);
     if (energy)
     {
       selectedSystem.runningEnergies = energy.value().first;
       selectedSecondSystem.runningEnergies = energy.value().second;
     }
-    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    selectedSystem.mc_moves_probabilities.cpuTime_GibbsVolumeMove += (t2 - t1);
   }
   else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CBMC)
   {
+    if(RandomNumber::Uniform() < 0.5)
+    {
+      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CBMC(selectedSystem, selectedSecondSystem, selectedComponent);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value().first;
+        selectedSecondSystem.runningEnergies += energy.value().second;
+      }
+    }
+    else
+    {
+      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CBMC(selectedSecondSystem, selectedSystem, selectedComponent);
+      if (energy)
+      {
+        selectedSecondSystem.runningEnergies += energy.value().first;
+        selectedSystem.runningEnergies += energy.value().second;
+      }
+    }
   }
   else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC)
   {
@@ -359,6 +374,31 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, System& selec
   }
   else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CBMC)
   {
+
+    if (RandomNumber::Uniform() < 0.5)
+    {
+      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CBMC(selectedSystem, selectedSecondSystem, selectedComponent);
+      if (energy)
+      {
+        selectedSystem.runningEnergies += energy.value().first;
+        selectedSecondSystem.runningEnergies += energy.value().second;
+      }
+      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+      selectedSystem.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC += (t2 - t1);
+    }
+    else
+    {
+      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CBMC(selectedSecondSystem, selectedSystem, selectedComponent);
+      if (energy)
+      {
+        selectedSecondSystem.runningEnergies += energy.value().first;
+        selectedSystem.runningEnergies += energy.value().second;
+      }
+      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+      selectedSystem.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC += (t2 - t1);
+    }
   }
   else if (randomNumber < selectedSystem.components[selectedComponent].mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC)
   {

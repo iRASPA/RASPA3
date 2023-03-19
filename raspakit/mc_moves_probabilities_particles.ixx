@@ -58,6 +58,10 @@ export struct MCMoveProbabilitiesParticles
   MoveStatistics<double3> statistics_WidomMove_CFCMC{};
   MoveStatistics<double3> statistics_WidomMove_CFCMC_CBMC{};
 
+  MoveStatistics<double> statistics_GibbsSwapMove_CBMC{};
+  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
+  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
+
   void clearMoveStatistics();
   void optimizeMCMoves();
 
@@ -77,6 +81,9 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CBMC{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
 
   std::chrono::duration<double> cpuTime_TranslationMove_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_RandomTranslationMove_NonEwald{ 0.0 };
@@ -96,6 +103,9 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
 
   std::chrono::duration<double> cpuTime_TranslationMove_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_RandomTranslationMove_Ewald{ 0.0 };
@@ -114,6 +124,9 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
 
   void clearTimingStatistics();
   const std::string writeMCMoveCPUTimeStatistics() const;

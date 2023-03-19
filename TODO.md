@@ -1,9 +1,9 @@
  1) move dU/dlambda to system
- 2) compute pressure (Ewald)
- 3) volume move (NPT)
- 4) rescale MC moves max-change 
+ 2) compute pressure (Ewald)       DONE
+ 3) volume move (NPT)              DONE
+ 4) rescale MC moves max-change    DONE
  5) identity change
- 6) Gibbs ensemble
+ 6) Gibbs ensemble                 DONE
  7) Molecular Dynamics
  8) read framework
  9) read molecule
@@ -14,9 +14,11 @@
 14) grids for rigid frameworks
 15) partial molar volumes
 
-fix
-===
-1) density in kg/m^3 (multiply by mass)
+tests
+=====
+1) independence of Coulomb cutoff to test Fourier vs real
+2) tests for lambda-derivatives
+3) check Gibbs cutoff per system
 
 
 long-term:
