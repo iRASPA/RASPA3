@@ -15,6 +15,7 @@ import averages;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
+import component;
 
 inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, double> &lhs, const std::pair<EnergyStatus, double> &rhs)
 {
@@ -86,4 +87,6 @@ export struct PropertyEnergy
     }
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  std::string writeAveragesStatistics(std::vector<Component>& components) const;
 };

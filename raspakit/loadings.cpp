@@ -21,7 +21,7 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, std::opt
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
 
     const double toMolePerKg = 1000.0 / frameworkMass.value();
-    const double toMgPerKg = 1000.0 * comp.mass / frameworkMass.value();
+    const double toMgPerG = 1000.0 * comp.mass / frameworkMass.value();
     const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     switch(comp.type)
@@ -32,13 +32,13 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, std::opt
       default:
         double loading = numberOfMolecules[comp.componentId];
         std::print(stream, "    absolute adsorption: {: .6e} molec/uc\n", loading);
-        std::print(stream, "                         {: .6e} mol/kg\n", loading * toMolePerKg);
-        std::print(stream, "                         {: .6e} mg/g\n", loading * toMgPerKg);
+        std::print(stream, "                         {: .6e} mol/kg-framework\n", loading * toMolePerKg);
+        std::print(stream, "                         {: .6e} mg/g-framework\n", loading * toMgPerG);
 
         double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
         std::print(stream, "    excess adsorption:   {: .6e} molec/uc\n", excess_loading);
-        std::print(stream, "                         {: .6e} mol/kg\n", excess_loading * toMolePerKg);
-        std::print(stream, "                         {: .6e} mg/g\n", excess_loading * toMgPerKg);
+        std::print(stream, "                         {: .6e} mol/kg-framework\n", excess_loading * toMolePerKg);
+        std::print(stream, "                         {: .6e} mg/g-framework\n", excess_loading * toMgPerG);
         break;
     }
   }

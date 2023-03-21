@@ -286,6 +286,9 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
                          std::max(a.angleBeta, b.angleBeta),
                          std::max(a.angleGamma, b.angleGamma));
 
+ 
+    if(a.type == SimulationBox::Type::Triclinic || b.type == SimulationBox::Type::Triclinic) c.type = SimulationBox::Type::Triclinic;
+
     return c;
 }
 

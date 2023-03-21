@@ -71,7 +71,8 @@ CIFReader::CIFReader(const std::string& content, const ForceField &forceField): 
         }
     }
 
-    simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0, _gamma * std::numbers::pi / 180.0);
+    SimulationBox::Type type = (std::abs(_alpha - 90.0) > 1.0e-3) || (std::abs(_beta - 90.0) > 1.0e-3) || (std::abs(_gamma - 90.0) > 1.0e-3) ? SimulationBox::Type::Triclinic : SimulationBox::Type::Rectangular;
+    simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0, _gamma * std::numbers::pi / 180.0, type);
    //double3x3 unitCell = simulationBox.unitCell;
    //for (size_t i = 0; i < fractionalAtoms.size(); ++i)
    //{
