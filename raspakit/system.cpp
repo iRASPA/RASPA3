@@ -194,6 +194,7 @@ System::System(System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
+    lambda(s.lambda),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -205,8 +206,7 @@ System::System(System&& s) noexcept :
     columnNumberOfTimeSteps(s.columnNumberOfTimeSteps),
     columnAutoNumberOfTimeSteps(s.columnAutoNumberOfTimeSteps),
     mixturePredictionMethod(s.mixturePredictionMethod),
-    pressure_range(s.pressure_range),
-    lambda(s.lambda)
+    pressure_range(s.pressure_range)
 {
 }
 
@@ -244,6 +244,7 @@ System::System(const System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
+    lambda(s.lambda),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -255,8 +256,7 @@ System::System(const System&& s) noexcept :
     columnNumberOfTimeSteps(s.columnNumberOfTimeSteps),
     columnAutoNumberOfTimeSteps(s.columnAutoNumberOfTimeSteps),
     mixturePredictionMethod(s.mixturePredictionMethod),
-    pressure_range(s.pressure_range),
-    lambda(s.lambda)
+    pressure_range(s.pressure_range)
 {
 }
 

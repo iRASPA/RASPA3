@@ -8,14 +8,17 @@ import double4;
 import <cmath>;
 import <numbers>;
 
-export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const double& scaling, const double& r, const double& chargeA, const double& chargeB)
+export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const double& scalingA, const double& scalingB, const double& r, const double& chargeA, const double& chargeB)
 {
+  double scaling = scalingA * scalingB;
     switch(forcefield.chargeMethod)
     {
       default:
       case ForceField::ChargeMethod::Ewald:
       {
-        EnergyFactor result(Units::CoulombicConversionFactor *  scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
+         double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r;
+         EnergyFactor result(scaling * temp, 
+                             temp);
         return  result;
       }
       case ForceField::ChargeMethod::Coulomb:
