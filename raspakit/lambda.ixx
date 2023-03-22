@@ -3,7 +3,6 @@ export module lambda;
 import randomnumbers;
 import averages;
 import property_lambda_probability_histogram;
-import property_dudlambda;
 
 import <vector>;
 import <iostream>;
@@ -38,8 +37,7 @@ export struct Lambda
       delta(1.0 / static_cast<double>(numberOfBins - 1)), 
       histogram(numberOfBins),
       biasFactor(numberOfBins),
-      newHistogram(numberOfBlocks, numberOfBins),
-      dUdlambdaBookKeeping(numberOfBlocks,numberOfBins)
+      newHistogram(numberOfBlocks, numberOfBins)
   {
   }
 
@@ -53,7 +51,6 @@ export struct Lambda
   std::vector<double> biasFactor;
 
   PropertyLambdaProbabilityHistogram newHistogram;
-  PropertyDUDlambda dUdlambdaBookKeeping;
 
   inline double lambdaValue()
   {
@@ -78,11 +75,6 @@ export struct Lambda
   void sampleHistogram(size_t blockIndex, double density)
   {
     newHistogram.addSample(blockIndex, currentBin, density, weight());
-  }
-
-  void sampledUdLambdaHistogram(size_t blockIndex, double value)
-  {
-    dUdlambdaBookKeeping.addSample(blockIndex, currentBin, 2.0 * value);
   }
 
   inline double weight() const
