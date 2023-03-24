@@ -1,0 +1,35 @@
+CXX=clang++
+CXXFLAGS= -O3 -march=native -ffast-math -std=c++2b -fopenmp -g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops -fmodules -fbuiltin-module-map -stdlib=libc++ -fprebuilt-module-path=mathkit -fprebuilt-module-path=foundationkit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit -fprebuilt-module-path=raspakit/MC
+
+default: raspa;
+
+mathkit:
+	cd mathkit && $(MAKE)
+
+foundationkit:
+	cd foundationkit && $(MAKE)
+
+raspakit:
+	cd raspakit && $(MAKE)
+
+raspa: 
+	$(CXX) $(CXXFLAGS) -c raspa3/main/main.cpp -o raspa3/main/main.o
+	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -fopenmp
+
+all:
+	cd mathkit && $(MAKE) -f makefile-llvm
+	cd foundationkit && $(MAKE) -f makefile-llvm
+	cd symmetrykit && $(MAKE) -f makefile-llvm
+	cd raspakit && $(MAKE) -f makefile-llvm
+	$(CXX) $(CXXFLAGS) -c raspa3/main/main.cpp -o raspa3/main/main.o
+	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -fopenmp
+
+clean:
+	rm -f raspa3.exe
+
+allclean:
+	rm -f raspa3.exe
+	cd mathkit && $(MAKE) -f makefile-llvm clean
+	cd foundationkit && $(MAKE) -f makefile-llvm clean
+	cd symmetrykit && $(MAKE) -f makefile-llvm clean
+	cd raspakit && $(MAKE) -f makefile-llvm clean
