@@ -11,6 +11,7 @@ import skatomcopy;
 
 import <vector>;
 import <string>;
+import <memory>;
 
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier) : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {
