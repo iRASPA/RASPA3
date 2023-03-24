@@ -13,7 +13,6 @@ import double4;
 import skelement;
 import skatomcopy;
 
-
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier) : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {
     _uniqueForceFieldName = PredefinedElements::predefinedElements[elementIdentifier]._chemicalSymbol;

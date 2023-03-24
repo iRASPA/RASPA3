@@ -2,6 +2,8 @@ export module skboundingbox;
 
 import <array>;
 import <tuple>;
+import <utility>;
+import <memory>;
 
 import double4x4;
 import double3;

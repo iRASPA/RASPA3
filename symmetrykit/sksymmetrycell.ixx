@@ -3,6 +3,7 @@ export module sksymmetrycell;
 import <vector>;
 import <optional>;
 import <tuple>;
+import <memory>;
 
 import int3;
 import int3x3;
@@ -12,7 +13,6 @@ import skdefinitions;
 import skrotationmatrix;
 import sktransformationmatrix;
 import skpointsymmetryset;
-
 
 export class SKSymmetryCell
 {
