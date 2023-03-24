@@ -1,5 +1,6 @@
 export module skdefinitions;
 
+import <type_traits>;
 import <cstdint>;
 
 export enum class Symmorphicity : size_t
