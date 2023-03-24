@@ -87,7 +87,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     averageEnergies(numberOfBlocks, c.size()),
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
-    netCharge(c.size())
+    netCharge(c.size()),
+    lambda(numberOfBlocks, 41)
 {
 
   for (Component& component : components)
@@ -158,7 +159,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                averagePressure(numberOfBlocks),
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
-               mc_moves_probabilities()
+               mc_moves_probabilities(),
+               lambda(numberOfBlocks, 41)
 {
     
 }
@@ -195,6 +197,7 @@ System::System(System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
+    lambda(s.lambda),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -244,6 +247,7 @@ System::System(const System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
+    lambda(s.lambda),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -933,9 +937,10 @@ void System::sampleProperties(size_t currentBlock)
 
      component.lambda.sampleHistogram(currentBlock, density);
      component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
-     component.lambda.sampledUdLambdaHistogram(currentBlock, runningEnergies.dUdlambda);
-     component.lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
    }
+
+   lambda.sampledUdLambdaHistogram(currentBlock, runningEnergies.dUdlambda);
+   //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
 
    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 

@@ -187,6 +187,8 @@
     <ClCompile Include="breakthrough_simulation.ixx" />
     <ClCompile Include="cif_reader.cpp" />
     <ClCompile Include="cif_reader.ixx" />
+    <ClCompile Include="dudlambda.cpp" />
+    <ClCompile Include="dudlambda.ixx" />
     <ClCompile Include="energy_factor.cpp" />
     <ClCompile Include="energy_factor.ixx" />
     <ClCompile Include="energy_status_inter.cpp" />
@@ -282,13 +284,11 @@
     <ClCompile Include="system_interactions_framework_molecule_pressure.cpp" />
     <ClCompile Include="system_interactions_intermolecular_pressure.cpp" />
     <ClCompile Include="system_interactions_tailcorrection.cpp" />
-    <ClCompile Include="system_print_energyaverages.cpp" />
-    <ClCompile Include="system_print_enthalpy.cpp" />
+    <ClCompile Include="system_print_dudlambda.cpp" />
     <ClCompile Include="system_print_movestatistics.cpp" />
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />
     <ClCompile Include="system_compute_fluid_properties.cpp" />
-    <ClCompile Include="system_print_pressure_averages.cpp" />
     <ClCompile Include="units.cpp" />
     <ClCompile Include="system_interactions_framework_molecule.cpp" />
     <ClCompile Include="units.ixx" />

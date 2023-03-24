@@ -50,6 +50,7 @@ import <semaphore>;
 		size_t compA = static_cast<size_t>(it1->componentId);
 		size_t typeA = static_cast<size_t>(it1->type);
 		double scaleA = it1->scalingVDW;
+    double scalingCoulombA = it1->scalingCoulomb;
 		double chargeA = it1->charge;
 		for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
 		{
@@ -58,6 +59,7 @@ import <semaphore>;
 			posB = it2->position;
 			size_t typeB = static_cast<size_t>(it2->type);
 			double scaleB = it2->scalingVDW;
+      double scalingCoulombB = it2->scalingCoulomb;
 			double chargeB = it2->charge;
 
 			dr = posA - posB;
@@ -75,8 +77,7 @@ import <semaphore>;
       if (!noCharges && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        double scaling = it1->scalingCoulomb * it2->scalingCoulomb;
-        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scaling, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
         energy(compB, compA).CoulombicReal += 0.5 * energyFactor;

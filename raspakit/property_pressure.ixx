@@ -13,6 +13,7 @@ import <iostream>;
 
 import double3x3;
 import averages;
+import units;
 
 inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
@@ -304,4 +305,6 @@ export struct PropertyPressure
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  std::string writeAveragesStatistics() const;
 };

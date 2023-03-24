@@ -342,9 +342,10 @@ void MonteCarlo::output()
     std::chrono::duration<double> totalSimulationTime = (t2 - t1);
     std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
-    system.writeEnergyAveragesStatistics(stream);
-    system.writePressureAveragesStatistics(stream);
-    system.writeEnthalpyOfAdsorption(stream);
+    std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
+    std::print(stream, system.averagePressure.writeAveragesStatistics());
+    std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+    std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }
 void MonteCarlo::cleanup()

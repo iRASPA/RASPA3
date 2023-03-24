@@ -189,12 +189,6 @@
     <ClCompile Include="system_interactions_tailcorrection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="system_print_energyaverages.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="system_print_enthalpy.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="forcefield.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -280,9 +274,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="system_interactions_intermolecular_pressure.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="system_print_pressure_averages.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="energy_factor.cpp">
@@ -424,6 +415,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_print_dudlambda.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dudlambda.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dudlambda.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

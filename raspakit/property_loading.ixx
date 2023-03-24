@@ -13,6 +13,7 @@ import <iostream>;
 
 import averages;
 import loadings;
+import component;
 
 inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &lhs, const std::pair<Loadings, double> &rhs)
 {
@@ -84,4 +85,6 @@ export struct PropertyLoading
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
 };

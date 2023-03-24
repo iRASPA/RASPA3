@@ -43,6 +43,7 @@ import bond_potential;
 import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
+import dudlambda;
 
 export struct System
 {
@@ -153,6 +154,8 @@ export struct System
     std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
 
     MCMoveProbabilitiesSystem mc_moves_probabilities;
+
+    dUdLambda lambda;
 
     // Breakthrough settings
     size_t columnNumberOfGridPoints{ 100 };
@@ -267,10 +270,11 @@ export struct System
     void writeComponentStatus(std::ostream &stream) const;
 
     void writeMCMoveStatistics(std::ostream &stream) const;
-    void writeEnergyAveragesStatistics(std::ostream &stream) const;
-    void writeEnthalpyOfAdsorption(std::ostream &stream) const;
-    void writePressureAveragesStatistics(std::ostream &stream) const;
+    //void writeEnergyAveragesStatistics(std::ostream &stream) const;
+    //void writeEnthalpyOfAdsorption(std::ostream &stream) const;
+    //void writePressureAveragesStatistics(std::ostream &stream) const;
 
+    std::string writedudLambdaStatistics() const;
     
 
     std::vector<Component> nonFrameworkComponents()

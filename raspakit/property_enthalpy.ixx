@@ -14,6 +14,7 @@ import <iostream>;
 import averages;
 import loadings;
 import enthalpy_of_adsorption;
+import component;
 
 inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
@@ -94,4 +95,6 @@ export struct PropertyEnthalpy
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  std::string writeAveragesStatistics(std::vector<size_t>& swapableComponents, std::vector<Component>& components) const;
 };
