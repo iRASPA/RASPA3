@@ -2,6 +2,10 @@ module;
 
 module skasymmetricatom;
 
+import <vector>;
+import <string>;
+import <memory>;
+
 import bool3;
 import double3;
 import double2;
@@ -9,8 +13,6 @@ import double4;
 import skelement;
 import skatomcopy;
 
-import <vector>;
-import <string>;
 
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier) : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {

@@ -14,6 +14,7 @@ import <array>;
 import <complex>;
 import <ios>;
 import <optional>;
+import <algorithm>;
 
 import int3;
 import stringutils;

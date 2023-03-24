@@ -2,6 +2,10 @@ module;
 
 module system;
 
+import <iostream>;
+import <random>;
+import <sstream>;
+import <cmath>;
 
 import double3;
 import component;
@@ -19,9 +23,6 @@ import move_statistics;
 import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
 
-import <iostream>;
-import <random>;
-import <sstream>;
 
 inline void formatStatistics(std::ostream &stream, const std::string name, const MoveStatistics<double>& move)
 {

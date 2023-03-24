@@ -1,11 +1,11 @@
 export module mixture_prediction;
 
+import <functional>;
 import <vector>;
 import <span>;
 import <tuple>;
 import <string>;
 import <ostream>;
-import <functional>;
 
 import atom;
 import isotherm;

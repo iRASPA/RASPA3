@@ -4,14 +4,15 @@ module;
 
 module skintegersymmetryoperationset;
 
+import <tuple>;
+import <vector>;
+import <unordered_set>;
+import <iterator>;
+
 import int3;
 import int3x3;
 import double3;
 import double3x3;
-
-import <tuple>;
-import <vector>;
-import <unordered_set>;
 
 import sksymmetrycell;
 import skrotationmatrix;

@@ -1,6 +1,7 @@
 export module randomnumbers;
 
 import <random>;
+import <cmath>;
 
 import double3;
 

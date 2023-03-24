@@ -6,6 +6,8 @@ module;
 #include <utility>
 #include <assert.h>
 #include <numbers>
+#include <tuple>
+#include <iterator>
 
 module sksymmetrycell;
 

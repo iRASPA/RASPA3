@@ -2,6 +2,7 @@ module;
 
 module mixture_prediction;
 
+import <functional>;
 import <vector>;
 import <span>;
 import <cmath>;

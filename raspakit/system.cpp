@@ -60,6 +60,8 @@ import <filesystem>;
 import <optional>;
 import <cmath>;
 import <chrono>;
+import <algorithm>;
+import <numeric>;
 
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 

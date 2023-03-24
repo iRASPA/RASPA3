@@ -7,6 +7,7 @@ import <span>;
 import <chrono>;
 import <vector>;
 import <cmath>;
+import <tuple>;
 
 import randomnumbers;
 import running_energy;

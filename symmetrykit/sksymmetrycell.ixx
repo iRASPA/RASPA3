@@ -1,5 +1,9 @@
 export module sksymmetrycell;
 
+import <vector>;
+import <optional>;
+import <tuple>;
+
 import int3;
 import int3x3;
 import double3;
@@ -9,8 +13,6 @@ import skrotationmatrix;
 import sktransformationmatrix;
 import skpointsymmetryset;
 
-import <vector>;
-import <optional>;
 
 export class SKSymmetryCell
 {

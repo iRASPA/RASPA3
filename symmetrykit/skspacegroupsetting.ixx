@@ -67,6 +67,6 @@ private:
     std::vector<int3> _latticeTranslations;
     std::string _schoenflies;
     size_t _pointGroupNumber;
-    SKAsymmetricUnit _asymmetricUnit = { {10,0}, {20,1}, {30,2} };
+    SKAsymmetricUnit _asymmetricUnit; // = {{10,0}, {20,1}, {30,2}};
     SKTransformationMatrix _transformationMatrix;  // the inverse of the transformation to "standard" setting (so: standard to unconventional setting)
 };
