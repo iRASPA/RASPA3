@@ -31,7 +31,8 @@ import threadpool;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;
-
+import mc_moves_probabilities_system;
+import mc_moves_probabilities_particles;
 
 
 

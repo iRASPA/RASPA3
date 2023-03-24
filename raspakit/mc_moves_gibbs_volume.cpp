@@ -20,6 +20,7 @@ import property_widom;
 import averages;
 import forcefield;
 import move_statistics;
+import mc_moves_probabilities_system;
 
 import <complex>;
 import <vector>;

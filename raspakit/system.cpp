@@ -42,7 +42,11 @@ import multi_site_isotherm;
 import pressure_range;
 import bond_potential;
 import move_statistics;
+import mc_moves_probabilities_system;
+import mc_moves_probabilities_particles;
+import dudlambda;
 
+import <cstddef>;
 import <numbers>;
 import <complex>;
 import <vector>;

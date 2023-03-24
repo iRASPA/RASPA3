@@ -6,6 +6,7 @@ import <string>;
 import <iostream>;
 import <sstream>;
 import <tuple>;
+import <vector>;
 
 import double3;
 import double3x3;
