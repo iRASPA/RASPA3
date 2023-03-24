@@ -14,8 +14,8 @@ default: libfoundationkit;
 	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
 
 %.pcm: %.ixx
-	$(CXX) $(CXXFLAGS) -I/usr/local/include -I/opt/homebrew/include -x c++-module --precompile $< -o $@
-	$(CXX) $(CXXFLAGS) -I/usr/local/include -I/opt/homebrew/include -x c++-module -c $< -o $@.o
+	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -I/opt/homebrew/include -x c++-module --precompile $< -o $@
+	$(CXX) $(CXXFLAGS) -I/usr/local/src/fmt/include -I/opt/homebrew/include -x c++-module -c $< -o $@.o
 
 
 scanner.pcm: characterset.o

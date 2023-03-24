@@ -16,6 +16,8 @@ import property_dudlambda;
 import property_widom;
 import property_loading;
 import move_statistics;
+import mc_moves_probabilities_system;
+import mc_moves_probabilities_particles;
 
 import <iostream>;
 import <random>;

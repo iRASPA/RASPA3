@@ -27,6 +27,7 @@ import simulationbox;
 import cif_reader;
 import move_statistics;
 import bond_potential;
+import mc_moves_probabilities_particles;
 
 import <iostream>;
 import <sstream>;

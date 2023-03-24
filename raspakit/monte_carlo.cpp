@@ -29,6 +29,7 @@ import property_simulationbox;
 import property_energy;
 import property_loading;
 import property_enthalpy;
+import mc_moves_probabilities_particles;
 
 import <iostream>;
 import <algorithm>;

@@ -17,6 +17,8 @@ import running_energy;
 import lambda;
 import property_widom;
 import averages;
+import mc_moves_probabilities_particles;
+import mc_moves_probabilities_system;
 
 import <complex>;
 import <vector>;
@@ -31,7 +33,6 @@ import <chrono>;
 import <cmath>;
 import <iostream>;
 import <iomanip>;
-
 
 void MC_Moves::performRandomMove(System& selectedSystem, System& selectedSecondSystem, size_t selectedComponent)
 {
