@@ -5,6 +5,8 @@ import double3;
 import double2;
 import double4;
 import <string>;
+import <utility>;
+import <memory>;
 import <cstdlib>;
 import <vector>;
 import skatomcopy;
