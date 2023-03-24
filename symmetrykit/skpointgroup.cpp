@@ -10,6 +10,7 @@ import <map>;
 import <string>;
 import <unordered_set>;
 import <vector>;
+import <iterator>;
 
 import int3;
 import int3x3;

@@ -2,8 +2,8 @@ export module skcell;
 
 import <vector>;
 import <cstdlib>;
-import <array>;
 import <memory>;
+import <array>;
 
 import int3;
 import bool3;

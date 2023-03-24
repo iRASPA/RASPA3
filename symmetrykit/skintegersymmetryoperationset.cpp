@@ -11,6 +11,7 @@ import double3x3;
 
 import <tuple>;
 import <vector>;
+import <iterator>;
 import <unordered_set>;
 
 import sksymmetrycell;

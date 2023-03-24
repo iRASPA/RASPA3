@@ -5,6 +5,7 @@ module;
 module sksymmetryoperationset;
 
 import <vector>;
+import <iterator>;
 
 import double3;
 import int3x3;

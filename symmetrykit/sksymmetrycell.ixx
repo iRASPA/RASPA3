@@ -11,6 +11,8 @@ import skpointsymmetryset;
 
 import <vector>;
 import <optional>;
+import <memory>;
+import <tuple>;
 
 export class SKSymmetryCell
 {

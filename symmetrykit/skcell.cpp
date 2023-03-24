@@ -8,6 +8,7 @@ import <vector>;
 import <array>;
 import <cstdlib>;
 import <cmath>;
+import <memory>;
 import int3;
 import bool3;
 import double3;
