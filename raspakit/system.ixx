@@ -27,6 +27,7 @@ import averages;
 import running_energy;
 import energy_status;
 import energy_factor;
+import force_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
@@ -186,8 +187,8 @@ export struct System
     void computeTotalEnergies() noexcept;
     void computeTotalGradients() noexcept;
 
-    EnergyFactor computeInterMolecularGradient() noexcept;
-    EnergyFactor computeFrameworkMoleculeGradient() noexcept;
+    ForceFactor computeInterMolecularGradient() noexcept;
+    ForceFactor computeFrameworkMoleculeGradient() noexcept;
 
     void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
@@ -195,7 +196,7 @@ export struct System
     void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
     void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
     void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
-    EnergyFactor computeEwaldFourierGradient();
+    ForceFactor computeEwaldFourierGradient();
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;

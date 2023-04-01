@@ -49,14 +49,14 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
   {
     posA = it1->position;
     size_t typeA = static_cast<size_t>(it1->type);
-    double scaleA = it1->scalingVDW;
+    double scalingVDWA = it1->scalingVDW;
     double scaleCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
     for (std::span<const Atom>::iterator it2 = moleculeAtomPositions.begin(); it2 != moleculeAtomPositions.end(); ++it2)
     {
       posB = it2->position;
       size_t typeB = static_cast<size_t>(it2->type);
-      double scaleB = it2->scalingVDW;
+      double scalingVDWB = it2->scalingVDW;
       double scaleCoulombB = it2->scalingCoulomb;
       double chargeB = it2->charge;
 
@@ -66,8 +66,7 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
 
       if (rr < cutOffVDWSquared)
       {
-        double scaling = scaleA * scaleB;
-        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energyStatus.frameworkMoleculeVDW += energyFactor.energy;
         energyStatus.dUdlambda += energyFactor.dUdlambda;
@@ -84,7 +83,7 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
   }
 }
 
-EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
+ForceFactor System::computeFrameworkMoleculeGradient() noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
@@ -95,20 +94,20 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
   std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
 
-  EnergyFactor energy{ 0.0, 0.0 };
+  ForceFactor energy{ 0.0, 0.0, 0.0 };
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
     size_t typeA = static_cast<size_t>(it1->type);
-    double scaleA = it1->scalingVDW;
+    double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
     for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
       posB = it2->position;
       size_t typeB = static_cast<size_t>(it2->type);
-      double scaleB = it2->scalingVDW;
+      double scalingVDWB = it2->scalingVDW;
       double scalingCoulombB = it2->scalingCoulomb;
       double chargeB = it2->charge;
 
@@ -118,10 +117,9 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
 
       if (rr < cutOffVDWSquared)
       {
-        double scaling = scaleA * scaleB;
-        ForceFactor forceFactor = potentialVDWGradient(forceField, scaling, rr, typeA, typeB);
+        ForceFactor forceFactor = potentialVDWGradient(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-        energy += EnergyFactor(forceFactor.energy, 0.0);
+        energy += forceFactor;
 
         const double3 factor = forceFactor.forceFactor * dr;
 
@@ -132,7 +130,7 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
         double r = std::sqrt(rr);
         ForceFactor energyFactor = potentialCoulombGradient(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-        energy += EnergyFactor(energyFactor.energy, 0);
+        energy += energyFactor;
 
         const double3 factor = energyFactor.forceFactor * dr;
 
@@ -163,15 +161,15 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
   {
     double3 posA = it1->position;
     size_t typeA = static_cast<size_t>(it1->type);
-    double scaleA = it1->scalingVDW;
-    double chargeA = it1->charge;
+    double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
+    double chargeA = it1->charge;
 
     for (const Atom& atom : newatoms)
     {
       double3 posB = atom.position;
       size_t typeB = static_cast<size_t>(atom.type);
-      double scaleB = atom.scalingVDW;
+      double scalingVDWB = atom.scalingVDW;
       double scalingCoulombB = atom.scalingCoulomb;
       double chargeB = atom.charge;
 
@@ -181,8 +179,7 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
 
       if (rr < cutOffVDWSquared)
       {
-        double scaling = scaleA * scaleB;
-        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
         if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
         energySum.frameworkMoleculeVDW +=  energyFactor.energy;
@@ -202,9 +199,9 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
     {
       double3 posB = atom.position;
       size_t typeB = static_cast<size_t>(atom.type);
-      double scaleB = atom.scalingVDW;
-      double chargeB = atom.charge;
+      double scalingVDWB = atom.scalingVDW;
       double scalingCoulombB = atom.scalingCoulomb;
+      double chargeB = atom.charge;
 
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -212,8 +209,7 @@ EnergyFactor System::computeFrameworkMoleculeGradient() noexcept
 
       if (rr < cutOffVDWSquared)
       {
-        double scaling = scaleA * scaleB;
-        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+        EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energySum.frameworkMoleculeVDW -= energyFactor.energy;
         energySum.dUdlambda -= energyFactor.dUdlambda;
@@ -250,9 +246,9 @@ template <>
   {
     double3 posA = it1->position;
     size_t typeA = static_cast<size_t>(it1->type);
-    double scaleA = it1->scalingVDW;
-    double chargeA = it1->charge;
+    double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
+    double chargeA = it1->charge;
 
     for (int index = 0; const Atom& atom : atoms)
     {
@@ -260,9 +256,9 @@ template <>
       {
         double3 posB = atom.position;
         size_t typeB = static_cast<size_t>(atom.type);
-        double scaleB = atom.scalingVDW;
-        double chargeB = atom.charge;
+        double scalingVDWB = atom.scalingVDW;
         double scalingCoulombB = atom.scalingCoulomb;
+        double chargeB = atom.charge;
 
         double3 dr = posA - posB;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -270,8 +266,7 @@ template <>
 
         if (rr < cutOffVDWSquared)
         {
-          double scaling = scaleA * scaleB;
-          EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+          EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           if (energyFactor.energy > overlapCriteria)
           {
             return std::nullopt;
@@ -323,9 +318,9 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
           if(cancel.test()) return energySum;
           double3 posA = it1->position;
           size_t typeA = static_cast<size_t>(it1->type);
-          double scaleA = it1->scalingVDW;
-          double chargeA = it1->charge;
+          double scalingVDWA = it1->scalingVDW;
           double scalingCoulombA = it1->scalingCoulomb;
+          double chargeA = it1->charge;
 
           for (int index = 0; const Atom& atom : atoms)
           {
@@ -333,9 +328,10 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
             {
               double3 posB = atom.position;
               size_t typeB = static_cast<size_t>(atom.type);
-              double scaleB = atom.scalingVDW;
-              double chargeB = atom.charge;
+              double scalingVDWB = atom.scalingVDW;
               double scalingCoulombB = atom.scalingCoulomb;
+              double chargeB = atom.charge;
+              
 
               double3 dr = posA - posB;
               dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -343,8 +339,7 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
 
               if (rr < cutOffVDWSquared)
               {
-                double scaling = scaleA * scaleB;
-                EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+                EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
                 if (energyFactor.energy > overlapCriteria)
                 {
@@ -410,9 +405,10 @@ template <>
     {
       double3 posA = it1->position;
       size_t typeA = static_cast<size_t>(it1->type);
-      double scaleA = it1->scalingVDW;
-      double chargeA = it1->charge;
+      double scalingVDWA = it1->scalingVDW;
       double scalingCoulombA = it1->scalingCoulomb;
+      double chargeA = it1->charge;
+      
 
       for (int index = 0; const Atom& atom : atoms)
       {
@@ -420,9 +416,9 @@ template <>
         {
           double3 posB = atom.position;
           size_t typeB = static_cast<size_t>(atom.type);
-          double scaleB = atom.scalingVDW;
-          double chargeB = atom.charge;
+          double scalingVDWB = atom.scalingVDW;
           double scalingCoulombB = atom.scalingCoulomb;
+          double chargeB = atom.charge;
 
           double3 dr = posA - posB;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -430,8 +426,7 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            double scaling = scaleA * scaleB;
-            EnergyFactor energyFactor = potentialVDWEnergy(forceField, scaling, rr, typeA, typeB);
+            EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
               cancel.test_and_set();

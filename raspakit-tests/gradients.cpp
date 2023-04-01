@@ -10,6 +10,7 @@ import component;
 import system;
 import simulationbox;
 import energy_factor;
+import force_factor;
 
 TEST(Gradients, Test_CH4_in_Box_25x25x25)
 {
@@ -39,7 +40,7 @@ TEST(Gradients, Test_CH4_in_Box_25x25x25)
   }
 
   //EnergyFactor factorMolecularFramework = system.computeFram
-  EnergyFactor factorInterMolecular = system.computeInterMolecularGradient();
+  ForceFactor factorInterMolecular = system.computeInterMolecularGradient();
 
   double delta = 1e-5;
   double tolerance = 1e-6;
@@ -176,8 +177,8 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  EnergyFactor factor = system.computeInterMolecularGradient();
-  EnergyFactor factor2 = system.computeFrameworkMoleculeGradient();
+  ForceFactor factor = system.computeInterMolecularGradient();
+  ForceFactor factor2 = system.computeFrameworkMoleculeGradient();
 
   double delta = 1e-5;
   double tolerance = 1e-5;
@@ -288,7 +289,7 @@ TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
     system.atomPositions[i + 20].charge = -1.0;
   }
 
-  EnergyFactor factor = system.computeInterMolecularGradient();
+  ForceFactor factor = system.computeInterMolecularGradient();
 
   double delta = 1e-5;
   double tolerance = 1e-5;

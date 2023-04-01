@@ -549,7 +549,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
   system.computeEwaldFourierRigidEnergy(system.simulationBox, rigidenergy);
 
-  EnergyFactor factor = system.computeEwaldFourierGradient();
+  ForceFactor factor = system.computeEwaldFourierGradient();
 
   double delta = 1e-4;
   double tolerance = 1e-4;
