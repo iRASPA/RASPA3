@@ -3,6 +3,7 @@ export module atom;
 import double3;
 
 import <cmath>;
+import <cstddef>;
 
 #if defined(_WIN32)
   import <cassert>;
@@ -22,7 +23,8 @@ export struct Atom
   double scalingCoulomb{ 1.0 };
   int moleculeId{ 0 };
   short type{ 0 };
-  short componentId{ 0 };
+  std::byte componentId{ 0 };
+  std::byte groupId{ 0 };
 
   Atom() noexcept = default;
   Atom(const Atom &a) noexcept = default;
@@ -31,7 +33,7 @@ export struct Atom
   Atom& operator=(Atom&& a) noexcept = default;
   ~Atom() noexcept = default;
 
-  Atom(double3 position, double charge, double lambda, short type, short componentId, int moleculeId) :
+  Atom(double3 position, double charge, double lambda, short type, std::byte componentId, int moleculeId) :
       position(position), charge(charge), moleculeId(moleculeId), 
               type(type), componentId(componentId)
   {
@@ -48,3 +50,6 @@ export struct Atom
       scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
   }
 };
+
+// should be 4 times double4 = 4x(8x4) = 4x32 = 128 bytes
+static_assert(sizeof(Atom) == 128, "struct Atom size is not 128");

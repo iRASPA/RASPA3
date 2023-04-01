@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+import <cstddef>;
 import <vector>;
 import <tuple>;
 import <algorithm>;
@@ -38,7 +39,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, std::byte{0}, 0),
     }, 5);
   Component cl = Component(1,
     "Cl",
@@ -46,7 +47,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, std::byte{1}, 0),
     }, 5);
 
   System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
@@ -124,7 +125,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, std::byte{0}, 0),
     }, 5);
   Component cl = Component(1,
     "Cl",
@@ -132,7 +133,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, std::byte{1}, 0),
     }, 5);
 
   System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
@@ -212,7 +213,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, std::byte{0}, 0),
     }, 5);
   Component cl = Component(1,
     "Cl",
@@ -220,7 +221,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, std::byte{1}, 0),
     }, 5);
 
   System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
@@ -303,9 +304,9 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
     SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-       Atom(double3(0.0, 0.0,  0.0),    0.6512, 1.0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
+       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, std::byte{1}, 0),
+       Atom(double3(0.0, 0.0,  0.0),    0.6512, 1.0, 3, std::byte{1}, 0),
+       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, std::byte{1}, 0)
     }, 5);
 
   System system = System(0, 300.0, 1e4, forceField, { c }, { 20 }, 5);

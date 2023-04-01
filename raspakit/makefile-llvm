@@ -48,7 +48,7 @@ cbmc_growing_status.pcm: atom.o component.o running_energy.o bond_potential.o
 cbmc.pcm: atom.o running_energy.o energy_status.o energy_status_intra.o energy_status_inter.o
 sample_movies.pcm: units.o atom.o simulationbox.o forcefield.o
 property_simulationbox.pcm: averages.o simulationbox.o
-system.pcm: mc_moves_probabilities_system.o move_statistics.o atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o lambda.o dudlambda.o property_widom.o property_dudlambda.o energy_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
+system.pcm: mc_moves_probabilities_system.o move_statistics.o atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o lambda.o dudlambda.o property_widom.o property_dudlambda.o energy_factor.o force_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
 mc_moves.pcm: system.o cbmc.o component.o atom.o simulationbox.o energy_status.o running_energy.o
 monte_carlo.pcm: averages.o system.o property_enthalpy.o mc_moves.o input_reader.o energy_status.o
 input_reader.pcm: system.o atom.o component.o simulationbox.o forcefield.o loadings.o enthalpy_of_adsorption.o energy_status.o averages.o
@@ -89,7 +89,7 @@ cbmc_growing_status.o: atom.o component.o running_energy.o bond_potential.o
 cbmc.o: atom.o running_energy.o energy_status.o energy_status_intra.o energy_status_inter.o
 sample_movies.o: units.o atom.o simulationbox.o forcefield.o
 property_simulationbox.o: averages.o simulationbox.o
-system.o: mc_moves_probabilities_system.o move_statistics.o atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o lambda.o dudlambda.o property_widom.o property_dudlambda.o energy_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
+system.o: mc_moves_probabilities_system.o move_statistics.o atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o lambda.o dudlambda.o property_widom.o property_dudlambda.o energy_factor.o force_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
 system_hardware_info.o: system.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_hardware_info.cpp -o system_hardware_info.o
 system_integration.o: system.o

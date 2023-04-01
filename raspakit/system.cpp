@@ -2,6 +2,23 @@ module;
 
 module system;
 
+import <cstddef>;
+import <numbers>;
+import <complex>;
+import <vector>;
+import <random>;
+import <span>;
+import <tuple>;
+import <iostream>;
+import <fstream>;
+import <streambuf>;
+import <filesystem>;
+import <optional>;
+import <cmath>;
+import <chrono>;
+import <algorithm>;
+import <numeric>;
+
 import randomnumbers;
 import int3;
 import double3;
@@ -46,22 +63,7 @@ import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
 import dudlambda;
 
-import <cstddef>;
-import <numbers>;
-import <complex>;
-import <vector>;
-import <random>;
-import <span>;
-import <tuple>;
-import <iostream>;
-import <fstream>;
-import <streambuf>;
-import <filesystem>;
-import <optional>;
-import <cmath>;
-import <chrono>;
-import <algorithm>;
-import <numeric>;
+
 
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 
@@ -374,7 +376,7 @@ void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
             for (size_t j = 0; j < components[componentId].atoms.size(); ++j)
             {
                 atomPositions[index].moleculeId = static_cast<short>(i);
-                atomPositions[index].componentId = static_cast<short>(componentId);
+                atomPositions[index].componentId = static_cast<std::byte>(componentId);
                 ++index;
             }
         }
@@ -404,7 +406,7 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
             for (size_t j = 0; j < components[componentId].atoms.size(); ++j)
             {
                 atomPositions[index].moleculeId = static_cast<short>(i);
-                atomPositions[index].componentId = static_cast<short>(componentId);
+                atomPositions[index].componentId = static_cast<std::byte>(componentId);
                 ++index;
             }
         }
@@ -421,7 +423,7 @@ bool System::checkMoleculeIds()
             for (size_t j = 0; j < components[componentId].atoms.size(); ++j)
             {
                 if (atomPositions[index].moleculeId != static_cast<int>(i)) return false;
-                if (atomPositions[index].componentId != static_cast<int>(componentId)) return false;
+                if (atomPositions[index].componentId != static_cast<std::byte>(componentId)) return false;
                 ++index;
             }
         }
