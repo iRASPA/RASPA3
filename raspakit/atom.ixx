@@ -24,7 +24,7 @@ export struct Atom
   int moleculeId{ 0 };
   short type{ 0 };
   std::byte componentId{ 0 };
-  std::byte groupId{ 0 };
+  std::byte groupId{ 0 };   // defaults to false
 
   Atom() noexcept = default;
   Atom(const Atom &a) noexcept = default;

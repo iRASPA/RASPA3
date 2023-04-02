@@ -49,6 +49,7 @@ import <semaphore>;
 		posA = it1->position;
 		size_t compA = static_cast<size_t>(it1->componentId);
 		size_t typeA = static_cast<size_t>(it1->type);
+    bool groupIdA = static_cast<bool>(it1->groupId);
 		double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
 		double chargeA = it1->charge;
@@ -58,6 +59,7 @@ import <semaphore>;
 
 			posB = it2->position;
 			size_t typeB = static_cast<size_t>(it2->type);
+      bool groupIdB = static_cast<bool>(it2->groupId);
 			double scalingVDWB = it2->scalingVDW;
       double scalingCoulombB = it2->scalingCoulomb;
 			double chargeB = it2->charge;
@@ -68,7 +70,7 @@ import <semaphore>;
 
 			if (rr < cutOffVDWSquared)
 			{
-				EnergyFactor energyFactor = potentialVDWEnergy(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+				EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
 				energy(compA, compB).VanDerWaals += 0.5 * energyFactor;
 				energy(compB, compA).VanDerWaals += 0.5 * energyFactor;
@@ -76,7 +78,7 @@ import <semaphore>;
       if (!noCharges && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
         energy(compB, compA).CoulombicReal += 0.5 * energyFactor;

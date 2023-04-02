@@ -7,7 +7,7 @@ import double4;
 import <cmath>;
 import <iostream>;
 
-export inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const double& scalingA, const double& scalingB, const double& rr, const size_t& typeA, const size_t& typeB)
+export inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const bool &groupIdA, const bool &groupIdB, const double &scalingA, const double &scalingB, const double& rr, const size_t& typeA, const size_t& typeB)
 {
     VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -28,7 +28,7 @@ export inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, cons
       double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
       return EnergyFactor(scaling * term,
-                          (scalingA < 1.0 ? scalingB * (term + dlambda_term) : 0.0) + (scalingB < 1.0 ? scalingA * (term + dlambda_term) : 0.0));
+                          (groupIdA ? scalingB * (term + dlambda_term) : 0.0) + (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
     }
     case VDWParameters::Type::BuckingHam:
     {

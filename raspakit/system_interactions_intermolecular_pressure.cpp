@@ -45,6 +45,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
     size_t molA = static_cast<size_t>(it1->moleculeId);
     size_t compA = static_cast<size_t>(it1->componentId);
     size_t typeA = static_cast<size_t>(it1->type);
+    bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
@@ -58,6 +59,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
       {
         posB = it2->position;
         size_t typeB = static_cast<size_t>(it2->type);
+        bool groupIdB = static_cast<bool>(it2->groupId);
         double scalingVDWB = it2->scalingVDW;
         double scalingCoulombB = it2->scalingCoulomb;
         double chargeB = it2->charge;
@@ -69,7 +71,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
 
         if (rr < cutOffVDWSquared)
         {
-          ForceFactor forceFactor = potentialVDWGradient(forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          ForceFactor forceFactor = potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           
           energy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
           energy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
@@ -95,7 +97,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
         {
           double r = std::sqrt(rr);
           
-          ForceFactor energyFactor = potentialCoulombGradient(forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+          ForceFactor energyFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energy(compA, compB).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
           energy(compB, compA).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
