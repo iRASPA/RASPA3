@@ -52,12 +52,18 @@ std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t se
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
     std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(newMolecule, molecule);
-    if (!frameworkMolecule.has_value()) return std::nullopt;
+    if (!frameworkMolecule.has_value()) 
+    {
+      return std::nullopt;
+    }
 
     std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(newMolecule, molecule);
-    if (!interMolecule.has_value()) return std::nullopt;
-    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+    if (!interMolecule.has_value()) 
+    {
+      return std::nullopt;
+    }
 
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_probabilities.cpuTime_TranslationMove_NonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();

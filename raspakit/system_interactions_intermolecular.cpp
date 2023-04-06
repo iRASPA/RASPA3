@@ -72,7 +72,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
           EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           
           energyStatus.moleculeMoleculeVDW += energyFactor.energy;
-          energyStatus.dUdlambda += energyFactor.dUdlambda;
+          energyStatus.dudlambdaVDW += energyFactor.dUdlambda;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
@@ -80,7 +80,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
           EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energyStatus.moleculeMoleculeCharge += energyFactor.energy;
-          energyStatus.dUdlambda += energyFactor.dUdlambda;
+          energyStatus.dudlambdaCharge += energyFactor.dUdlambda;
         }
       }
     }
@@ -140,10 +140,11 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
           if (!noCharges && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            EnergyFactor energy = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-            energySum(compA, compB).CoulombicReal += 0.5 * energy;
-            energySum(compB, compA).CoulombicReal += 0.5 * energy;
+            energySum(compA, compB).CoulombicReal += 0.5 * energyFactor;
+            energySum(compB, compA).CoulombicReal += 0.5 * energyFactor;
+            energySum.dUdlambda += energyFactor.dUdlambda;
           }
         }
       }
@@ -203,7 +204,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
             if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
             energySum.moleculeMoleculeVDW += energyFactor.energy;
-            energySum.dUdlambda += energyFactor.dUdlambda;
+            energySum.dudlambdaVDW += energyFactor.dUdlambda;
           }
           if (!noCharges && rr < cutOffChargeSquared)
           {
@@ -211,7 +212,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
             EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.moleculeMoleculeCharge += energyFactor.energy;
-            energySum.dUdlambda += energyFactor.dUdlambda;
+            energySum.dudlambdaCharge += energyFactor.dUdlambda;
           }
         }
       }
@@ -385,7 +386,7 @@ ForceFactor System::computeInterMolecularGradient() noexcept
           if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
           energySum.moleculeMoleculeVDW += energyFactor.energy;
-          energySum.dUdlambda += energyFactor.dUdlambda;
+          energySum.dudlambdaVDW += energyFactor.dUdlambda;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
@@ -393,7 +394,7 @@ ForceFactor System::computeInterMolecularGradient() noexcept
           EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.moleculeMoleculeCharge += energyFactor.energy;
-          energySum.dUdlambda += energyFactor.dUdlambda;
+          energySum.dudlambdaCharge += energyFactor.dUdlambda;
         }
       }
     }
@@ -421,7 +422,7 @@ ForceFactor System::computeInterMolecularGradient() noexcept
           EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
           energySum.moleculeMoleculeVDW -= energyFactor.energy;
-          energySum.dUdlambda -= energyFactor.dUdlambda;
+          energySum.dudlambdaVDW -= energyFactor.dUdlambda;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
@@ -429,7 +430,7 @@ ForceFactor System::computeInterMolecularGradient() noexcept
           EnergyFactor energyFactor =  potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.moleculeMoleculeCharge -= energyFactor.energy;
-          energySum.dUdlambda -= energyFactor.dUdlambda;
+          energySum.dudlambdaCharge -= energyFactor.dUdlambda;
         }
       }
     }

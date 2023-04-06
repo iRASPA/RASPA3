@@ -136,7 +136,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
             test += scaling * charge * (eik_xy[i] * eikz_temp);
           }
 
-          cksum[0] += fixedFrameworkStoredEik[nvec];
+          cksum[0] += fixedFrameworkStoredEik[nvec].first;
           double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
 
           for(size_t i = 0; i != numberOfComponents; ++i)

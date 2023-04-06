@@ -284,7 +284,6 @@
     <ClCompile Include="system_interactions_framework_molecule_pressure.cpp" />
     <ClCompile Include="system_interactions_intermolecular_pressure.cpp" />
     <ClCompile Include="system_interactions_tailcorrection.cpp" />
-    <ClCompile Include="system_print_dudlambda.cpp" />
     <ClCompile Include="system_print_movestatistics.cpp" />
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />

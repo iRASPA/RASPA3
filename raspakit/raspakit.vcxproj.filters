@@ -417,9 +417,6 @@
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="system_print_dudlambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dudlambda.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

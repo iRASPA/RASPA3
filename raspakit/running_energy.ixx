@@ -18,7 +18,9 @@ export struct RunningEnergy
                     intraVDW(0.0), intraCoul(0.0),
                     tail(0.0),
                     polarization(0.0),
-                    dUdlambda(0.0)
+                    dudlambdaVDW(0.0),
+                    dudlambdaCharge(0.0),
+                    dudlambdaEwald(0.0)
   {
   }
 
@@ -34,6 +36,11 @@ export struct RunningEnergy
              polarization;
   }
 
+  inline double dudlambda() const
+  {
+    return dudlambdaVDW + dudlambdaCharge + dudlambdaEwald;
+  }
+
   inline void zero()
   {
     frameworkMoleculeVDW = 0.0;
@@ -45,7 +52,9 @@ export struct RunningEnergy
     intraCoul = 0.0;
     tail = 0.0;
     polarization = 0.0;
-    dUdlambda = 0.0;
+    dudlambdaVDW = 0.0;
+    dudlambdaCharge = 0.0;
+    dudlambdaEwald = 0.0;
   }
 
   inline RunningEnergy& operator+=(const RunningEnergy& b)
@@ -59,7 +68,9 @@ export struct RunningEnergy
     intraCoul += b.intraCoul;
     tail += b.tail;
     polarization += b.polarization;
-    dUdlambda += b.dUdlambda;
+    dudlambdaVDW += b.dudlambdaVDW;
+    dudlambdaCharge += b.dudlambdaCharge;
+    dudlambdaEwald += b.dudlambdaEwald;
     
     return *this;
   }
@@ -75,7 +86,9 @@ export struct RunningEnergy
     intraCoul -= b.intraCoul;
     tail -= b.tail;
     polarization -= b.polarization;
-    dUdlambda -= b.dUdlambda;
+    dudlambdaVDW -= b.dudlambdaVDW;
+    dudlambdaCharge -= b.dudlambdaCharge;
+    dudlambdaEwald -= b.dudlambdaEwald;
 
     return *this;
   }
@@ -92,7 +105,9 @@ export struct RunningEnergy
     v.intraCoul = -intraCoul;
     v.tail = -tail;
     v.polarization = -polarization;
-    v.dUdlambda = -dUdlambda;
+    v.dudlambdaVDW = -dudlambdaVDW;
+    v.dudlambdaCharge = -dudlambdaCharge;
+    v.dudlambdaEwald = -dudlambdaEwald;
 
     return v;
   }
@@ -106,7 +121,9 @@ export struct RunningEnergy
   double intraCoul;
   double tail;
   double polarization;
-  double dUdlambda;
+  double dudlambdaVDW;
+  double dudlambdaCharge;
+  double dudlambdaEwald;
 };
 
 
@@ -122,7 +139,9 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.intraCoul = a.intraCoul + b.intraCoul;
   m.tail = a.tail + b.tail;
   m.polarization = a.polarization + b.polarization;
-  m.dUdlambda = a.dUdlambda + b.dUdlambda;
+  m.dudlambdaVDW = a.dudlambdaVDW + b.dudlambdaVDW;
+  m.dudlambdaCharge = a.dudlambdaCharge + b.dudlambdaCharge;
+  m.dudlambdaEwald = a.dudlambdaEwald + b.dudlambdaEwald;
 
   return m;
 }
@@ -139,6 +158,8 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.intraCoul = a.intraCoul - b.intraCoul;
   m.tail = a.tail - b.tail;
   m.polarization = a.polarization - b.polarization;
-  m.dUdlambda = a.dUdlambda - b.dUdlambda;
+  m.dudlambdaVDW = a.dudlambdaVDW - b.dudlambdaVDW;
+  m.dudlambdaCharge = a.dudlambdaCharge - b.dudlambdaCharge;
+  m.dudlambdaEwald = a.dudlambdaEwald - b.dudlambdaEwald;
   return m;
 }

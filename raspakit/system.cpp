@@ -349,9 +349,16 @@ void System::initializeComponents()
 
 void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms)
 {
-    std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-    atomPositions.insert(iterator, atoms.begin(), atoms.end());
-    numberOfMoleculesPerComponent[selectedComponent] += 1;
+  lambda.setCurrentBin(0);
+  double l = lambda.lambdaValue();
+  for (Atom& atom : atoms)
+  {
+    atom.groupId = std::byte{ 1 };
+    atom.setScaling(l);
+  }
+  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  atomPositions.insert(iterator, atoms.begin(), atoms.end());
+  numberOfMoleculesPerComponent[selectedComponent] += 1;
 }
 
 void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
@@ -447,8 +454,9 @@ void System::createInitialMolecules()
                 std::optional<ChainData> growData = std::nullopt;
                 do
                 {
+                    std::vector<Atom> atoms = components[componentId].newAtoms(0.0, numberOfMoleculesPerComponent[componentId]);
                     growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb, 
-                                        componentId, numberOfMoleculesPerComponent[componentId], 0.0);
+                                        componentId, numberOfMoleculesPerComponent[componentId], 0., atoms);
 
                 } while (!growData || growData->RosenbluthWeight < 1.0);
 
@@ -462,8 +470,9 @@ void System::createInitialMolecules()
             std::optional<ChainData> growData = std::nullopt;
             do
             {
-                growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb,
-                                    componentId, numberOfMoleculesPerComponent[componentId], 1.0);
+              std::vector<Atom> atoms = components[componentId].newAtoms(1.0, numberOfMoleculesPerComponent[componentId]);
+              growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb,
+                                    componentId, numberOfMoleculesPerComponent[componentId], 1.0, atoms);
 
             } while(!growData || growData->RosenbluthWeight < 1.0);
 
@@ -769,7 +778,7 @@ void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unuse
   //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
   //double currentPressure = currentIdealPressure + currentExcessPressure;
   //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -802,7 +811,7 @@ void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -858,7 +867,7 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
-  std::print(stream, "dU/dlambda:           {: .6e} [K]\n\n", conv * runningEnergies.dUdlambda);
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -944,7 +953,9 @@ void System::sampleProperties(size_t currentBlock)
      component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
    }
 
-   lambda.sampledUdLambdaHistogram(currentBlock, runningEnergies.dUdlambda);
+   double l = components[1].lambda.lambdaValue();
+   double dudlambda = l <= 0.5 ? runningEnergies.dudlambdaVDW : 0.0 + l >= 0.5 ? (runningEnergies.dudlambdaCharge + runningEnergies.dudlambdaEwald) : 0.0;
+   lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
    //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
 
    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();

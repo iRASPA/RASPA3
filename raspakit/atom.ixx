@@ -49,6 +49,25 @@ export struct Atom
       scalingVDW = lambda < 0.5 ? 2.0 * lambda : 1.0;
       scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
   }
+
+  void setScalingFullyOn()
+  {
+    scalingVDW = 1.0;
+    scalingCoulomb = 1.0;
+  }
+
+  void setScalingFullyOff()
+  {
+    scalingVDW = 0.0;
+    scalingCoulomb = 0.0;
+  }
+
+  void setScalingToInteger()
+  {
+    scalingVDW = 1.0;
+    scalingCoulomb = 1.0;
+    groupId = std::byte{ 0 };
+  }
 };
 
 // should be 4 times double4 = 4x(8x4) = 4x32 = 128 bytes

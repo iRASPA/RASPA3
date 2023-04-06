@@ -46,7 +46,8 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
   
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0);
+  std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
+  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
   if (!growData) return std::nullopt;
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());

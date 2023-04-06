@@ -55,7 +55,7 @@ export struct dUdLambda
   PropertyLambdaProbabilityHistogram newHistogram;
   PropertyDUDlambda dUdlambdaBookKeeping;
 
-  inline double lambdaValue()
+  inline double lambdaValue() const
   {
     return static_cast<double>(currentBin) * delta;
   }
@@ -91,4 +91,5 @@ export struct dUdLambda
   }
 
   void WangLandauIteration(dUdLambda::WangLandauPhase phase);
+  std::string writeAveragesStatistics(double beta) const;
 };

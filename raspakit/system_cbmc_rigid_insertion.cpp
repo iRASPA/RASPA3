@@ -25,9 +25,13 @@ import <algorithm>;
 import <numeric>;
 
 
-[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept
+[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
 {
-  std::vector<Atom> atoms = components[selectedComponent].newAtoms(scaling, selectedMolecule);
+  //std::vector<Atom> atoms = components[selectedComponent].newAtoms(scaling, selectedMolecule);
+  for (Atom& atom : atoms)
+  {
+    atom.setScaling(scaling);
+  }
   size_t startingBead = components[selectedComponent].startingBead;
 
   std::optional<FirstBeadData> const firstBeadData = growMultipleFirstBeadSwapInsertion(cutOff, cutOffCoulomb, atoms[startingBead]);

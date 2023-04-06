@@ -143,9 +143,9 @@ export struct System
     std::vector<std::complex<double>> eik_x;
     std::vector<std::complex<double>> eik_y;
     std::vector<std::complex<double>> eik_z;
-    std::vector<std::complex<double>> storedEik;
-    std::vector<std::complex<double>> fixedFrameworkStoredEik;
-    std::vector<std::complex<double>> totalEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik;
     double CoulombicFourierEnergySingleIon{ 0.0 };
     std::vector<int> netCharge;
 
@@ -272,13 +272,7 @@ export struct System
     void writeComponentStatus(std::ostream &stream) const;
 
     void writeMCMoveStatistics(std::ostream &stream) const;
-    //void writeEnergyAveragesStatistics(std::ostream &stream) const;
-    //void writeEnthalpyOfAdsorption(std::ostream &stream) const;
-    //void writePressureAveragesStatistics(std::ostream &stream) const;
-
-    std::string writedudLambdaStatistics() const;
-    
-
+  
     std::vector<Component> nonFrameworkComponents()
     {
       std::vector<Component> comps{};
@@ -295,7 +289,7 @@ export struct System
     
     //SampleMovie sampleMovie;
     
-    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
     [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
     [[nodiscard]] std::optional<ChainData> growChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
 
@@ -311,7 +305,7 @@ export struct System
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
 
-    RunningEnergy energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, 
+    RunningEnergy energyDifferenceEwaldFourier(std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedWavevectors,
                                                std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
     void registerEwaldFourierEnergySingleIon(double3 position, double charge);
     void acceptEwaldMove();

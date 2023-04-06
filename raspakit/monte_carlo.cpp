@@ -168,6 +168,7 @@ void MonteCarlo::equilibrate()
     system.computeTotalEnergies();
     system.runningEnergies.print(stream, "Recomputed from scratch");
 
+    system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Initialize);
     for(Component &component : system.components)
     {
       component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Initialize);
@@ -193,6 +194,7 @@ void MonteCarlo::equilibrate()
     {
       for(Component &component : system.components)
       {
+        system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Sample);
         if(component.hasFractionalMolecule)
         {
           component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Sample);
@@ -209,6 +211,7 @@ void MonteCarlo::equilibrate()
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         system.writeEquilibrationStatusReport(stream, i, numberOfEquilibrationCycles);
+        system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::AdjustBiasingFactors);
         for(Component &component : system.components)
         {
           if(component.hasFractionalMolecule)
@@ -242,6 +245,7 @@ void MonteCarlo::production()
     system.clearMoveStatistics();
     system.clearTimingStatistics();
 
+    system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Finalize);
     for(Component &component : system.components)
     {
       component.mc_moves_probabilities.clearMoveStatistics();
@@ -286,6 +290,7 @@ void MonteCarlo::production()
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
+      system.lambda.currentBin = system.components[1].lambda.currentBin;
       system.sampleProperties(estimation.currentBin);
     }
 
@@ -336,6 +341,7 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
     
     system.writeMCMoveStatistics(stream);
+    std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");

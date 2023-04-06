@@ -71,7 +71,7 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
         EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energyStatus.frameworkMoleculeVDW += energyFactor.energy;
-        energyStatus.dUdlambda += energyFactor.dUdlambda;
+        energyStatus.dudlambdaVDW += energyFactor.dUdlambda;
       }
       if (!noCharges && rr < cutOffChargeSquared)
       {
@@ -79,7 +79,7 @@ void System::computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<
         EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scaleCoulombA, scaleCoulombB, r, chargeA, chargeB);
 
         energyStatus.frameworkMoleculeCharge += energyFactor.energy;
-        energyStatus.dUdlambda += energyFactor.dUdlambda;
+        energyStatus.dudlambdaCharge += energyFactor.dUdlambda;
       }
     }
   }
@@ -189,7 +189,7 @@ ForceFactor System::computeFrameworkMoleculeGradient() noexcept
         if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
         energySum.frameworkMoleculeVDW +=  energyFactor.energy;
-        energySum.dUdlambda += energyFactor.dUdlambda;
+        energySum.dudlambdaVDW += energyFactor.dUdlambda;
       }
       if (!noCharges && rr < cutOffChargeSquared)
       {
@@ -197,7 +197,7 @@ ForceFactor System::computeFrameworkMoleculeGradient() noexcept
         EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge += energyFactor.energy;
-        energySum.dUdlambda += energyFactor.dUdlambda;
+        energySum.dudlambdaCharge += energyFactor.dUdlambda;
       }
     }
 
@@ -219,7 +219,7 @@ ForceFactor System::computeFrameworkMoleculeGradient() noexcept
         EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energySum.frameworkMoleculeVDW -= energyFactor.energy;
-        energySum.dUdlambda -= energyFactor.dUdlambda;
+        energySum.dudlambdaVDW -= energyFactor.dUdlambda;
       }
       if (!noCharges && rr < cutOffChargeSquared)
       {
@@ -227,7 +227,7 @@ ForceFactor System::computeFrameworkMoleculeGradient() noexcept
         EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge -= energyFactor.energy;
-        energySum.dUdlambda -= energyFactor.dUdlambda;
+        energySum.dudlambdaCharge -= energyFactor.dUdlambda;
       }
     }
   }
@@ -281,7 +281,7 @@ template <>
             return std::nullopt;
           }
           energySum.frameworkMoleculeVDW += energyFactor.energy;
-          energySum.dUdlambda += energyFactor.dUdlambda;
+          energySum.dudlambdaVDW += energyFactor.dUdlambda;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
@@ -289,7 +289,7 @@ template <>
           EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge += energyFactor.energy;
-          energySum.dUdlambda += energyFactor.dUdlambda;
+          energySum.dudlambdaCharge += energyFactor.dUdlambda;
         }
       }
       ++index;
@@ -358,7 +358,7 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
                   return energySum;
                 }
                 energySum.frameworkMoleculeVDW += energyFactor.energy;
-                energySum.dUdlambda += energyFactor.dUdlambda;
+                energySum.dudlambdaVDW += energyFactor.dUdlambda;
               }
               if (!noCharges && rr < cutOffChargeSquared)
               {
@@ -366,7 +366,7 @@ System::computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(do
                 EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
                 energySum.frameworkMoleculeCharge += energyFactor.energy;
-                energySum.dUdlambda += energyFactor.dUdlambda;
+                energySum.dudlambdaCharge += energyFactor.dUdlambda;
               }
             }
             ++index;
@@ -445,7 +445,7 @@ template <>
               cancel.test_and_set();
             }
             energySum.frameworkMoleculeVDW += energyFactor.energy;
-            energySum.dUdlambda += energyFactor.dUdlambda;
+            energySum.dudlambdaVDW += energyFactor.dUdlambda;
           }
           if (!noCharges && rr < cutOffChargeSquared)
           {
@@ -453,7 +453,7 @@ template <>
             EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
-            energySum.dUdlambda += energyFactor.dUdlambda;
+            energySum.dudlambdaCharge += energyFactor.dUdlambda;
           }
         }
         ++index;
