@@ -42,6 +42,22 @@ export struct Atom
       scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
   };
 
+  Atom(double3 position, double charge, double lambda, int moleculeId, short type, std::byte componentId, std::byte groupId) :
+    position(position), charge(charge), moleculeId(moleculeId),
+    type(type), componentId(componentId), groupId(groupId)
+  {
+    assert(lambda >= 0.0 && lambda <= 1.0);
+    scalingVDW = lambda < 0.5 ? 2.0 * lambda : 1.0;
+    scalingCoulomb = lambda < 0.5 ? 0.0 : 2.0 * (lambda - 0.5);
+  };
+
+  Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, int moleculeId, short type, std::byte componentId, std::byte groupId) :
+    position(position), charge(charge), scalingVDW(scalingVDW), scalingCoulomb(scalingCoulomb), moleculeId(moleculeId),
+    type(type), componentId(componentId), groupId(groupId)
+  {
+   
+  };
+
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   void setScaling(double lambda)
   {

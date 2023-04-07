@@ -46,10 +46,8 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
     double oldLambda = system.components[selectedComponent].lambda.lambdaValue();
     std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin();
 
-    //return std::nullopt;
     if (selectedNewBin >= std::make_signed_t<std::size_t>(lambda.numberOfBins)) // Insertion move
     {
-       //return std::nullopt;
         if(insertionDisabled)
         {
           return std::nullopt;
@@ -100,11 +98,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         {
           // reject, set fractional molecule back to old state
           std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-          //for (Atom& atom : fractionalMolecule) 
-          //{ 
-          //  atom.setScaling(oldLambda); 
-          //  atom.groupId = std::byte{ 1 };
-          //}
+          
           return std::nullopt;
         }
 
@@ -119,12 +113,10 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         // grow molecule with newLambda
         size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
         std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
-        std::vector<Atom> newatoms = system.components[selectedComponent].newAtoms(newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
-        for (Atom& atom : newatoms)
-        {
-          atom.setScaling(newLambda);
-          atom.groupId = std::byte{ 1 };
-        }
+
+        // copy atoms from the old-fractional molecule, including the groupdIds
+        std::vector<Atom> newatoms = system.components[selectedComponent].copyAtoms(oldFractionalMolecule, newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
+
         std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, newatoms);
         std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
         system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald += (w2 - w1);
@@ -133,22 +125,14 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
         {
           // reject, set fractional molecule back to old state
           std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-          //for (Atom& atom : fractionalMolecule) 
-          //{ 
-          //  atom.setScaling(oldLambda); 
-          //  atom.groupId = std::byte{ 1 };
-          //}
+          
           return std::nullopt;
         }
 
         system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[0] += 1;
 
         std::chrono::system_clock::time_point y1 = std::chrono::system_clock::now();
-        for (Atom& atom : growData->atom)
-        {
-          atom.groupId = std::byte{ 1 };
-
-        }
+        
         RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.totalEik, std::span(growData->atom.begin(), growData->atom.end()), {});
         std::chrono::system_clock::time_point y2 = std::chrono::system_clock::now();
         system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald += (y2 - y1);
@@ -171,31 +155,11 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
             // Note: inserting invalidates iterators and spans (the vector could reallocate memory)
             system.insertMolecule(selectedComponent, growData->atom);
 
-            
-            
             // swap first and last molecule (selectedMolecule) so that molecule 0 is always the fractional molecule 
             size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
             std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
             fractionalMolecule = system.spanOfMolecule(selectedComponent, 0);
-            //for (Atom& atom : fractionalMolecule)
-            //{
-            //  atom.moleculeId = static_cast<short>(lastMoleculeId);
-            //}
-
             std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
-            
-           
-            for (Atom& atom : fractionalMolecule)
-            {
-              //atom.setScaling(newLambda);
-              atom.groupId = std::byte{ 1 };
-            }
-            for (Atom& atom : lastMolecule)
-            {
-              atom.setScalingToInteger();
-              atom.groupId = std::byte{ 0 };
-            }
-
             
             system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[0] += 1;
 
@@ -204,17 +168,11 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
 
         // Restore old lamba
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        //for (Atom& atom : fractionalMolecule) 
-        //{ 
-        //   atom.setScaling(oldLambda); 
-        //   atom.groupId = std::byte{ 1 };
-        //}
         
         return std::nullopt;
     }
     else if (selectedNewBin < 0) // Deletion move
     {
-       //return std::nullopt;
         if(deletionDisabled)
         {
           return std::nullopt;
@@ -264,12 +222,11 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
           // (2) Unbiased: A new fractional molecule is chosen with lambda_new = 1 - epsilon, deltaU is computed.
           size_t newBin = static_cast<size_t>(selectedNewBin + std::make_signed_t<std::size_t>(lambda.numberOfBins));
           double newLambda = deltaLambda * static_cast<double>(newBin);
-          for (Atom& atom : newFractionalMolecule) 
-          { 
-            atom.setScaling(newLambda); 
-            atom.groupId = std::byte{ 1 };
-          }
-          
+         
+          // get the groupIds from the fractional molecule, set new Lambda
+          std::transform(newFractionalMolecule.begin(), newFractionalMolecule.end(), oldFractionalMolecule.begin(), newFractionalMolecule.begin(), 
+               [newLambda](const Atom& a, const Atom& b) { return Atom(a.position, a.charge, newLambda, a.moleculeId, a.type, a.componentId, b.groupId); });
+         
           std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
           std::optional<RunningEnergy> frameworkDifference = system.computeFrameworkMoleculeEnergyDifference(newFractionalMolecule, savedFractionalMolecule);
           std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
@@ -317,22 +274,15 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
           
               // Swap first and last molecule (selectedMolecule) so that molecule 0 is always the fractional molecule 
               std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-              for (Atom& atom : fractionalMolecule) 
-              { 
-                atom.moleculeId = 0; 
-                atom.setScaling(newLambda);
-                atom.groupId = std::byte{ 1 };
-              }
           
               system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
           
               system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[1] += 1;
           
-          
               return energyDifference + energyFourierDifference - retraceData.energies;
           };
 
-          // Restore old lamba
+          // Restore the old- and the newly chosen fractional molecule
           std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
           std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
           
@@ -342,7 +292,6 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_
     }
     else // Lambda-move
     {
-      
         size_t newBin = static_cast<size_t>(selectedNewBin);
         double newLambda = deltaLambda * static_cast<double>(newBin);
 

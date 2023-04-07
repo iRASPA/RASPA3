@@ -13,6 +13,7 @@ import <numeric>;
 import <cmath>;
 import <numbers>;
 
+import double3;
 import units;
 import print;
 import averages;
@@ -74,7 +75,7 @@ std::string dUdLambda::writeAveragesStatistics(double beta) const
       "    ", binIndex, static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex].x, conv * dudlambda.second[binIndex].x);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (trapezoidal rule)\n");
+  std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (trapezoidal)\n");
   for (size_t blockIndex = 0; blockIndex < dUdlambdaBookKeeping.numberOfBlocks; ++blockIndex)
   {
     double blockAverage = dUdlambdaBookKeeping.averagedExcessChemicalPotential(blockIndex);
@@ -102,9 +103,15 @@ std::string dUdLambda::writeAveragesStatistics(double beta) const
   std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
     Units::EnergyToKJPerMol * averageIdealGasChemicalPotentialDUDlambda.first,
     Units::EnergyToKJPerMol * averageIdealGasChemicalPotentialDUDlambda.second);
-  std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+  std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n\n",
     Units::EnergyToKJPerMol * averageTotalChemicalPotentialDUDlambda.first,
     Units::EnergyToKJPerMol * averageTotalChemicalPotentialDUDlambda.second);
+
+  std::print(stream, "    Measure fugacity:            {: .6e} +/- {: .6e} [Pa]\n",
+    Units::PressureConversionFactor * averageFugacityDUDlambda.first,
+    Units::PressureConversionFactor * averageFugacityDUDlambda.second);
+
+  std::print(stream, "\n\n");
 
   return stream.str();
 }

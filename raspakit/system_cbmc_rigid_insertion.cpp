@@ -25,7 +25,7 @@ import <algorithm>;
 import <numeric>;
 
 
-[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
+[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
 {
   //std::vector<Atom> atoms = components[selectedComponent].newAtoms(scaling, selectedMolecule);
   for (Atom& atom : atoms)

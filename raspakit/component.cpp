@@ -511,6 +511,18 @@ std::vector<Atom> Component::newAtoms(double scaling, size_t moleculeId) const
     return new_atoms;
 }
 
+std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const
+{
+  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  for (size_t i = 0; i != atoms.size(); ++i)
+  {
+    copied_atoms[i].setScaling(scaling);
+    copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
+    copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
+  }
+  return copied_atoms;
+}
+
 std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
 {
     std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());

@@ -38,7 +38,6 @@ export struct dUdLambda
     delta(1.0 / static_cast<double>(numberOfBins - 1)),
     histogram(numberOfBins),
     biasFactor(numberOfBins),
-    newHistogram(numberOfBlocks, numberOfBins),
     dUdlambdaBookKeeping(numberOfBlocks, numberOfBins)
   {
   }
@@ -52,7 +51,6 @@ export struct dUdLambda
   std::vector<double> histogram;
   std::vector<double> biasFactor;
 
-  PropertyLambdaProbabilityHistogram newHistogram;
   PropertyDUDlambda dUdlambdaBookKeeping;
 
   inline double lambdaValue() const
@@ -68,16 +66,6 @@ export struct dUdLambda
   inline void setCurrentBin(size_t index)
   {
     currentBin = index;
-  }
-
-  inline void updateHistogram()
-  {
-    histogram[currentBin] += 1.0;
-  }
-
-  void sampleHistogram(size_t blockIndex, double density)
-  {
-    newHistogram.addSample(blockIndex, currentBin, density, weight());
   }
 
   void sampledUdLambdaHistogram(size_t blockIndex, double value)

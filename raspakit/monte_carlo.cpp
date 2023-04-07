@@ -31,6 +31,7 @@ import property_loading;
 import property_enthalpy;
 import mc_moves_probabilities_particles;
 import property_pressure;
+import dudlambda;
 
 import <iostream>;
 import <algorithm>;
@@ -290,7 +291,7 @@ void MonteCarlo::production()
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
-      system.lambda.currentBin = system.components[1].lambda.currentBin;
+      
       system.sampleProperties(estimation.currentBin);
     }
 

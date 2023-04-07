@@ -953,9 +953,13 @@ void System::sampleProperties(size_t currentBlock)
      component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
    }
 
-   double l = components[1].lambda.lambdaValue();
-   double dudlambda = l <= 0.5 ? runningEnergies.dudlambdaVDW : 0.0 + l >= 0.5 ? (runningEnergies.dudlambdaCharge + runningEnergies.dudlambdaEwald) : 0.0;
-   lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
+   // TODO: Change to selected lambda, you can follow only one lambda-change
+   //       Also means the number of binds must be taken from that one
+   //lambda.currentBin = components[1].lambda.currentBin;
+   //double l = components[1].lambda.lambdaValue();
+   //double dudlambda = l <= 0.5 ? runningEnergies.dudlambdaVDW : 0.0 + l >= 0.5 ? (runningEnergies.dudlambdaCharge + runningEnergies.dudlambdaEwald) : 0.0;
+   //double density = static_cast<double>(numberOfIntegerMoleculesPerComponent[1]) / simulationBox.volume;
+   //lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
    //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
 
    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
