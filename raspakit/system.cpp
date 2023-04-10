@@ -778,7 +778,8 @@ void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unuse
   //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
   //double currentPressure = currentIdealPressure + currentExcessPressure;
   //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+            conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -811,7 +812,8 @@ void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+             conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -867,7 +869,8 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), conv * runningEnergies.dudlambda());
+  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+             conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -954,10 +957,10 @@ void System::sampleProperties(size_t currentBlock)
    }
 
    // TODO: Change to selected lambda, you can follow only one lambda-change
-   //       Also means the number of binds must be taken from that one
+   //       Also means the number of bins must be taken from that one
    //lambda.currentBin = components[1].lambda.currentBin;
    //double l = components[1].lambda.lambdaValue();
-   //double dudlambda = l <= 0.5 ? runningEnergies.dudlambdaVDW : 0.0 + l >= 0.5 ? (runningEnergies.dudlambdaCharge + runningEnergies.dudlambdaEwald) : 0.0;
+   //double dudlambda = runningEnergies.dudlambda(l);
    //double density = static_cast<double>(numberOfIntegerMoleculesPerComponent[1]) / simulationBox.volume;
    //lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
    //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);

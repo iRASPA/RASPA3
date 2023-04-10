@@ -10,6 +10,8 @@ import <string>;
 import <sstream>;
 import <ostream>;
 
+import scaling;
+
 export struct RunningEnergy
 {
   RunningEnergy() : frameworkMoleculeVDW(0.0), moleculeMoleculeVDW(0.0), 
@@ -36,9 +38,10 @@ export struct RunningEnergy
              polarization;
   }
 
-  inline double dudlambda() const
+  inline double dudlambda(double lambda) const
   {
-    return dudlambdaVDW + dudlambdaCharge + dudlambdaEwald;
+    return Scaling::scalingVDWDerivative(lambda) * dudlambdaVDW + 
+           Scaling::scalingCoulombDerivative(lambda) * (dudlambdaCharge + dudlambdaEwald);
   }
 
   inline void zero()

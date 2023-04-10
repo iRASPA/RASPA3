@@ -17,7 +17,7 @@ export inline ForceFactor potentialCoulombGradient(const ForceField& forcefield,
     switch(forcefield.chargeMethod)
     {
       default:
-      case ForceField::ChargeMethod::Ewald:
+      [[likely]] case ForceField::ChargeMethod::Ewald:
       {
         double alpha = forcefield.EwaldAlpha;
         double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;

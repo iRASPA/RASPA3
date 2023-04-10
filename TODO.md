@@ -1,4 +1,4 @@
- 1) move dU/dlambda to system
+ 1) move dU/dlambda to system      DONE
  2) compute pressure (Ewald)       DONE
  3) volume move (NPT)              DONE
  4) rescale MC moves max-change    DONE
@@ -17,7 +17,7 @@
 tests
 =====
 1) independence of Coulomb cutoff to test Fourier vs real
-2) tests for lambda-derivatives
+2) tests for lambda-derivatives    DONE
 3) check Gibbs cutoff per system
 
 

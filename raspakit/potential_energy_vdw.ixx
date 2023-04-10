@@ -15,7 +15,7 @@ export inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, cons
     switch (potentialType)
     {
     default:
-    case VDWParameters::Type::LennardJones:
+    [[likely]] case VDWParameters::Type::LennardJones:
     {
       double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
       double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;

@@ -70,7 +70,7 @@ export struct dUdLambda
 
   void sampledUdLambdaHistogram(size_t blockIndex, double value)
   {
-    dUdlambdaBookKeeping.addSample(blockIndex, currentBin, 2.0 * value);
+    dUdlambdaBookKeeping.addSample(blockIndex, currentBin, value);
   }
 
   inline double weight() const

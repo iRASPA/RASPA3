@@ -75,7 +75,7 @@ std::string dUdLambda::writeAveragesStatistics(double beta) const
       "    ", binIndex, static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex].x, conv * dudlambda.second[binIndex].x);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (trapezoidal)\n");
+  std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (Simpson's rule)\n");
   for (size_t blockIndex = 0; blockIndex < dUdlambdaBookKeeping.numberOfBlocks; ++blockIndex)
   {
     double blockAverage = dUdlambdaBookKeeping.averagedExcessChemicalPotential(blockIndex);
