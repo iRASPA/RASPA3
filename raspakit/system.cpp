@@ -302,7 +302,8 @@ void System::addComponent(const Component&& component) noexcept(false)
 void System::initializeComponents()
 {
   // sort rigid frameworks first, before flexible frameworks
-  std::sort(components.begin(), components.begin() + numberOfFrameworks, [](const Component& a, const Component& b)
+  std::sort(components.begin(), components.begin() + std::make_signed_t<std::size_t>(numberOfFrameworks), 
+     [](const Component& a, const Component& b)
         {
             return a.rigid > b.rigid;
         });
@@ -727,12 +728,14 @@ void System::computeNumberOfPseudoAtoms()
   } 
 }
 
-void System::writeOutputHeader(std::ostream &outputFile) const
+std::string System::writeOutputHeader() const
 {
-  std::print(outputFile, "Compiler and run-time data\n");
-  std::print(outputFile, "===============================================================================\n");
+  std::ostringstream stream;
 
-  std::print(outputFile, "RASPA 3.0.0\n\n");
+  std::print(stream, "Compiler and run-time data\n");
+  std::print(stream, "===============================================================================\n");
+
+  std::print(stream, "RASPA 3.0.0\n\n");
 
   ThreadPool &pool = ThreadPool::instance();
   const size_t numberOfHelperThreads = pool.getThreadCount();
@@ -740,34 +743,38 @@ void System::writeOutputHeader(std::ostream &outputFile) const
   switch(pool.threadingType)
   {
     case ThreadPool::ThreadingType::Serial:
-      std::print(outputFile, "Parallization: Serial, 1 thread\n");
+      std::print(stream, "Parallization: Serial, 1 thread\n");
       break;
     case ThreadPool::ThreadingType::OpenMP:
-      std::print(outputFile, "Parallization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+      std::print(stream, "Parallization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
       break;
     case ThreadPool::ThreadingType::ThreadPool:
-      std::print(outputFile, "Parallization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+      std::print(stream, "Parallization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
       break;
     case ThreadPool::ThreadingType::GPU_Offload:
-      std::print(outputFile, "Parallization: GPU-Offload\n");
+      std::print(stream, "Parallization: GPU-Offload\n");
       break;
   } 
-  std::print(outputFile, "\n");
+  std::print(stream, "\n");
+
+  return stream.str();
 }
 
-void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
+std::string System::writeInitializationStatusReport([[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  simulationBox.printStatus(stream);
+  std::print(stream, simulationBox.printStatus());
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component & c : components)
   {
-    loadings.printStatus(stream, c, frameworkMass);
+    std::print(stream, loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -792,21 +799,25 @@ void System::writeInitializationStatusReport(std::ostream &stream, [[maybe_unuse
   std::print(stream, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
   std::print(stream, "\n\n\n\n");
+
+  return stream.str();
 }
 
-void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReport([[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  simulationBox.printStatus(stream);
+  std::print(stream, simulationBox.printStatus());
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component & c : components)
   {
-    loadings.printStatus(stream, c, frameworkMass);
+    std::print(stream, loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -826,10 +837,14 @@ void System::writeEquilibrationStatusReport(std::ostream &stream, [[maybe_unused
   std::print(stream, "    Polarization:            {: .6e} [K]\n", conv * runningEnergies.polarization);
 
   std::print(stream, "\n\n\n\n");
+
+  return stream.str();
 }
 
-void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
+std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentCycle, [[maybe_unused]] size_t numberOfCycles) const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
@@ -842,7 +857,7 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component & c : components)
   {
-    loadings.printStatus(stream, c, loadingData.first, loadingData.second, frameworkMass);
+    std::print(stream, loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -898,17 +913,23 @@ void System::writeProductionStatusReport(std::ostream &stream, [[maybe_unused]] 
       conv * energyData.second.intraEnergy.total().energy);
   
   std::print(stream, "\n\n\n");
+
+  return stream.str();
 }
 
-void System::writeComponentStatus(std::ostream &stream) const
+std::string System::writeComponentStatus() const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Component definitions\n");
   std::print(stream, "===============================================================================\n\n");
   for (const Component& component : components)
   {
-    component.printStatus(stream, forceField);
+    std::print(stream, component.printStatus(forceField));
   }
   std::print(stream, "\n\n\n\n");
+
+  return stream.str();
 }
 
 void System::writeComponentFittingStatus(std::ostream &stream, [[maybe_unused]] const std::vector<std::pair<double, double>> &rawData) const

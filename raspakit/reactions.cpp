@@ -5,6 +5,9 @@ module reactions;
 import <string>;
 import <sstream>;
 
+import print;
+import reaction;
+
 std::string Reactions::printStatus() const
 {
   std::ostringstream stream;
@@ -15,10 +18,9 @@ std::string Reactions::printStatus() const
   std::print(stream, "===============================================================================\n");
 
   std::print(stream,"{} reactions\n", list.size());
-  for (size_t reactionId = 0; const Reaction& reaction : list)
+  for (const Reaction& reaction : list)
   {
     std::print(stream, reaction.printStatus());
-    ++reactionId;
   }
   std::print(stream, "\n\n");
 

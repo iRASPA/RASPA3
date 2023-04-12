@@ -25,7 +25,7 @@ export class MixturePrediction
 
     MixturePrediction(const System &system);
 
-    void writeHeader(std::ostream &stream) const;
+    std::string writeHeader() const;
 
     void print() const;
     void run(std::ostream &stream);

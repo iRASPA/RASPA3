@@ -14,8 +14,10 @@ import print;
 import component;
 import units;
 
-void Loadings::printStatus(std::ostream &stream, const Component& comp, std::optional<double> frameworkMass) const
+std::string Loadings::printStatus(const Component& comp, std::optional<double> frameworkMass) const
 {
+  std::ostringstream stream;
+
   if (frameworkMass.has_value())
   {
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
@@ -50,10 +52,14 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, std::opt
     std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[comp.componentId]);
     std::print(stream, "    density:          {: .6e} kg/m^3\n", densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
   }
+
+  return stream.str();
 }
 
-void Loadings::printStatus(std::ostream &stream, const Component& comp, const Loadings& average, const Loadings& error, std::optional<double> frameworkMass) const
+std::string Loadings::printStatus(const Component& comp, const Loadings& average, const Loadings& error, std::optional<double> frameworkMass) const
 {
+  std::ostringstream stream;
+
   if (frameworkMass)
   {
     const double toMolePerKg = 1000.0 / frameworkMass.value();
@@ -103,5 +109,7 @@ void Loadings::printStatus(std::ostream &stream, const Component& comp, const Lo
         densityConversionFactor * comp.mass * numberDensities[comp.componentId], densityConversionFactor * comp.mass * average.numberDensities[comp.componentId],
         densityConversionFactor * comp.mass * error.numberDensities[comp.componentId]);
   }
+
+  return stream.str();
 }
 

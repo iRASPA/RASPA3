@@ -419,8 +419,10 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
   }  
 }
 
-void Component::printStatus(std::ostream &stream, const ForceField& forceField) const
+std::string Component::printStatus(const ForceField& forceField) const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Component {} [{}]\n\n", componentId, name);
 
   std::print(stream, "    Critical temperature:  {} [K]\n", criticalTemperature);
@@ -473,6 +475,8 @@ void Component::printStatus(std::ostream &stream, const ForceField& forceField) 
       std::print(stream, "        {}", bonds[i].print());
   }
   std::print(stream, "\n");
+
+  return stream.str();
 }
 
 

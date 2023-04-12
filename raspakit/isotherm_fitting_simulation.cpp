@@ -47,9 +47,9 @@ void IsothermFittingSimulation::run()
     std::ostream stream(fstream.rdbuf());
     //std::ostream stream(std::cout.rdbuf());
 
-    system.writeOutputHeader(stream);
-    system.writeOutputHeaderHardware(stream);
-    fitting.writeHeader(stream);
+    std::print(stream, system.writeOutputHeader());
+    std::print(stream, system.writeOutputHeaderHardware());
+    std::print(stream, fitting.writeHeader());
 
     fitting.createPlotScript();
 

@@ -268,14 +268,14 @@ export struct System
     void computeNumberOfPseudoAtoms();
     void optimizeMCMoves();
 
-    void writeOutputHeader(std::ostream &outputFile) const;
-    void writeOutputHeaderHardware(std::ostream &outputFile) const;
-    void writeInitializationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeEquilibrationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeProductionStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeComponentStatus(std::ostream &stream) const;
+    std::string writeOutputHeader() const;
+    std::string writeOutputHeaderHardware() const;
+    std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeComponentStatus() const;
 
-    void writeMCMoveStatistics(std::ostream &stream) const;
+    std::string writeMCMoveStatistics() const;
   
     std::vector<Component> nonFrameworkComponents()
     {

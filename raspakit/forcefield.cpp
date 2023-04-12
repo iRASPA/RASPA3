@@ -225,8 +225,10 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
 }
 
 
-void ForceField::printPseudoAtomStatus(std::ostream &stream) const
+std::string ForceField::printPseudoAtomStatus() const
 {
+  std::ostringstream stream;
+ 
   std::print(stream, "Pseudo-atoms\n");
   std::print(stream, "===============================================================================\n\n");
 
@@ -235,10 +237,14 @@ void ForceField::printPseudoAtomStatus(std::ostream &stream) const
       std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].mass, pseudoAtoms[i].charge);
   }
   std::print(stream, "\n");
+
+  return stream.str();
 }
 
-void ForceField::printForceFieldStatus(std::ostream &stream) const
+std::string ForceField::printForceFieldStatus() const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Force field status\n");
   std::print(stream, "===============================================================================\n\n");
 
@@ -276,6 +282,8 @@ void ForceField::printForceFieldStatus(std::ostream &stream) const
     std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
   }
   std::print(stream, "\n\n");
+
+  return stream.str();
 }
 
 

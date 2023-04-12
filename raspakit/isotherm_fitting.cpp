@@ -77,8 +77,10 @@ IsothermFitting::IsothermFitting(System &system) noexcept:
   }
 }
 
-void IsothermFitting::writeHeader(std::ostream &stream)
+std::string IsothermFitting::writeHeader()
 {
+  std::ostringstream stream;
+
   for(size_t i = 0; i < system.components.size(); ++i)
   {
     std::print(stream, std::print("Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters));
@@ -86,6 +88,8 @@ void IsothermFitting::writeHeader(std::ostream &stream)
     std::print(stream, "\n");
   }
   std::print(stream, "\n");
+
+  return stream.str();
 }
 
 void IsothermFitting::writeComponentIsothermFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const

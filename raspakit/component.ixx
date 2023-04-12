@@ -129,7 +129,7 @@ export struct Component
     void readComponent(const ForceField& forceField, const std::string& fileName);
     void readFramework(const ForceField& forceField, const std::string& fileName);
 
-    void printStatus(std::ostream& stream, const ForceField& forceField) const;
+    std::string printStatus(const ForceField& forceField) const;
     void printBreakthroughStatus(std::ostream& stream) const;
 
     std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;

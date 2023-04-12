@@ -50,7 +50,7 @@ export struct IsothermFitting
   void createPlotScript(size_t componentId, const DNA &citizen);
   void createPlotScript();
 
-  void writeHeader(std::ostream &stream);
+  std::string writeHeader();
   void writeComponentIsothermFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
   DNA newCitizen(size_t Id, const std::vector<std::pair<double, double>> &rawData);

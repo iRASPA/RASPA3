@@ -24,29 +24,39 @@ import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
 
 
-inline void formatStatistics(std::ostream &stream, const std::string name, const MoveStatistics<double>& move)
+inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double>& move)
 {
+  std::ostringstream stream;
+
   std::print(stream, "{} total:        {:10}\n", name, move.counts);
   std::print(stream, "{} constructed:  {:10}\n", name, move.constructed);
   std::print(stream, "{} accepted:     {:10}\n", name, move.accepted);
   std::print(stream, "{} fraction:     {:10f}\n", name, move.accepted / std::max(1.0, double(move.counts)));
   std::print(stream, "{} max-change:   {:10f}\n\n", name, move.maxChange);
+
+  return stream.str();
 }
 
-inline void formatStatistics(std::ostream &stream, const std::string name, const MoveStatistics<double3> &move)
+inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double3> &move)
 {
+  std::ostringstream stream;
+
   std::print(stream, "{} total:        {:10} {:10} {:10}\n", name, move.counts.x, move.counts.y, move.counts.z);
   std::print(stream, "{} constructed:  {:10} {:10} {:10}\n", name, move.constructed.x, move.constructed.y, move.constructed.z);
   std::print(stream, "{} accepted:     {:10} {:10} {:10}\n", name, move.accepted.x, move.accepted.y, move.accepted.z);
   std::print(stream, "{} fraction:     {:10f} {:10f} {:10f}\n", name, move.accepted.x / std::max(1.0, double(move.counts.x)),
                  move.accepted.y / std::max(1.0, double(move.counts.y)), move.accepted.z / std::max(1.0, double(move.counts.z)));
   std::print(stream, "{} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
+
+  return stream.str();
 }
 
-void System::writeMCMoveStatistics(std::ostream &stream) const
+std::string System::writeMCMoveStatistics() const
 {
-  if (mc_moves_probabilities.probabilityVolumeMove > 0.0) formatStatistics(stream, "Volume", mc_moves_probabilities.statistics_VolumeMove);
-  if (mc_moves_probabilities.probabilityGibbsVolumeMove > 0.0) formatStatistics(stream, "Gibbs Volume", mc_moves_probabilities.statistics_GibbsVolumeMove);
+  std::ostringstream stream;
+
+  if (mc_moves_probabilities.probabilityVolumeMove > 0.0) std::print(stream, formatMoveStatistics( "Volume", mc_moves_probabilities.statistics_VolumeMove));
+  if (mc_moves_probabilities.probabilityGibbsVolumeMove > 0.0) std::print(stream, formatMoveStatistics("Gibbs Volume", mc_moves_probabilities.statistics_GibbsVolumeMove));
 
   for (size_t componentId = 0; const Component& component: components)
   {
@@ -206,4 +216,6 @@ void System::writeMCMoveStatistics(std::ostream &stream) const
 
  
   std::print(stream, "\n\n");
+
+  return stream.str();
 }

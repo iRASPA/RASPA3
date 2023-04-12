@@ -47,9 +47,9 @@ void BreakthroughSimulation::run()
     std::ostream stream(fstream.rdbuf());
     //std::ostream stream(std::cout.rdbuf());
 
-    system.writeOutputHeader(stream);
-    system.writeOutputHeaderHardware(stream);
-    breakthrough.writeHeader(stream);
+    std::print(stream, system.writeOutputHeader());
+    std::print(stream, system.writeOutputHeaderHardware());
+    std::print(stream, breakthrough.writeHeader());
 
     breakthrough.createPlotScript();
     breakthrough.createMovieScripts();
