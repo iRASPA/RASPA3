@@ -62,7 +62,8 @@ import move_statistics;
 import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
 import dudlambda;
-
+import reaction;
+import reactions;
 
 
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
@@ -93,7 +94,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    lambda(numberOfBlocks, 41)
+    lambda(numberOfBlocks, 41),
+    reactions()
 {
 
   for (Component& component : components)
@@ -165,7 +167,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
                mc_moves_probabilities(),
-               lambda(numberOfBlocks, 41)
+               lambda(numberOfBlocks, 41),
+               reactions()
 {
     
 }
@@ -203,6 +206,7 @@ System::System(System&& s) noexcept :
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
     lambda(s.lambda),
+    reactions(s.reactions),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -253,6 +257,7 @@ System::System(const System&& s) noexcept :
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
     lambda(s.lambda),
+    reactions(s.reactions),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -270,42 +275,36 @@ System::System(const System&& s) noexcept :
 
 void System::addComponent(const Component&& component) noexcept(false)
 {
-  initialNumberOfMolecules.resize(components.size() + 1);
-  numberOfMoleculesPerComponent.resize(components.size() + 1);
-  numberOfIntegerMoleculesPerComponent.resize(components.size() + 1);
-  numberOfFractionalMoleculesPerComponent.resize(components.size() + 1);
-  numberOfReactionMoleculesPerComponent.resize(components.size() + 1);
-  numberOfReactionFractionalMoleculesPerComponent.resize(components.size() + 1);
-  idealGasEnergiesPerComponent.resize(components.size() + 1);
-
-  numberOfPseudoAtoms.resize(components.size() + 1, std::vector<size_t>(forceField.pseudoAtoms.size()));
-  totalNumberOfPseudoAtoms.resize(forceField.pseudoAtoms.size());
-
-  averageEnergies.resize(components.size() + 1);
-
-  loadings.resize(components.size() + 1);
-  averageLoadings.resize(components.size() + 1);
-
-  netCharge.resize(components.size() + 1);
-
   // Move the component to the system
   components.push_back(std::move(component));
+
+  initialNumberOfMolecules.resize(components.size());
+  numberOfMoleculesPerComponent.resize(components.size());
+  numberOfIntegerMoleculesPerComponent.resize(components.size());
+  numberOfFractionalMoleculesPerComponent.resize(components.size());
+  numberOfReactionMoleculesPerComponent.resize(components.size());
+  numberOfReactionFractionalMoleculesPerComponent.resize(components.size());
+  idealGasEnergiesPerComponent.resize(components.size());
+
+  numberOfPseudoAtoms.resize(components.size(), std::vector<size_t>(forceField.pseudoAtoms.size()));
+  totalNumberOfPseudoAtoms.resize(forceField.pseudoAtoms.size());
+
+  averageEnergies.resize(components.size());
+
+  loadings.resize(components.size());
+  averageLoadings.resize(components.size());
+
+  netCharge.resize(components.size());
+
 }
 
 // read the component from file if needed and initialize
 void System::initializeComponents()
 {
-  // sort components, order: rigid frameworks, flexible frameworks, adsorbates, cations
-  std::sort(components.begin(), components.end(), [](const Component& a, const Component& b)
+  // sort rigid frameworks first, before flexible frameworks
+  std::sort(components.begin(), components.begin() + numberOfFrameworks, [](const Component& a, const Component& b)
         {
-          if (a.type == b.type)
-          {
-            if (a.rigid) return true; else return false;
-          }
-          else
-          {
-            return a.type < b.type;
-          }
+            return a.rigid > b.rigid;
         });
 
   // read components from file
@@ -458,7 +457,7 @@ void System::createInitialMolecules()
                     growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb, 
                                         componentId, numberOfMoleculesPerComponent[componentId], 0., atoms);
 
-                } while (!growData || growData->RosenbluthWeight < 1.0);
+                } while (!growData || growData->energies.total() > forceField.overlapCriteria);
 
                 insertFractionalMolecule(componentId, growData->atom);
                 //moleculeIdx++;
@@ -474,7 +473,7 @@ void System::createInitialMolecules()
               growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb,
                                     componentId, numberOfMoleculesPerComponent[componentId], 1.0, atoms);
 
-            } while(!growData || growData->RosenbluthWeight < 1.0);
+            } while(!growData || growData->energies.total() > forceField.overlapCriteria);
 
             insertMolecule(componentId, growData->atom);
 
@@ -958,12 +957,12 @@ void System::sampleProperties(size_t currentBlock)
 
    // TODO: Change to selected lambda, you can follow only one lambda-change
    //       Also means the number of bins must be taken from that one
-   //lambda.currentBin = components[1].lambda.currentBin;
-   //double l = components[1].lambda.lambdaValue();
-   //double dudlambda = runningEnergies.dudlambda(l);
-   //double density = static_cast<double>(numberOfIntegerMoleculesPerComponent[1]) / simulationBox.volume;
-   //lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
-   //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
+   lambda.currentBin = components[1].lambda.currentBin;
+   double l = components[1].lambda.lambdaValue();
+   double dudlambda = runningEnergies.dudlambda(l);
+   double density = static_cast<double>(numberOfIntegerMoleculesPerComponent[1]) / simulationBox.volume;
+   lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
+   lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
 
    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 

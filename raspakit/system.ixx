@@ -46,6 +46,8 @@ import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
 import dudlambda;
+import reaction;
+import reactions;
 
 export struct System
 {
@@ -158,6 +160,8 @@ export struct System
     MCMoveProbabilitiesSystem mc_moves_probabilities;
 
     dUdLambda lambda;
+
+    Reactions reactions;
 
     // Breakthrough settings
     size_t columnNumberOfGridPoints{ 100 };

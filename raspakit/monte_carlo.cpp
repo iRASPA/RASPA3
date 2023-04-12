@@ -113,6 +113,7 @@ void MonteCarlo::initialize()
     system.forceField.printPseudoAtomStatus(stream);
     system.forceField.printForceFieldStatus(stream);
     system.writeComponentStatus(stream);
+    std::print(stream, system.reactions.printStatus());
   }
 
   for (System& system : systems)

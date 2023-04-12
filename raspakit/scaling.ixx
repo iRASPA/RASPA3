@@ -29,7 +29,6 @@ export namespace Scaling
   inline double scalingVDWDerivative(double lambda)
   {
     assert(lambda >= 0.0 && lambda <= 1.0);
-    [[maybe_unused]] double lambdaVDW = scalingVDW(lambda);
     double temp = 1.0 - 4.0 * lambda + 8.0 * lambda * lambda;
     return lambda < 0.5 ? (8.0 * (1.0 - 2.0 * lambda) * lambda) / (temp * temp) : 0.0;
   }
@@ -37,7 +36,6 @@ export namespace Scaling
   inline double scalingCoulombDerivative(double lambda)
   {
     assert(lambda >= 0.0 && lambda <= 1.0);
-    [[maybe_unused]] double lambdaCoulomb = scalingCoulomb(lambda);
     double temp = 5.0 + 4.0 * lambda * (2.0 * lambda - 3.0);
     return lambda > 0.5 ? -( 8.0 * (lambda - 1.0) * (2.0 * lambda - 1.0)) / (temp * temp) : 0.0;
   }
@@ -58,13 +56,13 @@ export namespace Scaling
   inline double scalingVDWDerivative(double lambda)
   {
     assert(lambda >= 0.0 && lambda <= 1.0);
-    return lambda < 0.5 ? 2.0 : 0.0;
+    return lambda < 0.5 ? 1.0 : 0.0;
   }
 
   inline double scalingCoulombDerivative(double lambda)
   {
     assert(lambda >= 0.0 && lambda <= 1.0);
-    return lambda < 0.5 ? 0.0 : 2.0;
+    return lambda < 0.5 ? 0.0 : 1.0;
   }
   */
 }

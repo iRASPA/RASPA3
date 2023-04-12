@@ -562,6 +562,15 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "Reaction"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
+        systems.back().reactions.list.emplace_back(Reaction(systems.back().reactions.list.size(), std::vector(values.begin(), values.begin() + values.size() / 2),
+                                                            std::vector(values.begin() + values.size() / 2, values.end())));
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "Movies"))
       {
         //requireExistingSystem(keyword, lineNumber);
@@ -793,6 +802,21 @@ InputReader::InputReader()
         }
         continue;
       }
+
+      if (caseInSensStringCompare(keyword, "LnPartitionFunction"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0; i < systems.size(); ++i)
+        {
+          systems[i].components.back().lnPartitionFunction = values[i];
+        }
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "FileName"))
       {
         std::string str;
@@ -1301,6 +1325,22 @@ InputReader::InputReader()
   // Checks
   // ========================================================
     
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    for (size_t reactionId = 0; const Reaction& reaction : systems[i].reactions.list)
+    {
+      if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
+         (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
+      {
+        throw std::runtime_error(std::print("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal to twice the number of components {})", 
+          reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(), 2 * systems[i].numerOfAdsorbateComponents()));
+      }
+    
+      ++reactionId;
+    }
+
+  }
+
   for (size_t i = 0; i < systems.size(); ++i)
   {
     double sum = 0.0;

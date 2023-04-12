@@ -116,6 +116,8 @@ export struct Component
     size_t columnLoading{ 1 };
     size_t columnError{ 2 };
 
+    double lnPartitionFunction { 0 };
+
     enum class PressureScale
     {
       Log = 0,
