@@ -176,8 +176,10 @@ Breakthrough::Breakthrough(System &system):
   }
 }
 
-void Breakthrough::writeHeader(std::ostream &stream)
+std::string Breakthrough::writeHeader()
 {
+  std::ostringstream stream;
+
   std::print(stream, "\nColumn properties\n");
   std::print(stream, "=======================================================\n");
   std::print(stream, "Display-name:                          {}\n", displayName);
@@ -211,6 +213,8 @@ void Breakthrough::writeHeader(std::ostream &stream)
     components[i].printBreakthroughStatus(stream);
     std::print(stream, "\n");
   }
+
+  return stream.str();
 }
 
 

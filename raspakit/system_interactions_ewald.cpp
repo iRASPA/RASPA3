@@ -19,6 +19,7 @@ import energy_status;
 import energy_status_inter;
 import units;
 import energy_factor;
+import force_factor;
 import running_energy;
 import component;
 import forcefield;
@@ -215,19 +216,20 @@ void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEne
                 {
                     double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
 
-                    std::complex<double> cksum(0.0, 0.0);
+                    std::pair<std::complex<double>, std::complex<double>> cksum(0.0, 0.0);
                     for (size_t i = 0; i != numberOfAtoms; ++i)
                     {
                         std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
                         eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
                         double charge = atoms[i].charge;
                         double scaling = atoms[i].scalingCoulomb;
-                        cksum += scaling * charge * (eik_xy[i] * eikz_temp);
+                        cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
+                        cksum.second += charge * (eik_xy[i] * eikz_temp);
                     }
 
                     double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
                     double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-                    energyStatus.ewald += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
+                    energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() + cksum.first.imag() * cksum.first.imag());
 
                     fixedFrameworkStoredEik[nvec] = cksum;
                     ++nvec;
@@ -339,19 +341,22 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
 
-          std::complex<double> cksum(0.0, 0.0);
+          std::pair<std::complex<double>, std::complex<double>> cksum;
           for(size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz>=0 ? eikz_temp.imag() : -eikz_temp.imag());
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
-            cksum += scaling * charge * (eik_xy[i] * eikz_temp);
+            bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
+            cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energyStatus.ewald += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
+          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() + cksum.first.imag() * cksum.first.imag());
+          energyStatus.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + cksum.first.imag() * cksum.second.imag());
 
           storedEik[nvec] = cksum;
           ++nvec;
@@ -366,7 +371,9 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
   {
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
     energyStatus.ewald -= prefactor_self * scaling * charge * scaling * charge;
+    energyStatus.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
   // Subtract exclusion-energy
@@ -379,18 +386,24 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
         std::span<Atom> span = spanOfMolecule(l, m);
         for(size_t i = 0; i != span.size() - 1; i++)
         {
-          double factorA = span[i].scalingCoulomb * span[i].charge;
+          double chargeA = span[i].charge;
+          double scalingA = span[i].scalingCoulomb;
+          bool groupIdA = static_cast<bool>(span[i].groupId);
           double3 posA = span[i].position;
           for(size_t j = i + 1; j != span.size(); j++)
           {
-            double factorB = span[j].scalingCoulomb * span[j].charge;
+            double chargeB = span[j].charge;
+            double scalingB = span[j].scalingCoulomb;
+            bool groupIdB = static_cast<bool>(span[j].groupId);
             double3 posB = span[j].position;
       
             double3 dr = posA - posB;
             dr = box.applyPeriodicBoundaryConditions(dr);
             double r = std::sqrt(double3::dot(dr, dr));
       
-            energyStatus.ewald -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+            energyStatus.ewald -= scalingA * scalingB * temp;
+            energyStatus.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
           }
         }
       }
@@ -409,7 +422,7 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
 }
 
 // compute gradient
-EnergyFactor System::computeEwaldFourierGradient()
+ForceFactor System::computeEwaldFourierGradient()
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -418,7 +431,7 @@ EnergyFactor System::computeEwaldFourierGradient()
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  EnergyFactor energy{ 0.0, 0.0 };
+  ForceFactor energy{ 0.0, 0.0, 0.0 };
 
   if (noCharges) return energy;
   if (omitEwaldFourier) return energy;
@@ -509,18 +522,22 @@ EnergyFactor System::computeEwaldFourierGradient()
           double rksq = rk.length_squared();
 
           std::complex<double> cksum(0.0, 0.0);
+          std::complex<double> cksum2(0.0, 0.0);
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
+            bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
             cksum += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum2 += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
           
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
+          energy.dUdlambda += 2.0 * temp * (cksum.real() * cksum2.real() + cksum.imag() * cksum2.imag());
 
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -545,7 +562,9 @@ EnergyFactor System::computeEwaldFourierGradient()
   {
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
     energy.energy -= prefactor_self * scaling * charge * scaling * charge;
+    energy.dUdlambda -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
   // Subtract exclusion-energy
@@ -558,18 +577,24 @@ EnergyFactor System::computeEwaldFourierGradient()
         std::span<Atom> span = spanOfMolecule(l, m);
         for (size_t i = 0; i != span.size() - 1; i++)
         {
-          double factorA = span[i].scalingCoulomb * span[i].charge;
+          double scalingA = span[i].scalingCoulomb;
+          bool groupIdA = static_cast<bool>(span[i].groupId);
+          double chargeA = span[i].charge;
           double3 posA = span[i].position;
           for (size_t j = i + 1; j != span.size(); j++)
           {
-            double factorB = span[j].scalingCoulomb * span[j].charge;
+            double scalingB = span[j].scalingCoulomb;
+            bool groupIdB = static_cast<bool>(span[j].groupId);
+            double chargeB = span[j].charge;
             double3 posB = span[j].position;
 
             double3 dr = posA - posB;
             dr = simulationBox.applyPeriodicBoundaryConditions(dr);
             double r = std::sqrt(double3::dot(dr, dr));
 
-            energy.energy -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+            energy.energy -= scalingA * scalingB * temp;
+            energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
           }
         }
       }
@@ -683,21 +708,25 @@ void System::computeEwaldFourierEnergy(const SimulationBox& box, std::span<const
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
 
-          std::complex<double> cksum(0.0, 0.0);
+          std::pair<std::complex<double>, std::complex<double>> cksum(0.0, 0.0);
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             double charge = moleculeAtomPositions[i].charge;
             double scaling = moleculeAtomPositions[i].scalingCoulomb;
-            cksum += scaling * charge * (eik_xy[i] * eikz_temp);
+            bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
+            cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energyStatus.ewald += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
+          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() + cksum.first.imag() * cksum.first.imag());
+          energyStatus.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + cksum.first.imag() * cksum.second.imag());
 
-          totalEik[nvec] = fixedFrameworkStoredEik[nvec] + cksum;
+          totalEik[nvec].first = fixedFrameworkStoredEik[nvec].first + cksum.first;
+          totalEik[nvec].second = fixedFrameworkStoredEik[nvec].second + cksum.second;
           ++nvec;
         }
       }
@@ -709,8 +738,10 @@ void System::computeEwaldFourierEnergy(const SimulationBox& box, std::span<const
   for (size_t i = 0; i != numberOfAtoms; ++i)
   {
     double charge = moleculeAtomPositions[i].charge;
-    double scaling = moleculeAtomPositions[i].scalingCoulomb;
+    double scaling = atomPositions[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
     energyStatus.ewald -= prefactor_self * scaling * charge * scaling * charge;
+    energyStatus.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
   // Subtract exclusion-energy
@@ -723,18 +754,24 @@ void System::computeEwaldFourierEnergy(const SimulationBox& box, std::span<const
         std::span<Atom> span = spanOfMolecule(l, m);
         for (size_t i = 0; i != span.size() - 1; i++)
         {
-          double factorA = span[i].scalingCoulomb * span[i].charge;
+          double chargeA = span[i].charge;
+          double scalingA = span[i].scalingCoulomb;
+          bool groupIdA = static_cast<bool>(span[i].groupId);
           double3 posA = span[i].position;
           for (size_t j = i + 1; j != span.size(); j++)
           {
-            double factorB = span[j].scalingCoulomb * span[j].charge;
+            double chargeB = span[j].charge;
+            double scalingB = span[j].scalingCoulomb;
+            bool groupIdB = static_cast<bool>(span[j].groupId);
             double3 posB = span[j].position;
 
             double3 dr = posA - posB;
             dr = box.applyPeriodicBoundaryConditions(dr);
             double r = std::sqrt(double3::dot(dr, dr));
 
-            energyStatus.ewald -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+            energyStatus.ewald -= scalingA * scalingB * temp;
+            energyStatus.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
           }
         }
       }
@@ -753,7 +790,7 @@ void System::computeEwaldFourierEnergy(const SimulationBox& box, std::span<const
 }
 
 
-RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedWavevectors, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   RunningEnergy energy;
 
@@ -831,8 +868,8 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
   }
 
   size_t nvec = 0;
-  std::complex<double> cksum_old(0.0, 0.0);
-  std::complex<double> cksum_new(0.0, 0.0);
+  std::pair<std::complex<double>, std::complex<double>> cksum_old;
+  std::pair<std::complex<double>, std::complex<double>> cksum_new;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   for(std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
   {
@@ -860,33 +897,43 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
         {
           double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
 
-          cksum_old = std::complex<double>(0.0, 0.0);
+          cksum_old = std::make_pair(std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0));
           for(size_t i = 0; i != oldatoms.size(); ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz>=0 ? eikz_temp.imag() : -eikz_temp.imag());
             double charge = oldatoms[i].charge;
             double scaling = oldatoms[i].scalingCoulomb;
-            cksum_old += scaling * charge * (eik_xy[i] * eikz_temp);
+            bool groupIdA = static_cast<bool>(oldatoms[i].groupId);
+            cksum_old.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum_old.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
-          cksum_new = std::complex<double>(0.0, 0.0);
+          cksum_new = std::make_pair(std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0));
           for(size_t i = oldatoms.size(); i != oldatoms.size() + newatoms.size(); ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz>=0 ? eikz_temp.imag() : -eikz_temp.imag());
             double charge = newatoms[i - oldatoms.size()].charge;
             double scaling = newatoms[i - oldatoms.size()].scalingCoulomb;
-            cksum_new += scaling * charge * (eik_xy[i] * eikz_temp);
+            bool groupIdA = static_cast<bool>(newatoms[i - oldatoms.size()].groupId);
+            cksum_new.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum_new.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
 
-          energy.ewald += temp * std::norm(storedWavevectors[nvec] + cksum_new - cksum_old);
-          energy.ewald -= temp * std::norm(storedWavevectors[nvec]);
+          energy.ewald += temp * std::norm(storedWavevectors[nvec].first + cksum_new.first - cksum_old.first);
+          energy.ewald -= temp * std::norm(storedWavevectors[nvec].first);
 
-          totalEik[nvec] = storedWavevectors[nvec] + cksum_new - cksum_old;
+          energy.dudlambdaEwald += 2.0 * temp * ((storedWavevectors[nvec].first + cksum_new.first - cksum_old.first).real() * (storedWavevectors[nvec].second + cksum_new.second - cksum_old.second).real() +
+                                            (storedWavevectors[nvec].first + cksum_new.first - cksum_old.first).imag() * (storedWavevectors[nvec].second + cksum_new.second - cksum_old.second).imag());
+          energy.dudlambdaEwald -= 2.0 * temp * ((storedWavevectors[nvec].first).real() * (storedWavevectors[nvec].second).real() +
+                                            (storedWavevectors[nvec].first).imag() * (storedWavevectors[nvec].second).imag());
+
+          totalEik[nvec].first = storedWavevectors[nvec].first + cksum_new.first - cksum_old.first;
+          totalEik[nvec].second = storedWavevectors[nvec].second + cksum_new.second - cksum_old.second;
 
           ++nvec;
         }
@@ -896,35 +943,47 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
 
   for(size_t i = 0; i != oldatoms.size(); i++)
   {
-    double factorA = oldatoms[i].scalingCoulomb * oldatoms[i].charge;
+    double chargeA = oldatoms[i].charge;
+    double scalingA = oldatoms[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(oldatoms[i].groupId);
     double3 posA = oldatoms[i].position;
     for(size_t j = i + 1; j != oldatoms.size(); j++)
     {
-      double factorB = oldatoms[j].scalingCoulomb * oldatoms[j].charge;
+      double chargeB = oldatoms[j].charge;
+      double scalingB = oldatoms[j].scalingCoulomb;
+      bool groupIdB = static_cast<bool>(oldatoms[j].groupId);
       double3 posB = oldatoms[j].position;
 
       double3 dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      energy.ewald += Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+      energy.ewald += scalingA * scalingB * temp;
+      energy.dudlambdaEwald += (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
     }
   }
 
   for(size_t i = 0; i != newatoms.size(); i++)
   {
-    double factorA = newatoms[i].scalingCoulomb * newatoms[i].charge;
+    double chargeA = newatoms[i].charge;
+    double scalingA = newatoms[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(newatoms[i].groupId);
     double3 posA = newatoms[i].position;
     for(size_t j = i + 1; j != newatoms.size(); j++)
     {
-      double factorB = newatoms[j].scalingCoulomb * newatoms[j].charge;
+      double chargeB = newatoms[j].charge;
+      double scalingB = newatoms[j].scalingCoulomb;
+      bool groupIdB = static_cast<bool>(newatoms[j].groupId);
       double3 posB = newatoms[j].position;
 
       double3 dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       double r = std::sqrt(double3::dot(dr, dr));
 
-      energy.ewald -= Units::CoulombicConversionFactor * factorA * factorB * std::erf(alpha * r) / r;
+      double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+      energy.ewald -= scalingA * scalingB * temp;
+      energy.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
     }
   }
 
@@ -934,13 +993,17 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::complex<doub
   {
     double charge = oldatoms[i].charge;
     double scaling = oldatoms[i].scalingCoulomb;
-    energy.ewald += prefactor_self * scaling * scaling * charge * charge;
+    bool groupIdA = static_cast<bool>(oldatoms[i].groupId);
+    energy.ewald += prefactor_self * scaling * charge * scaling * charge;
+    energy.dudlambdaEwald += groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
   for(size_t i = 0; i != newatoms.size(); ++i)
   {
     double charge = newatoms[i].charge;
     double scaling = newatoms[i].scalingCoulomb;
-    energy.ewald -= prefactor_self * scaling * scaling * charge * charge;
+    bool groupIdA = static_cast<bool>(newatoms[i].groupId);
+    energy.ewald -= prefactor_self * scaling * charge * scaling * charge;
+    energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
   return energy;

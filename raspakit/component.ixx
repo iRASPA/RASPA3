@@ -116,6 +116,8 @@ export struct Component
     size_t columnLoading{ 1 };
     size_t columnError{ 2 };
 
+    double lnPartitionFunction { 0 };
+
     enum class PressureScale
     {
       Log = 0,
@@ -127,10 +129,11 @@ export struct Component
     void readComponent(const ForceField& forceField, const std::string& fileName);
     void readFramework(const ForceField& forceField, const std::string& fileName);
 
-    void printStatus(std::ostream& stream, const ForceField& forceField) const;
+    std::string printStatus(const ForceField& forceField) const;
     void printBreakthroughStatus(std::ostream& stream) const;
 
     std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;
     std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
+    std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
     std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
 };

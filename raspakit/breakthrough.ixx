@@ -18,7 +18,7 @@ export struct Breakthrough
 
     void print() const;
 
-    void writeHeader(std::ostream &stream);
+    std::string writeHeader();
     void run(std::ostream &stream);
 
     void createPlotScript();

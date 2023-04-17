@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+import <cstddef>;
 import <vector>;
 import <tuple>;
 import <algorithm>;
@@ -30,7 +31,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     16.04246,
     SimulationBox(25.0, 25.0, 25.0),
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0) }, 5);
+    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, std::byte{0}, 0) }, 5);
 
   System system = System(0, 300.0, 1e4, forceField, { c }, { 20 }, 5);
 

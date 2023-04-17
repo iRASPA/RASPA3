@@ -47,7 +47,8 @@ std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedCompone
     double cutOffCoulomb = system.forceField.cutOffCoulomb;
     
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0);
+    std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_probabilities.cpuTime_WidomMove_CBMC_NonEwald += (t2 - t1);
 

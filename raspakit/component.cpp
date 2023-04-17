@@ -1,6 +1,30 @@
 module;
 
+#if !defined(_WIN32)
+#include <assert.h>
+#endif
+
 module component;
+
+import <iostream>;
+import <sstream>;
+import <algorithm>;
+import <vector>;
+import <array>;
+import <map>;
+import <string>;
+import <span>;
+import <optional>;
+import <filesystem>;
+import <fstream>;
+import <cstdlib>;
+import <exception>;
+import <iterator>;
+import <chrono>;
+import <cstddef>;
+#if defined(_WIN32)
+import <cassert>;
+#endif
 
 import int3;
 import double3;
@@ -29,26 +53,7 @@ import move_statistics;
 import bond_potential;
 import mc_moves_probabilities_particles;
 
-import <iostream>;
-import <sstream>;
-import <algorithm>;
-import <vector>;
-import <array>;
-import <map>;
-import <string>;
-import <span>;
-import <optional>;
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <exception>;
-import <iterator>;
-import <chrono>;
-#if defined(_WIN32)
-  import <cassert>;
-#else 
-  #include <assert.h>
-#endif
+
 
 Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
     std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
@@ -139,7 +144,7 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
 
   for (size_t i = 0; i < atoms.size(); ++i)
   {
-    atoms[i].componentId = static_cast<short>(componentId);
+    atoms[i].componentId = static_cast<std::byte>(componentId);
     atoms[i].moleculeId = 0;
   }
 }
@@ -287,7 +292,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
       double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
       double scaling = 1.0;
 
-      definedAtoms[i] = Atom(pos, charge, scaling, static_cast<short>(pseudoAtomType), static_cast<short>(componentId), 0);
+      definedAtoms[i] = Atom(pos, charge, scaling, static_cast<short>(pseudoAtomType), static_cast<std::byte>(componentId), 0);
   }
 
   atoms = definedAtoms;
@@ -409,13 +414,15 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
 
   for (size_t i = 0; i < atoms.size(); ++i)
   {
-    atoms[i].componentId = static_cast<short>(componentId);
+    atoms[i].componentId = static_cast<std::byte>(componentId);
     atoms[i].moleculeId = 0;
   }  
 }
 
-void Component::printStatus(std::ostream &stream, const ForceField& forceField) const
+std::string Component::printStatus(const ForceField& forceField) const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Component {} [{}]\n\n", componentId, name);
 
   std::print(stream, "    Critical temperature:  {} [K]\n", criticalTemperature);
@@ -468,6 +475,8 @@ void Component::printStatus(std::ostream &stream, const ForceField& forceField) 
       std::print(stream, "        {}", bonds[i].print());
   }
   std::print(stream, "\n");
+
+  return stream.str();
 }
 
 
@@ -500,10 +509,22 @@ std::vector<Atom> Component::newAtoms(double scaling, size_t moleculeId) const
     {
         new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
                    atoms[i].charge, scaling, static_cast<short>(atoms[i].type), 
-                   static_cast<short>(componentId), static_cast<int>(moleculeId));
+                   static_cast<std::byte>(componentId), static_cast<int>(moleculeId));
     }
 
     return new_atoms;
+}
+
+std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const
+{
+  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  for (size_t i = 0; i != atoms.size(); ++i)
+  {
+    copied_atoms[i].setScaling(scaling);
+    copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
+    copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
+  }
+  return copied_atoms;
 }
 
 std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const

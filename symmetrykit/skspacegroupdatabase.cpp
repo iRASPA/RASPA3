@@ -6,6 +6,7 @@ module skspacegroupdatabase;
 import <vector>;
 import <array>;
 import <string>;
+import <tuple>;
 
 import int3;
 import double3;

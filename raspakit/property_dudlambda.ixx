@@ -111,12 +111,28 @@ export struct PropertyDUDlambda
     std::transform(bookKeepingDUdlambda[blockIndex].begin(), bookKeepingDUdlambda[blockIndex].end(), averagedData.begin(),
                    [&](const std::pair<double3, double> &sample){return (sample.first.x + sample.first.y + sample.first.z) / std::max(1.0, sample.second);});
 
-    double sum = 0.0;
-    for(size_t i = 1; i != averagedData.size(); ++i)
+    // trapezoidal rule: https://en.wikipedia.org/wiki/Trapezoidal_rule
+    // Calculating result
+    double delta = 1.0 / static_cast<double>(numberOfBins - 1);
+    double res = 0;
+    for (size_t i = 0; i < averagedData.size(); i++) 
     {
-        sum += 0.5 * (averagedData[i] + averagedData[i-1]);
+        if (i == 0 || i == averagedData.size() - 1)
+            res += averagedData[i];
+        else if (i % 2 != 0)
+            res += 4 * averagedData[i];
+        else
+            res += 2 * averagedData[i];
     }
-    return sum / static_cast<double>(numberOfBins - 1);
+    res = res * (delta / 3.0);
+    return res;
+
+    //double sum = 0.0;
+    //for(size_t i = 1; i != averagedData.size(); ++i)
+    //{
+    //    sum += 0.5 * (averagedData[i] + averagedData[i-1]);
+    //}
+    //return sum / static_cast<double>(numberOfBins - 1);
   }
 
   double averagedExcessChemicalPotential() const
@@ -131,12 +147,25 @@ export struct PropertyDUDlambda
     std::transform(summedBlocks.begin(), summedBlocks.end(), averagedData.begin(),
                    [&](std::pair<double3, double> &sample){return (sample.first.x + sample.first.y + sample.first.z) / std::max(1.0, sample.second);});
 
-    double sum = 0.0;
-    for(size_t i = 1; i != averagedData.size(); ++i)
+    double delta = 1.0 / static_cast<double>(numberOfBins - 1);
+    double res = 0;
+    for (size_t i = 0; i < averagedData.size(); i++) 
     {
-        sum += 0.5 * (averagedData[i] + averagedData[i-1]);
+        if (i == 0 || i == averagedData.size() - 1)
+            res += averagedData[i];
+        else if (i % 2 != 0)
+            res += 4 * averagedData[i];
+        else
+            res += 2 * averagedData[i];
     }
-    return sum / static_cast<double>(numberOfBins - 1);
+    res = res * (delta / 3.0);
+    return res;
+    //double sum = 0.0;
+    //for(size_t i = 1; i != averagedData.size(); ++i)
+    //{
+    //    sum += 0.5 * (averagedData[i] + averagedData[i-1]);
+    //}
+    //return sum / static_cast<double>(numberOfBins - 1);
   }
 
   std::pair<double, double> averageExcessChemicalPotential() const

@@ -3,6 +3,7 @@ module;
 #include <type_traits>
 #include <assert.h>
 #include <algorithm>
+#include <iterator>
 
 module skpointgroup;
 

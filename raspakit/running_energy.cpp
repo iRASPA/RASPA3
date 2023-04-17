@@ -25,6 +25,8 @@ void RunningEnergy::print(std::ostream &stream, const std::string &label)
   std::print(stream, "    intra VDW:               {: .6e}\n", conv * intraVDW);
   std::print(stream, "    intra Coulombic:         {: .6e}\n", conv * intraCoul);
   std::print(stream, "    polarization:            {: .6e}\n", conv * polarization);
-  std::print(stream, "    dU/dlambda:              {: .6e}\n", conv * dUdlambda);
+  std::print(stream, "    dU/dlambda VDW:          {: .6e}\n", conv * dudlambdaVDW);
+  std::print(stream, "    dU/dlambda Real:         {: .6e}\n", conv * dudlambdaCharge);
+  std::print(stream, "    dU/dlambda Ewald:        {: .6e}\n", conv * dudlambdaEwald);
   std::print(stream, "\n");
 }

@@ -1,14 +1,17 @@
 export module skasymmetricatom;
 
+import <string>;
+import <cstdlib>;
+import <vector>;
+import <memory>;
+import <utility>;
+import <cstdlib>;
+
 import bool3;
 import double3;
 import double2;
 import double4;
-import <string>;
-import <utility>;
-import <memory>;
-import <cstdlib>;
-import <vector>;
+
 import skatomcopy;
 
 export class SKAsymmetricAtom

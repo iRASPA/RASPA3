@@ -2,6 +2,7 @@ module;
 
 module mixture_prediction;
 
+import <functional>;
 import <vector>;
 import <span>;
 import <cmath>;
@@ -9,6 +10,7 @@ import <string>;
 import <iostream>;
 import <iomanip>;
 import <fstream>;
+import <sstream>;
 import <limits>;
 import <algorithm>;
 import <numeric>;
@@ -117,8 +119,10 @@ MixturePrediction::MixturePrediction(const System &system) :
   }
 }
 
-void MixturePrediction::writeHeader(std::ostream &stream) const
+std::string MixturePrediction::writeHeader() const
 {
+  std::ostringstream stream;
+
   switch(predictionMethod)
   {
     case MultiSiteIsotherm::PredictionMethod::IAST:
@@ -141,6 +145,8 @@ void MixturePrediction::writeHeader(std::ostream &stream) const
       }
       break;
   }
+
+  return stream.str();
 }
 
 std::pair<size_t, size_t> MixturePrediction::predictMixture(const std::vector<double> &Yi,

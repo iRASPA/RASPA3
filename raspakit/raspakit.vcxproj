@@ -273,8 +273,14 @@
     <ClCompile Include="property_simulationbox.ixx" />
     <ClCompile Include="property_widom.cpp" />
     <ClCompile Include="property_widom.ixx" />
+    <ClCompile Include="reaction.cpp" />
+    <ClCompile Include="reaction.ixx" />
+    <ClCompile Include="reactions.cpp" />
+    <ClCompile Include="reactions.ixx" />
     <ClCompile Include="running_energy.cpp" />
     <ClCompile Include="running_energy.ixx" />
+    <ClCompile Include="scaling.cpp" />
+    <ClCompile Include="scaling.ixx" />
     <ClCompile Include="system_cbmc_rigid.cpp" />
     <ClCompile Include="system_cbmc_rigid_deletion.cpp" />
     <ClCompile Include="system_cbmc_rigid_insertion.cpp" />
@@ -284,7 +290,6 @@
     <ClCompile Include="system_interactions_framework_molecule_pressure.cpp" />
     <ClCompile Include="system_interactions_intermolecular_pressure.cpp" />
     <ClCompile Include="system_interactions_tailcorrection.cpp" />
-    <ClCompile Include="system_print_dudlambda.cpp" />
     <ClCompile Include="system_print_movestatistics.cpp" />
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />

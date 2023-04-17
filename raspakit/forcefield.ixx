@@ -31,13 +31,6 @@ export struct VDWParameters
 
   VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), type(Type::LennardJones)
   {
-    //double scaling = 1.0;
-    //double arg1 = epsilon;
-    //double arg2 = sigma * sigma;
-    //double rr = 12.0 * 12.0;
-    //double temp = (rr / arg2);
-    //double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-    //shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
   }
 
   void computeShiftAtCutOff(double cutOff)
@@ -113,8 +106,8 @@ export struct ForceField
   void ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false);
   void ReadForceFieldMixing(std::string pseudoAtomsFileName) noexcept(false);
 
-  void printPseudoAtomStatus(std::ostream &stream) const;
-  void printForceFieldStatus(std::ostream &stream) const;
+  std::string printPseudoAtomStatus() const;
+  std::string printForceFieldStatus() const;
 
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
 

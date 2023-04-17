@@ -10,6 +10,7 @@ import <ostream>;
 import <iostream>;
 import <numeric>;
 import <chrono>;
+import <algorithm>;
 
 import double3;
 import double3x3;
@@ -26,6 +27,7 @@ import averages;
 import running_energy;
 import energy_status;
 import energy_factor;
+import force_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
@@ -44,6 +46,8 @@ import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
 import dudlambda;
+import reaction;
+import reactions;
 
 export struct System
 {
@@ -141,9 +145,9 @@ export struct System
     std::vector<std::complex<double>> eik_x;
     std::vector<std::complex<double>> eik_y;
     std::vector<std::complex<double>> eik_z;
-    std::vector<std::complex<double>> storedEik;
-    std::vector<std::complex<double>> fixedFrameworkStoredEik;
-    std::vector<std::complex<double>> totalEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik;
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik;
     double CoulombicFourierEnergySingleIon{ 0.0 };
     std::vector<int> netCharge;
 
@@ -156,6 +160,8 @@ export struct System
     MCMoveProbabilitiesSystem mc_moves_probabilities;
 
     dUdLambda lambda;
+
+    Reactions reactions;
 
     // Breakthrough settings
     size_t columnNumberOfGridPoints{ 100 };
@@ -185,8 +191,8 @@ export struct System
     void computeTotalEnergies() noexcept;
     void computeTotalGradients() noexcept;
 
-    EnergyFactor computeInterMolecularGradient() noexcept;
-    EnergyFactor computeFrameworkMoleculeGradient() noexcept;
+    ForceFactor computeInterMolecularGradient() noexcept;
+    ForceFactor computeFrameworkMoleculeGradient() noexcept;
 
     void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
@@ -194,7 +200,7 @@ export struct System
     void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
     void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
     void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
-    EnergyFactor computeEwaldFourierGradient();
+    ForceFactor computeEwaldFourierGradient();
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
     [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
@@ -262,21 +268,15 @@ export struct System
     void computeNumberOfPseudoAtoms();
     void optimizeMCMoves();
 
-    void writeOutputHeader(std::ostream &outputFile) const;
-    void writeOutputHeaderHardware(std::ostream &outputFile) const;
-    void writeInitializationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeEquilibrationStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeProductionStatusReport(std::ostream &stream, size_t currentCycle, size_t numberOfCycles) const;
-    void writeComponentStatus(std::ostream &stream) const;
+    std::string writeOutputHeader() const;
+    std::string writeOutputHeaderHardware() const;
+    std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+    std::string writeComponentStatus() const;
 
-    void writeMCMoveStatistics(std::ostream &stream) const;
-    //void writeEnergyAveragesStatistics(std::ostream &stream) const;
-    //void writeEnthalpyOfAdsorption(std::ostream &stream) const;
-    //void writePressureAveragesStatistics(std::ostream &stream) const;
-
-    std::string writedudLambdaStatistics() const;
-    
-
+    std::string writeMCMoveStatistics() const;
+  
     std::vector<Component> nonFrameworkComponents()
     {
       std::vector<Component> comps{};
@@ -293,7 +293,7 @@ export struct System
     
     //SampleMovie sampleMovie;
     
-    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
     [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
     [[nodiscard]] std::optional<ChainData> growChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
 
@@ -309,7 +309,7 @@ export struct System
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
 
-    RunningEnergy energyDifferenceEwaldFourier(std::vector<std::complex<double>> &storedWavevectors, 
+    RunningEnergy energyDifferenceEwaldFourier(std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedWavevectors,
                                                std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
     void registerEwaldFourierEnergySingleIon(double3 position, double charge);
     void acceptEwaldMove();

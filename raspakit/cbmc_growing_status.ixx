@@ -1,6 +1,8 @@
 export module cbmc_growing_status;
 
 import <vector>;
+import <tuple>;
+
 import component;
 import atom;
 import bond_potential;

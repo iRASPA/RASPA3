@@ -4,6 +4,7 @@ module matrix;
 
 import <cctype>;
 import <vector>;
+import <algorithm>;
 
 Matrix::Matrix(size_t rows, size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows* columns)
 {

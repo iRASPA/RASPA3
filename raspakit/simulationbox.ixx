@@ -12,6 +12,7 @@ import <iostream>;
 import <cmath>;
 import <algorithm>;
 import <ostream>;
+import <sstream>;
 
 #if defined(__GNUC__)
 #define ALWAYS_INLINE __attribute__((__always_inline__)) 
@@ -75,8 +76,8 @@ export struct SimulationBox
     double3 randomPosition() const;
     double3 perpendicularWidths() const;
 
-    void printParameters(std::ostream &stream) const;
-    void printStatus(std::ostream &stream) const;
+    std::string printParameters() const;
+    std::string printStatus() const;
     std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
 
     double lengthA;

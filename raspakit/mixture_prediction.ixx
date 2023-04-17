@@ -1,11 +1,11 @@
 export module mixture_prediction;
 
+import <functional>;
 import <vector>;
 import <span>;
 import <tuple>;
 import <string>;
 import <ostream>;
-import <functional>;
 
 import atom;
 import isotherm;
@@ -25,7 +25,7 @@ export class MixturePrediction
 
     MixturePrediction(const System &system);
 
-    void writeHeader(std::ostream &stream) const;
+    std::string writeHeader() const;
 
     void print() const;
     void run(std::ostream &stream);
