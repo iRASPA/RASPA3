@@ -2,6 +2,8 @@ module;
 
 module reaction;
 
+import <vector>;
+
 import <string>;
 import <sstream>;
 
