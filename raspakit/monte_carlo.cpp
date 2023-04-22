@@ -2,6 +2,19 @@ module;
 
 module monte_carlo;
 
+import <iostream>;
+import <algorithm>;
+import <numeric>;
+import <chrono>;
+import <vector>;
+import <span>;
+import <string>;
+import <optional>;
+import <fstream>;
+import <filesystem>;
+import <tuple>;
+import <ios>;
+
 import system;
 import randomnumbers;
 import mc_moves;
@@ -33,16 +46,7 @@ import mc_moves_probabilities_particles;
 import property_pressure;
 import dudlambda;
 
-import <iostream>;
-import <algorithm>;
-import <numeric>;
-import <chrono>;
-import <vector>;
-import <span>;
-import <string>;
-import <optional>;
-import <fstream>;
-import <filesystem>;
+
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
@@ -76,7 +80,7 @@ void MonteCarlo::initialize()
 {
   for (System &system: systems)
   {
-    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
+    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
     system.removeRedundantMoves();
     system.determineSwapableComponents();
     system.determineFractionalComponents();
@@ -118,10 +122,11 @@ void MonteCarlo::initialize()
 
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
 
     system.precomputeTotalRigidEnergy();
     system.computeTotalEnergies();
+
+    std::ostream stream(streams[system.systemId].rdbuf());
     system.runningEnergies.print(stream, "Recomputed from scratch");
   };
   
@@ -129,8 +134,9 @@ void MonteCarlo::initialize()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
@@ -181,8 +187,9 @@ void MonteCarlo::equilibrate()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
@@ -266,8 +273,9 @@ void MonteCarlo::production()
 
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
       
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)

@@ -441,6 +441,15 @@
     <ClCompile Include="reactions.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mc_moves_reaction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_rdf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_rdf.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mdspan.h">

@@ -4,6 +4,7 @@ module reaction;
 
 import <string>;
 import <sstream>;
+import <vector>;
 
 import print;
 

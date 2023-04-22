@@ -233,6 +233,7 @@
     <ClCompile Include="mc_moves_probabilities_system.ixx" />
     <ClCompile Include="mc_moves_random_rotation.cpp" />
     <ClCompile Include="mc_moves_random_translation.cpp" />
+    <ClCompile Include="mc_moves_reaction.cpp" />
     <ClCompile Include="mc_moves_reinsertion.cpp" />
     <ClCompile Include="mc_moves_rotation.cpp" />
     <ClCompile Include="mc_moves_swap_cfcmc_cbmc.cpp" />
@@ -269,6 +270,8 @@
     <ClCompile Include="property_loading.ixx" />
     <ClCompile Include="property_pressure.cpp" />
     <ClCompile Include="property_pressure.ixx" />
+    <ClCompile Include="property_rdf.cpp" />
+    <ClCompile Include="property_rdf.ixx" />
     <ClCompile Include="property_simulationbox.cpp" />
     <ClCompile Include="property_simulationbox.ixx" />
     <ClCompile Include="property_widom.cpp" />

@@ -38,6 +38,7 @@ import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import property_rdf;
 import multi_site_isotherm;
 import pressure_range;
 import units;

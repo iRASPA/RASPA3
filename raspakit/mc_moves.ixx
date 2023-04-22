@@ -37,6 +37,8 @@ export struct MC_Moves
     std::optional<RunningEnergy> volumeMove(System &system) const;
     std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(System &systemA, System &systemB) const;
 
+    std::optional<RunningEnergy> reactionMove(System& system, const std::vector<size_t> reactantStoichiometry, const std::vector<size_t> productStoichiometry) const;
+
     double energyOverlapCriteria = 1e6;
     bool useDualCutOff{ false };
 };

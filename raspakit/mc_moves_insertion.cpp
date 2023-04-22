@@ -81,9 +81,6 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
       system.acceptEwaldMove();
       system.insertMolecule(selectedComponent, growData->atom);
 
-      // Debug
-      //assert(system.checkMoleculeIds());
-
       return growData->energies + energyFourierDifference + tailEnergyDifference;
   };
   
