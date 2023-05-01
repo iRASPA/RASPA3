@@ -24,7 +24,7 @@ public:
     }
     static std::pair<size_t, size_t> randomPairAdjacentIntegers(size_t size)
     {
-      if(size < 1) return std::make_pair(0, 0);
+      if(size <= 1) return std::make_pair(0, 0);
       size_t first = static_cast<size_t>(static_cast<double>(size - 1) * Uniform());
       size_t second = first + 1;
       if(Uniform() < 0.5) std::swap(first, second);
