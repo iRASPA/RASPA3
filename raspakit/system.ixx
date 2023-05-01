@@ -46,7 +46,6 @@ import bond_potential;
 import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
-import dudlambda;
 import reaction;
 import reactions;
 
@@ -159,8 +158,6 @@ export struct System
     std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
 
     MCMoveProbabilitiesSystem mc_moves_probabilities;
-
-    dUdLambda lambda;
 
     Reactions reactions;
 

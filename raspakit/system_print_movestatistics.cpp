@@ -6,6 +6,7 @@ import <iostream>;
 import <random>;
 import <sstream>;
 import <cmath>;
+import <optional>;
 
 import double3;
 import component;
@@ -16,7 +17,6 @@ import units;
 import loadings;
 import averages;
 import property_lambda_probability_histogram;
-import property_dudlambda;
 import property_widom;
 import property_loading;
 import move_statistics;
@@ -70,6 +70,7 @@ std::string System::writeMCMoveStatistics() const
       double imposedFugacity = component.molFraction * pressure;
 
       std::print(stream, component.lambda.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, component.lambda.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)

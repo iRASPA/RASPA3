@@ -50,7 +50,6 @@ import property_loading;
 import property_enthalpy;
 import property_lambda_probability_histogram;
 import property_widom;
-import property_dudlambda;
 import energy_factor;
 import running_energy;
 import threadpool;
@@ -61,7 +60,6 @@ import bond_potential;
 import move_statistics;
 import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
-import dudlambda;
 import reaction;
 import reactions;
 
@@ -94,7 +92,6 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    lambda(numberOfBlocks, 41),
     reactions()
 {
 
@@ -167,7 +164,6 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
                mc_moves_probabilities(),
-               lambda(numberOfBlocks, 41),
                reactions()
 {
     
@@ -205,7 +201,6 @@ System::System(System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
-    lambda(s.lambda),
     reactions(s.reactions),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
@@ -256,7 +251,6 @@ System::System(const System&& s) noexcept :
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
-    lambda(s.lambda),
     reactions(s.reactions),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
@@ -349,8 +343,9 @@ void System::initializeComponents()
 
 void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms)
 {
-  lambda.setCurrentBin(0);
-  double l = lambda.lambdaValue();
+  //lambda.setCurrentBin(0);
+  //double l = lambda.lambdaValue();
+  double l = 0.0;
   for (Atom& atom : atoms)
   {
     atom.groupId = std::byte{ 1 };
@@ -784,8 +779,10 @@ std::string System::writeInitializationStatusReport([[maybe_unused]] size_t curr
   //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
   //double currentPressure = currentIdealPressure + currentExcessPressure;
   //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-            conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+
+  // FIX
+  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+  //          conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -822,8 +819,9 @@ std::string System::writeEquilibrationStatusReport([[maybe_unused]] size_t curre
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-             conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+  // FIX
+  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+  //           conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -883,8 +881,9 @@ std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentC
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
-  std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-             conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+  // FIX
+  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
+  //           conv * runningEnergies.dudlambda(lambda.lambdaValue()));
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -972,7 +971,10 @@ void System::sampleProperties(size_t currentBlock)
    {
      double density  = static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
 
-     component.lambda.sampleHistogram(currentBlock, density);
+     double lambda = component.lambda.lambdaValue();
+     double dudlambda = runningEnergies.dudlambda(lambda);
+     component.lambda.sampleHistogram(currentBlock, density, dudlambda);
+
      component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
    }
 

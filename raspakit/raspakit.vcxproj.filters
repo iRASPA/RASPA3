@@ -189,12 +189,6 @@
     <ClCompile Include="forcefield.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="property_dudlambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="property_dudlambda.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="property_energy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -409,12 +403,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dudlambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dudlambda.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="scaling.cpp">
