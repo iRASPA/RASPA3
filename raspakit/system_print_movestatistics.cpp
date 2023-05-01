@@ -64,78 +64,20 @@ std::string System::writeMCMoveStatistics() const
 
     std::print(stream, component.mc_moves_probabilities.writeMCMoveStatistics());
 
-    double conv = Units::EnergyToKelvin;
-    double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-    double imposedFugacity = component.molFraction * pressure;
-
     if(component.hasFractionalMolecule)
     {
+      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
+      double imposedFugacity = component.molFraction * pressure;
+
       std::print(stream, component.lambda.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)
     {
-      std::print(stream, "    Widom insertion Rosenbluth weight  statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      for (size_t blockIndex = 0; blockIndex < component.averageRosenbluthWeights.numberOfBlocks; ++blockIndex)
-      {
-        double blockAverage = component.averageRosenbluthWeights.averagedRosenbluthWeight(blockIndex);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::pair<double, double> averageRosenbluthWeight = component.averageRosenbluthWeights.averageRosenbluthWeight();
-      std::print(stream, "    Average Rosenbluth weight:   {: .6e} +/- {: .6e} [-]\n", 
-              averageRosenbluthWeight.first, averageRosenbluthWeight.second);
-      std::print(stream, "\n\n");
-
-
-      std::print(stream, "    Widom insertion chemical potential  statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      for (size_t blockIndex = 0; blockIndex < component.averageRosenbluthWeights.numberOfBlocks; ++blockIndex)
-      {
-        double blockAverage = component.averageRosenbluthWeights.averagedExcessChemicalPotential(blockIndex, beta);
-        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * blockAverage);
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::pair<double, double> averageExcessWidomChemicalPotential = component.averageRosenbluthWeights.averageExcessChemicalPotential(beta);
-      std::pair<double, double> averageIdealGasWidomChemicalPotential = component.averageRosenbluthWeights.averageIdealGasChemicalPotential(beta);
-      std::pair<double, double> averageTotalWidomChemicalPotential = component.averageRosenbluthWeights.averageTotalChemicalPotential(beta);
-      std::pair<double, double> averageWidomFugacity = component.averageRosenbluthWeights.averageFugacity(beta);
-      std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin *  averageExcessWidomChemicalPotential.first,
-              Units::EnergyToKelvin *  averageExcessWidomChemicalPotential.second);
-      std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin *  averageIdealGasWidomChemicalPotential.first,
-              Units::EnergyToKelvin *  averageIdealGasWidomChemicalPotential.second);
-      std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin *  averageTotalWidomChemicalPotential.first,
-              Units::EnergyToKelvin *  averageTotalWidomChemicalPotential.second);
-      if(component.swapable)
-      {
-        std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n", Units::EnergyToKelvin * imposedChemicalPotential);
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [kJ/mol]\n", 
-              Units::EnergyToKJPerMol *  averageExcessWidomChemicalPotential.first,
-              Units::EnergyToKJPerMol *  averageExcessWidomChemicalPotential.second);
-      std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n", 
-              Units::EnergyToKJPerMol *  averageIdealGasWidomChemicalPotential.first,
-              Units::EnergyToKJPerMol *  averageIdealGasWidomChemicalPotential.second);
-      std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n", 
-              Units::EnergyToKJPerMol *  averageTotalWidomChemicalPotential.first,
-              Units::EnergyToKJPerMol *  averageTotalWidomChemicalPotential.second);
-      if(component.swapable)
-      {
-        std::print(stream, "    Imposed chemical potential:   {: .6e} [kJ/mol]\n", Units::EnergyToKJPerMol * imposedChemicalPotential);
-        std::print(stream, "    ---------------------------------------------------------------------------\n");
-        std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n", Units::PressureConversionFactor * imposedFugacity);
-       
-        std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [Pa]\n", 
-                Units::PressureConversionFactor * averageWidomFugacity.first,
-                Units::PressureConversionFactor * averageWidomFugacity.second);
-      }
+      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
+      double imposedFugacity = component.molFraction * pressure;
+      std::print(stream, component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
-    std::print(stream, "\n\n");
 
     ++componentId;
   }

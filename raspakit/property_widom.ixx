@@ -31,6 +31,8 @@ export struct PropertyWidom
   std::vector<std::pair<double, double>> bookKeepingWidom;
   std::vector<std::pair<double, double>> bookKeepingDensity;
 
+  std::string writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const;
+
   inline void addWidomSample(size_t blockIndex, double WidomValue, double weight)
   {
     bookKeepingWidom[blockIndex].first += weight * WidomValue;
