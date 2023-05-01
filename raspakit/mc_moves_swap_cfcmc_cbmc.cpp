@@ -14,7 +14,7 @@ import system;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import running_energy;
@@ -40,7 +40,7 @@ import <iomanip>;
 std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule,
          bool insertionDisabled, bool deletionDisabled)
 {
-    Lambda& lambda = system.components[selectedComponent].lambda;
+    PropertyLambdaProbabilityHistogram& lambda = system.components[selectedComponent].lambda;
     size_t oldBin = lambda.currentBin;
     double deltaLambda = lambda.delta;
     double oldLambda = system.components[selectedComponent].lambda.lambdaValue();

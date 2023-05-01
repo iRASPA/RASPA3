@@ -43,7 +43,7 @@ import skspacegroup;
 
 import forcefield;
 import atom;
-import lambda;
+import property_lambda_probability_histogram;
 import print;
 import property_widom;
 import multi_site_isotherm;

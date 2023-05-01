@@ -159,12 +159,6 @@
     <ClCompile Include="enthalpy_of_adsorption.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lambda.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="lambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="system_print_movestatistics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -20,7 +20,7 @@ import double3;
 import averages;
 import atom;
 import forcefield;
-import lambda;
+import property_lambda_probability_histogram;
 import simulationbox;
 import property_widom;
 import isotherm;
@@ -82,7 +82,7 @@ export struct Component
 
     size_t initialNumberOfMolecules{ 0 };
 
-    Lambda lambda;
+    PropertyLambdaProbabilityHistogram lambda;
     bool hasFractionalMolecule{ false };
 
     std::vector<size_t> chiralCenters{};

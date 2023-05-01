@@ -35,7 +35,7 @@ import running_energy;
 import atom;
 import double3;
 import double3x3;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import property_dudlambda;
 import property_simulationbox;
@@ -179,7 +179,7 @@ void MonteCarlo::equilibrate()
     system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Initialize);
     for(Component &component : system.components)
     {
-      component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Initialize);
+      component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
     }
   };
 
@@ -206,7 +206,7 @@ void MonteCarlo::equilibrate()
         system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Sample);
         if(component.hasFractionalMolecule)
         {
-          component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Sample);
+          component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         }
       }
     }
@@ -225,7 +225,7 @@ void MonteCarlo::equilibrate()
         {
           if(component.hasFractionalMolecule)
           {
-            component.lambda.WangLandauIteration(Lambda::WangLandauPhase::AdjustBiasingFactors);
+            component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
           }
         }
       }
@@ -261,7 +261,7 @@ void MonteCarlo::production()
       component.mc_moves_probabilities.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
-        component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
+        component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
       }
     }
   };

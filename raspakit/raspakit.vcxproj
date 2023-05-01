@@ -219,8 +219,6 @@
     <ClCompile Include="cbmc_growing_status.ixx" />
     <ClCompile Include="enthalpy_of_adsorption.cpp" />
     <ClCompile Include="enthalpy_of_adsorption.ixx" />
-    <ClCompile Include="lambda.cpp" />
-    <ClCompile Include="lambda.ixx" />
     <ClCompile Include="mc_moves.cpp" />
     <ClCompile Include="mc_moves.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />

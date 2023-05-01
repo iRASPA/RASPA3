@@ -1,0 +1,141 @@
+module;
+
+module property_lambda_probability_histogram;
+
+import <vector>;
+import <iostream>;
+import <cmath>;
+import <string>;
+import <sstream>;
+import <format>;
+import <algorithm>;
+import <numeric>;
+import <cmath>;
+import <numbers>;
+import <optional>;
+
+import units;
+import print;
+import averages;
+
+void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase)
+{
+  switch (phase)
+  {
+  case PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize:
+    WangLandauScalingFactor = 1.0;
+    std::fill(histogram.begin(), histogram.end(), 0.0);
+    std::fill(biasFactor.begin(), biasFactor.end(), 0.0);
+    break;
+  case PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample:
+    biasFactor[currentBin] -= WangLandauScalingFactor;
+    histogram[currentBin] += 1.0;
+    break;
+  case PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors:
+  {
+    std::vector<double>::iterator minValueIterator = std::min_element(histogram.begin(), histogram.end());
+    double minimumValue = *minValueIterator;
+    if (minimumValue > 0.01)
+    {
+      double sumOfHistogram = std::accumulate(histogram.begin(), histogram.end(), 0.0);
+      if (minimumValue / sumOfHistogram > 0.01)
+      {
+        WangLandauScalingFactor *= 0.5;
+      }
+    }
+    std::fill(histogram.begin(), histogram.end(), 0.0);
+  }
+  break;
+  case PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize:
+    std::fill(histogram.begin(), histogram.end(), 0.0);
+
+    double normalize = biasFactor[0];
+    for (double& bias : biasFactor)
+    {
+      bias -= normalize;
+    }
+    break;
+  }
+}
+
+
+std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  size_t lastBin = numberOfBins - 1;
+
+  std::print(stream, "    Lambda histogram and bias:\n");
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::pair<std::vector<double>, std::vector<double>> histogram = averageProbabilityHistogram();
+  for (size_t i = 0; i < numberOfBins; ++i)
+  {
+    std::print(stream, "{}{:2d}-{:4f} (lambda) P: {: .5e} +/- {:.5e} bias: {: .5e} [-]\n",
+      "    ", i, static_cast<double>(i) * delta,
+      histogram.first[i],
+      histogram.second[i],
+      biasFactor[i]);
+  }
+  std::print(stream, "\n\n");
+
+  std::pair<double, double> idealGasChemicalPotential = averageIdealGasChemicalPotential(beta);
+
+  std::pair<std::vector<double>, std::vector<double>> freeEnergy = averageLandauFreeEnergyHistogram(beta);
+  std::pair<double, double> excessChemicalPotential = averageExcessChemicalPotential(beta);
+  double excessChemicalPotentialBias = (biasFactor[lastBin] - biasFactor[0]) / beta;
+  std::pair<double, double> totalChemicalPotential = averageTotalChemicalPotential(beta, excessChemicalPotentialBias);
+
+  std::pair<double, double> measuredFugacity = averageFugacity(beta, excessChemicalPotentialBias);
+
+  std::print(stream, "    Lambda statistics:\n");
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (size_t i = 0; i < numberOfBins; ++i)
+  {
+    std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {: .6e} +/- {:.6e} [K]\n",
+      "    ", i, static_cast<double>(i) * delta,
+      conv * freeEnergy.first[i], conv * freeEnergy.second[i]);
+  }
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
+  for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  {
+    double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
+    std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
+  }
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n",
+    Units::EnergyToKelvin * (excessChemicalPotential.first + excessChemicalPotentialBias),
+    Units::EnergyToKelvin * excessChemicalPotential.second);
+  std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [K]\n",
+    Units::EnergyToKelvin * idealGasChemicalPotential.first,
+    Units::EnergyToKelvin * idealGasChemicalPotential.second);
+  std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [K]\n",
+    Units::EnergyToKelvin * totalChemicalPotential.first,
+    Units::EnergyToKelvin * totalChemicalPotential.second);
+  if (imposedChemicalPotential)
+  {
+    std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n", Units::EnergyToKelvin * imposedChemicalPotential.value());
+  }
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+    Units::EnergyToKJPerMol * (excessChemicalPotential.first + excessChemicalPotentialBias),
+    Units::EnergyToKJPerMol * excessChemicalPotential.second);
+  std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [kJ/mol]\n",
+    Units::EnergyToKJPerMol * idealGasChemicalPotential.first,
+    Units::EnergyToKJPerMol * idealGasChemicalPotential.second);
+  std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [kJ/mol]\n",
+    Units::EnergyToKJPerMol * totalChemicalPotential.first,
+    Units::EnergyToKJPerMol * totalChemicalPotential.second);
+  if (imposedChemicalPotential)
+  {
+    std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n", Units::EnergyToKJPerMol * imposedChemicalPotential.value());
+    std::print(stream, "    ---------------------------------------------------------------------------\n");
+    std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n", Units::PressureConversionFactor * imposedFugacity.value());
+    std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [Pa]\n",
+      Units::PressureConversionFactor * measuredFugacity.first,
+      Units::PressureConversionFactor * measuredFugacity.second);
+  }
+  std::print(stream, "\n\n");
+  return stream.str();
+}

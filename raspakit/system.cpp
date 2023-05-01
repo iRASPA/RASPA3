@@ -48,7 +48,7 @@ import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import property_dudlambda;
 import energy_factor;
@@ -1001,9 +1001,7 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
     componentId++;
   }
 
-  mc_moves_probabilities.writeMCMoveCPUTimeStatistics();
-
- 
+  mc_moves_probabilities.writeMCMoveCPUTimeStatistics(); 
 }
 
 std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const

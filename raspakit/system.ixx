@@ -31,7 +31,7 @@ import force_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
-import lambda;
+import property_lambda_probability_histogram;
 import cbmc;
 import property_simulationbox;
 import property_energy;

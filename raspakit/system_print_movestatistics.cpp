@@ -10,7 +10,7 @@ import <cmath>;
 import double3;
 import component;
 import print;
-import lambda;
+import property_lambda_probability_histogram;
 import simulationbox;
 import units;
 import loadings;
@@ -70,81 +70,7 @@ std::string System::writeMCMoveStatistics() const
 
     if(component.hasFractionalMolecule)
     {
-      size_t numberOfBins = component.lambda.numberOfBins;
-      size_t lastBin = numberOfBins-1;
-
-      std::print(stream, "    Lambda histogram and bias:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::pair<std::vector<double>, std::vector<double>> histogram = component.lambda.newHistogram.averageProbabilityHistogram();
-      for (size_t i = 0; i < component.lambda.numberOfBins; ++i)
-      {
-        std::print(stream, "{}{:2d}-{:4f} (lambda) P: {: .5e} +/- {:.5e} bias: {: .5e} [-]\n", 
-                "    ",i, static_cast<double>(i) *  component.lambda.delta,
-                histogram.first[i],
-                histogram.second[i],
-                component.lambda.biasFactor[i]);
-      }
-      std::print(stream, "\n\n");
-
-      std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-      std::pair<double, double> idealGasChemicalPotential = component.lambda.newHistogram.averageIdealGasChemicalPotential(beta);
-
-      std::pair<std::vector<double>, std::vector<double>> freeEnergy = component.lambda.newHistogram.averageLandauFreeEnergyHistogram(beta);
-      std::pair<double, double> excessChemicalPotential = component.lambda.newHistogram.averageExcessChemicalPotential(beta);
-      double excessChemicalPotentialBias = (component.lambda.biasFactor[lastBin] - component.lambda.biasFactor[0]) / beta;
-      std::pair<double, double> totalChemicalPotential = component.lambda.newHistogram.averageTotalChemicalPotential(beta, excessChemicalPotentialBias);
-
-      std::pair<double, double> measuredFugacity = component.lambda.newHistogram.averageFugacity(beta, excessChemicalPotentialBias);
-
-      std::print(stream, "    Lambda statistics:\n");
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      for (size_t i = 0; i < component.lambda.numberOfBins; ++i)
-      {
-        std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {: .6e} +/- {:.6e} [K]\n",
-            "    ",i, static_cast<double>(i) *  component.lambda.delta, 
-            conv * freeEnergy.first[i], conv * freeEnergy.second[i]);
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
-      for (size_t blockIndex = 0; blockIndex < component.lambda.newHistogram.numberOfBlocks; ++blockIndex)
-      {
-        double blockAverage = component.lambda.newHistogram.averagedExcessChemicalPotential(blockIndex, beta);
-        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin * (excessChemicalPotential.first + excessChemicalPotentialBias),
-              Units::EnergyToKelvin * excessChemicalPotential.second);
-      std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin * idealGasChemicalPotential.first, 
-              Units::EnergyToKelvin * idealGasChemicalPotential.second);
-      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [K]\n", 
-              Units::EnergyToKelvin * totalChemicalPotential.first,
-              Units::EnergyToKelvin * totalChemicalPotential.second);
-      if(component.swapable)
-      {
-        std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n", Units::EnergyToKelvin * imposedChemicalPotential);
-      }
-      std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n", 
-               Units::EnergyToKJPerMol * (excessChemicalPotential.first + excessChemicalPotentialBias),
-               Units::EnergyToKJPerMol * excessChemicalPotential.second);
-      std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [kJ/mol]\n", 
-              Units::EnergyToKJPerMol * idealGasChemicalPotential.first, 
-              Units::EnergyToKJPerMol * idealGasChemicalPotential.second);
-      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [kJ/mol]\n", 
-              Units::EnergyToKJPerMol * totalChemicalPotential.first,
-              Units::EnergyToKJPerMol * totalChemicalPotential.second);
-      if(component.swapable)
-      {
-        std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n", Units::EnergyToKJPerMol * imposedChemicalPotential);
-        std::print(stream, "    ---------------------------------------------------------------------------\n");
-        std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n", Units::PressureConversionFactor * imposedFugacity);
-        std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [Pa]\n", 
-                Units::PressureConversionFactor * measuredFugacity.first,
-                Units::PressureConversionFactor * measuredFugacity.second);
-      }
-      std::print(stream, "\n\n");
+      std::print(stream, component.lambda.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)
