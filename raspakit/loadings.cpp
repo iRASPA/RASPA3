@@ -101,11 +101,11 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
     const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
-    std::print(stream, "    molecules: {: .6} molec/uc ({: .6} +/- {: .6})\n",
+    std::print(stream, "    molecules: {:.6e} molec/uc ({:.6e} +/- {:.6e})\n",
         numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId], error.numberOfMolecules[comp.componentId]);
-    std::print(stream, "    number density: {: .6} molec./A^3 ({: .6} +/- {: .6})\n",
+    std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",
         numberDensities[comp.componentId], average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
-    std::print(stream, "    density: {: .6} kg/m^3 ({: .6} +/- {: .6})\n",
+    std::print(stream, "    density: {:.6e} kg/m^3 ({:.6e} +/- {:.6e})\n",
         densityConversionFactor * comp.mass * numberDensities[comp.componentId], densityConversionFactor * comp.mass * average.numberDensities[comp.componentId],
         densityConversionFactor * comp.mass * error.numberDensities[comp.componentId]);
   }

@@ -44,8 +44,9 @@ export struct PropertyLambdaProbabilityHistogram
       histogram(numberOfBins),
       biasFactor(numberOfBins),
       bookKeepingLambda(std::vector<std::vector<double>>(numberOfBlocks, std::vector<double>(numberOfBins))),
-      bookKeepingDUdlambda(std::vector<std::vector<std::pair<double3, double>>>(numberOfBlocks, std::vector<std::pair<double3, double>>(numberOfBins))),
-      bookKeepingDensity(std::vector<std::pair<double, double>>(numberOfBlocks))
+      bookKeepingDensity(std::vector<std::pair<double, double>>(numberOfBlocks)),
+      computeDUdlambda(false),
+      bookKeepingDUdlambda(std::vector<std::vector<std::pair<double3, double>>>(numberOfBlocks, std::vector<std::pair<double3, double>>(numberOfBins)))
   {
   }
 
@@ -63,18 +64,19 @@ export struct PropertyLambdaProbabilityHistogram
   // lambda-histogram 
   std::vector<std::vector<double>> bookKeepingLambda;
 
-  // dU/dlambda-histogram 
-  std::vector<std::vector<std::pair<double3, double>>> bookKeepingDUdlambda;
-
   // first: sm of weight * density, second: sum of weights
   std::vector<std::pair<double, double>> bookKeepingDensity;
 
-  inline double lambdaValue()
+  // dU/dlambda-histogram 
+  bool computeDUdlambda;
+  std::vector<std::vector<std::pair<double3, double>>> bookKeepingDUdlambda;
+
+  inline double lambdaValue() const
   {
     return static_cast<double>(currentBin) * delta;
   }
 
-  inline int selectNewBin()
+  inline int selectNewBin() const
   {
     return static_cast<int>(currentBin) + static_cast<int>(5 * 2.0 * (RandomNumber::Uniform() - 0.5));
   }

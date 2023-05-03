@@ -54,7 +54,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
         for (size_t j = 0; j < bookKeepingLoadings.size(); ++j)
         {
           Loadings blockAverage = averagedLoading(j);
-          std::print(stream, "    Block[ {:2d}] {}\n", j, blockAverage.numberOfMolecules[i] - components[i].amountOfExcessMolecules);
+          std::print(stream, "    Block[ {:2d}] {: .6e}\n", j, blockAverage.numberOfMolecules[i] - components[i].amountOfExcessMolecules);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         std::print(stream, "    Excess loading average  {: .6e} +/- {: .6e} [molecules/cell]\n",

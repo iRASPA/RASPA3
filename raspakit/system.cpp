@@ -348,7 +348,10 @@ void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom
   double l = 0.0;
   for (Atom& atom : atoms)
   {
-    atom.groupId = std::byte{ 1 };
+    if(components[selectedComponent].lambda.computeDUdlambda)
+    {
+      atom.groupId = std::byte{ 1 };
+    }
     atom.setScaling(l);
   }
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -780,9 +783,19 @@ std::string System::writeInitializationStatusReport([[maybe_unused]] size_t curr
   //double currentPressure = currentIdealPressure + currentExcessPressure;
   //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
 
-  // FIX
-  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-  //          conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+  for (const Component& c : components)
+  {
+    if (c.lambda.computeDUdlambda)
+    {
+      double lambda = c.lambda.lambdaValue();
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambda.lambdaValue());
+    }
+  }
+  std::print(stream, "\n");
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -819,9 +832,19 @@ std::string System::writeEquilibrationStatusReport([[maybe_unused]] size_t curre
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  // FIX
-  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-  //           conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+  for (const Component& c : components)
+  {
+    if (c.lambda.computeDUdlambda)
+    { 
+      double lambda = c.lambda.lambdaValue();
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+    }
+    else 
+    {
+      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambda.lambdaValue());
+    }
+  }
+  std::print(stream, "\n");
 
   std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * runningEnergies.total());
   std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * runningEnergies.frameworkMoleculeVDW);
@@ -881,9 +904,19 @@ std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentC
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
-  // FIX
-  //std::print(stream, "lambda: {: .6e},  dU/dlambda: {: .6e} [K]\n\n", lambda.lambdaValue(), 
-  //           conv * runningEnergies.dudlambda(lambda.lambdaValue()));
+  for (const Component& c : components)
+  {
+    if (c.lambda.computeDUdlambda)
+    {
+      double lambda = c.lambda.lambdaValue();
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambda.lambdaValue());
+    }
+  }
+  std::print(stream, "\n");
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -969,23 +1002,14 @@ void System::sampleProperties(size_t currentBlock)
 
    for(Component &component : components)
    {
-     double density  = static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
+     double componentDensity  = static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
 
      double lambda = component.lambda.lambdaValue();
      double dudlambda = runningEnergies.dudlambda(lambda);
-     component.lambda.sampleHistogram(currentBlock, density, dudlambda);
+     component.lambda.sampleHistogram(currentBlock, componentDensity, dudlambda);
 
-     component.averageRosenbluthWeights.addDensitySample(currentBlock, density, w);
+     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
    }
-
-   // TODO: Change to selected lambda, you can follow only one lambda-change
-   //       Also means the number of bins must be taken from that one
-   //lambda.currentBin = components[1].lambda.currentBin;
-   //double l = components[1].lambda.lambdaValue();
-   //double dudlambda = runningEnergies.dudlambda(l);
-   //double density = static_cast<double>(numberOfIntegerMoleculesPerComponent[1]) / simulationBox.volume;
-   //lambda.sampledUdLambdaHistogram(currentBlock, dudlambda);
-   //lambda.dUdlambdaBookKeeping.addDensitySample(currentBlock, density, w);
 
    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 

@@ -804,6 +804,20 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "ThermodynamicIntegration"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+
+        std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
+
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0; i < systems.size(); ++i)
+        {
+          systems[i].components.back().lambda.computeDUdlambda = values[i];
+        }
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "LnPartitionFunction"))
       {
         requireExistingSystem(keyword, lineNumber);
@@ -1339,7 +1353,22 @@ InputReader::InputReader()
     
       ++reactionId;
     }
+  }
 
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    size_t numberOfDUDlambda{ 0 };
+    for (size_t j = 0; j < systems[i].components.size(); ++j)
+    {
+      if (systems[i].components[j].lambda.computeDUdlambda) 
+      {
+        ++numberOfDUDlambda;
+      }
+    }
+    if(numberOfDUDlambda > 1)
+    {
+      throw std::runtime_error(std::print("Error [System {}]: multiple thermodynamic integrations present (there can be only one)", i));
+    }
   }
 
   for (size_t i = 0; i < systems.size(); ++i)
