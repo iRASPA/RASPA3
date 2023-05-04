@@ -135,5 +135,6 @@ export struct Component
     std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;
     std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
     std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+    std::vector<Atom> copyAtomsRandomlyRotatedAt(double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
     std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
 };

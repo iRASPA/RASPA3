@@ -31,6 +31,7 @@ export struct MC_Moves
     std::optional<RunningEnergy> insertionMove(System& system, size_t selectedComponent);
     std::optional<RunningEnergy> deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule);
     std::optional<RunningEnergy> swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule, bool insertionDisabled=false, bool deletionDisabled=false);
+    std::optional<RunningEnergy> swapMove_CFCMC(System& system, size_t selectedComponent, size_t selectedMolecule, bool insertionDisabled = false, bool deletionDisabled = false);
     std::optional<double> WidomMove(System& system, size_t selectedComponent);
     std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CBMC(System& systemA, System& systemB, size_t selectedComponent);
 
