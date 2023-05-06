@@ -66,7 +66,8 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     acentricFactor(w),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambda(numberOfBlocks, 41),
+    lambdaGC(numberOfBlocks, 41),
+    lambdaGibbs(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {
   atoms = definedAtoms;
@@ -82,7 +83,8 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
     filenameData(fileName),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambda(numberOfBlocks, 41),
+    lambdaGC(numberOfBlocks, 41),
+    lambdaGibbs(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {
   // expand the fractional atoms based on the space-group
@@ -155,7 +157,8 @@ Component::Component(Component::Type type, size_t currentComponent, const std::s
                      componentId(currentComponent), 
                      name(componentName),
                      filenameData(fileName),
-                     lambda(numberOfBlocks, 41),
+                     lambdaGC(numberOfBlocks, 41),
+                     lambdaGibbs(numberOfBlocks, 41),
                      averageRosenbluthWeights(numberOfBlocks)
 {
 }

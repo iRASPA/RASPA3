@@ -82,7 +82,8 @@ export struct Component
 
     size_t initialNumberOfMolecules{ 0 };
 
-    PropertyLambdaProbabilityHistogram lambda;
+    PropertyLambdaProbabilityHistogram lambdaGC;
+    PropertyLambdaProbabilityHistogram lambdaGibbs;
     bool hasFractionalMolecule{ false };
 
     std::vector<size_t> chiralCenters{};

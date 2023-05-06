@@ -69,8 +69,8 @@ std::string System::writeMCMoveStatistics() const
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
 
-      std::print(stream, component.lambda.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
-      std::print(stream, component.lambda.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)

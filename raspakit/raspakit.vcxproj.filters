@@ -435,6 +435,24 @@
     <ClCompile Include="mc_moves_swap_cfcmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_identity_change.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_reservoir.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reaction_cfcmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reaction_cfcmc_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mdspan.h">

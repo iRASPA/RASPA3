@@ -1,7 +1,7 @@
 SimulationType                MonteCarlo
-NumberOfCycles                100000
+NumberOfCycles                20000
 NumberOfInitializationCycles  1000
-NumberOfEquilibrationCycles   50000
+NumberOfEquilibrationCycles   20000
 PrintEvery                    1000
 NumberOfBlocks                5
 
@@ -26,9 +26,10 @@ Component 0 MoleculeName               CO2
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
-            SwapProbability            0.0
+            SwapProbability            1.0
+            CFCMC_SwapProbability      1.0
             CFCMC_CBMC_SwapProbability 1.0
-            WidomProbability           1.0
+            WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
             CreateNumberOfMolecules    0
 
@@ -38,8 +39,9 @@ Component 1 MoleculeName               methane
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
-            SwapProbability            0.0
+            SwapProbability            1.0
+            CFCMC_SwapProbability      1.0
             CFCMC_CBMC_SwapProbability 1.0
-            WidomProbability           1.0
+            WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
             CreateNumberOfMolecules    0

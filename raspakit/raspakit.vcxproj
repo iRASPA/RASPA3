@@ -221,7 +221,10 @@
     <ClCompile Include="mc_moves.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp" />
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp" />
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_volume.cpp" />
+    <ClCompile Include="mc_moves_identity_change.cpp" />
     <ClCompile Include="mc_moves_insertion.cpp" />
     <ClCompile Include="mc_moves_probabilities_particles.cpp" />
     <ClCompile Include="mc_moves_probabilities_particles.ixx" />
@@ -230,6 +233,8 @@
     <ClCompile Include="mc_moves_random_rotation.cpp" />
     <ClCompile Include="mc_moves_random_translation.cpp" />
     <ClCompile Include="mc_moves_reaction.cpp" />
+    <ClCompile Include="mc_moves_reaction_cfcmc.cpp" />
+    <ClCompile Include="mc_moves_reaction_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_reinsertion.cpp" />
     <ClCompile Include="mc_moves_rotation.cpp" />
     <ClCompile Include="mc_moves_swap_cfcmc.cpp" />
@@ -292,6 +297,7 @@
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />
     <ClCompile Include="system_compute_fluid_properties.cpp" />
+    <ClCompile Include="system_reservoir.cpp" />
     <ClCompile Include="units.cpp" />
     <ClCompile Include="system_interactions_framework_molecule.cpp" />
     <ClCompile Include="units.ixx" />

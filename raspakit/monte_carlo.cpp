@@ -176,7 +176,7 @@ void MonteCarlo::equilibrate()
 
     for(Component &component : system.components)
     {
-      component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
     }
   };
 
@@ -202,7 +202,7 @@ void MonteCarlo::equilibrate()
       {
         if(component.hasFractionalMolecule)
         {
-          component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         }
       }
     }
@@ -220,7 +220,7 @@ void MonteCarlo::equilibrate()
         {
           if(component.hasFractionalMolecule)
           {
-            component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
           }
         }
       }
@@ -255,7 +255,7 @@ void MonteCarlo::production()
       component.mc_moves_probabilities.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
-        component.lambda.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
       }
     }
   };
@@ -291,7 +291,8 @@ void MonteCarlo::production()
       // add the sample energy to the averages
       if (i % 10 == 0 || i % printEvery == 0)
       {
-        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+        //system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, 1.0);
       }
 
       

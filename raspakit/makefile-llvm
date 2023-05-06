@@ -18,6 +18,7 @@ default: libraspakit;
 	$(CXX) $(CXXFLAGS) -x c++-module -c $< -o $@.o
 
 
+reaction.pcm: property_lambda_probability_histogram.o reaction.o
 reactions.pcm: reaction.o
 atom.pcm: scaling.o
 running_energy.pcm : atom.o
@@ -59,6 +60,7 @@ mixture_prediction_simulation.pcm: input_reader.o component.o system.o multi_sit
 breakthrough.pcm: component.o input_reader.o mixture_prediction.o system.o
 breakthrough_simulation.pcm: breakthrough.o input_reader.o mixture_prediction.o system.o simulationbox.o component.o
 
+reaction.o: property_lambda_probability_histogram.o reaction.o
 reactions.o: reaction.o
 atom.o: scaling.o
 running_energy: atom.o
@@ -124,6 +126,8 @@ system_md_loop.o: system.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_md_loop.cpp -o system_md_loop.o
 system_print_movestatistics.o: system.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_print_movestatistics.cpp -o system_print_movestatistics.o
+system_reservoir.o: system.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_reservoir.cpp -o system_reservoir.o
 mc_moves.o: system.o cbmc.o component.o atom.o simulationbox.o energy_status.o running_energy.o
 mc_moves_translation.o: mc_moves.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_translation.cpp -o mc_moves_translation.o
@@ -151,6 +155,18 @@ mc_moves_gibbs_volume.o: mc_moves.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_volume.cpp -o mc_moves_gibbs_volume.o
 mc_moves_gibbs_swap_cbmc.o: mc_moves.o
 	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_swap_cbmc.cpp -o mc_moves_gibbs_swap_cbmc.o
+mc_moves_gibbs_swap_cfcmc.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_swap_cfcmc.cpp -o mc_moves_gibbs_swap_cfcmc.o
+mc_moves_gibbs_swap_cfcmc_cbmc.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_swap_cfcmc_cbmc.cpp -o mc_moves_gibbs_swap_cfcmc_cbmc.o
+mc_moves_identity_change.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_identity_change.cpp -o mc_moves_identity_change.o
+mc_moves_reaction.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction.cpp -o mc_moves_reaction.o
+mc_moves_reaction_cfcmc.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction_cfcmc.cpp -o mc_moves_reaction_cfcmc.o
+mc_moves_reaction_cfcmc_cbmc.o: mc_moves.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction_cfcmc_cbmc.cpp -o mc_moves_reaction_cfcmc_cbmc.o
 monte_carlo.o: averages.o system.o property_enthalpy.o mc_moves.o input_reader.o energy_status.o
 input_reader.o: system.o atom.o component.o simulationbox.o forcefield.o loadings.o enthalpy_of_adsorption.o energy_status.o averages.o
 isotherm_fitting.o: multi_site_isotherm.o component.o input_reader.o system.o

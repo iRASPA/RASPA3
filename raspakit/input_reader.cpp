@@ -813,7 +813,7 @@ InputReader::InputReader()
         values.resize(systems.size(), values.back());
         for (size_t i = 0; i < systems.size(); ++i)
         {
-          systems[i].components.back().lambda.computeDUdlambda = values[i];
+          systems[i].components.back().lambdaGC.computeDUdlambda = values[i];
         }
         continue;
       }
@@ -1372,7 +1372,7 @@ InputReader::InputReader()
     size_t numberOfDUDlambda{ 0 };
     for (size_t j = 0; j < systems[i].components.size(); ++j)
     {
-      if (systems[i].components[j].lambda.computeDUdlambda) 
+      if (systems[i].components[j].lambdaGC.computeDUdlambda) 
       {
         ++numberOfDUDlambda;
       }
