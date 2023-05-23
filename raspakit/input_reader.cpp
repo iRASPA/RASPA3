@@ -804,6 +804,20 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "ThermodynamicIntegration"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+
+        std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
+
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0; i < systems.size(); ++i)
+        {
+          systems[i].components.back().lambdaGC.computeDUdlambda = values[i];
+        }
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "LnPartitionFunction"))
       {
         requireExistingSystem(keyword, lineNumber);
@@ -977,6 +991,18 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "CFCMC_SwapProbability"))
+      {
+        requireExistingSystemAndComponent(keyword, lineNumber);
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0; i < systems.size(); ++i)
+        {
+          systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CFCMC = values[i];
+        }
+        continue;
+      }
       
       if (caseInSensStringCompare(keyword, "CFCMC_CBMC_SwapProbability"))
       {
@@ -1339,7 +1365,22 @@ InputReader::InputReader()
     
       ++reactionId;
     }
+  }
 
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    size_t numberOfDUDlambda{ 0 };
+    for (size_t j = 0; j < systems[i].components.size(); ++j)
+    {
+      if (systems[i].components[j].lambdaGC.computeDUdlambda) 
+      {
+        ++numberOfDUDlambda;
+      }
+    }
+    if(numberOfDUDlambda > 1)
+    {
+      throw std::runtime_error(std::print("Error [System {}]: multiple thermodynamic integrations present (there can be only one)", i));
+    }
   }
 
   for (size_t i = 0; i < systems.size(); ++i)

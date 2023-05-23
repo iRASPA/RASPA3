@@ -2,6 +2,19 @@ module;
 
 module monte_carlo;
 
+import <iostream>;
+import <algorithm>;
+import <numeric>;
+import <chrono>;
+import <vector>;
+import <span>;
+import <string>;
+import <optional>;
+import <fstream>;
+import <filesystem>;
+import <tuple>;
+import <ios>;
+
 import system;
 import randomnumbers;
 import mc_moves;
@@ -22,27 +35,16 @@ import running_energy;
 import atom;
 import double3;
 import double3x3;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
-import property_dudlambda;
 import property_simulationbox;
 import property_energy;
 import property_loading;
 import property_enthalpy;
 import mc_moves_probabilities_particles;
 import property_pressure;
-import dudlambda;
 
-import <iostream>;
-import <algorithm>;
-import <numeric>;
-import <chrono>;
-import <vector>;
-import <span>;
-import <string>;
-import <optional>;
-import <fstream>;
-import <filesystem>;
+
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
@@ -76,7 +78,7 @@ void MonteCarlo::initialize()
 {
   for (System &system: systems)
   {
-    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
+    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
     system.removeRedundantMoves();
     system.determineSwapableComponents();
     system.determineFractionalComponents();
@@ -118,10 +120,11 @@ void MonteCarlo::initialize()
 
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
 
     system.precomputeTotalRigidEnergy();
     system.computeTotalEnergies();
+
+    std::ostream stream(streams[system.systemId].rdbuf());
     system.runningEnergies.print(stream, "Recomputed from scratch");
   };
   
@@ -129,8 +132,9 @@ void MonteCarlo::initialize()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
@@ -170,10 +174,9 @@ void MonteCarlo::equilibrate()
     system.computeTotalEnergies();
     system.runningEnergies.print(stream, "Recomputed from scratch");
 
-    system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Initialize);
     for(Component &component : system.components)
     {
-      component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Initialize);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
     }
   };
 
@@ -181,8 +184,9 @@ void MonteCarlo::equilibrate()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
@@ -196,10 +200,9 @@ void MonteCarlo::equilibrate()
     {
       for(Component &component : system.components)
       {
-        system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Sample);
         if(component.hasFractionalMolecule)
         {
-          component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Sample);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         }
       }
     }
@@ -213,12 +216,11 @@ void MonteCarlo::equilibrate()
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
-        system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::AdjustBiasingFactors);
         for(Component &component : system.components)
         {
           if(component.hasFractionalMolecule)
           {
-            component.lambda.WangLandauIteration(Lambda::WangLandauPhase::AdjustBiasingFactors);
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
           }
         }
       }
@@ -247,14 +249,13 @@ void MonteCarlo::production()
     system.clearMoveStatistics();
     system.clearTimingStatistics();
 
-    system.lambda.WangLandauIteration(dUdLambda::WangLandauPhase::Finalize);
     for(Component &component : system.components)
     {
       component.mc_moves_probabilities.clearMoveStatistics();
       component.mc_moves_probabilities.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
-        component.lambda.WangLandauIteration(Lambda::WangLandauPhase::Finalize);
+        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
       }
     }
   };
@@ -266,8 +267,9 @@ void MonteCarlo::production()
 
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      System& selectedSystem = randomSystem();
-      System& selectSecondSystem = systems[(selectedSystem.systemId + 1) % systems.size()];
+      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      System& selectedSystem = systems[selectedSystemPair.first];
+      System& selectSecondSystem = systems[selectedSystemPair.second];
       
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
@@ -289,7 +291,8 @@ void MonteCarlo::production()
       // add the sample energy to the averages
       if (i % 10 == 0 || i % printEvery == 0)
       {
-        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+        //system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, 1.0);
       }
 
       
@@ -343,7 +346,7 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
     
     std::print(stream, system.writeMCMoveStatistics());
-    std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
+    //std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");

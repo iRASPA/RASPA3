@@ -188,7 +188,9 @@ void MCMoveProbabilitiesParticles::clearTimingStatistics()
   cpuTime_IdentityChangeMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
   cpuTime_SwapDeletionMove_CBMC_NonEwald = std::chrono::duration<double>(0.0);
-  cpuTime_SwapMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapInsertionMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapDeletionMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapLambdaMove_CFCMC_NonEwald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
   cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald = std::chrono::duration<double>(0.0);
@@ -209,7 +211,9 @@ void MCMoveProbabilitiesParticles::clearTimingStatistics()
   cpuTime_IdentityChangeMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
   cpuTime_SwapDeletionMove_CBMC_Ewald = std::chrono::duration<double>(0.0);
-  cpuTime_SwapMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapInsertionMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapDeletionMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
+  cpuTime_SwapLambdaMove_CFCMC_Ewald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
   cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
   cpuTime_SwapDeletionMove_CFCMC_CBMC_Ewald = std::chrono::duration<double>(0.0);
@@ -288,9 +292,20 @@ const std::string MCMoveProbabilitiesParticles::writeMCMoveCPUTimeStatistics() c
   if (cpuTime_SwapMove_CFCMC.count() > 0.0)
   {
     std::print(stream, "    Swap (CFCMC):           {:14f} [s]\n", cpuTime_SwapMove_CFCMC.count());
-    std::print(stream, "        Non-Ewald:              {:14f} [s]\n", cpuTime_SwapMove_CFCMC_NonEwald.count());
-    std::print(stream, "        Ewald:                  {:14f} [s]\n", cpuTime_SwapMove_CFCMC_Ewald.count());
-    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_SwapMove_CFCMC.count() - cpuTime_SwapMove_CFCMC_NonEwald.count() - cpuTime_SwapMove_CFCMC_Ewald.count());
+    std::print(stream, "        Ins. Non-Ewald:         {:14f} [s]\n", cpuTime_SwapInsertionMove_CFCMC_NonEwald.count());
+    std::print(stream, "        Ins. Ewald:             {:14f} [s]\n", cpuTime_SwapInsertionMove_CFCMC_Ewald.count());
+    std::print(stream, "        Del. Non-Ewald:         {:14f} [s]\n", cpuTime_SwapDeletionMove_CFCMC_NonEwald.count());
+    std::print(stream, "        Del. Ewald:             {:14f} [s]\n", cpuTime_SwapDeletionMove_CFCMC_Ewald.count());
+    std::print(stream, "        Lambda Non-Ewald:       {:14f} [s]\n", cpuTime_SwapLambdaMove_CFCMC_NonEwald.count());
+    std::print(stream, "        Lambda Ewald:           {:14f} [s]\n", cpuTime_SwapLambdaMove_CFCMC_Ewald.count());
+    std::print(stream, "        Overhead:               {:14f} [s]\n", cpuTime_SwapMove_CFCMC.count() - 
+      cpuTime_SwapInsertionMove_CFCMC_NonEwald.count() -
+      cpuTime_SwapInsertionMove_CFCMC_Ewald.count() -
+      cpuTime_SwapDeletionMove_CFCMC_NonEwald.count() -
+      cpuTime_SwapDeletionMove_CFCMC_Ewald.count() -
+      cpuTime_SwapLambdaMove_CFCMC_NonEwald.count() -
+      cpuTime_SwapLambdaMove_CFCMC_Ewald.count()
+    );
   }
   if (cpuTime_SwapMove_CFCMC_CBMC.count() > 0.0)
   {

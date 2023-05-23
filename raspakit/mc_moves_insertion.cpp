@@ -14,7 +14,7 @@ import system;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import running_energy;
@@ -80,9 +80,6 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
 
       system.acceptEwaldMove();
       system.insertMolecule(selectedComponent, growData->atom);
-
-      // Debug
-      //assert(system.checkMoleculeIds());
 
       return growData->energies + energyFourierDifference + tailEnergyDifference;
   };

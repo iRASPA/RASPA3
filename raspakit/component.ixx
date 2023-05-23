@@ -20,7 +20,7 @@ import double3;
 import averages;
 import atom;
 import forcefield;
-import lambda;
+import property_lambda_probability_histogram;
 import simulationbox;
 import property_widom;
 import isotherm;
@@ -82,7 +82,8 @@ export struct Component
 
     size_t initialNumberOfMolecules{ 0 };
 
-    Lambda lambda;
+    PropertyLambdaProbabilityHistogram lambdaGC;
+    PropertyLambdaProbabilityHistogram lambdaGibbs;
     bool hasFractionalMolecule{ false };
 
     std::vector<size_t> chiralCenters{};
@@ -135,5 +136,6 @@ export struct Component
     std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;
     std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
     std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+    std::vector<Atom> copyAtomsRandomlyRotatedAt(double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
     std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
 };

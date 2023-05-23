@@ -43,7 +43,7 @@ import skspacegroup;
 
 import forcefield;
 import atom;
-import lambda;
+import property_lambda_probability_histogram;
 import print;
 import property_widom;
 import multi_site_isotherm;
@@ -66,7 +66,8 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     acentricFactor(w),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambda(numberOfBlocks, 41),
+    lambdaGC(numberOfBlocks, 41),
+    lambdaGibbs(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {
   atoms = definedAtoms;
@@ -82,7 +83,8 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
     filenameData(fileName),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambda(numberOfBlocks, 41),
+    lambdaGC(numberOfBlocks, 41),
+    lambdaGibbs(numberOfBlocks, 41),
     averageRosenbluthWeights(numberOfBlocks)
 {
   // expand the fractional atoms based on the space-group
@@ -155,7 +157,8 @@ Component::Component(Component::Type type, size_t currentComponent, const std::s
                      componentId(currentComponent), 
                      name(componentName),
                      filenameData(fileName),
-                     lambda(numberOfBlocks, 41),
+                     lambdaGC(numberOfBlocks, 41),
+                     lambdaGibbs(numberOfBlocks, 41),
                      averageRosenbluthWeights(numberOfBlocks)
 {
 }
@@ -479,11 +482,6 @@ std::string Component::printStatus(const ForceField& forceField) const
   return stream.str();
 }
 
-
-
-
-
-
 std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead() const
 {
     double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
@@ -522,6 +520,19 @@ std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling,
   {
     copied_atoms[i].setScaling(scaling);
     copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
+    copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
+  }
+  return copied_atoms;
+}
+
+std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const
+{
+  double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
+  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  for (size_t i = 0; i != atoms.size(); ++i)
+  {
+    copied_atoms[i].setScaling(scaling);
+    copied_atoms[i].position = position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
     copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
   }
   return copied_atoms;

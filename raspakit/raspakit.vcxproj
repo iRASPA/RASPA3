@@ -187,8 +187,6 @@
     <ClCompile Include="breakthrough_simulation.ixx" />
     <ClCompile Include="cif_reader.cpp" />
     <ClCompile Include="cif_reader.ixx" />
-    <ClCompile Include="dudlambda.cpp" />
-    <ClCompile Include="dudlambda.ixx" />
     <ClCompile Include="energy_factor.cpp" />
     <ClCompile Include="energy_factor.ixx" />
     <ClCompile Include="energy_status_inter.cpp" />
@@ -219,13 +217,14 @@
     <ClCompile Include="cbmc_growing_status.ixx" />
     <ClCompile Include="enthalpy_of_adsorption.cpp" />
     <ClCompile Include="enthalpy_of_adsorption.ixx" />
-    <ClCompile Include="lambda.cpp" />
-    <ClCompile Include="lambda.ixx" />
     <ClCompile Include="mc_moves.cpp" />
     <ClCompile Include="mc_moves.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp" />
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp" />
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_volume.cpp" />
+    <ClCompile Include="mc_moves_identity_change.cpp" />
     <ClCompile Include="mc_moves_insertion.cpp" />
     <ClCompile Include="mc_moves_probabilities_particles.cpp" />
     <ClCompile Include="mc_moves_probabilities_particles.ixx" />
@@ -233,8 +232,12 @@
     <ClCompile Include="mc_moves_probabilities_system.ixx" />
     <ClCompile Include="mc_moves_random_rotation.cpp" />
     <ClCompile Include="mc_moves_random_translation.cpp" />
+    <ClCompile Include="mc_moves_reaction.cpp" />
+    <ClCompile Include="mc_moves_reaction_cfcmc.cpp" />
+    <ClCompile Include="mc_moves_reaction_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_reinsertion.cpp" />
     <ClCompile Include="mc_moves_rotation.cpp" />
+    <ClCompile Include="mc_moves_swap_cfcmc.cpp" />
     <ClCompile Include="mc_moves_swap_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_translation.cpp" />
     <ClCompile Include="mc_moves_volume.cpp" />
@@ -257,8 +260,6 @@
     <ClCompile Include="potential_gradient_vdw.ixx" />
     <ClCompile Include="pressure_range.cpp" />
     <ClCompile Include="pressure_range.ixx" />
-    <ClCompile Include="property_dudlambda.cpp" />
-    <ClCompile Include="property_dudlambda.ixx" />
     <ClCompile Include="property_energy.cpp" />
     <ClCompile Include="property_energy.ixx" />
     <ClCompile Include="property_enthalpy.cpp" />
@@ -269,6 +270,8 @@
     <ClCompile Include="property_loading.ixx" />
     <ClCompile Include="property_pressure.cpp" />
     <ClCompile Include="property_pressure.ixx" />
+    <ClCompile Include="property_rdf.cpp" />
+    <ClCompile Include="property_rdf.ixx" />
     <ClCompile Include="property_simulationbox.cpp" />
     <ClCompile Include="property_simulationbox.ixx" />
     <ClCompile Include="property_widom.cpp" />
@@ -294,6 +297,7 @@
     <ClCompile Include="sample_movies.ixx" />
     <ClCompile Include="sample_movies.cpp" />
     <ClCompile Include="system_compute_fluid_properties.cpp" />
+    <ClCompile Include="system_reservoir.cpp" />
     <ClCompile Include="units.cpp" />
     <ClCompile Include="system_interactions_framework_molecule.cpp" />
     <ClCompile Include="units.ixx" />

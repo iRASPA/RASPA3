@@ -31,13 +31,14 @@ import force_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
-import lambda;
+import property_lambda_probability_histogram;
 import cbmc;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import property_rdf;
 import multi_site_isotherm;
 import pressure_range;
 import units;
@@ -45,7 +46,6 @@ import bond_potential;
 import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
-import dudlambda;
 import reaction;
 import reactions;
 
@@ -106,11 +106,25 @@ export struct System
 
     std::vector<size_t> swapableComponents{};
     std::vector<size_t> initialNumberOfMolecules{};
-    std::vector<size_t> numberOfMoleculesPerComponent{};                    // includes all molecules
-    std::vector<size_t> numberOfIntegerMoleculesPerComponent{};             // integer molecules
-    std::vector<size_t> numberOfFractionalMoleculesPerComponent{};          // fractional molecules
-    std::vector<size_t> numberOfReactionMoleculesPerComponent{};            // reaction molecules
-    std::vector<size_t> numberOfReactionFractionalMoleculesPerComponent{};  // reaction fractional molecules
+
+    std::vector<size_t> numberOfMoleculesPerComponent{};                                            // total # of molecules per component (include fractional molecules)
+                                                                                                    
+    std::vector<size_t> numberOfIntegerMoleculesPerComponent{};                                     // # integer molecules
+    std::vector<size_t> numberOfFractionalMoleculesPerComponent{};                                  // # fractional molecules
+                                                                                                    
+    std::vector<size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};                          // # fractional molecules for CFCMC grand-canonical or CFCMC Widom
+    std::vector<size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};                      // # fractional molecules for pair-CFCMC grand-canonical
+    std::vector<size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};                       // # fractional molecules for CFCMC-Gibbs
+    std::vector<std::vector<size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};       // # reactant fractional molecules for all reactions using CFCMC
+
+    inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0;}
+    inline size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]
+; }
+   
+    inline size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
+                                                                                                       numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]; }
+   
+
     std::vector<double> idealGasEnergiesPerComponent{};
 
     ForceField forceField;
@@ -158,8 +172,6 @@ export struct System
     std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
 
     MCMoveProbabilitiesSystem mc_moves_probabilities;
-
-    dUdLambda lambda;
 
     Reactions reactions;
 
@@ -249,11 +261,14 @@ export struct System
     }
 
     // The system weight is the sum of the weights of all the components
+    // Improving the accuracy of computing chemical potentials in CFCMC simulations 
+    // A. Rahbari, R. Hens, D. Dubbeldam, and T.J.H Vlugt
+    // Mol. Phys.  117(23-24), 3493-3508, 2019
     double weight() const 
     {
       return std::transform_reduce(components.begin(), components.end(), 0.0,
                [](const double& acc, const double& b) { return acc + b; },
-               [](const Component& component) { return component.lambda.weight();});
+               [](const Component& component) { return component.lambdaGC.weight() + component.lambdaGibbs.weight();});
     }
 
     
@@ -287,7 +302,7 @@ export struct System
     }
 
     void insertMolecule(size_t selectedComponent, std::vector<Atom> atoms);
-    void insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms);
+    void insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms, size_t moleculeId);
     void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom>& molecule);
     bool checkMoleculeIds();
     
@@ -327,6 +342,8 @@ export struct System
     void clearTimingStatistics();
 
     std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
+
+    std::vector<Atom> equilibratedMoleculeRandomInBox(size_t selectedComponent, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
 
     void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 

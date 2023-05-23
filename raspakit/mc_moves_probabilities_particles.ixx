@@ -94,11 +94,13 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionMove_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapDeletionMove_CBMC_NonEwald{ 0.0 };
-  std::chrono::duration<double> cpuTime_SwapMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_CBMC_NonEwald{ 0.0 };
-  std::chrono::duration<double> cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_NonEwald{ 0.0 }; 
   std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_NonEwald{ 0.0 };
@@ -115,9 +117,11 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_IdentityChangeMove_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionMove_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapDeletionMove_CBMC_Ewald{ 0.0 };
-  std::chrono::duration<double> cpuTime_SwapMove_CFCMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionMove_CFCMC_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapInsertionGrowMove_CFCMC_CBMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapDeletionMove_CFCMC_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapDeletionRetraceMove_CFCMC_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_SwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };

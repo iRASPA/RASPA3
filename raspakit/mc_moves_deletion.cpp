@@ -14,7 +14,7 @@ import system;
 import energy_factor;
 import energy_status;
 import energy_status_inter;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import running_energy;

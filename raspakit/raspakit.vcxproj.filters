@@ -159,12 +159,6 @@
     <ClCompile Include="enthalpy_of_adsorption.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lambda.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="lambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="system_print_movestatistics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -193,12 +187,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="forcefield.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="property_dudlambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="property_dudlambda.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="property_energy.cpp">
@@ -417,12 +405,6 @@
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="dudlambda.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="dudlambda.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="scaling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -439,6 +421,36 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="reactions.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reaction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_rdf.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="property_rdf.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_swap_cfcmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_identity_change.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="system_reservoir.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reaction_cfcmc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mc_moves_reaction_cfcmc_cbmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

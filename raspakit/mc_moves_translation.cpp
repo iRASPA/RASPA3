@@ -15,7 +15,7 @@ import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;
-import lambda;
+import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import move_statistics;
