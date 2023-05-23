@@ -43,18 +43,18 @@ float4x4& float4x4::operator=(const float4x4& a)  //assignment operator
 
 float4x4::float4x4(const float3x3& a)
 {
-    m11 = a.m11; m21 = a.m21; m31 = a.m31; m41 = 0.0;
-    m12 = a.m12; m22 = a.m22; m32 = a.m32; m42 = 0.0;
-    m13 = a.m13; m23 = a.m23; m33 = a.m33; m43 = 0.0;
-    m14 = 0.0;   m24 = 0.0;   m34 = 0.0;   m44 = 1.0;
+    m11 = a.m11; m21 = a.m21; m31 = a.m31; m41 = 0.0f;
+    m12 = a.m12; m22 = a.m22; m32 = a.m32; m42 = 0.0f;
+    m13 = a.m13; m23 = a.m23; m33 = a.m33; m43 = 0.0f;
+    m14 = 0.0f;   m24 = 0.0f;   m34 = 0.0f;   m44 = 1.0f;
 }
 
 float4x4::float4x4(const double3x3& a)
 {
-    m11 = float(a.m11); m21 = float(a.m21); m31 = float(a.m31); m41 = float(0.0);
-    m12 = float(a.m12); m22 = float(a.m22); m32 = float(a.m32); m42 = float(0.0);
-    m13 = float(a.m13); m23 = float(a.m23); m33 = float(a.m33); m43 = float(0.0);
-    m14 = float(0.0);   m24 = float(0.0);   m34 = float(0.0);   m44 = float(1.0);
+    m11 = float(a.m11); m21 = float(a.m21); m31 = float(a.m31); m41 = float(0.0f);
+    m12 = float(a.m12); m22 = float(a.m22); m32 = float(a.m32); m42 = float(0.0f);
+    m13 = float(a.m13); m23 = float(a.m23); m33 = float(a.m33); m43 = float(0.0f);
+    m14 = float(0.0f);   m24 = float(0.0f);   m34 = float(0.0f);   m44 = float(1.0f);
 }
 
 float4x4::float4x4(const double4x4& a)
@@ -211,10 +211,10 @@ float4x4 float4x4::Identity(void)
 {
     float4x4 R;
 
-    R.m11 = 1.0; R.m12 = 0.0; R.m13 = 0.0; R.m14 = 0.0;
-    R.m21 = 0.0; R.m22 = 1.0; R.m23 = 0.0; R.m24 = 0.0;
-    R.m31 = 0.0; R.m32 = 0.0; R.m33 = 1.0; R.m34 = 0.0;
-    R.m41 = 0.0; R.m42 = 0.0; R.m43 = 0.0; R.m44 = 1.0;
+    R.m11 = 1.0f; R.m12 = 0.0f; R.m13 = 0.0f; R.m14 = 0.0f;
+    R.m21 = 0.0f; R.m22 = 1.0f; R.m23 = 0.0f; R.m24 = 0.0f;
+    R.m31 = 0.0f; R.m32 = 0.0f; R.m33 = 1.0f; R.m34 = 0.0f;
+    R.m41 = 0.0f; R.m42 = 0.0f; R.m43 = 0.0f; R.m44 = 1.0f;
 
     return R;
 }
@@ -249,25 +249,25 @@ float4x4 float4x4::Rotationfloat4x4FromQuaternion(simd_quatd q)
     m.m11 = float((sqx - sqy - sqz + sqw) * invs); // since sqw + sqx + sqy + sqz =1/invs*invs
     m.m22 = float((-sqx + sqy - sqz + sqw) * invs);
     m.m33 = float((-sqx - sqy + sqz + sqw) * invs);
-    m.m44 = 1.0;
+    m.m44 = 1.0f;
 
     double tmp1 = q.ix * q.iy;
     double tmp2 = q.iz * q.r;
     m.m21 = float(2.0 * (tmp1 + tmp2) * invs);
     m.m12 = float(2.0 * (tmp1 - tmp2) * invs);
-    m.m14 = m.m41 = 0.0;
+    m.m14 = m.m41 = 0.0f;
 
     tmp1 = q.ix * q.iz;
     tmp2 = q.iy * q.r;
     m.m31 = float(2.0 * (tmp1 - tmp2) * invs);
     m.m13 = float(2.0 * (tmp1 + tmp2) * invs);
-    m.m24 = m.m42 = 0.0;
+    m.m24 = m.m42 = 0.0f;
 
     tmp1 = q.iy * q.iz;
     tmp2 = q.ix * q.r;
     m.m32 = float(2.0 * (tmp1 + tmp2) * invs);
     m.m23 = float(2.0 * (tmp1 - tmp2) * invs);
-    m.m34 = m.m43 = 0.0;
+    m.m34 = m.m43 = 0.0f;
 
     return m;
 }

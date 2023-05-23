@@ -22,7 +22,7 @@ export union float4
     inline static float dot(const float4& a, const float4& b) { return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w; }
 
     // http://www.gamedev.net/topic/456301-cross-product-vector-4d/
-    inline static float4 cross(const float4& a, const float4& b) { return float4(a.y * b.z - a.z * b.y, -a.x * b.z + a.z * b.x, a.x * b.y - a.y * b.x, 0.0); }
+    inline static float4 cross(const float4& a, const float4& b) { return float4(a.y * b.z - a.z * b.y, -a.x * b.z + a.z * b.x, a.x * b.y - a.y * b.x, 0.0f); }
     inline static float4 cross(const float4& a, const float4& b, const float4& c)
     {
         return float4(a.y * (b.z * c.w - c.z * b.w) - a.z * (b.y * c.w - c.y * b.w) + a.w * (b.y * c.z - c.y * b.z),
