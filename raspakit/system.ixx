@@ -48,6 +48,7 @@ import move_statistics;
 import mc_moves_probabilities_system;
 import reaction;
 import reactions;
+import transition_matrix;
 
 export struct System
 {
@@ -174,6 +175,7 @@ export struct System
     MCMoveProbabilitiesSystem mc_moves_probabilities;
 
     Reactions reactions;
+    TransitionMatrix tmmc;
 
     // Breakthrough settings
     size_t columnNumberOfGridPoints{ 100 };

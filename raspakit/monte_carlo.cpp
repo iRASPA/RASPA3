@@ -44,8 +44,7 @@ import property_loading;
 import property_enthalpy;
 import mc_moves_probabilities_particles;
 import property_pressure;
-
-
+import transition_matrix;
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
@@ -94,9 +93,10 @@ void MonteCarlo::initialize()
 
     system.createInitialMolecules();
 
-   
-
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
+
+    //Initialize TMMC//
+    system.tmmc.Initialize_TMMC_Vectors();
 
     std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
@@ -151,6 +151,8 @@ void MonteCarlo::initialize()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+
+        selectedSystem.tmmc.TMMC_Steps++;
       }
     }
 
@@ -190,6 +192,11 @@ void MonteCarlo::equilibrate()
     }
   };
 
+  for (size_t j = 0; j != systems.size(); ++j)
+  {
+    systems[j].tmmc.TMMC_Steps = 0;
+  }
+
   for (size_t i = 0; i != numberOfEquilibrationCycles; i++)
   {
     for (size_t j = 0; j != systems.size(); ++j)
@@ -203,6 +210,9 @@ void MonteCarlo::equilibrate()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+
+        selectedSystem.tmmc.TMMC_Steps++;
+        selectedSystem.tmmc.AdjustTMBias();
       }
     }
 
@@ -273,6 +283,10 @@ void MonteCarlo::production()
     }
   };
 
+  for (size_t j = 0; j != systems.size(); ++j)
+  {
+    systems[j].tmmc.TMMC_Steps = 0;
+  }
   
   for (size_t i = 0; i != numberOfCycles; i++)
   {
@@ -289,6 +303,9 @@ void MonteCarlo::production()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+
+        selectedSystem.tmmc.TMMC_Steps++;
+        selectedSystem.tmmc.AdjustTMBias();
       }
     }
 
@@ -334,6 +351,11 @@ void MonteCarlo::production()
     //}
   }
 
+  // Write the collection matrix
+  for (System& system : systems)
+  {
+    system.tmmc.writeTMMCReport();
+  }
 }
 
 void MonteCarlo::output()

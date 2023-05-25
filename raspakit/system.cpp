@@ -94,7 +94,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    reactions()
+    reactions(),
+    tmmc()
 {
 
   for (Component& component : components)
@@ -171,7 +172,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
                mc_moves_probabilities(),
-               reactions()
+               reactions(),
+               tmmc()
 {
     
 }
@@ -211,6 +213,7 @@ System::System(System&& s) noexcept :
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
     reactions(s.reactions),
+    tmmc(s.tmmc),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),
@@ -263,6 +266,7 @@ System::System(const System&& s) noexcept :
     netCharge(std::move(s.netCharge)),
     mc_moves_probabilities(s.mc_moves_probabilities),
     reactions(s.reactions),
+    tmmc(s.tmmc),
     columnNumberOfGridPoints(s.columnNumberOfGridPoints),
     columnTotalPressure(s.columnTotalPressure),
     columnPressureGradient(s.columnPressureGradient),

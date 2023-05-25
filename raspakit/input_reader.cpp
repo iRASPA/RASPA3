@@ -36,7 +36,7 @@ import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
 import reaction;
 import reactions;
-
+import transition_matrix;
 
 template<class T>
 T parse(const std::string& arguments, [[maybe_unused]] const std::string& keyword, [[maybe_unused]] size_t lineNumber)
@@ -560,6 +560,36 @@ InputReader::InputReader()
         requireExistingSystem(keyword, lineNumber);
         double value = parseDouble(arguments, keyword, lineNumber);
         systems.back().mc_moves_probabilities.probabilityGibbsVolumeMove = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "RunTMMC"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        systems.back().tmmc.DoTMMC = value;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, "UseBiasOnMacrostate"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        systems.back().tmmc.DoUseBias = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "TMMCMin"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        systems.back().tmmc.MinMacrostate = value;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, "TMMCMax"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        systems.back().tmmc.MaxMacrostate = value;
         continue;
       }
 
@@ -1330,6 +1360,7 @@ InputReader::InputReader()
         continue;
       }
 
+
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
           throw std::runtime_error(std::print("Error [Input]: unrecognized keyword '{}' at line: {}", keyword, lineNumber));
@@ -1450,6 +1481,31 @@ InputReader::InputReader()
       {
         throw std::runtime_error("Error [Breakthrough]: multiple carrier gas component present (there can be only one)");
       }
+    }
+  }
+
+  for (size_t i = 0; i < systems.size(); ++i)
+  {
+    if(systems[i].numerOfAdsorbateComponents() > 1)
+    {
+      throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.");
+    }
+    if(systems[i].tmmc.DoTMMC)
+    {
+      // check initial number of molecules is in the range of the TMMC macrostates
+      for(size_t j = 0; j < systems[i].components.size(); ++j)
+      {
+        if(systems[i].components[j].type == Component::Type::Adsorbate)
+        {
+          size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
+          if(numberOfMolecules < systems[i].tmmc.MinMacrostate || numberOfMolecules > systems[i].tmmc.MaxMacrostate)
+          {
+            throw std::runtime_error(std::print("Error: Molecules created ({}) need to fit into the TMMC macrostate range ({}-{}).",
+                                     numberOfMolecules, systems[i].tmmc.MinMacrostate, systems[i].tmmc.MaxMacrostate));
+          }
+        }
+      }
+
     }
   }
 

@@ -2,6 +2,20 @@ module;
 
 module mc_moves;
 
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+
 import component;
 import atom;
 import double3;
@@ -21,24 +35,9 @@ import running_energy;
 import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import transition_matrix;
 
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
-
-
-
-std::optional<RunningEnergy> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
+std::pair<std::optional<RunningEnergy>, double> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
   
@@ -70,7 +69,18 @@ std::optional<RunningEnergy> MC_Moves::deletionMove(System& system, size_t selec
       double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /
                          (system.beta * system.components[selectedComponent].molFraction * 
                           system.pressure * system.simulationBox.volume);
-      if (RandomNumber::Uniform() < preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight)
+      double acceptanceProbability = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
+      double biasTransitionMatrix = system.tmmc.biasFactor(system.numberOfMoleculesPerComponent[selectedComponent], TransitionMatrix::MoveType::Deletion);
+
+      if(system.tmmc.DoTMMC)
+      {
+        if(system.numberOfMoleculesPerComponent[selectedComponent] - 1 < system.tmmc.MinMacrostate)
+        {
+           return {std::nullopt, acceptanceProbability};
+        }
+      }
+
+      if (RandomNumber::Uniform() < biasTransitionMatrix * acceptanceProbability)
       {
           system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
 
@@ -80,9 +90,10 @@ std::optional<RunningEnergy> MC_Moves::deletionMove(System& system, size_t selec
           // Debug
           //assert(system.checkMoleculeIds());
 
-          return retraceData.energies - energyFourierDifference - tailEnergyDifference;
+          return {retraceData.energies - energyFourierDifference - tailEnergyDifference, acceptanceProbability};
       };
+      return {std::nullopt, acceptanceProbability};
   }
 
-  return std::nullopt;
+  return {std::nullopt, 0.0};
 }

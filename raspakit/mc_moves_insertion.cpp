@@ -21,6 +21,7 @@ import running_energy;
 import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import transition_matrix;
 
 import <complex>;
 import <vector>;
@@ -37,7 +38,7 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t selectedComponent)
+std::pair<std::optional<RunningEnergy>, double> MC_Moves::insertionMove(System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.counts += 1;
@@ -48,7 +49,7 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
-  if (!growData) return std::nullopt;
+  if (!growData) return {std::nullopt, 0.0};
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
@@ -73,17 +74,27 @@ std::optional<RunningEnergy> MC_Moves::insertionMove(System& system, size_t sele
   double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * 
                      system.pressure * system.simulationBox.volume /
                      double(1 + system.numberOfMoleculesPerComponent[selectedComponent]);
+  double acceptanceProbability = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  double biasTransitionMatrix = system.tmmc.biasFactor(system.numberOfMoleculesPerComponent[selectedComponent], TransitionMatrix::MoveType::Insertion);
 
-  if (RandomNumber::Uniform() < preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight)
+  if(system.tmmc.DoTMMC)
+  {
+    if(system.numberOfMoleculesPerComponent[selectedComponent] + 1 > system.tmmc.MaxMacrostate)
+    {
+      return {std::nullopt, acceptanceProbability};
+    }
+  }
+
+  if (RandomNumber::Uniform() < biasTransitionMatrix * acceptanceProbability)
   {
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.accepted += 1;
 
       system.acceptEwaldMove();
       system.insertMolecule(selectedComponent, growData->atom);
 
-      return growData->energies + energyFourierDifference + tailEnergyDifference;
+      return {growData->energies + energyFourierDifference + tailEnergyDifference, acceptanceProbability};
   };
   
-  return std::nullopt;
+  return {std::nullopt, acceptanceProbability};
 }
 
