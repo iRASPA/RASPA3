@@ -14,6 +14,7 @@ import <fstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
+//import <assert.h>;
 
 import system;
 import randomnumbers;
@@ -93,6 +94,8 @@ void MonteCarlo::initialize()
 
     system.createInitialMolecules();
 
+   
+
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
 
     std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
@@ -102,6 +105,13 @@ void MonteCarlo::initialize()
     std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
         system.systemId, system.temperature, system.input_pressure);
     streams.emplace_back(fileNameString, std::ios::out );
+  }
+
+  for(System & system : systems)
+  {
+    // switch the fractional molecule on in the first system, and off in all others
+    if (system.systemId == 0) system.containsTheFractionalMolecule = true;
+    else system.containsTheFractionalMolecule = false;
   }
 
   for (const System& system : systems)
@@ -140,7 +150,7 @@ void MonteCarlo::initialize()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent);
+        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
       }
     }
 
@@ -192,7 +202,7 @@ void MonteCarlo::equilibrate()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent);
+        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
       }
     }
 
@@ -202,7 +212,10 @@ void MonteCarlo::equilibrate()
       {
         if(component.hasFractionalMolecule)
         {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          if(system.containsTheFractionalMolecule)
+          {
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+          }
         }
       }
     }
@@ -275,7 +288,7 @@ void MonteCarlo::production()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, estimation.currentBin);
+        particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
       }
     }
 
@@ -291,8 +304,7 @@ void MonteCarlo::production()
       // add the sample energy to the averages
       if (i % 10 == 0 || i % printEvery == 0)
       {
-        //system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, 1.0);
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
       

@@ -91,16 +91,18 @@ export struct PropertyLambdaProbabilityHistogram
     histogram[currentBin] += 1.0;
   }
 
-  void sampleHistogram(size_t blockIndex, double density, double dUdlambda)
+  void sampleHistogram(size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule)
   {
     double w = weight();
 
-    bookKeepingLambda[blockIndex][currentBin] += 1.0;
+    if(containsTheFractionalMolecule)
+    {
+      bookKeepingLambda[blockIndex][currentBin] += 1.0;
+      bookKeepingDensity[blockIndex].first += w * density;
+      bookKeepingDUdlambda[blockIndex][currentBin].first.x += dUdlambda;
+    }
 
-    bookKeepingDensity[blockIndex].first += w * density;
-    bookKeepingDensity[blockIndex].second += w;
-
-    bookKeepingDUdlambda[blockIndex][currentBin].first.x += dUdlambda;
+    bookKeepingDensity[blockIndex].second += w;    
     bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
   }
 

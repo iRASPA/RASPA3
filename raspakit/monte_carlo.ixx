@@ -40,6 +40,8 @@ export struct MonteCarlo
     size_t printEvery;
 
     std::vector<System> systems;
+    size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
+
     std::vector<std::ofstream> streams;
 
     BlockErrorEstimation estimation;

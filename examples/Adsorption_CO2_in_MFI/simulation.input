@@ -9,7 +9,7 @@ Framework 0
 Forcefield ExampleMoleculeForceField
 FrameworkName MFI_SI
 NumberOfUnitCells 2 2 2
-ChargeMethod Ewald
+ChargeMethod None
 #EwaldPrecision 1e-6
 EwaldParameters 0.265058 8 8 8
 OmitEwaldFourier no

@@ -166,3 +166,42 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.dudlambdaEwald = a.dudlambdaEwald - b.dudlambdaEwald;
   return m;
 }
+
+
+export inline RunningEnergy operator*(double a, const RunningEnergy b)
+{
+  RunningEnergy m{};
+  m.frameworkMoleculeVDW = a * b.frameworkMoleculeVDW;
+  m.moleculeMoleculeVDW = a * b.moleculeMoleculeVDW;
+  m.frameworkMoleculeCharge = a * b.frameworkMoleculeCharge;
+  m.moleculeMoleculeCharge = a * b.moleculeMoleculeCharge;
+  m.ewald = a * b.ewald;
+  m.intraVDW = a * b.intraVDW;
+  m.intraCoul = a * b.intraCoul;
+  m.tail = a * b.tail;
+  m.polarization = a * b.polarization;
+  m.dudlambdaVDW = a * b.dudlambdaVDW;
+  m.dudlambdaCharge = a * b.dudlambdaCharge;
+  m.dudlambdaEwald = a * b.dudlambdaEwald;
+
+  return m;
+}
+
+export inline RunningEnergy operator*(const RunningEnergy a, double b)
+{
+  RunningEnergy m{};
+  m.frameworkMoleculeVDW = b * a.frameworkMoleculeVDW;
+  m.moleculeMoleculeVDW = b * a.moleculeMoleculeVDW;
+  m.frameworkMoleculeCharge = b * a.frameworkMoleculeCharge;
+  m.moleculeMoleculeCharge = b * a.moleculeMoleculeCharge;
+  m.ewald = b * a.ewald;
+  m.intraVDW = b * a.intraVDW;
+  m.intraCoul = b * a.intraCoul;
+  m.tail = b * a.tail;
+  m.polarization = b * a.polarization;
+  m.dudlambdaVDW = b * a.dudlambdaVDW;
+  m.dudlambdaCharge = b * a.dudlambdaCharge;
+  m.dudlambdaEwald = b * a.dudlambdaEwald;
+
+  return m;
+}

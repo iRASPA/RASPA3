@@ -260,6 +260,11 @@ export struct System
             [](const size_t& acc, const size_t& b) { return acc + b; });
     }
 
+    size_t numberOfIntegerMolecules() const {
+      return std::reduce(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), size_t(0),
+        [](const size_t& acc, const size_t& b) { return acc + b; });
+    }
+
     // The system weight is the sum of the weights of all the components
     // Improving the accuracy of computing chemical potentials in CFCMC simulations 
     // A. Rahbari, R. Hens, D. Dubbeldam, and T.J.H Vlugt
@@ -271,6 +276,7 @@ export struct System
                [](const Component& component) { return component.lambdaGC.weight() + component.lambdaGibbs.weight();});
     }
 
+    bool containsTheFractionalMolecule{ true };
     
 
     void removeRedundantMoves();

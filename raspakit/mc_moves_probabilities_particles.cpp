@@ -152,9 +152,9 @@ const std::string MCMoveProbabilitiesParticles::writeMCMoveStatistics() const
   if (probabilityWidomMove_CFCMC > 0.0) std::print(stream, formatStatistics("Widom (CFCMC)", statistics_WidomMove_CFCMC));
   if (probabilityWidomMove_CFCMC_CBMC > 0.0) std::print(stream, formatStatistics("Widom (CB/CFCMC)", statistics_WidomMove_CFCMC_CBMC));
 
-  if (probabilityGibbsSwapMove_CBMC > 0.0) std::print(stream, formatStatistics("Swap Insertion (CBMC)", statistics_GibbsSwapMove_CBMC));
-  if (probabilityGibbsSwapMove_CFCMC > 0.0) std::print(stream, formatStatistics("Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC));
-  if (probabilityGibbsSwapMove_CFCMC_CBMC > 0.0) std::print(stream, formatStatistics("Swap (CB/CFCMC)", statistics_GibbsSwapMove_CFCMC_CBMC));
+  if (probabilityGibbsSwapMove_CBMC > 0.0) std::print(stream, formatStatistics("Gibbs Swap (CBMC)", statistics_GibbsSwapMove_CBMC));
+  if (probabilityGibbsSwapMove_CFCMC > 0.0) std::print(stream, formatStatistics("Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC));
+  if (probabilityGibbsSwapMove_CFCMC_CBMC > 0.0) std::print(stream, formatStatistics("Gibbs Swap (CB/CFCMC)", statistics_GibbsSwapMove_CFCMC_CBMC));
 
   return stream.str();
 }

@@ -95,6 +95,11 @@ import <numeric>;
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions);
 
+  //if (externalEnergies.empty())
+  //{
+  //  throw std::runtime_error("Error in retraceMultipleFirstBeadReinsertione: all overlap, including existing configuration");
+  //}
+
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
       [this](const std::pair<Atom, RunningEnergy>& v) {return -beta * v.second.total(); });

@@ -20,8 +20,8 @@ export struct MC_Moves
 {
   MC_Moves() {}
 
-  void performRandomMove(System& selectedSystem, System& selectedSecondystem, size_t selectedComponent);
-  void performRandomMoveProduction(System& selectedSystem, System& selectedSecondSystem, size_t selectedComponent, size_t currentBlock);
+  void performRandomMove(System& selectedSystem, System& selectedSecondystem, size_t selectedComponent, size_t &fractionalMoleculeSystem);
+  void performRandomMoveProduction(System& selectedSystem, System& selectedSecondSystem, size_t selectedComponent, size_t &fractionalMoleculeSystem, size_t currentBlock);
 
   std::optional<RunningEnergy> translationMove(System& system, size_t selectedComponent, std::span<Atom> molecule) const;
   std::optional<RunningEnergy> randomTranslationMove(System& system, size_t selectedComponent, std::span<Atom> molecule);
@@ -40,8 +40,8 @@ export struct MC_Moves
   std::optional<double> WidomMove(System& system, size_t selectedComponent);
 
   std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CBMC(System& systemA, System& systemB, size_t selectedComponent);
-  std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CFCMC(System& systemA, System& systemB, size_t selectedComponent);
-  std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CFCMC_CBMC(System& systemA, System& systemB, size_t selectedComponent);
+  std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CFCMC(System& systemA, System& systemB, size_t selectedComponent, size_t &fractionalMoleculeSystem);
+  std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CFCMC_CBMC(System& systemA, System& systemB, size_t selectedComponent, size_t &fractionalMoleculeSystem);
 
   std::optional<RunningEnergy> volumeMove(System &system) const;
   std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(System &systemA, System &systemB) const;

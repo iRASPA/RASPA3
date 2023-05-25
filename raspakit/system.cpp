@@ -590,6 +590,13 @@ void System::determineSwapableComponents()
     {
       component.swapable = true;
     }
+
+    if (component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC > 0.0 ||
+        component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC > 0.0 ||
+        component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC > 0.0)
+    {
+      component.swapable = true;
+    }
     
     if(component.swapable)
     {
@@ -626,23 +633,23 @@ void System::determineFractionalComponents()
     }
   }
 
-  for (size_t reactionId{ 0 }; const Reaction& reaction : reactions.list)
+  for (size_t reactionId{ 0 }; [[maybe_unused]] const Reaction& reaction : reactions.list)
   {
     for (size_t j = 0; j < components.size(); ++j)
     {
       numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][j] = 0;
     }
 
-    for ([[maybe_unused]]  size_t componentId{ 0 }; [[maybe_unused]]  const size_t stoichiometry : reaction.reactantStoichiometry)
-    {
-      //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-      ++componentId;
-    }
-    for ([[maybe_unused]] size_t componentId{ 0 }; [[maybe_unused]] const size_t stoichiometry : reaction.productStoichiometry)
-    {
-      //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-      ++componentId;
-    }
+    //for ([[maybe_unused]]  size_t componentId{ 0 };  const size_t [[maybe_unused]]  stoichiometry : reaction.reactantStoichiometry)
+    //{
+    //  //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
+    //  ++componentId;
+    //}
+    //for ([[maybe_unused]] size_t componentId{ 0 };  const [[maybe_unused]] size_t stoichiometry : reaction.productStoichiometry)
+    //{
+    //  //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
+    //  ++componentId;
+    //}
     ++reactionId;
   }
 }
@@ -1026,9 +1033,12 @@ void System::sampleProperties(size_t currentBlock)
   {
     double componentDensity  = static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
 
-    double lambda = component.lambdaGC.lambdaValue();
-    double dudlambda = runningEnergies.dudlambda(lambda);
-    component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda);
+    //if(containsTheFractionalMolecule)
+    //{
+      double lambda = component.lambdaGC.lambdaValue();
+      double dudlambda = runningEnergies.dudlambda(lambda);
+      component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule);
+    //}
 
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
   }
