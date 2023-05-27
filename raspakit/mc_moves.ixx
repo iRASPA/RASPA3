@@ -32,8 +32,8 @@ export struct MC_Moves
   std::optional<RunningEnergy> identityChangeMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms);
   std::optional<RunningEnergy> reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms);
 
-  std::pair<std::optional<RunningEnergy>, double> insertionMove(System& system, size_t selectedComponent);
-  std::pair<std::optional<RunningEnergy>, double> deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule);  
+  std::pair<std::optional<RunningEnergy>, double3> insertionMove(System& system, size_t selectedComponent);
+  std::pair<std::optional<RunningEnergy>, double3> deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule);  
   std::optional<RunningEnergy> swapMove_CFCMC(System& system, size_t selectedComponent, size_t selectedMolecule, bool insertionDisabled = false, bool deletionDisabled = false);
   std::optional<RunningEnergy> swapMove_CFCMC_CBMC(System& system, size_t selectedComponent, size_t selectedMolecule, bool insertionDisabled = false, bool deletionDisabled = false);
 

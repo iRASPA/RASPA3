@@ -95,8 +95,7 @@ void MonteCarlo::initialize()
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
 
-    //Initialize TMMC//
-    system.tmmc.Initialize_TMMC_Vectors();
+    system.tmmc.initialize();
 
     std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
@@ -152,7 +151,7 @@ void MonteCarlo::initialize()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
-        selectedSystem.tmmc.TMMC_Steps++;
+        selectedSystem.tmmc.numberOfSteps++;
       }
     }
 
@@ -194,7 +193,7 @@ void MonteCarlo::equilibrate()
 
   for (size_t j = 0; j != systems.size(); ++j)
   {
-    systems[j].tmmc.TMMC_Steps = 0;
+    systems[j].tmmc.numberOfSteps = 0;
   }
 
   for (size_t i = 0; i != numberOfEquilibrationCycles; i++)
@@ -211,8 +210,8 @@ void MonteCarlo::equilibrate()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
-        selectedSystem.tmmc.TMMC_Steps++;
-        selectedSystem.tmmc.AdjustTMBias();
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
       }
     }
 
@@ -285,7 +284,7 @@ void MonteCarlo::production()
 
   for (size_t j = 0; j != systems.size(); ++j)
   {
-    systems[j].tmmc.TMMC_Steps = 0;
+    systems[j].tmmc.numberOfSteps = 0;
   }
   
   for (size_t i = 0; i != numberOfCycles; i++)
@@ -304,8 +303,8 @@ void MonteCarlo::production()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
 
-        selectedSystem.tmmc.TMMC_Steps++;
-        selectedSystem.tmmc.AdjustTMBias();
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
       }
     }
 
@@ -354,7 +353,7 @@ void MonteCarlo::production()
   // Write the collection matrix
   for (System& system : systems)
   {
-    system.tmmc.writeTMMCReport();
+    system.tmmc.writeReport();
   }
 }
 

@@ -37,63 +37,62 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import transition_matrix;
 
-std::pair<std::optional<RunningEnergy>, double> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
   
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
-      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.constructed += 1;
 
-      std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
+    std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
-      double cutOffVDW = system.forceField.cutOffVDW;
-      double cutOffCoulomb = system.forceField.cutOffCoulomb;
+    double cutOffVDW = system.forceField.cutOffVDW;
+    double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
-      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-      ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
-      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_NonEwald += (t2 - t1);
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+    ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_NonEwald += (t2 - t1);
 
-      std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-      RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
-      std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-      system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_Ewald += (u2 - u1);
+    std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
+    RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
+    std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_Ewald += (u2 - u1);
 
-      //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
-      //                                    system.computeTailCorrectionVDWOldEnergy();
-      RunningEnergy tailEnergyDifference;
-      double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+    //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
+    //                                    system.computeTailCorrectionVDWOldEnergy();
+    RunningEnergy tailEnergyDifference;
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
-      double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-      double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /
-                         (system.beta * system.components[selectedComponent].molFraction * 
-                          system.pressure * system.simulationBox.volume);
-      double acceptanceProbability = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
-      double biasTransitionMatrix = system.tmmc.biasFactor(system.numberOfMoleculesPerComponent[selectedComponent], TransitionMatrix::MoveType::Deletion);
+    double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
+    double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /
+                       (system.beta * system.components[selectedComponent].molFraction * 
+                        system.pressure * system.simulationBox.volume);
+    double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
+    size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+    double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
-      if(system.tmmc.DoTMMC)
+    if(system.tmmc.doTMMC)
+    {
+      size_t newN = oldN - 1;
+      if(newN < system.tmmc.minMacrostate)
       {
-        if(system.numberOfMoleculesPerComponent[selectedComponent] - 1 < system.tmmc.MinMacrostate)
-        {
-           return {std::nullopt, acceptanceProbability};
-        }
+        return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
       }
+    }
 
-      if (RandomNumber::Uniform() < biasTransitionMatrix * acceptanceProbability)
-      {
-          system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
+    if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+    {
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
 
-          system.acceptEwaldMove();
-          system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
+      system.acceptEwaldMove();
+      system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
-          // Debug
-          //assert(system.checkMoleculeIds());
-
-          return {retraceData.energies - energyFourierDifference - tailEnergyDifference, acceptanceProbability};
-      };
-      return {std::nullopt, acceptanceProbability};
+      return {retraceData.energies - energyFourierDifference - tailEnergyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
+    };
+    return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
-  return {std::nullopt, 0.0};
+  return {std::nullopt, double3(0.0, 0.0, 0.0)};
 }

@@ -567,14 +567,14 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         bool value = parseBoolean(arguments, keyword, lineNumber);
-        systems.back().tmmc.DoTMMC = value;
+        systems.back().tmmc.doTMMC = value;
         continue;
       }
       if (caseInSensStringCompare(keyword, "UseBiasOnMacrostate"))
       {
         requireExistingSystem(keyword, lineNumber);
         bool value = parseBoolean(arguments, keyword, lineNumber);
-        systems.back().tmmc.DoUseBias = value;
+        systems.back().tmmc.useBias = value;
         continue;
       }
 
@@ -582,14 +582,14 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
-        systems.back().tmmc.MinMacrostate = value;
+        systems.back().tmmc.minMacrostate = value;
         continue;
       }
       if (caseInSensStringCompare(keyword, "TMMCMax"))
       {
         requireExistingSystem(keyword, lineNumber);
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
-        systems.back().tmmc.MaxMacrostate = value;
+        systems.back().tmmc.maxMacrostate = value;
         continue;
       }
 
@@ -1490,7 +1490,7 @@ InputReader::InputReader()
     {
       throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.");
     }
-    if(systems[i].tmmc.DoTMMC)
+    if(systems[i].tmmc.doTMMC)
     {
       // check initial number of molecules is in the range of the TMMC macrostates
       for(size_t j = 0; j < systems[i].components.size(); ++j)
@@ -1498,10 +1498,10 @@ InputReader::InputReader()
         if(systems[i].components[j].type == Component::Type::Adsorbate)
         {
           size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
-          if(numberOfMolecules < systems[i].tmmc.MinMacrostate || numberOfMolecules > systems[i].tmmc.MaxMacrostate)
+          if(numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
           {
             throw std::runtime_error(std::print("Error: Molecules created ({}) need to fit into the TMMC macrostate range ({}-{}).",
-                                     numberOfMolecules, systems[i].tmmc.MinMacrostate, systems[i].tmmc.MaxMacrostate));
+                                     numberOfMolecules, systems[i].tmmc.minMacrostate, systems[i].tmmc.maxMacrostate));
           }
         }
       }

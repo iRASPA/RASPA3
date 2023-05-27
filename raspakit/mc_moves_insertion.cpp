@@ -38,7 +38,7 @@ import <iostream>;
 import <iomanip>;
 
 
-std::pair<std::optional<RunningEnergy>, double> MC_Moves::insertionMove(System& system, size_t selectedComponent)
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.counts += 1;
@@ -49,7 +49,7 @@ std::pair<std::optional<RunningEnergy>, double> MC_Moves::insertionMove(System& 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
-  if (!growData) return {std::nullopt, 0.0};
+  if (!growData) return {std::nullopt, double3(0.0, 0.0, 0.0)};
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
@@ -69,32 +69,33 @@ std::pair<std::optional<RunningEnergy>, double> MC_Moves::insertionMove(System& 
   RunningEnergy tailEnergyDifference;
   double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
-
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
   double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * 
                      system.pressure * system.simulationBox.volume /
                      double(1 + system.numberOfMoleculesPerComponent[selectedComponent]);
-  double acceptanceProbability = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
-  double biasTransitionMatrix = system.tmmc.biasFactor(system.numberOfMoleculesPerComponent[selectedComponent], TransitionMatrix::MoveType::Insertion);
+  double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
-  if(system.tmmc.DoTMMC)
+  if(system.tmmc.doTMMC)
   {
-    if(system.numberOfMoleculesPerComponent[selectedComponent] + 1 > system.tmmc.MaxMacrostate)
+    size_t newN = oldN + 1;
+    if(newN > system.tmmc.maxMacrostate)
     {
-      return {std::nullopt, acceptanceProbability};
+      return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
     }
   }
 
-  if (RandomNumber::Uniform() < biasTransitionMatrix * acceptanceProbability)
+  if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
   {
-      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.accepted += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.accepted += 1;
 
-      system.acceptEwaldMove();
-      system.insertMolecule(selectedComponent, growData->atom);
+    system.acceptEwaldMove();
+    system.insertMolecule(selectedComponent, growData->atom);
 
-      return {growData->energies + energyFourierDifference + tailEnergyDifference, acceptanceProbability};
+    return {growData->energies + energyFourierDifference + tailEnergyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };
   
-  return {std::nullopt, acceptanceProbability};
+  return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
 }
 

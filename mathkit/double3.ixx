@@ -69,6 +69,18 @@ export union double3
             flip.y ? boundary.y - v.y : v.y,
             flip.z ? boundary.z - v.z : v.z);
     }
+    inline void clamp(double3 low, double3 high)
+    {
+      x = std::clamp(x, low.x, high.x);
+      y = std::clamp(y, low.y, high.y);
+      z = std::clamp(z, low.z, high.z);
+    }
+    inline void clamp(double low, double high)
+    {
+      x = std::clamp(x, low, high);
+      y = std::clamp(y, low, high);
+      z = std::clamp(z, low, high);
+    }
     
 
     double3 operator-() const { return double3(-this->x, -this->y, -this->z); }
@@ -144,5 +156,5 @@ export inline double3 sqrt(const double3& a)
 
 export double3 clamp(double3 value, double3 low, double3 high)
 {
-    return double3(std::clamp(value.x, low.x, high.x), std::clamp(value.y, low.y, high.y), std::clamp(value.z, low.z, high.z));
+  return double3(std::clamp(value.x, low.x, high.x), std::clamp(value.y, low.y, high.y), std::clamp(value.z, low.z, high.z));
 }
