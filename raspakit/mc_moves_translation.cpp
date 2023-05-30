@@ -77,12 +77,12 @@ std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t se
 
     if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total()))
     {
-        system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.accepted[selectedDirection] += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.accepted[selectedDirection] += 1;
 
-        system.acceptEwaldMove();
-        std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());
+      system.acceptEwaldMove();
+      std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());
 
-        return energyDifference;
+      return energyDifference;
     };
     return std::nullopt;
 }

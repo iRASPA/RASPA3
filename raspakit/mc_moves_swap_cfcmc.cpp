@@ -37,14 +37,14 @@ import <iostream>;
 import <iomanip>;
 
 
-std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t selectedComponent, size_t selectedMolecule,
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System& system, size_t selectedComponent, size_t selectedMolecule,
   bool insertionDisabled, bool deletionDisabled)
 {
   PropertyLambdaProbabilityHistogram& lambda = system.components[selectedComponent].lambdaGC;
   size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin();
-
+  size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
 
@@ -52,7 +52,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
   {
     if (insertionDisabled)
     {
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 0.0, 0.0)};
     }
 
     // Steps for insertion Lambda_new = 1 + epsilon
@@ -86,7 +86,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
     {
       // reject, set fractional molecule back to old state
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
@@ -99,7 +99,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
       // reject, set fractional molecule back to old state
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
@@ -121,7 +121,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
     {
       // reject, set fractional molecule back to old state
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     std::chrono::system_clock::time_point u3 = std::chrono::system_clock::now();
@@ -134,7 +134,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
       // reject, set fractional molecule back to old state
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     std::chrono::system_clock::time_point v3 = std::chrono::system_clock::now();
@@ -152,7 +152,20 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
     double preFactor = system.beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume /
       static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    if (RandomNumber::Uniform() < preFactor * exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + biasTerm))
+    double Pacc = preFactor * exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + biasTerm);
+
+    double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
+
+    if(system.tmmc.doTMMC)
+    {
+      size_t newN = oldN + 1;
+      if(newN > system.tmmc.maxMacrostate)
+      {
+        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
+      }
+    }
+
+    if (RandomNumber::Uniform() < biasTransitionMatrix  * Pacc)
     {
       system.acceptEwaldMove();
 
@@ -169,19 +182,19 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
 
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.accepted[0] += 1;
 
-      return energyDifferenceStep1 + energyDifferenceStep2;
+      return {energyDifferenceStep1 + energyDifferenceStep2, double3(0.0, 1.0 - Pacc, Pacc)};
     };
 
     // Restore old lamba
     std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-    return std::nullopt;
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
   else if (selectedNewBin < 0) // Deletion move
   {
     if (deletionDisabled)
     {
-      return std::nullopt;
+      return {std::nullopt, double3(0.0, 0.0, 0.0)};
     }
     // Steps for deletion Lambda_new = -epsilon
     // ===================================================================
@@ -216,7 +229,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
       {
         // reject, set fractional molecule back to old state
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
-        return std::nullopt;
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
@@ -229,7 +242,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
         // reject, set fractional molecule back to old state
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-        return std::nullopt;
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
@@ -258,7 +271,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
 
-        return std::nullopt;
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       std::chrono::system_clock::time_point w3 = std::chrono::system_clock::now();
@@ -270,7 +283,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
         std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
         std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
 
-        return std::nullopt;
+        return {std::nullopt, double3(0.0, 1.0, 0.0)};
       }
 
       std::chrono::system_clock::time_point y3 = std::chrono::system_clock::now();
@@ -288,7 +301,20 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
       double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
         (system.beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      if (RandomNumber::Uniform() < preFactor *exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + biasTerm))
+      double Pacc = preFactor *exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + biasTerm);
+
+      double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
+
+      if(system.tmmc.doTMMC)
+      {
+        size_t newN = oldN - 1;
+        if(newN < system.tmmc.minMacrostate)
+        {
+          return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
+        }
+      }
+
+      if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
       {
         system.acceptEwaldMove();
         system.components[selectedComponent].lambdaGC.setCurrentBin(newBin);
@@ -300,16 +326,16 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
 
         system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.accepted[1] += 1;
 
-        return energyDifferenceStep1 + energyDifferenceStep2;
+        return {energyDifferenceStep1 + energyDifferenceStep2, double3(Pacc, 1.0 - Pacc, 0.0)};
       };
 
       // Restore the old- and the newly chosen fractional molecule
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
       std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
 
-      return std::nullopt;
+      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
     }
-    return std::nullopt;
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
   else // Lambda-move
   {
@@ -334,8 +360,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
       system.components[selectedComponent].mc_moves_probabilities.cpuTime_WidomMove_CFCMC_NonEwald += (t2 - t1);
     }
    
-
-    if (!frameworkEnergyDifference.has_value()) return std::nullopt;
+    if (!frameworkEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     std::optional<RunningEnergy> interEnergyDifference = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
@@ -348,7 +373,7 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
     }
    
 
-    if (!interEnergyDifference.has_value()) return std::nullopt;
+    if (!interEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
@@ -365,7 +390,6 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.constructed[2] += 1;
 
-
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
     {
@@ -376,9 +400,9 @@ std::optional<RunningEnergy> MC_Moves::swapMove_CFCMC(System& system, size_t sel
 
       system.components[selectedComponent].lambdaGC.setCurrentBin(newBin);
 
-      return energyDifference;
+      return {energyDifference, double3(0.0, 1.0, 0.0)};
     };
-    return std::nullopt;
+    return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 }
 

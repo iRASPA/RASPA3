@@ -94,5 +94,5 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
-  return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  return {std::nullopt, double3(0.0, 1.0, 0.0)};
 }

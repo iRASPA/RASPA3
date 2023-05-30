@@ -151,6 +151,8 @@ void MonteCarlo::initialize()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
       }
     }
@@ -210,6 +212,8 @@ void MonteCarlo::equilibrate()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
         selectedSystem.tmmc.adjustBias();
       }
@@ -303,6 +307,8 @@ void MonteCarlo::production()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
 
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
         selectedSystem.tmmc.adjustBias();
       }
@@ -353,7 +359,7 @@ void MonteCarlo::production()
   // Write the collection matrix
   for (System& system : systems)
   {
-    system.tmmc.writeReport();
+    system.tmmc.writeStatistics();
   }
 }
 

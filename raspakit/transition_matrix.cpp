@@ -7,8 +7,10 @@ import <cstddef>;
 import <vector>;
 import <algorithm>;
 import <utility>;
+import <numeric>;
 import <filesystem>;
 import <fstream>;
+import <iostream>;
 
 import double3;
 
@@ -25,17 +27,28 @@ void TransitionMatrix::initialize()
   histogram.resize(maxMacrostate - minMacrostate + 1);
 }
 
-void TransitionMatrix::update(double3 Pacc, size_t newN, size_t oldN)
+// C(No -> Nn) += p(o -> n)
+// C(No -> No) += 1 − p(o -> n)
+// translation: double3(0.0, 1.0, 0.0)
+// insertion: double3(Pacc, 1.0 - Pacc, 0.0)
+// insertion overlap-detected: double3(0.0, 1.0, 0.0)
+// deletion: double3(0.0, 1.0 - Pacc, Pacc)
+// deletion overlap-detected: double3(0.0, 1.0, 0.0)
+void TransitionMatrix::updateMatrix(double3 Pacc, size_t oldN)
 {
   if(!doTMMC) return;
 
   Pacc.clamp(0.0, 1.0);
 
-  if(rejectOutofBound && ((newN > maxMacrostate) || (newN < minMacrostate))) return;
-
   cmatrix[oldN - minMacrostate] += Pacc;
-  histogram[newN - minMacrostate]++;
+
 };
+
+void TransitionMatrix::updateHistogram(size_t N)
+{
+  if(rejectOutofBound && ((N > maxMacrostate) || (N < minMacrostate))) return;
+  histogram[N - minMacrostate]++;
+}
 
 // return the biasing Factor
 double TransitionMatrix::biasFactor(size_t newN, size_t oldN)
@@ -53,53 +66,60 @@ void TransitionMatrix::adjustBias()
 
   if((numberOfSteps % updateTMEvery != 0) || numberOfSteps == 0) return;
 
-  printf("Adjusting bias\n");
   numberOfUpdates++;
 
-  //First step is to get the lowest and highest visited states in terms of loading//
-  size_t minVisited = 0; 
-  size_t maxVisited = 0;
-  size_t nonzeroCount=0;
-  //Zhao's special note: length of the vectors for TMMC = maxMacrostate - minMacrostate + 1;
-  //The a, minVisited, and maxVisited here do not go out of bound of the vector//
-  for(size_t a = 0; a < maxMacrostate - minMacrostate + 1; a++)
-  {
-    if(histogram[a] != 0)
-    {
-      if(nonzeroCount==0) minVisited = a;
-      maxVisited = a;
-      nonzeroCount++;
-    }
-  }
-  //printf("minVisited: %zu, maxVisited: %zu\n", minVisited, maxVisited);
-  lnpi[minVisited] = 0.0;
-  double maxlnpi = lnpi[minVisited];
+  // get the lowest and highest visited states in terms of loading
+  size_t minVisitedN = static_cast<size_t>(std::distance(histogram.begin(), std::find_if(histogram.begin(), histogram.end(), 
+                                           [](const size_t& i) { return i; })));
+  size_t maxVisitedN = static_cast<size_t>(std::distance(histogram.begin(), std::find_if(histogram.rbegin(), histogram.rend(), 
+                                           [](const size_t& i) { return i; }).base()) - 1);
+  [[maybe_unused]] size_t nonzeroCount = maxVisitedN - minVisitedN + 1;
+  
+  lnpi[minVisitedN] = 0.0;
+  double maxlnpi = lnpi[minVisitedN];
   //Update the lnpi for the sampled region//
   //x: -1; y: 0; z: +1//
-  for(size_t a = minVisited; a < maxVisited; a++)
+  for(size_t i = minVisitedN; i < maxVisitedN; i++)
   {
-    //Zhao's note: add protection to avoid numerical issues//
-    if(cmatrix[a].z   != 0) lnpi[a+1] = lnpi[a]   + std::log(cmatrix[a].z)   - std::log(cmatrix[a].x   + cmatrix[a].y   + cmatrix[a].z);   //Forward//
-    forward_lnpi[a+1] = lnpi[a+1];
-    if(cmatrix[a+1].x != 0) lnpi[a+1] = lnpi[a+1] - std::log(cmatrix[a+1].x) + std::log(cmatrix[a+1].x + cmatrix[a+1].y + cmatrix[a+1].z); //Reverse//
-    reverse_lnpi[a+1] = lnpi[a+1];
-    //printf("Loading: %zu, a+1, %zu, lnpi[a]: %.5f, lnpi[a+1]: %.5f\n", a, a+1, lnpi[a], lnpi[a+1]);
-    if(lnpi[a+1] > maxlnpi) maxlnpi = lnpi[a+1];
+    //Zhao's note: add protection to avoid numerical issues
+    if(cmatrix[i].z != 0) 
+    {
+      lnpi[i+1] = lnpi[i] + std::log(cmatrix[i].z) - std::log(cmatrix[i].x + cmatrix[i].y + cmatrix[i].z);   //Forward//
+    }
+    forward_lnpi[i+1] = lnpi[i+1];
+    if(cmatrix[i+1].x != 0) 
+    {
+      lnpi[i+1] = lnpi[i+1] - std::log(cmatrix[i+1].x) + std::log(cmatrix[i+1].x + cmatrix[i+1].y + cmatrix[i+1].z); //Reverse//
+    }
+    reverse_lnpi[i+1] = lnpi[i+1];
+    if(lnpi[i+1] > maxlnpi) 
+    {
+      maxlnpi = lnpi[i+1];
+    }
   }
-  //For the unsampled states, fill them with the minVisited/maxVisited stats//
-  for(size_t a = 0; a < minVisited; a++) lnpi[a] = lnpi[minVisited];
-  for(size_t a = maxVisited; a < maxMacrostate - minMacrostate + 1; a++) lnpi[a] = lnpi[maxVisited];
-  //Normalize//
-  double normalFactor = 0.0;
-  for(size_t a = 0; a < maxMacrostate - minMacrostate + 1; a++) lnpi[a] -= maxlnpi;
-  for(size_t a = 0; a < maxMacrostate - minMacrostate + 1; a++) normalFactor += std::exp(lnpi[a]); //sum of exp(lnpi)//
-  //printf("Normalize Factor (Before): %.5f\n", normalFactor);
-  normalFactor = -std::log(normalFactor); //Take log of normalFactor//
-  //printf("Normalize Factor (After):  %.5f\n", normalFactor);
-  for(size_t a = 0; a < maxMacrostate - minMacrostate + 1; a++)
+
+  //For the unsampled states, fill them with the minVisitedN/maxVisitedN stats
+  for(size_t i = 0; i < minVisitedN; ++i) 
   {
-    lnpi[a] += normalFactor; //Zhao's note: mind the sign//
-    bias[a]= -lnpi[a];
+    lnpi[i] = lnpi[minVisitedN];
+  }
+  for(size_t i = maxVisitedN; i < maxMacrostate - minMacrostate + 1; ++i) 
+  {
+    lnpi[i] = lnpi[maxVisitedN];
+  }
+
+  //Normalize
+  for(size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i) 
+  {
+    lnpi[i] -= maxlnpi;
+  }
+  double sumExps = std::accumulate(lnpi.begin(), lnpi.end(), 0.0, [](double sum, double item) {return sum + std::exp(item);});
+  double normalFactor = -std::log(sumExps); 
+ 
+  for(size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i)
+  {
+    lnpi[i] += normalFactor; //Zhao's note: mind the sign
+    bias[i] = -lnpi[i];
   }
 };
 
@@ -107,15 +127,16 @@ void TransitionMatrix::adjustBias()
 void TransitionMatrix::clearCMatrix()
 {
   if(!doTMMC || !rezeroAfterInitialization) return;
+
   numberOfSteps = 0;
   double3 temp = {0.0, 0.0, 0.0};
-  std::fill(cmatrix.begin(),  cmatrix.end(),  temp);
-  std::fill(histogram.begin(),  histogram.end(),  0.0);
+  std::fill(cmatrix.begin(),  cmatrix.end(), temp);
+  std::fill(histogram.begin(),  histogram.end(), 0);
   std::fill(lnpi.begin(), lnpi.end(), 0.0);
   std::fill(bias.begin(), bias.end(), 1.0);
 };
 
-void TransitionMatrix::writeReport()
+void TransitionMatrix::writeStatistics()
 {
   std::ofstream textTMMCFile{};
   std::filesystem::path cwd = std::filesystem::current_path();

@@ -49,7 +49,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
-  if (!growData) return {std::nullopt, double3(0.0, 0.0, 0.0)};
+  if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
