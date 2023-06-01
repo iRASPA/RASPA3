@@ -1,4 +1,4 @@
-export module monte_carlo;
+export module transition_matrix_monte_carlo;
 
 import randomnumbers;
 import threadpool;
@@ -14,15 +14,15 @@ import <iostream>;
 import <fstream>;
 import <chrono>;
 
-export struct MonteCarlo
+export struct TransitionMatrixMonteCarlo
 {
   enum class WeightingMethod : size_t
   {
-      LambdaZero = 0,
-      AllLambdas = 1
+    LambdaZero = 0,
+    AllLambdas = 1
   };
 
-  MonteCarlo(InputReader& reader) noexcept;
+  TransitionMatrixMonteCarlo(InputReader& reader) noexcept;
 
   void run();
   void initialize();

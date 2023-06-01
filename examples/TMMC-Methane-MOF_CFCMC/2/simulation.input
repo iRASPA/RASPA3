@@ -28,8 +28,8 @@ Component 0 MoleculeName               methane
             TranslationProbability     1.0
             #RotationProbability       1.0
             ReinsertionProbability     1.0
-            SwapProbability            1.0
-            CFCMC_CBMC_SwapProbability 0.0
+            SwapProbability            0.0
+            CFCMC_CBMC_SwapProbability 1.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
             CreateNumberOfMolecules    200

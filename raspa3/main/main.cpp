@@ -11,6 +11,7 @@ import <mutex>;
 import threadpool;
 import input_reader;
 import monte_carlo;
+import transition_matrix_monte_carlo;
 import breakthrough;
 import breakthrough_simulation;
 import mixture_prediction_simulation;
@@ -32,6 +33,12 @@ int main()
       case InputReader::SimulationType::MonteCarlo:
       {
         MonteCarlo mc(inputReader);
+        mc.run();
+        break;
+      }
+      case InputReader::SimulationType::TransitionMatrixMonteCarlo:
+      {
+        TransitionMatrixMonteCarlo mc(inputReader);
         mc.run();
         break;
       }

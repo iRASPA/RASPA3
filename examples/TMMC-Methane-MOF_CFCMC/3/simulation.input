@@ -20,16 +20,16 @@ ExternalPressure    36000
 #WriteMoviesEvery 1000
 
 UseBiasOnMacrostate yes
-TMMCMin 168
-TMMCMax 252
+TMMCMin 252
+TMMCMax 336
 
 Component 0 MoleculeName               methane
 #           MoleculeDefinition        ExampleDefinitions
             TranslationProbability     1.0
             #RotationProbability       1.0
             ReinsertionProbability     1.0
-            SwapProbability            1.0
-            CFCMC_CBMC_SwapProbability 0.0
+            SwapProbability            0.0
+            CFCMC_CBMC_SwapProbability 1.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
-            CreateNumberOfMolecules    200
+            CreateNumberOfMolecules    300

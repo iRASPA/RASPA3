@@ -41,78 +41,78 @@ import transition_matrix;
 template<class T>
 T parse(const std::string& arguments, [[maybe_unused]] const std::string& keyword, [[maybe_unused]] size_t lineNumber)
 {
-    T value;
+  T value;
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    ss >> value;
+  ss >> value;
 
-    return value;
+  return value;
 }
 
 template<typename T>
 std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
-    std::vector<T> list{};
+  std::vector<T> list{};
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    while (ss >> str)
+  while (ss >> str)
+  {
+    if (trim(str).rfind("//", 0) == 0)
     {
-        if (trim(str).rfind("//", 0) == 0)
-        {
-            if (list.empty())
-            {
-                throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
-            }
-            return list;
-        }
-        T value;
-        std::istringstream s(str);
-        if (s >> value)
-        {
-            list.push_back(value);
-        }
-        else
-        {
-            if (list.empty()) 
-            {
-                throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
-            }
-            return list;
-        }
-
-    };
-
-    if (list.empty()) 
-    {
-        throw std::runtime_error( std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+      if (list.empty())
+      {
+        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+      }
+      return list;
     }
-    return list;
+    T value;
+    std::istringstream s(str);
+    if (s >> value)
+    {
+      list.push_back(value);
+    }
+    else
+    {
+      if (list.empty()) 
+      {
+        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+      }
+      return list;
+    }
+
+  };
+
+  if (list.empty()) 
+  {
+      throw std::runtime_error( std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+  }
+  return list;
 }
 
 int parseBoolean(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
-    bool value{};
+  bool value{};
 
-    std::istringstream ss(arguments);
+  std::istringstream ss(arguments);
 
-    if (ss >> std::boolalpha >> value)
-    {
-        return value;
-    };
+  if (ss >> std::boolalpha >> value)
+  {
+    return value;
+  };
 
-    std::string str;
-    std::istringstream ss2(arguments);
-    if (ss2 >> str)
-    {
-        if (caseInSensStringCompare(str, "yes")) return true;
-        if (caseInSensStringCompare(str, "no")) return false;
-    };
+  std::string str;
+  std::istringstream ss2(arguments);
+  if (ss2 >> str)
+  {
+    if (caseInSensStringCompare(str, "yes")) return true;
+    if (caseInSensStringCompare(str, "no")) return false;
+  };
 
-    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 template<>
@@ -129,7 +129,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
     {
       if (list.empty())
       {
-          throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
       }
       return list;
     }
@@ -201,47 +201,47 @@ double parseDouble(const std::string& arguments, const std::string& keyword, siz
 
 double3 parseDouble3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
-    double3 value{};
+  double3 value{};
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    if (ss >> value.x >> value.y >> value.z)
-    {
-        return value;
-    };
+  if (ss >> value.x >> value.y >> value.z)
+  {
+    return value;
+  };
 
-    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
-    int3 value{};
+  int3 value{};
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    if (ss >> value.x >> value.y >> value.z)
-    {
-        return value;
-    };
+  if (ss >> value.x >> value.y >> value.z)
+  {
+    return value;
+  };
 
-    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 std::string parseString(const std::string& arguments, const std::string& keyword, size_t lineNumber)
 {
-    std::string value{};
+  std::string value{};
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    if (ss >> value)
-    {
-        return value;
-    };
+  if (ss >> value)
+  {
+    return value;
+  };
 
-    throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 
@@ -296,6 +296,11 @@ InputReader::InputReader()
           if (caseInSensStringCompare(str, "MonteCarlo"))
           {
             simulationType = SimulationType::MonteCarlo;
+            continue;
+          }
+          if (caseInSensStringCompare(str, "TransitionMatrixMonteCarlo"))
+          {
+            simulationType = SimulationType::TransitionMatrixMonteCarlo;
             continue;
           }
           if (caseInSensStringCompare(str, "MolecularDynamics"))
@@ -448,6 +453,7 @@ InputReader::InputReader()
         switch(simulationType)
         {
           case SimulationType::MonteCarlo:
+          case SimulationType::TransitionMatrixMonteCarlo:
           case SimulationType::MolecularDynamics:
           case SimulationType::Minimization:
           case SimulationType::Test:
@@ -563,13 +569,6 @@ InputReader::InputReader()
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "RunTMMC"))
-      {
-        requireExistingSystem(keyword, lineNumber);
-        bool value = parseBoolean(arguments, keyword, lineNumber);
-        systems.back().tmmc.doTMMC = value;
-        continue;
-      }
       if (caseInSensStringCompare(keyword, "UseBiasOnMacrostate"))
       {
         requireExistingSystem(keyword, lineNumber);
@@ -788,6 +787,7 @@ InputReader::InputReader()
           switch(simulationType)
           {
             case SimulationType::MonteCarlo:
+            case SimulationType::TransitionMatrixMonteCarlo:
             case SimulationType::MolecularDynamics:
             case SimulationType::Minimization:
             case SimulationType::Test:
@@ -1390,6 +1390,14 @@ InputReader::InputReader()
                   return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites;
               });
       systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
+    }
+  }
+
+  if(simulationType == SimulationType::TransitionMatrixMonteCarlo)
+  {
+    for (size_t i = 0; i < systems.size(); ++i)
+    {
+      systems[i].tmmc.doTMMC = true;
     }
   }
 

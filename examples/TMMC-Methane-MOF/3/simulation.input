@@ -1,4 +1,4 @@
-SimulationType                MonteCarlo
+SimulationType                TransitionMatrixMonteCarlo
 NumberOfCycles                200000
 NumberOfInitializationCycles  25000
 NumberOfEquilibrationCycles   200000
@@ -19,7 +19,6 @@ ExternalPressure    36000
 #Movies no
 #WriteMoviesEvery 1000
 
-RunTMMC yes
 UseBiasOnMacrostate yes
 TMMCMin 252
 TMMCMax 336
@@ -33,4 +32,4 @@ Component 0 MoleculeName               methane
             CFCMC_CBMC_SwapProbability 0.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
-            CreateNumberOfMolecules    252
+            CreateNumberOfMolecules    300

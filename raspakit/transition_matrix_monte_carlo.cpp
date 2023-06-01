@@ -1,6 +1,6 @@
 module;
 
-module monte_carlo;
+module transition_matrix_monte_carlo;
 
 import <iostream>;
 import <algorithm>;
@@ -46,7 +46,7 @@ import mc_moves_probabilities_particles;
 import property_pressure;
 import transition_matrix;
 
-MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
+TransitionMatrixMonteCarlo::TransitionMatrixMonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
     numberOfInitializationCycles(reader.numberOfInitializationCycles),
     numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
@@ -57,12 +57,12 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept :
     
 }
 
-System& MonteCarlo::randomSystem()
+System& TransitionMatrixMonteCarlo::randomSystem()
 {
   return systems[size_t(RandomNumber::Uniform() * static_cast<double>(systems.size()))];
 }
 
-void MonteCarlo::run()
+void TransitionMatrixMonteCarlo::run()
 {
   initialize();
   equilibrate();
@@ -74,7 +74,7 @@ void MonteCarlo::run()
   cleanup();
 }
 
-void MonteCarlo::initialize()
+void TransitionMatrixMonteCarlo::initialize()
 {
   for (System &system: systems)
   {
@@ -94,6 +94,8 @@ void MonteCarlo::initialize()
     system.createInitialMolecules();
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
+
+    system.tmmc.initialize();
 
     std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
@@ -148,6 +150,10 @@ void MonteCarlo::initialize()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
       }
     }
 
@@ -172,7 +178,7 @@ void MonteCarlo::initialize()
   }
 }
 
-void MonteCarlo::equilibrate()
+void TransitionMatrixMonteCarlo::equilibrate()
 {
   for (System& system : systems)
   {
@@ -187,6 +193,11 @@ void MonteCarlo::equilibrate()
     }
   };
 
+  for (size_t j = 0; j != systems.size(); ++j)
+  {
+    systems[j].tmmc.numberOfSteps = 0;
+  }
+
   for (size_t i = 0; i != numberOfEquilibrationCycles; i++)
   {
     for (size_t j = 0; j != systems.size(); ++j)
@@ -200,6 +211,11 @@ void MonteCarlo::equilibrate()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
       }
     }
 
@@ -246,7 +262,7 @@ void MonteCarlo::equilibrate()
   }
 }
 
-void MonteCarlo::production()
+void TransitionMatrixMonteCarlo::production()
 {
   for (System& system : systems)
   {
@@ -270,6 +286,11 @@ void MonteCarlo::production()
     }
   };
 
+  for (size_t j = 0; j != systems.size(); ++j)
+  {
+    systems[j].tmmc.numberOfSteps = 0;
+  }
+  
   for (size_t i = 0; i != numberOfCycles; i++)
   {
     estimation.setCurrentSample(i);
@@ -285,6 +306,11 @@ void MonteCarlo::production()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+
+        size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
       }
     }
 
@@ -329,9 +355,15 @@ void MonteCarlo::production()
         //system.sampleMovie.update(i);
     //}
   }
+
+  // Write the collection matrix
+  for (System& system : systems)
+  {
+    system.tmmc.writeStatistics();
+  }
 }
 
-void MonteCarlo::output()
+void TransitionMatrixMonteCarlo::output()
 {
   for (System& system : systems)
   {
@@ -361,13 +393,13 @@ void MonteCarlo::output()
     std::chrono::duration<double> totalSimulationTime = (t2 - t1);
     std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
-    std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
-    std::print(stream, system.averagePressure.writeAveragesStatistics());
-    std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
-    std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
+    //std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
+    //std::print(stream, system.averagePressure.writeAveragesStatistics());
+    //std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+    //std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }
-void MonteCarlo::cleanup()
+void TransitionMatrixMonteCarlo::cleanup()
 {
   //for (System& system : systems)
   //{
