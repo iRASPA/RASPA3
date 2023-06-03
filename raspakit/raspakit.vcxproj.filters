@@ -453,6 +453,18 @@
     <ClCompile Include="mc_moves_reaction_cfcmc_cbmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="transition_matrix.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="transition_matrix.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="transition_matrix_monte_carlo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="transition_matrix_monte_carlo.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mdspan.h">

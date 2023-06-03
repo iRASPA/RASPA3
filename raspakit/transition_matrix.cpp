@@ -29,6 +29,7 @@ void TransitionMatrix::initialize()
 
 // C(No -> Nn) += p(o -> n)
 // C(No -> No) += 1 − p(o -> n)
+//
 // translation: double3(0.0, 1.0, 0.0)
 // insertion: double3(Pacc, 1.0 - Pacc, 0.0)
 // insertion overlap-detected: double3(0.0, 1.0, 0.0)
@@ -41,12 +42,13 @@ void TransitionMatrix::updateMatrix(double3 Pacc, size_t oldN)
   Pacc.clamp(0.0, 1.0);
 
   cmatrix[oldN - minMacrostate] += Pacc;
-
 };
 
 void TransitionMatrix::updateHistogram(size_t N)
 {
-  if(rejectOutofBound && ((N > maxMacrostate) || (N < minMacrostate))) return;
+  if(!doTMMC) return;
+
+  if((N > maxMacrostate) || (N < minMacrostate)) return;
   histogram[N - minMacrostate]++;
 }
 
