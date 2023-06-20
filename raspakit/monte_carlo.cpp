@@ -129,7 +129,7 @@ void MonteCarlo::initialize()
   {
 
     system.precomputeTotalRigidEnergy();
-    system.computeTotalEnergies();
+    system.recomputeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     system.runningEnergies.print(stream, "Recomputed from scratch");
@@ -178,7 +178,7 @@ void MonteCarlo::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.computeTotalEnergies();
+    system.recomputeTotalEnergies();
     system.runningEnergies.print(stream, "Recomputed from scratch");
 
     for(Component &component : system.components)
@@ -252,7 +252,7 @@ void MonteCarlo::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.computeTotalEnergies(); 
+    system.recomputeTotalEnergies(); 
     system.runningEnergies.print(stream, "Recomputed from scratch");
     //system.sampleMovie.initialize();
 
@@ -285,6 +285,10 @@ void MonteCarlo::production()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+
+        // sample lambda here
+        selectedSystem.sampleProperties(estimation.currentBin);
+        selectSecondSystem.sampleProperties(estimation.currentBin);
       }
     }
 
@@ -304,7 +308,7 @@ void MonteCarlo::production()
       }
 
       
-      system.sampleProperties(estimation.currentBin);
+      //system.sampleProperties(estimation.currentBin);
     }
 
     if (i % printEvery == 0)
@@ -337,14 +341,12 @@ void MonteCarlo::output()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    RunningEnergy runningEnergies = system.runningEnergies;
-    runningEnergies.print(stream, "Running energies");
+    system.runningEnergies.print(stream, "Running energies");
     
-    system.computeTotalEnergies();
-    RunningEnergy recomputedEnergies = system.runningEnergies;
+    RunningEnergy recomputedEnergies = system.computeTotalEnergies();
     recomputedEnergies.print(stream, "Recomputed from scratch");
     
-    RunningEnergy drift = runningEnergies - recomputedEnergies;
+    RunningEnergy drift = system.runningEnergies - recomputedEnergies;
     drift.print(stream, "Monte-Carlo energy drift");
 
     std::print(stream, "\n\n");

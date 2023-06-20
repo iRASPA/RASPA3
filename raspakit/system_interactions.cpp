@@ -36,7 +36,7 @@ void System::precomputeTotalRigidEnergy() noexcept
   computeEwaldFourierRigidEnergy(simulationBox, rigidEnergies);
 }
 
-void System::computeTotalEnergies() noexcept
+void System::recomputeTotalEnergies() noexcept
 {
   runningEnergies.zero();
 
@@ -52,6 +52,27 @@ void System::computeTotalEnergies() noexcept
 
   // correct for the energy of rigid parts
   runningEnergies -= rigidEnergies;
+}
+
+
+RunningEnergy System::computeTotalEnergies() noexcept
+{
+  RunningEnergy runningEnergy;
+
+  std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
+  std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
+  computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergy);
+
+  computeTailCorrectionVDWEnergy(runningEnergy);
+
+  computeEwaldFourierEnergy(simulationBox, runningEnergy);
+
+  // correct for the energy of rigid parts
+  runningEnergy -= rigidEnergies;
+
+  return runningEnergy;
 }
 
 void System::computeTotalGradients() noexcept

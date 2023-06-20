@@ -131,7 +131,7 @@ void TransitionMatrixMonteCarlo::initialize()
   {
 
     system.precomputeTotalRigidEnergy();
-    system.computeTotalEnergies();
+    system.recomputeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     system.runningEnergies.print(stream, "Recomputed from scratch");
@@ -184,7 +184,7 @@ void TransitionMatrixMonteCarlo::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.computeTotalEnergies();
+    system.recomputeTotalEnergies();
     system.runningEnergies.print(stream, "Recomputed from scratch");
 
     for(Component &component : system.components)
@@ -268,7 +268,7 @@ void TransitionMatrixMonteCarlo::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.computeTotalEnergies(); 
+    system.recomputeTotalEnergies(); 
     system.runningEnergies.print(stream, "Recomputed from scratch");
     //system.sampleMovie.initialize();
 
@@ -372,7 +372,7 @@ void TransitionMatrixMonteCarlo::output()
     RunningEnergy runningEnergies = system.runningEnergies;
     runningEnergies.print(stream, "Running energies");
     
-    system.computeTotalEnergies();
+    system.recomputeTotalEnergies();
     RunningEnergy recomputedEnergies = system.runningEnergies;
     recomputedEnergies.print(stream, "Recomputed from scratch");
     

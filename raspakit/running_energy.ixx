@@ -129,6 +129,21 @@ export struct RunningEnergy
   double dudlambdaEwald;
 };
 
+export inline bool operator==(const RunningEnergy& a, const RunningEnergy& b) 
+{
+  return (std::abs(b.frameworkMoleculeVDW - a.frameworkMoleculeVDW) < 1e-3) &&
+         (std::abs(b.moleculeMoleculeVDW - a.moleculeMoleculeVDW) < 1e-3) &&
+         (std::abs(b.moleculeMoleculeCharge - a.moleculeMoleculeCharge) < 1e-3) &&
+         (std::abs(b.ewald - a.ewald) < 1e-3) &&
+         (std::abs(b.intraVDW - a.intraVDW) < 1e-3) &&
+         (std::abs(b.intraCoul - a.intraCoul) < 1e-3) &&
+         (std::abs(b.tail - a.tail) < 1e-3) &&
+         (std::abs(b.polarization - a.polarization) < 1e-3) &&
+         (std::abs(b.dudlambdaVDW - a.dudlambdaVDW) < 1e-3) &&
+         (std::abs(b.dudlambdaCharge - a.dudlambdaCharge) < 1e-3) &&
+         (std::abs(b.dudlambdaEwald - a.dudlambdaEwald) < 1e-3);
+}
+
 
 export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnergy& b)
 {

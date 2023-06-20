@@ -759,6 +759,19 @@ void System::computeNumberOfPseudoAtoms()
   } 
 }
 
+std::vector<Atom> System::randomPosition(size_t selectedComponent, std::span<Atom> molecule)
+{
+  double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
+  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  double3 position = simulationBox.randomPosition();
+  size_t startingBead = components[selectedComponent].startingBead;
+  for (size_t i = 0; i != molecule.size(); ++i)
+  {
+    copied_atoms[i].position = position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
+  }
+  return copied_atoms;
+}
+
 std::string System::writeOutputHeader() const
 {
   std::ostringstream stream;

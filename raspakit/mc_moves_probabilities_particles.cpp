@@ -24,8 +24,11 @@ void MCMoveProbabilitiesParticles::clearMoveStatistics()
   statistics_WidomMove_CBMC.clear();
   statistics_WidomMove_CFCMC.clear();
   statistics_WidomMove_CFCMC_CBMC.clear();
-}
 
+  statistics_GibbsSwapMove_CBMC.clear();
+  statistics_GibbsSwapMove_CFCMC.clear();
+  statistics_GibbsSwapMove_CFCMC_CBMC.clear();
+}
 void MCMoveProbabilitiesParticles::optimizeMCMoves()
 {
   statistics_TranslationMove.optimizeAcceptance();

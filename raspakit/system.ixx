@@ -202,7 +202,8 @@ export struct System
     void MD_Loop();
 
     void precomputeTotalRigidEnergy() noexcept;
-    void computeTotalEnergies() noexcept;
+    void recomputeTotalEnergies() noexcept;
+    RunningEnergy computeTotalEnergies() noexcept;
     void computeTotalGradients() noexcept;
 
     ForceFactor computeInterMolecularGradient() noexcept;
@@ -316,6 +317,8 @@ export struct System
     
     //SampleMovie sampleMovie;
     
+    std::vector<Atom> randomPosition(size_t selectedComponent, std::span<Atom> atoms);
+
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
     [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
     [[nodiscard]] std::optional<ChainData> growChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
