@@ -317,7 +317,7 @@ export struct System
     
     //SampleMovie sampleMovie;
     
-    std::vector<Atom> randomPosition(size_t selectedComponent, std::span<Atom> atoms);
+    std::vector<Atom> randomConfiguration(size_t selectedComponent, const std::span<const Atom> atoms) const;
 
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
     [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;

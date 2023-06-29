@@ -387,8 +387,9 @@ void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
     numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
 
     // Update the number of pseudo atoms per type (used for tail-corrections)
-    for(const Atom& atom: atoms)
+    for(Atom& atom: atoms)
     {
+      atom.moleculeId = static_cast<short>(numberOfMoleculesPerComponent[selectedComponent]);
       numberOfPseudoAtoms[selectedComponent][static_cast<size_t>(atom.type)] += 1;
       totalNumberOfPseudoAtoms[static_cast<size_t>(atom.type)] += 1;
     }
@@ -759,7 +760,7 @@ void System::computeNumberOfPseudoAtoms()
   } 
 }
 
-std::vector<Atom> System::randomPosition(size_t selectedComponent, std::span<Atom> molecule)
+std::vector<Atom> System::randomConfiguration(size_t selectedComponent, const std::span<const Atom> molecule) const
 {
   double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
   std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
