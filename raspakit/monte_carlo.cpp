@@ -148,6 +148,18 @@ void MonteCarlo::initialize()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+
+        
+
+        //std::cout << selectedSystem.components[selectedComponent].lambdaGC.occupancy() + selectSecondSystem.components[selectedComponent].lambdaGC.occupancy() << std::endl;
+        //std::cout << static_cast<double>(selectedSystem.containsTheFractionalMolecule) << " " 
+        //    << static_cast<double>(selectSecondSystem.containsTheFractionalMolecule) << " " <<
+        //  static_cast<double>(selectedSystem.containsTheFractionalMolecule) + static_cast<double>(selectSecondSystem.containsTheFractionalMolecule) << std::endl;
+      }
+
+      for(size_t k = 0; k < systems[j].components.size(); ++k)
+      {
+        systems[j].components[k].lambdaGC.sampleOccupancy(systems[j].containsTheFractionalMolecule);
       }
     }
 
@@ -184,6 +196,7 @@ void MonteCarlo::equilibrate()
     for(Component &component : system.components)
     {
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+      component.lambdaGC.clear();
     }
   };
 
@@ -200,20 +213,19 @@ void MonteCarlo::equilibrate()
       {
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
-      }
-    }
 
-    for (System& system : systems)
-    {
-      for(Component &component : system.components)
-      {
-        if(component.hasFractionalMolecule)
+        if (selectedSystem.containsTheFractionalMolecule)
         {
-          if(system.containsTheFractionalMolecule)
-          {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
-          }
+          selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
         }
+        if (selectSecondSystem.containsTheFractionalMolecule)
+        {
+          selectSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        }
+      }
+      for (size_t k = 0; k < systems[j].components.size(); ++k)
+      {
+        systems[j].components[k].lambdaGC.sampleOccupancy(systems[j].containsTheFractionalMolecule);
       }
     }
 
@@ -226,12 +238,16 @@ void MonteCarlo::equilibrate()
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
-        for(Component &component : system.components)
+      }
+    }
+
+    if (i % 5000 == 0)
+    {
+      for (System& system : systems)
+      {
+        for (Component& component : system.components)
         {
-          if(component.hasFractionalMolecule)
-          {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
-          }
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
         }
       }
     }
@@ -263,12 +279,29 @@ void MonteCarlo::production()
     {
       component.mc_moves_probabilities.clearMoveStatistics();
       component.mc_moves_probabilities.clearTimingStatistics();
-      if(component.hasFractionalMolecule)
-      {
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
-      }
+      
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+      component.lambdaGC.clear();
     }
   };
+
+  double minBias = std::numeric_limits<double>::max();
+  for (System& system : systems)
+  {
+    for (Component& component : system.components)
+    {
+      double currentMinBias = *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
+      minBias = currentMinBias < minBias ? currentMinBias : minBias;
+    }
+  }
+  for (System& system : systems)
+  {
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.normalize(minBias);
+    }
+  }
+
 
   for (size_t i = 0; i != numberOfCycles; i++)
   {
@@ -289,6 +322,11 @@ void MonteCarlo::production()
         // sample lambda here
         selectedSystem.sampleProperties(estimation.currentBin);
         selectSecondSystem.sampleProperties(estimation.currentBin);
+      }
+
+      for (size_t k = 0; k < systems[j].components.size(); ++k)
+      {
+        systems[j].components[k].lambdaGC.sampleOccupancy(systems[j].containsTheFractionalMolecule);
       }
     }
 

@@ -1,6 +1,6 @@
 module;
 
-module transition_matrix_monte_carlo;
+module monte_carlo_transition_matrix;
 
 import <iostream>;
 import <algorithm>;
@@ -46,7 +46,7 @@ import mc_moves_probabilities_particles;
 import property_pressure;
 import transition_matrix;
 
-TransitionMatrixMonteCarlo::TransitionMatrixMonteCarlo(InputReader& reader) noexcept : 
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept :
     numberOfCycles(reader.numberOfCycles),
     numberOfInitializationCycles(reader.numberOfInitializationCycles),
     numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
@@ -57,12 +57,12 @@ TransitionMatrixMonteCarlo::TransitionMatrixMonteCarlo(InputReader& reader) noex
     
 }
 
-System& TransitionMatrixMonteCarlo::randomSystem()
+System& MonteCarloTransitionMatrix::randomSystem()
 {
   return systems[size_t(RandomNumber::Uniform() * static_cast<double>(systems.size()))];
 }
 
-void TransitionMatrixMonteCarlo::run()
+void MonteCarloTransitionMatrix::run()
 {
   initialize();
   equilibrate();
@@ -74,7 +74,7 @@ void TransitionMatrixMonteCarlo::run()
   cleanup();
 }
 
-void TransitionMatrixMonteCarlo::initialize()
+void MonteCarloTransitionMatrix::initialize()
 {
   for (System &system: systems)
   {
@@ -178,7 +178,7 @@ void TransitionMatrixMonteCarlo::initialize()
   }
 }
 
-void TransitionMatrixMonteCarlo::equilibrate()
+void MonteCarloTransitionMatrix::equilibrate()
 {
   for (System& system : systems)
   {
@@ -262,7 +262,7 @@ void TransitionMatrixMonteCarlo::equilibrate()
   }
 }
 
-void TransitionMatrixMonteCarlo::production()
+void MonteCarloTransitionMatrix::production()
 {
   for (System& system : systems)
   {
@@ -363,7 +363,7 @@ void TransitionMatrixMonteCarlo::production()
   }
 }
 
-void TransitionMatrixMonteCarlo::output()
+void MonteCarloTransitionMatrix::output()
 {
   for (System& system : systems)
   {
@@ -399,7 +399,7 @@ void TransitionMatrixMonteCarlo::output()
     //std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }
-void TransitionMatrixMonteCarlo::cleanup()
+void MonteCarloTransitionMatrix::cleanup()
 {
   //for (System& system : systems)
   //{

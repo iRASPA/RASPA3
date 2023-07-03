@@ -298,9 +298,9 @@ InputReader::InputReader()
             simulationType = SimulationType::MonteCarlo;
             continue;
           }
-          if (caseInSensStringCompare(str, "TransitionMatrixMonteCarlo"))
+          if (caseInSensStringCompare(str, "MonteCarloTransitionMatrix"))
           {
-            simulationType = SimulationType::TransitionMatrixMonteCarlo;
+            simulationType = SimulationType::MonteCarloTransitionMatrix;
             continue;
           }
           if (caseInSensStringCompare(str, "MolecularDynamics"))
@@ -453,7 +453,7 @@ InputReader::InputReader()
         switch(simulationType)
         {
           case SimulationType::MonteCarlo:
-          case SimulationType::TransitionMatrixMonteCarlo:
+          case SimulationType::MonteCarloTransitionMatrix:
           case SimulationType::MolecularDynamics:
           case SimulationType::Minimization:
           case SimulationType::Test:
@@ -787,7 +787,7 @@ InputReader::InputReader()
           switch(simulationType)
           {
             case SimulationType::MonteCarlo:
-            case SimulationType::TransitionMatrixMonteCarlo:
+            case SimulationType::MonteCarloTransitionMatrix:
             case SimulationType::MolecularDynamics:
             case SimulationType::Minimization:
             case SimulationType::Test:
@@ -1393,7 +1393,7 @@ InputReader::InputReader()
     }
   }
 
-  if(simulationType == SimulationType::TransitionMatrixMonteCarlo)
+  if(simulationType == SimulationType::MonteCarloTransitionMatrix)
   {
     for (size_t i = 0; i < systems.size(); ++i)
     {

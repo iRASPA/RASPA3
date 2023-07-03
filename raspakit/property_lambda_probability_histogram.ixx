@@ -71,6 +71,25 @@ export struct PropertyLambdaProbabilityHistogram
   bool computeDUdlambda;
   std::vector<std::vector<std::pair<double3, double>>> bookKeepingDUdlambda;
 
+  // fractional molecule occupancy
+  size_t occupancyCount{ 0 };
+  size_t occupancyTotal{ 0 };  
+
+  void clear()
+  {
+    std::fill(histogram.begin(), histogram.end(), 0.0);
+
+    for (size_t i = 0; i < numberOfBlocks; ++i)
+    {
+      bookKeepingDensity[i] = std::make_pair<double, double>(0.0, 0.0);
+      std::fill(bookKeepingLambda[i].begin(), bookKeepingLambda[i].end(), 0.0);
+      std::fill(bookKeepingDUdlambda[i].begin(), bookKeepingDUdlambda[i].end(), std::make_pair<double3, double>(double3(0.0, 0.0, 0.0), 0.0));
+    }
+
+    occupancyCount = 0;
+    occupancyTotal = 0;
+  }
+
   inline double lambdaValue() const
   {
     return static_cast<double>(currentBin) * delta;
@@ -91,19 +110,40 @@ export struct PropertyLambdaProbabilityHistogram
     histogram[currentBin] += 1.0;
   }
 
-  void sampleHistogram(size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule)
+  void sampleOccupancy(bool containsTheFractionalMolecule)
   {
-    double w = weight();
+    ++occupancyTotal;
+    if (containsTheFractionalMolecule)
+    {
+      ++occupancyCount;
+    }
+  }
 
+  double occupancy() const
+  {
+    return static_cast<double>(occupancyCount) / std::max(size_t{1}, occupancyTotal);
+  }
+
+  void normalize(double normalizationFactor)
+  {
+    for (double& bias : biasFactor)
+    {
+      bias -= normalizationFactor;
+    }
+  }
+
+  void sampleHistogram(size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule, double w)
+  {
     if(containsTheFractionalMolecule)
     {
       bookKeepingLambda[blockIndex][currentBin] += 1.0;
-      bookKeepingDensity[blockIndex].first += w * density;
+      
       bookKeepingDUdlambda[blockIndex][currentBin].first.x += dUdlambda;
+      bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
     }
 
+    bookKeepingDensity[blockIndex].first += w * density;
     bookKeepingDensity[blockIndex].second += w;    
-    bookKeepingDUdlambda[blockIndex][currentBin].second += 1.0;
   }
 
   inline double weight() const
@@ -167,8 +207,8 @@ export struct PropertyLambdaProbabilityHistogram
     std::pair<double,double> summedBlocks{0.0, 0.0};
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-        summedBlocks.first += bookKeepingDensity[blockIndex].first;
-        summedBlocks.second += bookKeepingDensity[blockIndex].second;
+      summedBlocks.first += bookKeepingDensity[blockIndex].first;
+      summedBlocks.second += bookKeepingDensity[blockIndex].second;
     }
 
     return -std::log(1.0 / (summedBlocks.first / summedBlocks.second)) / beta;
@@ -546,6 +586,7 @@ export struct PropertyLambdaProbabilityHistogram
       {
         double value = (averagedExcessChemicalPotentialDUdlambda(blockIndex) + averagedIdealGasChemicalPotential(blockIndex, beta)) - average;
         sumOfSquares += value * value;
+        ++numberOfSamples;
       }
     }
     double confidenceIntervalError = 0.0;

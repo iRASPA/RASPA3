@@ -459,10 +459,10 @@
     <ClCompile Include="transition_matrix.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="transition_matrix_monte_carlo.cpp">
+    <ClCompile Include="monte_carlo_transition_matrix.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="transition_matrix_monte_carlo.ixx">
+    <ClCompile Include="monte_carlo_transition_matrix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

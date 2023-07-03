@@ -832,14 +832,19 @@ std::string System::writeInitializationStatusReport([[maybe_unused]] size_t curr
 
   for (const Component& c : components)
   {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+    
     if (c.lambdaGC.computeDUdlambda)
     {
-      double lambda = c.lambdaGC.lambdaValue();
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                         c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambdaGC.lambdaValue());
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
@@ -881,14 +886,19 @@ std::string System::writeEquilibrationStatusReport([[maybe_unused]] size_t curre
 
   for (const Component& c : components)
   {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
     if (c.lambdaGC.computeDUdlambda)
     { 
-      double lambda = c.lambdaGC.lambdaValue();
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else 
     {
-      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambdaGC.lambdaValue());
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
@@ -953,14 +963,19 @@ std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentC
 
   for (const Component& c : components)
   {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
     if (c.lambdaGC.computeDUdlambda)
     {
-      double lambda = c.lambdaGC.lambdaValue();
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g}\n", c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda));
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g}\n", c.componentId, c.name, c.lambdaGC.lambdaValue());
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
@@ -1051,12 +1066,9 @@ void System::sampleProperties(size_t currentBlock)
   {
     double componentDensity  = static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
 
-    //if(containsTheFractionalMolecule)
-    //{
-      double lambda = component.lambdaGC.lambdaValue();
-      double dudlambda = runningEnergies.dudlambda(lambda);
-      component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule);
-    //}
+    double lambda = component.lambdaGC.lambdaValue();
+    double dudlambda = runningEnergies.dudlambda(lambda);
+    component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
   }

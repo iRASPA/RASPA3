@@ -32,7 +32,7 @@ export struct InputReader
   enum class SimulationType : int
   {
     MonteCarlo = 0,
-    TransitionMatrixMonteCarlo = 1,
+    MonteCarloTransitionMatrix = 1,
     MolecularDynamics = 2,
     Minimization = 3,
     Test = 4,

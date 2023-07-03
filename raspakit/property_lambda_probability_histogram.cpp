@@ -35,27 +35,36 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
     break;
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors:
   {
-    std::vector<double>::iterator minValueIterator = std::min_element(histogram.begin(), histogram.end());
-    double minimumValue = *minValueIterator;
-    if (minimumValue > 0.01)
-    {
-      double sumOfHistogram = std::accumulate(histogram.begin(), histogram.end(), 0.0);
-      if (minimumValue / sumOfHistogram > 0.01)
+    std::vector<double>::iterator maxValueIterator = std::max_element(histogram.begin(), histogram.end());
+    double maximumValue = *maxValueIterator;
+
+    bool allBinsAtLeast90PercentOfThisValue = true;
+    for(size_t i = 0; i < histogram.size(); ++i)
+    { 
+      if (histogram[i] < 0.9 * maximumValue)
       {
-        WangLandauScalingFactor *= 0.5;
+        allBinsAtLeast90PercentOfThisValue = false;
+        break;
       }
     }
-    std::fill(histogram.begin(), histogram.end(), 0.0);
+    if (allBinsAtLeast90PercentOfThisValue)
+    {
+      std::cout << "allBinsAtLeast90PercentOfThisValue" << std::endl;
+      WangLandauScalingFactor *= 0.5;
+      std::fill(histogram.begin(), histogram.end(), 0.0);
+      occupancyCount = 0;
+      occupancyTotal = 0;
+    }
   }
   break;
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize:
     std::fill(histogram.begin(), histogram.end(), 0.0);
 
-    double normalize = biasFactor[0];
-    for (double& bias : biasFactor)
-    {
-      bias -= normalize;
-    }
+    //double normalize = biasFactor[0];
+    //for (double& bias : biasFactor)
+    //{
+    //  bias -= normalize;
+    //}
     break;
   }
 }

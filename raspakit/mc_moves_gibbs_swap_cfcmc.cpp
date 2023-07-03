@@ -83,10 +83,21 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
      //=============================================================================================
 
      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
-     //std::vector<Atom> newFractionalMoleculeA = systemA.randomConfiguration(selectedComponent, fractionalMoleculeA);
      for (Atom& atom : fractionalMoleculeA)
      {
        atom.moleculeId = static_cast<int>(indexFractionalMoleculeA);
+     }
+
+     std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
+     std::optional<RunningEnergy> frameworkDifferenceA = systemA.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+     std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
+     systemA.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionMove_CFCMC_CBMC_NonEwald += (t2A - t1A);
+
+     if (!frameworkDifferenceA.has_value())
+     {
+       // reject, set fractional molecule back to old state
+       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+       return std::nullopt;
      }
 
      std::chrono::system_clock::time_point u1A = std::chrono::system_clock::now();
@@ -101,6 +112,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        return std::nullopt;
      }
 
+     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
+     RunningEnergy EwaldFourierDifferenceA = systemA.energyDifferenceEwaldFourier(systemA.storedEik, fractionalMoleculeA, oldFractionalMoleculeA);
+     std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+     systemA.components[selectedComponent].mc_moves_probabilities.cpuTime_WidomMove_CFCMC_Ewald += (v2 - v1);
+     systemA.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald += (v2 - v1);
+
+
+
+     // step 2
+
+     
 
      std::vector<Atom> newMolecule(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
      for (Atom& atom : newMolecule)
@@ -108,6 +130,18 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        atom.setScalingToInteger();
        atom.moleculeId = static_cast<int>(systemA.numberOfMoleculesPerComponent[selectedComponent]);
      }
+
+     std::optional<RunningEnergy> frameworkDifferenceA2 = systemA.computeFrameworkMoleculeEnergyDifference(newMolecule, {});
+    
+
+     if (!frameworkDifferenceA.has_value())
+     {
+       // reject, set fractional molecule back to old state
+       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+       return std::nullopt;
+     }
+
+
      std::optional<RunningEnergy> moleculeDifferenceA2 = systemA.computeInterMolecularEnergyDifference(newMolecule, {});
      if (!moleculeDifferenceA2.has_value())
      {
@@ -116,8 +150,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        return std::nullopt;
      }
 
-     RunningEnergy energyDifferenceA = moleculeDifferenceA.value() + moleculeDifferenceA2.value();
 
+     RunningEnergy EwaldFourierDifferenceA2 = systemA.energyDifferenceEwaldFourier(systemA.totalEik, newMolecule, {});
+
+
+     RunningEnergy energyDifferenceA = frameworkDifferenceA.value() + moleculeDifferenceA.value() + EwaldFourierDifferenceA +
+                                       frameworkDifferenceA2.value() + moleculeDifferenceA2.value() + EwaldFourierDifferenceA2;
 
      // System B: Changing a randomly selected molecule in the other simulation box into a fractional molecule (at the same lambda)
      //============================================================================================================================
@@ -135,8 +173,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        atom.groupId = std::byte{ 0 };
      }
      
-     std::optional<RunningEnergy> moleculeDifferenceB = systemB.computeInterMolecularEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+     std::optional<RunningEnergy> frameworkDifferenceB = systemB.computeFrameworkMoleculeEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+     if (!frameworkDifferenceB.has_value())
+     {
+       // reject, set fractional molecule back to old state
+       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
+       return std::nullopt;
+     }
 
+     std::optional<RunningEnergy> moleculeDifferenceB = systemB.computeInterMolecularEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
      if (!moleculeDifferenceB.has_value())
      {
        // reject, set fractional molecule back to old state
@@ -145,6 +192,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
        return std::nullopt;
      }
+
+     RunningEnergy EwaldFourierDifferenceB = systemB.energyDifferenceEwaldFourier(systemB.storedEik, selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+    
 
 
      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
@@ -162,8 +212,17 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        atom.position += double3(2.0, 3.0, 4.0);
      }
 
-     std::optional<RunningEnergy> moleculeDifferenceB2 = systemB.computeInterMolecularEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+     std::optional<RunningEnergy> frameworkDifferenceB2 = systemB.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+     if (!frameworkDifferenceB2.has_value())
+     {
+       // reject, set fractional molecule back to old state
+       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
+       return std::nullopt;
+     }
 
+     std::optional<RunningEnergy> moleculeDifferenceB2 = systemB.computeInterMolecularEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
      if (!moleculeDifferenceB2.has_value())
      {
        // reject, set fractional molecule back to old state
@@ -173,7 +232,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
        return std::nullopt;
      }
 
-     RunningEnergy energyDifferenceB = moleculeDifferenceB.value() + moleculeDifferenceB2.value();
+     RunningEnergy EwaldFourierDifferenceB2 = systemB.energyDifferenceEwaldFourier(systemB.totalEik, fractionalMoleculeB, oldFractionalMoleculeB);
+
+
+     RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() + EwaldFourierDifferenceB +
+                                       frameworkDifferenceB2.value() + moleculeDifferenceB2.value() + EwaldFourierDifferenceB2;
 
 
      double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];

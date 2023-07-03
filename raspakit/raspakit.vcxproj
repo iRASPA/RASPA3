@@ -300,8 +300,8 @@
     <ClCompile Include="system_reservoir.cpp" />
     <ClCompile Include="transition_matrix.cpp" />
     <ClCompile Include="transition_matrix.ixx" />
-    <ClCompile Include="transition_matrix_monte_carlo.cpp" />
-    <ClCompile Include="transition_matrix_monte_carlo.ixx" />
+    <ClCompile Include="monte_carlo_transition_matrix.cpp" />
+    <ClCompile Include="monte_carlo_transition_matrix.ixx" />
     <ClCompile Include="units.cpp" />
     <ClCompile Include="system_interactions_framework_molecule.cpp" />
     <ClCompile Include="units.ixx" />
