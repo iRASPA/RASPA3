@@ -20,51 +20,52 @@ import units;
 import print;
 import averages;
 
-void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase)
+void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, double value)
 {
   switch (phase)
   {
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize:
-    WangLandauScalingFactor = 1.0;
+    WangLandauScalingFactor = 0.01;
     std::fill(histogram.begin(), histogram.end(), 0.0);
     std::fill(biasFactor.begin(), biasFactor.end(), 0.0);
     break;
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample:
-    biasFactor[currentBin] -= WangLandauScalingFactor;
-    histogram[currentBin] += 1.0;
+    if(containsTheFractionalMolecule)
+    {
+      biasFactor[currentBin] -= WangLandauScalingFactor;
+      histogram[currentBin] += 1.0;
+    }
     break;
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors:
   {
-    std::vector<double>::iterator maxValueIterator = std::max_element(histogram.begin(), histogram.end());
-    double maximumValue = *maxValueIterator;
-
-    bool allBinsAtLeast90PercentOfThisValue = true;
-    for(size_t i = 0; i < histogram.size(); ++i)
-    { 
-      if (histogram[i] < 0.9 * maximumValue)
-      {
-        allBinsAtLeast90PercentOfThisValue = false;
-        break;
-      }
-    }
-    if (allBinsAtLeast90PercentOfThisValue)
-    {
-      std::cout << "allBinsAtLeast90PercentOfThisValue" << std::endl;
-      WangLandauScalingFactor *= 0.5;
-      std::fill(histogram.begin(), histogram.end(), 0.0);
-      occupancyCount = 0;
-      occupancyTotal = 0;
-    }
+    WangLandauScalingFactor *= 0.5;
+    std::fill(histogram.begin(), histogram.end(), 0.0);
+    occupancyCount = 0;
+    occupancyTotal = 0;
+    //std::vector<double>::iterator maxValueIterator = std::max_element(histogram.begin(), histogram.end());
+    //double maximumValue = *maxValueIterator;
+    //
+    //bool allBinsAtLeast90PercentOfThisValue = true;
+    //for(size_t i = 0; i < histogram.size(); ++i)
+    //{ 
+    //  if (histogram[i] < 0.9 * maximumValue)
+    //  {
+    //    allBinsAtLeast90PercentOfThisValue = false;
+    //    break;
+    //  }
+    //}
+    //if (allBinsAtLeast90PercentOfThisValue)
+    //{
+    //  std::cout << "allBinsAtLeast90PercentOfThisValue" << std::endl;
+    //  WangLandauScalingFactor *= 0.5;
+    //  std::fill(histogram.begin(), histogram.end(), 0.0);
+    //  occupancyCount = 0;
+    //  occupancyTotal = 0;
+    //}
   }
   break;
   case PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize:
     std::fill(histogram.begin(), histogram.end(), 0.0);
-
-    //double normalize = biasFactor[0];
-    //for (double& bias : biasFactor)
-    //{
-    //  bias -= normalize;
-    //}
     break;
   }
 }

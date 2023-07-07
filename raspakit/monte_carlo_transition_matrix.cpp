@@ -189,7 +189,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 
     for(Component &component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, system.containsTheFractionalMolecule);
     }
   };
 
@@ -227,7 +227,7 @@ void MonteCarloTransitionMatrix::equilibrate()
         {
           if(system.containsTheFractionalMolecule)
           {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
           }
         }
       }
@@ -246,7 +246,7 @@ void MonteCarloTransitionMatrix::equilibrate()
         {
           if(component.hasFractionalMolecule)
           {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, system.containsTheFractionalMolecule);
           }
         }
       }
@@ -281,7 +281,7 @@ void MonteCarloTransitionMatrix::production()
       component.mc_moves_probabilities.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, system.containsTheFractionalMolecule);
       }
     }
   };

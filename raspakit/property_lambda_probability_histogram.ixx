@@ -151,7 +151,7 @@ export struct PropertyLambdaProbabilityHistogram
     return std::exp(-biasFactor[currentBin]);
   }
 
-  void WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase);
+  void WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, double value = 1.0);
   std::string writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const;
   std::string writeDUdLambdaStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const;
 

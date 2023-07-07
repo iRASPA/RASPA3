@@ -209,7 +209,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
      {
        atom.setScalingFullyOff();
        atom.groupId = std::byte{ 0 };
-       atom.position += double3(2.0, 3.0, 4.0);
+       atom.position = systemA.simulationBox.randomPosition();
      }
 
      std::optional<RunningEnergy> frameworkDifferenceB2 = systemB.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
