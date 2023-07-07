@@ -230,27 +230,6 @@ void MC_Moves::performRandomMove(System& selectedSystem, System& selectedSecondS
       }
     }
   }
-  else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
-  {
-    if (selectedSystem.containsTheFractionalMolecule)
-    {
-      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC_CBMC(selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
-      if (energy)
-      {
-        selectedSystem.runningEnergies += energy.value().first;
-        selectedSecondSystem.runningEnergies += energy.value().second;
-      }
-    }
-    else if(selectedSecondSystem.containsTheFractionalMolecule)
-    {
-      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC_CBMC(selectedSecondSystem, selectedSystem, selectedComponent, fractionalMoleculeSystem);
-      if (energy)
-      {
-        selectedSecondSystem.runningEnergies += energy.value().first;
-        selectedSystem.runningEnergies += energy.value().second;
-      }
-    }
-  }
   else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityWidomMove)
   {
   }
@@ -484,57 +463,27 @@ void MC_Moves::performRandomMoveProduction(System& selectedSystem, System& selec
   }
   else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC)
   {
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     if (selectedSystem.containsTheFractionalMolecule)
     {
-      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC(selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
       if (energy)
       {
         selectedSystem.runningEnergies += energy.value().first;
         selectedSecondSystem.runningEnergies += energy.value().second;
       }
-      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      mc_moves_probabilities.cpuTime_GibbsSwapLambdaMove_CFCMC += (t2 - t1);
     }
     else if (selectedSecondSystem.containsTheFractionalMolecule)
     {
-      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC(selectedSecondSystem, selectedSystem, selectedComponent, fractionalMoleculeSystem);
       if (energy)
       {
         selectedSecondSystem.runningEnergies += energy.value().first;
         selectedSystem.runningEnergies += energy.value().second;
       }
-      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      mc_moves_probabilities.cpuTime_GibbsSwapLambdaMove_CFCMC += (t2 - t1);
     }
-  }
-  else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC)
-  {
-    if (selectedSystem.containsTheFractionalMolecule)
-    {
-      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC_CBMC(selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
-      if (energy)
-      {
-        selectedSystem.runningEnergies += energy.value().first;
-        selectedSecondSystem.runningEnergies += energy.value().second;
-      }
       std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      mc_moves_probabilities.cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC += (t2 - t1);
-    }
-    else if (selectedSecondSystem.containsTheFractionalMolecule)
-    {
-      std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-      std::optional<std::pair<RunningEnergy, RunningEnergy>> energy = GibbsSwapMove_CFCMC_CBMC(selectedSecondSystem, selectedSystem, selectedComponent, fractionalMoleculeSystem);
-      if (energy)
-      {
-        selectedSecondSystem.runningEnergies += energy.value().first;
-        selectedSystem.runningEnergies += energy.value().second;
-      }
-      std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-      mc_moves_probabilities.cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC += (t2 - t1);
-    }
+      mc_moves_probabilities.cpuTime_GibbsMove_CFCMC += (t2 - t1);
   }
   else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityWidomMove)
   {

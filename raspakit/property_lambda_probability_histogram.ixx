@@ -121,7 +121,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   double occupancy() const
   {
-    return static_cast<double>(occupancyCount) / std::max(size_t{1}, occupancyTotal);
+    return static_cast<double>(occupancyCount) / static_cast<double>(std::max(size_t{1}, occupancyTotal));
   }
 
   void normalize(double normalizationFactor)

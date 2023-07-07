@@ -20,7 +20,7 @@ import units;
 import print;
 import averages;
 
-void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, double value)
+void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, [[maybe_unused]] double value)
 {
   switch (phase)
   {

@@ -222,7 +222,6 @@
     <ClCompile Include="mc_moves_deletion.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp" />
-    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_volume.cpp" />
     <ClCompile Include="mc_moves_identity_change.cpp" />
     <ClCompile Include="mc_moves_insertion.cpp" />

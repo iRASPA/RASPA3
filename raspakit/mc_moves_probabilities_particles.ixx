@@ -82,8 +82,7 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC{ 0.0 };
   std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsMove_CFCMC{ 0.0 };
 
   std::chrono::duration<double> cpuTime_TranslationMove_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_RandomTranslationMove_NonEwald{ 0.0 };
@@ -106,8 +105,9 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_NonEwald{ 0.0 };
   std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_NonEwald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_NonEwald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsExchangeMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsShuffleMove_CFCMC_NonEwald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsLambdaMove_CFCMC_NonEwald{ 0.0 };
 
   std::chrono::duration<double> cpuTime_TranslationMove_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_RandomTranslationMove_Ewald{ 0.0 };
@@ -129,8 +129,9 @@ export struct MCMoveProbabilitiesParticles
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_WidomMove_CFCMC_CBMC_Ewald{ 0.0 };
   std::chrono::duration<double> cpuTime_GibbsSwapMove_CBMC_Ewald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_Ewald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsSwapLambdaMove_CFCMC_CBMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsExchangeMove_CFCMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsShuffleMove_CFCMC_Ewald{ 0.0 };
+  std::chrono::duration<double> cpuTime_GibbsLambdaMove_CFCMC_Ewald{ 0.0 };
 
   void clearTimingStatistics();
   const std::string writeMCMoveCPUTimeStatistics() const;

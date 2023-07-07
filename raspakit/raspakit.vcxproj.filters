@@ -435,9 +435,6 @@
     <ClCompile Include="mc_moves_swap_cfcmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mc_moves_gibbs_swap_cfcmc_cbmc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

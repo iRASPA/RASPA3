@@ -94,6 +94,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
+    noCharges(false),
+    omitEwaldFourier(false),
     reactions(),
     tmmc()
 {
@@ -171,6 +173,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                averagePressure(numberOfBlocks),
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
+               noCharges(false),
+               omitEwaldFourier(false),
                mc_moves_probabilities(),
                reactions(),
                tmmc()
@@ -211,6 +215,8 @@ System::System(System&& s) noexcept :
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
+    noCharges(s.noCharges),
+    omitEwaldFourier(s.omitEwaldFourier),
     mc_moves_probabilities(s.mc_moves_probabilities),
     reactions(s.reactions),
     tmmc(s.tmmc),
@@ -264,6 +270,8 @@ System::System(const System&& s) noexcept :
     averagePressure(s.averagePressure),
     //sampleMovie(std::move(s.sampleMovie)),
     netCharge(std::move(s.netCharge)),
+    noCharges(s.noCharges),
+    omitEwaldFourier(s.omitEwaldFourier),
     mc_moves_probabilities(s.mc_moves_probabilities),
     reactions(s.reactions),
     tmmc(s.tmmc),
@@ -1082,6 +1090,8 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
 {
   std::print(stream, "Sampling properties:        {:14f} [s]\n", cpuTime_Sampling.count());
   std::print(stream, "Pressure computation:       {:14f} [s]\n\n", cpuTime_Pressure.count());
+
+
   for (int componentId = 0; const Component& component : components)
   {
     std::print(stream, "Component {} [{}]\n", componentId, component.name);
@@ -1089,7 +1099,7 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
     componentId++;
   }
 
-  mc_moves_probabilities.writeMCMoveCPUTimeStatistics(); 
+  std::print(stream, mc_moves_probabilities.writeMCMoveCPUTimeStatistics()); 
 }
 
 std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const

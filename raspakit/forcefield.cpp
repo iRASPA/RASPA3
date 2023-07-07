@@ -260,9 +260,9 @@ std::string ForceField::printForceFieldStatus() const
             Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
             data[i * numberOfPseudoAtoms + j].parameters.y);
         std::print(stream, "{:33} shift: {:8.5f} [K], tailcorrections: {}\n",
-            "",
+            std::string(""),
           Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
-          tailCorrections[i * numberOfPseudoAtoms + j]);
+          tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
         break;
       default:
         break;
