@@ -104,7 +104,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::print(stream, "    ---------------------------------------------------------------------------\n");
   for (size_t i = 0; i < numberOfBins; ++i)
   {
-    std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {: .6e} +/- {:.6e} [K]\n",
+    std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n",
       "    ", i, static_cast<double>(i) * delta,
       conv * freeEnergy.first[i], conv * freeEnergy.second[i]);
   }

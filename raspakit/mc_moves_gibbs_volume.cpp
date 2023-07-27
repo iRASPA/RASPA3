@@ -63,12 +63,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
   systemA.computeInterMolecularEnergy(newBoxA, newPositionsA, newTotalEnergyA);
   std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
-  systemA.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2A - t1A);
+  systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (t2A - t1A);
 
   std::chrono::system_clock::time_point t3A = std::chrono::system_clock::now();
   systemA.computeEwaldFourierEnergy(newBoxA, newPositionsA, newTotalEnergyA);
   std::chrono::system_clock::time_point t4A = std::chrono::system_clock::now();
-  systemA.mc_moves_probabilities.cpuTime_GibbsVolumeMove_Ewald += (t4A - t3A);
+  systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4A - t3A);
 
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 
@@ -85,12 +85,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
   systemB.computeInterMolecularEnergy(newBoxB, newPositionsB, newTotalEnergyB);
   std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
-  systemB.mc_moves_probabilities.cpuTime_GibbsVolumeMove_NonEwald += (t2B - t1B);
+  systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (t2B - t1B);
 
   std::chrono::system_clock::time_point t3B = std::chrono::system_clock::now();
   systemB.computeEwaldFourierEnergy(newBoxB, newPositionsB, newTotalEnergyB);
   std::chrono::system_clock::time_point t4B = std::chrono::system_clock::now();
-  systemB.mc_moves_probabilities.cpuTime_GibbsVolumeMove_Ewald += (t4B - t3B);
+  systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4B - t3B);
 
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
 

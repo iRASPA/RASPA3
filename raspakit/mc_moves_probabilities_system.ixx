@@ -17,16 +17,4 @@ export struct MCMoveProbabilitiesSystem
 
   void clear();
   void optimizeAcceptance();
-
-  std::chrono::duration<double> cpuTime_VolumeMove{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsVolumeMove{ 0.0 };
-
-  std::chrono::duration<double> cpuTime_VolumeMove_NonEwald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsVolumeMove_NonEwald{ 0.0 };
-  
-  std::chrono::duration<double> cpuTime_VolumeMove_Ewald{ 0.0 };
-  std::chrono::duration<double> cpuTime_GibbsVolumeMove_Ewald{ 0.0 };
-  
-  void clearTimingStatistics();
-  const std::string writeMCMoveCPUTimeStatistics() const;
 };

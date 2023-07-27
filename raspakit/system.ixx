@@ -46,6 +46,7 @@ import bond_potential;
 import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
+import mc_moves_cputime;
 import reaction;
 import reactions;
 import transition_matrix;
@@ -169,10 +170,8 @@ export struct System
     bool noCharges{ false };
     bool omitEwaldFourier{ false };
 
-    std::chrono::duration<double> cpuTime_Sampling{ 0.0 };
-    std::chrono::duration<double> cpuTime_Pressure{ 0.0 };
-
     MCMoveProbabilitiesSystem mc_moves_probabilities;
+    MCMoveCpuTime mc_moves_cputime;
 
     Reactions reactions;
     TransitionMatrix tmmc;
@@ -350,7 +349,6 @@ export struct System
     [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
     void clearMoveStatistics();
-    void clearTimingStatistics();
 
     std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
 

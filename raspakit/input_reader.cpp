@@ -1494,12 +1494,13 @@ InputReader::InputReader()
 
   for (size_t i = 0; i < systems.size(); ++i)
   {
-    if(systems[i].numerOfAdsorbateComponents() > 1)
-    {
-      throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.");
-    }
     if(systems[i].tmmc.doTMMC)
     {
+      if(systems[i].numerOfAdsorbateComponents() > 1)
+      {
+        throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
+      }
+
       // check initial number of molecules is in the range of the TMMC macrostates
       for(size_t j = 0; j < systems[i].components.size(); ++j)
       {

@@ -49,20 +49,24 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(System & system, si
         [&](Atom a) { a.position += displacement; return a; });
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-
     std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
+    system.mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
     if (!frameworkMolecule.has_value()) return std::nullopt;
 
-    std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
-    if (!interMolecule.has_value()) return std::nullopt;
-    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-
-    system.components[selectedComponent].mc_moves_probabilities.cpuTime_RandomTranslationMove_NonEwald += (t2 - t1);
-
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+    std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_probabilities.cpuTime_RandomTranslationMove_Ewald += (u2 - u1);
+    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
+    system.mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
+    if (!interMolecule.has_value()) return std::nullopt;
+
+    std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
+    RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+    std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
+    system.mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
 
     RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 

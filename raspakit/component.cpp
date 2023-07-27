@@ -52,8 +52,7 @@ import cif_reader;
 import move_statistics;
 import bond_potential;
 import mc_moves_probabilities_particles;
-
-
+import mc_moves_cputime;
 
 Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
     std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
@@ -68,6 +67,7 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     definedAtoms(definedAtoms),
     lambdaGC(numberOfBlocks, 41),
     lambdaGibbs(numberOfBlocks, 41),
+    mc_moves_probabilities(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   atoms = definedAtoms;
@@ -85,6 +85,7 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
     definedAtoms(definedAtoms),
     lambdaGC(numberOfBlocks, 11),
     lambdaGibbs(numberOfBlocks, 11),
+    mc_moves_probabilities(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   // expand the fractional atoms based on the space-group
@@ -124,8 +125,6 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
       unitCellAtoms.push_back(expandedAtoms[i]);
     }
   }
-
-
 
   for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
   {

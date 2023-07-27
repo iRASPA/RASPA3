@@ -55,15 +55,15 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
   std::vector<Atom> newPositions = system.scaledCenterOfMassPositions(scale);
 
   RunningEnergy newTotalEnergy;
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  //std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   system.computeInterMolecularEnergy(newBox, newPositions, newTotalEnergy);
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  system.mc_moves_probabilities.cpuTime_VolumeMove_NonEwald += (t2 - t1);
+  //std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  //system.mc_moves_cputime.cpuTime_VolumeMove_NonEwald += (t2 - t1);
 
-  std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
+  //std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
   system.computeEwaldFourierEnergy(newBox, newPositions, newTotalEnergy);
-  std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
-  system.mc_moves_probabilities.cpuTime_VolumeMove_Ewald += (t4 - t3);
+  //std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
+  //system.mc_moves_cputime.cpuTime_VolumeMove_Ewald += (t4 - t3);
 
 
   system.mc_moves_probabilities.statistics_VolumeMove.constructed += 1;

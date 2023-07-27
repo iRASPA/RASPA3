@@ -53,12 +53,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_NonEwald += (t2 - t1);
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
+    system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapDeletionMove_CBMC_Ewald += (u2 - u1);
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
+    system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
 
     //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
     //                                    system.computeTailCorrectionVDWOldEnergy();

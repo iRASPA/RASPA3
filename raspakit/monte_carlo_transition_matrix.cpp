@@ -273,12 +273,12 @@ void MonteCarloTransitionMatrix::production()
     //system.sampleMovie.initialize();
 
     system.clearMoveStatistics();
-    system.clearTimingStatistics();
+    system.mc_moves_cputime.clearTimingStatistics();
 
     for(Component &component : system.components)
     {
       component.mc_moves_probabilities.clearMoveStatistics();
-      component.mc_moves_probabilities.clearTimingStatistics();
+      component.mc_moves_cputime.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
         component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, system.containsTheFractionalMolecule);
@@ -321,7 +321,7 @@ void MonteCarloTransitionMatrix::production()
       system.currentEnergyStatus = molecularPressure.first;
       system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
       std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-      system.cpuTime_Pressure += (time2 - time1);
+      system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
 
       // add the sample energy to the averages
       if (i % 10 == 0 || i % printEvery == 0)

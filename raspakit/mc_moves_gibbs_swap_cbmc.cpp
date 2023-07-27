@@ -38,15 +38,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   double cutOffVDW = systemA.forceField.cutOffVDW;
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
 
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = systemA.components[selectedComponent].newAtoms(1.0, systemA.numberOfMoleculesPerComponent[selectedComponent]);
+  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::optional<ChainData> growData = systemA.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, atoms);
+  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
+  systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
   if (!growData) return std::nullopt;
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  systemA.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC_NonEwald += (t2 - t1);
 
 
   systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.constructed += 1;
@@ -54,7 +55,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = systemA.energyDifferenceEwaldFourier(systemA.storedEik, newMolecule, {});
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-  systemA.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC_Ewald += (u2 - u1);
+  systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCEwald += (u2 - u1);
+  systemA.mc_moves_cputime.GibbsSwapMoveCBMCEwald += (u2 - u1);
 
   //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
   //                                     system.computeTailCorrectionVDWOldEnergy();
@@ -69,12 +71,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::chrono::system_clock::time_point tB1 = std::chrono::system_clock::now();
   ChainData retraceData = systemB.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
   std::chrono::system_clock::time_point tB2 = std::chrono::system_clock::now();
-  systemB.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC_NonEwald += (tB2 - tB1);
+  systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
+  systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
 
   std::chrono::system_clock::time_point uB1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceB = systemB.energyDifferenceEwaldFourier(systemB.storedEik, {}, molecule);
   std::chrono::system_clock::time_point uB2 = std::chrono::system_clock::now();
-  systemB.components[selectedComponent].mc_moves_probabilities.cpuTime_GibbsSwapMove_CBMC_Ewald += (uB2 - uB1);
+  systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCEwald += (uB2 - uB1);
+  systemA.mc_moves_cputime.GibbsSwapMoveCBMCEwald += (uB2 - uB1);
 
   //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
   //                                    system.computeTailCorrectionVDWOldEnergy();

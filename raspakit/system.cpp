@@ -18,6 +18,7 @@ import <cmath>;
 import <chrono>;
 import <algorithm>;
 import <numeric>;
+import <format>;
 
 import randomnumbers;
 import int3;
@@ -60,6 +61,7 @@ import bond_potential;
 import move_statistics;
 import mc_moves_probabilities_system;
 import mc_moves_probabilities_particles;
+import mc_moves_cputime;
 import reaction;
 import reactions;
 
@@ -96,6 +98,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     netCharge(c.size()),
     noCharges(false),
     omitEwaldFourier(false),
+    mc_moves_probabilities(),
     reactions(),
     tmmc()
 {
@@ -1083,23 +1086,19 @@ void System::sampleProperties(size_t currentBlock)
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
-  cpuTime_Sampling += (t2 - t1);
+  mc_moves_cputime.propertySampling += (t2 - t1);
 }
 
 void System::writeCPUTimeStatistics(std::ostream &stream) const
 {
-  std::print(stream, "Sampling properties:        {:14f} [s]\n", cpuTime_Sampling.count());
-  std::print(stream, "Pressure computation:       {:14f} [s]\n\n", cpuTime_Pressure.count());
+  std::print(stream, "Sampling properties:        {:14f} [s]\n", mc_moves_cputime.propertySampling.count());
+  std::print(stream, "Pressure computation:       {:14f} [s]\n\n", mc_moves_cputime.energyPressureComputation.count());
 
 
-  for (int componentId = 0; const Component& component : components)
-  {
-    std::print(stream, "Component {} [{}]\n", componentId, component.name);
-    std::print(stream, component.mc_moves_probabilities.writeMCMoveCPUTimeStatistics());
-    componentId++;
-  }
-
-  std::print(stream, mc_moves_probabilities.writeMCMoveCPUTimeStatistics()); 
+ for (size_t componentId = 0; const Component& component : components)
+ {
+   std::print(stream, component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+ }
 }
 
 std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
@@ -1139,10 +1138,5 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
 void System::clearMoveStatistics()
 {
   mc_moves_probabilities.clear();
-}
-
-void System::clearTimingStatistics()
-{
-  mc_moves_probabilities.clearTimingStatistics();
 }
 

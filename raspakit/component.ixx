@@ -28,6 +28,7 @@ import multi_site_isotherm;
 import bond_potential;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import mc_moves_cputime;
 
 export struct Component
 {
@@ -105,6 +106,7 @@ export struct Component
     std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
     
     MCMoveProbabilitiesParticles mc_moves_probabilities;
+    MCMoveCpuTime mc_moves_cputime;
 
     PropertyWidom averageRosenbluthWeights;
 

@@ -11,10 +11,10 @@ import <span>;
 import <string>;
 import <optional>;
 import <fstream>;
+import <sstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
-//import <assert.h>;
 
 import system;
 import randomnumbers;
@@ -43,6 +43,7 @@ import property_energy;
 import property_loading;
 import property_enthalpy;
 import mc_moves_probabilities_particles;
+import mc_moves_cputime;
 import property_pressure;
 import transition_matrix;
 
@@ -268,12 +269,12 @@ void MonteCarlo::production()
     //system.sampleMovie.initialize();
 
     system.clearMoveStatistics();
-    system.clearTimingStatistics();
+    system.mc_moves_cputime.clearTimingStatistics();
 
     for(Component &component : system.components)
     {
       component.mc_moves_probabilities.clearMoveStatistics();
-      component.mc_moves_probabilities.clearTimingStatistics();
+      component.mc_moves_cputime.clearTimingStatistics();
       
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
@@ -297,7 +298,6 @@ void MonteCarlo::production()
     }
   }
 
-
   for (size_t i = 0; i != numberOfCycles; i++)
   {
     estimation.setCurrentSample(i);
@@ -314,14 +314,18 @@ void MonteCarlo::production()
         size_t selectedComponent = selectedSystem.randomComponent();
         particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
 
-        // sample lambda here
-        selectedSystem.sampleProperties(estimation.currentBin);
-        selectSecondSystem.sampleProperties(estimation.currentBin);
       }
 
-      for (size_t k = 0; k < systems[j].components.size(); ++k)
+    }
+
+
+    // sample lambda here
+    for (System& system : systems)
+    {
+      system.sampleProperties(estimation.currentBin);
+      for(size_t k = 0; k < system.components.size(); ++k)
       {
-        systems[j].components[k].lambdaGC.sampleOccupancy(systems[j].containsTheFractionalMolecule);
+        system.components[k].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
       }
     }
 
@@ -331,14 +335,14 @@ void MonteCarlo::production()
       std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
       system.currentEnergyStatus = molecularPressure.first;
       system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-      std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-      system.cpuTime_Pressure += (time2 - time1);
 
       // add the sample energy to the averages
       if (i % 10 == 0 || i % printEvery == 0)
       {
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
+      std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+      system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
 
       
       //system.sampleProperties(estimation.currentBin);
@@ -370,6 +374,12 @@ void MonteCarlo::production()
 
 void MonteCarlo::output()
 {
+  MCMoveCpuTime total;
+  for(const System &system: systems)
+  {
+    total += system.mc_moves_cputime;
+  }
+
   for (System& system : systems)
   {
     std::ostream stream(streams[system.systemId].rdbuf());
@@ -392,9 +402,21 @@ void MonteCarlo::output()
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
-    system.writeCPUTimeStatistics(stream);
+
+    for(const Component &component : system.components)
+    {
+      std::print(stream, component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+    }
+    std::print(stream, system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+
+    std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
+    std::print(stream, "===============================================================================\n\n");
+
     std::chrono::duration<double> totalSimulationTime = (t2 - t1);
-    std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
+    std::print(stream, total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
+
+    std::print(stream, "\n\n");
+    //std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
     std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
     std::print(stream, system.averagePressure.writeAveragesStatistics());
@@ -402,6 +424,7 @@ void MonteCarlo::output()
     std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }
+
 void MonteCarlo::cleanup()
 {
   //for (System& system : systems)

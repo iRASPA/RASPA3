@@ -49,12 +49,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
+  system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionMove_CBMC_NonEwald += (t2 - t1);
 
   
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.constructed += 1;
@@ -62,7 +63,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_probabilities.cpuTime_SwapInsertionMove_CBMC_Ewald += (u2 - u1);
+  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCEwald += (u2 - u1);
+  system.mc_moves_cputime.swapInsertionMoveCBMCEwald += (u2 - u1);
 
   //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
   //                                     system.computeTailCorrectionVDWOldEnergy();
