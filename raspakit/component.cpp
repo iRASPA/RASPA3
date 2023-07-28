@@ -53,6 +53,7 @@ import move_statistics;
 import bond_potential;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
+import mc_moves_count;
 
 Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
     std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :

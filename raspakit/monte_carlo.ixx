@@ -29,11 +29,11 @@ export struct MonteCarlo
   void equilibrate();
   void production();
   void output();
-  void cleanup();
 
   System& randomSystem();
 
   size_t numberOfCycles;
+  size_t numberOfSteps;
   size_t numberOfInitializationCycles;
   size_t numberOfEquilibrationCycles;
   size_t optimizeMCMovesEvery{ 5000 };

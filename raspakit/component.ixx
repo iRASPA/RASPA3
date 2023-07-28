@@ -29,6 +29,7 @@ import bond_potential;
 import move_statistics;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
+import mc_moves_count;
 
 export struct Component
 {
@@ -107,6 +108,7 @@ export struct Component
     
     MCMoveProbabilitiesParticles mc_moves_probabilities;
     MCMoveCpuTime mc_moves_cputime;
+    MCMoveCount mc_moves_count;
 
     PropertyWidom averageRosenbluthWeights;
 

@@ -47,6 +47,7 @@ import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
 import mc_moves_cputime;
+import mc_moves_count;
 import reaction;
 import reactions;
 import transition_matrix;
@@ -172,6 +173,7 @@ export struct System
 
     MCMoveProbabilitiesSystem mc_moves_probabilities;
     MCMoveCpuTime mc_moves_cputime;
+    MCMoveCount mc_moves_count;
 
     Reactions reactions;
     TransitionMatrix tmmc;
