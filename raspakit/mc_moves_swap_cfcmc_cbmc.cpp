@@ -399,7 +399,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
                                                         system.computeFrameworkMoleculeTailEnergyDifference(trialPositions, molecule);
     std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapLambdaChangeMoveCBCFCMCTail += (w2 - w1);
-    system.mc_moves_cputime.swapLambdaChangeMoveCBCFCMCTail += (w2 - v1);
+    system.mc_moves_cputime.swapLambdaChangeMoveCBCFCMCTail += (w2 - w1);
 
     RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 

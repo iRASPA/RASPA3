@@ -64,10 +64,13 @@ void MCMoveCpuTime::clearTimingStatistics()
   GibbsSwapLambdaMoveCFCMC = std::chrono::duration<double>::zero();
   GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = std::chrono::duration<double>::zero();
   GibbsSwapLambdaInterChangeMoveCFCMCEwald = std::chrono::duration<double>::zero();
+  GibbsSwapLambdaInterChangeMoveCFCMCTail = std::chrono::duration<double>::zero();
   GibbsSwapLambdaChangeMoveCFCMCNonEwald = std::chrono::duration<double>::zero();
   GibbsSwapLambdaChangeMoveCFCMCEwald = std::chrono::duration<double>::zero();
+  GibbsSwapLambdaChangeMoveCFCMCTail = std::chrono::duration<double>::zero();
   GibbsSwapLambdaShuffleMoveCFCMCNonEwald = std::chrono::duration<double>::zero();
   GibbsSwapLambdaShuffleMoveCFCMCEwald = std::chrono::duration<double>::zero();
+  GibbsSwapLambdaShuffleMoveCFCMCTail = std::chrono::duration<double>::zero();
 
   WidomMoveCBMC = std::chrono::duration<double>::zero();
   WidomMoveCBMCNonEwald = std::chrono::duration<double>::zero();
@@ -253,14 +256,17 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     std::print(stream, "    Gibbs-swap CFCMC:            {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count());
     std::print(stream, "        Inter-change Non-Ewald:  {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count());
     std::print(stream, "        Inter-change Ewald:      {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCEwald.count());
+    std::print(stream, "        Inter-change Tail:       {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCTail.count());
     std::print(stream, "        Lambda-change Non-Ewald: {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCNonEwald.count());
     std::print(stream, "        Lambda-change Ewald:     {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCEwald.count());
+    std::print(stream, "        Lambda-change Tail:      {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCTail.count());
     std::print(stream, "        Shuffle Non-Ewald:       {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count());
     std::print(stream, "        Shuffle Ewald:           {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
+    std::print(stream, "        Shuffle Tail:            {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCTail.count());
     std::print(stream, "        Overhead:                {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count()
-                 - GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCEwald.count()
-                 - GibbsSwapLambdaChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaChangeMoveCFCMCEwald.count()
-                 - GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
+                 - GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCEwald.count() -GibbsSwapLambdaInterChangeMoveCFCMCTail.count()
+                 - GibbsSwapLambdaChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaChangeMoveCFCMCEwald.count() - GibbsSwapLambdaChangeMoveCFCMCTail.count()
+                 - GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCTail.count());
   }
 
   if(WidomMoveCBMC > std::chrono::duration<double>::zero())
@@ -425,14 +431,17 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Gibbs-swap CFCMC:            {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count());
     std::print(stream, "    Inter-change Non-Ewald:  {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count());
     std::print(stream, "    Inter-change Ewald:      {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCEwald.count());
+    std::print(stream, "    Inter-change Tail:       {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCTail.count());
     std::print(stream, "    Lambda-change Non-Ewald: {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCNonEwald.count());
     std::print(stream, "    Lambda-change Ewald:     {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCEwald.count());
+    std::print(stream, "    Lambda-change Tail:      {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCTail.count());
     std::print(stream, "    Shuffle Non-Ewald:       {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count());
     std::print(stream, "    Shuffle Ewald:           {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
+    std::print(stream, "    Shuffle Tail:            {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count()
-                 - GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCEwald.count()
-                 - GibbsSwapLambdaChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaChangeMoveCFCMCEwald.count()
-                 - GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
+                 - GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCTail.count()
+                 - GibbsSwapLambdaChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaChangeMoveCFCMCEwald.count() - GibbsSwapLambdaChangeMoveCFCMCTail.count()
+                 - GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCTail.count());
   }
 
   if(volumeMove > std::chrono::duration<double>::zero())
