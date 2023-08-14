@@ -27,7 +27,7 @@ import <thread>;
 import <future>;
 import <deque>;
 import <semaphore>;
-
+import <numbers>;
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> System::computeFrameworkMoleculeEnergyStrainDerivative() noexcept
 {
@@ -39,6 +39,7 @@ import <semaphore>;
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  const double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
 
   std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
@@ -67,6 +68,9 @@ import <semaphore>;
 			dr = posA - posB;
 			dr = simulationBox.applyPeriodicBoundaryConditions(dr);
 			rr = double3::dot(dr, dr);
+
+      energy(compA, compB).VanDerWaalsTailCorrection += EnergyFactor(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
+      energy(compB, compA).VanDerWaalsTailCorrection += EnergyFactor(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
 
 			if (rr < cutOffVDWSquared)
 			{

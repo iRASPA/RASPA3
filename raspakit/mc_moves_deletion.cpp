@@ -62,10 +62,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
     system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
 
-    //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
-    //                                    system.computeTailCorrectionVDWOldEnergy();
-    RunningEnergy tailEnergyDifference;
+
+    std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
+    [[maybe_unused]] RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference({}, molecule) +
+                                                          system.computeFrameworkMoleculeTailEnergyDifference({}, molecule);
+    std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
+    system.mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
+
     double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+    //double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total()));
 
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /

@@ -66,9 +66,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCEwald += (u2 - u1);
   system.mc_moves_cputime.swapInsertionMoveCBMCEwald += (u2 - u1);
 
-  //RunningEnergy tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
-  //                                     system.computeTailCorrectionVDWOldEnergy();
-  RunningEnergy tailEnergyDifference;
+  std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
+  [[maybe_unused]] RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
+                                                        system.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
+  std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCTail += (v2 - v1);
+  system.mc_moves_cputime.swapInsertionMoveCBMCTail += (v2 - v1);
+
   double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);

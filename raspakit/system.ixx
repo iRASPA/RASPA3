@@ -120,12 +120,17 @@ export struct System
     std::vector<size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};                       // # fractional molecules for CFCMC-Gibbs
     std::vector<std::vector<size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};       // # reactant fractional molecules for all reactions using CFCMC
 
+    /// The fractional molecule for grand-canonical is stored first
     inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0;}
-    inline size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]
-; }
-   
-    inline size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
-                                                                                                       numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]; }
+
+    /// The fractional molecule for grand-canonical pair-insertion is stored second
+    inline size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) 
+    { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]; }
+  
+    /// The fractional molecule for Gibbs is stored third 
+    inline size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent) 
+    { return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
+             numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]; }
    
 
     std::vector<double> idealGasEnergiesPerComponent{};
@@ -211,18 +216,23 @@ export struct System
     ForceFactor computeFrameworkMoleculeGradient() noexcept;
 
     void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
+    void computeFrameworkMoleculeTailEnergy(std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
+    void computeInterMolecularTailEnergy(std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
     void computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept;
     void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
     void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
     void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
     ForceFactor computeEwaldFourierGradient();
 
-    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
-    [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
 
+    [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
+    [[nodiscard]] RunningEnergy computeFrameworkMoleculeTailEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
+    [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
+    [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
 
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
+
     template <ThreadPool::ThreadingType T>
     [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
 

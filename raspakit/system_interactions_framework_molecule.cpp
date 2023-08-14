@@ -21,6 +21,7 @@ import threading;
 import energy_factor;
 import force_factor;
 
+import <numbers>;
 import <optional>;
 import <iostream>;
 import <algorithm>;
@@ -235,6 +236,69 @@ ForceFactor System::computeFrameworkMoleculeGradient() noexcept
   return energySum;
 }
 
+void System::computeFrameworkMoleculeTailEnergy(std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept
+{
+  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  for (std::span<const Atom>::iterator it1 = frameworkAtomPositions.begin(); it1 != frameworkAtomPositions.end(); ++it1)
+  {
+    size_t typeA = static_cast<size_t>(it1->type);
+    bool groupIdA = static_cast<bool>(it1->groupId);
+    double scalingVDWA = it1->scalingVDW;
+
+    for (std::span<const Atom>::iterator it2 = moleculeAtomPositions.begin(); it2 != moleculeAtomPositions.end(); ++it2)
+    {
+      size_t typeB = static_cast<size_t>(it2->type);
+      bool groupIdB = static_cast<bool>(it2->groupId);
+      double scalingVDWB = it2->scalingVDW;
+
+      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
+      energyStatus.tail += scalingVDWA * scalingVDWB * temp;
+      energyStatus.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0)
+                                 + (groupIdB ? scalingVDWA * temp : 0.0);
+    }
+  }
+}
+
+[[nodiscard]] RunningEnergy System::computeFrameworkMoleculeTailEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept
+{
+  RunningEnergy energySum{};
+
+  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  std::span<const Atom> frameworkAtoms = spanOfFrameworkAtoms();
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    size_t typeA = static_cast<size_t>(it1->type);
+    bool groupIdA = static_cast<bool>(it1->groupId);
+    double scalingVDWA = it1->scalingVDW;
+
+    for (const Atom& atom : newatoms)
+    {
+      size_t typeB = static_cast<size_t>(atom.type);
+      bool groupIdB = static_cast<bool>(atom.groupId);
+      double scalingVDWB = atom.scalingVDW;
+
+      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
+      energySum.tail += scalingVDWA * scalingVDWB * temp;
+      energySum.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0)
+                              + (groupIdB ? scalingVDWA * temp : 0.0);
+    }
+
+    for (const Atom& atom : oldatoms)
+    {
+      size_t typeB = static_cast<size_t>(atom.type);
+      bool groupIdB = static_cast<bool>(atom.groupId);
+      double scalingVDWB = atom.scalingVDW;
+
+      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
+      energySum.tail -= scalingVDWA * scalingVDWB * temp;
+      energySum.dudlambdaVDW -= (groupIdA ? scalingVDWB * temp : 0.0)
+                              + (groupIdB ? scalingVDWA * temp : 0.0);
+    }
+  }
+
+  return energySum;
+}
 
 // Routines for computing the interaction of a molecule with the framework.
 // Used in computing the external energies in CBMC and CF/CBMC.

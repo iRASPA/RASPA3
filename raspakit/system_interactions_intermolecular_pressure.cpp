@@ -23,6 +23,7 @@ import <vector>;
 import <span>;
 import <cmath>;
 import <optional>;
+import <numbers>;
 
 
 std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDerivative() noexcept
@@ -32,6 +33,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
 
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
 
   EnergyStatus energy(components.size());
   double3x3 strainDerivativeTensor{};
@@ -39,7 +41,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
   std::span<Atom> moleculeAtoms = spanOfMoleculeAtoms();
   if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     posA = it1->position;
     size_t molA = static_cast<size_t>(it1->moleculeId);
@@ -49,18 +51,23 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
+    energy(compA, compA).VanDerWaalsTailCorrection += EnergyFactor(preFactor * scalingVDWA * scalingVDWA * forceField(typeA, typeA).tailCorrectionEnergy, 0.0);
+
     for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
       size_t molB = static_cast<size_t>(it2->moleculeId);
       size_t compB = static_cast<size_t>(it2->componentId);
+      size_t typeB = static_cast<size_t>(it2->type);
+      double scalingVDWB = it2->scalingVDW;
+
+      energy(compA, compB).VanDerWaalsTailCorrection += EnergyFactor(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
+      energy(compB, compA).VanDerWaalsTailCorrection += EnergyFactor(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
 
       // skip interactions within the same molecule
       if (!((compA == compB) && (molA == molB)))
       {
         posB = it2->position;
-        size_t typeB = static_cast<size_t>(it2->type);
         bool groupIdB = static_cast<bool>(it2->groupId);
-        double scalingVDWB = it2->scalingVDW;
         double scalingCoulombB = it2->scalingCoulomb;
         double chargeB = it2->charge;
         

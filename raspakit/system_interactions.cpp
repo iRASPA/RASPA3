@@ -46,7 +46,8 @@ void System::recomputeTotalEnergies() noexcept
   computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
   computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergies);
 
-  computeTailCorrectionVDWEnergy(runningEnergies);
+  computeFrameworkMoleculeTailEnergy(frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
+  computeInterMolecularTailEnergy(moleculeAtomPositions, runningEnergies);
 
   computeEwaldFourierEnergy(simulationBox, runningEnergies);
 
@@ -57,7 +58,7 @@ void System::recomputeTotalEnergies() noexcept
 
 RunningEnergy System::computeTotalEnergies() noexcept
 {
-  RunningEnergy runningEnergy;
+  RunningEnergy runningEnergy{};
 
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
@@ -65,7 +66,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
   computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
   computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergy);
 
-  computeTailCorrectionVDWEnergy(runningEnergy);
+  computeFrameworkMoleculeTailEnergy(frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
+  computeInterMolecularTailEnergy(moleculeAtomPositions, runningEnergy);
 
   computeEwaldFourierEnergy(simulationBox, runningEnergy);
 

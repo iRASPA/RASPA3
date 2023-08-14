@@ -115,7 +115,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCEwald += (v2 - v1);
     system.mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCEwald += (v2 - v1);
 
-    RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference;
+    RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference(fractionalMolecule, oldFractionalMolecule) +
+                                         system.computeFrameworkMoleculeTailEnergyDifference(fractionalMolecule, oldFractionalMolecule);
+
+    RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
 
     // grow molecule with newLambda
     size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
@@ -145,10 +148,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCEwald += (y2 - y1);
     system.mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCEwald += (y2 - y1);
 
-    //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWAddEnergy(selectedComponent) - 
-    //                                    system.computeTailCorrectionVDWOldEnergy();
-    RunningEnergy tailEnergyDifference;
-    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+    RunningEnergy tailEnergyDifferenceGrow = system.computeInterMolecularTailEnergyDifference(std::span(growData->atom.begin(), growData->atom.end()), {}) +
+                                         system.computeFrameworkMoleculeTailEnergyDifference(std::span(growData->atom.begin(), growData->atom.end()), {});
+
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifferenceGrow.total()));
 
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * system.pressure * system.simulationBox.volume /
@@ -185,7 +188,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[0] += 1;
 
-      return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
+      return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow, double3(0.0, 1.0 - Pacc, Pacc)};
     };
 
     // Restore old lamba
@@ -232,8 +235,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
       system.components[selectedComponent].mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCEwald += (u2 - u1);
       system.mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCEwald += (u2 - u1);
+
+      RunningEnergy tailEnergyDifferenceRetrace = system.computeInterMolecularTailEnergyDifference({}, fractionalMolecule) +
+                                                  system.computeFrameworkMoleculeTailEnergyDifference({}, fractionalMolecule);
       
-      double correctionFactorEwald = std::exp(-system.beta * energyFourierDifference.total());
+      double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifferenceRetrace.total()));
       
       for (Atom &atom : fractionalMolecule) 
       { 
@@ -283,9 +289,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       system.components[selectedComponent].mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCEwald += (y2 - y1);
       system.mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCEwald += (y2 - y1);
       
-      //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
-      //                                    system.computeTailCorrectionVDWOldEnergy();
-      RunningEnergy tailEnergyDifference;
+      RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference(newFractionalMolecule, savedFractionalMolecule) +
+                                           system.computeFrameworkMoleculeTailEnergyDifference(newFractionalMolecule, savedFractionalMolecule);
       RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[1] += 1;
@@ -319,7 +324,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       
         system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[1] += 1;
       
-        return {energyDifference + energyFourierDifference - retraceData.energies, double3(Pacc, 1.0 - Pacc, 0.0)};
+        return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies, double3(Pacc, 1.0 - Pacc, 0.0)};
       };
 
       // Restore the old- and the newly chosen fractional molecule
@@ -389,7 +394,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       system.mc_moves_cputime.swapLambdaChangeMoveCBCFCMCEwald += (v2 - v1);
     }
 
-    RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference;
+    std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
+    [[maybe_unused]] RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference(trialPositions, molecule) +
+                                                        system.computeFrameworkMoleculeTailEnergyDifference(trialPositions, molecule);
+    std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_cputime.swapLambdaChangeMoveCBCFCMCTail += (w2 - w1);
+    system.mc_moves_cputime.swapLambdaChangeMoveCBCFCMCTail += (w2 - v1);
+
+    RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[2] += 1;
 

@@ -27,41 +27,71 @@ import <optional>;
 import <numbers>;
 import <algorithm>;
 
-ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false) :
+ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, bool applyTailCorrections) noexcept(false) :
     data(selfInteractions.size()* selfInteractions.size(), VDWParameters(0.0, 0.0)),
-    tailCorrections(selfInteractions.size()* selfInteractions.size(), tailCorrecions),
     shiftPotentials(selfInteractions.size()* selfInteractions.size(), shifted),
+    tailCorrections(selfInteractions.size()* selfInteractions.size(), applyTailCorrections),
     cutOffVDW(cutOff), 
     numberOfPseudoAtoms(pseudoAtoms.size()), 
     pseudoAtoms(pseudoAtoms)
 {
-    for (size_t i = 0; i < selfInteractions.size(); ++i)
-    {
-        data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
-    }
+  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  {
+    data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
+  }
 
-    for (size_t i = 0; i < selfInteractions.size(); ++i)
+  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  {
+    for (size_t j = i + 1; j < selfInteractions.size(); ++j)
     {
-        for (size_t j = i + 1; j < selfInteractions.size(); ++j)
+      double mix0 = std::sqrt(selfInteractions[i].parameters.x * selfInteractions[j].parameters.x);
+      double mix1 = 0.5 * (selfInteractions[i].parameters.y + selfInteractions[j].parameters.y);
+
+      data[i + numberOfPseudoAtoms * j] = VDWParameters(mix0, mix1);
+      data[j + numberOfPseudoAtoms * i] = VDWParameters(mix0, mix1);
+    }
+  }
+
+  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  {
+    for (size_t j = 0; j < selfInteractions.size(); ++j)
+    {
+      if(shiftPotentials[i * numberOfPseudoAtoms + j])
+      {
+        data[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cutOffVDW);
+      }
+    }
+  }
+}
+
+void ForceField::preComputeTailCorrection()
+{
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    {
+      data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
+
+      if(tailCorrections[i * numberOfPseudoAtoms + j])
+      {
+        switch (data[i * numberOfPseudoAtoms + j].type)
         {
-            double mix0 = std::sqrt(selfInteractions[i].parameters.x * selfInteractions[j].parameters.x);
-            double mix1 = 0.5 * (selfInteractions[i].parameters.y + selfInteractions[j].parameters.y);
-
-            data[i + numberOfPseudoAtoms * j] = VDWParameters(mix0, mix1);
-            data[j + numberOfPseudoAtoms * i] = VDWParameters(mix0, mix1);
-        }
-    }
-
-    for (size_t i = 0; i < selfInteractions.size(); ++i)
-    {
-        for (size_t j = 0; j < selfInteractions.size(); ++j)
+        case VDWParameters::Type::LennardJones:
         {
-          if(shiftPotentials[i * numberOfPseudoAtoms + j])
-          {
-            data[i * numberOfPseudoAtoms + j].computeShiftAtCutOff(cutOffVDW);
-          }
+          double arg1 = data[i * numberOfPseudoAtoms + j].parameters.x;
+          double arg2 = data[i * numberOfPseudoAtoms + j].parameters.y;
+          double term3 = (arg2/cutOffVDW) * (arg2/cutOffVDW) * (arg2/cutOffVDW);
+          double term6 = term3 * term3;
+          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+          break;
         }
+        default:
+          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
+          break;
+        }
+      }
     }
+  }
 }
 
 
@@ -71,6 +101,7 @@ ForceField::ForceField(std::string pseudoAtomsFileName,
   std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingFileName << std::endl;
   ReadPseudoAtoms(pseudoAtomsFileName);
   ReadForceFieldMixing(forceFieldMixingFileName);
+  preComputeTailCorrection();
 }
 
 void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false)

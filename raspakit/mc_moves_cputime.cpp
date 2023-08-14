@@ -33,10 +33,12 @@ void MCMoveCpuTime::clearTimingStatistics()
   swapInsertionMoveCBMC = std::chrono::duration<double>::zero();
   swapInsertionMoveCBMCNonEwald = std::chrono::duration<double>::zero();
   swapInsertionMoveCBMCEwald = std::chrono::duration<double>::zero();
+  swapInsertionMoveCBMCTail = std::chrono::duration<double>::zero();
 
   swapDeletionMoveCBMC = std::chrono::duration<double>::zero();
   swapDeletionMoveCBMCNonEwald = std::chrono::duration<double>::zero();
   swapDeletionMoveCBMCEwald = std::chrono::duration<double>::zero();
+  swapDeletionMoveCBMCTail = std::chrono::duration<double>::zero();
 
   swapLambdaMoveCFCMC = std::chrono::duration<double>::zero();
   swapLambdaInsertionMoveCFCMCNonEwald = std::chrono::duration<double>::zero();
@@ -51,6 +53,7 @@ void MCMoveCpuTime::clearTimingStatistics()
   swapLambdaInsertionMoveCBCFCMCEwald = std::chrono::duration<double>::zero();
   swapLambdaChangeMoveCBCFCMCNonEwald = std::chrono::duration<double>::zero();
   swapLambdaChangeMoveCBCFCMCEwald = std::chrono::duration<double>::zero();
+  swapLambdaChangeMoveCBCFCMCTail = std::chrono::duration<double>::zero();
   swapLambdaDeletionMoveCBCFCMCNonEwald = std::chrono::duration<double>::zero();
   swapLambdaDeletionMoveCBCFCMCEwald = std::chrono::duration<double>::zero();
 
@@ -183,8 +186,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     std::print(stream, "    Insertion CBMC:              {:14f} [s]\n", swapInsertionMoveCBMC.count());
     std::print(stream, "        Non-Ewald:               {:14f} [s]\n", swapInsertionMoveCBMCNonEwald.count());
     std::print(stream, "        Ewald:                   {:14f} [s]\n", swapInsertionMoveCBMCEwald.count());
+    std::print(stream, "        Tail:                    {:14f} [s]\n", swapInsertionMoveCBMCTail.count());
     std::print(stream, "        Overhead:                {:14f} [s]\n",
-                 swapInsertionMoveCBMC.count() - swapInsertionMoveCBMCNonEwald.count() - swapInsertionMoveCBMCEwald.count());
+                 swapInsertionMoveCBMC.count() - swapInsertionMoveCBMCNonEwald.count() - 
+                 swapInsertionMoveCBMCEwald.count() - swapInsertionMoveCBMCTail.count());
   }
 
   if(swapDeletionMoveCBMC > std::chrono::duration<double>::zero())
@@ -193,8 +198,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     std::print(stream, "    Deletion CBMC:               {:14f} [s]\n", swapDeletionMoveCBMC.count());
     std::print(stream, "        Non-Ewald:               {:14f} [s]\n", swapDeletionMoveCBMCNonEwald.count());
     std::print(stream, "        Ewald:                   {:14f} [s]\n", swapDeletionMoveCBMCEwald.count());
+    std::print(stream, "        Tail:                    {:14f} [s]\n", swapDeletionMoveCBMCTail.count());
     std::print(stream, "        Overhead:                {:14f} [s]\n",
-                 swapDeletionMoveCBMC.count() - swapDeletionMoveCBMCNonEwald.count() - swapDeletionMoveCBMCEwald.count());
+                 swapDeletionMoveCBMC.count() - swapDeletionMoveCBMCNonEwald.count() - 
+                 swapDeletionMoveCBMCEwald.count() - swapDeletionMoveCBMCTail.count());
   }
 
   if(swapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
@@ -221,11 +228,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     std::print(stream, "        Insertion Ewald:         {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCEwald.count());
     std::print(stream, "        Lambda-change Non-Ewald: {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCNonEwald.count());
     std::print(stream, "        Lambda-change Ewald:     {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCEwald.count());
+    std::print(stream, "        Lambda-change Tail:      {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCTail.count());
     std::print(stream, "        Deletion Non-Ewald:      {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCNonEwald.count());
     std::print(stream, "        Deletion Ewald:          {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCEwald.count());
     std::print(stream, "        Overhead:                {:14f} [s]\n", swapLambdaMoveCBCFCMC.count()
                  - swapLambdaInsertionMoveCBCFCMCNonEwald.count() - swapLambdaInsertionMoveCBCFCMCEwald.count()
-                 - swapLambdaChangeMoveCBCFCMCNonEwald.count() - swapLambdaChangeMoveCBCFCMCEwald.count()
+                 - swapLambdaChangeMoveCBCFCMCNonEwald.count() - swapLambdaChangeMoveCBCFCMCEwald.count() - swapLambdaChangeMoveCBCFCMCTail.count()
                  - swapLambdaDeletionMoveCBCFCMCNonEwald.count() - swapLambdaDeletionMoveCBCFCMCEwald.count());
   }
 
@@ -350,8 +358,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Insertion CBMC:              {:14f} [s]\n", swapInsertionMoveCBMC.count());
     std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapInsertionMoveCBMCNonEwald.count());
     std::print(stream, "    Ewald:                   {:14f} [s]\n", swapInsertionMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                    {:14f} [s]\n", swapInsertionMoveCBMCTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
-                 swapInsertionMoveCBMC.count() - swapInsertionMoveCBMCNonEwald.count() - swapInsertionMoveCBMCEwald.count());
+                 swapInsertionMoveCBMC.count() - swapInsertionMoveCBMCNonEwald.count() - 
+                 swapInsertionMoveCBMCEwald.count() - swapInsertionMoveCBMCTail.count());
   }
 
   if(swapDeletionMoveCBMC > std::chrono::duration<double>::zero())
@@ -360,8 +370,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Deletion CBMC:               {:14f} [s]\n", swapDeletionMoveCBMC.count());
     std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapDeletionMoveCBMCNonEwald.count());
     std::print(stream, "    Ewald:                   {:14f} [s]\n", swapDeletionMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                    {:14f} [s]\n", swapDeletionMoveCBMCTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
-                 swapDeletionMoveCBMC.count() - swapDeletionMoveCBMCNonEwald.count() - swapDeletionMoveCBMCEwald.count());
+                 swapDeletionMoveCBMC.count() - swapDeletionMoveCBMCNonEwald.count() - 
+                 swapDeletionMoveCBMCEwald.count() - swapDeletionMoveCBMCTail.count());
   }
 
   if(swapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
@@ -388,11 +400,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "    Insertion Ewald:         {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCEwald.count());
     std::print(stream, "    Lambda-change Non-Ewald: {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCNonEwald.count());
     std::print(stream, "    Lambda-change Ewald:     {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCEwald.count());
+    std::print(stream, "    Lambda-change Tail:      {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCTail.count());
     std::print(stream, "    Deletion Non-Ewald:      {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCNonEwald.count());
     std::print(stream, "    Deletion Ewald:          {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCEwald.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n", swapLambdaMoveCBCFCMC.count()
                  - swapLambdaInsertionMoveCBCFCMCNonEwald.count() - swapLambdaInsertionMoveCBCFCMCEwald.count()
-                 - swapLambdaChangeMoveCBCFCMCNonEwald.count() - swapLambdaChangeMoveCBCFCMCEwald.count()
+                 - swapLambdaChangeMoveCBCFCMCNonEwald.count() - swapLambdaChangeMoveCBCFCMCEwald.count() - swapLambdaChangeMoveCBCFCMCTail.count()
                  - swapLambdaDeletionMoveCBCFCMCNonEwald.count() - swapLambdaDeletionMoveCBCFCMCEwald.count());
   }
 

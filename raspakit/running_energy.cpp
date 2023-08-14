@@ -15,7 +15,7 @@ void RunningEnergy::print(std::ostream &stream, const std::string &label)
   double conv = Units::EnergyToKelvin;
   std::print(stream, "Energy status {}\n", label);
   std::print(stream, "===============================================================================\n\n");
-  std::print(stream, "Total potential energy :     {: .6e}\n", conv * total());
+  std::print(stream, "Total potential energy:      {: .6e}\n", conv * total());
   std::print(stream, "    framework-molecule VDW:  {: .6e}\n", conv * frameworkMoleculeVDW);
   std::print(stream, "    framework-molecule Real: {: .6e}\n", conv * frameworkMoleculeCharge);
   std::print(stream, "    molecule-molecule VDW:   {: .6e}\n", conv * moleculeMoleculeVDW);

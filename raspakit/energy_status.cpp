@@ -21,7 +21,7 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
     double conv = Units::EnergyToKelvin;
     std::print(stream, "Energy status {}\n", label);
     std::print(stream, "===============================================================================\n\n");
-    std::print(stream, "Total potential energy : {: .6e}\n", conv * totalEnergy.energy);
+    std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
     std::print(stream, "    Van der Waals:        {: .6e}\n", conv * interEnergy.VanDerWaals.energy);
     std::print(stream, "    Van der Waals (Tail): {: .6e}\n", conv * interEnergy.VanDerWaalsTailCorrection.energy);
     std::print(stream, "    Coulombic Real:       {: .6e}\n", conv * interEnergy.CoulombicReal.energy);

@@ -25,11 +25,12 @@ export struct VDWParameters
 
   double4 parameters;      // for LJ: epsilon, sigma, for Buckingham: 3 parameters
   double shift;
+  double tailCorrectionEnergy;
   Type type{ 0 };
 
   VDWParameters(): parameters(double4(158.5/ 1.2027242847,3.72,0.0,0.0)), shift(-0.56217796) {}
 
-  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), type(Type::LennardJones)
+  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), tailCorrectionEnergy(0.0), type(Type::LennardJones)
   {
   }
 
@@ -72,14 +73,14 @@ export struct ForceField
   
   // 2D-vector, size numberOfPseudoAtoms squared
   std::vector<VDWParameters> data{};
-  std::vector<bool> tailCorrections{};
   std::vector<bool> shiftPotentials{};
+  std::vector<bool> tailCorrections{};
   double cutOffVDW{ 12.0 };
   double cutOffCoulomb{ 12.0 };
   double dualCutOff{ 6.0 };
   
   size_t numberOfPseudoAtoms{ 0 };
-  std::vector< PseudoAtom> pseudoAtoms{};
+  std::vector<PseudoAtom> pseudoAtoms{};
 
   ChargeMethod chargeMethod { ChargeMethod::Ewald};
 
@@ -102,6 +103,8 @@ export struct ForceField
 
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
+
+  void preComputeTailCorrection();
 
   void ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false);
   void ReadForceFieldMixing(std::string pseudoAtomsFileName) noexcept(false);
