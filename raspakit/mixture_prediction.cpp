@@ -16,8 +16,9 @@ import <algorithm>;
 import <numeric>;
 import <ostream>;
 import <filesystem>;
+import <print>;
 
-import print;
+import stringutils;
 import atom;
 import component;
 import isotherm;
@@ -1126,11 +1127,11 @@ void MixturePrediction::run(std::ostream &stream)
   
   // create the output files
   std::filesystem::create_directory("MixturePrediction");
-  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
+  std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
   std::vector<std::ofstream> streams;
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::string fileName = std::print("MixturePrediction/System_{}/component_{}_{}.data", system.systemId, std::to_string(i),components[i].name);
+    std::string fileName = std::format("MixturePrediction/System_{}/component_{}_{}.data", system.systemId, std::to_string(i),components[i].name);
     streams.emplace_back(std::ofstream{ fileName });
   }
 
@@ -1166,8 +1167,8 @@ void MixturePrediction::run(std::ostream &stream)
 void MixturePrediction::createPureComponentsPlotScript()
 {
   std::filesystem::create_directory("MixturePrediction");
-  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
-  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_pure_components", system.systemId));
+  std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::format("MixturePrediction/System_{}/plot_pure_components", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
@@ -1215,8 +1216,8 @@ void MixturePrediction::createPureComponentsPlotScript()
 void MixturePrediction::createMixturePlotScript()
 {
   std::filesystem::create_directory("MixturePrediction");
-  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
-  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_mixture", system.systemId));
+  std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::format("MixturePrediction/System_{}/plot_mixture", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
@@ -1265,8 +1266,8 @@ void MixturePrediction::createMixturePlotScript()
 void MixturePrediction::createMixtureAdsorbedMolFractionPlotScript()
 {
   std::filesystem::create_directory("MixturePrediction");
-  std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
-  std::ofstream stream(std::print("MixturePrediction/System_{}/plot_mixture_mol_fractions", system.systemId));
+  std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
+  std::ofstream stream(std::format("MixturePrediction/System_{}/plot_mixture_mol_fractions", system.systemId));
 
   stream << "set encoding utf8\n";
   stream << "set xlabel 'Total bulk fluid phase fugacity, {/Helvetica-Italic f} / Pa' font \"Helvetica,18\"\n";
@@ -1316,8 +1317,8 @@ void MixturePrediction::createPlotScript()
 {
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     std::filesystem::create_directory("MixturePrediction");
-    std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::print("MixturePrediction/System_{}/make_graphs.bat", system.systemId));
+    std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::format("MixturePrediction/System_{}/make_graphs.bat", system.systemId));
     stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     stream_graphs << "gnuplot.exe plot_pure_components\n";
     stream_graphs << "gnuplot.exe plot_mixture\n";
@@ -1326,8 +1327,8 @@ void MixturePrediction::createPlotScript()
     std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #else
     std::filesystem::create_directory("MixturePrediction");
-    std::filesystem::create_directory(std::print("MixturePrediction/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::print("MixturePrediction/System_{}/make_graphs", system.systemId));
+    std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::format("MixturePrediction/System_{}/make_graphs", system.systemId));
     stream_graphs << "#!/bin/sh\n";
     stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
     stream_graphs << "gnuplot plot_pure_components\n";

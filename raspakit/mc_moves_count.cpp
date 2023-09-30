@@ -3,10 +3,11 @@ module mc_moves_count;
 import <chrono>;
 import <string>;
 import <sstream>;
+import <print>;
 
 import double3;
+import stringutils;
 
-import print;
 
 void MCMoveCount::clearCountStatistics()
 {

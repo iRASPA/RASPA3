@@ -26,8 +26,9 @@ import <iostream>;
 import <random>;
 import <chrono>;
 import <sstream>;
+import <print>;
 
-import print;
+import stringutils;
 
 std::string System::writeOutputHeaderHardware() const
 {
@@ -126,32 +127,32 @@ std::string System::writeOutputHeaderHardware() const
     // get hostname and cpu-info for mac osx
 #if defined (__APPLE__)
     size_t len;
-    char cpudata[128], cpumodel[128], hostname[128];
+    char cpudata[128], cpumodel[128], hostname[256];
     char osrelease[128], ostype[128], osversion[128];
 
     len = sizeof(cpudata);
     sysctlbyname("hw.machine", &cpudata, &len, NULL, 0);
-    std::print(stream, "Cpu data:    {}\n", cpudata);
+    std::print(stream, "Cpu data:    {}\n", std::string(cpudata, cpudata + len - 1));
 
     len = sizeof(cpumodel);
     sysctlbyname("hw.model", &cpumodel, &len, NULL, 0);
-    std::print(stream, "Cpu Model:   {}\n", cpumodel);
+    std::print(stream, "Cpu Model:   {}\n", std::string(cpumodel, cpumodel + len - 1));
 
     len = sizeof(hostname);
     sysctlbyname("kern.hostname", &hostname, &len, NULL, 0);
-    std::print(stream, "Host name:  {}s\n", hostname);
+    std::print(stream, "Host name:  {}s\n", std::string(hostname, hostname + len - 1));
 
     len = sizeof(osrelease);
     sysctlbyname("kern.osrelease", &osrelease, &len, NULL, 0);
-    std::print(stream, "OS release:  {}\n", osrelease);
+    std::print(stream, "OS release:  {}\n", std::string(osrelease, osrelease + len - 1));
 
     len = sizeof(ostype);
     sysctlbyname("kern.ostype", &ostype, &len, NULL, 0);
-    std::print(stream, "OS type:     {}\n", ostype);
+    std::print(stream, "OS type:     {}\n", std::string(ostype, ostype + len - 1));
 
     len = sizeof(osversion);
     sysctlbyname("kern.osversion", &osversion, &len, NULL, 0);
-    std::print(stream, "OS version:  {}\n\n\n", osversion);
+    std::print(stream, "OS version:  {}\n\n\n", std::string(osversion, osversion + len - 1));
 #endif
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)

@@ -15,7 +15,9 @@ import <sstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
+import <print>;
 
+import stringutils;
 import system;
 import randomnumbers;
 import mc_moves;
@@ -28,7 +30,6 @@ import enthalpy_of_adsorption;
 import simulationbox;
 import forcefield;
 import sample_movies;
-import print;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;
@@ -96,11 +97,11 @@ void MonteCarlo::initialize()
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
 
-    std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
+    std::string directoryNameString = std::format("Output/System_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
     std::filesystem::create_directories(directoryName);
 
-    std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
+    std::string fileNameString = std::format("Output/System_{}/output_{}_{}.data",
         system.systemId, system.temperature, system.input_pressure);
     streams.emplace_back(fileNameString, std::ios::out );
   }
@@ -171,6 +172,7 @@ void MonteCarlo::initialize()
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, system.writeInitializationStatusReport(i, numberOfInitializationCycles));
+        std::flush(stream);
       }
     }
 
@@ -236,6 +238,7 @@ void MonteCarlo::equilibrate()
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
+        std::flush(stream);
       }
     }
 
@@ -354,6 +357,7 @@ void MonteCarlo::production()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
         std::print(stream, system.writeProductionStatusReport(i, numberOfCycles));
+        std::flush(stream);
       }
     }
 

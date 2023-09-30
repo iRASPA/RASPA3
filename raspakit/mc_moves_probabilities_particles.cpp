@@ -2,12 +2,11 @@ module mc_moves_probabilities_particles;
 
 import <string>;
 import <sstream>;
+import <print>;
 
 import double3;
-
-import print;
-
 import move_statistics;
+import stringutils;
 
 void MCMoveProbabilitiesParticles::clearMoveStatistics()
 {

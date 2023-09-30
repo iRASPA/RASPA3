@@ -25,6 +25,7 @@ export struct MultiSiteIsotherm
   size_t numberOfParameters { 0 };
   std::vector<std::pair<size_t, size_t>> parameterIndices{};
   std::vector<size_t> siteParameterIndex{};
+
   double& parameters(size_t i) 
   { 
     std::pair<size_t, size_t> index = parameterIndices[i];

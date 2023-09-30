@@ -3,14 +3,6 @@ module;
 
 module forcefield;
 
-import skelement;
-import units;
-import int3;
-import double3;
-import double4;
-import print;
-import stringutils;
-
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
@@ -26,6 +18,15 @@ import <string_view>;
 import <optional>;
 import <numbers>;
 import <algorithm>;
+import <print>;
+
+
+import skelement;
+import units;
+import int3;
+import double3;
+import double4;
+import stringutils;
 
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, bool applyTailCorrections) noexcept(false) :
     data(selfInteractions.size()* selfInteractions.size(), VDWParameters(0.0, 0.0)),

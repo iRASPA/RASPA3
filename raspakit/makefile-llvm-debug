@@ -11,7 +11,7 @@ default: libraspakit;
 .SECONDARY:
 
 %.o: %.cpp %.pcm
-	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@
@@ -94,78 +94,78 @@ sample_movies.o: units.o atom.o simulationbox.o forcefield.o
 property_simulationbox.o: averages.o simulationbox.o
 system.o: transition_matrix.o reaction.o reactions.o mc_moves_cputime.o mc_moves_count.o mc_moves_probabilities_system.o move_statistics.o atom.o component.o simulationbox.o forcefield.o units.o loadings.o averages.o sample_movies.o enthalpy_of_adsorption.o energy_status.o energy_status_inter.o energy_status_intra.o cbmc.o property_rdf.o property_simulationbox.o property_energy.o property_pressure.o property_loading.o property_enthalpy.o property_widom.o energy_factor.o force_factor.o running_energy.o isotherm.o multi_site_isotherm.o pressure_range.o bond_potential.o
 system_hardware_info.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_hardware_info.cpp -o system_hardware_info.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_hardware_info.cpp -o system_hardware_info.o
 system_integration.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_integration.cpp -o system_integration.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_integration.cpp -o system_integration.o
 system_interactions_framework_molecule.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_framework_molecule.cpp -o system_interactions_framework_molecule.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_framework_molecule.cpp -o system_interactions_framework_molecule.o
 system_interactions_intermolecular.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_intermolecular.cpp -o system_interactions_intermolecular.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_intermolecular.cpp -o system_interactions_intermolecular.o
 system_interactions_ewald.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_ewald.cpp -o system_interactions_ewald.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_ewald.cpp -o system_interactions_ewald.o
 system_interactions_tailcorrection.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_tailcorrection.cpp -o system_interactions_tailcorrection.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_tailcorrection.cpp -o system_interactions_tailcorrection.o
 system_interactions_framework_molecule_pressure.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_framework_molecule_pressure.cpp -o system_interactions_framework_molecule_pressure.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_framework_molecule_pressure.cpp -o system_interactions_framework_molecule_pressure.o
 system_interactions_intermolecular_pressure.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_intermolecular_pressure.cpp -o system_interactions_intermolecular_pressure.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_intermolecular_pressure.cpp -o system_interactions_intermolecular_pressure.o
 system_interactions_ewald_pressure.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions_ewald_pressure.cpp -o system_interactions_ewald_pressure.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions_ewald_pressure.cpp -o system_interactions_ewald_pressure.o
 system_interactions.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_interactions.cpp -o system_interactions.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_interactions.cpp -o system_interactions.o
 system_cbmc_rigid.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_cbmc_rigid.cpp -o system_cbmc_rigid.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_cbmc_rigid.cpp -o system_cbmc_rigid.o
 system_cbmc_rigid_insertion.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_cbmc_rigid_insertion.cpp -o system_cbmc_rigid_insertion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_cbmc_rigid_insertion.cpp -o system_cbmc_rigid_insertion.o
 system_cbmc_rigid_deletion.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_cbmc_rigid_deletion.cpp -o system_cbmc_rigid_deletion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_cbmc_rigid_deletion.cpp -o system_cbmc_rigid_deletion.o
 system_cbmc_rigid_reinsertion.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_cbmc_rigid_reinsertion.cpp -o system_cbmc_rigid_reinsertion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_cbmc_rigid_reinsertion.cpp -o system_cbmc_rigid_reinsertion.o
 system_compute_fluid_properties.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_compute_fluid_properties.cpp -o system_compute_fluid_properties.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_compute_fluid_properties.cpp -o system_compute_fluid_properties.o
 system_md_loop.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_md_loop.cpp -o system_md_loop.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_md_loop.cpp -o system_md_loop.o
 system_print_movestatistics.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_print_movestatistics.cpp -o system_print_movestatistics.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_print_movestatistics.cpp -o system_print_movestatistics.o
 system_reservoir.o: system.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=system.pcm -c system_reservoir.cpp -o system_reservoir.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=system=system.pcm -c system_reservoir.cpp -o system_reservoir.o
 mc_moves.o: transition_matrix.o system.o cbmc.o component.o atom.o simulationbox.o energy_status.o running_energy.o
 mc_moves_translation.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_translation.cpp -o mc_moves_translation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_translation.cpp -o mc_moves_translation.o
 mc_moves_random_translation.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_random_translation.cpp -o mc_moves_random_translation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_random_translation.cpp -o mc_moves_random_translation.o
 mc_moves_rotation.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_rotation.cpp -o mc_moves_rotation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_rotation.cpp -o mc_moves_rotation.o
 mc_moves_random_rotation.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_random_rotation.cpp -o mc_moves_random_rotation.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_random_rotation.cpp -o mc_moves_random_rotation.o
 mc_moves_reinsertion.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reinsertion.cpp -o mc_moves_reinsertion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_reinsertion.cpp -o mc_moves_reinsertion.o
 mc_moves_insertion.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_insertion.cpp -o mc_moves_insertion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_insertion.cpp -o mc_moves_insertion.o
 mc_moves_deletion.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_deletion.cpp -o mc_moves_deletion.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_deletion.cpp -o mc_moves_deletion.o
 mc_moves_swap_cfcmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_swap_cfcmc.cpp -o mc_moves_swap_cfcmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_swap_cfcmc.cpp -o mc_moves_swap_cfcmc.o
 mc_moves_swap_cfcmc_cbmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_swap_cfcmc_cbmc.cpp -o mc_moves_swap_cfcmc_cbmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_swap_cfcmc_cbmc.cpp -o mc_moves_swap_cfcmc_cbmc.o
 mc_moves_widom.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_widom.cpp -o mc_moves_widom.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_widom.cpp -o mc_moves_widom.o
 mc_moves_volume.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_volume.cpp -o mc_moves_volume.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_volume.cpp -o mc_moves_volume.o
 mc_moves_gibbs_volume.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_volume.cpp -o mc_moves_gibbs_volume.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_gibbs_volume.cpp -o mc_moves_gibbs_volume.o
 mc_moves_gibbs_swap_cbmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_swap_cbmc.cpp -o mc_moves_gibbs_swap_cbmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_gibbs_swap_cbmc.cpp -o mc_moves_gibbs_swap_cbmc.o
 mc_moves_gibbs_swap_cfcmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_gibbs_swap_cfcmc.cpp -o mc_moves_gibbs_swap_cfcmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_gibbs_swap_cfcmc.cpp -o mc_moves_gibbs_swap_cfcmc.o
 mc_moves_identity_change.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_identity_change.cpp -o mc_moves_identity_change.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_identity_change.cpp -o mc_moves_identity_change.o
 mc_moves_reaction.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction.cpp -o mc_moves_reaction.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_reaction.cpp -o mc_moves_reaction.o
 mc_moves_reaction_cfcmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction_cfcmc.cpp -o mc_moves_reaction_cfcmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_reaction_cfcmc.cpp -o mc_moves_reaction_cfcmc.o
 mc_moves_reaction_cfcmc_cbmc.o: mc_moves.o
-	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves.pcm -c mc_moves_reaction_cfcmc_cbmc.cpp -o mc_moves_reaction_cfcmc_cbmc.o
+	$(CXX) $(CXXFLAGS) -fmodule-file=mc_moves=mc_moves.pcm -c mc_moves_reaction_cfcmc_cbmc.cpp -o mc_moves_reaction_cfcmc_cbmc.o
 monte_carlo.o: averages.o system.o property_enthalpy.o mc_moves.o input_reader.o energy_status.o
 monte_carlo_transition_matrix.o: averages.o system.o property_enthalpy.o mc_moves.o input_reader.o energy_status.o
 input_reader.o: transition_matrix.o system.o atom.o component.o simulationbox.o forcefield.o loadings.o enthalpy_of_adsorption.o energy_status.o averages.o

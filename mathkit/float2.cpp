@@ -1,9 +1,8 @@
 module;
 
-#include <sstream>
-
 module float2;
 
+import <sstream>;
 
 std::ostream& operator<<(std::ostream& stream, const float2& vec)
 {

@@ -1,10 +1,8 @@
 module;
 
-#include <sstream>
-
 module double2;
 
-
+import <sstream>;
 
 std::ostream& operator<<(std::ostream& stream, const double2& vec)
 {

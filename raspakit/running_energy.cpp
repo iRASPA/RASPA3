@@ -8,7 +8,9 @@ import <string>;
 import <iostream>;
 import <sstream>;
 import <vector>;
-import print;
+import <print>;
+
+import stringutils;
 
 void RunningEnergy::print(std::ostream &stream, const std::string &label)
 {

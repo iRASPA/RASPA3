@@ -7,9 +7,10 @@ import <iostream>;
 import <sstream>;
 import <cmath>;
 import <vector>;
+import <print>;
 
 import randomnumbers;
-import print;
+import stringutils;
 
 Isotherm::Isotherm(Isotherm::Type t, const std::vector<double> &values, size_t numberOfValues):
     type(t),

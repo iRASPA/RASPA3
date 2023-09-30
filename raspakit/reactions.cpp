@@ -5,8 +5,9 @@ module reactions;
 import <string>;
 import <sstream>;
 import <vector>;
+import <print>;
 
-import print;
+import stringutils;
 import reaction;
 
 std::string Reactions::printStatus() const

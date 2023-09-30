@@ -2,18 +2,19 @@ module;
 
 module property_energy;
 
+import <iostream>;
+import <random>;
+import <sstream>;
+import <print>;
+
+import stringutils;
 import component;
 import energy_factor;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;
 import averages;
-import print;
 import units;
-
-import <iostream>;
-import <random>;
-import <sstream>;
 
 std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& components) const
 {

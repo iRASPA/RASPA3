@@ -13,6 +13,7 @@ import <cmath>;
 import <algorithm>;
 import <ostream>;
 import <sstream>;
+import <type_traits>;
 
 #if defined(__GNUC__)
 #define ALWAYS_INLINE __attribute__((__always_inline__)) 

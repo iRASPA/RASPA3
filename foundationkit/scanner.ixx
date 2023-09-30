@@ -7,6 +7,7 @@ import <sstream>;
 import <algorithm>;
 import <iterator>;
 import <iomanip>;
+
 import characterset;
 
 export class Scanner

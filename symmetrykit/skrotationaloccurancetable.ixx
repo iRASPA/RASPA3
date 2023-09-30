@@ -1,7 +1,7 @@
 export module skrotationaloccurancetable;
 
 import <map>;
-
+import <type_traits>;
 
 export struct SKRotationalOccuranceTable
 {

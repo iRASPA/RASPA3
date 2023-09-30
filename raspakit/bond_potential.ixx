@@ -4,8 +4,9 @@ import <string>;
 import <map>;
 import <vector>;
 import <array>;
+import <print>;
 
-import print;
+import stringutils;
 
 export const size_t maximumNumberOfBondParameters{ 4 };
 
@@ -31,11 +32,11 @@ export struct BondPotential
       switch (bondType)
       {
       case BondType::Fixed:
-          return std::print("FIXED_BOND ({}-{})\n", bondIds.first, bondIds.second);
+          return std::format("FIXED_BOND ({}-{})\n", bondIds.first, bondIds.second);
       case BondType::Rigid:
-          return std::print("RIGID_BOND ({}-{})\n", bondIds.first, bondIds.second);
+          return std::format("RIGID_BOND ({}-{})\n", bondIds.first, bondIds.second);
       case BondType::Harmonic:
-          return std::print("HARMONIC_BOND ({}-{}): p_0/k_B={} [K/A^2], p_1={} [A]\n", bondIds.first, bondIds.second, parameters[0], parameters[1]);
+          return std::format("HARMONIC_BOND ({}-{}): p_0/k_B={} [K/A^2], p_1={} [A]\n", bondIds.first, bondIds.second, parameters[0], parameters[1]);
       default:
           return "Unknown potential";
       }

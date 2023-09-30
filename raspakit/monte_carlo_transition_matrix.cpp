@@ -14,8 +14,10 @@ import <fstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
+import <print>;
 //import <assert.h>;
 
+import stringutils;
 import system;
 import randomnumbers;
 import mc_moves;
@@ -28,7 +30,6 @@ import enthalpy_of_adsorption;
 import simulationbox;
 import forcefield;
 import sample_movies;
-import print;
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;
@@ -97,11 +98,11 @@ void MonteCarloTransitionMatrix::initialize()
 
     system.tmmc.initialize();
 
-    std::string directoryNameString = std::print("Output/System_{}/", system.systemId);
+    std::string directoryNameString = std::format("Output/System_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
     std::filesystem::create_directories(directoryName);
 
-    std::string fileNameString = std::print("Output/System_{}/output_{}_{}.data",
+    std::string fileNameString = std::format("Output/System_{}/output_{}_{}.data",
         system.systemId, system.temperature, system.input_pressure);
     streams.emplace_back(fileNameString, std::ios::out );
   }

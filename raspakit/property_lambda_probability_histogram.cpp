@@ -19,11 +19,12 @@ import <numeric>;
 import <cmath>;
 import <numbers>;
 import <optional>;
+import <print>;
 
 import double3;
 
 import units;
-import print;
+import stringutils;
 import averages;
 
 void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, [[maybe_unused]] double value)

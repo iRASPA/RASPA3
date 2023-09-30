@@ -11,7 +11,7 @@ default: libmathkit;
 .SECONDARY:
 
 %.o: %.cpp %.pcm 
-	$(CXX) $(CXXFLAGS) -fmodule-file=$(word 2,$^) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 %.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile $< -o $@

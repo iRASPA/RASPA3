@@ -4,8 +4,10 @@ module units;
 
 import <string>;
 import <sstream>;
+import <ostream>;
+import <print>;
 
-import print;
+import stringutils;
 
 std::string Units::printStatus()
 {

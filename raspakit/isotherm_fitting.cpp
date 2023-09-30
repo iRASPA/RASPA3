@@ -19,9 +19,10 @@ import <cstring>;
 import <climits>;
 import <unordered_set>;
 import <chrono>;
+import <print>;
 
-import print;
 import randomnumbers;
+import stringutils;
 import special_functions;
 import component;
 import system;
@@ -30,31 +31,6 @@ import isotherm;
 import multi_site_isotherm;
 import system;
 import simulationbox;
-
-inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
-{
-  return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
-        [](int a, int b) {return std::tolower(a) == std::tolower(b); });
-}
-
-inline bool startsWith(const std::string &str, const std::string &prefix) {
-    return str.size() >= prefix.size() && str.substr(0, prefix.size()) == prefix;
-}
-
-inline std::string trim(const std::string& s)
-{
-  auto start = s.begin();
-  while (start != s.end() && std::isspace(*start)) {
-      start++;
-  }
-
-  auto end = s.end();
-  do {
-      end--;
-  } while (std::distance(start, end) > 0 && std::isspace(*end));
-
-  return std::string(start, end + 1);
-}
 
 IsothermFitting::IsothermFitting(System &system) noexcept:
   system(system),
@@ -83,7 +59,7 @@ std::string IsothermFitting::writeHeader()
 
   for(size_t i = 0; i < system.components.size(); ++i)
   {
-    std::print(stream, std::print("Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters));
+    std::print(stream, std::format("Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters));
     std::print(stream, system.components[i].isotherm.print());
     std::print(stream, "\n");
   }
@@ -918,11 +894,11 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
   std::string componentName = system.components[componentId].name;
   double T = system.temperature;
 
-  std::filesystem::path directoryName = std::print("IsothermFitting/System_{}/", system.systemId);
-  std::filesystem::path plotFileName = std::print("IsothermFitting/System_{}/{}", system.systemId,
+  std::filesystem::path directoryName = std::format("IsothermFitting/System_{}/", system.systemId);
+  std::filesystem::path plotFileName = std::format("IsothermFitting/System_{}/{}", system.systemId,
       "plot_fit_component_" + std::to_string(componentId) + "_" + componentName);
   std::filesystem::create_directories(directoryName);
-  std::filesystem::copy(rawDataFileName, std::print("IsothermFitting/System_{}/{}", system.systemId, rawDataFileName),
+  std::filesystem::copy(rawDataFileName, std::format("IsothermFitting/System_{}/{}", system.systemId, rawDataFileName),
                         std::filesystem::copy_options::update_existing);
 
   std::ofstream stream(plotFileName);
@@ -968,8 +944,8 @@ void IsothermFitting::createPlotScript()
 {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     std::filesystem::create_directory("IsothermFitting");
-    std::filesystem::create_directory(std::print("IsothermFitting/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::print("IsothermFitting/System_{}/make_graphs.bat", system.systemId));
+    std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs.bat", system.systemId));
     stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     for(size_t i = 0; i < system.components.size(); ++i)
     { 
@@ -982,8 +958,8 @@ void IsothermFitting::createPlotScript()
     std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 #else
     std::filesystem::create_directory("IsothermFitting");
-    std::filesystem::create_directory(std::print("IsothermFitting/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::print("IsothermFitting/System_{}/make_graphs", system.systemId));
+    std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
+    std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs", system.systemId));
     stream_graphs << "#!/bin/sh\n";
     stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
     for (size_t i = 0; i < system.components.size(); ++i)

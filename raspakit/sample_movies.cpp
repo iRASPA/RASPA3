@@ -9,14 +9,15 @@ import <fstream>;
 import <streambuf>;
 import <filesystem>;
 import <numbers>;
+import <print>;
 
 import double3;
+import stringutils;
 import atom;
 import simulationbox;
 import forcefield;
 import units;
 import skelement;
-import print;
 
 SampleMovie::SampleMovie(size_t systemId, const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Atom>& atomPositions) :
     systemId(systemId),
@@ -42,7 +43,7 @@ void SampleMovie::initialize()
     if (sample)
     {
         std::filesystem::path cwd = std::filesystem::current_path();
-        std::filesystem::path directoryName = cwd / std::print("Movies/System_{}/", systemId);
+        std::filesystem::path directoryName = cwd / std::format("Movies/System_{}/", systemId);
         //std::filesystem::path fileName = cwd / std::print("Movies/System_{}/movie_all_{}_{}.pdb",
         //    systemId, temperature, pressure * Units::PressureConversionFactor);
         std::filesystem::create_directories(directoryName);

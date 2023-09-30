@@ -2,17 +2,18 @@ module;
 
 module energy_status;
 
+import <string>;
+import <iostream>;
+import <sstream>;
+import <vector>;
+import <print>;
+
+import stringutils;
 import units;
 import component;
 import energy_status_intra;
 import energy_status_inter;
 import energy_factor;
-
-import <string>;
-import <iostream>;
-import <sstream>;
-import <vector>;
-import print;
 
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& components, const std::string &label)
 {

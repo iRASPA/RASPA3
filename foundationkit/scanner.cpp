@@ -11,6 +11,7 @@ import <algorithm>;
 import <iterator>;
 import <iomanip>;
 import <string_view>;
+
 import characterset;
 
 Scanner::Scanner(const std::string &content, CharacterSet charactersToBeSkipped) : _charactersToBeSkipped(charactersToBeSkipped)

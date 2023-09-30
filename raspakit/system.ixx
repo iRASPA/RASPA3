@@ -11,6 +11,7 @@ import <iostream>;
 import <numeric>;
 import <chrono>;
 import <algorithm>;
+import <type_traits>;
 
 import double3;
 import double3x3;

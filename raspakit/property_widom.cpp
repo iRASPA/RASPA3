@@ -13,10 +13,11 @@ import <numeric>;
 import <cmath>;
 import <numbers>;
 import <optional>;
+import <print>;
 
 import units;
-import print;
 import averages;
+import stringutils;
 
 
 std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const

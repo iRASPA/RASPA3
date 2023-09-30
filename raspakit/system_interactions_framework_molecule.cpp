@@ -32,6 +32,7 @@ import <thread>;
 import <future>;
 import <deque>;
 import <semaphore>;
+import <atomic>;
 
 // Used to compute the total framework-molecule energy
 //

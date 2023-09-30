@@ -4,8 +4,9 @@ import <string>;
 import <iostream>;
 import <sstream>;
 import <cmath>;
+import <print>;
 
-import print;
+import stringutils;
 import energy_factor;
 
 export struct EnergyIntra

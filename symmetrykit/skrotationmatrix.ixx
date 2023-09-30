@@ -2,6 +2,8 @@ export module skrotationmatrix;
 
 import <ostream>;
 import <vector>;
+import <type_traits>;
+
 import int3;
 import double3;
 import int3x3;

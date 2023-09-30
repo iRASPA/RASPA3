@@ -15,6 +15,7 @@ import <complex>;
 import <ios>;
 import <optional>;
 import <algorithm>;
+import <print>;
 
 import int3;
 import stringutils;
@@ -26,7 +27,6 @@ import simulationbox;
 import forcefield;
 import double3;
 import units;
-import print;
 import sample_movies;
 import threadpool;
 import isotherm;
@@ -65,7 +65,7 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
       }
       return list;
     }
@@ -79,7 +79,7 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty()) 
       {
-        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
       }
       return list;
     }
@@ -88,7 +88,7 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
 
   if (list.empty()) 
   {
-      throw std::runtime_error( std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+      throw std::runtime_error( std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
   }
   return list;
 }
@@ -112,7 +112,7 @@ int parseBoolean(const std::string& arguments, const std::string& keyword, size_
     if (caseInSensStringCompare(str, "no")) return false;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 template<>
@@ -129,7 +129,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
       }
       return list;
     }
@@ -154,7 +154,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
       {
         if (list.empty()) 
         {
-          throw std::runtime_error(std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+          throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
         }
         return list;
       }
@@ -163,7 +163,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
 
   if (list.empty()) 
   {
-    throw std::runtime_error( std::print("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+    throw std::runtime_error( std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
   }
   return list;
 }
@@ -181,7 +181,7 @@ size_t parseInteger(const std::string& arguments, const std::string& keyword, si
       return value;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 double parseDouble(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -196,7 +196,7 @@ double parseDouble(const std::string& arguments, const std::string& keyword, siz
       return value;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 double3 parseDouble3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -211,7 +211,7 @@ double3 parseDouble3(const std::string& arguments, const std::string& keyword, s
     return value;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -226,7 +226,7 @@ int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t 
     return value;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 std::string parseString(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -241,7 +241,7 @@ std::string parseString(const std::string& arguments, const std::string& keyword
     return value;
   };
 
-  throw std::runtime_error(std::print("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
 }
 
 
@@ -1363,7 +1363,7 @@ InputReader::InputReader()
 
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
-          throw std::runtime_error(std::print("Error [Input]: unrecognized keyword '{}' at line: {}", keyword, lineNumber));
+          throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}", keyword, lineNumber));
       }
 
     }
@@ -1411,7 +1411,7 @@ InputReader::InputReader()
       if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
       {
-        throw std::runtime_error(std::print("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal to twice the number of components {})", 
+        throw std::runtime_error(std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal to twice the number of components {})", 
           reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(), 2 * systems[i].numerOfAdsorbateComponents()));
       }
     
@@ -1431,7 +1431,7 @@ InputReader::InputReader()
     }
     if(numberOfDUDlambda > 1)
     {
-      throw std::runtime_error(std::print("Error [System {}]: multiple thermodynamic integrations present (there can be only one)", i));
+      throw std::runtime_error(std::format("Error [System {}]: multiple thermodynamic integrations present (there can be only one)", i));
     }
   }
 
@@ -1509,7 +1509,7 @@ InputReader::InputReader()
           size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
           if(numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
           {
-            throw std::runtime_error(std::print("Error: Molecules created ({}) need to fit into the TMMC macrostate range ({}-{}).",
+            throw std::runtime_error(std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate range ({}-{}).",
                                      numberOfMolecules, systems[i].tmmc.minMacrostate, systems[i].tmmc.maxMacrostate));
           }
         }
@@ -1523,7 +1523,7 @@ InputReader::InputReader()
 void InputReader::requireExistingSystem(const std::string& keyword, size_t lineNumber)
 {
     if (systems.empty()) {
-        throw std::runtime_error(std::print("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber));
     }
 }
 
@@ -1531,12 +1531,12 @@ void InputReader::requireExistingSystemAndComponent(const std:: string &keyword,
 {
     if (systems.empty()) {
         throw std::runtime_error(
-            std::print("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber)
+            std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber)
             );
     }
     if (systems[0].components.empty()) {
         throw std::runtime_error(
-            std::print("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber)
+            std::format("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber)
             );
     }
 }

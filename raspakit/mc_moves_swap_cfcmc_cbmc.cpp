@@ -2,6 +2,21 @@ module;
 
 module mc_moves;
 
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+import <type_traits>;
+
 import component;
 import atom;
 import double3;
@@ -21,21 +36,6 @@ import running_energy;
 import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
-
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
-
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(System& system, 
          size_t selectedComponent, size_t selectedMolecule,

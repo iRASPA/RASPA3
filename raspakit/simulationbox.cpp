@@ -8,12 +8,13 @@ import <string>;
 import <iostream>;
 import <ostream>;
 import <sstream>;
+import <print>;
 
 import randomnumbers;
 import double3x3;
 import double3;
 import units;
-import print;
+import stringutils;
 
 SimulationBox::SimulationBox(double a, double b, double c, Type type): type(type)
 {

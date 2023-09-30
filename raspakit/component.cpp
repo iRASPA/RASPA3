@@ -22,6 +22,7 @@ import <exception>;
 import <iterator>;
 import <chrono>;
 import <cstddef>;
+import <print>;
 #if defined(_WIN32)
 import <cassert>;
 #endif
@@ -44,7 +45,6 @@ import skspacegroup;
 import forcefield;
 import atom;
 import property_lambda_probability_histogram;
-import print;
 import property_widom;
 import multi_site_isotherm;
 import simulationbox;
@@ -177,7 +177,7 @@ std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNu
         {
             if (list.empty())
             {
-                throw std::runtime_error(std::print("No values could be read at line: {}", lineNumber));
+                throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
             }
             return list;
         }
@@ -191,7 +191,7 @@ std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNu
         {
             if (list.empty())
             {
-                throw std::runtime_error(std::print("No values could be read at line: {}", lineNumber));
+                throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
             }
             return list;
         }
@@ -210,10 +210,10 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
   if (!std::filesystem::exists(moleculePathfile)) moleculePathfile = std::filesystem::path(env_p) / moleculeFileName;
 
-  if (!std::filesystem::exists(moleculePathfile)) throw std::runtime_error(std::print("File '{}' not found", moleculeFileName));
+  if (!std::filesystem::exists(moleculePathfile)) throw std::runtime_error(std::format("File '{}' not found", moleculeFileName));
 
   std::ifstream moleculeFile{ moleculePathfile };
-  if (!moleculeFile) throw std::runtime_error(std::print("[Component] File '{}' exists, but error opening file", moleculeFileName));
+  if (!moleculeFile) throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file", moleculeFileName));
 
   std::string str{};
   //size_t lineNumber{ 0 };
@@ -287,7 +287,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
       
       if (it == forceField.pseudoAtoms.end())
       {
-        throw std::runtime_error(std::print("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
+        throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
       }
       
       size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
@@ -342,7 +342,7 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
   std::filesystem::path frameworkPathfile = std::filesystem::path(frameworkFileName);
   if (!std::filesystem::exists(frameworkPathfile)) frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
 
-  if (!std::filesystem::exists(frameworkPathfile)) throw std::runtime_error(std::print("File '{}' not found", frameworkFileName));
+  if (!std::filesystem::exists(frameworkPathfile)) throw std::runtime_error(std::format("File '{}' not found", frameworkFileName));
 
   std::ifstream t(frameworkPathfile);
   std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
