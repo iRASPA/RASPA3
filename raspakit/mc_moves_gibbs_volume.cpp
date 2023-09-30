@@ -41,7 +41,9 @@ import <iomanip>;
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(System &systemA, System &systemB) const
 {
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.counts += 1;
+  systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.totalCounts += 1;
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.counts += 1;
+  systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.totalCounts += 1;
 
   // determine New box-volumes leaving the total volume constant
   double oldVolumeA = systemA.simulationBox.volume;
@@ -71,6 +73,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4A - t3A);
 
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
+  systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.totalConstructed += 1;
 
 
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
@@ -93,6 +96,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4B - t3B);
 
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
+  systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.totalConstructed += 1;
 
   double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total());
 
@@ -101,12 +105,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
            (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) ))
   {
     systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
+    systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.totalAccepted += 1;
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.begin(), newPositionsA.end(), systemA.atomPositions.begin());
     systemA.acceptEwaldMove();
 
     systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.accepted += 1;
+    systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.totalAccepted += 1;
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.begin(), newPositionsB.end(), systemB.atomPositions.begin());

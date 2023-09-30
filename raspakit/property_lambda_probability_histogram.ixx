@@ -39,6 +39,7 @@ export struct PropertyLambdaProbabilityHistogram
   PropertyLambdaProbabilityHistogram(size_t numberOfBlocks, size_t numberOfBins) :
       numberOfBlocks(numberOfBlocks),
       numberOfBins(numberOfBins),
+      jump_bins(numberOfBins/2),
       currentBin(0),
       delta(1.0 / static_cast<double>(numberOfBins - 1)),
       histogram(numberOfBins),
@@ -53,6 +54,7 @@ export struct PropertyLambdaProbabilityHistogram
   size_t numberOfBlocks;
 
   size_t numberOfBins;
+  size_t jump_bins;
   size_t currentBin;
   double delta;
 
@@ -97,7 +99,12 @@ export struct PropertyLambdaProbabilityHistogram
 
   inline int selectNewBin() const
   {
-    return static_cast<int>(currentBin) + static_cast<int>(5 * 2.0 * (RandomNumber::Uniform() - 0.5));
+    return static_cast<int>(currentBin) + static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (RandomNumber::Uniform() - 0.5));
+  }
+
+  inline int selectNewBin(double scale) const
+  {
+    return static_cast<int>(currentBin) + static_cast<int>(scale * static_cast<double>(numberOfBins) * 2.0 * (RandomNumber::Uniform() - 0.5));
   }
 
   inline void setCurrentBin(size_t index)

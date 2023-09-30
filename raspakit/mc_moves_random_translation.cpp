@@ -38,48 +38,52 @@ import <iomanip>;
 
 std::optional<RunningEnergy> MC_Moves::randomTranslationMove(System & system, size_t selectedComponent, std::span<Atom> molecule)
 {
-    double3 displacement{};
-    double3 maxDisplacement = system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.maxChange;
-    size_t selectedDirection = size_t(3.0 * RandomNumber::Uniform());
-    displacement[selectedDirection] = maxDisplacement[selectedDirection] * 2.0 * (RandomNumber::Uniform() - 0.5);
-    system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.counts[selectedDirection] += 1;
+  double3 displacement{};
+  double3 maxDisplacement = system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.maxChange;
+  size_t selectedDirection = size_t(3.0 * RandomNumber::Uniform());
+  displacement[selectedDirection] = maxDisplacement[selectedDirection] * 2.0 * (RandomNumber::Uniform() - 0.5);
 
-    std::vector<Atom> trialPositions(molecule.size());
-    std::transform(molecule.begin(), molecule.end(), trialPositions.begin(),
-        [&](Atom a) { a.position += displacement; return a; });
+  system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.counts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.totalCounts[selectedDirection] += 1;
 
-    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
-    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
-    system.mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
-    if (!frameworkMolecule.has_value()) return std::nullopt;
+  std::vector<Atom> trialPositions(molecule.size());
+  std::transform(molecule.begin(), molecule.end(), trialPositions.begin(),
+      [&](Atom a) { a.position += displacement; return a; });
 
-    std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
-    std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
-    system.mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
-    if (!interMolecule.has_value()) return std::nullopt;
+  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
+  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
+  system.mc_moves_cputime.randomTranslationMoveNonEwald += (t2 - t1);
+  if (!frameworkMolecule.has_value()) return std::nullopt;
 
-    std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-    RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
-    std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
-    system.mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
+  std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
+  std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
+  std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
+  system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
+  system.mc_moves_cputime.randomTranslationMoveNonEwald += (u2 - u1);
+  if (!interMolecule.has_value()) return std::nullopt;
 
-    RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
+  std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
+  RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+  std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
+  system.components[selectedComponent].mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
+  system.mc_moves_cputime.randomTranslationMoveEwald += (v2 - v1);
 
-    system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.constructed[selectedDirection] += 1;
+  RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
-    if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total()))
-    {
-        system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.accepted[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.constructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.totalConstructed[selectedDirection] += 1;
 
-        system.acceptEwaldMove();
-        std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());
+  if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total()))
+  {
+    system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.accepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.totalAccepted[selectedDirection] += 1;
 
-        return energyDifference;
-    };
-    return std::nullopt;
+    system.acceptEwaldMove();
+    std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());
+
+    return energyDifference;
+  };
+  return std::nullopt;
 }

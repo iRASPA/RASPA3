@@ -52,15 +52,15 @@ export struct MCMoveProbabilitiesParticles
   MoveStatistics<double> statistics_IdentityChangeMove_CBMC{};
   MoveStatistics<double> statistics_SwapInsertionMove_CBMC{};
   MoveStatistics<double> statistics_SwapDeletionMove_CBMC{};
-  MoveStatistics<double3> statistics_SwapMove_CFCMC{};
-  MoveStatistics<double3> statistics_SwapMove_CFCMC_CBMC{};
+  MoveStatistics<double3> statistics_SwapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };
+  MoveStatistics<double3> statistics_SwapMove_CFCMC_CBMC{ .maxChange = double3(0.0,0.0,0.5) };
   MoveStatistics<double3> statistics_WidomMove_CBMC{};
   MoveStatistics<double3> statistics_WidomMove_CFCMC{};
   MoveStatistics<double3> statistics_WidomMove_CFCMC_CBMC{};
 
   MoveStatistics<double> statistics_GibbsSwapMove_CBMC{};
-  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{};
-  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{};
+  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };
+  MoveStatistics<double3> statistics_GibbsSwapMove_CFCMC_CBMC{ .maxChange = double3(0.0,0.0,0.5)};
 
   void clearMoveStatistics();
   void optimizeMCMoves();

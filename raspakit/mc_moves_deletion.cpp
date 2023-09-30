@@ -40,10 +40,12 @@ import transition_matrix;
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalCounts += 1;
   
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalConstructed += 1;
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
@@ -93,6 +95,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
     if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
     {
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalAccepted += 1;
 
       system.acceptEwaldMove();
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);

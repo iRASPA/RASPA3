@@ -42,6 +42,7 @@ import <iomanip>;
 std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &system) const
 {
   system.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
+  system.mc_moves_probabilities.statistics_VolumeMove.totalCounts += 1;
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(), 
@@ -67,11 +68,13 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
 
 
   system.mc_moves_probabilities.statistics_VolumeMove.constructed += 1;
+  system.mc_moves_probabilities.statistics_VolumeMove.totalConstructed += 1;
 
   if(RandomNumber::Uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
         - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.beta))
   {
     system.mc_moves_probabilities.statistics_VolumeMove.accepted += 1;
+    system.mc_moves_probabilities.statistics_VolumeMove.totalAccepted += 1;
 
     system.simulationBox = newBox;
     std::copy(newPositions.begin(), newPositions.end(), system.atomPositions.begin());

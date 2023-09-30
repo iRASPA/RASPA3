@@ -46,7 +46,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   size_t oldBin = lambdaA.currentBin;
   double deltaLambda = lambdaA.delta;
   double oldLambda = systemA.components[selectedComponent].lambdaGC.lambdaValue();
-  std::make_signed_t<std::size_t> selectedNewBin = lambdaA.selectNewBin();
+
+  double maxChange = systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.maxChange[2];
+  std::make_signed_t<std::size_t> selectedNewBin = lambdaA.selectNewBin(maxChange);
 
   assert(systemA.containsTheFractionalMolecule == true);
   assert(systemB.containsTheFractionalMolecule == false);
@@ -81,6 +83,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
      std::vector<Atom> oldFractionalMoleculeB2(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
 
      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[0] += 1;
+     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[0] += 1;
 
 
      // System A: Changing the fractional molecule into a whole molecule, keeping its position fixed
@@ -310,10 +313,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
      double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) / (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
 
      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[0] += 1;
+     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
 
      if (RandomNumber::Uniform() < preFactor * std::exp(-systemA.beta * (energyDifferenceA.total() + energyDifferenceB.total()) + biasTerm))
      {
        systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[0] += 1;
+       systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
        
        // restore
        std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
@@ -369,6 +374,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // Move fractional molecule to the other box (from A to a random position in B)
 
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[1] += 1;
+    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[1] += 1;
 
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -482,6 +488,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() + EwaldEnergyDifferenceB + tailEnergyDifferenceB;
 
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[1] += 1;
+    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[1] += 1;
 
     double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
 
@@ -490,6 +497,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     if (RandomNumber::Uniform() < preFactor * exp(-systemA.beta * (energyDifferenceA.total() + energyDifferenceB.total()) + biasTerm))
     {
       systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[1] += 1;
+      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[1] += 1;
 
       systemA.acceptEwaldMove();
       systemB.acceptEwaldMove();
@@ -517,6 +525,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     
     
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[2] += 1;
+    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[2] += 1;
     
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
@@ -558,13 +567,16 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
     
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[2] += 1;
+    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[2] += 1;
     
     
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
     if (RandomNumber::Uniform() < std::exp(-systemA.beta * energyDifference.total() + biasTerm))
     {
       systemA.acceptEwaldMove();
+
       systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[2] += 1;
+      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[2] += 1;
     
       std::copy(trialPositions.begin(), trialPositions.end(), fractionalMoleculeA.begin());
     

@@ -30,8 +30,11 @@ void MCMoveProbabilitiesParticles::clearMoveStatistics()
 }
 void MCMoveProbabilitiesParticles::optimizeMCMoves()
 {
-  //statistics_TranslationMove.optimizeAcceptance();
-  //statistics_RotationMove.optimizeAcceptance();
+  statistics_TranslationMove.optimizeAcceptance(0.01, 1.5);
+  statistics_RotationMove.optimizeAcceptance(0.01, 1.5);
+
+  statistics_SwapMove_CFCMC_CBMC.optimizeAcceptance(0.0, 1.0);
+  statistics_GibbsSwapMove_CFCMC.optimizeAcceptance(0.0, 1.0);
 }
 
 void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
@@ -113,10 +116,10 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
 std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
 {
   std::ostringstream stream;
-  std::print(stream, "    {} total:        {:10}\n", name, move.counts);
-  std::print(stream, "    {} constructed:  {:10}\n", name, move.constructed);
-  std::print(stream, "    {} accepted:     {:10}\n", name, move.accepted);
-  std::print(stream, "    {} fraction:     {:10f}\n", name, move.accepted / std::max(1.0, double(move.counts)));
+  std::print(stream, "    {} total:        {:10}\n", name, move.totalCounts);
+  std::print(stream, "    {} constructed:  {:10}\n", name, move.totalConstructed);
+  std::print(stream, "    {} accepted:     {:10}\n", name, move.totalAccepted);
+  std::print(stream, "    {} fraction:     {:10f}\n", name, move.totalAccepted / std::max(1.0, double(move.totalCounts)));
   std::print(stream, "    {} max-change:   {:10f}\n\n", name, move.maxChange);
   return stream.str();
 }
@@ -124,11 +127,11 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
 std::string formatStatistics(const std::string name, const MoveStatistics<double3>& move)
 {
   std::ostringstream stream;
-  std::print(stream, "    {} total:        {:10} {:10} {:10}\n", name, move.counts.x, move.counts.y, move.counts.z);
-  std::print(stream, "    {} constructed:  {:10} {:10} {:10}\n", name, move.constructed.x, move.constructed.y, move.constructed.z);
-  std::print(stream, "    {} accepted:     {:10} {:10} {:10}\n", name, move.accepted.x, move.accepted.y, move.accepted.z);
-  std::print(stream, "    {} fraction:     {:10f} {:10f} {:10f}\n", name, move.accepted.x / std::max(1.0, double(move.counts.x)),
-    move.accepted.y / std::max(1.0, double(move.counts.y)), move.accepted.z / std::max(1.0, double(move.counts.z)));
+  std::print(stream, "    {} total:        {:10} {:10} {:10}\n", name, move.totalCounts.x, move.totalCounts.y, move.totalCounts.z);
+  std::print(stream, "    {} constructed:  {:10} {:10} {:10}\n", name, move.totalConstructed.x, move.totalConstructed.y, move.totalConstructed.z);
+  std::print(stream, "    {} accepted:     {:10} {:10} {:10}\n", name, move.totalAccepted.x, move.totalAccepted.y, move.totalAccepted.z);
+  std::print(stream, "    {} fraction:     {:10f} {:10f} {:10f}\n", name, move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
+    move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)), move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z)));
   std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
   return stream.str();
 }

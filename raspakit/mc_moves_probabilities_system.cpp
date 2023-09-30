@@ -18,6 +18,6 @@ void MCMoveProbabilitiesSystem::clear()
 
 void MCMoveProbabilitiesSystem::optimizeAcceptance()
 {
-  statistics_VolumeMove.optimizeAcceptance();
-  statistics_GibbsVolumeMove.optimizeAcceptance();
+  statistics_VolumeMove.optimizeAcceptance(0.01, 1.5);
+  statistics_GibbsVolumeMove.optimizeAcceptance(0.01, 1.5);
 }

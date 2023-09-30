@@ -42,6 +42,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.totalCounts += 1;
 
   double cutOffVDW = system.forceField.cutOffVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
@@ -59,6 +60,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
 
   
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.constructed += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
@@ -95,6 +97,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
   {
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.accepted += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.totalAccepted += 1;
 
     system.acceptEwaldMove();
     system.insertMolecule(selectedComponent, growData->atom);

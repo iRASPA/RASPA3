@@ -33,7 +33,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
   systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.counts += 1;
+  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalCounts += 1;
   systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.counts += 1;
+  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalCounts += 1;
 
   double cutOffVDW = systemA.forceField.cutOffVDW;
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
@@ -48,9 +50,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
-
-
   systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.constructed += 1;
+  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = systemA.energyDifferenceEwaldFourier(systemA.storedEik, newMolecule, {});
@@ -80,6 +81,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCEwald += (uB2 - uB1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCEwald += (uB2 - uB1);
 
+  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.constructed += 1;
+  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalConstructed += 1;
+
   //EnergyStatus tailEnergyDifference = system.computeTailCorrectionVDWRemoveEnergy(selectedComponent) - 
   //                                    system.computeTailCorrectionVDWOldEnergy();
   RunningEnergy tailEnergyDifferenceB;
@@ -90,6 +94,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                                 (correctionFactorEwaldB * retraceData.RosenbluthWeight * (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) * systemB.simulationBox.volume))
   {
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.accepted += 1;
+    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalAccepted += 1;
 
     systemA.acceptEwaldMove();
     systemA.insertMolecule(selectedComponent, growData->atom);
@@ -98,6 +103,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     //assert(system.checkMoleculeIds());
 
     systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.accepted += 1;
+    systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalAccepted += 1;
 
     systemB.acceptEwaldMove();
     systemB.deleteMolecule(selectedComponent, selectedMolecule, molecule);

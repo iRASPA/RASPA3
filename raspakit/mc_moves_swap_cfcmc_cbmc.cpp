@@ -45,7 +45,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
   size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
   double oldLambda = system.components[selectedComponent].lambdaGC.lambdaValue();
-  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin();
+  double maxChange = system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.maxChange[2];
+  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(maxChange);
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -69,6 +70,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[0] += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalCounts[0] += 1;
 
     std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
 
@@ -141,6 +143,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     }
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[0] += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalConstructed[0] += 1;
 
     std::chrono::system_clock::time_point y1 = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.totalEik, std::span(growData->atom.begin(), growData->atom.end()), {});
@@ -187,6 +190,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[0] += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalAccepted[0] += 1;
 
       return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow, double3(0.0, 1.0 - Pacc, Pacc)};
     };
@@ -215,6 +219,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       selectedMolecule = system.randomIntegerMoleculeOfComponent(selectedComponent);
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[1] += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalCounts[1] += 1;
       
       std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::span<Atom> newFractionalMolecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -294,6 +299,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       RunningEnergy energyDifference = frameworkDifference.value() + moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[1] += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalConstructed[1] += 1;
       
       double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
       double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
@@ -323,6 +329,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
       
         system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[1] += 1;
+        system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalAccepted[1] += 1;
       
         return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies, double3(Pacc, 1.0 - Pacc, 0.0)};
       };
@@ -341,6 +348,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[2] += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalCounts[2] += 1;
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
 
@@ -404,6 +412,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.constructed[2] += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalConstructed[2] += 1;
 
 
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
@@ -411,6 +420,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     {
       system.acceptEwaldMove();
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalAccepted[2] += 1;
       
       std::copy(trialPositions.begin(), trialPositions.end(), molecule.begin());
 

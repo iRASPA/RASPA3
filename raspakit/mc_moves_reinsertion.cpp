@@ -40,6 +40,7 @@ import <iomanip>;
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalCounts += 1;
 
   if (system.numberOfMoleculesPerComponent[selectedComponent] > 0)
   {
@@ -57,6 +58,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
     std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
     system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalConstructed += 1;
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     ChainData retraceData = system.retraceMoleculeReinsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, growData->storedR);
@@ -85,6 +87,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
     if (RandomNumber::Uniform() < correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
     {
       system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.accepted += 1;
+      system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalAccepted += 1;
 
       system.acceptEwaldMove();
       std::copy(newMolecule.begin(), newMolecule.end(), molecule.begin());
