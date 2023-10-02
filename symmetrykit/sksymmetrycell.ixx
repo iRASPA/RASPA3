@@ -4,6 +4,7 @@ import <vector>;
 import <optional>;
 import <tuple>;
 import <memory>;
+import <string>;
 
 import int3;
 import int3x3;

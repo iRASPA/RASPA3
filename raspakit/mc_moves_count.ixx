@@ -12,7 +12,7 @@ export struct MCMoveCount
                  swapLambdaMoveCFCMC(0), swapLambdaMoveCBCFCMC(0), 
                  GibbsSwapMoveCBMC(0), GibbsSwapLambdaMoveCFCMC(0),
                  WidomMoveCBMC(0), WidomMoveCFCMC(0), WidomMoveCBCFCMC(0), 
-                 volumeMove(0), GibbsVolumeMove(0.0)
+                 volumeMove(0), GibbsVolumeMove(0)
                  {
                  };
 

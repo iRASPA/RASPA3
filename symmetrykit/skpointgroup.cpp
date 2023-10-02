@@ -391,6 +391,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(std::vec
     case Laue::none:
         return std::nullopt;
     }
+  return std::nullopt;
 }
 
 

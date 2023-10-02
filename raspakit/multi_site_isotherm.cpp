@@ -6,6 +6,7 @@ import <sstream>;
 import <cmath>;
 import <vector>;
 import <iostream>;
+import <ostream>;
 import <print>;
 
 import special_functions;
@@ -15,10 +16,10 @@ import stringutils;
 std::string MultiSiteIsotherm::print() const
 {
   std::ostringstream stream;
-  std::print(stream, std::format("    number of isotherm sites:  {}\n", numberOfSites));
+  std::print(stream, "    number of isotherm sites:  {}\n", numberOfSites);
   for(size_t i = 0; i < numberOfSites; ++i)
   {
-    std::print(stream, sites[i].print());
+    std::print(stream, "{}", sites[i].print());
   }
   return stream.str();
 }
@@ -28,7 +29,7 @@ std::string MultiSiteIsotherm::printAsInputFormat() const
   std::ostringstream stream;
   for(size_t i = 0; i < numberOfSites; ++i)
   {
-    std::print(stream, sites[i].printAsInputFormat());
+    std::print(stream, "{}", sites[i].printAsInputFormat());
   }
   return stream.str();
 }

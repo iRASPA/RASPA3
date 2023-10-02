@@ -219,6 +219,10 @@
     <ClCompile Include="enthalpy_of_adsorption.ixx" />
     <ClCompile Include="mc_moves.cpp" />
     <ClCompile Include="mc_moves.ixx" />
+    <ClCompile Include="mc_moves_count.cpp" />
+    <ClCompile Include="mc_moves_count.ixx" />
+    <ClCompile Include="mc_moves_cputime.cpp" />
+    <ClCompile Include="mc_moves_cputime.ixx" />
     <ClCompile Include="mc_moves_deletion.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cbmc.cpp" />
     <ClCompile Include="mc_moves_gibbs_swap_cfcmc.cpp" />

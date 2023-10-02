@@ -33,12 +33,6 @@
     <ClCompile Include="scanner.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="print.ixx">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="print.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="threading.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

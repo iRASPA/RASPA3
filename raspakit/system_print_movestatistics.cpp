@@ -56,29 +56,29 @@ std::string System::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
 
-  if (mc_moves_probabilities.probabilityVolumeMove > 0.0) std::print(stream, formatMoveStatistics( "Volume", mc_moves_probabilities.statistics_VolumeMove));
-  if (mc_moves_probabilities.probabilityGibbsVolumeMove > 0.0) std::print(stream, formatMoveStatistics("Gibbs Volume", mc_moves_probabilities.statistics_GibbsVolumeMove));
+  if (mc_moves_probabilities.probabilityVolumeMove > 0.0) std::print(stream, "{}", formatMoveStatistics( "Volume", mc_moves_probabilities.statistics_VolumeMove));
+  if (mc_moves_probabilities.probabilityGibbsVolumeMove > 0.0) std::print(stream, "{}", formatMoveStatistics("Gibbs Volume", mc_moves_probabilities.statistics_GibbsVolumeMove));
 
   for (size_t componentId = 0; const Component& component: components)
   {
     std::print(stream,"Component {} [{}]\n", componentId, component.name);
 
-    std::print(stream, component.mc_moves_probabilities.writeMCMoveStatistics());
+    std::print(stream, "{}", component.mc_moves_probabilities.writeMCMoveStatistics());
 
     if(component.hasFractionalMolecule)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
 
-      std::print(stream, component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
-      std::print(stream, component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, "{}", component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, "{}", component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
-      std::print(stream, component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, "{}", component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     ++componentId;

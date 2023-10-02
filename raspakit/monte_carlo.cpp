@@ -117,14 +117,14 @@ void MonteCarlo::initialize()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    std::print(stream, system.writeOutputHeader());
-    std::print(stream, system.writeOutputHeaderHardware());
-    std::print(stream, Units::printStatus());
-    std::print(stream, system.simulationBox.printParameters());
-    std::print(stream, system.forceField.printPseudoAtomStatus());
-    std::print(stream, system.forceField.printForceFieldStatus());
-    std::print(stream, system.writeComponentStatus());
-    std::print(stream, system.reactions.printStatus());
+    std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "{}", system.writeOutputHeaderHardware());
+    std::print(stream, "{}", Units::printStatus());
+    std::print(stream, "{}", system.simulationBox.printParameters());
+    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+    std::print(stream, "{}", system.forceField.printForceFieldStatus());
+    std::print(stream, "{}", system.writeComponentStatus());
+    std::print(stream, "{}", system.reactions.printStatus());
   }
 
   for (System& system : systems)
@@ -171,7 +171,7 @@ void MonteCarlo::initialize()
         std::ostream stream(streams[system.systemId].rdbuf());
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-        std::print(stream, system.writeInitializationStatusReport(i, numberOfInitializationCycles));
+        std::print(stream, "{}", system.writeInitializationStatusReport(i, numberOfInitializationCycles));
         std::flush(stream);
       }
     }
@@ -237,7 +237,7 @@ void MonteCarlo::equilibrate()
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
@@ -356,7 +356,7 @@ void MonteCarlo::production()
       for (System& system : systems)
       {
         std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, system.writeProductionStatusReport(i, numberOfCycles));
+        std::print(stream, "{}", system.writeProductionStatusReport(i, numberOfCycles));
         std::flush(stream);
       }
     }
@@ -399,7 +399,7 @@ void MonteCarlo::output()
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");
     
-    std::print(stream, system.writeMCMoveStatistics());
+    std::print(stream, "{}", system.writeMCMoveStatistics());
     //std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run counting of the MC moves\n");
@@ -407,14 +407,14 @@ void MonteCarlo::output()
 
     for(const Component &component : system.components)
     {
-      std::print(stream, component.mc_moves_count.writeMCMoveCountComponentStatistics(numberOfSteps, component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_count.writeMCMoveCountComponentStatistics(numberOfSteps, component.componentId, component.name));
     }
-    std::print(stream, system.mc_moves_count.writeMCMoveCountSystemStatistics(numberOfSteps));
+    std::print(stream, "{}", system.mc_moves_count.writeMCMoveCountSystemStatistics(numberOfSteps));
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, countTotal.writeMCMoveCountAllSystemStatistics(numberOfSteps));
+    std::print(stream, "{}", countTotal.writeMCMoveCountAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 
@@ -423,22 +423,22 @@ void MonteCarlo::output()
 
     for(const Component &component : system.components)
     {
-      std::print(stream, component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
-    std::print(stream, system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
     std::chrono::duration<double> totalSimulationTime = (t2 - t1);
-    std::print(stream, total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
+    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
 
     std::print(stream, "\n\n");
     //std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
-    std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
-    std::print(stream, system.averagePressure.writeAveragesStatistics());
-    std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
-    std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
+    std::print(stream, "{}", system.averageEnergies.writeAveragesStatistics(system.components));
+    std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
+    std::print(stream, "{}", system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }

@@ -59,8 +59,8 @@ std::string IsothermFitting::writeHeader()
 
   for(size_t i = 0; i < system.components.size(); ++i)
   {
-    std::print(stream, std::format("Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters));
-    std::print(stream, system.components[i].isotherm.print());
+    std::print(stream, "Number of isotherm parameters: {}\n", system.components[i].isotherm.numberOfParameters);
+    std::print(stream, "{}", system.components[i].isotherm.print());
     std::print(stream, "\n");
   }
   std::print(stream, "\n");
@@ -538,7 +538,7 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
   sortByFitness();
 
   // print Initial (and unsorted) population
-  writeCitizen(stream, componentId, 0, 0, 0.0, 0, rawData);
+  writeCitizen(stream, componentId, 0, 0, 0, 0, rawData);
 
   if(refittingFlag)
   {

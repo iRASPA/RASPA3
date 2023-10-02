@@ -118,14 +118,14 @@ void MonteCarloTransitionMatrix::initialize()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    std::print(stream, system.writeOutputHeader());
-    std::print(stream, system.writeOutputHeaderHardware());
-    std::print(stream, Units::printStatus());
-    std::print(stream, system.simulationBox.printParameters());
-    std::print(stream, system.forceField.printPseudoAtomStatus());
-    std::print(stream, system.forceField.printForceFieldStatus());
-    std::print(stream, system.writeComponentStatus());
-    std::print(stream, system.reactions.printStatus());
+    std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "{}", system.writeOutputHeaderHardware());
+    std::print(stream, "{}", Units::printStatus());
+    std::print(stream, "{}", system.simulationBox.printParameters());
+    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+    std::print(stream, "{}", system.forceField.printForceFieldStatus());
+    std::print(stream, "{}", system.writeComponentStatus());
+    std::print(stream, "{}", system.reactions.printStatus());
   }
 
   for (System& system : systems)
@@ -165,7 +165,7 @@ void MonteCarloTransitionMatrix::initialize()
         std::ostream stream(streams[system.systemId].rdbuf());
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-        std::print(stream, system.writeInitializationStatusReport(i, numberOfInitializationCycles));
+        std::print(stream, "{}", system.writeInitializationStatusReport(i, numberOfInitializationCycles));
       }
     }
 
@@ -242,7 +242,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
         for(Component &component : system.components)
         {
           if(component.hasFractionalMolecule)
@@ -339,7 +339,7 @@ void MonteCarloTransitionMatrix::production()
       for (System& system : systems)
       {
         std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, system.writeProductionStatusReport(i, numberOfCycles));
+        std::print(stream, "{}", system.writeProductionStatusReport(i, numberOfCycles));
       }
     }
 
@@ -385,7 +385,7 @@ void MonteCarloTransitionMatrix::output()
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");
     
-    std::print(stream, system.writeMCMoveStatistics());
+    std::print(stream, "{}", system.writeMCMoveStatistics());
     //std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run CPU timings of the MC moves\n");

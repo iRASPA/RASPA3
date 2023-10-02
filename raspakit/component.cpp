@@ -7,6 +7,7 @@ module;
 module component;
 
 import <iostream>;
+import <ostream>;
 import <sstream>;
 import <algorithm>;
 import <vector>;
@@ -556,7 +557,7 @@ void Component::printBreakthroughStatus(std::ostream &stream) const
   {
     std::print(stream, "    carrier-gas\n");
 
-    std::print(stream, isotherm.print());
+    std::print(stream, "{}", isotherm.print());
   }
   std::print(stream, "    mol-fraction in the gas:   {} [-]\n", molFraction);
   if(!isCarrierGas)
@@ -564,6 +565,6 @@ void Component::printBreakthroughStatus(std::ostream &stream) const
     std::print(stream, "    mass-transfer coefficient: {} [1/s]\n", massTransferCoefficient);
     std::print(stream, "    diffusion coefficient:     {} [m^2/s]\n", axialDispersionCoefficient);
 
-    std::print(stream, isotherm.print());
+    std::print(stream, "{}", isotherm.print());
   }
 }

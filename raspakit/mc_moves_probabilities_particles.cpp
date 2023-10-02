@@ -138,22 +138,22 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
 const std::string MCMoveProbabilitiesParticles::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
-  if (probabilityTranslationMove > 0.0) std::print(stream, formatStatistics("Translation", statistics_TranslationMove));
-  if (probabilityRandomTranslationMove > 0.0) std::print(stream, formatStatistics("Random translation", statistics_RandomTranslationMove));
-  if (probabilityRotationMove > 0.0) std::print(stream, formatStatistics("Rotation", statistics_RotationMove));
-  if (probabilityRandomRotationMove > 0.0) std::print(stream, formatStatistics("Random rotation", statistics_RandomRotationMove));
-  if (probabilityReinsertionMove_CBMC > 0.0) std::print(stream, formatStatistics("Reinsertion(CBMC)", statistics_ReinsertionMove_CBMC));
-  if (probabilityIdentityChangeMove_CBMC > 0.0) std::print(stream, formatStatistics("Identity Swap (CBMC)", statistics_IdentityChangeMove_CBMC));
-  if (probabilitySwapMove_CBMC > 0.0) std::print(stream, formatStatistics("Swap Insertion (CBMC)", statistics_SwapInsertionMove_CBMC));
-  if (probabilitySwapMove_CBMC > 0.0) std::print(stream, formatStatistics("Swap Deletion (CBMC)", statistics_SwapDeletionMove_CBMC));
-  if (probabilitySwapMove_CFCMC > 0.0) std::print(stream, formatStatistics("Swap (CFCMC)", statistics_SwapMove_CFCMC));
-  if (probabilitySwapMove_CFCMC_CBMC > 0.0) std::print(stream, formatStatistics("Swap (CB/CFCMC)", statistics_SwapMove_CFCMC_CBMC));
-  if (probabilityWidomMove > 0.0) std::print(stream, formatStatistics("Widom (CBMC)", statistics_WidomMove_CBMC));
-  if (probabilityWidomMove_CFCMC > 0.0) std::print(stream, formatStatistics("Widom (CFCMC)", statistics_WidomMove_CFCMC));
-  if (probabilityWidomMove_CFCMC_CBMC > 0.0) std::print(stream, formatStatistics("Widom (CB/CFCMC)", statistics_WidomMove_CFCMC_CBMC));
+  if (probabilityTranslationMove > 0.0) std::print(stream, "{}", formatStatistics("Translation", statistics_TranslationMove));
+  if (probabilityRandomTranslationMove > 0.0) std::print(stream, "{}", formatStatistics("Random translation", statistics_RandomTranslationMove));
+  if (probabilityRotationMove > 0.0) std::print(stream, "{}", formatStatistics("Rotation", statistics_RotationMove));
+  if (probabilityRandomRotationMove > 0.0) std::print(stream, "{}", formatStatistics("Random rotation", statistics_RandomRotationMove));
+  if (probabilityReinsertionMove_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Reinsertion(CBMC)", statistics_ReinsertionMove_CBMC));
+  if (probabilityIdentityChangeMove_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Identity Swap (CBMC)", statistics_IdentityChangeMove_CBMC));
+  if (probabilitySwapMove_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Swap Insertion (CBMC)", statistics_SwapInsertionMove_CBMC));
+  if (probabilitySwapMove_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Swap Deletion (CBMC)", statistics_SwapDeletionMove_CBMC));
+  if (probabilitySwapMove_CFCMC > 0.0) std::print(stream, "{}", formatStatistics("Swap (CFCMC)", statistics_SwapMove_CFCMC));
+  if (probabilitySwapMove_CFCMC_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Swap (CB/CFCMC)", statistics_SwapMove_CFCMC_CBMC));
+  if (probabilityWidomMove > 0.0) std::print(stream, "{}", formatStatistics("Widom (CBMC)", statistics_WidomMove_CBMC));
+  if (probabilityWidomMove_CFCMC > 0.0) std::print(stream, "{}", formatStatistics("Widom (CFCMC)", statistics_WidomMove_CFCMC));
+  if (probabilityWidomMove_CFCMC_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Widom (CB/CFCMC)", statistics_WidomMove_CFCMC_CBMC));
 
-  if (probabilityGibbsSwapMove_CBMC > 0.0) std::print(stream, formatStatistics("Gibbs Swap (CBMC)", statistics_GibbsSwapMove_CBMC));
-  if (probabilityGibbsSwapMove_CFCMC > 0.0) std::print(stream, formatStatistics("Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC));
+  if (probabilityGibbsSwapMove_CBMC > 0.0) std::print(stream, "{}", formatStatistics("Gibbs Swap (CBMC)", statistics_GibbsSwapMove_CBMC));
+  if (probabilityGibbsSwapMove_CFCMC > 0.0) std::print(stream, "{}", formatStatistics("Gibbs Swap (CFCMC)", statistics_GibbsSwapMove_CFCMC));
 
   return stream.str();
 }

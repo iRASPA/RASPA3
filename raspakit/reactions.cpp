@@ -4,6 +4,7 @@ module reactions;
 
 import <string>;
 import <sstream>;
+import <ostream>;
 import <vector>;
 import <print>;
 
@@ -22,7 +23,7 @@ std::string Reactions::printStatus() const
   std::print(stream,"{} reactions\n", list.size());
   for (const Reaction& reaction : list)
   {
-    std::print(stream, reaction.printStatus());
+    std::print(stream, "{}", reaction.printStatus());
   }
   std::print(stream, "\n\n");
 

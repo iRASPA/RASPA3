@@ -10,6 +10,7 @@ import <random>;
 import <span>;
 import <tuple>;
 import <iostream>;
+import <ostream>;
 import <fstream>;
 import <streambuf>;
 import <filesystem>;
@@ -824,14 +825,14 @@ std::string System::writeInitializationStatusReport([[maybe_unused]] size_t curr
   std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, simulationBox.printStatus());
+  std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component & c : components)
   {
-    std::print(stream, loadings.printStatus(c, frameworkMass));
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -884,14 +885,14 @@ std::string System::writeEquilibrationStatusReport([[maybe_unused]] size_t curre
   std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, simulationBox.printStatus());
+  std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component & c : components)
   {
-    std::print(stream, loadings.printStatus(c, frameworkMass));
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -939,7 +940,7 @@ std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentC
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
-  std::print(stream, simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
+  std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
   
   std::print(stream, "Amount of molecules per component :\n");
@@ -947,7 +948,7 @@ std::string System::writeProductionStatusReport([[maybe_unused]] size_t currentC
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component & c : components)
   {
-    std::print(stream, loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
+    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -1031,7 +1032,7 @@ std::string System::writeComponentStatus() const
   std::print(stream, "===============================================================================\n\n");
   for (const Component& component : components)
   {
-    std::print(stream, component.printStatus(forceField));
+    std::print(stream, "{}", component.printStatus(forceField));
   }
   std::print(stream, "\n\n\n\n");
 
@@ -1098,7 +1099,7 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
 
  for (size_t componentId = 0; const Component& component : components)
  {
-   std::print(stream, component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+   std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
  }
 }
 

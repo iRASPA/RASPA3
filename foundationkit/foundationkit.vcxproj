@@ -179,8 +179,6 @@
     <ClCompile Include="characterset.ixx" />
     <ClCompile Include="indexpath.cpp" />
     <ClCompile Include="indexpath.ixx" />
-    <ClCompile Include="print.cpp" />
-    <ClCompile Include="print.ixx" />
     <ClCompile Include="scanner.cpp" />
     <ClCompile Include="scanner.ixx" />
     <ClCompile Include="stringutils.cpp" />
