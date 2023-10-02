@@ -287,14 +287,14 @@ std::string ForceField::printForceFieldStatus() const
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
       case VDWParameters::Type::LennardJones:
-        std::print(stream, "{:8} - {:8} {} p_0/k_B: {:8.5f} [K], p_1 {:8.5f} [A]\n",
+        std::print(stream, "{:8} - {:8} {} p₀/kʙ: {:9.5f} [K], p₁: {:8.5f} [Å]\n",
             pseudoAtoms[i].name, pseudoAtoms[j].name, "Lennard-Jones",
             Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
             data[i * numberOfPseudoAtoms + j].parameters.y);
-        std::print(stream, "{:33} shift: {:8.5f} [K], tailcorrections: {}\n",
+        std::print(stream, "{:33} shift: {:9.5f} [K], tailcorrections: {}\n",
             std::string(""),
-          Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
-          tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
+            Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
+            tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
         break;
       default:
         break;

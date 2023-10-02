@@ -29,14 +29,14 @@ std::string Units::printStatus()
   std::print(stream, "Unit of force:               {} [N]\n", Units::ForceConversionFactor);
   std::print(stream, "Unit of pressure:            {} [Pa]\n", Units::PressureConversionFactor);
   std::print(stream, "Unit of velocity:            {} [m/s]\n", Units::VelocityConversionFactor);
-  std::print(stream, "Unit of acceleration:        {} [m^2/s]\n", Units::AccelerationConversionFactor);
-  std::print(stream, "Unit of diffusion:           {} [m^2/s]\n", Units::DiffusionConversionFactor);
+  std::print(stream, "Unit of acceleration:        {} [m²/s]\n", Units::AccelerationConversionFactor);
+  std::print(stream, "Unit of diffusion:           {} [m²/s]\n", Units::DiffusionConversionFactor);
   std::print(stream, "Unit of dipole moment:       {} [C.m]\n", Units::DipoleMomentConversionFactor);
   std::print(stream, "Unit of electric potential:  {} [V]\n", Units::ElectricPotentialConversionFactor);
   std::print(stream, "Unit of electric field:      {} [V]\n", Units::ElectricFieldConversionFactor);
   std::print(stream, "Unit of polarizability:      {} [-]\n", Units::PolarizilibityConversionFactor);
   std::print(stream, "Unit of Coulomb potential:   {} [K]\n", Units::CoulombicConversionFactor * Units::EnergyToKelvin);
-  std::print(stream, "Unit of dielectric constant: {} [s^2 C^2/(kg m^3)]\n", Units::DielectricConstantConversionFactor);
+  std::print(stream, "Unit of dielectric constant: {} [s² C²/(kg m³)]\n", Units::DielectricConstantConversionFactor);
   std::print(stream, "\n\n");
 
   std::print(stream, "Derived units and their conversion factors:\n");
@@ -46,14 +46,14 @@ std::string Units::printStatus()
   std::print(stream, "Unit of force:               {} [N]\n", Units::ForceConversionFactor);
   std::print(stream, "Unit of pressure:            {} [Pa]\n", Units::PressureConversionFactor);
   std::print(stream, "Unit of velocity:            {} [m/s]\n", Units::VelocityConversionFactor);
-  std::print(stream, "Unit of acceleration:        {} [m^2/s]\n", Units::AccelerationConversionFactor);
-  std::print(stream, "Unit of diffusion:           {} [m^2/s]\n", Units::DiffusionConversionFactor);
+  std::print(stream, "Unit of acceleration:        {} [m²/s]\n", Units::AccelerationConversionFactor);
+  std::print(stream, "Unit of diffusion:           {} [m²/s]\n", Units::DiffusionConversionFactor);
   std::print(stream, "Unit of dipole moment:       {} [C.m]\n", Units::DipoleMomentConversionFactor);
   std::print(stream, "Unit of electric potential:  {} [V]\n", Units::ElectricPotentialConversionFactor);
   std::print(stream, "Unit of electric field:      {} [V]\n", Units::ElectricFieldConversionFactor);
   std::print(stream, "Unit of polarizability:      {} [-]\n", Units::PolarizilibityConversionFactor);
   std::print(stream, "Unit of Coulomb potential:   {} [K]\n", Units::CoulombicConversionFactor * Units::EnergyToKelvin);
-  std::print(stream, "Unit of dielectric constant: {} [s^2 C^2/(kg m^3)]\n", Units::DielectricConstantConversionFactor);
+  std::print(stream, "Unit of dielectric constant: {} [s² C²/(kg m³)]\n", Units::DielectricConstantConversionFactor);
   std::print(stream, "\n\n");
 
   std::print(stream, "Internal conversion factors:\n");
