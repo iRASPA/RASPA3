@@ -30,6 +30,8 @@ import <print>;
 
 import stringutils;
 
+// system_hardware_info.cpp
+
 std::string System::writeOutputHeaderHardware() const
 {
   std::ostringstream stream;

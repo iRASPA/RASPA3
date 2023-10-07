@@ -22,6 +22,8 @@ import energy_factor;
 import component;
 import forcefield;
 
+// system_interactions_ewald_pressure.cpp
+
 std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDerivative() noexcept
 {
   double alpha = forceField.EwaldAlpha;

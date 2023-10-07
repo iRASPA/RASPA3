@@ -24,6 +24,7 @@ import <algorithm>;
 import <numeric>;
 
 
+// system_cbmc_rigid.cpp
 
 // LogBoltzmannFactors are (-Beta U)
 size_t System::selectTrialPosition(std::vector <double> LogBoltzmannFactors) const noexcept

@@ -24,6 +24,8 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 
+// system_cbmc_rigid_reinsertion.cpp
+
 [[nodiscard]] std::optional<ChainData> System::growMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule) const noexcept
 {
   std::vector<Atom> atoms = components[selectedComponent].copiedAtoms(molecule);

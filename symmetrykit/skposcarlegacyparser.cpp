@@ -7,7 +7,9 @@ module;
 module skposcarlegacyparser;
 
 import skstructure;
+import double3;
 import double3x3;
+import skasymmetricatom;
 
 std::string& tolower(std::string& s)
 {
@@ -129,11 +131,11 @@ void SKPOSCARLegacyParser::startParsing() noexcept(false)
         cartesian = true;
     }
 
-    for (int k = 0; k < amountList.size(); k++)
+    for (size_t k = 0; k < amountList.size(); k++)
     {
         int numberOfAtoms = std::stoi(amountList[k]);
 
-        for (int i = 0; i < numberOfAtoms; i++)
+        for (size_t i = 0; i < static_cast<size_t>(numberOfAtoms); i++)
         {
             std::shared_ptr<SKAsymmetricAtom> atom = std::make_shared<SKAsymmetricAtom>();
 

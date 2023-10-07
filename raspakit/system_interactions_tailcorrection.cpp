@@ -17,6 +17,8 @@ import atom;
 import simulationbox;
 import units;
 
+// system_interactions_tailcorrection.cpp
+
 void System::computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept
 {
   for(size_t k = 0; k != components.size(); ++k)

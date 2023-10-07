@@ -15,7 +15,6 @@ import <tuple>;
 import <optional>;
 import <span>;
 
-
 export struct MC_Moves
 {
   MC_Moves() {}

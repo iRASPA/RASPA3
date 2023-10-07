@@ -25,6 +25,7 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 
+// system_cbmc_rigid_deletion.cpp
 
 [[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {

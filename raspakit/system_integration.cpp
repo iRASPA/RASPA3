@@ -2,6 +2,8 @@ module;
 
 module system;
 
+// system_integration.cpp
+
 /*
 [[nodiscard]] EnergyBookkeeping System::integrate() noexcept
 {

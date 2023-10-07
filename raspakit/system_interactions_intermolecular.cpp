@@ -30,6 +30,8 @@ import <optional>;
 import <thread>;
 import <future>;
 
+// system_interactions_intermolecular.cpp
+
 void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept
 {
   double3 dr, posA, posB, f;

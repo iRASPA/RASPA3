@@ -35,6 +35,8 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
+// mc_moves_rotation.cpp
+
 std::optional<RunningEnergy> MC_Moves::rotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule)
 {
   double3 angle{};

@@ -27,6 +27,8 @@ import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
 
+// mc_moves_gibbs_swap_cbmc.cpp
+
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(System& systemA, System& systemB, size_t selectedComponent)
 {
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;

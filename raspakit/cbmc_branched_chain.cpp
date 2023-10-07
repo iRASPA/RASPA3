@@ -1,5 +1,8 @@
-/*
+module;
 
+module cbmc_branched_chain;
+
+/*
 module;
 
 module cbmc_linear_chain;

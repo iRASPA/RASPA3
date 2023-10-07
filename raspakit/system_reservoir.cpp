@@ -9,6 +9,8 @@ import double3;
 import atom;
 import component;
 
+// system_reservoir.cpp
+
 
 // TODO: add equilibration for flexible molecules
 

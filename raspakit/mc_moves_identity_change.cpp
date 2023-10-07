@@ -27,7 +27,9 @@ import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
 
-std::optional<RunningEnergy> MC_Moves::identityChangeMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms)
+// mc_moves_identity_change.cpp
+
+std::optional<RunningEnergy> MC_Moves::identityChangeMove([[maybe_unused]] System& system, [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, [[maybe_unused]] std::span<Atom> atoms)
 {
   return std::nullopt;
 }

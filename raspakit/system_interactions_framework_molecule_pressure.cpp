@@ -29,6 +29,8 @@ import <deque>;
 import <semaphore>;
 import <numbers>;
 
+// system_interactions_framework_molecule_pressure.cpp
+
 [[nodiscard]] std::pair<EnergyStatus, double3x3> System::computeFrameworkMoleculeEnergyStrainDerivative() noexcept
 {
 	double3 dr, posA, posB, f;

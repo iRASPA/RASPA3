@@ -36,6 +36,8 @@ import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
 
+// mc_moves_gibbs_swap_cfcmc.cpp
+
 // All systems have a fractional molecule, but only one of these is 'active', the others are switched off with 'lambda=0'.
 // Implementation advantage: the number of fractional molecules per system remains constant.
 

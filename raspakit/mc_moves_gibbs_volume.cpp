@@ -37,6 +37,7 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
+// mc_moves_gibbs_volume.cpp
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(System &systemA, System &systemB) const
 {

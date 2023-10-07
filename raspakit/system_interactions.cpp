@@ -25,6 +25,8 @@ import <span>;
 import <optional>;
 import <cmath>;
 
+// system_interactions.cpp
+
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3> &lhs, const std::pair<EnergyStatus, double3x3> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);

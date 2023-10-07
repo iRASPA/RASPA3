@@ -24,6 +24,7 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 
+// system_cbmc_rigid_insertion.cpp 
 
 [[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
 {

@@ -37,6 +37,8 @@ import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
 
+// mc_moves_swap_cfcmc_cbmc.cpp
+
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(System& system, 
          size_t selectedComponent, size_t selectedMolecule,
          bool insertionDisabled, bool deletionDisabled)

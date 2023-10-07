@@ -36,6 +36,7 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
+// mc_moves_widom.cpp
 
 
 std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedComponent)

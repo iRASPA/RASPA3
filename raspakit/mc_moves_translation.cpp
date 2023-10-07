@@ -35,6 +35,7 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
+// mc_moves_translation.cpp
 
 std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t selectedComponent, std::span<Atom> molecule) const
 {

@@ -16,11 +16,12 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-import component;
-import atom;
 import double3;
 import double3x3;
 import simd_quatd;
+
+import component;
+import atom;
 import simulationbox;
 import cbmc;
 import randomnumbers;
@@ -36,6 +37,8 @@ import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
 import transition_matrix;
+
+// mc_moves_deletion.cpp
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
 {

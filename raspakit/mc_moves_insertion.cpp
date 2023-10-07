@@ -37,6 +37,7 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
+// mc_moves_insertion.cpp
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System& system, size_t selectedComponent)
 {
