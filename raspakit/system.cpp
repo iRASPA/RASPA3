@@ -338,39 +338,42 @@ void System::initializeComponents()
   // read components from file
   for (Component& component : components)
   {
+    switch (component.type)
+    {
+    case Component::Type::Adsorbate:
+    case Component::Type::Cation:
       if (component.filenameData.has_value())
       {
-         switch (component.type)
-         {
-         case Component::Type::Adsorbate:
-         case Component::Type::Cation:
-           component.readComponent(forceField, component.filenameData.value());
-           break;
-         case Component::Type::Framework:
-           component.readFramework(forceField, component.filenameData.value());
-
-           numberOfMoleculesPerComponent[component.componentId] += 1;
-           numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
-           numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
-           ++numberOfFrameworks;
-
-           // add Framework-atoms to the atomPositions-list
-           for (const Atom& atom : component.atoms)
-           {
-             atomPositions.push_back(atom);
-           }
-           numberOfFrameworkAtoms += component.atoms.size();
-
-           if (component.rigid)
-           {
-               numberOfRigidFrameworkAtoms += component.atoms.size();
-           }
-           
-           // For multiple framework, the simulation box is the union of the boxes
-           simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
-           break;
-         }
+       component.readComponent(forceField, component.filenameData.value());
       }
+      break;
+    case Component::Type::Framework:
+      if (component.filenameData.has_value())
+      {
+        component.readFramework(forceField, component.filenameData.value());
+      }
+
+      numberOfMoleculesPerComponent[component.componentId] += 1;
+      numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
+      numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
+      ++numberOfFrameworks;
+
+      // add Framework-atoms to the atomPositions-list
+      for (const Atom& atom : component.atoms)
+      {
+        atomPositions.push_back(atom);
+      }
+      numberOfFrameworkAtoms += component.atoms.size();
+
+      if (component.rigid)
+      {
+        numberOfRigidFrameworkAtoms += component.atoms.size();
+      }
+      
+      // For multiple framework, the simulation box is the union of the boxes
+      simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
+      break;
+    }
   }
 }
 

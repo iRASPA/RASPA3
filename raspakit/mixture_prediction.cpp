@@ -62,6 +62,7 @@ std::vector<size_t> sortedIndices(const std::span<const Component> &v)
        {
          if(v[i1].isCarrierGas) return false;
          if(v[i2].isCarrierGas) return true;
+         return true;
          return v[i1].isotherm.parameters(0) < v[i2].isotherm.parameters(0);
        });
 
@@ -73,7 +74,7 @@ std::vector<size_t> sortedIndices(const std::span<const Component> &v)
 MixturePrediction::MixturePrediction(const System &system) :
                                      system(system),
                                      displayName(system.components.front().name),
-                                     components(system.spanOfAdsorbateComponents()),
+                                     components(system.vectorOfAdsorbateComponents()),
                                      sortedComponentIndices(sortedIndices(components)),
                                      sortedComponents(components.begin(),components.end()),
                                      Ncomp(components.size()),
@@ -1334,7 +1335,7 @@ void MixturePrediction::createPlotScript()
     stream_graphs << "gnuplot plot_pure_components\n";
     stream_graphs << "gnuplot plot_mixture\n";
     stream_graphs << "gnuplot plot_mixture_mol_fractions\n";
-    std::filesystem::path path{ "make_graphs" };
+    std::filesystem::path path{ std::format("MixturePrediction/System_{}/make_graphs", system.systemId) };
     std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
   #endif
 

@@ -270,6 +270,17 @@ export struct System
     std::span<const Component> spanOfAdsorbateComponents() const {return std::span(components.cbegin() + 
           static_cast<std::vector<Component>::difference_type>(numberOfFrameworks), components.size() - numberOfFrameworks);}
 
+    std::vector<Component> vectorOfAdsorbateComponents() const 
+    {
+      std::span<const Component> span = spanOfAdsorbateComponents();
+      std::vector<Component> comps(span.begin(), span.end());
+      for(size_t i = 0; i < comps.size(); ++i)
+      {
+        comps[i].componentId = i;
+      }
+      return comps;
+    }
+
     size_t numberOfMolecules() const {
         return std::reduce(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
             [](const size_t& acc, const size_t& b) { return acc + b; });

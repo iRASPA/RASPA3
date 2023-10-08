@@ -48,7 +48,7 @@ export class MixturePrediction
   private:
     const System &system;
     std::string displayName;
-    std::span<const Component> components;
+    std::vector<Component> components;
     std::vector<size_t> sortedComponentIndices;
     std::vector<std::reference_wrapper<const Component>> sortedComponents;
     const size_t Ncomp;

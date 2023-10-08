@@ -27,7 +27,7 @@ export struct Breakthrough
   private:
     const System &system;
     const std::string displayName;
-    const std::span<const Component> components;
+    const std::vector<Component> components;
     //size_t carrierGasComponent{ 0 }; 
     size_t Ncomp;      // number of components
     size_t Ngrid;      // number of grid points
