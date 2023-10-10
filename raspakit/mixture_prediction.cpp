@@ -133,7 +133,7 @@ std::string MixturePrediction::writeHeader() const
       std::print(stream, "=======================================================\n");
       for(size_t i = 0; i < Ncomp; ++i)
       {
-        components[i].printBreakthroughStatus(stream);
+        std::print(stream, components[i].printBreakthroughStatus());
         std::print(stream, "\n");
       }
       break;
@@ -142,7 +142,7 @@ std::string MixturePrediction::writeHeader() const
       std::print(stream, "=======================================================\n");
       for(size_t i = 0; i < Ncomp; ++i)
       {
-        sortedComponents[i].get().printBreakthroughStatus(stream);
+        std::print(stream, sortedComponents[i].get().printBreakthroughStatus());
         std::print(stream, "\n");
       }
       break;
@@ -265,6 +265,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
   }
 
   double error = 1.0;
+  double sum_xi = 0.0;
   do
   {
     // compute G
@@ -330,6 +331,12 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
       psi[i] = sortedComponents[i].get().isotherm.psiForPressure(pstar[i]);
     }
 
+    sum_xi = 0.0;
+    for(size_t i = 0; i < Nsorted; ++i)
+    {
+      sum_xi += Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
+    }
+
     double avg = std::accumulate(std::begin(psi), std::end(psi), 0.0) / static_cast<double>(psi.size());
 
     double accum = 0.0;
@@ -341,7 +348,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
 
     numberOfIASTSteps++;
   }
-  while(error > tiny);
+  while(!(((error < tiny) && (std::fabs(sum_xi - 1.0) < 1e-10)) || (numberOfIASTSteps >= 50) ));
 
 
   for(size_t i = 0; i < Nsorted; ++i)
@@ -351,8 +358,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
 
   for(size_t i = 0; i < Nsorted; ++i)
   {
-    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / pstar[i];
-
+    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
   }
   if(system.numberOfCarrierGases > 0)
   {
@@ -397,7 +403,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(const std::vector<
                                                 double *cachedP0,
                                                 double *cachedPsi)
 {
-  std::fill(Xi.begin(), Xi.end(), 0.0);
+ std::fill(Xi.begin(), Xi.end(), 0.0);
   std::fill(Ni.begin(), Ni.end(), 0.0);
 
   std::pair<size_t, size_t> acc;
@@ -466,6 +472,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
   }
 
   double error = 1.0;
+  double sum_xi = 1.0;
   do
   {
     // compute G
@@ -531,6 +538,12 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
       psi[i] = sortedComponents[i].get().isotherm.psiForPressure(site, pstar[i]);
     }
 
+    sum_xi = 0.0;
+    for(size_t i = 0; i < Nsorted; ++i)
+    {
+      sum_xi += Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
+    }
+
     double avg = std::accumulate(std::begin(psi), std::end(psi), 0.0) / static_cast<double>(psi.size());
 
     double accum = 0.0;
@@ -542,7 +555,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
 
     numberOfIASTSteps++;
   }
-  while(error > tiny);
+  while(!(((error < tiny) && (std::fabs(sum_xi - 1.0) < 1e-10)) || (numberOfIASTSteps >= 50) ));
 
 
   for(size_t i = 0; i < Nsorted; ++i)
@@ -552,7 +565,7 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
 
   for(size_t i = 0; i < Nsorted; ++i)
   {
-    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / pstar[i];
+    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
   }
   if(system.numberOfCarrierGases > 0)
   {
@@ -1156,10 +1169,9 @@ void MixturePrediction::run(std::ostream &stream)
     for (size_t j = 0; j < Ncomp; j++)
     {
       double p_star =  Yi[j] * pressure / Xi[j];
-      std::print(streams[j], "{} {} {} {} {} {} {}\n", pressure, components[j].isotherm.value(pressure), Ni[j], Yi[j], Xi[j], p_star, components[j].isotherm.psiForPressure(p_star));
-      streams[j] << pressure << " " << components[j].isotherm.value(pressure) << " " << Ni[j] 
-                 << " " << Yi[j] << " " << Xi[j] << " " 
-                 << components[j].isotherm.psiForPressure(p_star) << "\n";
+      std::print(streams[j], "{} {} {} {} {} {}\n",
+                 pressure, components[j].isotherm.value(pressure), Ni[j], Yi[j], Xi[j],
+                 components[j].isotherm.psiForPressure(p_star));
     }
   }
 }

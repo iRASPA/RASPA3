@@ -550,8 +550,10 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
 }
 
 
-void Component::printBreakthroughStatus(std::ostream &stream) const
+std::string Component::printBreakthroughStatus() const
 {
+  std::ostringstream stream;
+
   std::print(stream, "Component {} [{}]\n", componentId, name);
   if(isCarrierGas)
   {
@@ -567,4 +569,6 @@ void Component::printBreakthroughStatus(std::ostream &stream) const
 
     std::print(stream, "{}", isotherm.print());
   }
+
+  return stream.str();
 }

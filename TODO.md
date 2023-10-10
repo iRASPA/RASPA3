@@ -1,18 +1,14 @@
- 1) move dU/dlambda to system      DONE
- 2) compute pressure (Ewald)       DONE
- 3) volume move (NPT)              DONE
- 4) rescale MC moves max-change    DONE
- 5) identity change
- 6) Gibbs ensemble                 DONE
- 7) Molecular Dynamics
- 8) read framework
- 9) read molecule
-10) make routines cutoff-dependence for dual-cutoff method
-11) reaction ensemble
-12) polarization
-13) cell-lists for rigid frameworks
-14) grids for rigid frameworks
-15) partial molar volumes
+ 1) identity change
+ 2) grids for rigid frameworks
+ 3) flexible molecules
+ 4) Molecular Dynamics
+ 5) read framework
+ 6) read molecule
+ 7) make routines cutoff-dependence for dual-cutoff method
+ 8) reaction ensemble
+ 9) polarization
+10) cell-lists for rigid frameworks
+11) partial molar volumes
 
 tests
 =====

@@ -135,7 +135,7 @@ export struct Component
     void readFramework(const ForceField& forceField, const std::string& fileName);
 
     std::string printStatus(const ForceField& forceField) const;
-    void printBreakthroughStatus(std::ostream& stream) const;
+    std::string printBreakthroughStatus() const;
 
     std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;
     std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
