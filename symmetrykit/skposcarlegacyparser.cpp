@@ -15,7 +15,7 @@ std::string& tolower(std::string& s)
 {
     for (auto& c : s)
     {
-        std::tolower(static_cast<unsigned char>(c));
+      [[maybe_unused]] int result = std::tolower(static_cast<unsigned char>(c));
     }
 
     return s;

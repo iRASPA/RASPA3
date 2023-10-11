@@ -486,7 +486,8 @@ void System::createInitialMolecules()
         do
         {
           std::vector<Atom> atoms = components[componentId].newAtoms(0.0, numberOfMoleculesPerComponent[componentId]);
-          growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb, 
+          Component::GrowType growType  = components[componentId].growType;
+          growData = growMoleculeSwapInsertion(growType, forceField.cutOffVDW, forceField.cutOffCoulomb, 
                               componentId, numberOfMoleculesPerComponent[componentId], 0.0, atoms);
 
         } while (!growData || growData->energies.total() > forceField.overlapCriteria);
@@ -501,7 +502,8 @@ void System::createInitialMolecules()
       do
       {
         std::vector<Atom> atoms = components[componentId].newAtoms(1.0, numberOfMoleculesPerComponent[componentId]);
-        growData = growMoleculeSwapInsertion(forceField.cutOffVDW, forceField.cutOffCoulomb,
+        Component::GrowType growType  = components[componentId].growType;
+        growData = growMoleculeSwapInsertion(growType, forceField.cutOffVDW, forceField.cutOffCoulomb,
                               componentId, numberOfMoleculesPerComponent[componentId], 1.0, atoms);
 
       } while(!growData || growData->energies.total() > forceField.overlapCriteria);

@@ -1,7 +1,7 @@
 # general rule for shifted vs truncated
-shifted
+truncated
 # general rule tailcorrections
-no
+yes
 # number of defined interactions
 5
 # type interaction, parameters.    IMPORTANT: define shortest matches first, so that more specific ones overwrites these

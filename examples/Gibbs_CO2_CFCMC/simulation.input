@@ -1,8 +1,8 @@
 SimulationType                MonteCarlo
-NumberOfCycles                100
+NumberOfCycles                10000
 NumberOfInitializationCycles  0
-NumberOfEquilibrationCycles   0
-PrintEvery                    100
+NumberOfEquilibrationCycles   5000
+PrintEvery                    1000
 NumberOfBlocks                5
 
 Box 0
@@ -14,7 +14,7 @@ OmitEwaldFourier no
 ExternalTemperature 260.0
 ExternalPressure 0.0
 
-#GibbsVolumeMoveProbability 0.01
+GibbsVolumeMoveProbability 0.01
 
 Box 1
 BoxLengths 40 40 40
@@ -25,17 +25,17 @@ OmitEwaldFourier no
 ExternalTemperature 260.0
 ExternalPressure 0.0
 
-#GibbsVolumeMoveProbability 0.01
+GibbsVolumeMoveProbability 0.01
 
 Component 0 MoleculeName               CO2
             ThermodynamicIntegration   yes
-            TranslationProbability     0.5
-            RotationProbability        0.5
-            ReinsertionProbability     0.5
+            TranslationProbability     0.2
+            RotationProbability        0.2
+            ReinsertionProbability     0.2
             SwapProbability            0.0
             CFCMC_CBMC_SwapProbability 0.0
-            WidomProbability           0.0
+            WidomProbability           0.19
             CBCFCMCWidomProbability    0.0
-	    GibbsCFCMCSwapProbability  1.0
-	    GibbsSwapProbability       0.0
+            GibbsCFCMCSwapProbability  0.2
+            GibbsSwapProbability       0.0
             CreateNumberOfMolecules    256 256

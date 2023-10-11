@@ -41,10 +41,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   double cutOffVDW = systemA.forceField.cutOffVDW;
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
+  Component::GrowType growType = systemA.components[selectedComponent].growType;
 
   std::vector<Atom> atoms = systemA.components[selectedComponent].newAtoms(1.0, systemA.numberOfMoleculesPerComponent[selectedComponent]);
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::optional<ChainData> growData = systemA.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, atoms);
+  std::optional<ChainData> growData = systemA.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, atoms);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);

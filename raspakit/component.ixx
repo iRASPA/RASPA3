@@ -33,11 +33,17 @@ import mc_moves_count;
 
 export struct Component
 {
-  enum class Type : int
+  enum class Type : size_t
   {
     Framework = 0,
     Adsorbate = 1,
     Cation = 2
+  };
+
+  enum class GrowType: size_t
+  {
+    Rigid =  0,
+    Flexible = 1,
   };
 
     Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false);
@@ -46,7 +52,8 @@ export struct Component
     Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
               std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
 
-    Type type;
+    Type type { 0 };
+    GrowType growType{ 0  };
 
     SimulationBox simulationBox;
     size_t spaceGroupHallNumber{ 1 };

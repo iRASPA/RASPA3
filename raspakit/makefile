@@ -58,6 +58,7 @@ system_cbmc.cpp: system.pcm
 system_cbmc_rigid_deletion.cpp: system.pcm 
 system_cbmc_rigid_insertion.cpp: system.pcm 
 system_cbmc_rigid_reinsertion.cpp: system.pcm 
+system_cbmc_flexible_insertion.cpp: system.pcm 
 system_interactions.cpp: system.pcm
 system_interactions_framework_molecule.cpp: system.pcm
 system_interactions_framework_molecule_pressure.cpp: system.pcm
@@ -69,7 +70,6 @@ system_interactions_ewald_pressure.cpp: system.pcm
 system_md_loop.cpp: system.pcm
 system_integration.cpp: system.pcm
 system_reservoir.cpp: system.pcm
-
 mc_moves.pcm: transition_matrix.pcm system.pcm cbmc.pcm component.pcm atom.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
 mc_moves_translation.cpp: mc_moves.pcm
 mc_moves_random_translation.cpp: mc_moves.pcm

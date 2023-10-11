@@ -1,7 +1,7 @@
 SimulationType                MonteCarlo
-NumberOfCycles                20000
-NumberOfInitializationCycles  1000
-NumberOfEquilibrationCycles   20000
+NumberOfCycles                200
+NumberOfInitializationCycles  200
+NumberOfEquilibrationCycles   200
 PrintEvery                    1000
 NumberOfBlocks                5
 
@@ -22,26 +22,26 @@ ExternalPressure 1e4
 
 Component 0 MoleculeName               CO2
             MolFraction                0.25
-	    ThermodynamicIntegration   yes
+	          ThermodynamicIntegration   yes
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
             SwapProbability            1.0
-            CFCMC_SwapProbability      1.0
-            CFCMC_CBMC_SwapProbability 1.0
+            CFCMC_SwapProbability      0.0
+            CFCMC_CBMC_SwapProbability 0.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
             CreateNumberOfMolecules    0
 
 Component 1 MoleculeName               methane
             MolFraction                0.75
-	    ThermodynamicIntegration   no
+	          ThermodynamicIntegration   no
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
             SwapProbability            1.0
-            CFCMC_SwapProbability      1.0
-            CFCMC_CBMC_SwapProbability 1.0
+            CFCMC_SwapProbability      0.0
+            CFCMC_CBMC_SwapProbability 0.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
             CreateNumberOfMolecules    0

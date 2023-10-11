@@ -342,10 +342,23 @@ export struct System
     
     std::vector<Atom> randomConfiguration(size_t selectedComponent, const std::span<const Atom> atoms) const;
 
-    [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
-    [[nodiscard]] std::optional<ChainData> growRigidMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
-    [[nodiscard]] std::optional<FirstBeadData> growRigidMoleculeMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
-    [[nodiscard]] std::optional<ChainData> growRigidMoleculeChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<ChainData> 
+      growMoleculeSwapInsertion(Component::GrowType growType, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, 
+                              size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<FirstBeadData> 
+      growMoleculeMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
+
+    [[nodiscard]] std::optional<ChainData> 
+      growRigidMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
+                                   double scaling, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<ChainData> 
+      growRigidMoleculeChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
+
+    [[nodiscard]] std::optional<ChainData> 
+      growFlexibleMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
+                                   double scaling, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<ChainData> 
+      growFlexibleMoleculeChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
 
     [[nodiscard]] ChainData retraceMoleculeSwapDeletion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
     [[nodiscard]] ChainData retraceRigidMoleculeSwapDeletion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;

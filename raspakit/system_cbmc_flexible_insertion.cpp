@@ -24,18 +24,18 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 
-// system_cbmc_rigid_insertion.cpp 
+// system_cbmc_flexible_insertion.cpp 
 //
-[[nodiscard]] std::optional<ChainData> System::growRigidMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
+[[nodiscard]] std::optional<ChainData> System::growFlexibleMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
 {
-  //std::vector<Atom> atoms = components[selectedComponent].newAtoms(scaling, selectedMolecule);
   for (Atom& atom : atoms)
   {
     atom.setScaling(scaling);
   }
   size_t startingBead = components[selectedComponent].startingBead;
 
-  std::optional<FirstBeadData> const firstBeadData = growMoleculeMultipleFirstBeadSwapInsertion(cutOff, cutOffCoulomb, atoms[startingBead]);
+  std::optional<FirstBeadData> 
+    const firstBeadData = growMoleculeMultipleFirstBeadSwapInsertion(cutOff, cutOffCoulomb, atoms[startingBead]);
 
   if (!firstBeadData) return std::nullopt;
 
@@ -46,14 +46,14 @@ import <numeric>;
     return ChainData({firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
-  std::optional<ChainData> const rigidRotationData = growRigidMoleculeChain(cutOff, cutOffCoulomb, startingBead, atoms);
+  std::optional<ChainData> const rigidRotationData = growFlexibleMoleculeChain(cutOff, cutOffCoulomb, startingBead, atoms);
   
   if (!rigidRotationData) return std::nullopt;
 
   return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] std::optional<ChainData> System::growRigidMoleculeChain(double cutOff, double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule) const noexcept
+[[nodiscard]] std::optional<ChainData> System::growFlexibleMoleculeChain(double cutOff, double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule) const noexcept
 {
   std::vector<std::vector<Atom>> trialPositions{};
 
@@ -62,12 +62,14 @@ import <numeric>;
     trialPositions.push_back(rotateRandomlyAround(molecule, startingBead));
   };
   
-  const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));
+  const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> 
+  externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions, 
+                                                           std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltmannFactors{};
-  std::transform(externalEnergies.begin(), externalEnergies.end(),
-      std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -beta * v.second.total(); });
+  std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
+      [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) {return -beta * v.second.total(); });
 
   size_t selected = selectTrialPosition(logBoltmannFactors);
 
@@ -76,5 +78,6 @@ import <numeric>;
 
   if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
+  return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / 
+                   double(numberOfTrialDirections), 0.0);
 }

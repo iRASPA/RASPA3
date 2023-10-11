@@ -39,15 +39,16 @@ import <iomanip>;
 
 std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC_CBMC(System& system, [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
 {
+  size_t selectedComponent = 0;
+  size_t selectedMolecule = 0;
 
   double cutOffVDW = system.forceField.cutOffVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  Component::GrowType growType = system.components[selectedComponent].growType;
 
-  size_t selectedComponent = 0;
-  size_t selectedMolecule = 0;
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
   if (!growData) return std::nullopt;
 
 

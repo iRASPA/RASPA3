@@ -67,6 +67,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
 
     double cutOffVDW = system.forceField.cutOffVDW;
     double cutOffCoulomb = system.forceField.cutOffCoulomb;
+    Component::GrowType growType = system.components[selectedComponent].growType;
 
     size_t newBin = static_cast<size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfBins));
     double newLambda = deltaLambda * static_cast<double>(newBin);
@@ -131,7 +132,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     std::vector<Atom> newatoms = system.components[selectedComponent].copyAtoms(oldFractionalMolecule, newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
 
     std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, newatoms);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, newatoms);
     std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCNonEwald += (w2 - w1);
     system.mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCNonEwald += (w2 - w1);

@@ -54,21 +54,60 @@ size_t System::selectTrialPosition(std::vector <double> LogBoltzmannFactors) con
     return selected;
 }
 
-[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
+[[nodiscard]] std::optional<ChainData> 
+System::growMoleculeSwapInsertion(Component::GrowType growType, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+                                  size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept
 {
-  return growRigidMoleculeSwapInsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, scaling, atoms);
+  switch(growType)
+  {
+    default:
+    return growRigidMoleculeSwapInsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, scaling, atoms);
+  }
 }
 
-[[nodiscard]] std::optional<ChainData> System::growMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule) const noexcept
+[[nodiscard]] std::optional<ChainData> 
+System::growMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+                                size_t selectedMolecule, std::span<Atom> molecule) const noexcept
 {
   return growRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
 }
-[[nodiscard]] ChainData System::retraceMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double storedR) const noexcept
+[[nodiscard]] ChainData 
+System::retraceMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+                                   size_t selectedMolecule, std::span<Atom> molecule, double storedR) const noexcept
 {
   return retraceRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, storedR);
 }
 
-[[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
+[[nodiscard]] ChainData 
+System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+                     size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {
   return retraceRigidMoleculeSwapDeletion(cutOff,cutOffCoulomb, selectedComponent, selectedMolecule, molecule, scaling, storedR);
 }
+
+
+[[nodiscard]] std::optional<FirstBeadData> System::growMoleculeMultipleFirstBeadSwapInsertion(double cutOff, double cutOffCoulomb, const Atom& atom) const noexcept
+{
+  std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
+  std::for_each(trialPositions.begin(), trialPositions.end(),
+      [&](Atom& a) {a.position = simulationBox.randomPosition(); });
+
+  const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions);
+
+  if (externalEnergies.empty()) return std::nullopt;
+
+  std::vector<double> logBoltmannFactors{};
+  std::transform(externalEnergies.begin(), externalEnergies.end(),
+      std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,RunningEnergy>& v) {return -beta * v.second.total(); });
+
+
+  size_t selected = selectTrialPosition(logBoltmannFactors);
+
+  double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+      [&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
+
+  if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
+
+  return FirstBeadData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
+}
+
