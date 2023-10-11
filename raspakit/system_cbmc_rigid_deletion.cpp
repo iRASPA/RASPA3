@@ -27,23 +27,23 @@ import <numeric>;
 
 // system_cbmc_rigid_deletion.cpp
 
-[[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
+[[nodiscard]] ChainData System::retraceRigidMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
 
-  const FirstBeadData firstBeadData = retraceMultipleFirstBeadSwapDeletion(cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR);
+  const FirstBeadData firstBeadData = retraceRigidMultipleFirstBeadSwapDeletion(cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR);
 
   if(molecule.size() == 1)
   {
     return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
   }
 
-  const ChainData rigidRotationData = retraceChain(cutOff, cutOffCoulomb, startingBead, scaling, molecule);
+  const ChainData rigidRotationData = retraceRigidChain(cutOff, cutOffCoulomb, startingBead, scaling, molecule);
 
   return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies, firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] FirstBeadData System::retraceMultipleFirstBeadSwapDeletion(double cutOff, double cutOffCoulomb, const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
+[[nodiscard]] FirstBeadData System::retraceRigidMultipleFirstBeadSwapDeletion(double cutOff, double cutOffCoulomb, const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   for(Atom &trialPosition: trialPositions) {trialPosition.setScaling(scaling);}
@@ -63,7 +63,7 @@ import <numeric>;
 }
 
 
-[[nodiscard]] ChainData System::retraceChain(double cutOff, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
+[[nodiscard]] ChainData System::retraceRigidChain(double cutOff, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
   std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom& a) {a.setScaling(scaling); });

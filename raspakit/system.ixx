@@ -343,18 +343,22 @@ export struct System
     std::vector<Atom> randomConfiguration(size_t selectedComponent, const std::span<const Atom> atoms) const;
 
     [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
-    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
-    [[nodiscard]] std::optional<ChainData> growChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growRigidMoleculeSwapInsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
+    [[nodiscard]] std::optional<FirstBeadData> growRigidMoleculeMultipleFirstBeadSwapInsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growRigidMoleculeChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
 
     [[nodiscard]] ChainData retraceMoleculeSwapDeletion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
-    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadSwapDeletion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double scaling, double storedR) const noexcept;
-    [[nodiscard]] ChainData retraceChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept;
-    [[nodiscard]] ChainData retraceChainReinsertion(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceRigidMoleculeSwapDeletion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
+    [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadSwapDeletion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double scaling, double storedR) const noexcept;
+    [[nodiscard]] ChainData retraceRigidChain(double cutOffVDW, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceRigidChainReinsertion(double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::span<Atom> molecule) const noexcept;
 
     [[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
     [[nodiscard]] ChainData retraceMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
-    [[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
-    [[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double storedR) const noexcept;
+    [[nodiscard]] std::optional<ChainData> growRigidMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
+    [[nodiscard]] ChainData retraceRigidMoleculeReinsertion(double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
+    [[nodiscard]] std::optional<FirstBeadData> growRigidMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
+    [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadReinsertion(double cutOffVDW, double cutOffCoulomb, const Atom& atom, double storedR) const noexcept;
 
     size_t selectTrialPosition(std::vector <double> BoltzmannFactors) const noexcept;
 

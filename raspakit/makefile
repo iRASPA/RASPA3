@@ -54,7 +54,7 @@ system.pcm: transition_matrix.pcm reaction.pcm reactions.pcm mc_moves_cputime.pc
 system_hardware_info.cpp: system.pcm
 system_compute_fluid_properties.cpp: system.pcm
 system_print_movestatistics.cpp: system.pcm 
-system_cbmc_rigid.cpp: system.pcm 
+system_cbmc.cpp: system.pcm 
 system_cbmc_rigid_deletion.cpp: system.pcm 
 system_cbmc_rigid_insertion.cpp: system.pcm 
 system_cbmc_rigid_reinsertion.cpp: system.pcm 

@@ -54,3 +54,21 @@ size_t System::selectTrialPosition(std::vector <double> LogBoltzmannFactors) con
     return selected;
 }
 
+[[nodiscard]] std::optional<ChainData> System::growMoleculeSwapInsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) const noexcept
+{
+  return growRigidMoleculeSwapInsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, scaling, atoms);
+}
+
+[[nodiscard]] std::optional<ChainData> System::growMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule) const noexcept
+{
+  return growRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
+}
+[[nodiscard]] ChainData System::retraceMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double storedR) const noexcept
+{
+  return retraceRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, storedR);
+}
+
+[[nodiscard]] ChainData System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
+{
+  return retraceRigidMoleculeSwapDeletion(cutOff,cutOffCoulomb, selectedComponent, selectedMolecule, molecule, scaling, storedR);
+}
