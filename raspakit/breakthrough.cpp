@@ -4,7 +4,7 @@ module breakthrough;
 
 import <vector>;
 import <span>;
-//import <mdspan>;
+import <mdspan>;
 import <cmath>;
 import <string>;
 import <iostream>;
@@ -23,6 +23,8 @@ import component;
 import system;
 import simulationbox;
 import mixture_prediction;
+
+// TODO: move std::span to std::mdarray in C++26
 
 const double R=8.31446261815324;
 
@@ -80,16 +82,26 @@ Breakthrough::Breakthrough(System &system):
     V(Ngrid+1),
     Vnew(Ngrid+1),
     Pt(Ngrid+1),
-    P((Ngrid + 1) * Ncomp),
-    Pnew((Ngrid + 1) * Ncomp),
-    Q((Ngrid + 1) * Ncomp),
-    Qnew((Ngrid + 1) * Ncomp),
-    Qeq((Ngrid + 1) * Ncomp),
-    Qeqnew((Ngrid + 1) * Ncomp),
-    Dpdt((Ngrid + 1) * Ncomp),
-    Dpdtnew((Ngrid + 1) * Ncomp),
-    Dqdt((Ngrid + 1) * Ncomp),
-    Dqdtnew((Ngrid + 1) * Ncomp),
+    P_vector((Ngrid + 1) * Ncomp),
+    P(P_vector.data(), Ngrid + 1, Ncomp),
+    Pnew_vector((Ngrid + 1) * Ncomp),
+    Pnew(Pnew_vector.data(), Ngrid + 1, Ncomp),
+    Q_vector((Ngrid + 1) * Ncomp),
+    Q(Q_vector.data(), Ngrid + 1, Ncomp),
+    Qnew_vector((Ngrid + 1) * Ncomp),
+    Qnew(Qnew_vector.data(), Ngrid + 1, Ncomp),
+    Qeq_vector((Ngrid + 1) * Ncomp),
+    Qeq(Qeq_vector.data(), Ngrid + 1, Ncomp),
+    Qeqnew_vector((Ngrid + 1) * Ncomp),
+    Qeqnew(Qeqnew_vector.data(), Ngrid + 1, Ncomp),
+    Dpdt_vector((Ngrid + 1) * Ncomp),
+    Dpdt(Dpdt_vector.data(), Ngrid + 1, Ncomp),
+    Dpdtnew_vector((Ngrid + 1) * Ncomp),
+    Dpdtnew(Dpdtnew_vector.data(), Ngrid + 1, Ncomp),
+    Dqdt_vector((Ngrid + 1) * Ncomp),
+    Dqdt(Dqdt_vector.data(), Ngrid + 1, Ncomp),
+    Dqdtnew_vector((Ngrid + 1) * Ncomp),
+    Dqdtnew(Dqdtnew_vector.data(), Ngrid + 1, Ncomp),
     cachedP0((Ngrid + 1) * Ncomp * system.maxIsothermTerms),
     cachedPsi((Ngrid + 1) * system.maxIsothermTerms)
 {
@@ -100,8 +112,8 @@ Breakthrough::Breakthrough(System &system):
   }
 
   // set P and Q to zero
-  std::fill(P.begin(), P.end(), 0.0);
-  std::fill(Q.begin(), Q.end(), 0.0);
+  std::fill(P_vector.begin(), P_vector.end(), 0.0);
+  std::fill(Q_vector.begin(), Q_vector.end(), 0.0);
 
   // initial pressure along the column
   std::vector<double> pt_init(Ngrid + 1);
@@ -113,16 +125,16 @@ Breakthrough::Breakthrough(System &system):
   }
 
   // initialize the interstitial gas velocity in the column
-  for(size_t i = 0; i < Ngrid + 1; ++i)
+  for(size_t i = 0; i <= Ngrid; ++i)
   {
     V[i] = v_in * p_total / pt_init[i];
   }
 
   // set the partial pressure of the carrier gas to the total initial pressure
   // for the column except for the entrance (i=0)
-  for(size_t i = 1; i < Ngrid + 1; ++i)
+  for(size_t i = 1; i <= Ngrid; ++i)
   {
-    P[i * Ncomp + system.carrierGasComponent] = pt_init[i];
+    P[i, system.carrierGasComponent] = pt_init[i];
   }
 
   //auto st = std::experimental::mdspan(P.data(), 2, 6);
@@ -133,7 +145,7 @@ Breakthrough::Breakthrough(System &system):
   // total pressure
   for(size_t j = 0; j < Ncomp; ++j)
   {
-    P[0 * Ncomp + j] = p_total * components[j].molFraction;
+    P[0, j] = p_total * components[j].molFraction;
   }
 
   // at the entrance: mol-fractions Yi are the gas-phase mol-fractions
@@ -147,7 +159,7 @@ Breakthrough::Breakthrough(System &system):
     double sum = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Yi[j] = std::max(P[i * Ncomp + j] / pt_init[i], 0.0);
+      Yi[j] = std::max(P[i, j] / pt_init[i], 0.0);
       sum += Yi[j];
     }
     for(size_t j = 0; j < Ncomp; ++j)
@@ -160,7 +172,7 @@ Breakthrough::Breakthrough(System &system):
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Qeq[i * Ncomp + j] = Ni[j];
+      Qeq[i, j] = Ni[j];
     }
   }
 
@@ -169,7 +181,7 @@ Breakthrough::Breakthrough(System &system):
     Pt[i] = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Pt[i] += std::max(0.0, P[i * Ncomp + j]);
+      Pt[i] += std::max(0.0, P[i, j]);
     }
   }
 }
@@ -190,12 +202,12 @@ std::string Breakthrough::writeHeader()
   std::print(stream, "Column entrance interstitial velocity: {} [m/s]\n", v_in);
   std::print(stream, "\n\n");
 
-  std::print("Breakthrough settings\n");
-  std::print("=======================================================\n");
-  std::print("Number of time steps:          {}\n", Nsteps);
-  std::print("Print every step:              {}\n", printEvery);
-  std::print("Write data every step:         {}\n", writeEvery);
-  std::print("\n\n");
+  std::print(stream, "Breakthrough settings\n");
+  std::print(stream, "=======================================================\n");
+  std::print(stream, "Number of time steps:          {}\n", Nsteps);
+  std::print(stream, "Print every step:              {}\n", printEvery);
+  std::print(stream, "Write data every step:         {}\n", writeEvery);
+  std::print(stream, "\n\n");
 
   std::print(stream, "Integration details\n");
   std::print(stream, "=======================================================\n");
@@ -204,8 +216,8 @@ std::string Breakthrough::writeHeader()
   std::print(stream, "Column spacing:                {} [m]\n", dx);
   std::print(stream, "\n\n");
 
-  std::print("Component data\n");
-  std::print("=======================================================\n");
+  std::print(stream, "Component data\n");
+  std::print(stream, "=======================================================\n");
   for(size_t i = 0; i < Ncomp; ++i)
   {
     std::print(stream, components[i].printBreakthroughStatus());
@@ -244,11 +256,11 @@ void Breakthrough::run(std::ostream &stream)
         {
           if (j == system.carrierGasComponent)
           {
-            P[0 * Ncomp + j] = p_total;
+            P[0, j] = p_total;
           }
           else
           {
-            P[0 * Ncomp + j] = 0.0;
+            P[0, j] = 0.0;
           }
         }
       }
@@ -264,7 +276,7 @@ void Breakthrough::run(std::ostream &stream)
       {
         streams[j] << t * v_in / L << " " <<
                       t/60.0 << " " <<
-                      P[Ngrid * Ncomp + j] / ((p_total + dptdx * L) * components[j].molFraction) << std::endl;
+                      P[Ngrid, j] / ((p_total + dptdx * L) * components[j].molFraction) << std::endl;
       }
 
       size_t column_nr = 1;
@@ -288,12 +300,12 @@ void Breakthrough::run(std::ostream &stream)
         movieStream << Pt[i] << " ";
         for(size_t j = 0; j < Ncomp; ++j)
         {
-          movieStream << Q[i * Ncomp + j] << " " <<
-                         Qeq[i * Ncomp + j] << " " <<
-                         P[i * Ncomp + j] << " " <<
-                         P[i * Ncomp + j] / (Pt[i] * components[j].molFraction) << " " <<
-                         Dpdt[i * Ncomp + j] << " " <<
-                         Dqdt[i * Ncomp + j] << " ";
+          movieStream << Q[i, j] << " " <<
+                         Qeq[i, j] << " " <<
+                         P[i, j] << " " <<
+                         P[i, j] / (Pt[i] * components[j].molFraction) << " " <<
+                         Dpdt[i, j] << " " <<
+                         Dqdt[i, j] << " ";
         }
         movieStream << "\n";
       }
@@ -316,7 +328,7 @@ void Breakthrough::run(std::ostream &stream)
       double tolerance = 0.0;
       for(size_t j = 0; j < Ncomp; ++j)
       {
-        tolerance = std::max(tolerance, std::abs((P[Ngrid * Ncomp + j] / 
+        tolerance = std::max(tolerance, std::abs((P[Ngrid, j] / 
                             ((p_total + dptdx * L) * components[j].molFraction)) - 1.0));
       }
 
@@ -343,8 +355,8 @@ void Breakthrough::run(std::ostream &stream)
     {
       for(size_t j = 0; j < Ncomp; ++j)
       {
-         Qnew[i * Ncomp + j] = Q[i * Ncomp + j] + dt * Dqdt[i * Ncomp + j];
-         Pnew[i * Ncomp + j] = P[i * Ncomp + j] + dt * Dpdt[i * Ncomp + j];
+         Qnew[i, j] = Q[i, j] + dt * Dqdt[i, j];
+         Pnew[i, j] = P[i, j] + dt * Dpdt[i, j];
       }
     }
 
@@ -363,10 +375,8 @@ void Breakthrough::run(std::ostream &stream)
     {
       for(size_t j = 0; j < Ncomp; ++j)
       {
-         Qnew[i * Ncomp + j] = 0.75 * Q[i * Ncomp + j] + 0.25 * Qnew[i * Ncomp + j] +
-                               0.25 * dt * Dqdtnew[i * Ncomp + j];
-         Pnew[i * Ncomp + j] = 0.75 * P[i * Ncomp + j] + 0.25 * Pnew[i * Ncomp + j] +
-                               0.25 * dt * Dpdtnew[i * Ncomp + j];
+        Qnew[i, j] = 0.75 * Q[i, j] + 0.25 * Qnew[i, j] + 0.25 * dt * Dqdtnew[i, j];
+        Pnew[i, j] = 0.75 * P[i, j] + 0.25 * Pnew[i, j] + 0.25 * dt * Dpdtnew[i, j];
       }
     }
 
@@ -385,10 +395,8 @@ void Breakthrough::run(std::ostream &stream)
     {
       for(size_t j = 0; j < Ncomp; ++j)
       {
-         Qnew[i * Ncomp + j] = (1.0/3.0) * Q[i * Ncomp + j] + (2.0/3.0) * Qnew[i * Ncomp + j] +
-                               (2.0/3.0) * dt * Dqdtnew[i * Ncomp + j];
-         Pnew[i * Ncomp + j] = (1.0/3.0) * P[i * Ncomp + j] + (2.0/3.0) * Pnew[i * Ncomp + j] +
-                               (2.0/3.0) * dt * Dpdtnew[i * Ncomp + j];
+        Qnew[i, j] = (1.0/3.0) * Q[i, j] + (2.0/3.0) * Qnew[i, j] + (2.0/3.0) * dt * Dqdtnew[i, j];
+        Pnew[i, j] = (1.0/3.0) * P[i, j] + (2.0/3.0) * Pnew[i, j] + (2.0/3.0) * dt * Dpdtnew[i, j];
       }
     }
 
@@ -397,9 +405,9 @@ void Breakthrough::run(std::ostream &stream)
     computeVelocity();
 
     // update to the new time step
-    std::copy(Qnew.begin(), Qnew.end(), Q.begin());
-    std::copy(Pnew.begin(), Pnew.end(), P.begin());
-    std::copy(Qeqnew.begin(), Qeqnew.end(), Qeq.begin());
+    std::copy(Qnew_vector.begin(), Qnew_vector.end(), Q_vector.begin());
+    std::copy(Pnew_vector.begin(), Pnew_vector.end(), P_vector.begin());
+    std::copy(Qeqnew_vector.begin(), Qeqnew_vector.end(), Qeq_vector.begin());
     std::copy(Vnew.begin(), Vnew.end(), V.begin());
   }
 
@@ -415,7 +423,7 @@ void Breakthrough::computeEquilibriumLoadings()
     Pt[i] = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Pt[i] += std::max(0.0, Pnew[i * Ncomp + j]);
+      Pt[i] += std::max(0.0, Pnew[i, j]);
     }
 
     // compute gas-phase mol-fractions
@@ -423,7 +431,7 @@ void Breakthrough::computeEquilibriumLoadings()
     double sum = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Yi[j] = std::max(Pnew[i * Ncomp + j], 0.0);
+      Yi[j] = std::max(Pnew[i, j], 0.0);
       sum += Yi[j];
     }
     for(size_t j = 0; j < Ncomp; ++j)
@@ -437,7 +445,7 @@ void Breakthrough::computeEquilibriumLoadings()
 
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      Qeqnew[i * Ncomp + j] = Ni[j];
+      Qeqnew[i, j] = Ni[j];
     }
   }
 
@@ -450,12 +458,12 @@ void Breakthrough::computeEquilibriumLoadings()
 
 
 // calculate the derivatives Dq/dt and Dp/dt along the column
-void Breakthrough::computeFirstDerivatives(std::vector<double> &dqdt,
-                                           std::vector<double> &dpdt,
-                                           const std::vector<double> &q_eq,
-                                           const std::vector<double> &q,
+void Breakthrough::computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
+                                           std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
+                                           const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
+                                           const std::mdspan<double, std::dextents<size_t, 2>> &q,
                                            const std::vector<double> &v,
-                                           const std::vector<double> &p)
+                                           const std::mdspan<double, std::dextents<size_t, 2>> &p)
 {
   double idx = 1.0 / dx;
   double idx2 = 1.0 / (dx * dx);
@@ -463,8 +471,8 @@ void Breakthrough::computeFirstDerivatives(std::vector<double> &dqdt,
   // first gridpoint
   for(size_t j = 0; j < Ncomp; ++j)
   {
-    dqdt[0 * Ncomp + j] = components[j].massTransferCoefficient * (q_eq[0 * Ncomp + j] - q[0 * Ncomp + j]);
-    dpdt[0 * Ncomp + j] = 0.0;
+    dqdt[0, j] = components[j].massTransferCoefficient * (q_eq[0, j] - q[0, j]);
+    dpdt[0, j] = 0.0;
   }
 
   // middle gridpoints
@@ -472,20 +480,20 @@ void Breakthrough::computeFirstDerivatives(std::vector<double> &dqdt,
   {
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      dqdt[i * Ncomp + j] = components[j].massTransferCoefficient * (q_eq[i * Ncomp + j] - q[i * Ncomp + j]);
-      dpdt[i * Ncomp + j] = (v[i - 1] * p[(i - 1) * Ncomp + j] - v[i] * p[i * Ncomp + j]) * idx
-                            + components[j].axialDispersionCoefficient * (p[(i + 1) * Ncomp + j] - 2.0 * p[i * Ncomp + j] + p[(i - 1) * Ncomp + j]) * idx2
-                            - prefactor[j] * (q_eq[i * Ncomp + j] - q[i * Ncomp + j]);
+      dqdt[i, j] = components[j].massTransferCoefficient * (q_eq[i, j] - q[i, j]);
+      dpdt[i, j] = (v[i - 1] * p[i - 1, j] - v[i] * p[i, j]) * idx
+                   + components[j].axialDispersionCoefficient * (p[i + 1, j] - 2.0 * p[i, j] + p[i - 1, j]) * idx2
+                   - prefactor[j] * (q_eq[i, j] - q[i, j]);
     }
   }
 
   // last gridpoint
   for(size_t j = 0; j < Ncomp; ++j)
   {
-    dqdt[Ngrid * Ncomp + j] = components[j].massTransferCoefficient * (q_eq[Ngrid * Ncomp + j] - q[Ngrid * Ncomp + j]);
-    dpdt[Ngrid * Ncomp + j] = (v[Ngrid - 1] * p[(Ngrid - 1) * Ncomp + j] - v[Ngrid] * p[Ngrid * Ncomp + j]) * idx
-                              + components[j].axialDispersionCoefficient * (p[(Ngrid - 1) * Ncomp + j] - p[Ngrid * Ncomp + j]) * idx2
-                              - prefactor[j] * (q_eq[Ngrid * Ncomp + j] - q[Ngrid * Ncomp + j]);
+    dqdt[Ngrid, j] = components[j].massTransferCoefficient * (q_eq[Ngrid, j] - q[Ngrid, j]);
+    dpdt[Ngrid, j] = (v[Ngrid - 1] * p[Ngrid - 1, j] - v[Ngrid] * p[Ngrid, j]) * idx
+                     + components[j].axialDispersionCoefficient * (p[Ngrid - 1, j] - p[Ngrid, j]) * idx2
+                     - prefactor[j] * (q_eq[Ngrid, j] - q[Ngrid, j]);
   }
 }
 
@@ -504,8 +512,8 @@ void Breakthrough::computeVelocity()
     double sum = 0.0;
     for(size_t j = 0; j < Ncomp; ++j)
     {
-      sum = sum - prefactor[j] * (Qeqnew[i * Ncomp + j] - Qnew[i * Ncomp + j]) +
-            components[j].axialDispersionCoefficient * (Pnew[(i - 1) * Ncomp + j] - 2.0 * Pnew[i * Ncomp + j] + Pnew[(i + 1) * Ncomp + j]) * idx2;
+      sum = sum - prefactor[j] * (Qeqnew[i, j] - Qnew[i, j]) +
+            components[j].axialDispersionCoefficient * (Pnew[i - 1, j] - 2.0 * Pnew[i, j] + Pnew[i + 1, j]) * idx2;
     }
   
     // explicit version
@@ -516,8 +524,8 @@ void Breakthrough::computeVelocity()
   double sum = 0.0;
   for(size_t j = 0; j < Ncomp; ++j)
   {
-    sum = sum - prefactor[j] * (Qeqnew[Ngrid * Ncomp + j] - Qnew[Ngrid * Ncomp + j]) +
-          components[j].axialDispersionCoefficient * (Pnew[(Ngrid - 1) * Ncomp + j] - Pnew[Ngrid * Ncomp + j]) * idx2;
+    sum = sum - prefactor[j] * (Qeqnew[Ngrid, j] - Qnew[Ngrid, j]) +
+          components[j].axialDispersionCoefficient * (Pnew[Ngrid - 1, j] - Pnew[Ngrid, j]) * idx2;
   }
   
   // explicit version

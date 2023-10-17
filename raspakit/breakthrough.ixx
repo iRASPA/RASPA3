@@ -5,6 +5,7 @@ import <span>;
 import <tuple>;
 import <string>;
 import <fstream>;
+import <mdspan>;
 
 import input_reader;
 import component;
@@ -64,16 +65,26 @@ export struct Breakthrough
     std::vector<double> Pt;        // total pressure along the column
 
     // vector of size '(Ngrid + 1) * Ncomp', for each grid point, data per component (contiguous)
-    std::vector<double> P;         // partial pressure at every grid point for each component
-    std::vector<double> Pnew;
-    std::vector<double> Q;         // volume-averaged adsorption amount at every grid point for each component
-    std::vector<double> Qnew;
-    std::vector<double> Qeq;       // equilibrium adsorption amount at every grid point for each component
-    std::vector<double> Qeqnew;
-    std::vector<double> Dpdt;      // derivative of P with respect to time
-    std::vector<double> Dpdtnew;
-    std::vector<double> Dqdt;      // derivative of Q with respect to time
-    std::vector<double> Dqdtnew;
+    std::vector<double> P_vector;         // partial pressure at every grid point for each component
+    std::mdspan<double, std::dextents<size_t, 2>> P;
+    std::vector<double> Pnew_vector;
+    std::mdspan<double, std::dextents<size_t, 2>> Pnew;
+    std::vector<double> Q_vector;         // volume-averaged adsorption amount at every grid point for each component
+    std::mdspan<double, std::dextents<size_t, 2>> Q;
+    std::vector<double> Qnew_vector;
+    std::mdspan<double, std::dextents<size_t, 2>> Qnew;
+    std::vector<double> Qeq_vector;       // equilibrium adsorption amount at every grid point for each component
+    std::mdspan<double, std::dextents<size_t, 2>> Qeq;
+    std::vector<double> Qeqnew_vector;
+    std::mdspan<double, std::dextents<size_t, 2>> Qeqnew;
+    std::vector<double> Dpdt_vector;      // derivative of P with respect to time
+    std::mdspan<double, std::dextents<size_t, 2>> Dpdt;
+    std::vector<double> Dpdtnew_vector;
+    std::mdspan<double, std::dextents<size_t, 2>> Dpdtnew;
+    std::vector<double> Dqdt_vector;      // derivative of Q with respect to time
+    std::mdspan<double, std::dextents<size_t, 2>> Dqdt;
+    std::vector<double> Dqdtnew_vector;
+    std::mdspan<double, std::dextents<size_t, 2>> Dqdtnew;
     std::vector<double> cachedP0;  // cached hypothetical pressure
     std::vector<double> cachedPsi; // cached reduced grand potential over the column
 
@@ -84,12 +95,12 @@ export struct Breakthrough
       Iterative = 1
     };
 
-    void computeFirstDerivatives(std::vector<double> &dqdt,
-                                 std::vector<double> &dpdt,
-                                 const std::vector<double> &q_eq,
-                                 const std::vector<double> &q,
+    void computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
+                                 std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &q,
                                  const std::vector<double> &v,
-                                 const std::vector<double> &p);
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &p);
 
     void computeEquilibriumLoadings();
 
