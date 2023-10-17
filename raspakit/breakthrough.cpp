@@ -25,6 +25,7 @@ import simulationbox;
 import mixture_prediction;
 
 // TODO: move std::span to std::mdarray in C++26
+// TODO: move cachedP0 and cachedPsi to submdspan in C++26
 
 const double R=8.31446261815324;
 
