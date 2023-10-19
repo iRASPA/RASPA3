@@ -1,15 +1,25 @@
 #include <gtest/gtest.h>
 
 import <cstddef>;
+import <vector>;
+import <span>;
+import <algorithm>;
 
+import int3;
 import double3;
+import double3x3;
 
+import atom;
 import forcefield;
 import component;
 import system;
 import simulationbox;
 import energy_factor;
+import running_energy;
+import force_factor;
+import energy_status;
 import units;
+
 TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
 {
   ForceField forceField = ForceField(

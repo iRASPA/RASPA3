@@ -4,14 +4,20 @@ import <cstddef>;
 import <vector>;
 import <tuple>;
 import <algorithm>;
+import <span>;
 
+import int3;
 import double3;
+import double3x3;
 
+import atom;
 import forcefield;
 import component;
 import system;
 import simulationbox;
 import energy_factor;
+import energy_status;
+import running_energy;
 
 
 TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)

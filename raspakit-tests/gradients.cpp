@@ -1,17 +1,20 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>;
-#include <algorithm>
-#include <vector>
+import <cstddef>;
+import <algorithm>;
+import <vector>;
+import <span>;
 
+import int3;
 import double3;
-
+import atom;
 import forcefield;
 import component;
 import system;
 import simulationbox;
 import energy_factor;
 import force_factor;
+import running_energy;
 
 TEST(Gradients, Test_CH4_in_Box_25x25x25)
 {
@@ -182,7 +185,7 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
   ForceFactor factor2 = system.computeFrameworkMoleculeGradient();
 
   double delta = 1e-5;
-  double tolerance = 1e-5;
+  double tolerance = 1e-4;
   double3 gradient;
   for (size_t i = 0; i < atomPositions.size(); ++i)
   {

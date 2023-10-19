@@ -1,14 +1,21 @@
 #include <gtest/gtest.h>
 
 import <cstddef>;
+import <vector>;
+import <span>;
+import <cmath>;
 
+import int3;
 import double3;
+import double3x3;
 
+import atom;
 import forcefield;
 import component;
 import system;
 import simulationbox;
 import energy_factor;
+import running_energy;
 
 TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
 {

@@ -4,14 +4,19 @@
 #include <vector>
 
 import <cstddef>;
+import <vector>;
+import <span>;
 
+import int3;
 import double3;
 
+import atom;
 import forcefield;
 import component;
 import system;
 import simulationbox;
 import energy_factor;
+import running_energy;
 
 
 TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
