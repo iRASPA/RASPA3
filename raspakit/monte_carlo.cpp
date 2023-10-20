@@ -18,6 +18,7 @@ import <ios>;
 import <print>;
 
 import stringutils;
+import archive;
 import system;
 import randomnumbers;
 import mc_moves;
@@ -441,4 +442,43 @@ void MonteCarlo::output()
     std::print(stream, "{}", system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
     std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& stream, const MonteCarlo& mc)
+{
+  stream << mc.versionNumber;
+
+  stream << mc.numberOfCycles;
+  stream << mc.numberOfSteps;
+  stream << mc.numberOfInitializationCycles;
+  stream << mc.numberOfEquilibrationCycles;
+  stream << mc.optimizeMCMovesEvery;
+  stream << mc.printEvery;
+
+  stream << static_cast<int64_t>(0x6f6b6179); // magic number 'okay' in hex
+  return stream;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& stream, MonteCarlo& mc)
+{
+  int64_t versionNumber;
+  stream >> versionNumber;
+  if(versionNumber > mc.versionNumber)
+  {
+  }
+
+  stream >> mc.numberOfCycles;
+  stream >> mc.numberOfSteps;
+  stream >> mc.numberOfInitializationCycles;
+  stream >> mc.numberOfEquilibrationCycles;
+  stream >> mc.optimizeMCMovesEvery;
+  stream >> mc.printEvery;
+
+  int64_t magicNumber;
+  stream >> magicNumber;
+  if(magicNumber != static_cast<int64_t>(0x6f6b6179))
+  {
+  }
+  std::print("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<int64_t>(0x6f6b6179));
+  return stream;
 }

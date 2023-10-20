@@ -8,6 +8,7 @@ import system;
 import mc_moves;
 import input_reader;
 import energy_status;
+import archive;
 
 import <vector>;
 import <iostream>;
@@ -16,6 +17,7 @@ import <chrono>;
 
 export struct MonteCarlo
 {
+  int64_t versionNumber{ 1 };
   enum class WeightingMethod : size_t
   {
       LambdaZero = 0,
@@ -50,4 +52,7 @@ export struct MonteCarlo
 
   std::chrono::system_clock::time_point t1;
   std::chrono::system_clock::time_point t2;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MonteCarlo &mc);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MonteCarlo &mc);
 };
