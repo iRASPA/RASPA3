@@ -40,14 +40,14 @@ import mc_moves_probabilities_particles;
 
 // mc_moves_swap_cfcmc.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System& system, size_t selectedComponent, size_t selectedMolecule,
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule,
   bool insertionDisabled, bool deletionDisabled)
 {
   PropertyLambdaProbabilityHistogram& lambda = system.components[selectedComponent].lambdaGC;
   size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
   double maxChange = system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.maxChange[2];
-  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(maxChange);
+  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -118,7 +118,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
     RunningEnergy energyDifferenceStep1 = frameworkDifferenceStep1.value() + moleculeDifferenceStep1.value() + EwaldEnergyDifferenceStep1;
 
     // copy atoms from the old-fractional molecule, including the groupdIds
-    std::vector<Atom> newatoms = system.components[selectedComponent].copyAtomsRandomlyRotatedAt(system.simulationBox.randomPosition(), oldFractionalMolecule, newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
+    std::vector<Atom> newatoms = system.components[selectedComponent].copyAtomsRandomlyRotatedAt(random, system.simulationBox.randomPosition(random), oldFractionalMolecule, newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
 
     std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceStep2 = system.computeFrameworkMoleculeEnergyDifference(newatoms, {});
@@ -177,7 +177,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
       }
     }
 
-    if (RandomNumber::Uniform() < biasTransitionMatrix  * Pacc)
+    if (random.uniform() < biasTransitionMatrix  * Pacc)
     {
       system.acceptEwaldMove();
 
@@ -216,7 +216,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
 
     if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
     {
-      selectedMolecule = system.randomIntegerMoleculeOfComponent(selectedComponent);
+      selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.counts[1] += 1;
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.totalCounts[1] += 1;
@@ -231,7 +231,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
       for (Atom& atom : fractionalMolecule)
       {
         atom.setScalingFullyOff();
-        atom.groupId = std::byte{ 0 };
+        atom.groupId = uint8_t{ 0 };
       }
 
       std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
@@ -334,7 +334,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
         }
       }
 
-      if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+      if (random.uniform() < biasTransitionMatrix * Pacc)
       {
         system.acceptEwaldMove();
         system.components[selectedComponent].lambdaGC.setCurrentBin(newBin);
@@ -426,7 +426,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(System
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.totalConstructed[2] += 1;
 
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
+    if (random.uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
     {
       system.acceptEwaldMove();
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC.accepted[2] += 1;

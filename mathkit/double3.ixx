@@ -3,6 +3,7 @@ export module double3;
 import <cmath>;
 import <algorithm>;
 import <ostream>;
+import <fstream>;
 
 #if defined(WIN32)
     import <intrin.h>;
@@ -14,7 +15,7 @@ import <ostream>;
 import int3;
 import bool3;
 import hashcombine;
-
+import archive;
 
 export union double3
 {
@@ -33,12 +34,16 @@ export union double3
     double3(double x, double y, double z): x(x), y(y), z(z), w(0.0) {}
     double3(int3 a) :x(double(a.x)), y(double(a.y)), z(double(a.z)), w(0.0) {}
 
+    bool operator==(double3 const& rhs) const
+    {
+      return (x == rhs.x) && (y == rhs.y) && (z == rhs.z);
+    }
+
     inline double& operator [] (size_t i) { return v[i]; }
     inline const double& operator [] (size_t i) const { return v[i]; }
 
     double3 normalise();
     double3 fract() const;
-    static double3 randomVectorOnUnitSphere();
 
     inline double length() { return sqrt(x * x + y * y + z * z); }
     inline double length_squared() const { return (x * x + y * y + z * z); }
@@ -103,6 +108,21 @@ export union double3
             return (std::fabs(lhs.x - rhs.x) < 1e-3) && std::fabs(lhs.y - rhs.y) < 1e-3 && std::fabs(lhs.z == rhs.z) < 1e-3;
         }
     };
+
+  //const Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive) const
+  //{
+  //  archive << x << y << z;
+  //  return archive;
+  //}
+
+  //Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive)
+  //{
+  //  archive >> x >> y >> z;
+  //  return archive;
+  //}
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3 &vec);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3 &vec);
 };
 
 

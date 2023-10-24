@@ -7,7 +7,12 @@ import <algorithm>;
 import <numeric>;
 import <cmath>;
 import <iostream>;
+import <istream>;
+import <ostream>;
+import <fstream>;
 import <string>;
+
+import archive;
 
 export enum class confidenceLevel : int
 {
@@ -59,6 +64,8 @@ export struct BlockErrorEstimation
   double binSize{};
   std::vector<size_t> nextBin;
 
+  BlockErrorEstimation() {};
+
   BlockErrorEstimation(size_t size, size_t numberOfSamples): 
         numberOfBins(size), numberOfSamples(numberOfSamples), nextBin(size)
   {
@@ -69,11 +76,16 @@ export struct BlockErrorEstimation
     }
   }
 
+  bool operator==(BlockErrorEstimation const&) const = default;
+
   void setCurrentSample(size_t sample)
   {
     currentSample = sample;
     if (currentSample == nextBin[currentBin])
       ++currentBin;
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BlockErrorEstimation &blockerror);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BlockErrorEstimation &blockerror);
 };
 

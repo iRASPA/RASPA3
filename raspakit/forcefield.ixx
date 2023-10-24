@@ -5,8 +5,10 @@ import <string>;
 import <algorithm>;
 import <iostream>;
 import <ostream>;
+import <fstream>;
 import <optional>;
 
+import archive;
 import double4;
 import double3;
 import int3;
@@ -34,6 +36,8 @@ export struct VDWParameters
   {
   }
 
+  bool operator==(VDWParameters const&) const = default;
+
   void computeShiftAtCutOff(double cutOff)
   {
     shift = 0.0;
@@ -45,15 +49,24 @@ export struct VDWParameters
     double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
     shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameters &p);
 };
 
 export struct PseudoAtom
 {
+  uint64_t versionNumber{ 1 };
   std::string name{ "C" };
   double mass{ 1.0 };
   double charge{ 0.0 };
   size_t atomicNumber{ 8 };
   bool printToPDB{ true };
+
+  bool operator==(PseudoAtom const&) const = default;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &a);
 };
 
 export struct ForceField
@@ -71,6 +84,8 @@ export struct ForceField
       Lorentz_Berthelot = 0
   };
   
+  uint64_t versionNumber{ 1 };
+
   // 2D-vector, size numberOfPseudoAtoms squared
   std::vector<VDWParameters> data{};
   std::vector<bool> shiftPotentials{};
@@ -101,6 +116,8 @@ export struct ForceField
   ForceField& operator=(ForceField&& a) noexcept = default;
   ~ForceField() noexcept = default;
 
+  bool operator==(ForceField const&) const = default;
+
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
 
@@ -115,4 +132,7 @@ export struct ForceField
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
 
   void initializeEwaldParameters(double3 perpendicularWidths);
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f);
 };

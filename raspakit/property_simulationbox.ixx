@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import averages;
 import simulationbox;
 
@@ -21,11 +23,17 @@ inline std::pair<SimulationBox, double> pair_sum(const std::pair<SimulationBox, 
 
 export struct PropertySimulationBox
 {
+  PropertySimulationBox() {};
+
   PropertySimulationBox(size_t numberOfBlocks) :
       numberOfBlocks(numberOfBlocks),
       bookKeepingSimulationBox(numberOfBlocks, std::make_pair(SimulationBox(), 0.0))
   {
   }
+
+  bool operator==(PropertySimulationBox const&) const = default;
+
+  uint64_t versionNumber{ 1 };
 
   size_t numberOfBlocks;
   std::vector<std::pair<SimulationBox, double>> bookKeepingSimulationBox;
@@ -77,4 +85,7 @@ export struct PropertySimulationBox
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertySimulationBox &box);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertySimulationBox &box);
 };

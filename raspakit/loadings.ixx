@@ -5,12 +5,16 @@ import <vector>;
 import <optional>;
 import <cmath>;
 import <ostream>;
+import <fstream>;
 
+import archive;
 import simulationbox;
 import component;
 
 export struct Loadings
 {
+  Loadings() {};
+
   Loadings(size_t size) : 
       size(size), 
       numberOfMolecules(std::vector<double>(size)), 
@@ -19,6 +23,8 @@ export struct Loadings
   {
 
   }
+
+  bool operator==(Loadings const&) const = default;
 
   void resize(size_t numberOfComponents)
   {
@@ -65,12 +71,17 @@ export struct Loadings
     return *this;
   }
 
+  uint64_t versionNumber{ 1 };
+
   size_t size;
   double totalNumberOfMolecules;
   double totalDensity;
   std::vector<double> numberOfMolecules;
   std::vector<double> numberDensities;
   std::vector<double> inverseNumberDensities;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Loadings &l);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Loadings &l);
 };
 
 

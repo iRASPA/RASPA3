@@ -1,10 +1,5 @@
 export module enthalpy_of_adsorption;
 
-import matrix;
-
-import energy_status;
-import averages;
-import units;
 import <vector>;
 import <numeric>;
 import <fstream>;
@@ -12,6 +7,12 @@ import <utility>;
 import <string>;
 import <cmath>;
 import <iostream>;
+import matrix;
+import archive;
+
+import energy_status;
+import averages;
+import units;
 #if defined(_WIN32)
   import <cassert>;
 #else
@@ -35,6 +36,8 @@ export struct EnthalpyOfAdsorption
 
     }
 
+    bool operator==(EnthalpyOfAdsorption const&) const = default;
+
     size_t size;
     std::vector<double> values;
 
@@ -46,6 +49,9 @@ export struct EnthalpyOfAdsorption
         }
         return *this;
     }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorption &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorption &p);
 };
 
 
@@ -153,6 +159,8 @@ export struct EnthalpyOfAdsorptionTerms
 
     EnthalpyOfAdsorptionTerms() = default;
 
+    bool operator==(EnthalpyOfAdsorptionTerms const&) const = default;
+
     size_t size;
     std::vector<size_t> swapableComponents;
     std::vector<double> totalEnergyTimesNumberOfMolecules;
@@ -206,6 +214,8 @@ export struct EnthalpyOfAdsorptionTerms
         }
         return v;
     }
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorptionTerms &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorptionTerms &p);
 };
 
 export inline EnthalpyOfAdsorptionTerms operator+(const EnthalpyOfAdsorptionTerms& a, const EnthalpyOfAdsorptionTerms& b)

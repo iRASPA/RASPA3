@@ -57,6 +57,9 @@ export struct InputReader
   size_t numberOfInitializationCycles{ 0 };
   size_t numberOfEquilibrationCycles{ 0 };
   std::size_t printEvery{ 0 };
+  bool restartFromBinary{ false };
+
+  std::optional<unsigned long long> randomSeed{ std::nullopt };
 
   size_t numberOfBlocks{ 5 };
   size_t numberOfThreads{ 1 };

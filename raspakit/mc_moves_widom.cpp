@@ -39,7 +39,7 @@ import <iomanip>;
 // mc_moves_widom.cpp
 
 
-std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedComponent)
+std::optional<double> MC_Moves::WidomMove([[maybe_unused]] RandomNumber &random, System& system, size_t selectedComponent)
 {
     size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
     system.components[selectedComponent].mc_moves_probabilities.statistics_WidomMove_CBMC.counts += 1;
@@ -50,7 +50,7 @@ std::optional<double> MC_Moves::WidomMove(System& system, size_t selectedCompone
     
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
     system.mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);

@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import double3x3;
 import averages;
 import units;
@@ -28,6 +30,8 @@ inline std::pair<double3x3, double> pair_acc2(const std::pair<double3x3, double>
 
 export struct PropertyPressure
 {
+  PropertyPressure() {};
+
   PropertyPressure(size_t numberOfBlocks) :
       numberOfBlocks(numberOfBlocks),
       bookKeepingExcessPressure(numberOfBlocks),
@@ -35,6 +39,9 @@ export struct PropertyPressure
   {
   }
 
+  bool operator==(PropertyPressure const&) const = default;
+
+  uint64_t versionNumber{ 1 };
   size_t numberOfBlocks;
   std::vector<std::pair<double3x3, double>> bookKeepingExcessPressure;
   std::vector<std::pair<double, double>> bookKeepingIdealGasPressure;
@@ -307,4 +314,7 @@ export struct PropertyPressure
   }
 
   std::string writeAveragesStatistics() const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e);
 };

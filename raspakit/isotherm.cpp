@@ -281,94 +281,94 @@ bool Isotherm::isUnphysical() const
   }
 }
 
-void Isotherm::randomize(double maximumLoading)
+void Isotherm::randomize(RandomNumber &random, double maximumLoading)
 {
   switch(type)
   {
     case Isotherm::Type::Langmuir:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
       break;
     }
     case Isotherm::Type::Anti_Langmuir:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
       break;
     }
     case Isotherm::Type::BET:
     {
-      parameters[0] = 10.0 * RandomNumber::Uniform();
-      parameters[1] = 10.0 * RandomNumber::Uniform();
-      parameters[2] = 10.0 * RandomNumber::Uniform();
+      parameters[0] = 10.0 * random.uniform();
+      parameters[1] = 10.0 * random.uniform();
+      parameters[2] = 10.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Henry:
     {
-      parameters[0] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
+      parameters[0] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
       break;
     }
     case Isotherm::Type::Freundlich:
     {
-      parameters[0] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[1] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[1] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Sips:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Langmuir_Freundlich:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Redlich_Peterson:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Toth:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Unilan:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::OBrien_Myers:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Quadratic:
     {
-      parameters[0] = 2.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = 10.0 * RandomNumber::Uniform();
-      parameters[2] = 10.0 * RandomNumber::Uniform();
+      parameters[0] = 2.1 * maximumLoading * random.uniform();
+      parameters[1] = 10.0 * random.uniform();
+      parameters[2] = 10.0 * random.uniform();
       break;
     }
     case Isotherm::Type::Temkin:
     {
-      parameters[0] = 1.1 * maximumLoading * RandomNumber::Uniform();
-      parameters[1] = std::pow(RandomNumber::Uniform(), 10.0 * 2.0 * (RandomNumber::Uniform() - 1.0));
-      parameters[2] = 0.1 + 2.0 * RandomNumber::Uniform();
+      parameters[0] = 1.1 * maximumLoading * random.uniform();
+      parameters[1] = std::pow(random.uniform(), 10.0 * 2.0 * (random.uniform() - 1.0));
+      parameters[2] = 0.1 + 2.0 * random.uniform();
       break;
     }
     default:

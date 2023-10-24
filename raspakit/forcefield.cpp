@@ -8,8 +8,6 @@ import <fstream>;
 import <cstdlib>;
 import <iostream>;
 import <sstream>;
-import <format>;
-import <exception>;
 import <vector>;
 import <map>;
 import <cmath>;
@@ -19,6 +17,10 @@ import <optional>;
 import <numbers>;
 import <algorithm>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
 
 import skelement;
@@ -352,4 +354,115 @@ void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
         //if (ReciprocalCutOffSquared[i] < 0.0)
         //    ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
     }
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p)
+{
+  archive << p.parameters;
+  archive << p.shift;
+  archive << p.tailCorrectionEnergy;
+  archive << p.type;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameters &p)
+{
+  archive >> p.parameters;
+  archive >> p.shift;
+  archive >> p.tailCorrectionEnergy;
+  archive >> p.type;
+
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a)
+{
+  archive << a.versionNumber;
+  archive << a.name;
+  archive << a.mass;
+  archive << a.charge;
+  archive << a.atomicNumber;
+  archive << a.printToPDB;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &a)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > a.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PseudoAtom' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> a.name;
+  archive >> a.mass;
+  archive >> a.charge;
+  archive >> a.atomicNumber;
+  archive >> a.printToPDB;
+
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f)
+{
+  archive << f.versionNumber;
+
+  archive << f.data;
+  archive << f.shiftPotentials;
+  archive << f.tailCorrections;
+  archive << f.cutOffVDW;
+  archive << f.cutOffCoulomb;
+  archive << f.dualCutOff;
+
+  archive << f.numberOfPseudoAtoms;
+  archive << f.pseudoAtoms;
+
+  archive << f.chargeMethod;
+
+  archive << f.overlapCriteria;
+
+  archive << f.EwaldPrecision;
+  archive << f.EwaldAlpha;
+  archive << f.numberOfWaveVectors;
+  archive << f.automaticEwald;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > f.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'ForceField' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> f.data;
+  archive >> f.shiftPotentials;
+  archive >> f.tailCorrections;
+  archive >> f.cutOffVDW;
+  archive >> f.cutOffCoulomb;
+  archive >> f.dualCutOff;
+
+  archive >> f.numberOfPseudoAtoms;
+  archive >> f.pseudoAtoms;
+
+  archive >> f.chargeMethod;
+
+  archive >> f.overlapCriteria;
+
+  archive >> f.EwaldPrecision;
+  archive >> f.EwaldAlpha;
+  archive >> f.numberOfWaveVectors;
+  archive >> f.automaticEwald;
+
+  return archive;
 }

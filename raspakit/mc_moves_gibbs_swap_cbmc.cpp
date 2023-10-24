@@ -29,7 +29,7 @@ import simulationbox;
 
 // mc_moves_gibbs_swap_cbmc.cpp
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(System& systemA, System& systemB, size_t selectedComponent)
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& systemB, size_t selectedComponent)
 {
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
@@ -45,7 +45,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   std::vector<Atom> atoms = systemA.components[selectedComponent].newAtoms(1.0, systemA.numberOfMoleculesPerComponent[selectedComponent]);
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::optional<ChainData> growData = systemA.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, atoms);
+  std::optional<ChainData> growData = systemA.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, atoms);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
@@ -69,11 +69,11 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   
 
 
-  size_t selectedMolecule = systemB.randomMoleculeOfComponent(selectedComponent);
+  size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
   std::chrono::system_clock::time_point tB1 = std::chrono::system_clock::now();
-  ChainData retraceData = systemB.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
+  ChainData retraceData = systemB.retraceMoleculeSwapDeletion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
   std::chrono::system_clock::time_point tB2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
@@ -93,7 +93,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   double correctionFactorEwaldB = std::exp(systemB.beta * (energyFourierDifferenceB.total() + tailEnergyDifferenceB.total()));
 
 
-  if (RandomNumber::Uniform() < (correctionFactorEwaldA * growData->RosenbluthWeight * static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) * systemA.simulationBox.volume) /
+  if (random.uniform() < (correctionFactorEwaldA * growData->RosenbluthWeight * static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) * systemA.simulationBox.volume) /
                                 (correctionFactorEwaldB * retraceData.RosenbluthWeight * (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) * systemB.simulationBox.volume))
   {
     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.accepted += 1;

@@ -40,7 +40,7 @@ import <iomanip>;
 
 // mc_moves_volume.cpp
 
-std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &system) const
+std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system) const
 {
   system.mc_moves_probabilities.statistics_VolumeMove.counts += 1;
   system.mc_moves_probabilities.statistics_VolumeMove.totalCounts += 1;
@@ -50,7 +50,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
                         system.numberOfIntegerMoleculesPerComponent.end()));
   double oldVolume = system.simulationBox.volume;
   double maxVolumeChange = system.mc_moves_probabilities.statistics_VolumeMove.maxChange;
-  double newVolume = std::exp(std::log(oldVolume) + maxVolumeChange * (2.0 * RandomNumber::Uniform() - 1.0));
+  double newVolume = std::exp(std::log(oldVolume) + maxVolumeChange * (2.0 * random.uniform() - 1.0));
   double scale = std::pow(newVolume/oldVolume, 1.0/3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
@@ -71,7 +71,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove([[maybe_unused]] System &syste
   system.mc_moves_probabilities.statistics_VolumeMove.constructed += 1;
   system.mc_moves_probabilities.statistics_VolumeMove.totalConstructed += 1;
 
-  if(RandomNumber::Uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
+  if(random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
         - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.beta))
   {
     system.mc_moves_probabilities.statistics_VolumeMove.accepted += 1;

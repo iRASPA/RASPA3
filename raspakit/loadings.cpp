@@ -9,7 +9,11 @@ import <iostream>;
 import <sstream>;
 import <vector>;
 import <ostream>;
+import <format>;
 import <print>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
 import stringutils;
 import component;
@@ -114,3 +118,38 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
   return stream.str();
 }
 
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Loadings &l)
+{
+  archive << l.versionNumber;
+
+  archive << l.size;
+  archive << l.totalNumberOfMolecules;
+  archive << l.totalDensity;
+  archive << l.numberOfMolecules;
+  archive << l.numberDensities;
+  archive << l.inverseNumberDensities;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Loadings &l)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > l.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Loadings' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> l.size;
+  archive >> l.totalNumberOfMolecules;
+  archive >> l.totalDensity;
+  archive >> l.numberOfMolecules;
+  archive >> l.numberDensities;
+  archive >> l.inverseNumberDensities;
+
+  return archive;
+}

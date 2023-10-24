@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import averages;
 import loadings;
 import component;
@@ -22,12 +24,18 @@ inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &l
 
 export struct PropertyLoading
 {
+  PropertyLoading() {};
+
   PropertyLoading(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
       bookKeepingLoadings(std::vector<std::pair<Loadings, double>>(numberOfBlocks, std::make_pair(Loadings(numberOfComponents), 0.0)))
   {
   }
+
+  bool operator==(PropertyLoading const&) const = default;
+
+  uint64_t versionNumber{ 1 };
 
   size_t numberOfBlocks;
   size_t numberOfComponents;
@@ -87,4 +95,7 @@ export struct PropertyLoading
   }
 
   std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLoading &l);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoading &l);
 };

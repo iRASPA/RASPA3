@@ -7,6 +7,7 @@ import <string>;
 import <unordered_map>;
 import <iostream>;
 
+import randomnumbers;
 import input_reader;
 import component;
 import multi_site_isotherm;
@@ -44,6 +45,7 @@ export struct IsothermFitting
   IsothermFitting(System &system) noexcept;
 
   System &system;
+  RandomNumber random;
   std::vector<std::pair<double, double>> readData(size_t componentId);
   void printSolution(size_t Id);
   void run(std::ostream &stream);

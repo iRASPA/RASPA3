@@ -53,6 +53,7 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noex
     numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
     printEvery(reader.printEvery),
     systems(std::move(reader.systems)),
+    random(reader.randomSeed),
     estimation(reader.numberOfBlocks, reader.numberOfCycles)
 {
     
@@ -60,7 +61,7 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noex
 
 System& MonteCarloTransitionMatrix::randomSystem()
 {
-  return systems[size_t(RandomNumber::Uniform() * static_cast<double>(systems.size()))];
+  return systems[size_t(random.uniform() * static_cast<double>(systems.size()))];
 }
 
 void MonteCarloTransitionMatrix::run()
@@ -92,7 +93,7 @@ void MonteCarloTransitionMatrix::initialize()
     double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
     system.forceField.initializeEwaldParameters(perpendicularWidths);
 
-    system.createInitialMolecules();
+    system.createInitialMolecules(random);
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
 
@@ -119,6 +120,7 @@ void MonteCarloTransitionMatrix::initialize()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "Random seed: {}\n\n", random.seed);
     std::print(stream, "{}", system.writeOutputHeaderHardware());
     std::print(stream, "{}", Units::printStatus());
     std::print(stream, "{}", system.simulationBox.printParameters());
@@ -142,15 +144,15 @@ void MonteCarloTransitionMatrix::initialize()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
-        size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        size_t selectedComponent = selectedSystem.randomComponent(random);
+        particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -203,15 +205,15 @@ void MonteCarloTransitionMatrix::equilibrate()
   {
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
-        size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMove(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        size_t selectedComponent = selectedSystem.randomComponent(random);
+        particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -298,15 +300,15 @@ void MonteCarloTransitionMatrix::production()
 
     for (size_t j = 0; j != systems.size(); ++j)
     {
-      std::pair<size_t, size_t> selectedSystemPair = RandomNumber::randomPairAdjacentIntegers(systems.size());
+      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
       
       size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
-        size_t selectedComponent = selectedSystem.randomComponent();
-        particleMoves.performRandomMoveProduction(selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+        size_t selectedComponent = selectedSystem.randomComponent(random);
+        particleMoves.performRandomMoveProduction(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);

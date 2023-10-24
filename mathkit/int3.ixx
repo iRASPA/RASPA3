@@ -5,8 +5,10 @@ import <cmath>;
 import <functional>;
 import <tuple>;
 import <cctype>;
+import <fstream>;
 
 import hashcombine;
+import archive;
 
 export union int3
 {
@@ -46,6 +48,9 @@ export union int3
     //friend QDebug operator<<(QDebug debug, const int3& m);
     //friend QDataStream& operator<<(QDataStream&, const int3&);
     //friend QDataStream& operator>>(QDataStream&, int3&);
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const int3 &vec);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, int3 &vec);
 };
 
 export inline int3 operator+(int3 lhs, const int3& rhs) { return int3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z); }

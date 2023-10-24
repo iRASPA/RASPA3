@@ -4,9 +4,15 @@ import <chrono>;
 import <string>;
 import <sstream>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <fstream>;
+import <complex>;
 
 import double3;
 import stringutils;
+import archive;
 
 
 void MCMoveCpuTime::clearTimingStatistics()
@@ -507,3 +513,203 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
 
   return stream.str();
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveCpuTime &t)
+{
+  archive << t.versionNumber;
+
+  archive << t.propertySampling;
+  archive << t.energyPressureComputation;
+
+  archive << t.translationMove;
+  archive << t.translationMoveNonEwald;
+  archive << t.translationMoveEwald;
+
+  archive << t.randomTranslationMove;
+  archive << t.randomTranslationMoveNonEwald;
+  archive << t.randomTranslationMoveEwald;
+
+  archive << t.rotationMove;
+  archive << t.rotationMoveNonEwald;
+  archive << t.rotationMoveEwald;
+
+  archive << t.randomRotationMove;
+  archive << t.randomRotationMoveNonEwald;
+  archive << t.randomRotationMoveEwald;
+
+  archive << t.reinsertionMoveCBMC;
+  archive << t.reinsertionMoveCBMCNonEwald;
+  archive << t.reinsertionMoveCBMCEwald;
+
+  archive << t.swapInsertionMoveCBMC;
+  archive << t.swapInsertionMoveCBMCNonEwald;
+  archive << t.swapInsertionMoveCBMCEwald;
+  archive << t.swapInsertionMoveCBMCTail;
+
+  archive << t.swapDeletionMoveCBMC;
+  archive << t.swapDeletionMoveCBMCNonEwald;
+  archive << t.swapDeletionMoveCBMCEwald;
+  archive << t.swapDeletionMoveCBMCTail;
+
+  archive << t.swapLambdaDeletionMove;
+  archive << t.swapLambdaDeletionMoveNonEwald;
+  archive << t.swapLambdaDeletionMoveEwald;
+
+  archive << t.swapLambdaMoveCFCMC;
+  archive << t.swapLambdaInsertionMoveCFCMCNonEwald;
+  archive << t.swapLambdaInsertionMoveCFCMCEwald;
+  archive << t.swapLambdaChangeMoveCFCMCNonEwald;
+  archive << t.swapLambdaChangeMoveCFCMCEwald;
+  archive << t.swapLambdaDeletionMoveCFCMCNonEwald;
+  archive << t.swapLambdaDeletionMoveCFCMCEwald;
+
+  archive << t.swapLambdaMoveCBCFCMC;
+  archive << t.swapLambdaInsertionMoveCBCFCMCNonEwald;
+  archive << t.swapLambdaInsertionMoveCBCFCMCEwald;
+  archive << t.swapLambdaChangeMoveCBCFCMCNonEwald;
+  archive << t.swapLambdaChangeMoveCBCFCMCEwald;
+  archive << t.swapLambdaChangeMoveCBCFCMCTail;
+  archive << t.swapLambdaDeletionMoveCBCFCMCNonEwald;
+  archive << t.swapLambdaDeletionMoveCBCFCMCEwald;
+
+  archive << t.GibbsSwapMoveCBMC;
+  archive << t.GibbsSwapMoveCBMCNonEwald;
+  archive << t.GibbsSwapMoveCBMCEwald;
+
+  archive << t.GibbsSwapLambdaMoveCFCMC;
+  archive << t.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
+  archive << t.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
+  archive << t.GibbsSwapLambdaInterChangeMoveCFCMCTail;
+  archive << t.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
+  archive << t.GibbsSwapLambdaChangeMoveCFCMCEwald;
+  archive << t.GibbsSwapLambdaChangeMoveCFCMCTail;
+  archive << t.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
+  archive << t.GibbsSwapLambdaShuffleMoveCFCMCEwald;
+  archive << t.GibbsSwapLambdaShuffleMoveCFCMCTail;
+
+  archive << t.WidomMoveCBMC;
+  archive << t.WidomMoveCBMCNonEwald;
+  archive << t.WidomMoveCBMCEwald;
+
+  archive << t.WidomMoveCFCMC;
+  archive << t.WidomMoveCFCMCNonEwald;
+  archive << t.WidomMoveCFCMCEwald;
+
+  archive << t.WidomMoveCBCFCMC;
+  archive << t.WidomMoveCBCFCMCNonEwald;
+  archive << t.WidomMoveCBCFCMCEwald;
+
+  archive << t.volumeMove;
+  archive << t.volumeMoveNonEwald;
+  archive << t.volumeMoveEwald;
+
+  archive << t.GibbsVolumeMove;
+  archive << t.GibbsVolumeMoveNonEwald;
+  archive << t.GibbsVolumeMoveEwald;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTime &t)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > t.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'MCMoveCpuTime' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> t.propertySampling;
+  archive >> t.energyPressureComputation;
+
+  archive >> t.translationMove;
+  archive >> t.translationMoveNonEwald;
+  archive >> t.translationMoveEwald;
+
+  archive >> t.randomTranslationMove;
+  archive >> t.randomTranslationMoveNonEwald;
+  archive >> t.randomTranslationMoveEwald;
+
+  archive >> t.rotationMove;
+  archive >> t.rotationMoveNonEwald;
+  archive >> t.rotationMoveEwald;
+
+  archive >> t.randomRotationMove;
+  archive >> t.randomRotationMoveNonEwald;
+  archive >> t.randomRotationMoveEwald;
+
+  archive >> t.reinsertionMoveCBMC;
+  archive >> t.reinsertionMoveCBMCNonEwald;
+  archive >> t.reinsertionMoveCBMCEwald;
+
+  archive >> t.swapInsertionMoveCBMC;
+  archive >> t.swapInsertionMoveCBMCNonEwald;
+  archive >> t.swapInsertionMoveCBMCEwald;
+  archive >> t.swapInsertionMoveCBMCTail;
+
+  archive >> t.swapDeletionMoveCBMC;
+  archive >> t.swapDeletionMoveCBMCNonEwald;
+  archive >> t.swapDeletionMoveCBMCEwald;
+  archive >> t.swapDeletionMoveCBMCTail;
+
+  archive >> t.swapLambdaDeletionMove;
+  archive >> t.swapLambdaDeletionMoveNonEwald;
+  archive >> t.swapLambdaDeletionMoveEwald;
+
+  archive >> t.swapLambdaMoveCFCMC;
+  archive >> t.swapLambdaInsertionMoveCFCMCNonEwald;
+  archive >> t.swapLambdaInsertionMoveCFCMCEwald;
+  archive >> t.swapLambdaChangeMoveCFCMCNonEwald;
+  archive >> t.swapLambdaChangeMoveCFCMCEwald;
+  archive >> t.swapLambdaDeletionMoveCFCMCNonEwald;
+  archive >> t.swapLambdaDeletionMoveCFCMCEwald;
+
+  archive >> t.swapLambdaMoveCBCFCMC;
+  archive >> t.swapLambdaInsertionMoveCBCFCMCNonEwald;
+  archive >> t.swapLambdaInsertionMoveCBCFCMCEwald;
+  archive >> t.swapLambdaChangeMoveCBCFCMCNonEwald;
+  archive >> t.swapLambdaChangeMoveCBCFCMCEwald;
+  archive >> t.swapLambdaChangeMoveCBCFCMCTail;
+  archive >> t.swapLambdaDeletionMoveCBCFCMCNonEwald;
+  archive >> t.swapLambdaDeletionMoveCBCFCMCEwald;
+
+  archive >> t.GibbsSwapMoveCBMC;
+  archive >> t.GibbsSwapMoveCBMCNonEwald;
+  archive >> t.GibbsSwapMoveCBMCEwald;
+
+  archive >> t.GibbsSwapLambdaMoveCFCMC;
+  archive >> t.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
+  archive >> t.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
+  archive >> t.GibbsSwapLambdaInterChangeMoveCFCMCTail;
+  archive >> t.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
+  archive >> t.GibbsSwapLambdaChangeMoveCFCMCEwald;
+  archive >> t.GibbsSwapLambdaChangeMoveCFCMCTail;
+  archive >> t.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
+  archive >> t.GibbsSwapLambdaShuffleMoveCFCMCEwald;
+  archive >> t.GibbsSwapLambdaShuffleMoveCFCMCTail;
+
+  archive >> t.WidomMoveCBMC;
+  archive >> t.WidomMoveCBMCNonEwald;
+  archive >> t.WidomMoveCBMCEwald;
+
+  archive >> t.WidomMoveCFCMC;
+  archive >> t.WidomMoveCFCMCNonEwald;
+  archive >> t.WidomMoveCFCMCEwald;
+
+  archive >> t.WidomMoveCBCFCMC;
+  archive >> t.WidomMoveCBCFCMCNonEwald;
+  archive >> t.WidomMoveCBCFCMCEwald;
+
+  archive >> t.volumeMove;
+  archive >> t.volumeMoveNonEwald;
+  archive >> t.volumeMoveEwald;
+
+  archive >> t.GibbsVolumeMove;
+  archive >> t.GibbsVolumeMoveNonEwald;
+  archive >> t.GibbsVolumeMoveEwald;
+
+  return archive;
+}
+

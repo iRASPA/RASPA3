@@ -2,8 +2,10 @@ export module mc_moves_count;
 
 import <string>;
 import <chrono>;
+import <fstream>;
 
 import double3;
+import archive;
 
 export struct MCMoveCount
 {
@@ -15,6 +17,10 @@ export struct MCMoveCount
                  volumeMove(0), GibbsVolumeMove(0)
                  {
                  };
+
+  uint64_t versionNumber{ 1 };
+
+  bool operator==(MCMoveCount const&) const = default;
 
   size_t translationMove;
   size_t randomTranslationMove;
@@ -69,6 +75,8 @@ export struct MCMoveCount
     return *this;
   }
 
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveCount &c);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount &c);
 };
 
 export inline MCMoveCount operator+(const MCMoveCount& a, const MCMoveCount& b)

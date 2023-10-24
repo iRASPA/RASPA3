@@ -3,6 +3,7 @@ export module cbmc;
 import atom;
 import double3x3;
 import double3;
+import randomnumbers;
 
 import energy_status;
 import energy_status_intra;
@@ -50,9 +51,9 @@ export struct ChainData
   ~ChainData() noexcept = default;
 };
 
-export inline std::vector<Atom> rotateRandomlyAround(std::vector<Atom> atoms, size_t startingBead)
+export inline std::vector<Atom> rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, size_t startingBead)
 {
-  double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
+  double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<Atom> randomlyRotatedAtoms{};
   for (size_t i = 0; i < atoms.size(); ++i)
   {

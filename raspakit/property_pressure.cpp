@@ -8,7 +8,12 @@ import <sstream>;
 import <tuple>;
 import <vector>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import double3;
 import double3x3;
 import stringutils;
@@ -77,3 +82,31 @@ std::string PropertyPressure::writeAveragesStatistics() const
   return stream.str();
 }
 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e)
+{
+  archive << e.versionNumber;
+
+  archive << e.numberOfBlocks;
+  archive << e.bookKeepingExcessPressure;
+  archive << e.bookKeepingIdealGasPressure;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > e.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyPressure' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> e.numberOfBlocks;
+  archive >> e.bookKeepingExcessPressure;
+  archive >> e.bookKeepingIdealGasPressure;
+
+  return archive;
+}

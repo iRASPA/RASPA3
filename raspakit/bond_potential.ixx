@@ -27,6 +27,8 @@ export struct BondPotential
   BondPotential(): bondType(BondType::Undefined), bondIds(0,0) {}
   BondPotential(const BondType bondType, std::pair<size_t, size_t> bondIds): bondType(bondType), bondIds(bondIds) {}
 
+  bool operator==(BondPotential const&) const = default;
+
   std::string print() const
   {
       switch (bondType)

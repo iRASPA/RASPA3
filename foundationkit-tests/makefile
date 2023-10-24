@@ -4,12 +4,12 @@ GTEST_INCLUDE=/usr/local
 
 CPPFLAGS += -isystem $(GTEST_INCLUDE)/include
 
-MODULEPATHS = -fprebuilt-module-path=../mathkit
+MODULEPATHS = -fprebuilt-module-path=../mathkit -fprebuilt-module-path=../foundationkit
 
 CXXFLAGS += -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -O3 -march=native -ffast-math -fopenmp -Wall -Wextra $(MODULEPATHS)
 
 
-TESTS = test_mathkit
+TESTS = test_foundationkit
 
 GTEST_HEADERS = $(GTEST_INCLUDE)/include/gtest/*.h \
                 $(GTEST_INCLUDE)/include/gtest/internal/*.h
@@ -37,11 +37,11 @@ gtest_main.a : gtest-all.o gtest_main.o
 # gtest_main.a, depending on whether it defines its own main()
 # function.
 
-test_mathkit.o : main.cpp $(GTEST_HEADERS)
+test_foundationkit.o : main.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c main.cpp
 
-double3x3.o: $(GTEST_HEADERS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c double3x3.cpp
+archive.o: $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c archive.cpp
 
-test_mathkit : double3x3.o main.o gtest_main.a
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -L../mathkit -lmathkit -llapack -lpthread $^ -o $@
+test_foundationkit : archive.o main.o gtest_main.a
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -L../foundationkit -lfoundationkit -llapack -lpthread $^ -o $@

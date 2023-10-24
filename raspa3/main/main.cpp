@@ -7,7 +7,9 @@ import <deque>;
 import <optional>;
 import <semaphore>;
 import <mutex>;
+import <complex>;
 
+import archive;
 import threadpool;
 import input_reader;
 import monte_carlo;
@@ -33,6 +35,18 @@ int main()
       case InputReader::SimulationType::MonteCarlo:
       {
         MonteCarlo mc(inputReader);
+        if(inputReader.restartFromBinary)
+        {
+          std::ifstream ifile("restart_data.bin", std::ios::binary);
+          if(!ifile.is_open())
+          {
+            throw std::runtime_error("Restart file doesn't exist..\n");
+          }
+          Archive<std::ifstream> archive(ifile);
+          archive >> mc;
+          mc.createOutputFiles();
+        }
+
         mc.run();
         break;
       }

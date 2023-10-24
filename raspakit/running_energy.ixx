@@ -9,7 +9,9 @@ import <numeric>;
 import <string>;
 import <sstream>;
 import <ostream>;
+import <fstream>;
 
+import archive;
 import scaling;
 
 export struct RunningEnergy
@@ -115,6 +117,8 @@ export struct RunningEnergy
     return v;
   }
 
+  uint64_t versionNumber{ 1 };
+
   double frameworkMoleculeVDW;
   double moleculeMoleculeVDW;
   double frameworkMoleculeCharge;
@@ -127,6 +131,9 @@ export struct RunningEnergy
   double dudlambdaVDW;
   double dudlambdaCharge;
   double dudlambdaEwald;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &c);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnergy &c);
 };
 
 export inline bool operator==(const RunningEnergy& a, const RunningEnergy& b) 

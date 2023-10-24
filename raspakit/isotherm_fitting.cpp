@@ -20,6 +20,7 @@ import <climits>;
 import <unordered_set>;
 import <chrono>;
 import <print>;
+import <optional>;
 
 import randomnumbers;
 import stringutils;
@@ -34,6 +35,7 @@ import simulationbox;
 
 IsothermFitting::IsothermFitting(System &system) noexcept:
   system(system),
+  random(std::nullopt),
   isotherms(system.components.size()),
   GA_Size(static_cast<size_t>(std::pow(2.0, 12.0))),
   GA_MutationRate( 1.0/3.0 ),
@@ -168,7 +170,7 @@ IsothermFitting::DNA IsothermFitting::newCitizen(size_t Id, const std::vector<st
 {
     DNA citizen;
 
-  citizen.phenotype = isotherms[Id].randomized(maximumLoading);
+  citizen.phenotype = isotherms[Id].randomized(random, maximumLoading);
 
   citizen.genotype.clear();
   citizen.genotype.reserve((sizeof(double) * CHAR_BIT) *
@@ -306,7 +308,7 @@ void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] size_t Id)
     std::bitset<sizeof(double) * CHAR_BIT> bitset(p);
 
     // mutation: randomly flip bit
-    bitset.flip(std::size_t((sizeof(double) * CHAR_BIT) * RandomNumber::Uniform()));
+    bitset.flip(std::size_t((sizeof(double) * CHAR_BIT) * random.uniform()));
 
     // convert from bitset to double
     p = bitset.to_ullong();
@@ -335,7 +337,7 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
   for(size_t i = s1; i < s2; ++i)
   {
     chooseRandomly(i1, i2, j1, j2, k1, k2);
-    tmp1 = RandomNumber::Uniform();
+    tmp1 = random.uniform();
     // choose between single cross-over using bit-strings or random parameter-swap
     if(tmp1 < 0.490)
       // One-point crossover:
@@ -343,7 +345,7 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
     {
       // remove the extreme values 0 and 32*Npar - 1 (they are not valid for crossover)
       size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].numberOfParameters;
-      size_t spos = RandomNumber::Integer(1, bitStringSize - 2);
+      size_t spos = random.integer(1, bitStringSize - 2);
       children[i].genotype = parents[k1].genotype.substr(0, spos) +
                              parents[k2].genotype.substr(spos, bitStringSize - spos);
 
@@ -362,8 +364,8 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
       // --------------------
       {
       size_t bitStringSize = (sizeof(double) * CHAR_BIT) * isotherms[Id].numberOfParameters;
-      size_t spos1 = RandomNumber::Integer(1, bitStringSize - 3);
-      size_t spos2 = RandomNumber::Integer(spos1, bitStringSize - 2);
+      size_t spos1 = random.integer(1, bitStringSize - 3);
+      size_t spos2 = random.integer(spos1, bitStringSize - 2);
       children[i].genotype = parents[k1].genotype.substr(0, spos1) +
                              parents[k2].genotype.substr(spos1, spos2 - spos1) +
                              parents[k1].genotype.substr(spos2, bitStringSize - spos2);
@@ -385,7 +387,7 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
       size_t rolling_k = k1;
       for (size_t j = 0; j < bitStringSize; j++)
       {
-        if(RandomNumber::Uniform() < 0.25 )
+        if(random.uniform() < 0.25 )
         {
            if(rolling_k == k1)
            {
@@ -414,7 +416,7 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
       for(size_t j = 0; j < children[i].phenotype.numberOfParameters; ++j)
       {
         // randomly choose whether the parameter comes from parent k1 or k2
-        if(RandomNumber::Uniform() < 0.5)
+        if(random.uniform() < 0.5)
         {
           children[i].phenotype.parameters(j) = parents[k1].phenotype.parameters(j);
         }
@@ -437,11 +439,11 @@ void IsothermFitting::crossover(size_t Id, size_t s1,size_t s2, size_t i1, size_
 
 void IsothermFitting::chooseRandomly(size_t kk1,size_t kk2,size_t jj1,size_t jj2, size_t &ii1, size_t &ii2)
 {
-  ii1  = RandomNumber::Integer(kk1, kk2);
-  ii2  = RandomNumber::Integer(jj1, jj2);
+  ii1  = random.integer(kk1, kk2);
+  ii2  = random.integer(jj1, jj2);
   while ( ii1 == ii2 )
   {
-    ii2 = RandomNumber::Integer(jj1,jj2);
+    ii2 = random.integer(jj1,jj2);
   };
 }
 
@@ -457,7 +459,7 @@ void IsothermFitting::mate(size_t Id, const std::vector<std::pair<double, double
   // mutation from GA_Elitists to (GA_Size - GA_Elitists) with "GA_MutationRate" probability
   for(size_t i = GA_Elitists; i < GA_Size - GA_Elitists; ++i)
   {
-    if(RandomNumber::Uniform() < GA_MutationRate)
+    if(random.uniform() < GA_MutationRate)
     {
       mutate(children[i], Id);
     }
@@ -471,7 +473,7 @@ void IsothermFitting::mate(size_t Id, const std::vector<std::pair<double, double
   }
 
   // replace the last (GA_Size - 1) children by new children
-  if(RandomNumber::Uniform() < GA_DisasterRate)
+  if(random.uniform() < GA_DisasterRate)
   {
     nuclearDisaster(Id, rawData);
   }

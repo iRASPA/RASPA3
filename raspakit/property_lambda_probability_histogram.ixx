@@ -10,9 +10,11 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
 import double3;
 import randomnumbers;
+import archive;
 
 import averages;
 
@@ -36,6 +38,8 @@ export struct PropertyLambdaProbabilityHistogram
     Finalize = 3
   };
 
+  PropertyLambdaProbabilityHistogram() {};
+
   PropertyLambdaProbabilityHistogram(size_t numberOfBlocks, size_t numberOfBins) :
       numberOfBlocks(numberOfBlocks),
       numberOfBins(numberOfBins),
@@ -51,6 +55,9 @@ export struct PropertyLambdaProbabilityHistogram
   {
   }
 
+  bool operator==(PropertyLambdaProbabilityHistogram const&) const = default;
+
+  uint64_t versionNumber{ 1 };
   size_t numberOfBlocks;
 
   size_t numberOfBins;
@@ -97,14 +104,14 @@ export struct PropertyLambdaProbabilityHistogram
     return static_cast<double>(currentBin) * delta;
   }
 
-  inline int selectNewBin() const
+  inline int selectNewBin(RandomNumber &random) const
   {
-    return static_cast<int>(currentBin) + static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (RandomNumber::Uniform() - 0.5));
+    return static_cast<int>(currentBin) + static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (random.uniform() - 0.5));
   }
 
-  inline int selectNewBin(double scale) const
+  inline int selectNewBin(RandomNumber &random, double scale) const
   {
-    return static_cast<int>(currentBin) + static_cast<int>(scale * static_cast<double>(numberOfBins) * 2.0 * (RandomNumber::Uniform() - 0.5));
+    return static_cast<int>(currentBin) + static_cast<int>(scale * static_cast<double>(numberOfBins) * 2.0 * (random.uniform() - 0.5));
   }
 
   inline void setCurrentBin(size_t index)
@@ -637,4 +644,7 @@ export struct PropertyLambdaProbabilityHistogram
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLambdaProbabilityHistogram &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLambdaProbabilityHistogram &p);
 };

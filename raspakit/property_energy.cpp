@@ -6,7 +6,12 @@ import <iostream>;
 import <random>;
 import <sstream>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import stringutils;
 import component;
 import energy_factor;
@@ -201,3 +206,31 @@ std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& comp
   return stream.str();
 }
 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e)
+{
+  archive << e.versionNumber;
+
+  archive << e.numberOfBlocks;
+  archive << e.numberOfComponents;
+  archive << e.bookKeepingEnergyStatus;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergy &e)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > e.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyEnergy' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> e.numberOfBlocks;
+  archive >> e.numberOfComponents;
+  archive >> e.bookKeepingEnergyStatus;
+
+  return archive;
+}

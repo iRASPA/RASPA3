@@ -1,5 +1,9 @@
 export module double4;
 
+import <fstream>;
+
+import archive;
+
 #if defined(WIN32)
     import <intrin.h>;
 #elif defined(__AVX__)
@@ -15,6 +19,11 @@ export union double4
     struct { double x, y, z, w; };
 
     double4(double x = 0, double y = 0, double z = 0, double w = 0) :x(x), y(y), z(z), w(w) {}
+
+    bool operator==(double4 const& rhs) const
+    {
+      return (x == rhs.x) && (y == rhs.y) && (z == rhs.z) && (w == rhs.w);
+    }
 
     inline double& operator [] (int i) { return v[i]; }
     inline const double& operator [] (int i) const { return v[i]; }
@@ -35,6 +44,9 @@ export union double4
     double4 operator-() const { return double4(-this->x, -this->y, -this->z, -this->w); }
     double4& operator+=(const double4& b) { this->x += b.x, this->y += b.y, this->z += b.z; this->w += b.w; return *this; }
     double4& operator-=(const double4& b) { this->x -= b.x, this->y -= b.y, this->z -= b.z; this->w += b.w; return *this; }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double4 &vec);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double4 &vec);
 };
 
 export inline double4 operator*(const double4& a, const double4& b)

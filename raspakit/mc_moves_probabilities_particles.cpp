@@ -2,8 +2,14 @@ module mc_moves_probabilities_particles;
 
 import <string>;
 import <sstream>;
+import <fstream>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import double3;
 import move_statistics;
 import stringutils;
@@ -157,3 +163,133 @@ const std::string MCMoveProbabilitiesParticles::writeMCMoveStatistics() const
 
   return stream.str();
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilitiesParticles &p)
+{
+  archive << p.versionNumber;
+
+  archive << p.probabilityTranslationMove;
+  archive << p.probabilityRandomTranslationMove;
+  archive << p.probabilityRotationMove;
+  archive << p.probabilityRandomRotationMove;
+  archive << p.probabilityVolumeMove;
+  archive << p.probabilityReinsertionMove_CBMC;
+  archive << p.probabilityIdentityChangeMove_CBMC;
+  archive << p.probabilitySwapMove_CBMC;
+  archive << p.probabilitySwapMove_CFCMC;
+  archive << p.probabilitySwapMove_CFCMC_CBMC;
+  archive << p.probabilityGibbsVolumeMove;
+  archive << p.probabilityGibbsSwapMove_CBMC;
+  archive << p.probabilityGibbsSwapMove_CFCMC;
+  archive << p.probabilityGibbsSwapMove_CFCMC_CBMC;
+  archive << p.probabilityWidomMove;
+  archive << p.probabilityWidomMove_CFCMC;
+  archive << p.probabilityWidomMove_CFCMC_CBMC;
+
+  archive << p.accumulatedProbabilityTranslationMove;
+  archive << p.accumulatedProbabilityRandomTranslationMove;
+  archive << p.accumulatedProbabilityRotationMove;
+  archive << p.accumulatedProbabilityRandomRotationMove;
+  archive << p.accumulatedProbabilityVolumeMove;
+  archive << p.accumulatedProbabilityReinsertionMove_CBMC;
+  archive << p.accumulatedProbabilityIdentityChangeMove_CBMC;
+  archive << p.accumulatedProbabilitySwapMove_CBMC;
+  archive << p.accumulatedProbabilitySwapMove_CFCMC;
+  archive << p.accumulatedProbabilitySwapMove_CFCMC_CBMC;
+  archive << p.accumulatedProbabilityGibbsVolumeMove;
+  archive << p.accumulatedProbabilityGibbsSwapMove_CBMC;
+  archive << p.accumulatedProbabilityGibbsSwapMove_CFCMC;
+  archive << p.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC;
+  archive << p.accumulatedProbabilityWidomMove;
+  archive << p.accumulatedProbabilityWidomMove_CFCMC;
+  archive << p.accumulatedProbabilityWidomMove_CFCMC_CBMC;
+
+  archive << p.statistics_TranslationMove;
+  archive << p.statistics_RandomTranslationMove;
+  archive << p.statistics_RotationMove;
+  archive << p.statistics_RandomRotationMove;
+  archive << p.statistics_ReinsertionMove_CBMC;
+  archive << p.statistics_IdentityChangeMove_CBMC;
+  archive << p.statistics_SwapInsertionMove_CBMC;
+  archive << p.statistics_SwapDeletionMove_CBMC;
+  archive << p.statistics_SwapMove_CFCMC;
+  archive << p.statistics_SwapMove_CFCMC_CBMC;
+  archive << p.statistics_WidomMove_CBMC;
+  archive << p.statistics_WidomMove_CFCMC;
+  archive << p.statistics_WidomMove_CFCMC_CBMC;
+
+  archive << p.statistics_GibbsSwapMove_CBMC;
+  archive << p.statistics_GibbsSwapMove_CFCMC;
+  archive << p.statistics_GibbsSwapMove_CFCMC_CBMC;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbabilitiesParticles &p)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > p.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'MCMoveProbabilitiesParticles' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> p.probabilityTranslationMove;
+  archive >> p.probabilityRandomTranslationMove;
+  archive >> p.probabilityRotationMove;
+  archive >> p.probabilityRandomRotationMove;
+  archive >> p.probabilityVolumeMove;
+  archive >> p.probabilityReinsertionMove_CBMC;
+  archive >> p.probabilityIdentityChangeMove_CBMC;
+  archive >> p.probabilitySwapMove_CBMC;
+  archive >> p.probabilitySwapMove_CFCMC;
+  archive >> p.probabilitySwapMove_CFCMC_CBMC;
+  archive >> p.probabilityGibbsVolumeMove;
+  archive >> p.probabilityGibbsSwapMove_CBMC;
+  archive >> p.probabilityGibbsSwapMove_CFCMC;
+  archive >> p.probabilityGibbsSwapMove_CFCMC_CBMC;
+  archive >> p.probabilityWidomMove;
+  archive >> p.probabilityWidomMove_CFCMC;
+  archive >> p.probabilityWidomMove_CFCMC_CBMC;
+
+  archive >> p.accumulatedProbabilityTranslationMove;
+  archive >> p.accumulatedProbabilityRandomTranslationMove;
+  archive >> p.accumulatedProbabilityRotationMove;
+  archive >> p.accumulatedProbabilityRandomRotationMove;
+  archive >> p.accumulatedProbabilityVolumeMove;
+  archive >> p.accumulatedProbabilityReinsertionMove_CBMC;
+  archive >> p.accumulatedProbabilityIdentityChangeMove_CBMC;
+  archive >> p.accumulatedProbabilitySwapMove_CBMC;
+  archive >> p.accumulatedProbabilitySwapMove_CFCMC;
+  archive >> p.accumulatedProbabilitySwapMove_CFCMC_CBMC;
+  archive >> p.accumulatedProbabilityGibbsVolumeMove;
+  archive >> p.accumulatedProbabilityGibbsSwapMove_CBMC;
+  archive >> p.accumulatedProbabilityGibbsSwapMove_CFCMC;
+  archive >> p.accumulatedProbabilityGibbsSwapMove_CFCMC_CBMC;
+  archive >> p.accumulatedProbabilityWidomMove;
+  archive >> p.accumulatedProbabilityWidomMove_CFCMC;
+  archive >> p.accumulatedProbabilityWidomMove_CFCMC_CBMC;
+
+  archive >> p.statistics_TranslationMove;
+  archive >> p.statistics_RandomTranslationMove;
+  archive >> p.statistics_RotationMove;
+  archive >> p.statistics_RandomRotationMove;
+  archive >> p.statistics_ReinsertionMove_CBMC;
+  archive >> p.statistics_IdentityChangeMove_CBMC;
+  archive >> p.statistics_SwapInsertionMove_CBMC;
+  archive >> p.statistics_SwapDeletionMove_CBMC;
+  archive >> p.statistics_SwapMove_CFCMC;
+  archive >> p.statistics_SwapMove_CFCMC_CBMC;
+  archive >> p.statistics_WidomMove_CBMC;
+  archive >> p.statistics_WidomMove_CFCMC;
+  archive >> p.statistics_WidomMove_CFCMC_CBMC;
+
+  archive >> p.statistics_GibbsSwapMove_CBMC;
+  archive >> p.statistics_GibbsSwapMove_CFCMC;
+  archive >> p.statistics_GibbsSwapMove_CFCMC_CBMC;
+
+  return archive;
+}
+

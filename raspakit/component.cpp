@@ -27,6 +27,9 @@ import <print>;
 #if defined(_WIN32)
 import <cassert>;
 #endif
+import <exception>;
+import <source_location>;
+import <complex>;
 
 import int3;
 import double3;
@@ -55,6 +58,11 @@ import bond_potential;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
+
+Component::Component()
+{
+}
+
 
 Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
     std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
@@ -147,7 +155,7 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
 
   for (size_t i = 0; i < atoms.size(); ++i)
   {
-    atoms[i].componentId = static_cast<std::byte>(componentId);
+    atoms[i].componentId = static_cast<uint8_t>(componentId);
     atoms[i].moleculeId = 0;
   }
 }
@@ -167,39 +175,38 @@ Component::Component(Component::Type type, size_t currentComponent, const std::s
 template<typename T>
 std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
 {
-    std::vector<T> list{};
+  std::vector<T> list{};
 
-    std::string str;
-    std::istringstream ss(arguments);
+  std::string str;
+  std::istringstream ss(arguments);
 
-    while (ss >> str)
+  while (ss >> str)
+  {
+    if (trim(str).rfind("//", 0) == 0)
     {
-        if (trim(str).rfind("//", 0) == 0)
-        {
-            if (list.empty())
-            {
-                throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
-            }
-            return list;
-        }
-        T value;
-        std::istringstream s(str);
-        if (s >> value)
-        {
-            list.push_back(value);
-        }
-        else
-        {
-            if (list.empty())
-            {
-                throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
-            }
-            return list;
-        }
+      if (list.empty())
+      {
+          throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
+      }
+      return list;
+    }
+    T value;
+    std::istringstream s(str);
+    if (s >> value)
+    {
+      list.push_back(value);
+    }
+    else
+    {
+      if (list.empty())
+      {
+          throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
+      }
+      return list;
+    }
+  };
 
-    };
-
-    return list;
+  return list;
 }
 
 // TODO: extend to flexible molecules
@@ -272,31 +279,31 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   this->mass = 0.0;
   for (size_t i = 0; i < definedAtoms.size(); ++i)
   {
-      int id;
-      std::string atomTypeString;
-      double3 pos;
-      std::getline(moleculeFile, str);
-      std::istringstream atomStream(str);
-      atomStream >> id >> atomTypeString >> pos.x >> pos.y >> pos.z;
+    int id;
+    std::string atomTypeString;
+    double3 pos;
+    std::getline(moleculeFile, str);
+    std::istringstream atomStream(str);
+    atomStream >> id >> atomTypeString >> pos.x >> pos.y >> pos.z;
 
-      // find atom-type based on read 'atomTypeString'
-      auto it = std::find_if(forceField.pseudoAtoms.begin(), forceField.pseudoAtoms.end(), 
-                             [&](const PseudoAtom &atom) 
-                             {
-                               return atomTypeString == atom.name; 
-                             });
-      
-      if (it == forceField.pseudoAtoms.end())
-      {
-        throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
-      }
-      
-      size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
-      this->mass += forceField.pseudoAtoms[pseudoAtomType].mass;
-      double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
-      double scaling = 1.0;
+    // find atom-type based on read 'atomTypeString'
+    auto it = std::find_if(forceField.pseudoAtoms.begin(), forceField.pseudoAtoms.end(), 
+                           [&](const PseudoAtom &atom) 
+                           {
+                             return atomTypeString == atom.name; 
+                           });
+    
+    if (it == forceField.pseudoAtoms.end())
+    {
+      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
+    }
+    
+    size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
+    this->mass += forceField.pseudoAtoms[pseudoAtomType].mass;
+    double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
+    double scaling = 1.0;
 
-      definedAtoms[i] = Atom(pos, charge, scaling, static_cast<short>(pseudoAtomType), static_cast<std::byte>(componentId), 0);
+    definedAtoms[i] = Atom(pos, charge, scaling, static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0);
   }
 
   atoms = definedAtoms;
@@ -375,15 +382,14 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
     bool overLap = false;
     for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
     {
-        double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
-        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-        double rr = double3::dot(dr, dr);
-        if (rr < 0.1)
-        {
-            overLap = true;
-            break;
-        }
-      
+      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+      if (rr < 0.1)
+      {
+        overLap = true;
+        break;
+      }
     }
     if (!overLap)
     {
@@ -391,34 +397,32 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
     }
   }
 
-  
-
   for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
   {
-      for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
+    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
+    {
+      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
       {
-          for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-          {
-             for (const Atom& atom : unitCellAtoms)
-             {
-               Atom atomCopy = atom;
-               atomCopy.position += simulationBox.unitCell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-               atoms.push_back(atomCopy);
-             }
-          }
+        for (const Atom& atom : unitCellAtoms)
+        {
+          Atom atomCopy = atom;
+          atomCopy.position += simulationBox.unitCell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atoms.push_back(atomCopy);
+        }
       }
+    }
   }
 
   mass = 0.0;
   for (const Atom& atom : atoms)
   {
-      size_t atomType = static_cast<size_t>(atom.type);
-      mass += forceField.pseudoAtoms[atomType].mass;
+    size_t atomType = static_cast<size_t>(atom.type);
+    mass += forceField.pseudoAtoms[atomType].mass;
   }
 
   for (size_t i = 0; i < atoms.size(); ++i)
   {
-    atoms[i].componentId = static_cast<std::byte>(componentId);
+    atoms[i].componentId = static_cast<uint8_t>(componentId);
     atoms[i].moleculeId = 0;
   }  
 }
@@ -476,42 +480,42 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    number of bonds: {}\n", bonds.size());
   for (size_t i = 0; i < bonds.size(); ++i)
   {
-      std::print(stream, "        {}", bonds[i].print());
+    std::print(stream, "        {}", bonds[i].print());
   }
   std::print(stream, "\n");
 
   return stream.str();
 }
 
-std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead() const
+std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead(RandomNumber &random) const
 {
-    double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
-    std::vector<double3> randomPositions{};
-    std::transform(std::begin(atoms), std::end(atoms),
-            std::back_inserter(randomPositions), [&](const Atom& atom) {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
-    return randomPositions;
+  double3x3 randomRotationMatrix = random.randomRotationMatrix();
+  std::vector<double3> randomPositions{};
+  std::transform(std::begin(atoms), std::end(atoms),
+          std::back_inserter(randomPositions), [&](const Atom& atom) {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
+  return randomPositions;
 }
 
 std::vector<Atom> Component::newAtoms(double scaling, size_t moleculeId) const
 {
-    std::vector<Atom> new_atoms(atoms);
+  std::vector<Atom> new_atoms(atoms);
 
 #if defined(_WIN32)
-    //assert(atomPositions.size() == numberOfAtoms);
-    //assert(atomCharges.size() == numberOfAtoms);
+  //assert(atomPositions.size() == numberOfAtoms);
+  //assert(atomCharges.size() == numberOfAtoms);
 #else
-    //_LIBCPP_ASSERT(atomPositions.size() == numberOfAtoms, "wrong number of atoms");
-    //_LIBCPP_ASSERT(atomCharges.size() == numberOfAtoms, "wrong number of atoms");
+  //_LIBCPP_ASSERT(atomPositions.size() == numberOfAtoms, "wrong number of atoms");
+  //_LIBCPP_ASSERT(atomCharges.size() == numberOfAtoms, "wrong number of atoms");
 #endif
 
-    for (size_t i = 0; i < atoms.size(); ++i)
-    {
-        new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
-                   atoms[i].charge, scaling, static_cast<short>(atoms[i].type), 
-                   static_cast<std::byte>(componentId), static_cast<int>(moleculeId));
-    }
+  for (size_t i = 0; i < atoms.size(); ++i)
+  {
+    new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
+                 atoms[i].charge, scaling, static_cast<uint16_t>(atoms[i].type), 
+                 static_cast<uint8_t>(componentId), static_cast<uint32_t>(moleculeId));
+  }
 
-    return new_atoms;
+  return new_atoms;
 }
 
 std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const
@@ -521,32 +525,32 @@ std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling,
   {
     copied_atoms[i].setScaling(scaling);
     copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
-    copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
+    copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
   }
   return copied_atoms;
 }
 
-std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const
+std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const
 {
-  double3x3 randomRotationMatrix = double3x3::randomRotationMatrix();
+  double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
   for (size_t i = 0; i != atoms.size(); ++i)
   {
     copied_atoms[i].setScaling(scaling);
     copied_atoms[i].position = position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
-    copied_atoms[i].moleculeId = static_cast<int>(moleculeId);
+    copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
   }
   return copied_atoms;
 }
 
 std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
 {
-    std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
-    for (size_t i = 0; i != atoms.size(); ++i)
-    {
-        copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
-    }
-    return copied_atoms;
+  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  for (size_t i = 0; i != atoms.size(); ++i)
+  {
+    copied_atoms[i].position = molecule[i].position - molecule[startingBead].position;
+  }
+  return copied_atoms;
 }
 
 
@@ -572,3 +576,185 @@ std::string Component::printBreakthroughStatus() const
 
   return stream.str();
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c)
+{
+  archive << c.versionNumber;
+
+  archive << c.type;
+  archive << c.growType;
+
+  archive << c.simulationBox;
+  archive << c.spaceGroupHallNumber;
+  archive << c.numberOfUnitCells;
+
+  archive << c.componentId;
+  archive << c.name;
+  archive << c.filenameData;
+  archive << c.filename;
+
+  archive << c.rigid;
+
+  archive << c.criticalTemperature;
+  archive << c.criticalPressure;
+  archive << c.acentricFactor;
+  archive << c.molFraction;
+  archive << c.swapable;
+  archive << c.partialPressure;
+
+  archive << c.mass;
+  archive << c.computeFugacityCoefficient;
+  archive << c.partialFugacity;
+  archive << c.fugacityCoefficient;
+  archive << c.amountOfExcessMolecules;
+  archive << c.bulkFluidDensity;
+  archive << c.compressibility;
+
+  archive << c.idealGasRosenbluthWeight;
+  archive << c.idealGasEnergy;
+
+  archive << c.netCharge;
+  archive << c.startingBead;
+  archive << c.definedAtoms;
+  archive << c.atoms;
+
+  archive << c.initialNumberOfMolecules;
+
+  archive << c.lambdaGC;
+  archive << c.lambdaGibbs;
+  archive << c.hasFractionalMolecule;
+
+  //std::vector<size_t> chiralCenters{};
+  //std::vector<BondPotential> bonds{};
+  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  //std::vector<std::pair<size_t, size_t>> intraVDW{};
+  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+
+  archive << c.mc_moves_probabilities;
+  archive << c.mc_moves_cputime;
+  archive << c.mc_moves_count;
+
+  archive << c.averageRosenbluthWeights;
+
+  //MultiSiteIsotherm isotherm{};      // isotherm information
+  archive << c.massTransferCoefficient;
+  archive << c.axialDispersionCoefficient;
+  archive << c.isCarrierGas;
+
+  archive << c.columnPressure;
+  archive << c.columnLoading;
+  archive << c.columnError;
+
+  archive << c.lnPartitionFunction;
+
+  archive << c.pressureScale;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > c.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Component' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> c.type;
+  archive >> c.growType;
+
+  archive >> c.simulationBox;
+  archive >> c.spaceGroupHallNumber;
+  archive >> c.numberOfUnitCells;
+
+  archive >> c.componentId;
+  archive >> c.name;
+  archive >> c.filenameData;
+  archive >> c.filename;
+
+  archive >> c.rigid;
+
+  archive >> c.criticalTemperature;
+  archive >> c.criticalPressure;
+  archive >> c.acentricFactor;
+  archive >> c.molFraction;
+  archive >> c.swapable;
+  archive >> c.partialPressure;
+
+  archive >> c.mass;
+  archive >> c.computeFugacityCoefficient;
+  archive >> c.partialFugacity;
+  archive >> c.fugacityCoefficient;
+  archive >> c.amountOfExcessMolecules;
+  archive >> c.bulkFluidDensity;
+  archive >> c.compressibility;
+
+  archive >> c.idealGasRosenbluthWeight;
+  archive >> c.idealGasEnergy;
+
+  archive >> c.netCharge;
+  archive >> c.startingBead;
+  archive >> c.definedAtoms;
+  archive >> c.atoms;
+
+  archive >> c.initialNumberOfMolecules;
+
+  archive >> c.lambdaGC;
+  archive >> c.lambdaGibbs;
+  archive >> c.hasFractionalMolecule;
+
+  //std::vector<size_t> chiralCenters{};
+  //std::vector<BondPotential> bonds{};
+  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  //std::vector<std::pair<size_t, size_t>> intraVDW{};
+  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+
+  archive >> c.mc_moves_probabilities;
+  archive >> c.mc_moves_cputime;
+  archive >> c.mc_moves_count;
+
+  archive >> c.averageRosenbluthWeights;
+
+  //MultiSiteIsotherm isotherm{};      // isotherm information
+  archive >> c.massTransferCoefficient;
+  archive >> c.axialDispersionCoefficient;
+  archive >> c.isCarrierGas;
+
+  archive >> c.columnPressure;
+  archive >> c.columnLoading;
+  archive >> c.columnError;
+
+  archive >> c.lnPartitionFunction;
+
+  archive >> c.pressureScale;
+
+  return archive;
+}
+

@@ -40,6 +40,7 @@ export struct MonteCarloTransitionMatrix
   size_t printEvery;
 
   std::vector<System> systems;
+  RandomNumber random;
   size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;

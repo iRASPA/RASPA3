@@ -39,7 +39,7 @@ import mc_moves_probabilities_particles;
 
 // mc_moves_swap_cfcmc_cbmc.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(System& system, 
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, 
          size_t selectedComponent, size_t selectedMolecule,
          bool insertionDisabled, bool deletionDisabled)
 {
@@ -48,7 +48,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
   double deltaLambda = lambda.delta;
   double oldLambda = system.components[selectedComponent].lambdaGC.lambdaValue();
   double maxChange = system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.maxChange[2];
-  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(maxChange);
+  std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -132,7 +132,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     std::vector<Atom> newatoms = system.components[selectedComponent].copyAtoms(oldFractionalMolecule, newLambda, system.numberOfMoleculesPerComponent[selectedComponent]);
 
     std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, newatoms);
+    std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, newatoms);
     std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCNonEwald += (w2 - w1);
     system.mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCNonEwald += (w2 - w1);
@@ -177,7 +177,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
     }
 
 
-    if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+    if (random.uniform() < biasTransitionMatrix * Pacc)
     {
       system.acceptEwaldMove();
 
@@ -219,7 +219,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       double cutOffVDW = system.forceField.cutOffVDW;
       double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
-      selectedMolecule = system.randomIntegerMoleculeOfComponent(selectedComponent);
+      selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
       
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.counts[1] += 1;
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.totalCounts[1] += 1;
@@ -233,7 +233,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       
       // (1) Biased: the existing fractional molecule is retraced using CBMC with lambda=lambda_o, fractional molecule is removed.
       std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-      ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule, fractionalMolecule, oldLambda, 0.0);            
+      ChainData retraceData = system.retraceMoleculeSwapDeletion(random, cutOffVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule, fractionalMolecule, oldLambda, 0.0);            
       std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
       system.components[selectedComponent].mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCNonEwald += (t2 - t1);
       system.mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCNonEwald += (t2 - t1);
@@ -252,7 +252,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
       for (Atom &atom : fractionalMolecule) 
       { 
         atom.setScalingFullyOff();
-        atom.groupId = std::byte{ 0 };
+        atom.groupId = uint8_t{ 0 };
       }
       
       std::vector<Atom> savedFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
@@ -321,7 +321,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
         }
       }
 
-      if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+      if (random.uniform() < biasTransitionMatrix * Pacc)
       {
         system.acceptEwaldMove();
         system.components[selectedComponent].lambdaGC.setCurrentBin(newBin);
@@ -419,7 +419,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(S
 
 
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
+    if (random.uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
     {
       system.acceptEwaldMove();
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapMove_CFCMC_CBMC.accepted[2] += 1;

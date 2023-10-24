@@ -13,6 +13,7 @@ import <iostream>;
 import <cmath>;
 import <string>;
 import <sstream>;
+import <fstream>;
 import <format>;
 import <algorithm>;
 import <numeric>;
@@ -20,8 +21,10 @@ import <cmath>;
 import <numbers>;
 import <optional>;
 import <print>;
+import <complex>;
 
 import double3;
+import archive;
 
 import units;
 import stringutils;
@@ -233,4 +236,60 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
   }
 
   return stream.str();
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLambdaProbabilityHistogram &p)
+{
+  archive << p.versionNumber;
+  archive << p.numberOfBlocks;
+
+  archive << p.numberOfBins;
+  archive << p.jump_bins;
+  archive << p.currentBin;
+  archive << p.delta;
+
+  archive << p.WangLandauScalingFactor;
+
+  archive << p.histogram;
+  archive << p.biasFactor;
+
+  archive << p.bookKeepingLambda;
+
+  archive << p.bookKeepingDensity;
+
+  archive << p.computeDUdlambda;
+  archive << p.bookKeepingDUdlambda;
+
+  archive << p.occupancyCount;
+  archive << p.occupancyTotal;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLambdaProbabilityHistogram &p)
+{
+  archive >> p.versionNumber;
+  archive >> p.numberOfBlocks;
+
+  archive >> p.numberOfBins;
+  archive >> p.jump_bins;
+  archive >> p.currentBin;
+  archive >> p.delta;
+
+  archive >> p.WangLandauScalingFactor;
+
+  archive >> p.histogram;
+  archive >> p.biasFactor;
+
+  archive >> p.bookKeepingLambda;
+
+  archive >> p.bookKeepingDensity;
+
+  archive >> p.computeDUdlambda;
+  archive >> p.bookKeepingDUdlambda;
+
+  archive >> p.occupancyCount;
+  archive >> p.occupancyTotal;
+
+  return archive;
 }

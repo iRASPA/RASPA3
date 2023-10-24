@@ -8,7 +8,12 @@ import <sstream>;
 import <optional>;
 import <vector>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import stringutils;
 import units;
 import loadings;
@@ -101,3 +106,30 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   return stream.str();
 }
 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLoading &l)
+{
+  archive << l.versionNumber;
+
+  archive << l.numberOfBlocks;
+  archive << l.numberOfComponents;
+  archive << l.bookKeepingLoadings;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoading &l)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > l.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyLoading' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> l.numberOfBlocks;
+  archive >> l.numberOfComponents;
+  archive >> l.bookKeepingLoadings;
+  return archive;
+}

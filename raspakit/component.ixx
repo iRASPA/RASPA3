@@ -14,6 +14,8 @@ import <map>;
 import <optional>;
 import <span>;
 
+import archive;
+import randomnumbers;
 import int3;
 import double3;
 
@@ -46,107 +48,115 @@ export struct Component
     Flexible = 1,
   };
 
-    Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false);
-    Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false);
+  Component();
+  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false);
+  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false);
 
-    Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
-              std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
+  Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
+            std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
 
-    Type type { 0 };
-    GrowType growType{ 0  };
+  bool operator==(Component const&) const = default;
 
-    SimulationBox simulationBox;
-    size_t spaceGroupHallNumber{ 1 };
-    int3 numberOfUnitCells{ 1, 1, 1};
+  uint64_t versionNumber{ 1 };
 
-    size_t componentId{ 0 };
-    std::string name{};
-    std::optional<std::string> filenameData{};
-    std::string filename{};
+  Type type { 0 };
+  GrowType growType{ 0  };
 
-    bool rigid { true };
+  SimulationBox simulationBox;
+  size_t spaceGroupHallNumber{ 1 };
+  int3 numberOfUnitCells{ 1, 1, 1};
 
-    double criticalTemperature{ 0.0 };
-    double criticalPressure{ 0.0 };
-    double acentricFactor{ 0.0 };
-    double molFraction{ 1.0 };
-    bool swapable{ false };
-    double partialPressure{ 0.0 };
+  size_t componentId{ 0 };
+  std::string name{};
+  std::optional<std::string> filenameData{};
+  std::string filename{};
 
-    double mass{ 0.0 };
-    bool computeFugacityCoefficient{ true };
-    double partialFugacity{ 0.0 };
-    double fugacityCoefficient{ 1.0 };
-    double amountOfExcessMolecules { 0.0 };
-    double bulkFluidDensity{ 0.0 };
-    double compressibility{ 0.0 };
+  bool rigid { true };
 
-    std::optional<double> idealGasRosenbluthWeight{};
-    std::optional<double> idealGasEnergy{};
+  double criticalTemperature{ 0.0 };
+  double criticalPressure{ 0.0 };
+  double acentricFactor{ 0.0 };
+  double molFraction{ 1.0 };
+  bool swapable{ false };
+  double partialPressure{ 0.0 };
 
-    double netCharge{ 0.0 };
-    size_t startingBead{ 0 };
-    std::vector<Atom> definedAtoms{};
-    std::vector<Atom> atoms{};
+  double mass{ 0.0 };
+  bool computeFugacityCoefficient{ true };
+  double partialFugacity{ 0.0 };
+  double fugacityCoefficient{ 1.0 };
+  double amountOfExcessMolecules { 0.0 };
+  double bulkFluidDensity{ 0.0 };
+  double compressibility{ 0.0 };
 
-    size_t initialNumberOfMolecules{ 0 };
+  std::optional<double> idealGasRosenbluthWeight{};
+  std::optional<double> idealGasEnergy{};
 
-    PropertyLambdaProbabilityHistogram lambdaGC;
-    PropertyLambdaProbabilityHistogram lambdaGibbs;
-    bool hasFractionalMolecule{ false };
+  double netCharge{ 0.0 };
+  size_t startingBead{ 0 };
+  std::vector<Atom> definedAtoms{};
+  std::vector<Atom> atoms{};
 
-    std::vector<size_t> chiralCenters{};
-    std::vector<BondPotential> bonds{};
-    std::vector<std::pair<size_t, size_t>> bondDipoles{};
-    std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-    std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-    std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-    std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-    std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-    std::vector<std::pair<size_t, size_t>> intraVDW{};
-    std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-    std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-    std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
-    
-    MCMoveProbabilitiesParticles mc_moves_probabilities;
-    MCMoveCpuTime mc_moves_cputime;
-    MCMoveCount mc_moves_count;
+  size_t initialNumberOfMolecules{ 0 };
 
-    PropertyWidom averageRosenbluthWeights;
+  PropertyLambdaProbabilityHistogram lambdaGC;
+  PropertyLambdaProbabilityHistogram lambdaGibbs;
+  bool hasFractionalMolecule{ false };
 
-    MultiSiteIsotherm isotherm{};      // isotherm information
-    double massTransferCoefficient{ 0.0 };    // breakthrough masstransfer coefficient [1/s]
-    double axialDispersionCoefficient{ 0.0 }; // breakthrough axial disperion coefficient [m^2/s]
-    bool isCarrierGas{ false };        // whether or not this is the carrier-gas
+  std::vector<size_t> chiralCenters{};
+  std::vector<BondPotential> bonds{};
+  std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  std::vector<std::pair<size_t, size_t>> intraVDW{};
+  std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+  
+  MCMoveProbabilitiesParticles mc_moves_probabilities;
+  MCMoveCpuTime mc_moves_cputime;
+  MCMoveCount mc_moves_count;
 
-    size_t columnPressure{ 0 };
-    size_t columnLoading{ 1 };
-    size_t columnError{ 2 };
+  PropertyWidom averageRosenbluthWeights;
 
-    double lnPartitionFunction { 0 };
+  MultiSiteIsotherm isotherm{};      // isotherm information
+  double massTransferCoefficient{ 0.0 };    // breakthrough masstransfer coefficient [1/s]
+  double axialDispersionCoefficient{ 0.0 }; // breakthrough axial disperion coefficient [m^2/s]
+  bool isCarrierGas{ false };        // whether or not this is the carrier-gas
 
-    enum class PressureScale
-    {
-      Log = 0,
-      Normal = 1
-    };
+  size_t columnPressure{ 0 };
+  size_t columnLoading{ 1 };
+  size_t columnError{ 2 };
 
-    PressureScale pressureScale{ PressureScale::Log };
+  double lnPartitionFunction { 0 };
 
-    void readComponent(const ForceField& forceField, const std::string& fileName);
-    void readFramework(const ForceField& forceField, const std::string& fileName);
+  enum class PressureScale
+  {
+    Log = 0,
+    Normal = 1
+  };
 
-    std::string printStatus(const ForceField& forceField) const;
-    std::string printBreakthroughStatus() const;
+  PressureScale pressureScale{ PressureScale::Log };
 
-    std::vector<double3> randomlyRotatedPositionsAroundStartingBead() const;
-    std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
-    std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
-    std::vector<Atom> copyAtomsRandomlyRotatedAt(double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
-    std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
+  void readComponent(const ForceField& forceField, const std::string& fileName);
+  void readFramework(const ForceField& forceField, const std::string& fileName);
+
+  std::string printStatus(const ForceField& forceField) const;
+  std::string printBreakthroughStatus() const;
+
+  std::vector<double3> randomlyRotatedPositionsAroundStartingBead(RandomNumber &random) const;
+  std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
+  std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+  std::vector<Atom> copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+  std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);
 };

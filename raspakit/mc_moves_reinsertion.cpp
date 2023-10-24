@@ -38,7 +38,7 @@ import <iomanip>;
 
 // mc_moves_reinsertion.cpp
 
-std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
+std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalCounts += 1;
@@ -49,7 +49,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
     double cutOffCoulomb = useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeReinsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
+    std::optional<ChainData> growData = system.growMoleculeReinsertion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (t2 - t1);
     system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (t2 - t1);
@@ -62,7 +62,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
     system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalConstructed += 1;
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    ChainData retraceData = system.retraceMoleculeReinsertion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, growData->storedR);
+    ChainData retraceData = system.retraceMoleculeReinsertion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, growData->storedR);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (u2 - u1);
     system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (u2 - u1);
@@ -85,7 +85,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(System& system, size_t se
 
     double correctionFactorFourier = std::exp(-system.beta * energyFourierDifference.total());
 
-    if (RandomNumber::Uniform() < correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
+    if (random.uniform() < correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
     {
       system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.accepted += 1;
       system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalAccepted += 1;

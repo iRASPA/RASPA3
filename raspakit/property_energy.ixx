@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import averages;
 import energy_status;
 import energy_status_inter;
@@ -24,6 +26,8 @@ inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, do
 
 export struct PropertyEnergy
 {
+  PropertyEnergy() {};
+
   PropertyEnergy(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
@@ -31,6 +35,9 @@ export struct PropertyEnergy
   {
   }
 
+  bool operator==(PropertyEnergy const&) const = default;
+
+  uint64_t versionNumber{ 1 };
   size_t numberOfBlocks;
   size_t numberOfComponents;
   std::vector<std::pair<EnergyStatus, double>> bookKeepingEnergyStatus;
@@ -89,4 +96,7 @@ export struct PropertyEnergy
   }
 
   std::string writeAveragesStatistics(std::vector<Component>& components) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergy &e);
 };

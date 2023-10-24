@@ -11,6 +11,10 @@ import <cmath>;
 import <optional>;
 import <array>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
 import stringutils;
 import component;
@@ -103,4 +107,33 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<size_t> &swapa
   std::print(stream, "\n");
 
   return stream.str();
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnthalpy &p)
+{
+  archive << p.versionNumber;
+
+  archive << p.numberOfBlocks;
+  archive << p.numberOfComponents;
+  archive << p.bookKeepingEnthalpyOfAdsorptionTerms;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnthalpy &p)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > p.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyEnthalpy' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> p.numberOfBlocks;
+  archive >> p.numberOfComponents;
+  archive >> p.bookKeepingEnthalpyOfAdsorptionTerms;
+
+  return archive;
 }

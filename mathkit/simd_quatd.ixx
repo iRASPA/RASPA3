@@ -10,11 +10,9 @@ export union simd_quatd
     simd_quatd(double ix, double iy, double iz, double r);
     simd_quatd(double real, double3 imag);
     simd_quatd(double3 EulerAngles);
-    static simd_quatd smallRandomQuaternion(double angleRange);
     static simd_quatd fromAxisAngle(double angle, double3 axis);
     double3 EulerAngles();
     simd_quatd normalized();
-    static simd_quatd random();
     static simd_quatd yaw(double angle);
     static simd_quatd pitch(double angle);
     static simd_quatd roll(double angle);

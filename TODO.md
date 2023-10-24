@@ -1,14 +1,16 @@
- 1) identity change
- 2) grids for rigid frameworks
- 3) flexible molecules
- 4) Molecular Dynamics
- 5) read framework
- 6) read molecule
- 7) make routines cutoff-dependence for dual-cutoff method
- 8) reaction ensemble
- 9) polarization
-10) cell-lists for rigid frameworks
-11) partial molar volumes
+ 1) multiple forcefield input
+ 2) read molecule
+ 3) read framework
+ 4) flexible molecules
+ 5) quaternions for rigid
+ 6) reaction ensemble
+ 7) Molecular Dynamics
+ 8) identity change
+ 9) make routines cutoff-dependence for dual-cutoff method
+10) polarization
+11) grids for rigid frameworks
+12) cell-lists for rigid frameworks
+13) partial molar volumes
 
 tests
 =====

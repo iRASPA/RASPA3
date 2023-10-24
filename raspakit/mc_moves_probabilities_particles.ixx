@@ -2,12 +2,18 @@ export module mc_moves_probabilities_particles;
 
 import <string>;
 import <chrono>;
+import <fstream>;
 
 import double3;
+import archive;
 import move_statistics;
 
 export struct MCMoveProbabilitiesParticles
 {
+  uint64_t versionNumber{ 1 };
+
+  bool operator==(MCMoveProbabilitiesParticles const&) const = default;
+
   double probabilityTranslationMove{ 0.0 };
   double probabilityRandomTranslationMove{ 0.0 };
   double probabilityRotationMove{ 0.0 };
@@ -67,4 +73,7 @@ export struct MCMoveProbabilitiesParticles
 
   void normalizeMoveProbabilties();
   const std::string writeMCMoveStatistics() const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilitiesParticles &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbabilitiesParticles &p);
 };

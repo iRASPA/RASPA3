@@ -27,70 +27,70 @@ import <numeric>;
 // system_cbmc_rigid.cpp
 
 // LogBoltzmannFactors are (-Beta U)
-size_t System::selectTrialPosition(std::vector <double> LogBoltzmannFactors) const noexcept
+size_t System::selectTrialPosition(RandomNumber &random, std::vector <double> LogBoltzmannFactors) const noexcept
 {
-    std::vector<double> ShiftedBoltzmannFactors(LogBoltzmannFactors.size());
+  std::vector<double> ShiftedBoltzmannFactors(LogBoltzmannFactors.size());
 
-    // Energies are always bounded from below [-U_max, infinity>
-    // Find the lowest energy value, i.e. the largest value of (-Beta U)
-    double largest_value = *std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());
+  // Energies are always bounded from below [-U_max, infinity>
+  // Find the lowest energy value, i.e. the largest value of (-Beta U)
+  double largest_value = *std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());
 
-    // Standard trick: shift the Boltzmann factors down to avoid numerical problems
-    // The largest value of 'ShiftedBoltzmannFactors' will be 1 (which corresponds to the lowest energy).
-    double SumShiftedBoltzmannFactors = 0.0;
-    for (size_t i = 0; i < LogBoltzmannFactors.size(); ++i)
-    {
-        ShiftedBoltzmannFactors[i] = exp(LogBoltzmannFactors[i] - largest_value);
-        SumShiftedBoltzmannFactors += ShiftedBoltzmannFactors[i];
-    }
+  // Standard trick: shift the Boltzmann factors down to avoid numerical problems
+  // The largest value of 'ShiftedBoltzmannFactors' will be 1 (which corresponds to the lowest energy).
+  double SumShiftedBoltzmannFactors = 0.0;
+  for (size_t i = 0; i < LogBoltzmannFactors.size(); ++i)
+  {
+    ShiftedBoltzmannFactors[i] = exp(LogBoltzmannFactors[i] - largest_value);
+    SumShiftedBoltzmannFactors += ShiftedBoltzmannFactors[i];
+  }
 
-    // select the Boltzmann factor
-    size_t selected = 0;
-    double cumw = ShiftedBoltzmannFactors[0];
-    double ws = RandomNumber::Uniform() * SumShiftedBoltzmannFactors;
-    while (cumw < ws)
-        cumw += ShiftedBoltzmannFactors[++selected];
+  // select the Boltzmann factor
+  size_t selected = 0;
+  double cumw = ShiftedBoltzmannFactors[0];
+  double ws = random.uniform() * SumShiftedBoltzmannFactors;
+  while (cumw < ws)
+    cumw += ShiftedBoltzmannFactors[++selected];
 
-    return selected;
+  return selected;
 }
 
 [[nodiscard]] std::optional<ChainData> 
-System::growMoleculeSwapInsertion(Component::GrowType growType, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+System::growMoleculeSwapInsertion(RandomNumber &random, Component::GrowType growType, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
                                   size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept
 {
   switch(growType)
   {
     default:
-    return growRigidMoleculeSwapInsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, scaling, atoms);
+    return growRigidMoleculeSwapInsertion(random, cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, scaling, atoms);
   }
 }
 
 [[nodiscard]] std::optional<ChainData> 
-System::growMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+System::growMoleculeReinsertion(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
                                 size_t selectedMolecule, std::span<Atom> molecule) const noexcept
 {
-  return growRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
+  return growRigidMoleculeReinsertion(random, cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
 }
 [[nodiscard]] ChainData 
-System::retraceMoleculeReinsertion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+System::retraceMoleculeReinsertion(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
                                    size_t selectedMolecule, std::span<Atom> molecule, double storedR) const noexcept
 {
-  return retraceRigidMoleculeReinsertion(cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, storedR);
+  return retraceRigidMoleculeReinsertion(random, cutOff, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, storedR);
 }
 
 [[nodiscard]] ChainData 
-System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, 
+System::retraceMoleculeSwapDeletion(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
                      size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {
-  return retraceRigidMoleculeSwapDeletion(cutOff,cutOffCoulomb, selectedComponent, selectedMolecule, molecule, scaling, storedR);
+  return retraceRigidMoleculeSwapDeletion(random, cutOff,cutOffCoulomb, selectedComponent, selectedMolecule, molecule, scaling, storedR);
 }
 
 
-[[nodiscard]] std::optional<FirstBeadData> System::growMoleculeMultipleFirstBeadSwapInsertion(double cutOff, double cutOffCoulomb, const Atom& atom) const noexcept
+[[nodiscard]] std::optional<FirstBeadData> System::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, double cutOff, double cutOffCoulomb, const Atom& atom) const noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   std::for_each(trialPositions.begin(), trialPositions.end(),
-      [&](Atom& a) {a.position = simulationBox.randomPosition(); });
+      [&](Atom& a) {a.position = simulationBox.randomPosition(random); });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions);
 
@@ -101,7 +101,7 @@ System::retraceMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t 
       std::back_inserter(logBoltmannFactors), [this](const std::pair<Atom,RunningEnergy>& v) {return -beta * v.second.total(); });
 
 
-  size_t selected = selectTrialPosition(logBoltmannFactors);
+  size_t selected = selectTrialPosition(random, logBoltmannFactors);
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

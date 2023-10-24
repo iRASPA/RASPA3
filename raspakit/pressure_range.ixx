@@ -2,6 +2,10 @@ export module pressure_range;
 
 import <vector>;
 import <cmath>;
+import <fstream>;
+import <complex>;
+
+import archive;
 
 export struct PressureRange
 {
@@ -10,6 +14,8 @@ export struct PressureRange
     Log = 0,
     Linear = 1
   };
+
+  bool operator==(PressureRange const&) const = default;
 
   double pressureStart{ 1e-2 };
   double pressureEnd{ 1e7 } ;
@@ -40,4 +46,7 @@ export struct PressureRange
     }
     return p;
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PressureRange &r);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PressureRange &r);
 };

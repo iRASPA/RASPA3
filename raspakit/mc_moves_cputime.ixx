@@ -2,8 +2,10 @@ export module mc_moves_cputime;
 
 import <string>;
 import <chrono>;
+import <fstream>;
 
 import double3;
+import archive;
 
 export struct MCMoveCpuTime
 {
@@ -33,6 +35,10 @@ export struct MCMoveCpuTime
                    GibbsVolumeMove(0.0), GibbsVolumeMoveNonEwald(0.0), GibbsVolumeMoveEwald(0.0)
                    {
                    };
+
+  bool operator==(MCMoveCpuTime const&) const = default;
+
+  uint64_t versionNumber{ 1 };
 
   std::chrono::duration<double> propertySampling;
   std::chrono::duration<double> energyPressureComputation;
@@ -227,6 +233,8 @@ export struct MCMoveCpuTime
     return *this;
   }
 
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveCpuTime &t);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTime &t);
 };
 
 export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTime& b)

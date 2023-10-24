@@ -37,13 +37,13 @@ import <iomanip>;
 
 // mc_moves_random_rotation.cpp
 
-std::optional<RunningEnergy> MC_Moves::randomRotationMove(System& system, size_t selectedComponent, std::span<Atom> molecule)
+std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, System& system, size_t selectedComponent, std::span<Atom> molecule)
 {
   double3 angle{};
   std::array<double3,3> axes{double3(1.0,0.0,0.0), double3(0.0,1.0,0.0) ,double3(0.0,0.0,1.0) };
   double3 maxAngle = system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.maxChange;
-  size_t selectedDirection = size_t(3.0 * RandomNumber::Uniform());
-  angle[selectedDirection] = maxAngle[selectedDirection] * 2.0 * (RandomNumber::Uniform() - 0.5);
+  size_t selectedDirection = size_t(3.0 * random.uniform());
+  angle[selectedDirection] = maxAngle[selectedDirection] * 2.0 * (random.uniform() - 0.5);
 
   system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.counts[selectedDirection] += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.totalCounts[selectedDirection] += 1;
@@ -83,7 +83,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(System& system, size_t
   system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.constructed[selectedDirection] += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.totalConstructed[selectedDirection] += 1;
 
-  if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total()))
+  if (random.uniform() < std::exp(-system.beta * energyDifference.total()))
   {
     system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.accepted[selectedDirection] += 1;
     system.components[selectedComponent].mc_moves_probabilities.statistics_RandomRotationMove.totalAccepted[selectedDirection] += 1;

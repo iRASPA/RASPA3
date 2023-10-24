@@ -37,7 +37,7 @@ import <iomanip>;
 
 // mc_moves_reaction.cpp
 
-std::optional<RunningEnergy> MC_Moves::reactionMove(System& system, [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
+std::optional<RunningEnergy> MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system, [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
 {
   size_t selectedComponent = 0;
   size_t selectedMolecule = 0;
@@ -49,7 +49,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove(System& system, [[maybe_unus
 
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
   if (!growData) return std::nullopt;
 
 

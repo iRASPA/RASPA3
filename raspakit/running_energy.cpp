@@ -9,7 +9,12 @@ import <iostream>;
 import <sstream>;
 import <vector>;
 import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import stringutils;
 
 void RunningEnergy::print(std::ostream &stream, const std::string &label)
@@ -31,4 +36,51 @@ void RunningEnergy::print(std::ostream &stream, const std::string &label)
   std::print(stream, "    dU/dlambda Real:         {: .6e}\n", conv * dudlambdaCharge);
   std::print(stream, "    dU/dlambda Ewald:        {: .6e}\n", conv * dudlambdaEwald);
   std::print(stream, "\n");
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &e)
+{
+  archive << e.versionNumber;
+
+  archive << e.frameworkMoleculeVDW;
+  archive << e.moleculeMoleculeVDW;
+  archive << e.frameworkMoleculeCharge;
+  archive << e.moleculeMoleculeCharge;
+  archive << e.ewald;
+  archive << e.intraVDW;
+  archive << e.intraCoul;
+  archive << e.tail;
+  archive << e.polarization;
+  archive << e.dudlambdaVDW;
+  archive << e.dudlambdaCharge;
+  archive << e.dudlambdaEwald;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnergy &e)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > e.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Component' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> e.frameworkMoleculeVDW;
+  archive >> e.moleculeMoleculeVDW;
+  archive >> e.frameworkMoleculeCharge;
+  archive >> e.moleculeMoleculeCharge;
+  archive >> e.ewald;
+  archive >> e.intraVDW;
+  archive >> e.intraCoul;
+  archive >> e.tail;
+  archive >> e.polarization;
+  archive >> e.dudlambdaVDW;
+  archive >> e.dudlambdaCharge;
+  archive >> e.dudlambdaEwald;
+
+  return archive;
 }

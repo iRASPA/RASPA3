@@ -8,11 +8,16 @@ import <string>;
 import <iostream>;
 import <ostream>;
 import <sstream>;
+import <fstream>;
 import <print>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
 import randomnumbers;
 import double3x3;
 import double3;
+import archive;
 import units;
 import stringutils;
 
@@ -78,11 +83,11 @@ SimulationBox::SimulationBox( double3x3 m, Type type): type(type)
   angleGamma = std::acos(double3::dot(column1, column2) / (this->lengthA * this->lengthB));
 }
 
-double3 SimulationBox::randomPosition() const
+double3 SimulationBox::randomPosition(RandomNumber &random) const
 {
-  return double3(unitCell.ax * RandomNumber::Uniform(),
-                 unitCell.by * RandomNumber::Uniform(),
-                 unitCell.cz * RandomNumber::Uniform());
+  return double3(unitCell.ax * random.uniform(),
+                 unitCell.by * random.uniform(),
+                 unitCell.cz * random.uniform());
 }
 
 double3 SimulationBox::perpendicularWidths() const
@@ -194,3 +199,48 @@ std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unu
 
   return stream.str();
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SimulationBox &box)
+{
+  archive << box.versionNumber;
+
+  archive << box.lengthA;
+  archive << box.lengthB;
+  archive << box.lengthC;
+  archive << box.angleAlpha;
+  archive << box.angleBeta;
+  archive << box.angleGamma;
+  archive << box.unitCell;
+  archive << box.inverseUnitCell;
+  archive << box.volume;
+  archive << box.type;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBox &box)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > box.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'SimulationBox' at line {} in file {}\n", 
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> box.lengthA;
+  archive >> box.lengthB;
+  archive >> box.lengthC;
+  archive >> box.angleAlpha;
+  archive >> box.angleBeta;
+  archive >> box.angleGamma;
+  archive >> box.unitCell;
+  archive >> box.inverseUnitCell;
+  archive >> box.volume;
+  archive >> box.type;
+
+  return archive;
+}
+
+

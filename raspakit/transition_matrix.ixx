@@ -1,13 +1,19 @@
 export module transition_matrix;
 
-import double3;
-
 import <cmath>;
 import <cstddef>;
 import <vector>;
+import <fstream>;
+
+import archive;
+import double3;
 
 export struct TransitionMatrix
 {
+  uint64_t versionNumber{ 1 };
+
+  bool operator==(TransitionMatrix const&) const = default;
+
   std::vector<double3> cmatrix; //x = deletion, y = other move that doesnot change macrostate, z = insertion
   std::vector<double>  bias;
   std::vector<double>  lnpi;         //For TM//
@@ -34,5 +40,8 @@ export struct TransitionMatrix
   void adjustBias();
   void clearCMatrix();
   void writeStatistics();
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TransitionMatrix &m);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m);
 };
 

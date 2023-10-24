@@ -6,7 +6,7 @@ import <vector>;
 import <iostream>;
 
 import hashcombine;
-
+import randomnumbers;
 import isotherm;
 
 export struct MultiSiteIsotherm
@@ -18,6 +18,8 @@ export struct MultiSiteIsotherm
     EI = 2,
     SEI = 3
   };
+
+  bool operator==(MultiSiteIsotherm const&) const = default;
 
   size_t numberOfSites{ 0 };
   std::vector<Isotherm> sites{};
@@ -42,12 +44,12 @@ export struct MultiSiteIsotherm
   std::string print() const;
   std::string printAsInputFormat() const;
 
-  MultiSiteIsotherm randomized(double maximumLoading)
+  MultiSiteIsotherm randomized(RandomNumber &random, double maximumLoading)
   {
     MultiSiteIsotherm copy(*this);
     for(size_t i = 0; i < numberOfSites; ++i)
     {
-      copy.sites[i].randomize(maximumLoading);
+      copy.sites[i].randomize(random, maximumLoading);
     }
     return copy;
   }

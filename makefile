@@ -7,16 +7,16 @@ CXXFLAGS= -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fopenmp -Wal
 all: release;
 
 release:
-	$(MAKE) -C mathkit CXX="$(CXX)" CXXFLAGS="$(RELCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C foundationkit CXX="$(CXX)" CXXFLAGS="$(RELCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
+	$(MAKE) -C mathkit CXX="$(CXX)" CXXFLAGS="$(RELCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C symmetrykit CXX="$(CXX)" CXXFLAGS="$(RELCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C raspakit CXX="$(CXX)" CXXFLAGS="$(RELCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(CXX) $(RELCXXFLAGS) $(CXXFLAGS) -fprebuilt-module-path=mathkit -fprebuilt-module-path=foundationkit -fprebuilt-module-path=raspakit -c raspa3/main/main.cpp -o raspa3/main/main.o
 	$(CXX) -stdlib=libc++ -o raspa3.exe raspa3/main/main.o -Lfoundationkit -Lmathkit -Lsymmetrykit -Lraspakit -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lblas -fopenmp
 
 debug:
-	$(MAKE) -C mathkit CXX="$(CXX)" CXXFLAGS="$(DBGCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C foundationkit CXX="$(CXX)" CXXFLAGS="$(DBGCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
+	$(MAKE) -C mathkit CXX="$(CXX)" CXXFLAGS="$(DBGCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C symmetrykit CXX="$(CXX)" CXXFLAGS="$(DBGCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(MAKE) -C raspakit CXX="$(CXX)" CXXFLAGS="$(DBGCXXFLAGS) $(CXXFLAGS) $(MODULEPATHS)"
 	$(CXX) $(DBGCXXFLAGS) $(CXXFLAGS) -fprebuilt-module-path=mathkit -fprebuilt-module-path=foundationkit -fprebuilt-module-path=raspakit -c raspa3/main/main.cpp -o raspa3/main/main.o
@@ -24,7 +24,7 @@ debug:
 
 clean:
 	rm -f raspa3.exe
-	cd mathkit && $(MAKE) clean
 	cd foundationkit && $(MAKE) clean
+	cd mathkit && $(MAKE) clean
 	cd symmetrykit && $(MAKE) clean
 	cd raspakit && $(MAKE) clean

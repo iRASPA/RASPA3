@@ -27,28 +27,28 @@ import <numeric>;
 
 // system_cbmc_rigid_deletion.cpp
 
-[[nodiscard]] ChainData System::retraceRigidMoleculeSwapDeletion(double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
+[[nodiscard]] ChainData System::retraceRigidMoleculeSwapDeletion(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR) const noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
 
-  const FirstBeadData firstBeadData = retraceRigidMultipleFirstBeadSwapDeletion(cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR);
+  const FirstBeadData firstBeadData = retraceRigidMultipleFirstBeadSwapDeletion(random, cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR);
 
   if(molecule.size() == 1)
   {
     return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
   }
 
-  const ChainData rigidRotationData = retraceRigidChain(cutOff, cutOffCoulomb, startingBead, scaling, molecule);
+  const ChainData rigidRotationData = retraceRigidChain(random, cutOff, cutOffCoulomb, startingBead, scaling, molecule);
 
   return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies, firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] FirstBeadData System::retraceRigidMultipleFirstBeadSwapDeletion(double cutOff, double cutOffCoulomb, const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
+[[nodiscard]] FirstBeadData System::retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, double cutOff, double cutOffCoulomb, const Atom& atom, double scaling, [[maybe_unused]] double storedR) const noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   for(Atom &trialPosition: trialPositions) {trialPosition.setScaling(scaling);}
   std::for_each(trialPositions.begin() + 1, trialPositions.end(),
-          [this](Atom& a) {a.position = simulationBox.randomPosition();});
+          [this, &random](Atom& a) {a.position = simulationBox.randomPosition(random);});
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions);
 
@@ -63,7 +63,7 @@ import <numeric>;
 }
 
 
-[[nodiscard]] ChainData System::retraceRigidChain(double cutOff, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
+[[nodiscard]] ChainData System::retraceRigidChain(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
   std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom& a) {a.setScaling(scaling); });
@@ -71,7 +71,7 @@ import <numeric>;
 
   for (size_t i = 1; i < numberOfTrialDirections; ++i)
   {
-    trialPositions.push_back(rotateRandomlyAround(trialPosition, startingBead));
+    trialPositions.push_back(rotateRandomlyAround(random, trialPosition, startingBead));
   };
 
   const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));

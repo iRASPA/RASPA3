@@ -1,11 +1,15 @@
 export module atom;
 
+import archive;
 import double3;
 
 import scaling;
 
 import <cmath>;
 import <cstddef>;
+import <istream>;
+import <ostream>;
+import <fstream>;
 
 #if defined(_WIN32)
   import <cassert>;
@@ -23,10 +27,10 @@ export struct Atom
   double charge;
   double scalingVDW{ 1.0 };
   double scalingCoulomb{ 1.0 };
-  int moleculeId{ 0 };
-  short type{ 0 };
-  std::byte componentId{ 0 };
-  std::byte groupId{ 0 };   // defaults to false
+  uint32_t moleculeId{ 0 };
+  uint16_t type{ 0 };
+  uint8_t componentId{ 0 };
+  uint8_t groupId{ 0 };   // defaults to false
 
   Atom() noexcept = default;
   Atom(const Atom &a) noexcept = default;
@@ -35,7 +39,9 @@ export struct Atom
   Atom& operator=(Atom&& a) noexcept = default;
   ~Atom() noexcept = default;
 
-  Atom(double3 position, double charge, double lambda, short type, std::byte componentId, int moleculeId) :
+  bool operator==(Atom const&) const = default;
+
+  Atom(double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId) :
       position(position), charge(charge), moleculeId(moleculeId), 
               type(type), componentId(componentId)
   {
@@ -43,7 +49,8 @@ export struct Atom
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
   };
 
-  Atom(double3 position, double charge, double lambda, int moleculeId, short type, std::byte componentId, std::byte groupId) :
+  Atom(double3 position, double charge, double lambda, uint32_t moleculeId, 
+       uint16_t type, uint8_t componentId, uint8_t groupId) :
     position(position), charge(charge), moleculeId(moleculeId),
     type(type), componentId(componentId), groupId(groupId)
   {
@@ -51,7 +58,8 @@ export struct Atom
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
   };
 
-  Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, int moleculeId, short type, std::byte componentId, std::byte groupId) :
+  Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, 
+       uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) :
     position(position), charge(charge), scalingVDW(scalingVDW), scalingCoulomb(scalingCoulomb), moleculeId(moleculeId),
     type(type), componentId(componentId), groupId(groupId)
   {
@@ -81,8 +89,11 @@ export struct Atom
   {
     scalingVDW = 1.0;
     scalingCoulomb = 1.0;
-    groupId = std::byte{ 0 };
+    groupId = uint8_t{ 0 };
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom);
 };
 
 // should be 4 times double4 = 4x(8x4) = 4x32 = 128 bytes

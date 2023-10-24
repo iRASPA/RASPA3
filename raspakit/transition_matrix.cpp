@@ -11,7 +11,13 @@ import <numeric>;
 import <filesystem>;
 import <fstream>;
 import <iostream>;
+import <print>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import double3;
 
 void TransitionMatrix::initialize()
@@ -167,3 +173,62 @@ void TransitionMatrix::writeStatistics()
     }
   }
 };
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TransitionMatrix &m)
+{
+  archive << m.versionNumber;
+
+  archive << m.cmatrix;
+  archive << m.bias;
+  archive << m.lnpi;
+  archive << m.forward_lnpi;
+  archive << m.reverse_lnpi;
+  archive << m.histogram;
+
+  archive << m.numberOfSteps;
+  archive << m.minMacrostate;
+  archive << m.maxMacrostate;
+  archive << m.updateTMEvery;
+  archive << m.numberOfUpdates;
+
+  archive << m.doTMMC;
+  archive << m.useBias;
+  archive << m.useTMBias;
+  archive << m.rejectOutofBound;
+  archive << m.rezeroAfterInitialization;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > m.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'TransitionMatrix' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> m.cmatrix;
+  archive >> m.bias;
+  archive >> m.lnpi;
+  archive >> m.forward_lnpi;
+  archive >> m.reverse_lnpi;
+  archive >> m.histogram;
+
+  archive >> m.numberOfSteps;
+  archive >> m.minMacrostate;
+  archive >> m.maxMacrostate;
+  archive >> m.updateTMEvery;
+  archive >> m.numberOfUpdates;
+
+  archive >> m.doTMMC;
+  archive >> m.useBias;
+  archive >> m.useTMBias;
+  archive >> m.rejectOutofBound;
+  archive >> m.rezeroAfterInitialization;
+
+  return archive;
+}

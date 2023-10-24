@@ -40,7 +40,7 @@ import transition_matrix;
 
 // mc_moves_deletion.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& system, size_t selectedComponent, size_t selectedMolecule)
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalCounts += 1;
@@ -56,7 +56,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
     double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    ChainData retraceData = system.retraceMoleculeSwapDeletion(cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
+    ChainData retraceData = system.retraceMoleculeSwapDeletion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
@@ -95,7 +95,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(System& 
       }
     }
 
-    if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+    if (random.uniform() < biasTransitionMatrix * Pacc)
     {
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
       system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalAccepted += 1;

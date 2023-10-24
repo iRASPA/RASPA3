@@ -37,12 +37,12 @@ import <iomanip>;
 
 // mc_moves_translation.cpp
 
-std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t selectedComponent, std::span<Atom> molecule) const
+std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent, std::span<Atom> molecule) const
 {
   double3 displacement{};
   double3 maxDisplacement = system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.maxChange;
-  size_t selectedDirection = size_t(3.0 * RandomNumber::Uniform());
-  displacement[selectedDirection] = maxDisplacement[selectedDirection] * 2.0 * (RandomNumber::Uniform() - 0.5);
+  size_t selectedDirection = size_t(3.0 * random.uniform());
+  displacement[selectedDirection] = maxDisplacement[selectedDirection] * 2.0 * (random.uniform() - 0.5);
   system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.counts[selectedDirection] += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.totalCounts[selectedDirection] += 1;
 
@@ -76,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(System &system, size_t se
   system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.constructed[selectedDirection] += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.totalConstructed[selectedDirection] += 1;
 
-  if (RandomNumber::Uniform() < std::exp(-system.beta * energyDifference.total()))
+  if (random.uniform() < std::exp(-system.beta * energyDifference.total()))
   {
     system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.accepted[selectedDirection] += 1;
     system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.totalAccepted[selectedDirection] += 1;

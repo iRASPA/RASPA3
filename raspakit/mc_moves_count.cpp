@@ -4,10 +4,14 @@ import <chrono>;
 import <string>;
 import <sstream>;
 import <print>;
+import <exception>;
+import <source_location>;
+import <fstream>;
+import <complex>;
 
 import double3;
 import stringutils;
-
+import archive;
 
 void MCMoveCount::clearCountStatistics()
 {
@@ -98,4 +102,61 @@ const std::string MCMoveCount::writeMCMoveCountAllSystemStatistics(size_t countT
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveCount &c)
+{
+  archive << c.versionNumber;
+
+  archive << c.translationMove;
+  archive << c.randomTranslationMove;
+  archive << c.rotationMove;
+  archive << c.randomRotationMove;
+  archive << c.reinsertionMoveCBMC;
+  archive << c.swapInsertionMoveCBMC;
+  archive << c.swapDeletionMoveCBMC;
+  archive << c.swapLambdaDeletionMove;
+  archive << c.swapLambdaMoveCFCMC;
+  archive << c.swapLambdaMoveCBCFCMC;
+  archive << c.GibbsSwapMoveCBMC;
+  archive << c.GibbsSwapLambdaMoveCFCMC;
+  archive << c.WidomMoveCBMC;
+  archive << c.WidomMoveCFCMC;
+  archive << c.WidomMoveCBCFCMC;
+  archive << c.volumeMove;
+  archive << c.GibbsVolumeMove;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount &c)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > c.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'MCMoveCpuTime' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> c.translationMove;
+  archive >> c.randomTranslationMove;
+  archive >> c.rotationMove;
+  archive >> c.randomRotationMove;
+  archive >> c.reinsertionMoveCBMC;
+  archive >> c.swapInsertionMoveCBMC;
+  archive >> c.swapDeletionMoveCBMC;
+  archive >> c.swapLambdaDeletionMove;
+  archive >> c.swapLambdaMoveCFCMC;
+  archive >> c.swapLambdaMoveCBCFCMC;
+  archive >> c.GibbsSwapMoveCBMC;
+  archive >> c.GibbsSwapLambdaMoveCFCMC;
+  archive >> c.WidomMoveCBMC;
+  archive >> c.WidomMoveCFCMC;
+  archive >> c.WidomMoveCBCFCMC;
+  archive >> c.volumeMove;
+  archive >> c.GibbsVolumeMove;
+
+  return archive;
 }

@@ -44,6 +44,8 @@ export struct Isotherm
 
   Isotherm(Isotherm::Type type, const std::vector<double> &values, size_t numberOfValues);
 
+  bool operator==(Isotherm const&) const = default;
+
   Isotherm::Type type;
   std::vector<double> parameters;
   size_t numberOfParameters;
@@ -359,7 +361,7 @@ export struct Isotherm
     }
   }
 
-  void randomize(double maximumLoading);
+  void randomize(RandomNumber &random, double maximumLoading);
 
   bool isUnphysical() const;
 

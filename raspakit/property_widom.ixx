@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import averages;
 
 inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
@@ -20,12 +22,18 @@ inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs, 
 
 export struct PropertyWidom
 {
+  PropertyWidom();
+
   PropertyWidom(size_t numberOfBlocks) :
       numberOfBlocks(numberOfBlocks),
       bookKeepingWidom(numberOfBlocks),
       bookKeepingDensity(numberOfBlocks)
   {
   }
+
+  bool operator==(PropertyWidom const&) const = default;
+
+  uint64_t versionNumber{ 1 };
 
   size_t numberOfBlocks;
   std::vector<std::pair<double, double>> bookKeepingWidom;
@@ -285,4 +293,7 @@ export struct PropertyWidom
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyWidom &w);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWidom &w);
 };

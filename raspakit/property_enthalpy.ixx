@@ -10,7 +10,9 @@ import <numeric>;
 import <numbers>;
 import <tuple>;
 import <iostream>;
+import <fstream>;
 
+import archive;
 import averages;
 import loadings;
 import enthalpy_of_adsorption;
@@ -23,6 +25,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyEnthalpy
 {
+  PropertyEnthalpy() {};
   PropertyEnthalpy(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
@@ -30,6 +33,9 @@ export struct PropertyEnthalpy
   {
   }
 
+  bool operator==(PropertyEnthalpy const&) const = default;
+
+  uint64_t versionNumber{ 1 };
   size_t numberOfBlocks;
   size_t numberOfComponents;
   std::vector<std::pair<EnthalpyOfAdsorptionTerms, double>> bookKeepingEnthalpyOfAdsorptionTerms;
@@ -97,4 +103,7 @@ export struct PropertyEnthalpy
   }
 
   std::string writeAveragesStatistics(std::vector<size_t>& swapableComponents, std::vector<Component>& components) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnthalpy &p);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnthalpy &p);
 };

@@ -3,122 +3,131 @@ export module energy_status_intra;
 import <string>;
 import <iostream>;
 import <sstream>;
+import <fstream>;
 import <cmath>;
 import <print>;
 
+import archive;
 import stringutils;
 import energy_factor;
 
 export struct EnergyIntra
 {
-    double bond;
-    double bend;
-    double inversionBend;
-    double ureyBradley;
-    double torsion;
-    double improperTorsion;
-    double bondBond;
-    double bondBend;
-    double bondTorsion;
-    double bendBend;
-    double bendTorsion;
-    double intraVDW;
-    double intraChargeCharge;
+  uint64_t versionNumber{ 1 };
 
-    EnergyIntra() : bond(0.0), bend(0.0), inversionBend(0.0), ureyBradley(0.0),
-        torsion(0.0), improperTorsion(0.0), bondBond(0.0), bondBend(0.0), bondTorsion(0.0),
-        bendBend(0.0), bendTorsion(0.0), intraVDW(0.0), intraChargeCharge(0.0)
-    {
+  double bond;
+  double bend;
+  double inversionBend;
+  double ureyBradley;
+  double torsion;
+  double improperTorsion;
+  double bondBond;
+  double bondBend;
+  double bondTorsion;
+  double bendBend;
+  double bendTorsion;
+  double intraVDW;
+  double intraChargeCharge;
 
-    }
+  EnergyIntra() : bond(0.0), bend(0.0), inversionBend(0.0), ureyBradley(0.0),
+      torsion(0.0), improperTorsion(0.0), bondBond(0.0), bondBend(0.0), bondTorsion(0.0),
+      bendBend(0.0), bendTorsion(0.0), intraVDW(0.0), intraChargeCharge(0.0)
+  {
 
-    inline EnergyFactor total() const
-    {
-        return EnergyFactor(bond + bend + inversionBend + ureyBradley +
-            torsion + improperTorsion + bondBond + bondBend + bondTorsion +
-            bendBend + bendTorsion + intraVDW + intraChargeCharge, 0.0);
-    }
+  }
 
-    void zero()
-    {
-        this->bond = 0.0;
-        this->bend = 0.0;
-        this->inversionBend = 0.0;
-        this->ureyBradley = 0.0;
-        this->torsion = 0.0;
-        this->improperTorsion = 0.0;
-        this->bondBond = 0.0;
-        this->bondBend = 0.0;
-        this->bondTorsion = 0.0;
-        this->bendBend = 0.0;
-        this->bendTorsion = 0.0;
-        this->intraVDW = 0.0;
-        this->intraChargeCharge = 0.0;
-    }
+  bool operator==(EnergyIntra const&) const = default;
 
-    inline EnergyIntra& operator+=(const EnergyIntra& b)
-    {
-        this->bond += b.bond;
-        this->bend += b.bend;
-        this->inversionBend += b.inversionBend;
-        this->ureyBradley += b.ureyBradley;
-        this->torsion += b.torsion;
-        this->improperTorsion += b.improperTorsion;
-        this->bondBond += b.bondBond;
-        this->bondBend += b.bondBend;
-        this->bondTorsion += b.bondTorsion;
-        this->bendBend += b.bendBend;
-        this->bendTorsion += b.bendTorsion;
-        this->intraVDW += b.intraVDW;
-        this->intraChargeCharge += b.intraChargeCharge;
-        return *this;
-    }
+  inline EnergyFactor total() const
+  {
+    return EnergyFactor(bond + bend + inversionBend + ureyBradley +
+           torsion + improperTorsion + bondBond + bondBend + bondTorsion +
+           bendBend + bendTorsion + intraVDW + intraChargeCharge, 0.0);
+  }
 
-    inline EnergyIntra& operator-=(const EnergyIntra& b)
-    {
-        this->bond -= b.bond;
-        this->bend -= b.bend;
-        this->inversionBend -= b.inversionBend;
-        this->ureyBradley -= b.ureyBradley;
-        this->torsion -= b.torsion;
-        this->improperTorsion -= b.improperTorsion;
-        this->bondBond -= b.bondBond;
-        this->bondBend -= b.bondBend;
-        this->bondTorsion -= b.bondTorsion;
-        this->bendBend -= b.bendBend;
-        this->bendTorsion -= b.bendTorsion;
-        this->intraVDW -= b.intraVDW;
-        this->intraChargeCharge -= b.intraChargeCharge;
-        return *this;
-    }
+  void zero()
+  {
+    this->bond = 0.0;
+    this->bend = 0.0;
+    this->inversionBend = 0.0;
+    this->ureyBradley = 0.0;
+    this->torsion = 0.0;
+    this->improperTorsion = 0.0;
+    this->bondBond = 0.0;
+    this->bondBend = 0.0;
+    this->bondTorsion = 0.0;
+    this->bendBend = 0.0;
+    this->bendTorsion = 0.0;
+    this->intraVDW = 0.0;
+    this->intraChargeCharge = 0.0;
+  }
 
-    inline EnergyIntra operator-() const
-    {
-        EnergyIntra v;
-        v.bond = -bond;
-        v.bend = -bend;
-        v.inversionBend = -inversionBend;
-        v.ureyBradley = -ureyBradley;
-        v.torsion = -torsion;
-        v.improperTorsion = -improperTorsion;
-        v.bondBond = -bondBond;
-        v.bondBend = -bondBend;
-        v.bondTorsion = -bondTorsion;
-        v.bendBend = -bendBend;
-        v.bendTorsion = -bendTorsion;
-        v.intraVDW = -intraVDW;
-        v.intraChargeCharge = -intraChargeCharge;
-        return v;
-    }
+  inline EnergyIntra& operator+=(const EnergyIntra& b)
+  {
+    this->bond += b.bond;
+    this->bend += b.bend;
+    this->inversionBend += b.inversionBend;
+    this->ureyBradley += b.ureyBradley;
+    this->torsion += b.torsion;
+    this->improperTorsion += b.improperTorsion;
+    this->bondBond += b.bondBond;
+    this->bondBend += b.bondBend;
+    this->bondTorsion += b.bondTorsion;
+    this->bendBend += b.bendBend;
+    this->bendTorsion += b.bendTorsion;
+    this->intraVDW += b.intraVDW;
+    this->intraChargeCharge += b.intraChargeCharge;
+    return *this;
+  }
 
-    std::string printEnergyStatus([[maybe_unused]] int i)
-    {
-        std::ostringstream stream;
+  inline EnergyIntra& operator-=(const EnergyIntra& b)
+  {
+    this->bond -= b.bond;
+    this->bend -= b.bend;
+    this->inversionBend -= b.inversionBend;
+    this->ureyBradley -= b.ureyBradley;
+    this->torsion -= b.torsion;
+    this->improperTorsion -= b.improperTorsion;
+    this->bondBond -= b.bondBond;
+    this->bondBend -= b.bondBend;
+    this->bondTorsion -= b.bondTorsion;
+    this->bendBend -= b.bendBend;
+    this->bendTorsion -= b.bendTorsion;
+    this->intraVDW -= b.intraVDW;
+    this->intraChargeCharge -= b.intraChargeCharge;
+    return *this;
+  }
 
-        std::print(stream, "    bond: {}", bond);
-        
-        return stream.str();
-    }
+  inline EnergyIntra operator-() const
+  {
+    EnergyIntra v;
+    v.bond = -bond;
+    v.bend = -bend;
+    v.inversionBend = -inversionBend;
+    v.ureyBradley = -ureyBradley;
+    v.torsion = -torsion;
+    v.improperTorsion = -improperTorsion;
+    v.bondBond = -bondBond;
+    v.bondBend = -bondBend;
+    v.bondTorsion = -bondTorsion;
+    v.bendBend = -bendBend;
+    v.bendTorsion = -bendTorsion;
+    v.intraVDW = -intraVDW;
+    v.intraChargeCharge = -intraChargeCharge;
+    return v;
+  }
+
+  std::string printEnergyStatus([[maybe_unused]] int i)
+  {
+    std::ostringstream stream;
+
+    std::print(stream, "    bond: {}", bond);
+      
+    return stream.str();
+  }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyIntra &e);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra &e);
 };
 
 export inline EnergyIntra operator+(const EnergyIntra& a, const EnergyIntra& b)

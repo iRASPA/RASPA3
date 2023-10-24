@@ -287,6 +287,20 @@ InputReader::InputReader()
       keyword = trim(keyword);
       std::getline(iss, arguments);           
 
+      if (caseInSensStringCompare(keyword, "RestartFromBinary"))
+      {
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        restartFromBinary = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "RandomSeed"))
+      {
+        unsigned long long value = parse<unsigned long long>(arguments, keyword, lineNumber);
+        randomSeed = value;
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "SimulationType"))
       {
         std::string str;

@@ -39,7 +39,7 @@ import <iomanip>;
 
 // mc_moves_insertion.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System& system, size_t selectedComponent)
+std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.counts += 1;
@@ -51,7 +51,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
   
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
   system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
@@ -96,7 +96,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(System&
     }
   }
 
-  if (RandomNumber::Uniform() < biasTransitionMatrix * Pacc)
+  if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.accepted += 1;
     system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.totalAccepted += 1;

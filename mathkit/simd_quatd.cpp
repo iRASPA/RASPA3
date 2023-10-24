@@ -5,118 +5,94 @@ module;
 
 module simd_quatd;
 
-import randomnumbers;
 import double3;
 
 simd_quatd::simd_quatd(double ix, double iy, double iz, double r)
 {
-    this->ix = ix;
-    this->iy = iy;
-    this->iz = iz;
-    this->r = r;
+  this->ix = ix;
+  this->iy = iy;
+  this->iz = iz;
+  this->r = r;
 }
 
 simd_quatd::simd_quatd(double real, double3 imag)
 {
-    this->ix = imag.x;
-    this->iy = imag.y;
-    this->iz = imag.z;
-    this->r = real;
+  this->ix = imag.x;
+  this->iy = imag.y;
+  this->iz = imag.z;
+  this->r = real;
 }
 
-simd_quatd simd_quatd::smallRandomQuaternion(double angleRange)
-{
-    double3 randomDirection = double3::randomVectorOnUnitSphere();
-    double angle = angleRange * 2.0 * ((double(rand()) / RAND_MAX) - 0.5);
-    return simd_quatd::fromAxisAngle(angle, randomDirection).normalized();
-}
 
 simd_quatd simd_quatd::fromAxisAngle(double angle, double3 axis)
 {
-    double s = std::sin(0.5 * angle);
-    return simd_quatd(std::cos(0.5 * angle), double3{ s * axis.x,s * axis.y,s *axis.z});
+  double s = std::sin(0.5 * angle);
+  return simd_quatd(std::cos(0.5 * angle), double3{ s * axis.x,s * axis.y,s *axis.z});
 }
 
 simd_quatd simd_quatd::normalized()
 {
-    double inv_length = 1.0 / std::sqrt(r * r + ix * ix + iy * iy + iz * iz);
-    return simd_quatd(inv_length * ix, inv_length * iy, inv_length * iz, inv_length * r);
+  double inv_length = 1.0 / std::sqrt(r * r + ix * ix + iy * iy + iz * iz);
+  return simd_quatd(inv_length * ix, inv_length * iy, inv_length * iz, inv_length * r);
 }
 
 simd_quatd::simd_quatd(double3 EulerAngles)
 {
-    double c1 = std::cos(EulerAngles.x / 2.0);  // heading
-    double s1 = std::sin(EulerAngles.x / 2.0);
-    double c2 = std::cos(EulerAngles.y / 2.0);  // attitude
-    double s2 = std::sin(EulerAngles.y / 2.0);
-    double c3 = std::cos(EulerAngles.z / 2.0);  // bank
-    double s3 = std::sin(EulerAngles.z / 2.0);
-    double c1c2 = c1 * c2;
-    double s1s2 = s1 * s2;
-    r = c1c2 * c3 - s1s2 * s3;
-    ix = c1c2 * s3 + s1s2 * c3;
-    iy = s1 * c2 * c3 + c1 * s2 * s3;
-    iz = c1 * s2 * c3 - s1 * c2 * s3;
+  double c1 = std::cos(EulerAngles.x / 2.0);  // heading
+  double s1 = std::sin(EulerAngles.x / 2.0);
+  double c2 = std::cos(EulerAngles.y / 2.0);  // attitude
+  double s2 = std::sin(EulerAngles.y / 2.0);
+  double c3 = std::cos(EulerAngles.z / 2.0);  // bank
+  double s3 = std::sin(EulerAngles.z / 2.0);
+  double c1c2 = c1 * c2;
+  double s1s2 = s1 * s2;
+  r = c1c2 * c3 - s1s2 * s3;
+  ix = c1c2 * s3 + s1s2 * c3;
+  iy = s1 * c2 * c3 + c1 * s2 * s3;
+  iz = c1 * s2 * c3 - s1 * c2 * s3;
 }
 
 double3 simd_quatd::EulerAngles()
 {
-    double sqw = r * r;
-    double sqx = ix * ix;
-    double sqy = iy * iy;
-    double sqz = iz * iz;
-    double unit = sqx + sqy + sqz + sqw;  // if normalised is one, otherwise is correction factor
-    double test = ix * iy + iz * r;
-    if (test > 0.49999 * unit)
-    {
-        // std::singularity at north pole
-        return double3(2.0 * std::atan2(ix, r), std::numbers::pi / 2.0, 0.0);
-    }
-    if (test < -0.49999 * unit)
-    {
-        // std::singularity at south pole
-        return double3(-2.0 * std::atan2(ix, r), -std::numbers::pi / 2.0, 0.0);
-    }
+  double sqw = r * r;
+  double sqx = ix * ix;
+  double sqy = iy * iy;
+  double sqz = iz * iz;
+  double unit = sqx + sqy + sqz + sqw;  // if normalised is one, otherwise is correction factor
+  double test = ix * iy + iz * r;
+  if (test > 0.49999 * unit)
+  {
+      // std::singularity at north pole
+      return double3(2.0 * std::atan2(ix, r), std::numbers::pi / 2.0, 0.0);
+  }
+  if (test < -0.49999 * unit)
+  {
+      // std::singularity at south pole
+      return double3(-2.0 * std::atan2(ix, r), -std::numbers::pi / 2.0, 0.0);
+  }
 
-    // return heading, attitude, bank
-    return double3(std::atan2(2.0 * iy * r - 2.0 * ix * iz, sqx - sqy - sqz + sqw),
-        std::sin(2.0 * test / unit),
-        std::atan2(2.0 * ix * r - 2.0 * iy * iz, -sqx + sqy - sqz + sqw));
-}
-
-simd_quatd simd_quatd::random()
-{
-    double s = 0.0;
-    double sigma1 = 0.0;
-    double sigma2 = 0.0;
-    double theta1 = 0.0;
-    double theta2 = 0.0;
-
-    s = RandomNumber::Uniform();
-    sigma1 = std::sqrt(1.0 - s);
-    sigma2 = std::sqrt(s);
-    theta1 = 2.0 * std::numbers::pi * RandomNumber::Uniform();
-    theta2 = 2.0 * std::numbers::pi * RandomNumber::Uniform();
-
-    return simd_quatd(sigma2 * std::cos(theta2), sigma1 * std::sin(theta1), sigma1 * std::cos(theta1), sigma2 * std::sin(theta2));
+  // return heading, attitude, bank
+  return double3(std::atan2(2.0 * iy * r - 2.0 * ix * iz, sqx - sqy - sqz + sqw),
+      std::sin(2.0 * test / unit),
+      std::atan2(2.0 * ix * r - 2.0 * iy * iz, -sqx + sqy - sqz + sqw));
 }
 
 simd_quatd simd_quatd::yaw(double angle)
 {
-    double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
-    return simd_quatd(std::cos(half_theta), double3(0.0, std::sin(half_theta), 0.0));
+  double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
+  return simd_quatd(std::cos(half_theta), double3(0.0, std::sin(half_theta), 0.0));
 }
 
 simd_quatd simd_quatd::pitch(double angle)
 {
-    double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
-    return simd_quatd(std::cos(half_theta), double3(std::sin(half_theta), 0.0, 0.0));
+  double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
+  return simd_quatd(std::cos(half_theta), double3(std::sin(half_theta), 0.0, 0.0));
 }
 
 simd_quatd simd_quatd::roll(double angle)
 {
-    double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
-    return simd_quatd(std::cos(half_theta), double3(0.0, 0.0, std::sin(half_theta)));
+  double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
+  return simd_quatd(std::cos(half_theta), double3(0.0, 0.0, std::sin(half_theta)));
 }
 
 const simd_quatd simd_quatd::data120[120] =

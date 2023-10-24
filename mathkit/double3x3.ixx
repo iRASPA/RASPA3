@@ -6,9 +6,12 @@ export module double3x3;
     import <immintrin.h>;
 #endif
 
+import <istream>;
 import <ostream>;
+import <fstream>;
 import <cmath>;
 
+import archive;
 import double3;
 import simd_quatd;
 import int3x3;
@@ -58,6 +61,13 @@ export union double3x3
 
     double3x3(double lattice[3][3]);
 
+    bool operator==(double3x3 const& rhs)
+    {
+      return (ax == rhs.ax) && (ay == rhs.ay) && (az == rhs.az) &&
+             (bx == rhs.bx) && (by == rhs.by) && (bz == rhs.bz) &&
+             (cx == rhs.cx) && (cy == rhs.cy) && (cz == rhs.cz);
+    }
+
     inline double3& operator [] (size_t i) { return v[i]; }
     inline const double3& operator [] (size_t i) const { return v[i]; }
 
@@ -91,13 +101,6 @@ export union double3x3
         return w;
     }
 
-    static double3x3 randomRotationMatrix();
-    static double3x3 randomRotationAroundX(double angle);
-    static double3x3 randomRotationAroundY(double angle);
-    static double3x3 randomRotationAroundZ(double angle);
-
-    friend std::ostream& operator<<(std::ostream& out, const double3x3& vec);
-
     inline double3x3& operator+=(const double3x3& b)
     {
         this->m11 += b.m11; this->m21 += b.m21; this->m31 += b.m31;
@@ -115,6 +118,9 @@ export union double3x3
 
         return *this;
     }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3x3 &vec);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3x3 &vec);
 };
 
 /*

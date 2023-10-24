@@ -14,10 +14,20 @@ import <cmath>;
 import <numbers>;
 import <optional>;
 import <print>;
+import <fstream>;
+import <exception>;
+import <source_location>;
+import <complex>;
 
+import archive;
 import units;
 import averages;
 import stringutils;
+
+
+PropertyWidom::PropertyWidom()
+{
+}
 
 
 std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const
@@ -93,3 +103,33 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
 
   return stream.str();
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyWidom &w)
+{
+  archive << w.versionNumber;
+
+  archive << w.numberOfBlocks;
+  archive << w.bookKeepingWidom;
+  archive << w.bookKeepingDensity;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWidom &w)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > w.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyWidom' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> w.numberOfBlocks;
+  archive >> w.bookKeepingWidom;
+  archive >> w.bookKeepingDensity;
+
+  return archive;
+}
+

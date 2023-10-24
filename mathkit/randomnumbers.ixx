@@ -4,68 +4,90 @@ import <tuple>;
 import <random>;
 import <cmath>;
 import <utility>;
+import <fstream>;
+import <iostream>;
+import <optional>;
 
+import archive;
 import double3;
+import double3x3;
+import simd_quatd;
 
-export class RandomNumber
+export struct RandomNumber
 {
-public:
-    static double Uniform()
-    {
-        return getInstance().uniformDistribution_(getInstance().mt);
-    }
-    static double Gaussian()
-    {
-        return getInstance().normalDistribution_(getInstance().mt);
-    }
-    static size_t Integer(size_t i, size_t j)
-    {
-      return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * Uniform());
-    }
-    static std::pair<size_t, size_t> randomPairAdjacentIntegers(size_t size)
-    {
-      if(size <= 1) return std::make_pair(0, 0);
-      size_t first = static_cast<size_t>(static_cast<double>(size - 1) * Uniform());
-      size_t second = first + 1;
-      if(Uniform() < 0.5) std::swap(first, second);
-      return std::make_pair(first, second);
-    }
-private:
-    RandomNumber()
-    {
-        std::random_device rd;
-        //mt = std::mt19937_64(rd());
-        mt = std::mt19937_64(1400);
-        uniformDistribution_ = std::uniform_real_distribution<double>(0.0, 1.0);
-        normalDistribution_ = std::normal_distribution<double>();
-    }
-    ~RandomNumber() {}
-    
-    static RandomNumber& getInstance() {
-        static RandomNumber s;
-        return s;
-    }
+  RandomNumber(std::optional<unsigned long long> s)
+  {
+    std::random_device rd;
+    seed = s.has_value() ? s.value() : rd();
+    mt = std::mt19937_64(seed);
+    uniformDistribution = std::uniform_real_distribution<double>(0.0, 1.0);
+    normalDistribution = std::normal_distribution<double>();
+  }
 
-    RandomNumber(RandomNumber const&) = delete;
-    RandomNumber& operator= (RandomNumber const&) = delete;
+  bool operator==(RandomNumber const &rhs) const
+  {
+    return (mt == rhs.mt) &&
+           (seed == rhs.seed) &&
+           (count == rhs.count);
+  }
 
-    static inline double3 UnitSphere()
+  std::mt19937_64 mt;
+  unsigned long long seed{ 1400 };
+  unsigned long long count{ 0 };
+  std::uniform_real_distribution<double> uniformDistribution;
+  std::normal_distribution<double> normalDistribution;
+
+  double uniform()
+  {
+    ++count;
+    return uniformDistribution(mt);
+  }
+
+  double Gaussian()
+  {
+    ++count;
+    return normalDistribution(mt);
+  }
+
+  size_t integer(size_t i, size_t j)
+  {
+    return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * uniform());
+  }
+
+  std::pair<size_t, size_t> randomPairAdjacentIntegers(size_t size)
+  {
+    if(size <= 1) return std::make_pair(0, 0);
+    size_t first = static_cast<size_t>(static_cast<double>(size - 1) * uniform());
+    size_t second = first + 1;
+    if(uniform() < 0.5) std::swap(first, second);
+    return std::make_pair(first, second);
+  }
+
+  inline double3 UnitSphere()
+  {
+    double ran1, ran2, ranh, ransq;
+
+    do
     {
-        double ran1, ran2, ranh, ransq;
+      ran1 = 2.0 * uniform();
+      ran2 = 2.0 * uniform();
+      ransq = ran1 * ran1 + ran2 * ran2;
+    } while (ransq >= 1.0);
 
-        do
-        {
-            ran1 = 2.0 * RandomNumber::Uniform();
-            ran2 = 2.0 * RandomNumber::Uniform();
-            ransq = ran1 * ran1 + ran2 * ran2;
-        } while (ransq >= 1.0);
+    ranh = 2.0 * std::sqrt(1.0 - ransq);
 
-        ranh = 2.0 * std::sqrt(1.0 - ransq);
+    return double3(ran1 * ranh, ran2 * ranh, 1.0 - 2.0 * ransq);
+  }
 
-        return double3(ran1 * ranh, ran2 * ranh, 1.0 - 2.0 * ransq);
-    }
+  double3 randomVectorOnUnitSphere();
+  double3x3 randomRotationMatrix();
+  double3x3 randomRotationAroundX(double angle);
+  double3x3 randomRotationAroundY(double angle);
+  double3x3 randomRotationAroundZ(double angle);
+  simd_quatd randomSimdQuatd();
+  simd_quatd smallRandomQuaternion(double angleRange);
 
-    std::mt19937_64 mt;
-    std::uniform_real_distribution<double> uniformDistribution_;
-    std::normal_distribution<double> normalDistribution_;
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RandomNumber &r);
 };
+
