@@ -70,7 +70,7 @@ import mc_moves_cputime;
 import reaction;
 import reactions;
 
-
+// construct System programmatically
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 
     temperature(T),
@@ -153,6 +153,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
 }
 
 
+// used in 'input_reader.cpp' for Box and Framework
 System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[maybe_unused]] std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
                systemId(s),
                components(c),

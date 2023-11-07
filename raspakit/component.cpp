@@ -59,13 +59,29 @@ import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
 
+// default constructor, needed for binary restart-file
 Component::Component()
 {
 }
 
+// create Component in 'inputreader.cpp'
+Component::Component(Component::Type type, size_t currentComponent, const std::string &componentName,
+                     std::optional<const std::string> fileName,
+                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
+                     type(type), 
+                     componentId(currentComponent), 
+                     name(componentName),
+                     filenameData(fileName),
+                     lambdaGC(numberOfBlocks, numberOfLambdaBins),
+                     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+                     averageRosenbluthWeights(numberOfBlocks)
+{
+}
 
-Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w,
-    std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false) :
+// create programmatically an 'adsorbate' component
+Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+                     double T_c, double P_c, double w, std::vector<Atom> definedAtoms,
+                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
     type(Type::Adsorbate),
     simulationBox(simulationBox),
     componentId(componentId),
@@ -75,15 +91,18 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     acentricFactor(w),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambdaGC(numberOfBlocks, 41),
-    lambdaGibbs(numberOfBlocks, 41),
+    lambdaGC(numberOfBlocks, numberOfLambdaBins),
+    lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   atoms = definedAtoms;
 }
 
-Component::Component(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false) :
+// create programmatically an 'framework' component
+Component::Component(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, 
+                     size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, 
+                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
     type(Type::Framework),
     simulationBox(simulationBox),
     spaceGroupHallNumber(spaceGroupHallNumber),
@@ -93,15 +112,15 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
     filenameData(fileName),
     mass(mass),
     definedAtoms(definedAtoms),
-    lambdaGC(numberOfBlocks, 11),
-    lambdaGibbs(numberOfBlocks, 11),
+    lambdaGC(numberOfBlocks, numberOfLambdaBins),
+    lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   // expand the fractional atoms based on the space-group
   SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
   std::vector<Atom> expandedAtoms;
-  expandedAtoms.reserve(definedAtoms.size() * 256);
+  expandedAtoms.reserve(definedAtoms.size() * 256uz);
   for (const Atom& atom : definedAtoms)
   {
     Atom atomCopy = atom;
@@ -160,17 +179,6 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
   }
 }
 
-Component::Component(Component::Type type, size_t currentComponent, const std::string &componentName,
-                     std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false) :
-                     type(type), 
-                     componentId(currentComponent), 
-                     name(componentName),
-                     filenameData(fileName),
-                     lambdaGC(numberOfBlocks, 41),
-                     lambdaGibbs(numberOfBlocks, 41),
-                     averageRosenbluthWeights(numberOfBlocks)
-{
-}
 
 template<typename T>
 std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
@@ -209,19 +217,32 @@ std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNu
   return list;
 }
 
-// TODO: extend to flexible molecules
+// read the component from the molecule-file
 void Component::readComponent(const ForceField& forceField, const std::string& fileName)
 {
-  const char* env_p = std::getenv("RASPA_DIR");
-  const std::string& moleculeFileName = fileName + ".def";
+  const std::string defaultMoleculeFileName = fileName + ".def";
+
+  std::string moleculeFileName = defaultMoleculeFileName;
+  if(!std::filesystem::exists(std::filesystem::path{moleculeFileName}))
+  {
+    const char* env_p = std::getenv("RASPA_DIR");
+    if (env_p)
+    {
+      moleculeFileName = env_p + defaultMoleculeFileName;
+    }
+  }
+
+  if (!std::filesystem::exists(moleculeFileName)) 
+  {
+    throw std::runtime_error(std::format("File '{}' not found", moleculeFileName));
+  }
 
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
-  if (!std::filesystem::exists(moleculePathfile)) moleculePathfile = std::filesystem::path(env_p) / moleculeFileName;
-
-  if (!std::filesystem::exists(moleculePathfile)) throw std::runtime_error(std::format("File '{}' not found", moleculeFileName));
-
   std::ifstream moleculeFile{ moleculePathfile };
-  if (!moleculeFile) throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file", moleculeFileName));
+  if (!moleculeFile) 
+  {
+    throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file", moleculeFileName));
+  }
 
   std::string str{};
   //size_t lineNumber{ 0 };
@@ -255,7 +276,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::getline(moleculeFile, str);
   std::istringstream my_stream(str);
   my_stream >> n;
-  if (n < 0 || n>10000) throw std::runtime_error("Incorrect amount of pseudo=atoms");
+  if (n < 0 || n > 10000) throw std::runtime_error("Incorrect amount of pseudo=atoms");
 
   definedAtoms.resize(n);
 
@@ -295,7 +316,8 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     
     if (it == forceField.pseudoAtoms.end())
     {
-      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define them first in 'the pseudo_atoms.def' file)", atomTypeString));
+      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define in 'the pseudo_atoms.def' file)", 
+                               atomTypeString));
     }
     
     size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
@@ -323,6 +345,8 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     std::getline(moleculeFile, str);
 
     bonds.resize(numberOfBonds);
+    connectivityTable.resize(numberOfBonds * numberOfBonds);
+    std::fill(connectivityTable.begin(), connectivityTable.end(), false);
     for (size_t i = 0; i < numberOfBonds; ++i)
     {
       size_t idA, idB;
@@ -332,6 +356,10 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
 
       bondTypeStream >> idA >> idB >> bondTypeString;
       std::getline(bondTypeStream, parameterString);
+
+      // set connection in connection table
+      connectivityTable[idA + idB * numberOfBonds] = true;
+      connectivityTable[idB + idA * numberOfBonds] = true;
 
       std::vector<double> parameters = parseListOfParameters<double>(parameterString, 0);
 
@@ -624,8 +652,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGibbs;
   archive << c.hasFractionalMolecule;
 
-  //std::vector<size_t> chiralCenters{};
-  //std::vector<BondPotential> bonds{};
+  archive << c.chiralCenters;
+  archive << c.bonds;
+  archive << c.connectivityTable;
   //std::vector<std::pair<size_t, size_t>> bondDipoles{};
   //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
   //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
@@ -718,8 +747,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGibbs;
   archive >> c.hasFractionalMolecule;
 
-  //std::vector<size_t> chiralCenters{};
-  //std::vector<BondPotential> bonds{};
+  archive >> c.chiralCenters;
+  archive >> c.bonds;
+  archive >> c.connectivityTable;
   //std::vector<std::pair<size_t, size_t>> bondDipoles{};
   //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
   //std::vector<std::pair<size_t, size_t>>  UreyBradley{};

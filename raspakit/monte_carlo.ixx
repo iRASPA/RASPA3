@@ -62,8 +62,10 @@ export struct MonteCarlo
   size_t numberOfSteps;
   size_t numberOfInitializationCycles;
   size_t numberOfEquilibrationCycles;
-  size_t optimizeMCMovesEvery{ 5000 };
   size_t printEvery;
+  size_t writeBinaryRestartEvery;
+  size_t rescaleWangLandauEvery;
+  size_t optimizeMCMovesEvery;
 
   size_t currentCycle{ 0 };
   SimulationStage simulationStage{SimulationStage::Uninitialized};
@@ -78,8 +80,7 @@ export struct MonteCarlo
 
   MC_Moves particleMoves;
 
-  std::chrono::system_clock::time_point t1;
-  std::chrono::system_clock::time_point t2;
+  std::chrono::duration<double> totalSimulationTime{ 0 };
 
   void createOutputFiles();
   void run();

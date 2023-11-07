@@ -3,7 +3,10 @@ NumberOfCycles                2000
 NumberOfInitializationCycles  0
 NumberOfEquilibrationCycles   1000
 PrintEvery                    1000
+WriteBinaryRestartEvery       5000
+OptimizeMCMovesEvery          5000
 NumberOfBlocks                5
+NumberOfLambdaBins            41
 
 Box 0
 BoxLengths 35 35 35
@@ -36,6 +39,6 @@ Component 0 MoleculeName               methane
             CFCMC_CBMC_SwapProbability 0.0
             WidomProbability           0.0
             CBCFCMCWidomProbability    0.0
-            GibbsCFCMCSwapProbability  0.0
+            GibbsCFCMCSwapProbability  1.0
             GibbsSwapProbability       0.0
             CreateNumberOfMolecules    128 128

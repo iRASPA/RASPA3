@@ -49,11 +49,14 @@ export struct Component
   };
 
   Component();
-  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks) noexcept(false);
-  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, size_t numberOfBlocks) noexcept(false);
-
   Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
-            std::optional<const std::string> fileName, size_t numberOfBlocks) noexcept(false);
+            std::optional<const std::string> fileName, size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
+  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+            double T_c, double P_c, double w, std::vector<Atom> definedAtoms, 
+            size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
+  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+            size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, 
+            size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
 
   bool operator==(Component const&) const = default;
 
@@ -119,6 +122,8 @@ export struct Component
   std::vector<std::pair<size_t, size_t>> intraCoulomb{};
   std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
   std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+
+  std::vector<bool> connectivityTable{};
   
   MCMoveProbabilitiesParticles mc_moves_probabilities;
   MCMoveCpuTime mc_moves_cputime;

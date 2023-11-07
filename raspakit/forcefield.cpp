@@ -98,27 +98,67 @@ void ForceField::preComputeTailCorrection()
 }
 
 
-ForceField::ForceField(std::string pseudoAtomsFileName,
-    std::string forceFieldMixingFileName, [[maybe_unused]] std::string forceFieldOverwriteFileName) noexcept(false)
+ForceField::ForceField(size_t systemId) noexcept(false)
 {
-  std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingFileName << std::endl;
+  const char* env_p = std::getenv("RASPA_DIR");
+  const std::string ext{".def"};
+
+  const std::string defaultPseudoAtomsFileName{"pseudo_atoms" + ext};
+  const std::string defaultForceFieldMixingRulesFileName{"force_field_mixing_rules" + ext};
+  const std::string defaultForceFieldOverwriteFileName{"force_field" + ext};
+
+  std::string pseudoAtomsFileName{std::format("{}_{}{}", "pseudo_atoms", systemId, ext)};
+  std::string forceFieldMixingRulesFileName{std::format("{}_{}{}", "force_field_mixing_rules", systemId, ext)};
+  std::string forceFieldOverwriteFileName{std::format("{}_{}{}", "force_field", systemId, ext)};
+
+  if(!std::filesystem::exists(std::filesystem::path{pseudoAtomsFileName}))
+  {
+    pseudoAtomsFileName = defaultPseudoAtomsFileName;
+  }
+  if(!std::filesystem::exists(std::filesystem::path{forceFieldMixingRulesFileName}))
+  {
+    forceFieldMixingRulesFileName = defaultForceFieldMixingRulesFileName;
+  }
+  if(!std::filesystem::exists(std::filesystem::path{forceFieldOverwriteFileName}))
+  {
+    forceFieldOverwriteFileName = defaultForceFieldOverwriteFileName;
+  }
+
+  if (env_p) 
+  {
+    if(!std::filesystem::exists(std::filesystem::path{pseudoAtomsFileName}))
+    {
+      pseudoAtomsFileName = env_p + defaultPseudoAtomsFileName;
+    }
+    if(!std::filesystem::exists(std::filesystem::path{forceFieldMixingRulesFileName}))
+    {
+      forceFieldMixingRulesFileName = env_p + defaultForceFieldMixingRulesFileName;
+    }
+    if(!std::filesystem::exists(std::filesystem::path{forceFieldOverwriteFileName}))
+    {
+      forceFieldOverwriteFileName = env_p + defaultForceFieldOverwriteFileName;
+    }
+  }
+
+  std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingRulesFileName << std::endl;
   ReadPseudoAtoms(pseudoAtomsFileName);
-  ReadForceFieldMixing(forceFieldMixingFileName);
+  ReadForceFieldMixing(forceFieldMixingRulesFileName);
   preComputeTailCorrection();
 }
 
 void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false)
 {
-  const char* env_p = std::getenv("RASPA_DIR");
-  if (!env_p) throw std::runtime_error("Environment variable 'RASPA_DIR' not set");
-
   std::filesystem::path pseudoAtomsPathfile = std::filesystem::path(pseudoAtomsFileName);
-  if (!std::filesystem::exists(pseudoAtomsPathfile)) pseudoAtomsPathfile = std::filesystem::path(env_p) / pseudoAtomsFileName;
-
-  if (!std::filesystem::exists(pseudoAtomsPathfile)) throw std::runtime_error("File 'pseudo_atoms.def' not found");
+  if (!std::filesystem::exists(pseudoAtomsPathfile)) 
+  {
+    throw std::runtime_error(std::format("File '{}' not found", pseudoAtomsFileName));
+  }
 
   std::ifstream pseudoAtomsFile{ pseudoAtomsPathfile };
-  if (!pseudoAtomsFile) throw std::runtime_error("File 'pseudo_atoms.def' exists, but error opening file");
+  if (!pseudoAtomsFile) 
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file", pseudoAtomsFileName));
+  }
 
   std::string str{};
 
@@ -167,15 +207,17 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
 
 void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noexcept(false)
 {
-  const char* env_p = std::getenv("RASPA_DIR");
-
   std::filesystem::path forceFieldPathfile = std::filesystem::path(forceFieldMixingFileName);
-  if (!std::filesystem::exists(forceFieldPathfile)) forceFieldPathfile = std::filesystem::path(env_p) / forceFieldMixingFileName;
-
-  if (!std::filesystem::exists(forceFieldPathfile)) throw std::runtime_error("File 'force_field_mixing_rules.def' not found");
+  if (!std::filesystem::exists(forceFieldPathfile)) 
+  {
+    throw std::runtime_error(std::format("File '{}' not found", forceFieldMixingFileName));
+  }
 
   std::ifstream forceFieldFile{ forceFieldPathfile };
-  if (!forceFieldFile) throw std::runtime_error("File 'force_field_mixing_rules.def' exists, but error opening file");
+  if (!forceFieldFile) 
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file", forceFieldMixingFileName));
+  }
 
   std::string str{};
 

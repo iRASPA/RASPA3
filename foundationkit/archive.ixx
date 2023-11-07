@@ -327,6 +327,26 @@ public:
     return *this;
   }
 
+  template <class T, size_t size> Archive& operator>>(std::array<T, size>& v)
+  {
+    for(size_t i = 0; i < size; ++i)
+    {
+      T element;
+      *this >> element;
+      v[i] = std::move(element);
+    }
+    return *this;
+  } 
+
+  template <typename T, size_t size> const Archive& operator<<(const std::array<T, size>& v)
+  { 
+    for(size_t i = 0; i < size; ++i)
+    {
+      *this << v[i];
+    }
+    return *this;
+  }
+
   template <class T> Archive& operator>>(std::vector<T>& v)
   {
     size_t len;

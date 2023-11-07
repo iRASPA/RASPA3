@@ -74,7 +74,7 @@ export struct System
     VanDerWaals = 0
   };
 
-  System() {};
+  System() = default;
   System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
   System(size_t s, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
 

@@ -247,38 +247,32 @@ std::string parseString(const std::string& arguments, const std::string& keyword
 
 InputReader::InputReader()
 {
-  char* env_p = std::getenv("RASPA_DIR");
-
-  // environment variable 'RASPA_DIR' not set, assume current working directory
-  if(!env_p)
-  {
-   // env_p = std::filesystem::current_path().c_str();
-  }
+  const std::string simulationSettingsFileName{"simulation.input"};
 
   std::cout << "Path: " << std::filesystem::current_path() << std::endl;
+
   std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
   if (!std::filesystem::exists(pathfile)) 
   {
-    //pathfile = std::filesystem::path(env_p) / simulationSettingsFileName;
+    throw std::runtime_error(std::format("Required file '{}' not found", simulationSettingsFileName));
   }
 
-  if (!std::filesystem::exists(pathfile)) throw std::runtime_error("Required file 'simulation.input' not found");
-
   std::ifstream fileInput{ pathfile };
-  if (!fileInput) throw std::runtime_error("File 'simulation.input' exists, but error opening file");
+  if (!fileInput) 
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file", simulationSettingsFileName));
+  }
 
   std::string line{};
   std::string keyword{};
   std::string arguments{};
 
-  std::size_t numberOfSystems{ 0 };
-  size_t lineNumber{ 0 };
+  std::size_t numberOfSystems{ 0uz };
+  size_t lineNumber{ 0uz };
 
-  ForceField currentForceField;
- 
   while (std::getline(fileInput, line))
   {
-    lineNumber += 1;
+    lineNumber += 1uz;
     if (!line.empty())
     {
       std::istringstream iss(line);
@@ -374,9 +368,33 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, std::string("WriteBinaryRestartEvery")))
+      {
+        writeBinaryRestartEvery = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, std::string("RescaleWangLandauEvery")))
+      {
+        rescaleWangLandauEvery = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, std::string("OptimizeMCMovesEvery")))
+      {
+        optimizeMCMovesEvery = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
       {
         numberOfBlocks = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, std::string("NumberOfLambdaBins")))
+      {
+        numberOfLambdaBins = parse<size_t>(arguments, keyword, lineNumber);
         continue;
       }
 
@@ -417,20 +435,10 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("Box")))
       {
-        currentForceField = ForceField(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
+        ForceField currentForceField = ForceField(numberOfSystems);
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
-        systems.back().forceField = currentForceField;
-        continue;
-      }
-
-      if (caseInSensStringCompare(keyword, std::string("ForceField")))
-      {
-        currentForceField = ForceField(pseudoAtomsFileName, forceFieldMixingRulesFileName, forceFieldOverwriteFileName);
-        if (!systems.empty())
-        {
-          systems.back().forceField = currentForceField;
-        }
+        systems.emplace_back(numberOfSystems - 1, currentForceField, std::vector<Component>{}, 
+                             std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
 
@@ -452,9 +460,10 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("Framework")))
       {
+        ForceField currentForceField = ForceField(numberOfSystems);
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, ForceField(), std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
-        systems.back().forceField = currentForceField;
+        systems.emplace_back(numberOfSystems - 1, currentForceField, std::vector<Component>{}, 
+                             std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
 
@@ -474,7 +483,7 @@ InputReader::InputReader()
           {
 
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        frameworkName, frameworkName, numberOfBlocks));
+                                        frameworkName, frameworkName, numberOfBlocks, numberOfLambdaBins));
             continue;
             break;
           }
@@ -483,7 +492,7 @@ InputReader::InputReader()
           case SimulationType::Fitting:
           {
             systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        frameworkName, std::nullopt, numberOfBlocks));
+                                        frameworkName, std::nullopt, numberOfBlocks, numberOfLambdaBins));
             continue;
             break;
           }
@@ -796,7 +805,7 @@ InputReader::InputReader()
 
         std::vector<std::string> values = parseListOfSystemValues<std::string>(remainder, keyword, lineNumber);
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           switch(simulationType)
           {
@@ -806,13 +815,13 @@ InputReader::InputReader()
             case SimulationType::Minimization:
             case SimulationType::Test:
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
-                    values[i], values[i], numberOfBlocks));
+                    values[i], values[i], numberOfBlocks, numberOfLambdaBins));
               break;
             case SimulationType::Breakthrough:
             case SimulationType::MixturePrediction:
             case SimulationType::Fitting:
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
-                    values[i], std::nullopt, numberOfBlocks));
+                    values[i], std::nullopt, numberOfBlocks, numberOfLambdaBins));
               break;
           }
         }
@@ -826,7 +835,7 @@ InputReader::InputReader()
 
         std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().initialNumberOfMolecules = values[i];
           systems[i].initialNumberOfMolecules[systems[i].components.size() - 1] = values[i];
@@ -841,7 +850,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().molFraction = values[i];
         }
@@ -855,7 +864,7 @@ InputReader::InputReader()
         std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().lambdaGC.computeDUdlambda = values[i];
         }
@@ -869,7 +878,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().lnPartitionFunction = values[i];
         }
@@ -882,7 +891,7 @@ InputReader::InputReader()
         std::istringstream ss(arguments);
         if (ss >> str)
         {
-          for (size_t i = 0; i < systems.size(); ++i)
+          for (size_t i = 0uz; i < systems.size(); ++i)
           {
             systems[i].components.back().filename = str;
           }
@@ -894,7 +903,7 @@ InputReader::InputReader()
       //  std::istringstream ss(arguments);
       //  std::vector<std::string> values = parseListOfSystemValues<std::string>(arguments, keyword, lineNumber);
       //  values.resize(systems.size(), values.back());
-      //  for (size_t i = 0; i < systems.size(); ++i)
+      //  for (size_t i = 0uz; i < systems.size(); ++i)
       //  {
       //      // FIX!! no components exists yet
       //    //if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
@@ -910,7 +919,7 @@ InputReader::InputReader()
         std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isCarrierGas = values[i];
         }
@@ -923,7 +932,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().massTransferCoefficient = values[i];
         }
@@ -936,7 +945,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().axialDispersionCoefficient = values[i];
         }
@@ -950,7 +959,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityTranslationMove = values[i];
         }
@@ -963,7 +972,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
     
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityRandomTranslationMove = values[i];
         }
@@ -976,7 +985,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityRotationMove = values[i];
         }
@@ -989,7 +998,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityRandomRotationMove = values[i];
         }
@@ -1002,7 +1011,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityReinsertionMove_CBMC = values[i];
         }
@@ -1015,7 +1024,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CBMC = values[i];
         }
@@ -1028,7 +1037,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityGibbsSwapMove_CBMC = values[i];
         }
@@ -1041,7 +1050,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC = values[i];
         }
@@ -1054,7 +1063,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CFCMC = values[i];
         }
@@ -1067,7 +1076,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC = values[i];
         }
@@ -1080,7 +1089,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityWidomMove = values[i];
         }
@@ -1093,7 +1102,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityWidomMove_CFCMC = values[i];
         }
@@ -1106,7 +1115,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC = values[i];
         }
@@ -1119,7 +1128,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().massTransferCoefficient = values[i];
         }
@@ -1131,7 +1140,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
 
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().axialDispersionCoefficient = values[i];
         }
@@ -1141,7 +1150,7 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "NumberOfIsothermSites"))
       {
         size_t value = parse<size_t>(arguments, keyword, lineNumber);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.numberOfSites = value;
         }
@@ -1150,13 +1159,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Langmuir"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 2)
+        if(values.size() < 2uz)
         {
           throw std::runtime_error("Error: Langmuir requires two parameters");
         }
-        values.resize(2);
+        values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1165,13 +1174,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Anti-Langmuir"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 2)
+        if(values.size() < 2uz)
         {
           throw std::runtime_error("Error: Anti-Langmuir requires two parameters");
         }
-        values.resize(2);
+        values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Anti_Langmuir, values, 2);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1180,13 +1189,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "BET"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: BET requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::BET, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1195,13 +1204,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Henry"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 1)
+        if(values.size() < 1uz)
         {
           throw std::runtime_error("Error: Henry requires one parameter");
         }
-        values.resize(1);
+        values.resize(1uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Henry, values, 1);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1210,13 +1219,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Freundlich"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 2)
+        if(values.size() < 2uz)
         {
           throw std::runtime_error("Error: Freundlich requires two parameters");
         }
-        values.resize(2);
+        values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Freundlich, values, 2);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1225,13 +1234,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Sips"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Sips requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Sips, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1240,13 +1249,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Langmuir-Freundlich"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Langmuir requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir_Freundlich, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1255,13 +1264,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Redlich-Peterson"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Redlich-Peterson requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Redlich_Peterson, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1270,13 +1279,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Toth"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Toth requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Toth, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1285,13 +1294,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Unilan"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Unilan requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Unilan, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1300,13 +1309,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "O'Brien&Myers"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: O'Brien&Myers requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::OBrien_Myers, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1315,13 +1324,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Quadratic"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Quadratic requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Quadratic, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1330,13 +1339,13 @@ InputReader::InputReader()
       if (caseInSensStringCompare(keyword, "Temkin"))
       {
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        if(values.size() < 3)
+        if(values.size() < 3uz)
         {
           throw std::runtime_error("Error: Temkin requires three parameters");
         }
-        values.resize(3);
+        values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Temkin, values, 3);
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().isotherm.add(isotherm);
         }
@@ -1346,7 +1355,7 @@ InputReader::InputReader()
       {
         std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().columnPressure = values[i];
         }
@@ -1356,7 +1365,7 @@ InputReader::InputReader()
       {
         std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().columnLoading = values[i];
         }
@@ -1367,7 +1376,7 @@ InputReader::InputReader()
       {
         std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
         values.resize(systems.size(), values.back());
-        for (size_t i = 0; i < systems.size(); ++i)
+        for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().columnError = values[i];
         }
@@ -1388,14 +1397,14 @@ InputReader::InputReader()
   // ========================================================
   
   // read and initialize the components from file
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
     systems[i].initializeComponents();
   }
 
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
-    systems[i].maxIsothermTerms = 0;
+    systems[i].maxIsothermTerms = 0uz;
     if(!systems[i].components.empty())
     {
       std::vector<Component>::iterator maxIsothermTermsIterator = 
@@ -1409,7 +1418,7 @@ InputReader::InputReader()
 
   if(simulationType == SimulationType::MonteCarloTransitionMatrix)
   {
-    for (size_t i = 0; i < systems.size(); ++i)
+    for (size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
     }
@@ -1418,25 +1427,25 @@ InputReader::InputReader()
   // Checks
   // ========================================================
     
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
-    for (size_t reactionId = 0; const Reaction& reaction : systems[i].reactions.list)
+    for (size_t reactionId = 0uz; const Reaction& reaction : systems[i].reactions.list)
     {
       if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
       {
         throw std::runtime_error(std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal to twice the number of components {})", 
-          reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(), 2 * systems[i].numerOfAdsorbateComponents()));
+          reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(), 2uz * systems[i].numerOfAdsorbateComponents()));
       }
     
       ++reactionId;
     }
   }
 
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
-    size_t numberOfDUDlambda{ 0 };
-    for (size_t j = 0; j < systems[i].components.size(); ++j)
+    size_t numberOfDUDlambda{ 0uz };
+    for (size_t j = 0uz; j < systems[i].components.size(); ++j)
     {
       if (systems[i].components[j].lambdaGC.computeDUdlambda) 
       {
@@ -1449,20 +1458,20 @@ InputReader::InputReader()
     }
   }
 
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
     double sum = 0.0;
-    for(size_t j = 0; j < systems[i].components.size(); ++j)
+    for(size_t j = 0uz; j < systems[i].components.size(); ++j)
     {
       if(systems[i].components[j].type != Component::Type::Framework)
       {
         sum += systems[i].components[j].molFraction;
       }
     }
-    if(std::abs(sum-1.0)>1e-15)
+    if(std::abs(sum - 1.0) > 1e-15)
     {
       std::cout << "Normalizing: Gas-phase molfractions did not sum exactly to unity!\n\n";
-      for(size_t j = 0; j < systems[i].components.size(); ++j)
+      for(size_t j = 0uz; j < systems[i].components.size(); ++j)
       {
         if(systems[i].components[j].type != Component::Type::Framework)
         {
@@ -1472,11 +1481,11 @@ InputReader::InputReader()
     }
   }
 
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
-    systems[i].numberOfCarrierGases = 0;
-    systems[i].carrierGasComponent = 0;
-    for(size_t j = 0; j < systems[i].components.size(); ++j)
+    systems[i].numberOfCarrierGases = 0uz;
+    systems[i].carrierGasComponent = 0uz;
+    for(size_t j = 0uz; j < systems[i].components.size(); ++j)
     {
       if(systems[i].components[j].type != Component::Type::Framework)
       {
@@ -1495,7 +1504,7 @@ InputReader::InputReader()
 
     if(simulationType == SimulationType::Breakthrough)
     {
-      if(systems[i].numberOfCarrierGases == 0)
+      if(systems[i].numberOfCarrierGases == 0uz)
       {
         throw std::runtime_error("Error [Breakthrough]: no carrier gas component present");
       }
@@ -1506,7 +1515,7 @@ InputReader::InputReader()
     }
   }
 
-  for (size_t i = 0; i < systems.size(); ++i)
+  for (size_t i = 0uz; i < systems.size(); ++i)
   {
     if(systems[i].tmmc.doTMMC)
     {
@@ -1516,7 +1525,7 @@ InputReader::InputReader()
       }
 
       // check initial number of molecules is in the range of the TMMC macrostates
-      for(size_t j = 0; j < systems[i].components.size(); ++j)
+      for(size_t j = 0uz; j < systems[i].components.size(); ++j)
       {
         if(systems[i].components[j].type == Component::Type::Adsorbate)
         {
@@ -1548,7 +1557,7 @@ void InputReader::requireExistingSystemAndComponent(const std:: string &keyword,
             std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber)
             );
     }
-    if (systems[0].components.empty()) {
+    if (systems[0uz].components.empty()) {
         throw std::runtime_error(
             std::format("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber)
             );

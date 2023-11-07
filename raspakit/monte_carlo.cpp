@@ -5,6 +5,7 @@ module monte_carlo;
 import <iostream>;
 import <algorithm>;
 import <numeric>;
+import <ranges>;
 import <chrono>;
 import <vector>;
 import <span>;
@@ -58,6 +59,9 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept :
     numberOfInitializationCycles(reader.numberOfInitializationCycles),
     numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
     printEvery(reader.printEvery),
+    writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
+    rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+    optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
     systems(std::move(reader.systems)),
     random(reader.randomSeed),
     estimation(reader.numberOfBlocks, reader.numberOfCycles)
@@ -86,9 +90,7 @@ void MonteCarlo::run()
 
   continueInitializationStage: initialize();
   continueEquilibrationStage: equilibrate();
-  t1 = std::chrono::system_clock::now();
   continueProductionStage: production();
-  t2 = std::chrono::system_clock::now();
 
   output();
 }
@@ -110,9 +112,9 @@ void MonteCarlo::createOutputFiles()
 
 void MonteCarlo::initialize()
 {
-  size_t totalNumberOfMolecules{ 0 };
-  size_t totalNumberOfComponents{ 0 };
-  size_t numberOfStepsPerCycle{ 0 };
+  size_t totalNumberOfMolecules{ 0uz };
+  size_t totalNumberOfComponents{ 0uz };
+  size_t numberOfStepsPerCycle{ 0uz };
 
   if(simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
@@ -142,7 +144,7 @@ void MonteCarlo::initialize()
   for(System & system : systems)
   {
     // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0) system.containsTheFractionalMolecule = true;
+    if (system.systemId == 0uz) system.containsTheFractionalMolecule = true;
     else system.containsTheFractionalMolecule = false;
   }
 
@@ -171,17 +173,21 @@ void MonteCarlo::initialize()
     system.runningEnergies.print(stream, "Recomputed from scratch");
   };
   
-  for (currentCycle = 0; currentCycle != numberOfInitializationCycles; currentCycle++)
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
   {
-    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), size_t(0),
+    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
         [](const size_t& acc, const size_t& b) { return acc + b; },
         [](const System& system) { return system.numberOfMolecules();});
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, size_t(20)) * totalNumberOfComponents;
+    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
-    for (size_t j = 0; j != numberOfStepsPerCycle; j++)
+    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
     {
+      // move to 'slide' when implemented in llvm
+      // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
+      // std::ranges::views::slide(s, 2uz);
+
       std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
@@ -198,7 +204,7 @@ void MonteCarlo::initialize()
       }
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % printEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -210,7 +216,7 @@ void MonteCarlo::initialize()
       }
     }
 
-    if (currentCycle % optimizeMCMovesEvery == 0)
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -218,7 +224,7 @@ void MonteCarlo::initialize()
       }
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart
       std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
@@ -237,9 +243,9 @@ void MonteCarlo::initialize()
 
 void MonteCarlo::equilibrate()
 {
-  size_t totalNumberOfMolecules{ 0 };
-  size_t totalNumberOfComponents{ 0 };
-  size_t numberOfStepsPerCycle{ 0 };
+  size_t totalNumberOfMolecules{ 0uz };
+  size_t totalNumberOfComponents{ 0uz };
+  size_t numberOfStepsPerCycle{ 0uz };
 
   if(simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
@@ -253,21 +259,22 @@ void MonteCarlo::equilibrate()
 
     for(Component &component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, 
+                                             system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
   };
 
-  for (currentCycle = 0; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), size_t(0),
+    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
         [](const size_t& acc, const size_t& b) { return acc + b; },
         [](const System& system) { return system.numberOfMolecules();});
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, size_t(20)) * totalNumberOfComponents;
+    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
-    for (size_t j = 0; j != numberOfStepsPerCycle; j++)
+    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
     {
       std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
@@ -277,7 +284,7 @@ void MonteCarlo::equilibrate()
       particleMoves.performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
       selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
-                  selectedSystem.containsTheFractionalMolecule);
+                                                                                selectedSystem.containsTheFractionalMolecule);
       selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
                   selectedSecondSystem.containsTheFractionalMolecule);
 
@@ -285,7 +292,7 @@ void MonteCarlo::equilibrate()
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSecondSystem.containsTheFractionalMolecule);
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % printEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -298,18 +305,19 @@ void MonteCarlo::equilibrate()
       }
     }
 
-    if (currentCycle % 5000 == 0)
+    if (currentCycle % rescaleWangLandauEvery == 0uz)
     {
       for (System& system : systems)
       {
         for (Component& component : system.components)
         {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, system.containsTheFractionalMolecule);
+          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, 
+                                                 system.containsTheFractionalMolecule);
         }
       }
     }
 
-    if (currentCycle % optimizeMCMovesEvery == 0)
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -317,7 +325,7 @@ void MonteCarlo::equilibrate()
       }
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % printEvery == 0uz)
     {
       // write restart
       std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
@@ -336,9 +344,10 @@ void MonteCarlo::equilibrate()
 
 void MonteCarlo::production()
 {
-  size_t totalNumberOfMolecules{ 0 };
-  size_t totalNumberOfComponents{ 0 };
-  size_t numberOfStepsPerCycle{ 0 };
+  std::chrono::system_clock::time_point t1, t2;
+  size_t totalNumberOfMolecules{ 0uz };
+  size_t totalNumberOfComponents{ 0uz };
+  size_t numberOfStepsPerCycle{ 0uz };
   double minBias{ 0.0 };
 
   if(simulationStage == SimulationStage::Production) goto continueProductionStage;
@@ -361,7 +370,8 @@ void MonteCarlo::production()
       component.mc_moves_cputime.clearTimingStatistics();
       component.mc_moves_count.clearCountStatistics();
       
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, 
+                                             system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
   };
@@ -383,20 +393,20 @@ void MonteCarlo::production()
     }
   }
 
-  numberOfSteps = 0;
-  for (currentCycle = 0; currentCycle != numberOfCycles; ++currentCycle)
+  numberOfSteps = 0uz;
+  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
-
+    t1 = std::chrono::system_clock::now();
     estimation.setCurrentSample(currentCycle);
 
-    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), size_t(0),
+    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
         [](const size_t& acc, const size_t& b) { return acc + b; },
         [](const System& system) { return system.numberOfMolecules();});
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, size_t(20)) * totalNumberOfComponents;
+    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
-    for (size_t j = 0; j != numberOfStepsPerCycle; j++)
+    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
     {
       std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
@@ -404,8 +414,10 @@ void MonteCarlo::production()
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
       
-      particleMoves.performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+      particleMoves.performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent, 
+                                                fractionalMoleculeSystem, estimation.currentBin);
 
+      // sample the occupancy within the innerloop
       selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSecondSystem.containsTheFractionalMolecule);
 
@@ -417,21 +429,20 @@ void MonteCarlo::production()
     {
       system.sampleProperties(estimation.currentBin);
 
-      std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
-      std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-      system.currentEnergyStatus = molecularPressure.first;
-      system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-      std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-      system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-
       // add the sample energy to the averages
-      if (currentCycle % 10 == 0 || currentCycle % printEvery == 0)
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
+        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % printEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -441,9 +452,7 @@ void MonteCarlo::production()
       }
     }
 
-
-
-    if (currentCycle % optimizeMCMovesEvery == 0)
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
       for (System& system : systems)
       {
@@ -451,7 +460,7 @@ void MonteCarlo::production()
       }
     }
 
-    if (currentCycle % printEvery == 0)
+    if (currentCycle % printEvery == 0uz)
     {
       std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
       Archive<std::ofstream> archive(ofile);
@@ -461,30 +470,9 @@ void MonteCarlo::production()
       {
         std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
       }
-
-
     }
-    //if (currentCycle % printEvery == 0)
-    //{
-    //  std::ofstream ofile("test.bin", std::ios::binary);
-    //  Archive<std::ofstream> archive(ofile);
-    //  archive << *this;
-    //  ofile.close();
-
-    //  std::ifstream ifile("test.bin", std::ios::binary);
-    //  if(!ifile.is_open())
-    //  {
-    //      std::cout << "ERROR file doesn't exist.." << std::endl;
-    //      return;
-    //  }
-
-    //  Archive<std::ifstream> archive2(ifile);
-    //  MonteCarlo b{};
-    //  archive2 >> b;
-    //  ifile.close();
-
-    //  std::cout << std::boolalpha << (*this == b) << std::endl;
-    //}
+    t2 = std::chrono::system_clock::now();
+    totalSimulationTime += (t2 - t1);
     continueProductionStage: ;
 
   }
@@ -518,21 +506,20 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
     
     std::print(stream, "{}", system.writeMCMoveStatistics());
-    //std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run counting of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
     for(const Component &component : system.components)
     {
-      std::print(stream, "{}", component.mc_moves_count.writeMCMoveCountComponentStatistics(numberOfSteps, component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_count.writeComponentStatistics(numberOfSteps, component.componentId, component.name));
     }
-    std::print(stream, "{}", system.mc_moves_count.writeMCMoveCountSystemStatistics(numberOfSteps));
+    std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}", countTotal.writeMCMoveCountAllSystemStatistics(numberOfSteps));
+    std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 
@@ -548,11 +535,8 @@ void MonteCarlo::output()
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::chrono::duration<double> totalSimulationTime = (t2 - t1);
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
-
     std::print(stream, "\n\n");
-    //std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
     std::print(stream, "{}", system.averageEnergies.writeAveragesStatistics(system.components));
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
@@ -569,8 +553,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.numberOfSteps;
   archive << mc.numberOfInitializationCycles;
   archive << mc.numberOfEquilibrationCycles;
-  archive << mc.optimizeMCMovesEvery;
+
   archive << mc.printEvery;
+  archive << mc.writeBinaryRestartEvery;
+  archive << mc.rescaleWangLandauEvery;
+  archive << mc.optimizeMCMovesEvery;
 
   archive << mc.currentCycle;
   archive << mc.simulationStage;
@@ -605,8 +592,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.numberOfSteps;
   archive >> mc.numberOfInitializationCycles;
   archive >> mc.numberOfEquilibrationCycles;
-  archive >> mc.optimizeMCMovesEvery;
+
   archive >> mc.printEvery;
+  archive >> mc.writeBinaryRestartEvery;
+  archive >> mc.rescaleWangLandauEvery;
+  archive >> mc.optimizeMCMovesEvery;
 
   archive >> mc.currentCycle;
   archive >> mc.simulationStage;

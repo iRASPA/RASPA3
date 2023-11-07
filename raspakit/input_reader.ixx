@@ -43,11 +43,6 @@ export struct InputReader
   InputReader();
   ~InputReader() {};
 
-  const std::string pseudoAtomsFileName{"pseudo_atoms.def"};
-  const std::string forceFieldMixingRulesFileName{"force_field_mixing_rules.def"};
-  const std::string forceFieldOverwriteFileName{"force_field.def"};
-  const std::string simulationSettingsFileName{"simulation.input"};
-
   void requireExistingSystem(const std::string& keyword, size_t lineNumber);
   void requireExistingSystemAndComponent(const std::string& keyword, size_t lineNumber);
 
@@ -56,12 +51,17 @@ export struct InputReader
   size_t numberOfCycles{ 0 };
   size_t numberOfInitializationCycles{ 0 };
   size_t numberOfEquilibrationCycles{ 0 };
-  std::size_t printEvery{ 0 };
+  std::size_t printEvery{ 5000 };
+  size_t writeBinaryRestartEvery{ 5000 };
+  size_t rescaleWangLandauEvery{ 5000 };
+  size_t optimizeMCMovesEvery{ 5000 };
+  size_t writeEvery{ 100 };
   bool restartFromBinary{ false };
 
   std::optional<unsigned long long> randomSeed{ std::nullopt };
 
   size_t numberOfBlocks{ 5 };
+  size_t numberOfLambdaBins{ 41 };
   size_t numberOfThreads{ 1 };
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};
 
@@ -72,6 +72,4 @@ export struct InputReader
   std::string displayName{"Column"};
   double temperature{ -1.0 };
 
-  //size_t printEvery{ 1000 };
-  size_t writeEvery{ 100 };
 };

@@ -49,9 +49,9 @@ export struct MCMoveCount
                                        volumeMove + GibbsVolumeMove;}
  
   void clearCountStatistics();
-  const std::string writeMCMoveCountSystemStatistics(size_t countTotal) const;
-  const std::string writeMCMoveCountComponentStatistics(size_t countTotal, size_t componentId, const std::string &componentName) const;
-  const std::string writeMCMoveCountAllSystemStatistics(size_t countTotal) const;
+  const std::string writeSystemStatistics(size_t countTotal) const;
+  const std::string writeComponentStatistics(size_t countTotal, size_t componentId, const std::string &componentName) const;
+  const std::string writeAllSystemStatistics(size_t countTotal) const;
 
   inline MCMoveCount& operator+=(const MCMoveCount& b)
   {

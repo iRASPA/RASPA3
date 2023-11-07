@@ -107,7 +107,7 @@ export struct ForceField
   bool automaticEwald{ true };
 
   ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false);
-  ForceField(std::string pseudoAtomsFileName, std::string forceFieldmixingFileName, std::string forceFieldOverwriteFileName) noexcept(false);
+  ForceField(size_t systemId) noexcept(false);
 
   ForceField() noexcept = default;
   ForceField(const ForceField &a) noexcept = default;
