@@ -219,6 +219,10 @@ export struct System
 
   void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
   void computeFrameworkMoleculeTailEnergy(std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
+  inline void computeInterMolecularEnergy(RunningEnergy &energyStatus) noexcept
+  {
+    computeInterMolecularEnergy(simulationBox, spanOfMoleculeAtoms(), energyStatus);
+  }
   void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
   void computeInterMolecularTailEnergy(std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
   void computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept;

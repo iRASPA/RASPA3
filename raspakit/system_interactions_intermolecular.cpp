@@ -74,7 +74,7 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
         if (rr < cutOffVDWSquared)
         {
           EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-          
+
           energyStatus.moleculeMoleculeVDW += energyFactor.energy;
           energyStatus.dudlambdaVDW += energyFactor.dUdlambda;
         }

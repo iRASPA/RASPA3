@@ -56,6 +56,9 @@ export struct VDWParameters
 
 export struct PseudoAtom
 {
+  PseudoAtom() {};
+  PseudoAtom(std::string name, double mass, double charge, size_t atomicNumber, bool printToPDB):
+             name(name), mass(mass), charge(charge), atomicNumber(atomicNumber), printToPDB(printToPDB) {};
   uint64_t versionNumber{ 1 };
   std::string name{ "C" };
   double mass{ 1.0 };
@@ -135,4 +138,6 @@ export struct ForceField
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f);
+
+  std::string repr() const {return printPseudoAtomStatus() + "\n" + printForceFieldStatus();}
 };

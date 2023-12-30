@@ -788,3 +788,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   return archive;
 }
 
+std::string Component::repr() const
+{
+  return std::string("Component test");
+}

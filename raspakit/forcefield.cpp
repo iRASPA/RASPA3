@@ -197,7 +197,7 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
     // FIX
     if (it != PredefinedElements::atomicNumberData.end()) atomicNumber = static_cast<size_t>(it->second);
 
-    pseudoAtoms.emplace_back(PseudoAtom{ .name = name, .mass = std::stod(mass), .charge = std::stod(charge), .atomicNumber = atomicNumber });
+    pseudoAtoms.emplace_back(PseudoAtom(name, std::stod(mass), std::stod(charge), atomicNumber, true));
   }
 
   data = std::vector<VDWParameters>(numberOfPseudoAtoms * numberOfPseudoAtoms);

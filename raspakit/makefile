@@ -14,9 +14,15 @@ default: libraspakit;
 $(OBJ): %.o: %.cpp %.pcm
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-$(PCM): %.pcm: %.ixx
+
+%.pcm: %.ixx
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile -o $@ $<
 	$(CXX) $(CXXFLAGS) -x c++-module $< -c -o $@.o
+
+mc_moves_gibbs_swap_cfcmc.pcm mc_moves_gibbs_swap_cbmc.pcm mc_moves_insertion.pcm mc_moves_gibbs_volume.pcm mc_moves_reaction.pcm mc_moves_reaction_cfcmc_cbmc.pcm mc_moves_swap_cfcmc.pcm mc_moves_translation.pcm mc_moves_random_rotation.pcm mc_moves_swap_cfcmc_cbmc.pcm mc_moves_reaction_cfcmc.pcm mc_moves_deletion.pcm mc_moves_widom.pcm mc_moves_identity_change.pcm mc_moves_random_translation.pcm mc_moves_volume.pcm mc_moves_reinsertion.pcm mc_moves_rotation.pcm:
+	: do nothing for $@
+system_cbmc_rigid_deletion.pcm system_cbmc_rigid_insertion.pcm system_cbmc_flexible_insertion.pcm system_cbmc.pcm system_hardware_info.pcm system_compute_fluid_properties.pcm system_interactions_ewald.pcm  system_interactions_framework_molecule_pressure.pcm system_integration.pcm system_interactions_framework_molecule.pcm system_interactions_ewald_pressure.pcm system_md_loop.pcm system_interactions_tailcorrection.pcm system_interactions_intermolecular_pressure.pcm system_interactions.pcm system_cbmc_rigid_reinsertion.pcm system_reservoir.pcm system_interactions_intermolecular.pcm system_print_movestatistics.pcm:
+	: do nothing for $@
 
 # dependencies
 reaction.pcm: property_lambda_probability_histogram.pcm
@@ -98,9 +104,10 @@ mixture_prediction.pcm: atom.pcm isotherm.pcm multi_site_isotherm.pcm component.
 mixture_prediction_simulation.pcm: input_reader.pcm component.pcm system.pcm multi_site_isotherm.pcm mixture_prediction.pcm
 breakthrough.pcm: component.pcm input_reader.pcm mixture_prediction.pcm system.pcm
 breakthrough_simulation.pcm: breakthrough.pcm input_reader.pcm mixture_prediction.pcm system.pcm simulationbox.pcm component.pcm
+pybindings.pcm: system.pcm component.pcm atom.pcm running_energy.pcm
 
 libraspakit: $(OBJ)
-	ar -rs libraspakit.a $(OBJPCM) $(OBJ)
+	ar -rs libraspakit.a *.o
 	ranlib -c libraspakit.a
 
 clean:

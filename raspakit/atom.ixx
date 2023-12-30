@@ -2,6 +2,7 @@ export module atom;
 
 import archive;
 import double3;
+import stringutils;
 
 import scaling;
 
@@ -10,6 +11,8 @@ import <cstddef>;
 import <istream>;
 import <ostream>;
 import <fstream>;
+import <sstream>;
+import <print>;
 
 #if defined(_WIN32)
   import <cassert>;
@@ -94,6 +97,16 @@ export struct Atom
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom);
+
+  inline std::string repr() const
+  {
+    std::ostringstream stream;
+  
+    std::print(stream, "({}, {}, {}, [{}, {}, {}, {}])\n", position.x, position.y, position.z,
+        moleculeId, type, componentId, groupId);
+  
+    return stream.str();
+  }
 };
 
 // should be 4 times double4 = 4x(8x4) = 4x32 = 128 bytes

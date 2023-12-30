@@ -164,4 +164,6 @@ export struct Component
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);
+
+  std::string repr() const;
 };

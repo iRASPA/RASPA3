@@ -3,13 +3,8 @@ PCM    := $(CPP:.cpp=.pcm)
 OBJ    := $(CPP:.cpp=.o)
 OBJPCM := $(CPP:.cpp=.pcm.o)
 
-$(info    CPP is $(CPP))
-$(info    IXX is $(IXX))
-$(info    PCM is $(PCM))
-$(info    OBJ is $(OBJ))
-
 .PHONY: default
-default: libfoundationkit;
+default: libfoundationkit.a libfoundationkit.so;
 
 .SUFFIXES:
 .SUFFIXES: .pcm .ixx *.cpp
@@ -26,9 +21,12 @@ $(PCM): %.pcm: %.ixx
 scanner.pcm: characterset.pcm
 threadpool.pcm: threading.pcm
 
-libfoundationkit: $(OBJ)
+libfoundationkit.a: $(OBJ)
 	ar -rs libfoundationkit.a $(OBJPCM) $(OBJ)
 	ranlib -c libfoundationkit.a
+
+libfoundationkit.so: $(OBJ)
+	$(CXX) $(CXXFLAGS) -shared -undefined dynamic_lookup `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ)  -o $@
 
 clean:
 	rm -f *.pcm *.o *.a

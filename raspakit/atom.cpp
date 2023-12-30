@@ -4,15 +4,27 @@ module atom;
 
 import archive;
 import double3;
+import stringutils;
 
 import <istream>;
 import <ostream>;
 import <sstream>;
 import <fstream>;
 import <print>;
+import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+
+//std::string Atom::repr() const
+//{
+//  std::ostringstream stream;
+//
+//  std::print(stream, "({}, {}, {}, [{}, {}, {}, {}])\n", position.x, position.y, position.z, 
+//      moleculeId, type, componentId, groupId);
+//
+//  return stream.str();
+//}
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom)
 {
@@ -45,4 +57,5 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom)
 
   return archive;
 }
+
 

@@ -4,7 +4,7 @@ OBJ    := $(CPP:.cpp=.o)
 OBJPCM := $(CPP:.cpp=.pcm.o)
 
 .PHONY: default
-default: libsymmetrykit;
+default: libsymmetrykit.a libsymmetrykit.so;
 
 .SUFFIXES:
 .SUFFIXES: .pcm .ixx *.cpp
@@ -39,9 +39,12 @@ skspacegroupdatabase.pcm: skspacegroupsetting.pcm
 sksymmetrycell.pcm: skdefinitions.pcm skrotationmatrix.pcm sktransformationmatrix.pcm skpointsymmetryset.pcm skpointgroup.pcm
 skspacegroup.pcm: skseitzmatrix.pcm skpointgroup.pcm skpointsymmetryset.pcm sksymmetryoperationset.pcm skspacegroupsetting.pcm skrotationalchangeofbasis.pcm skspacegroupdatabase.pcm sksymmetrycell.pcm
 
-libsymmetrykit: $(OBJ)
+libsymmetrykit.a: $(OBJ)
 	ar -rs libsymmetrykit.a $(OBJPCM) $(OBJ)
 	ranlib -c libsymmetrykit.a
+
+libsymmetrykit.so: $(OBJ)
+	$(CXX) $(CXXFLAGS) -shared -undefined dynamic_lookup `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ) -o $@
 
 clean:
 	rm -f *.pcm *.o *.a

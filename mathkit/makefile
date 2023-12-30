@@ -4,7 +4,7 @@ OBJ    := $(CPP:.cpp=.o)
 OBJPCM := $(CPP:.cpp=.pcm.o)
 
 .PHONY: default
-default: libmathkit;
+default: libmathkit.a libmathkit.so;
 
 .SUFFIXES:
 .SUFFIXES: .pcm .ixx *.cpp
@@ -36,9 +36,12 @@ ringmatrix.pcm: int3x3.pcm
 matrix.pcm: ringmatrix.pcm
 
 
-libmathkit: $(OBJ)
+libmathkit.a: $(OBJ)
 	ar -rs libmathkit.a $(OBJPCM) $(OBJ)
 	ranlib -c libmathkit.a
 
+libmathkit.so: $(OBJ)
+	$(CXX) $(CXXFLAGS) -shared -undefined dynamic_lookup `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ) -o $@
+
 clean:
-	rm -f *.pcm *.o *.a
+	rm -f *.pcm *.o *.a *.so
