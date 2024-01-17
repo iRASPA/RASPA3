@@ -39,6 +39,7 @@ import <numbers>;
   double3x3 strainDerivative;
   EnergyStatus energy(components.size());
 
+  bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   const double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;

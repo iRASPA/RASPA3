@@ -33,7 +33,6 @@ import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;
 import property_lambda_probability_histogram;
-import cbmc;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
@@ -75,8 +74,10 @@ export struct System
   };
 
   System() = default;
-  System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
-  System(size_t s, ForceField forcefield, std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
+  System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, 
+         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
+  System(size_t s, ForceField forcefield, std::vector<Component> components, 
+         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
 
   System(const System &s) = delete;
   System(System&& s) = default;
@@ -150,7 +151,6 @@ export struct System
   PropertyPressure averagePressure;
 
   size_t numberOfTrialDirections{ 10 };
-  double minimumRosenbluthFactor{ 1e-150 };
 
   std::vector<std::complex<double>> eik_xy;
   std::vector<std::complex<double>> eik_x;
@@ -161,9 +161,6 @@ export struct System
   std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik;
   double CoulombicFourierEnergySingleIon{ 0.0 };
   std::vector<double> netCharge;
-
-  bool noCharges{ false };
-  bool omitEwaldFourier{ false };
 
   MCMoveProbabilitiesSystem mc_moves_probabilities;
   MCMoveCpuTime mc_moves_cputime;
@@ -239,19 +236,9 @@ export struct System
 
   [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
 
-  template <ThreadPool::ThreadingType T>
-  [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
-
-  [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
-  [[nodiscard]] std::optional<EnergyStatus> computeInterMolecularSpanEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept;
-
   [[nodiscard]] EnergyStatus computeTailCorrectionVDWOldEnergy() const noexcept;
   [[nodiscard]] EnergyStatus computeTailCorrectionVDWAddEnergy(size_t selectedComponent) const noexcept;
   [[nodiscard]] EnergyStatus computeTailCorrectionVDWRemoveEnergy(size_t selectedComponent) const noexcept;
-
-  [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> computeExternalNonOverlappingEnergies(double cutOffVDW, double cutOffCoulomb, std::vector<Atom>& trialPositions) const noexcept;
-  [[nodiscard]] const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> computeExternalNonOverlappingEnergies(double cutOffVDW, double cutOffCoulomb, std::vector<std::vector<Atom>>& trialPositions, std::make_signed_t<std::size_t> skip) const noexcept;
-  const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(double cutOffVDW, double cutOffCoulomb, std::vector<Atom>& trialPositionSet) const noexcept;
 
   [[nodiscard]] std::vector<double> computeInterMolecularInteractionsEnergy() const noexcept;
   [[nodiscard]] std::vector<double> computeInterMolecularInteractionsForce() noexcept;
@@ -342,39 +329,6 @@ export struct System
   bool checkMoleculeIds();
   
   std::vector<Atom> randomConfiguration(RandomNumber &random, size_t selectedComponent, const std::span<const Atom> atoms);
-
-  [[nodiscard]] std::optional<ChainData> 
-    growMoleculeSwapInsertion(RandomNumber &random, Component::GrowType growType, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, 
-                            size_t selectedMolecule, double scaling, std::vector<Atom> atoms) const noexcept;
-  [[nodiscard]] std::optional<FirstBeadData> 
-    growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
-
-  [[nodiscard]] std::optional<ChainData> 
-    growRigidMoleculeSwapInsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
-                                 double scaling, std::vector<Atom> atoms) const noexcept;
-  [[nodiscard]] std::optional<ChainData> 
-    growRigidMoleculeChain(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
-
-  [[nodiscard]] std::optional<ChainData> 
-    growFlexibleMoleculeSwapInsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
-                                 double scaling, std::vector<Atom> atoms) const noexcept;
-  [[nodiscard]] std::optional<ChainData> 
-    growFlexibleMoleculeChain(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> atoms) const noexcept;
-
-  [[nodiscard]] ChainData retraceMoleculeSwapDeletion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
-  [[nodiscard]] ChainData retraceRigidMoleculeSwapDeletion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double scaling, double storedR) const noexcept;
-  [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, const Atom& atom, double scaling, double storedR) const noexcept;
-  [[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t startingBead, double scaling, std::span<Atom> molecule) const noexcept;
-  [[nodiscard]] ChainData retraceRigidChainReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t startingBead, std::span<Atom> molecule) const noexcept;
-
-  [[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
-  [[nodiscard]] ChainData retraceMoleculeReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
-  [[nodiscard]] std::optional<ChainData> growRigidMoleculeReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule) const noexcept;
-  [[nodiscard]] ChainData retraceRigidMoleculeReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> atoms, double storedR) const noexcept;
-  [[nodiscard]] std::optional<FirstBeadData> growRigidMultipleFirstBeadReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, const Atom& atom) const noexcept;
-  [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadReinsertion(RandomNumber &random, double cutOffVDW, double cutOffCoulomb, const Atom& atom, double storedR) const noexcept;
-
-  size_t selectTrialPosition(RandomNumber &random, std::vector <double> BoltzmannFactors) const noexcept;
 
   RunningEnergy energyDifferenceEwaldFourier(std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedWavevectors,
                                              std::span<const Atom> newatoms, std::span<const Atom> oldatoms);

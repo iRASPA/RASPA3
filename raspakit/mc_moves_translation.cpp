@@ -37,7 +37,9 @@ import <iomanip>;
 
 // mc_moves_translation.cpp
 
-std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent, std::span<Atom> molecule) const
+std::optional<RunningEnergy> 
+MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent, 
+                          std::span<Atom> molecule) const
 {
   double3 displacement{};
   double3 maxDisplacement = system.components[selectedComponent].mc_moves_probabilities.statistics_TranslationMove.maxChange;
@@ -52,7 +54,8 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   std::span<Atom> newMolecule{trialPositions.begin(), trialPositions.end()};
 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(newMolecule, molecule);
+  std::optional<RunningEnergy> frameworkMolecule = 
+    system.computeFrameworkMoleculeEnergyDifference(newMolecule, molecule);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.translationMoveNonEwald += (t2 - t1);
   system.mc_moves_cputime.translationMoveNonEwald += (t2 - t1);

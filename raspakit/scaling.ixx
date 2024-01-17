@@ -5,6 +5,7 @@ export module scaling;
 #else
   #include <assert.h>
 #endif
+#
 
 export namespace Scaling
 {

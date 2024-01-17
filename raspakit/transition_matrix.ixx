@@ -8,6 +8,7 @@ import <fstream>;
 import archive;
 import double3;
 
+
 export struct TransitionMatrix
 {
   uint64_t versionNumber{ 1 };

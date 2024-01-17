@@ -13,6 +13,7 @@ import component;
 import multi_site_isotherm;
 import system;
 
+
 export struct IsothermFitting
 {
   struct DNA
@@ -53,7 +54,8 @@ export struct IsothermFitting
   void createPlotScript();
 
   std::string writeHeader();
-  void writeComponentIsothermFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
+  void writeComponentIsothermFittingStatus(std::ostream &stream, 
+                                           const std::vector<std::pair<double, double>> &rawData) const;
 
   DNA newCitizen(size_t Id, const std::vector<std::pair<double, double>> &rawData);
   void updateCitizen(DNA &citizen, const std::vector<std::pair<double, double>> &rawData);
@@ -70,7 +72,8 @@ export struct IsothermFitting
   void writeCitizen(std::ostream &stream, size_t componentId, size_t citizen, size_t step, size_t variety, 
                     size_t fullfilledCondition, const std::vector<std::pair<double, double>> &rawData);
   DNA fit(std::ostream &stream, size_t Id, const std::vector<std::pair<double, double>> &rawData);
-  const DNA simplex(std::ostream &stream, DNA citizen, double scale, const std::vector<std::pair<double, double>> &rawData);
+  const DNA simplex(std::ostream &stream, DNA citizen, double scale, 
+                    const std::vector<std::pair<double, double>> &rawData);
   void printSolution(std::ostream &stream, size_t componentId, const DNA &citizen);
 
   std::vector<MultiSiteIsotherm> isotherms;

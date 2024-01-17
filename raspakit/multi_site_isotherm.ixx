@@ -9,6 +9,7 @@ import hashcombine;
 import randomnumbers;
 import isotherm;
 
+
 export struct MultiSiteIsotherm
 {
   enum class PredictionMethod

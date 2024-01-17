@@ -7,6 +7,7 @@ import <fstream>;
 import double3;
 import archive;
 
+
 export struct MCMoveCount
 {
   MCMoveCount(): translationMove(0), randomTranslationMove(0), rotationMove(0), randomRotationMove(0),
@@ -50,7 +51,8 @@ export struct MCMoveCount
  
   void clearCountStatistics();
   const std::string writeSystemStatistics(size_t countTotal) const;
-  const std::string writeComponentStatistics(size_t countTotal, size_t componentId, const std::string &componentName) const;
+  const std::string writeComponentStatistics(size_t countTotal, size_t componentId, 
+                                             const std::string &componentName) const;
   const std::string writeAllSystemStatistics(size_t countTotal) const;
 
   inline MCMoveCount& operator+=(const MCMoveCount& b)

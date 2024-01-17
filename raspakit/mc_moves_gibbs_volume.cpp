@@ -37,9 +37,9 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_gibbs_volume.cpp
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB) const
+std::optional<std::pair<RunningEnergy, RunningEnergy>> 
+MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB) const
 {
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.counts += 1;
   systemA.mc_moves_probabilities.statistics_GibbsVolumeMove.totalCounts += 1;
@@ -99,7 +99,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.constructed += 1;
   systemB.mc_moves_probabilities.statistics_GibbsVolumeMove.totalConstructed += 1;
 
-  double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total());
+  double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + 
+                  (newTotalEnergyB.total() - oldTotalEnergyB.total());
 
   if(random.uniform() < std::exp(-systemA.beta * deltaU +
            (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+

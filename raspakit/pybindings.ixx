@@ -57,10 +57,12 @@ PYBIND11_MODULE(RaspaKit, m)
     .value("Triclinic", SimulationBox::Type::Triclinic)
     .export_values();
   simulationBox.def(pybind11::init<double, double, double, SimulationBox::Type>(), 
-                    pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"), pybind11::arg("type") = SimulationBox::Type::Rectangular)
+                    pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"), 
+                    pybind11::arg("type") = SimulationBox::Type::Rectangular)
                .def(pybind11::init<double, double, double, double, double, double, SimulationBox::Type>(),
                     pybind11::arg("a"), pybind11::arg("b"), pybind11::arg("c"), 
-                    pybind11::arg("alpha"), pybind11::arg("beta"), pybind11::arg("gamma"), pybind11::arg("type") = SimulationBox::Type::Rectangular)
+                    pybind11::arg("alpha"), pybind11::arg("beta"), pybind11::arg("gamma"), 
+                    pybind11::arg("type") = SimulationBox::Type::Rectangular)
                .def(pybind11::init<double3x3,  SimulationBox::Type>())
                .def_readwrite("type", &SimulationBox::type)
                .def_readonly("lengthA", &SimulationBox::lengthA)
@@ -73,21 +75,25 @@ PYBIND11_MODULE(RaspaKit, m)
 
   pybind11::class_<PseudoAtom>(m, "PseudoAtom")
         .def(pybind11::init<std::string, double, double, size_t, bool>(), 
-             pybind11::arg("name"), pybind11::arg("mass"), pybind11::arg("charge"), pybind11::arg("atomicNumber"), pybind11::arg("printToPDB"));
+             pybind11::arg("name"), pybind11::arg("mass"), pybind11::arg("charge"), 
+             pybind11::arg("atomicNumber"), pybind11::arg("printToPDB"));
 
   pybind11::class_<ForceField> forceField(m, "ForceField");
   pybind11::enum_<ForceField::MixingRule>(forceField, "MixingRule")
     .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
     .export_values();
-  forceField.def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, double, bool, bool>(), 
+  forceField.def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, 
+                                ForceField::MixingRule, double, bool, bool>(), 
                  pybind11::arg("pseudoAtoms"), pybind11::arg("parameters"), pybind11::arg("mixingRule"), 
                  pybind11::arg("cutOff"), pybind11::arg("shifted"), pybind11::arg("tailCorrecions"));
   forceField.def("__repr__", &ForceField::repr);
 
 
   pybind11::class_<Component>(m, "Component")
-        .def(pybind11::init<size_t, std::string, double, SimulationBox, double, double, double, std::vector<Atom>, size_t, size_t>())
-        .def(pybind11::init<size_t, std::string, double, SimulationBox, size_t, std::vector<Atom>, int3, size_t, size_t>())
+        .def(pybind11::init<size_t, std::string, double, SimulationBox, 
+                            double, double, double, std::vector<Atom>, size_t, size_t>())
+        .def(pybind11::init<size_t, std::string, double, SimulationBox, size_t, 
+                            std::vector<Atom>, int3, size_t, size_t>())
         .def_readonly("name", &Component::name)
         .def("__repr__", &Component::repr);
 

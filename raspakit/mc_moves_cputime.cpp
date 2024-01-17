@@ -67,6 +67,7 @@ void MCMoveCpuTime::clearTimingStatistics()
   GibbsSwapMoveCBMC = std::chrono::duration<double>::zero();
   GibbsSwapMoveCBMCNonEwald = std::chrono::duration<double>::zero();
   GibbsSwapMoveCBMCEwald = std::chrono::duration<double>::zero();
+  GibbsSwapMoveCBMCTail = std::chrono::duration<double>::zero();
 
   GibbsSwapLambdaMoveCFCMC = std::chrono::duration<double>::zero();
   GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = std::chrono::duration<double>::zero();
@@ -253,8 +254,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     std::print(stream, "    Gibbs-swap CBMC:             {:14f} [s]\n", GibbsSwapMoveCBMC.count());
     std::print(stream, "        Non-Ewald:               {:14f} [s]\n", GibbsSwapMoveCBMCNonEwald.count());
     std::print(stream, "        Ewald:                   {:14f} [s]\n", GibbsSwapMoveCBMCEwald.count());
+    std::print(stream, "        Tail:                    {:14f} [s]\n", GibbsSwapMoveCBMCTail.count());
     std::print(stream, "        Overhead:                {:14f} [s]\n",
-                 GibbsSwapMoveCBMC.count() - GibbsSwapMoveCBMCNonEwald.count() - GibbsSwapMoveCBMCEwald.count());
+                 GibbsSwapMoveCBMC.count() - GibbsSwapMoveCBMCNonEwald.count() - 
+                 GibbsSwapMoveCBMCEwald.count() - GibbsSwapMoveCBMCTail.count());
   }
 
   if(GibbsSwapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
@@ -428,8 +431,10 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Gibbs-swap CBMC:             {:14f} [s]\n", GibbsSwapMoveCBMC.count());
     std::print(stream, "    Non-Ewald:               {:14f} [s]\n", GibbsSwapMoveCBMCNonEwald.count());
     std::print(stream, "    Ewald:                   {:14f} [s]\n", GibbsSwapMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                    {:14f} [s]\n", GibbsSwapMoveCBMCTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
-                 GibbsSwapMoveCBMC.count() - GibbsSwapMoveCBMCNonEwald.count() - GibbsSwapMoveCBMCEwald.count());
+                 GibbsSwapMoveCBMC.count() - GibbsSwapMoveCBMCNonEwald.count() - 
+                 GibbsSwapMoveCBMCEwald.count() - GibbsSwapMoveCBMCTail.count());
   }
 
   if(GibbsSwapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
@@ -575,6 +580,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << t.GibbsSwapMoveCBMC;
   archive << t.GibbsSwapMoveCBMCNonEwald;
   archive << t.GibbsSwapMoveCBMCEwald;
+  archive << t.GibbsSwapMoveCBMCTail;
 
   archive << t.GibbsSwapLambdaMoveCFCMC;
   archive << t.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
@@ -678,6 +684,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
   archive >> t.GibbsSwapMoveCBMC;
   archive >> t.GibbsSwapMoveCBMCNonEwald;
   archive >> t.GibbsSwapMoveCBMCEwald;
+  archive >> t.GibbsSwapMoveCBMCTail;
 
   archive >> t.GibbsSwapLambdaMoveCFCMC;
   archive >> t.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;

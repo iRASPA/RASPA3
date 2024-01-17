@@ -35,11 +35,14 @@ std::string PropertyPressure::writeAveragesStatistics() const
   std::print(stream, "Average pressure tensor: \n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n",
-    pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+                     pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
+                     pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n",
-    pressureTensor.ay, pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+                     pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
+                     pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
   std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n\n",
-    pressureTensor.az, pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+                     pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
+                     pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
 
   std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
   for (size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)

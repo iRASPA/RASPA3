@@ -21,6 +21,7 @@ import energy_status_inter;
 import averages;
 import units;
 
+
 std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& components) const
 {
   std::ostringstream stream;
@@ -119,7 +120,8 @@ std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& comp
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage(k, l).VanDerWaalsTailCorrection.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, 
+                           prefactor * blockAverage(k, l).VanDerWaalsTailCorrection.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
@@ -179,7 +181,8 @@ std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& comp
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage(k, l).CoulombicFourier.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", 
+                           i, prefactor * blockAverage(k, l).CoulombicFourier.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
@@ -199,7 +202,8 @@ std::string PropertyEnergy::writeAveragesStatistics(std::vector<Component>& comp
     std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.totalEnergy.energy);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Average  {: .6e} +/- {: .6e} [K]\n", prefactor * computedAverage.first.totalEnergy.energy, prefactor * computedAverage.second.totalEnergy.energy);
+  std::print(stream, "    Average  {: .6e} +/- {: .6e} [K]\n", prefactor * computedAverage.first.totalEnergy.energy, 
+                                                               prefactor * computedAverage.second.totalEnergy.energy);
 
   std::print(stream, "\n");
 

@@ -35,9 +35,9 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_random_rotation.cpp
 
-std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, System& system, size_t selectedComponent, std::span<Atom> molecule)
+std::optional<RunningEnergy> 
+MC_Moves::randomRotationMove(RandomNumber &random, System& system, size_t selectedComponent, std::span<Atom> molecule)
 {
   double3 angle{};
   std::array<double3,3> axes{double3(1.0,0.0,0.0), double3(0.0,1.0,0.0) ,double3(0.0,0.0,1.0) };

@@ -10,9 +10,11 @@ import <fstream>;
 import <utility>;
 import <string>;
 
+
 export struct SampleMovie
 {
-    SampleMovie(size_t systemId, const ForceField &forceField, const SimulationBox& simulationBox, const std::vector<Atom>& atomPositions);
+    SampleMovie(size_t systemId, const ForceField &forceField, const SimulationBox& simulationBox, 
+                const std::vector<Atom>& atomPositions);
     //SampleMovie() noexcept = default;
     //SampleMovie(const SampleMovie& a) noexcept = default;
     //SampleMovie& operator=(const SampleMovie& a) noexcept = default;

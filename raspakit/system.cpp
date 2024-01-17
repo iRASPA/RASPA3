@@ -48,7 +48,6 @@ import enthalpy_of_adsorption;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
-import cbmc;
 import property_simulationbox;
 import property_energy;
 import property_pressure;
@@ -69,6 +68,8 @@ import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import reaction;
 import reactions;
+import cbmc;
+import cbmc_chain_data;
 
 // construct System programmatically
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
@@ -101,8 +102,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    noCharges(false),
-    omitEwaldFourier(false),
+    //noCharges(false),
+    //omitEwaldFourier(false),
     mc_moves_probabilities(),
     reactions(),
     tmmc()
@@ -182,8 +183,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                averagePressure(numberOfBlocks),
                //sampleMovie(systemId, forceField, simulationBox, atomPositions),
                netCharge(c.size()),
-               noCharges(false),
-               omitEwaldFourier(false),
+               //noCharges(false),
+               //omitEwaldFourier(false),
                mc_moves_probabilities(),
                reactions(),
                tmmc()
@@ -369,7 +370,7 @@ bool System::checkMoleculeIds()
   return true;
 }
 
-void System::createInitialMolecules(RandomNumber &random)
+void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
 {
   for (size_t componentId = 0; const Component & component : components)
   {
@@ -381,10 +382,11 @@ void System::createInitialMolecules(RandomNumber &random)
         std::optional<ChainData> growData = std::nullopt;
         do
         {
-          std::vector<Atom> atoms = components[componentId].newAtoms(0.0, numberOfMoleculesPerComponent[componentId]);
+          std::vector<Atom> atoms = components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);
           Component::GrowType growType  = components[componentId].growType;
-          growData = growMoleculeSwapInsertion(random, growType, forceField.cutOffVDW, forceField.cutOffCoulomb, 
-                              componentId, numberOfMoleculesPerComponent[componentId], 0.0, atoms);
+          growData = CBMC::growMoleculeSwapInsertion(random, this->components, this->forceField, this->simulationBox, this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,
+                                               growType, forceField.cutOffVDW, forceField.cutOffCoulomb, 
+                                               componentId, numberOfMoleculesPerComponent[componentId], 0.0, atoms, numberOfTrialDirections);
 
         } while (!growData || growData->energies.total() > forceField.overlapCriteria);
 
@@ -397,10 +399,11 @@ void System::createInitialMolecules(RandomNumber &random)
       std::optional<ChainData> growData = std::nullopt;
       do
       {
-        std::vector<Atom> atoms = components[componentId].newAtoms(1.0, numberOfMoleculesPerComponent[componentId]);
+        std::vector<Atom> atoms = components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);
         Component::GrowType growType  = components[componentId].growType;
-        growData = growMoleculeSwapInsertion(random, growType, forceField.cutOffVDW, forceField.cutOffCoulomb,
-                              componentId, numberOfMoleculesPerComponent[componentId], 1.0, atoms);
+        growData = CBMC::growMoleculeSwapInsertion(random, this->components, this->forceField, this->simulationBox, this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta, 
+                                             growType, forceField.cutOffVDW, forceField.cutOffCoulomb,
+                                             componentId, numberOfMoleculesPerComponent[componentId], 1.0, atoms, numberOfTrialDirections);
 
       } while(!growData || growData->energies.total() > forceField.overlapCriteria);
 
@@ -1088,7 +1091,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.currentEnergyStatus;
   archive << s.averagePressure;
   archive << s.numberOfTrialDirections;
-  archive << s.minimumRosenbluthFactor;
   archive << s.eik_xy;
   archive << s.eik_x;
   archive << s.eik_y;
@@ -1098,8 +1100,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.totalEik;
   archive << s.CoulombicFourierEnergySingleIon;
   archive << s.netCharge;
-  archive << s.noCharges;
-  archive << s.omitEwaldFourier;
   archive << s.mc_moves_probabilities;
   archive << s.mc_moves_cputime;
   archive << s.mc_moves_count;
@@ -1177,7 +1177,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.currentEnergyStatus;
   archive >> s.averagePressure;
   archive >> s.numberOfTrialDirections;
-  archive >> s.minimumRosenbluthFactor;
   archive >> s.eik_xy;
   archive >> s.eik_x;
   archive >> s.eik_y;
@@ -1187,8 +1186,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.totalEik;
   archive >> s.CoulombicFourierEnergySingleIon;
   archive >> s.netCharge;
-  archive >> s.noCharges;
-  archive >> s.omitEwaldFourier;
   archive >> s.mc_moves_probabilities;
   archive >> s.mc_moves_cputime;
   archive >> s.mc_moves_count;

@@ -22,7 +22,9 @@ import units;
 import enthalpy_of_adsorption;
 import averages;
 
-std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<size_t> &swapableComponents, std::vector<Component> &components) const
+
+std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<size_t> &swapableComponents, 
+                                                      std::vector<Component> &components) const
 {
   std::ostringstream stream;
 
@@ -48,8 +50,12 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<size_t> &swapa
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm), Units::EnergyToKelvin * enthalpy.second.values[k]);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n", Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm), Units::EnergyToKJPerMol * enthalpy.second.values[k]);
+      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n", 
+                         Units::EnergyToKelvin * (enthalpy.first.values[k] - idealGasTerm), 
+                         Units::EnergyToKelvin * enthalpy.second.values[k]);
+      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n", 
+                         Units::EnergyToKJPerMol * (enthalpy.first.values[k] - idealGasTerm), 
+                         Units::EnergyToKJPerMol * enthalpy.second.values[k]);
       if (!components[index].idealGasEnergy)
       {
         std::print(stream, "    Warning: need to subtract the ideal-gas energy.\n");
@@ -89,8 +95,12 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<size_t> &swapa
       double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
       std::pair<double, double> totalEnthalpy = std::make_pair(average, confidenceIntervalError);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
-      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n", Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
-      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n", Units::EnergyToKJPerMol * totalEnthalpy.first, Units::EnergyToKJPerMol * totalEnthalpy.second);
+      std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n", 
+                         Units::EnergyToKelvin * totalEnthalpy.first, 
+                         Units::EnergyToKelvin * totalEnthalpy.second);
+      std::print(stream, "                            {: .6e} +/- {: .6e} [kJ/mol]\n", 
+                         Units::EnergyToKJPerMol * totalEnthalpy.first, 
+                         Units::EnergyToKJPerMol * totalEnthalpy.second);
       for (size_t k = 0; k < swapableComponents.size(); k++)
       {
         size_t index = swapableComponents[k];

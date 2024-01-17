@@ -9,6 +9,7 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
+import cbmc_chain_data;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -37,9 +38,9 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_insertion.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedComponent)
+std::pair<std::optional<RunningEnergy>, double3> 
+MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapInsertionMove_CBMC.counts += 1;
@@ -50,8 +51,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   Component::GrowType growType = system.components[selectedComponent].growType;
   
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
+  std::vector<Atom> atoms = 
+    system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
+  std::optional<ChainData> growData = 
+    CBMC::growMoleculeSwapInsertion(random, system.components, system.forceField, system.simulationBox, 
+                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 
+                                    atoms, system.numberOfTrialDirections);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
   system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (t2 - t1);
@@ -71,13 +77,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   system.mc_moves_cputime.swapInsertionMoveCBMCEwald += (u2 - u1);
 
   std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-  [[maybe_unused]] RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
-                                                        system.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
+  RunningEnergy tailEnergyDifference = 
+    system.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
+    system.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
   std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCTail += (v2 - v1);
   system.mc_moves_cputime.swapInsertionMoveCBMCTail += (v2 - v1);
 
-  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+  double correctionFactorEwald = 
+    std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
   double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * 

@@ -16,6 +16,7 @@ import energy_status_intra;
 import energy_status_inter;
 import component;
 
+
 export struct EnergyStatus
 {
   EnergyStatus(): totalEnergy(0.0, 0.0) {};

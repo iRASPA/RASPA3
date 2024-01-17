@@ -19,7 +19,6 @@ import <print>;
 
 import int3;
 import stringutils;
-
 import system;
 import atom;
 import component;
@@ -37,6 +36,7 @@ import mc_moves_probabilities_particles;
 import reaction;
 import reactions;
 import transition_matrix;
+
 
 template<class T>
 T parse(const std::string& arguments, [[maybe_unused]] const std::string& keyword, [[maybe_unused]] size_t lineNumber)
@@ -65,7 +65,8 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+                                             keyword, lineNumber));
       }
       return list;
     }
@@ -79,7 +80,8 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty()) 
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+                                             keyword, lineNumber));
       }
       return list;
     }
@@ -88,7 +90,8 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
 
   if (list.empty()) 
   {
-      throw std::runtime_error( std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+    throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+                                         keyword, lineNumber));
   }
   return list;
 }
@@ -129,7 +132,8 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+                                             keyword, lineNumber));
       }
       return list;
     }
@@ -154,7 +158,8 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
       {
         if (list.empty()) 
         {
-          throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+          throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+                                               keyword, lineNumber));
         }
         return list;
       }
@@ -178,7 +183,7 @@ size_t parseInteger(const std::string& arguments, const std::string& keyword, si
 
   if (ss >> value)
   {
-      return value;
+    return value;
   };
 
   throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
@@ -532,12 +537,12 @@ InputReader::InputReader()
         std::string value = parseString(arguments, keyword, lineNumber);
         if (caseInSensStringCompare(value, "None"))
         {
-          systems.back().noCharges = true;
+          systems.back().forceField.noCharges = true;
           continue;
         }
         if (caseInSensStringCompare(value, "Ewald")) 
         {
-          systems.back().noCharges = false;
+          systems.back().forceField.noCharges = false;
           continue;
         }
       }
@@ -572,7 +577,7 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         bool value = parseBoolean(arguments, keyword, lineNumber);
-        systems.back().omitEwaldFourier = value;
+        systems.back().forceField.omitEwaldFourier = value;
         continue;
       }
 
@@ -619,8 +624,9 @@ InputReader::InputReader()
       {
         requireExistingSystem(keyword, lineNumber);
         std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
-        systems.back().reactions.list.emplace_back(Reaction(systems.back().reactions.list.size(), std::vector(values.begin(), values.begin() + values.size() / 2),
-                                                            std::vector(values.begin() + values.size() / 2, values.end())));
+        systems.back().reactions.list.emplace_back(Reaction(systems.back().reactions.list.size(), 
+                                                     std::vector(values.begin(), values.begin() + values.size() / 2),
+                                                     std::vector(values.begin() + values.size() / 2, values.end())));
         continue;
       }
 
@@ -898,20 +904,6 @@ InputReader::InputReader()
           continue;
         }
       }
-      //if (caseInSensStringCompare(keyword, "PressureScale"))
-      //{
-      //  std::istringstream ss(arguments);
-      //  std::vector<std::string> values = parseListOfSystemValues<std::string>(arguments, keyword, lineNumber);
-      //  values.resize(systems.size(), values.back());
-      //  for (size_t i = 0uz; i < systems.size(); ++i)
-      //  {
-      //      // FIX!! no components exists yet
-      //    //if (caseInSensStringCompare(values[i], "Log")) systems[i].components.back().pressureScale = Component::PressureScale::Log;
-      //    //if (caseInSensStringCompare(values[i], "Linear")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
-      //    //if (caseInSensStringCompare(values[i], "Normal")) systems[i].components.back().pressureScale = Component::PressureScale::Normal;
-      //  }
-      //  continue;
-      //}
       if (caseInSensStringCompare(keyword, "CarrierGas"))
       {
         requireExistingSystem(keyword, lineNumber);
@@ -1386,7 +1378,8 @@ InputReader::InputReader()
 
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
-          throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}", keyword, lineNumber));
+        throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}", 
+                                             keyword, lineNumber));
       }
 
     }
@@ -1434,8 +1427,11 @@ InputReader::InputReader()
       if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
       {
-        throw std::runtime_error(std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal to twice the number of components {})", 
-          reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(), 2uz * systems[i].numerOfAdsorbateComponents()));
+        throw std::runtime_error(std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal" 
+                                             "to twice the number of components {})", 
+                                             reactionId, reaction.productStoichiometry.size() + 
+                                             reaction.reactantStoichiometry.size(), 
+                                             2uz * systems[i].numerOfAdsorbateComponents()));
       }
     
       ++reactionId;
@@ -1454,7 +1450,8 @@ InputReader::InputReader()
     }
     if(numberOfDUDlambda > 1)
     {
-      throw std::runtime_error(std::format("Error [System {}]: multiple thermodynamic integrations present (there can be only one)", i));
+      throw std::runtime_error(std::format("Error [System {}]: multiple thermodynamic integrations present " 
+                                           "(there can be only one)", i));
     }
   }
 
@@ -1532,34 +1529,35 @@ InputReader::InputReader()
           size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
           if(numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
           {
-            throw std::runtime_error(std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate range ({}-{}).",
-                                     numberOfMolecules, systems[i].tmmc.minMacrostate, systems[i].tmmc.maxMacrostate));
+            throw std::runtime_error(std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate "
+                                                 "range ({}-{}).", numberOfMolecules, systems[i].tmmc.minMacrostate,
+                                                 systems[i].tmmc.maxMacrostate));
           }
         }
       }
-
     }
   }
-
 }
 
 void InputReader::requireExistingSystem(const std::string& keyword, size_t lineNumber)
 {
-    if (systems.empty()) {
-        throw std::runtime_error(std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber));
-    }
+  if (systems.empty()) 
+  {
+    throw std::runtime_error(std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", 
+                                         keyword, lineNumber));
+  }
 }
 
 void InputReader::requireExistingSystemAndComponent(const std:: string &keyword, size_t lineNumber)
 {
-    if (systems.empty()) {
-        throw std::runtime_error(
-            std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber)
-            );
-    }
-    if (systems[0uz].components.empty()) {
-        throw std::runtime_error(
-            std::format("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber)
-            );
-    }
+  if (systems.empty()) 
+  {
+    throw std::runtime_error(
+       std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber));
+  }
+  if (systems[0uz].components.empty()) 
+  {
+    throw std::runtime_error(
+      std::format("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber));
+  }
 }

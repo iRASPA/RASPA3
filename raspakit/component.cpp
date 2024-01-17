@@ -37,7 +37,6 @@ import double3x3;
 import skposcarparser;
 import characterset;
 import stringutils;
-
 import skparser;
 import skposcarparser;
 import skstructure;
@@ -45,7 +44,6 @@ import skasymmetricatom;
 import skatomcopy;
 import skcell;
 import skspacegroup;
-
 import forcefield;
 import atom;
 import property_lambda_probability_histogram;
@@ -58,6 +56,7 @@ import bond_potential;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
+
 
 // default constructor, needed for binary restart-file
 Component::Component()
@@ -164,7 +163,8 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
         for (const Atom& atom : unitCellAtoms)
         {
           Atom atomCopy = atom;
-          atomCopy.position += simulationBox.unitCell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atomCopy.position += simulationBox.unitCell * 
+                               double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
           atoms.push_back(atomCopy);
         }
       }
@@ -316,8 +316,8 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     
     if (it == forceField.pseudoAtoms.end())
     {
-      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found (define in 'the pseudo_atoms.def' file)", 
-                               atomTypeString));
+      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found "
+                                           "(define in 'the pseudo_atoms.def' file)", atomTypeString));
     }
     
     size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
@@ -325,7 +325,8 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;
 
-    definedAtoms[i] = Atom(pos, charge, scaling, static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0);
+    definedAtoms[i] = Atom(pos, charge, scaling, static_cast<uint16_t>(pseudoAtomType), 
+                           static_cast<uint8_t>(componentId), 0);
   }
 
   atoms = definedAtoms;
@@ -337,7 +338,8 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::getline(moleculeFile, str);
   std::istringstream numberOfInteractionsString(str);
   size_t numberOfChiralCenters, numberOfBonds, numberOfBondDipoles, numberOfBends, numberOfUreyBradleys;
-  numberOfInteractionsString >> numberOfChiralCenters >> numberOfBonds >> numberOfBondDipoles >> numberOfBends >> numberOfUreyBradleys;
+  numberOfInteractionsString >> numberOfChiralCenters >> numberOfBonds >> numberOfBondDipoles >> 
+  numberOfBends >> numberOfUreyBradleys;
 
   if(numberOfBonds > 0)
   {
@@ -369,16 +371,18 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   }
 }
 
-void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[maybe_unused]] const std::string& fileName)
+void Component::readFramework(const ForceField& forceField, const std::string& fileName)
 {
   const char* env_p = std::getenv("RASPA_DIR");
 
   const std::string frameworkFileName = fileName + ".cif";
 
   std::filesystem::path frameworkPathfile = std::filesystem::path(frameworkFileName);
-  if (!std::filesystem::exists(frameworkPathfile)) frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
+  if (!std::filesystem::exists(frameworkPathfile)) 
+    frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
 
-  if (!std::filesystem::exists(frameworkPathfile)) throw std::runtime_error(std::format("File '{}' not found", frameworkFileName));
+  if (!std::filesystem::exists(frameworkPathfile)) 
+    throw std::runtime_error(std::format("File '{}' not found", frameworkFileName));
 
   std::ifstream t(frameworkPathfile);
   std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
@@ -434,7 +438,8 @@ void Component::readFramework([[maybe_unused]] const ForceField& forceField, [[m
         for (const Atom& atom : unitCellAtoms)
         {
           Atom atomCopy = atom;
-          atomCopy.position += simulationBox.unitCell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atomCopy.position += simulationBox.unitCell * 
+            double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
           atoms.push_back(atomCopy);
         }
       }
@@ -481,28 +486,30 @@ std::string Component::printStatus(const ForceField& forceField) const
     size_t atomType = static_cast<size_t>(definedAtoms[i].type);
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
     std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
-                   i, atomTypeString, definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z, definedAtoms[i].charge);
+                   i, atomTypeString, definedAtoms[i].position.x, definedAtoms[i].position.y, 
+                   definedAtoms[i].position.z, definedAtoms[i].charge);
   }
   std::print(stream, "    net-charge:  {}\n", netCharge);
   std::print(stream, "\n");
-  
-  std::print(stream, "    Translation-move probability:             {} [-]\n", mc_moves_probabilities.probabilityTranslationMove);
-  std::print(stream, "    Random translation-move probability:      {} [-]\n", mc_moves_probabilities.probabilityRandomTranslationMove);
-  std::print(stream, "    Rotation-move probability:                {} [-]\n", mc_moves_probabilities.probabilityRotationMove);
-  std::print(stream, "    Random rotation-move probability:         {} [-]\n", mc_moves_probabilities.probabilityRandomRotationMove);
-  std::print(stream, "    Volume-move probability:                  {} [-]\n", mc_moves_probabilities.probabilityVolumeMove);
-  std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", mc_moves_probabilities.probabilityReinsertionMove_CBMC);
-  std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", mc_moves_probabilities.probabilityIdentityChangeMove_CBMC);
-  std::print(stream, "    Swap-move (CBMC) probability:             {} [-]\n", mc_moves_probabilities.probabilitySwapMove_CBMC);
-  std::print(stream, "    Swap-move (CFCMC) probability:            {} [-]\n", mc_moves_probabilities.probabilitySwapMove_CFCMC);
-  std::print(stream, "    Swap-move (CFCMC/CBMC) probability:       {} [-]\n", mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC);
-  std::print(stream, "    Gibbs Volume-move probability:            {} [-]\n", mc_moves_probabilities.probabilityGibbsVolumeMove);
-  std::print(stream, "    Gibbs Swap-move (CBMC) probability:       {} [-]\n", mc_moves_probabilities.probabilityGibbsSwapMove_CBMC);
-  std::print(stream, "    Gibbs Swap-move (CFCMC) probability:      {} [-]\n", mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC);
-  std::print(stream, "    Gibbs Swap-move (CFCMC/CBMC) probability: {} [-]\n", mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC);
-  std::print(stream, "    Widom probability:                        {} [-]\n", mc_moves_probabilities.probabilityWidomMove);
-  std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", mc_moves_probabilities.probabilityWidomMove_CFCMC);
-  std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC);
+ 
+  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities; 
+  std::print(stream, "    Translation-move probability:             {} [-]\n", mc.probabilityTranslationMove);
+  std::print(stream, "    Random translation-move probability:      {} [-]\n", mc.probabilityRandomTranslationMove);
+  std::print(stream, "    Rotation-move probability:                {} [-]\n", mc.probabilityRotationMove);
+  std::print(stream, "    Random rotation-move probability:         {} [-]\n", mc.probabilityRandomRotationMove);
+  std::print(stream, "    Volume-move probability:                  {} [-]\n", mc.probabilityVolumeMove);
+  std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", mc.probabilityReinsertionMove_CBMC);
+  std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", mc.probabilityIdentityChangeMove_CBMC);
+  std::print(stream, "    Swap-move (CBMC) probability:             {} [-]\n", mc.probabilitySwapMove_CBMC);
+  std::print(stream, "    Swap-move (CFCMC) probability:            {} [-]\n", mc.probabilitySwapMove_CFCMC);
+  std::print(stream, "    Swap-move (CFCMC/CBMC) probability:       {} [-]\n", mc.probabilitySwapMove_CFCMC_CBMC);
+  std::print(stream, "    Gibbs Volume-move probability:            {} [-]\n", mc.probabilityGibbsVolumeMove);
+  std::print(stream, "    Gibbs Swap-move (CBMC) probability:       {} [-]\n", mc.probabilityGibbsSwapMove_CBMC);
+  std::print(stream, "    Gibbs Swap-move (CFCMC) probability:      {} [-]\n", mc.probabilityGibbsSwapMove_CFCMC);
+  std::print(stream, "    Gibbs Swap-move (CFCMC/CBMC) probability: {} [-]\n", mc.probabilityGibbsSwapMove_CFCMC_CBMC);
+  std::print(stream, "    Widom probability:                        {} [-]\n", mc.probabilityWidomMove);
+  std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", mc.probabilityWidomMove_CFCMC);
+  std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", mc.probabilityWidomMove_CFCMC_CBMC);
   std::print(stream, "\n");
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());
@@ -520,21 +527,14 @@ std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead(Rando
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<double3> randomPositions{};
   std::transform(std::begin(atoms), std::end(atoms),
-          std::back_inserter(randomPositions), [&](const Atom& atom) {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
+          std::back_inserter(randomPositions), [&](const Atom& atom) 
+          {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
   return randomPositions;
 }
 
-std::vector<Atom> Component::newAtoms(double scaling, size_t moleculeId) const
+std::vector<Atom> Component::recenteredCopy(double scaling, size_t moleculeId) const
 {
   std::vector<Atom> new_atoms(atoms);
-
-#if defined(_WIN32)
-  //assert(atomPositions.size() == numberOfAtoms);
-  //assert(atomCharges.size() == numberOfAtoms);
-#else
-  //_LIBCPP_ASSERT(atomPositions.size() == numberOfAtoms, "wrong number of atoms");
-  //_LIBCPP_ASSERT(atomCharges.size() == numberOfAtoms, "wrong number of atoms");
-#endif
 
   for (size_t i = 0; i < atoms.size(); ++i)
   {
@@ -558,14 +558,16 @@ std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling,
   return copied_atoms;
 }
 
-std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const
+std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, 
+                                   std::span<Atom> molecule, double scaling, size_t moleculeId) const
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
   for (size_t i = 0; i != atoms.size(); ++i)
   {
     copied_atoms[i].setScaling(scaling);
-    copied_atoms[i].position = position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
+    copied_atoms[i].position = position + randomRotationMatrix * 
+                                          (molecule[i].position - molecule[startingBead].position);
     copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
   }
   return copied_atoms;

@@ -11,19 +11,17 @@ import <cctype>;
 import <numbers>;
 
 import double3;
-
 import skspacegroup;
 import skelement;
-
 import scanner;
 import characterset;
-
 import atom;
 import forcefield;
 import simulationbox;
 
 
-CIFReader::CIFReader(const std::string& content, const ForceField &forceField): _scanner(content, CharacterSet::whitespaceAndNewlineCharacterSet())
+CIFReader::CIFReader(const std::string& content, const ForceField &forceField): 
+  _scanner(content, CharacterSet::whitespaceAndNewlineCharacterSet())
 {
   while (!_scanner.isAtEnd())
   {
@@ -71,13 +69,11 @@ CIFReader::CIFReader(const std::string& content, const ForceField &forceField): 
     }
   }
 
-  SimulationBox::Type type = (std::abs(_alpha - 90.0) > 1.0e-3) || (std::abs(_beta - 90.0) > 1.0e-3) || (std::abs(_gamma - 90.0) > 1.0e-3) ? SimulationBox::Type::Triclinic : SimulationBox::Type::Rectangular;
-  simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0, _gamma * std::numbers::pi / 180.0, type);
- //double3x3 unitCell = simulationBox.unitCell;
- //for (size_t i = 0; i < fractionalAtoms.size(); ++i)
- //{
- //    fractionalAtoms[i].position = unitCell * fractionalAtoms[i].position;
- //}
+  SimulationBox::Type type = (std::abs(_alpha - 90.0) > 1.0e-3) || (std::abs(_beta - 90.0) > 1.0e-3) || 
+                             (std::abs(_gamma - 90.0) > 1.0e-3) ? SimulationBox::Type::Triclinic : 
+                                                                  SimulationBox::Type::Rectangular;
+  simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0, 
+                                _gamma * std::numbers::pi / 180.0, type);
 }
 
 void CIFReader::parseLine([[maybe_unused]] std::string &string)
@@ -191,7 +187,9 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
 
   // part 1: read the 'tags'
   previousScanLocation = _scanner.scanLocation();
-  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) && (tempString.size() > 0) && (tempString.starts_with(std::string("_")) || (tempString.starts_with(std::string("#")))))
+  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) && 
+                                     (tempString.size() > 0) && (tempString.starts_with(std::string("_")) || 
+                                     (tempString.starts_with(std::string("#")))))
   {
     //std::string tag = tempString.toLower();
     std::string tag = tempString;
@@ -221,7 +219,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
 
     if (value1)
     {
-      if (std::map<std::string, std::string>::iterator index = dictionary.find(std::string("_atom_site_type_symbol")); (index != dictionary.end()))
+      if (std::map<std::string, std::string>::iterator index = 
+          dictionary.find(std::string("_atom_site_type_symbol")); (index != dictionary.end()))
       {
         // at least _atom_site_type_symbol is present
         std::string chemicalElement = index->second;
@@ -236,7 +235,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
 
         Atom atom = Atom();
 
-        if (std::map<std::string, std::string>::iterator atomSiteIndex = dictionary.find(std::string("_atom_site_label")); (atomSiteIndex != dictionary.end()))
+        if (std::map<std::string, std::string>::iterator atomSiteIndex = 
+            dictionary.find(std::string("_atom_site_label")); (atomSiteIndex != dictionary.end()))
         {
           std::string tempString1 = atomSiteIndex->second;
           std::replace_if(tempString1.begin(), tempString1.end(), [](char c) {return std::isdigit(c); }, ' ');
@@ -256,7 +256,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           //  atom->setUniqueForceFieldName(atomSiteIndex->second);
         }
 
-        if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex = dictionary.find(std::string("_atom_site_forcefield_label")); (atomSiteForceFieldIndex != dictionary.end()))
+        if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex = 
+            dictionary.find(std::string("_atom_site_forcefield_label")); (atomSiteForceFieldIndex != dictionary.end()))
         {
           //  atom->setUniqueForceFieldName(atomSiteForceFieldIndex->second);
         }
@@ -264,7 +265,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
         std::map<std::string, std::string>::iterator atom_site_x = dictionary.find(std::string("_atom_site_fract_x"));
         std::map<std::string, std::string>::iterator atom_site_y = dictionary.find(std::string("_atom_site_fract_y"));
         std::map<std::string, std::string>::iterator atom_site_z = dictionary.find(std::string("_atom_site_fract_z"));
-        if ((atom_site_x != dictionary.end()) && (atom_site_y != dictionary.end()) && (atom_site_z != dictionary.end()))
+        if ((atom_site_x != dictionary.end()) && (atom_site_y != 
+            dictionary.end()) && (atom_site_z != dictionary.end()))
         {
           double3 position;
           //bool succes = false;
@@ -286,7 +288,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           }
         }
 
-        std::map<std::string, std::string>::iterator atom_occupancy = dictionary.find(std::string("_atom_site_occupancy"));
+        std::map<std::string, std::string>::iterator atom_occupancy = 
+          dictionary.find(std::string("_atom_site_occupancy"));
         if (atom_occupancy != dictionary.end())
         {
           //double occpuancy = 0.0;
@@ -298,7 +301,9 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           //}
         }
 
-        if (std::map<std::string, size_t>::iterator chemicalElementIndex = PredefinedElements::atomicNumberData.find(chemicalElement); chemicalElementIndex != PredefinedElements::atomicNumberData.end())
+        if (std::map<std::string, size_t>::iterator chemicalElementIndex = 
+            PredefinedElements::atomicNumberData.find(chemicalElement); 
+            chemicalElementIndex != PredefinedElements::atomicNumberData.end())
         {
           //atom.type = chemicalElementIndex->second;
         }
@@ -307,25 +312,33 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
       }
       else
       {
-        if (std::map<std::string, std::string>::iterator index2 = dictionary.find(std::string("_atom_site.type_symbol")); (index2 != dictionary.end()))
+        if (std::map<std::string, std::string>::iterator index2 = 
+            dictionary.find(std::string("_atom_site.type_symbol")); (index2 != dictionary.end()))
         {
           Atom atom = Atom();
 
-          if (std::map<std::string, std::string>::iterator atomSiteIndex = dictionary.find(std::string("_atom_site.id")); (atomSiteIndex != dictionary.end()))
+          if (std::map<std::string, std::string>::iterator atomSiteIndex = 
+              dictionary.find(std::string("_atom_site.id")); (atomSiteIndex != dictionary.end()))
           {
              // atom->setDisplayName(atomSiteIndex->second);
              // atom->setUniqueForceFieldName(atomSiteIndex->second);
           }
 
-          if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex = dictionary.find(std::string("_atom_site.forcefield_label")); (atomSiteForceFieldIndex != dictionary.end()))
+          if (std::map<std::string, std::string>::iterator atomSiteForceFieldIndex = 
+              dictionary.find(std::string("_atom_site.forcefield_label")); 
+              (atomSiteForceFieldIndex != dictionary.end()))
           {
             //atom->setUniqueForceFieldName(atomSiteForceFieldIndex->second);
           }
 
-          std::map<std::string, std::string>::iterator atom_site_x = dictionary.find(std::string("_atom_site.fract_x"));
-          std::map<std::string, std::string>::iterator atom_site_y = dictionary.find(std::string("_atom_site.fract_y"));
-          std::map<std::string, std::string>::iterator atom_site_z = dictionary.find(std::string("_atom_site.fract_z"));
-          if ((atom_site_x != dictionary.end()) && (atom_site_y != dictionary.end()) && (atom_site_z != dictionary.end()))
+          std::map<std::string, std::string>::iterator atom_site_x = 
+            dictionary.find(std::string("_atom_site.fract_x"));
+          std::map<std::string, std::string>::iterator atom_site_y = 
+            dictionary.find(std::string("_atom_site.fract_y"));
+          std::map<std::string, std::string>::iterator atom_site_z = 
+            dictionary.find(std::string("_atom_site.fract_z"));
+          if ((atom_site_x != dictionary.end()) && (atom_site_y != dictionary.end()) && 
+              (atom_site_z != dictionary.end()))
           {
             //double3 position;
             //bool succes = false;
@@ -361,7 +374,8 @@ std::optional<std::string> CIFReader::parseValue()
   std::string::const_iterator previousScanLocation = _scanner.scanLocation();
 
   std::string tempString;
-  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) && tempString.starts_with(std::string("#")))
+  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) && 
+         tempString.starts_with(std::string("#")))
   {
     skipComment();
   };

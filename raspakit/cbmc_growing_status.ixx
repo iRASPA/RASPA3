@@ -7,6 +7,7 @@ import component;
 import atom;
 import bond_potential;
 
+
 export struct GrowingStatus
 {
   GrowingStatus(const Component& component, const std::vector<bool> &placedBeads) : size(component.atoms.size()),

@@ -54,6 +54,7 @@ import mc_moves_count;
 import property_pressure;
 import transition_matrix;
 
+
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
     numberOfInitializationCycles(reader.numberOfInitializationCycles),
@@ -193,7 +194,8 @@ void MonteCarlo::initialize()
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
-      particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+      particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, 
+                                      selectedComponent, fractionalMoleculeSystem);
 
       for(System &system : systems)
       {
@@ -210,7 +212,8 @@ void MonteCarlo::initialize()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
 
-        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system.loadings = 
+          Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
         std::flush(stream);
       }
@@ -281,15 +284,19 @@ void MonteCarlo::equilibrate()
       System& selectedSecondSystem = systems[selectedSystemPair.second];
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
-      particleMoves.performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent, fractionalMoleculeSystem);
+      particleMoves.performRandomMove(random, selectedSystem, selectedSecondSystem, 
+                                      selectedComponent, fractionalMoleculeSystem);
 
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
-                                                                                selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
-                  selectedSecondSystem.containsTheFractionalMolecule);
+      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
+          selectedSecondSystem.containsTheFractionalMolecule);
 
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSecondSystem.containsTheFractionalMolecule);
+      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+                              selectedSystem.containsTheFractionalMolecule);
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+                              selectedSecondSystem.containsTheFractionalMolecule);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -298,7 +305,8 @@ void MonteCarlo::equilibrate()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
 
-        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system.loadings = 
+          Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
@@ -311,7 +319,8 @@ void MonteCarlo::equilibrate()
       {
         for (Component& component : system.components)
         {
-          component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, 
+          component.lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, 
                                                  system.containsTheFractionalMolecule);
         }
       }
@@ -381,7 +390,8 @@ void MonteCarlo::production()
   {
     for (Component& component : system.components)
     {
-      double currentMinBias = *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
+      double currentMinBias = 
+        *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
     }
   }
@@ -418,8 +428,10 @@ void MonteCarlo::production()
                                                 fractionalMoleculeSystem, estimation.currentBin);
 
       // sample the occupancy within the innerloop
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSecondSystem.containsTheFractionalMolecule);
+      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+                               selectedSystem.containsTheFractionalMolecule);
+      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+                               selectedSecondSystem.containsTheFractionalMolecule);
 
       ++numberOfSteps;
     }
@@ -512,7 +524,8 @@ void MonteCarlo::output()
 
     for(const Component &component : system.components)
     {
-      std::print(stream, "{}", component.mc_moves_count.writeComponentStatistics(numberOfSteps, component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_count.writeComponentStatistics(numberOfSteps, 
+                                                       component.componentId, component.name));
     }
     std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
 
@@ -528,7 +541,8 @@ void MonteCarlo::output()
 
     for(const Component &component : system.components)
     {
-      std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, 
+                                                                                            component.name));
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
@@ -540,7 +554,8 @@ void MonteCarlo::output()
 
     std::print(stream, "{}", system.averageEnergies.writeAveragesStatistics(system.components));
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
-    std::print(stream, "{}", system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+    std::print(stream, "{}", system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, 
+                                                                                          system.components));
     std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }

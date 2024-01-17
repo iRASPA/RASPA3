@@ -36,7 +36,7 @@ std::pair<EnergyStatus, double3x3> System::computeEwaldFourierEnergyStrainDeriva
   EnergyStatus energy(components.size());
   double3x3 strainDerivative;
 
-  if(noCharges || omitEwaldFourier) return std::make_pair(energy, strainDerivative);
+  if(forceField.noCharges || forceField.omitEwaldFourier) return std::make_pair(energy, strainDerivative);
 
   std::span<const Atom> atoms = spanOfFlexibleAtoms();
   size_t numberOfAtoms = atoms.size();

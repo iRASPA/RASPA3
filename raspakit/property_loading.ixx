@@ -17,7 +17,8 @@ import averages;
 import loadings;
 import component;
 
-inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &lhs, const std::pair<Loadings, double> &rhs)
+inline std::pair<Loadings, double> 
+pair_sum(const std::pair<Loadings, double> &lhs, const std::pair<Loadings, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -29,7 +30,8 @@ export struct PropertyLoading
   PropertyLoading(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
-      bookKeepingLoadings(std::vector<std::pair<Loadings, double>>(numberOfBlocks, std::make_pair(Loadings(numberOfComponents), 0.0)))
+      bookKeepingLoadings(std::vector<std::pair<Loadings, double>>(numberOfBlocks, 
+                          std::make_pair(Loadings(numberOfComponents), 0.0)))
   {
   }
 
@@ -44,7 +46,8 @@ export struct PropertyLoading
   void resize(size_t newNumberOfComponents)
   {
     numberOfComponents = newNumberOfComponents;
-    bookKeepingLoadings = std::vector<std::pair<Loadings, double>>(numberOfBlocks, std::make_pair(Loadings(numberOfComponents), 0.0));
+    bookKeepingLoadings = std::vector<std::pair<Loadings, double>>(numberOfBlocks, 
+                          std::make_pair(Loadings(numberOfComponents), 0.0));
   }
 
   inline void addSample(size_t blockIndex, const Loadings &loading, const double &weight)
@@ -62,7 +65,9 @@ export struct PropertyLoading
 
   Loadings averagedLoading() const
   {
-    std::pair<Loadings,double> summedBlocks = std::accumulate (bookKeepingLoadings.begin(), bookKeepingLoadings.end(), std::make_pair(Loadings(numberOfComponents), 0.0), pair_sum);
+    std::pair<Loadings,double> summedBlocks = 
+      std::accumulate(bookKeepingLoadings.begin(), bookKeepingLoadings.end(), 
+      std::make_pair(Loadings(numberOfComponents), 0.0), pair_sum);
     return summedBlocks.first / summedBlocks.second;
   }
 

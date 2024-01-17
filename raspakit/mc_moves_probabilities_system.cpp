@@ -14,6 +14,7 @@ import double3;
 import move_statistics;
 import stringutils;
 
+
 void MCMoveProbabilitiesSystem::clear()
 {
   statistics_VolumeMove.clear();

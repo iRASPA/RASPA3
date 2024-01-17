@@ -130,8 +130,8 @@ void System::computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEne
     double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
     double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-    if (noCharges) return;
-    if (omitEwaldFourier) return;
+    if (forceField.noCharges) return;
+    if (forceField.omitEwaldFourier) return;
 
     std::span<const Atom> atoms = spanOfRigidFrameworkAtoms();
     size_t numberOfAtoms = atoms.size();
@@ -259,8 +259,8 @@ void System::computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  if(noCharges) return;
-  if(omitEwaldFourier) return;
+  if(forceField.noCharges) return;
+  if(forceField.omitEwaldFourier) return;
 
   size_t numberOfAtoms = atomPositions.size();
 
@@ -435,8 +435,8 @@ ForceFactor System::computeEwaldFourierGradient()
 
   ForceFactor energy{ 0.0, 0.0, 0.0 };
 
-  if (noCharges) return energy;
-  if (omitEwaldFourier) return energy;
+  if (forceField.noCharges) return energy;
+  if (forceField.omitEwaldFourier) return energy;
 
   size_t numberOfAtoms = atomPositions.size();
 
@@ -626,8 +626,8 @@ void System::computeEwaldFourierEnergy(const SimulationBox& box, std::span<const
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  if (noCharges) return;
-  if (omitEwaldFourier) return;
+  if (forceField.noCharges) return;
+  if (forceField.omitEwaldFourier) return;
 
   size_t numberOfAtoms = moleculeAtomPositions.size();
 
@@ -796,8 +796,8 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::pair<std::co
 {
   RunningEnergy energy;
 
-  if(noCharges) return energy;
-  if(omitEwaldFourier) return energy;
+  if(forceField.noCharges) return energy;
+  if(forceField.omitEwaldFourier) return energy;
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -1013,8 +1013,8 @@ RunningEnergy System::energyDifferenceEwaldFourier(std::vector<std::pair<std::co
 
 void System::acceptEwaldMove()
 {
-  if(noCharges) return;
-  if(omitEwaldFourier) return;
+  if(forceField.noCharges) return;
+  if(forceField.omitEwaldFourier) return;
 
   storedEik = totalEik;
 }

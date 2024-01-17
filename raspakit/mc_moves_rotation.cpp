@@ -35,9 +35,9 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_rotation.cpp
 
-std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComponent, std::span<Atom> molecule)
+std::optional<RunningEnergy> 
+MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComponent, std::span<Atom> molecule)
 {
   double3 angle{};
   std::array<double3,3> axes{double3(1.0,0.0,0.0), double3(0.0,1.0,0.0) ,double3(0.0,0.0,1.0) };
@@ -58,7 +58,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
                         + molecule[startingBead].position; return a; });
 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> frameworkMolecule = system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
+  std::optional<RunningEnergy> frameworkMolecule = 
+    system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.rotationMoveNonEwald += (t2 - t1);
   system.mc_moves_cputime.rotationMoveNonEwald += (t2 - t1);

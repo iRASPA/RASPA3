@@ -1,65 +1,58 @@
 export module cbmc;
 
+import <vector>;
+import <optional>;
+import <span>;
+
 import atom;
 import double3x3;
 import double3;
 import randomnumbers;
-
 import energy_status;
 import energy_status_intra;
 import energy_status_inter;
 import running_energy;
+import cbmc_chain_data;
+import component;
+import forcefield;
+import simulationbox;
 
-import <vector>;
 
-export struct FirstBeadData
+export namespace CBMC
 {
-  Atom atom;
-  RunningEnergy energies;
-  double RosenbluthWeight;
-  double storedR;
-
-  FirstBeadData(Atom atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept :
-      atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
-  {
-  }
-
-  FirstBeadData() noexcept = delete;
-  FirstBeadData(const FirstBeadData& a) noexcept = default;
-  FirstBeadData& operator=(const FirstBeadData& a) noexcept = default;
-  FirstBeadData(FirstBeadData&& a) noexcept = default;
-  FirstBeadData& operator=(FirstBeadData&& a) noexcept = default;
-  ~FirstBeadData() noexcept = default;
-};
-
-export struct ChainData
-{
-  std::vector<Atom> atom;
-  RunningEnergy energies;
-  double RosenbluthWeight;
-  double storedR;
-
-  ChainData(std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept :
-      atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
-  {
-  }
-  ChainData() = delete;
-  ChainData(const ChainData& a) noexcept = default;
-  ChainData& operator=(const ChainData& a) noexcept = default;
-  ChainData(ChainData&& a) noexcept = default;
-  ChainData& operator=(ChainData&& a) noexcept = default;
-  ~ChainData() noexcept = default;
-};
-
-export inline std::vector<Atom> rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, size_t startingBead)
-{
-  double3x3 randomRotationMatrix = random.randomRotationMatrix();
-  std::vector<Atom> randomlyRotatedAtoms{};
-  for (size_t i = 0; i < atoms.size(); ++i)
-  {
-    Atom b = atoms[i];
-    b.position = atoms[startingBead].position + randomRotationMatrix * (b.position - atoms[startingBead].position);
-    randomlyRotatedAtoms.push_back(b);
-  }
-  return randomlyRotatedAtoms;
+  // insertion
+  [[nodiscard]] std::optional<ChainData>
+  growMoleculeSwapInsertion(RandomNumber &random, const std::vector<Component> &components, 
+                            const ForceField &forceField, const SimulationBox &simulationBox, 
+                            std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
+                            Component::GrowType growType, double cutOff, double cutOffCoulomb, 
+                            size_t selectedComponent, size_t selectedMolecule, double scaling, 
+                            std::vector<Atom> atoms, size_t numberOfTrialDirections) noexcept;
+  
+  // deletion
+  [[nodiscard]] ChainData
+  retraceMoleculeSwapDeletion(RandomNumber &random, const std::vector<Component> &components, 
+                              const ForceField &forceField, const SimulationBox &simulationBox, 
+                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
+                              double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+                              std::span<Atom> molecule, double scaling, double storedR, 
+                              size_t numberOfTrialDirections) noexcept; 
+  
+  // reinsertion grow
+  [[nodiscard]] std::optional<ChainData>
+  growMoleculeReinsertion(RandomNumber &random, const std::vector<Component> &components, const ForceField &forceField, 
+                          const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
+                          std::span<const Atom> moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, 
+                          size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule, 
+                          size_t numberOfTrialDirections) noexcept;
+  
+  // reinsertion retrace
+  [[nodiscard]] ChainData
+  retraceMoleculeReinsertion(RandomNumber &random, const std::vector<Component> &components, 
+                             const ForceField &forceField, const SimulationBox &simulationBox, 
+                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
+                             double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
+                             std::span<Atom> molecule, double storedR, size_t numberOfTrialDirections) noexcept;
 }
+
+

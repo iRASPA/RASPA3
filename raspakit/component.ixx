@@ -18,7 +18,6 @@ import archive;
 import randomnumbers;
 import int3;
 import double3;
-
 import averages;
 import atom;
 import forcefield;
@@ -32,6 +31,7 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
+
 
 export struct Component
 {
@@ -50,7 +50,8 @@ export struct Component
 
   Component();
   Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
-            std::optional<const std::string> fileName, size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
+            std::optional<const std::string> fileName, size_t numberOfBlocks, size_t numberOfLambdaBins) 
+            noexcept(false);
   Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
             double T_c, double P_c, double w, std::vector<Atom> definedAtoms, 
             size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
@@ -157,9 +158,10 @@ export struct Component
   std::string printBreakthroughStatus() const;
 
   std::vector<double3> randomlyRotatedPositionsAroundStartingBead(RandomNumber &random) const;
-  std::vector<Atom> newAtoms(double scaling, size_t moleculeId) const;
+  std::vector<Atom> recenteredCopy(double scaling, size_t moleculeId) const;
   std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;
-  std::vector<Atom> copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+  std::vector<Atom> copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, 
+                                               double scaling, size_t moleculeId) const;
   std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);

@@ -5,6 +5,7 @@ import <fstream>;
 
 import archive;
 
+
 export struct EnergyFactor
 {
   double energy;

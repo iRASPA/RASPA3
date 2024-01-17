@@ -8,6 +8,7 @@ import <source_location>;
 
 import archive;
 
+
 export template<typename T>
 struct MoveStatistics
 {
@@ -49,11 +50,15 @@ struct MoveStatistics
     accepted = T();
   }
 
-  template<class U> friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<U> &m);
-  template<class U> friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<U> &m);
+  template<class U> 
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<U> &m);
+
+  template<class U> 
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<U> &m);
 };
 
-export template<class T> Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<T> &m)
+export template<class T> 
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<T> &m)
 {
   archive << m.versionNumber;
 
@@ -69,7 +74,8 @@ export template<class T> Archive<std::ofstream> &operator<<(Archive<std::ofstrea
   return archive;
 }
 
-export template<class T> Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<T> &m)
+export template<class T> 
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<T> &m)
 {
   uint64_t versionNumber;
   archive >> versionNumber;

@@ -33,6 +33,7 @@ import multi_site_isotherm;
 import system;
 import simulationbox;
 
+
 IsothermFitting::IsothermFitting(System &system) noexcept:
   system(system),
   random(std::nullopt),
@@ -70,7 +71,8 @@ std::string IsothermFitting::writeHeader()
   return stream.str();
 }
 
-void IsothermFitting::writeComponentIsothermFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const
+void IsothermFitting::writeComponentIsothermFittingStatus(std::ostream &stream, 
+                                                          const std::vector<std::pair<double, double>> &rawData) const
 {
   std::print(stream, "Found {} data points\n", rawData.size());
   for(const std::pair<double, double> &data : rawData)
@@ -204,7 +206,8 @@ inline bool my_isnan(double val)
   return (u.x << 1) > (0x7ff0000000000000u << 1);
 }
 
-double IsothermFitting::fitness(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData)
+double IsothermFitting::fitness(const MultiSiteIsotherm &phenotype, 
+                                const std::vector<std::pair<double, double>> &rawData)
 {
   double fitnessValue = phenotype.fitness();
   size_t m = rawData.size();              // number of observations
@@ -225,7 +228,8 @@ double IsothermFitting::fitness(const MultiSiteIsotherm &phenotype, const std::v
   return fitnessValue;
 }
 
-double IsothermFitting::RCorrelation(const MultiSiteIsotherm &phenotype, const std::vector<std::pair<double, double>> &rawData)
+double IsothermFitting::RCorrelation(const MultiSiteIsotherm &phenotype, 
+                                     const std::vector<std::pair<double, double>> &rawData)
 {
   double RCorrelationValue = phenotype.fitness();
   size_t m = rawData.size();
@@ -293,7 +297,8 @@ void IsothermFitting::nuclearDisaster(size_t Id, const std::vector<std::pair<dou
 
 void IsothermFitting::elitism()
 {
-  std::copy(parents.begin(), parents.begin() + static_cast<std::vector<DNA>::difference_type>(GA_Elitists), children.begin());
+  std::copy(parents.begin(), parents.begin() + static_cast<std::vector<DNA>::difference_type>(GA_Elitists), 
+            children.begin());
 }
 
 void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] size_t Id)
@@ -453,8 +458,10 @@ void IsothermFitting::mate(size_t Id, const std::vector<std::pair<double, double
   elitism();
 
   // mates from GA_Elitists to (GA_Size - GA_Elitists)
-  crossover(Id, GA_Elitists, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5), 0, GA_Elitists, 0, GA_Elitists);
-  crossover(Id, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5) + 1, GA_Size - GA_Elitists, 0, GA_Elitists, GA_Elitists, GA_Size - 1);
+  crossover(Id, GA_Elitists, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5), 0, 
+            GA_Elitists, 0, GA_Elitists);
+  crossover(Id, GA_Elitists + static_cast<size_t>(static_cast<double>(GA_Motleists) * 0.5) + 1, 
+            GA_Size - GA_Elitists, 0, GA_Elitists, GA_Elitists, GA_Size - 1);
 
   // mutation from GA_Elitists to (GA_Size - GA_Elitists) with "GA_MutationRate" probability
   for(size_t i = GA_Elitists; i < GA_Size - GA_Elitists; ++i)
@@ -486,7 +493,8 @@ void IsothermFitting::sortByFitness()
 
 
 void IsothermFitting::writeCitizen(std::ostream &stream, size_t componentId, size_t citizen, size_t step, 
-                           size_t variety, size_t fullfilledCondition, const std::vector<std::pair<double, double>> &rawData)
+                           size_t variety, size_t fullfilledCondition, 
+                           const std::vector<std::pair<double, double>> &rawData)
 {
   if(fullfilledCondition > 0)
   {
@@ -513,7 +521,8 @@ void IsothermFitting::writeCitizen(std::ostream &stream, size_t componentId, siz
 }
 
 
-IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t componentId, const std::vector<std::pair<double, double>> &rawData)
+IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t componentId, 
+                                          const std::vector<std::pair<double, double>> &rawData)
 {
   size_t optimisationStep{ 0 };
   const size_t maxOptimisationStep{ 1000 };
@@ -630,7 +639,8 @@ IsothermFitting::DNA IsothermFitting::fit(std::ostream &stream, size_t component
 // 4) Contract: if not better then contract it 
 // 5) Shrink: if still not better we shrink towards the best performing point
 // 6) Check convergence
-const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA citizen, double scale, const std::vector<std::pair<double, double>> &rawData)
+const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA citizen, double scale, 
+                                                    const std::vector<std::pair<double, double>> &rawData)
 {
   size_t n = citizen.phenotype.numberOfParameters;
   std::vector<std::vector<double>> v(n + 1, std::vector<double>(n)); // holds vertices of simplex
@@ -880,13 +890,14 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
   return citizen;
 }
 
-void IsothermFitting::printSolution(std::ostream &stream, [[maybe_unused]] size_t componentId, [[maybe_unused]] const DNA &citizen)
+void IsothermFitting::printSolution(std::ostream &stream,  size_t componentId, const DNA &citizen)
 {
-  std::print(stream, "Component {:2d} MoleculeName             {}\n", componentId, system.components[componentId].name);
-  std::print(stream, "             FileName                 {}\n", system.components[componentId].filename);
-  std::print(stream, "             ColumnPressure           {:<3d}\n", system.components[componentId].columnPressure);
-  std::print(stream, "             ColumnLoading            {:<3d}\n", system.components[componentId].columnLoading);
-  std::print(stream, "             NumberOfIsothermSites    {:<3d}\n", system.components[componentId].isotherm.sites.size());
+  const Component &component = system.components[componentId];
+  std::print(stream, "Component {:2d} MoleculeName             {}\n", componentId, component.name);
+  std::print(stream, "             FileName                 {}\n", component.filename);
+  std::print(stream, "             ColumnPressure           {:<3d}\n", component.columnPressure);
+  std::print(stream, "             ColumnLoading            {:<3d}\n", component.columnLoading);
+  std::print(stream, "             NumberOfIsothermSites    {:<3d}\n", component.isotherm.sites.size());
   std::print(stream, "{}\n\n", citizen.phenotype.printAsInputFormat());
 }
 
@@ -907,7 +918,8 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
 
   std::print(stream, "set encoding utf8\n");
   std::print(stream, "set xlabel 'Pressure, {{/Helvetica-Italic p}} / [Pa]' font 'Helvetica,18'\n");
-  std::print(stream, "set ylabel 'Absolute loading, {{/Helvetica-Italic q}} / [mol/kg]' offset 0.0,0 font 'Helvetica,18'\n");
+  std::print(stream, "set ylabel 'Absolute loading, {{/Helvetica-Italic q}} / [mol/kg]' offset 0.0,0 "
+                     "font 'Helvetica,18'\n");
   std::print(stream, "set bmargin 4\n");
   std::print(stream, "set yrange[0:]\n");
   if(system.components[componentId].pressureScale == Component::PressureScale::Log)
@@ -945,35 +957,36 @@ void IsothermFitting::createPlotScript(size_t componentId, const DNA &citizen)
 void IsothermFitting::createPlotScript()
 {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    std::filesystem::create_directory("IsothermFitting");
-    std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs.bat", system.systemId));
-    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
-    for(size_t i = 0; i < system.components.size(); ++i)
-    { 
-      if(system.components[i].isotherm.numberOfParameters > 0)
-      {
-        std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", std::to_string(i), system.components[i].name);
-      }
-    }
-    std::filesystem::path path{ "make_graphs.bat" };
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
-#else
-    std::filesystem::create_directory("IsothermFitting");
-    std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
-    std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs", system.systemId));
-    stream_graphs << "#!/bin/sh\n";
-    stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
-    for (size_t i = 0; i < system.components.size(); ++i)
+  std::filesystem::create_directory("IsothermFitting");
+  std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
+  std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs.bat", system.systemId));
+  stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-"
+                   "win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+  for(size_t i = 0; i < system.components.size(); ++i)
+  { 
+    if(system.components[i].isotherm.numberOfParameters > 0)
     {
-      if (system.components[i].isotherm.numberOfParameters > 0)
-      {
-        std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", std::to_string(i), system.components[i].name);
-      }
+      std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", 
+                                std::to_string(i), system.components[i].name);
     }
-    std::filesystem::path path{ "make_graphs" };
-    std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+  }
+  std::filesystem::path path{ "make_graphs.bat" };
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
+#else
+  std::filesystem::create_directory("IsothermFitting");
+  std::filesystem::create_directory(std::format("IsothermFitting/System_{}", system.systemId));
+  std::ofstream stream_graphs(std::format("IsothermFitting/System_{}/make_graphs", system.systemId));
+  stream_graphs << "#!/bin/sh\n";
+  stream_graphs << "cd -- \"$(dirname \"$0\")\"\n";
+  for (size_t i = 0; i < system.components.size(); ++i)
+  {
+    if (system.components[i].isotherm.numberOfParameters > 0)
+    {
+      std::print(stream_graphs, "gnuplot.exe plot_fit_component_{}_{}\n", 
+                                std::to_string(i), system.components[i].name);
+    }
+  }
+  std::filesystem::path path{ "make_graphs" };
+  std::filesystem::permissions(path, std::filesystem::perms::owner_exec, std::filesystem::perm_options::add);
 #endif
-
-
 }

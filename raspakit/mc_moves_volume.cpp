@@ -38,7 +38,6 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_volume.cpp
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system) const
 {

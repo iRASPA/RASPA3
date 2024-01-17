@@ -24,6 +24,7 @@ import component;
 import atom;
 import simulationbox;
 import cbmc;
+import cbmc_chain_data;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -38,9 +39,9 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import transition_matrix;
 
-// mc_moves_deletion.cpp
 
-std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
+std::pair<std::optional<RunningEnergy>, double3> 
+MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalCounts += 1;
@@ -56,7 +57,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    ChainData retraceData = system.retraceMoleculeSwapDeletion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0, 0.0);
+    ChainData retraceData = 
+      CBMC::retraceMoleculeSwapDeletion(random, system.components, system.forceField, system.simulationBox, 
+                                        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, 
+                                        cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                        1.0, 0.0, system.numberOfTrialDirections);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
@@ -69,14 +74,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-    [[maybe_unused]] RunningEnergy tailEnergyDifference = system.computeInterMolecularTailEnergyDifference({}, molecule) +
-                                                          system.computeFrameworkMoleculeTailEnergyDifference({}, molecule);
+    [[maybe_unused]] RunningEnergy tailEnergyDifference = 
+      system.computeInterMolecularTailEnergyDifference({}, molecule) +
+      system.computeFrameworkMoleculeTailEnergyDifference({}, molecule);
     std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
     system.mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
 
-    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
-    //double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total()));
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
+                                                            tailEnergyDifference.total()));
 
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * double(system.numberOfMoleculesPerComponent[selectedComponent]) /

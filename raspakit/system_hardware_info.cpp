@@ -87,24 +87,21 @@ std::string System::writeOutputHeaderHardware() const
     // Get a local time_point with system_clock::duration precision
     //  FIX
     //auto now = std::chrono::zoned_time{ std::chrono::current_zone(), std::chrono::system_clock::now() }.get_local_time();
+    auto now = std::chrono::system_clock::now();
 
-    //// Get a local time_point with days precision
-    //auto dp = std::chrono::floor<std::chrono::days>(now);
+    // Get a local time_point with days precision
+    auto dp = std::chrono::floor<std::chrono::days>(now);
 
-    //// Convert local days-precision time_point to a local {y, m, d} calendar
-    //std::chrono::year_month_day ymd{ dp };
-    //std::chrono::weekday weekday{ dp };
-    //std::chrono::hh_mm_ss<std::chrono::minutes> time{ std::chrono::duration_cast<std::chrono::minutes>(now - dp) };
-    //std::print(stream, "{}\n", now);
-    //std::print(stream, "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
-    //std::print(stream, "The start time was {}\n\n", time);
+    // Convert local days-precision time_point to a local {y, m, d} calendar
+    std::chrono::year_month_day ymd{ dp };
+    std::chrono::weekday weekday{ dp };
+    std::chrono::hh_mm_ss<std::chrono::minutes> time{ std::chrono::duration_cast<std::chrono::minutes>(now - dp) };
+    std::print(stream, "{}\n", now);
+    std::print(stream, "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
+    std::print(stream, "The start time was {}\n\n", time);
 
     // get hostname and cpu-info for linux
 #if defined (__linux__)|| defined(__linux)
-    //int mib[2];
-    //size_t len;
-    //len = sizeof(buffer);
-
     struct utsname uts;
     uname(&uts);
     std::print(stream, "Hostname:    {}\n", uts.nodename);

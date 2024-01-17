@@ -112,7 +112,8 @@ void SimulationBox::setBoxLengths(double3 lengths)
   double temp = (cos(angleAlpha) - cos(angleGamma) * cos(angleBeta)) / sin(angleGamma);
   double3 v1 = double3(lengths.x, 0.0, 0.0);
   double3 v2 = double3(lengths.y * cos(angleGamma), lengths.y * sin(angleGamma), 0.0);
-  double3 v3 = double3(lengths.z * cos(angleBeta), lengths.z * temp, lengths.z * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
+  double3 v3 = double3(lengths.z * cos(angleBeta), lengths.z * temp, 
+                       lengths.z * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
   unitCell = double3x3(v1, v2, v3);
   inverseUnitCell = unitCell.inverse();
   volume = unitCell.determinant();
@@ -130,7 +131,8 @@ void SimulationBox::setBoxAngles(double3 angles)
   double temp = (cos(angles.x) - cos(angles.z) * cos(angles.y)) / sin(angles.z);
   double3 v1 = double3(lengths.x, 0.0, 0.0);
   double3 v2 = double3(lengths.y * cos(angles.z), lengths.y * sin(angles.z), 0.0);
-  double3 v3 = double3(lengths.z * cos(angles.y), lengths.z * temp, lengths.z * sqrt(1.0 - cos(angles.y) * cos(angles.y) - temp * temp));
+  double3 v3 = double3(lengths.z * cos(angles.y), lengths.z * temp, 
+                       lengths.z * sqrt(1.0 - cos(angles.y) * cos(angles.y) - temp * temp));
   unitCell = double3x3(v1, v2, v3);
   inverseUnitCell = unitCell.inverse();
   volume = unitCell.determinant();
@@ -184,14 +186,19 @@ std::string SimulationBox::printStatus() const
 std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unused]] const SimulationBox& error) const
 {
   std::ostringstream stream;
-  std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ax, unitCell.bx, unitCell.cx,
-      average.unitCell.ax, average.unitCell.bx, average.unitCell.cx);
-  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ay, unitCell.by, unitCell.cy,
-      average.unitCell.ay, average.unitCell.by, average.unitCell.cy);
-  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", unitCell.az, unitCell.bz, unitCell.cz,
-      average.unitCell.az, average.unitCell.bz, average.unitCell.cz);
-  std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", lengthA, lengthB, lengthC,
-      average.lengthA, average.lengthB, average.lengthC);
+  std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", 
+                     unitCell.ax, unitCell.bx, unitCell.cx,
+                     average.unitCell.ax, average.unitCell.bx, average.unitCell.cx);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", 
+                     unitCell.ay, unitCell.by, unitCell.cy,
+                     average.unitCell.ay, average.unitCell.by, average.unitCell.cy);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", 
+                     unitCell.az, unitCell.bz, unitCell.cz,
+                     average.unitCell.az, average.unitCell.bz, average.unitCell.cz);
+  std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", 
+                     lengthA, lengthB, lengthC,
+                     average.lengthA, average.lengthB, average.lengthC);
+
   double conv = 180.0 / std::numbers::pi;
   std::print(stream, "Angles:  {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", 
       conv * angleAlpha, conv * angleBeta, conv * angleGamma,

@@ -20,6 +20,7 @@ import energy_status_intra;
 import energy_status_inter;
 import energy_factor;
 
+
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& components, const std::string &label)
 {
   std::ostringstream stream;
@@ -55,7 +56,8 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
     {
       std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);
       std::print(stream, "        Van der Waals:        {: .6e}\n", conv * (*this)(i,j).VanDerWaals.energy);
-      std::print(stream, "        Van der Waals (Tail): {: .6e}\n", conv * (*this)(i,j).VanDerWaalsTailCorrection.energy);
+      std::print(stream, "        Van der Waals (Tail): {: .6e}\n", conv * 
+                                                                    (*this)(i,j).VanDerWaalsTailCorrection.energy);
       std::print(stream, "        Coulombic Real:       {: .6e}\n", conv * (*this)(i,j).CoulombicReal.energy);
       std::print(stream, "        Coulombic Fourier:    {: .6e}\n", conv * (*this)(i,j).CoulombicFourier.energy);
       std::print(stream, "        -----------------------------------------------------------------------\n");

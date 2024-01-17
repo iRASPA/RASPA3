@@ -14,6 +14,7 @@ import <fstream>;
 import archive;
 import scaling;
 
+
 export struct RunningEnergy
 {
   RunningEnergy() : frameworkMoleculeVDW(0.0), moleculeMoleculeVDW(0.0), 

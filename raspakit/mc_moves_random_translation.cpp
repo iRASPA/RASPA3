@@ -35,9 +35,10 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_random_translation.cpp
 
-std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &random, System & system, size_t selectedComponent, std::span<Atom> molecule)
+std::optional<RunningEnergy> 
+MC_Moves::randomTranslationMove(RandomNumber &random, System & system, 
+                                size_t selectedComponent, std::span<Atom> molecule)
 {
   double3 displacement{};
   double3 maxDisplacement = system.components[selectedComponent].mc_moves_probabilities.statistics_RandomTranslationMove.maxChange;

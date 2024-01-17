@@ -9,6 +9,8 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
+import cbmc_chain_data;
+import cbmc_interactions;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -36,9 +38,10 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_reinsertion.cpp
 
-std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule)
+std::optional<RunningEnergy> 
+MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule, 
+                          std::span<Atom> molecule)
 {
   system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalCounts += 1;
@@ -49,7 +52,11 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     double cutOffCoulomb = useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = system.growMoleculeReinsertion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule);
+    std::optional<ChainData> growData = 
+      CBMC::growMoleculeReinsertion(random, system.components, system.forceField, system.simulationBox, 
+                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                    cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                    system.numberOfTrialDirections);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (t2 - t1);
     system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (t2 - t1);
@@ -62,13 +69,18 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalConstructed += 1;
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    ChainData retraceData = system.retraceMoleculeReinsertion(random, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, growData->storedR);
+    ChainData retraceData = 
+      CBMC::retraceMoleculeReinsertion(random, system.components, system.forceField, system.simulationBox, 
+                                       system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                       cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                       growData->storedR, system.numberOfTrialDirections);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (u2 - u1);
     system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (u2 - u1);
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-    RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
+    RunningEnergy energyFourierDifference = 
+      system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
     std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCEwald += (v2 - v1);
     system.mc_moves_cputime.reinsertionMoveCBMCEwald += (v2 - v1);
@@ -78,14 +90,20 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     std::optional<RunningEnergy> energyOld;
     if(useDualCutOff)
     {
-      energyNew = system.computeExternalNonOverlappingEnergyDualCutOff(system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, growData->atom);
-      energyOld = system.computeExternalNonOverlappingEnergyDualCutOff(system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, retraceData.atom);
-      correctionFactorDualCutOff = std::exp(-system.beta * (energyNew->total() - growData->energies.total() - (energyOld->total() - retraceData.energies.total())) );
+      energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.forceField, system.simulationBox, 
+                                 system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), 
+                                 system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, growData->atom);
+      energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.forceField, system.simulationBox, 
+                                 system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                 system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, retraceData.atom);
+      correctionFactorDualCutOff = std::exp(-system.beta * (energyNew->total() - growData->energies.total() 
+                                                         - (energyOld->total() - retraceData.energies.total())) );
     }
 
     double correctionFactorFourier = std::exp(-system.beta * energyFourierDifference.total());
 
-    if (random.uniform() < correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
+    if (random.uniform() < correctionFactorDualCutOff * correctionFactorFourier * 
+                           growData->RosenbluthWeight / retraceData.RosenbluthWeight)
     {
       system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.accepted += 1;
       system.components[selectedComponent].mc_moves_probabilities.statistics_ReinsertionMove_CBMC.totalAccepted += 1;
@@ -94,7 +112,9 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       std::copy(newMolecule.begin(), newMolecule.end(), molecule.begin());
 
       if(useDualCutOff)
-          return (energyNew.value() - energyOld.value()) + energyFourierDifference;
+      {
+        return (energyNew.value() - energyOld.value()) + energyFourierDifference;
+      }
 
       return (growData->energies - retraceData.energies) + energyFourierDifference;
     };

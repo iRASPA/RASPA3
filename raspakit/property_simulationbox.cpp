@@ -8,6 +8,7 @@ import <exception>;
 import <source_location>;
 import <complex>;
 
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertySimulationBox &box)
 {
   archive << box.versionNumber;

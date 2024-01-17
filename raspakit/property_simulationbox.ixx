@@ -16,7 +16,8 @@ import archive;
 import averages;
 import simulationbox;
 
-inline std::pair<SimulationBox, double> pair_sum(const std::pair<SimulationBox, double> &lhs, const std::pair<SimulationBox, double> &rhs)
+inline std::pair<SimulationBox, double> 
+pair_sum(const std::pair<SimulationBox, double> &lhs, const std::pair<SimulationBox, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -53,7 +54,9 @@ export struct PropertySimulationBox
 
   SimulationBox averagedSimulationBox() const
   {
-    std::pair<SimulationBox,double> summedBlocks = std::accumulate (bookKeepingSimulationBox.begin(), bookKeepingSimulationBox.end(), std::make_pair(SimulationBox(), 0.0), pair_sum);
+    std::pair<SimulationBox,double> summedBlocks = 
+      std::accumulate(bookKeepingSimulationBox.begin(), bookKeepingSimulationBox.end(), 
+                      std::make_pair(SimulationBox(), 0.0), pair_sum);
     return summedBlocks.first / summedBlocks.second;
   }
 

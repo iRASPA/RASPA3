@@ -8,6 +8,7 @@ import double3;
 import archive;
 import move_statistics;
 
+
 export struct MCMoveProbabilitiesParticles
 {
   uint64_t versionNumber{ 1 };

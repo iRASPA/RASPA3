@@ -238,7 +238,8 @@ void Breakthrough::run(std::ostream &stream)
   std::vector<std::ofstream> streams;
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::string fileName = std::format("Breakthrough/System_{}/component_{}_{}.data", system.systemId, std::to_string(i), components[i].name);
+    std::string fileName = std::format("Breakthrough/System_{}/component_{}_{}.data", 
+                                       system.systemId, std::to_string(i), components[i].name);
     streams.emplace_back(std::ofstream{ fileName });
   }
 
@@ -286,12 +287,12 @@ void Breakthrough::run(std::ostream &stream)
       movieStream << "# column " << column_nr++ << ": Pt (total pressure)" << std::endl;
       for(size_t j = 0; j < Ncomp; ++j)
       {
-        movieStream << "# column " << column_nr++ << ": component " << j << " Q     (loading) " << std::endl;
-        movieStream << "# column " << column_nr++ << ": component " << j << " Qeq   (equilibrium loading)" << std::endl;
-        movieStream << "# column " << column_nr++ << ": component " << j << " P     (partial pressure)" << std::endl;
-        movieStream << "# column " << column_nr++ << ": component " << j << " Pnorm (normalized partial pressure)" << std::endl;
-        movieStream << "# column " << column_nr++ << ": component " << j << " Dpdt  (derivative P with t)" << std::endl;
-        movieStream << "# column " << column_nr++ << ": component " << j << " Dqdt  (derivative Q with t)" << std::endl;
+        movieStream << "# column " << column_nr++ << ": component " << j << " Q     (loading)\n";
+        movieStream << "# column " << column_nr++ << ": component " << j << " Qeq   (equilibrium loading)\n";
+        movieStream << "# column " << column_nr++ << ": component " << j << " P     (partial pressure)\n";
+        movieStream << "# column " << column_nr++ << ": component " << j << " Pnorm (normalized partial pressure)\n";
+        movieStream << "# column " << column_nr++ << ": component " << j << " Dpdt  (derivative P with t)\n";
+        movieStream << "# column " << column_nr++ << ": component " << j << " Dqdt  (derivative Q with t)\n";
       }
 
       for(size_t i = 0; i < Ngrid + 1; ++i)
@@ -412,7 +413,8 @@ void Breakthrough::run(std::ostream &stream)
     std::copy(Vnew.begin(), Vnew.end(), V.begin());
   }
 
-  std::cout << "Final timestep " + std::to_string(Nsteps) + ", time: " + std::to_string(dt * static_cast<double>(Nsteps)) + " [s]" << std::endl;
+  std::cout << "Final timestep " + std::to_string(Nsteps) + ", time: " + 
+               std::to_string(dt * static_cast<double>(Nsteps)) + " [s]" << std::endl;
 }
 
 void Breakthrough::computeEquilibriumLoadings()
@@ -579,7 +581,8 @@ void Breakthrough::createPlotScript()
 
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     std::ofstream stream_graphs(std::format("Breakthrough/System_{}/make_graphs.bat", system.systemId));
-    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;" + 
+                     "C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     stream_graphs << "gnuplot.exe plot_breakthrough\n";
 
     std::filesystem::path path{ std::format("Breakthrough/System_{}/make_graphs.bat", system.systemId) };
@@ -600,17 +603,21 @@ void Breakthrough::createPlotScript()
   stream << "set encoding utf8\n";
   #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     stream << "set xlabel 'Dimensionless time, {/Arial-Italic τ}={/Arial-Italic tv/L} / [-]' font \"Arial,14\"\n";
-    stream << "set ylabel 'Concentration exit gas, {/Arial-Italic c}_i/{/Arial-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Arial,14\"\n";
+    stream << "set ylabel 'Concentration exit gas, {/Arial-Italic c}_i/" + 
+              "{/Arial-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Arial,14\"\n";
     stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Arial, 10'\n";
   #else
-    stream << "set xlabel 'Dimensionless time, {/Helvetica-Italic τ}={/Helvetica-Italic tv/L} / [-]' font \"Helvetica,18\"\n";
-    stream << "set ylabel 'Concentration exit gas, {/Helvetica-Italic c}_i/{/Helvetica-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Helvetica,18\"\n";
+    stream << "set xlabel 'Dimensionless time, {/Helvetica-Italic τ}={/Helvetica-Italic tv/L} / [-]' "
+              "font \"Helvetica,18\"\n";
+    stream << "set ylabel 'Concentration exit gas, {/Helvetica-Italic c}_i/" 
+              "{/Helvetica-Italic c}_{i,0} / [-]' offset 0.0,0 font \"Helvetica,18\"\n";
     stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
   #endif
   stream << "set bmargin 4\n";
   stream << "set yrange[0:]\n";
 
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" 
+         << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
 
   stream << "set output 'breakthrough_dimensionless.pdf'\n";
   stream << "set term pdf color solid\n";
@@ -720,8 +727,11 @@ std::string movieScriptTemplate(std::string s)
     stream << "   set /A argCount+=1\n";
     stream << "   set \"argVec[!argCount!]=%%~x\"'n";
     stream << ")\n";
-    stream << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
-    stream << "gnuplot.exe -c plot_column_" << s << " %argVec[1]% %argVec[2]% %argVec[3]% | ffmpeg.exe -f png_pipe -s:v \"%argVec[2]%,%argVec[3]%\" -i pipe: -c:v libx264 -pix_fmt yuv420p -crf %argVec[4]% -c:a aac column_movie_" << s + ".mp4\n";
+    stream << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;" + 
+              "C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    stream << "gnuplot.exe -c plot_column_" << s << " %argVec[1]% %argVec[2]% %argVec[3]% | ffmpeg.exe "
+              "-f png_pipe -s:v \"%argVec[2]%,%argVec[3]%\" -i pipe: -c:v libx264 -pix_fmt yuv420p "
+              "-crf %argVec[4]% -c:a aac column_movie_" << s + ".mp4\n";
   #else
     stream << "rm -f " << "column_movie_" << s << ".mp4\n";
     stream << "every=1\n";
@@ -739,7 +749,9 @@ std::string movieScriptTemplate(std::string s)
     stream << "        l) format=\"-c:v libx264\";;\n";
     stream << "    esac\n";
     stream << "done\n";
-    stream << "gnuplot -c plot_column_" << s << " $every $width $height | ffmpeg -f png_pipe -s:v \"${width},${height}\" -i pipe: $format -pix_fmt yuv420p -crf $quality -c:a aac column_movie_" << s + ".mp4\n";
+    stream << "gnuplot -c plot_column_" << s << " $every $width $height | ffmpeg -f png_pipe "
+              "-s:v \"${width},${height}\" -i pipe: $format -pix_fmt yuv420p -crf $quality " 
+              "-c:a aac column_movie_" << s + ".mp4\n";
   #endif
   return stream.str();
 }
@@ -794,7 +806,8 @@ void Breakthrough::createMovieScriptColumnV()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' us 2 nooutput\n";
   stream << "max=STATS_max\n";
   stream << "stats 'column.data' us 1 nooutput\n";
@@ -861,7 +874,8 @@ void Breakthrough::createMovieScriptColumnPt()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' us 3 nooutput\n";
   stream << "max=STATS_max\n";
   stream << "stats 'column.data' us 1 nooutput\n";
@@ -927,7 +941,8 @@ void Breakthrough::createMovieScriptColumnQ()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = 0.0;\n";
   stream << "do for [i=4:STATS_columns:6] {\n";
@@ -1008,7 +1023,8 @@ void Breakthrough::createMovieScriptColumnQeq()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = 0.0;\n";
   stream << "do for [i=5:STATS_columns:6] {\n";
@@ -1089,7 +1105,8 @@ void Breakthrough::createMovieScriptColumnP()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = 0.0;\n";
   stream << "do for [i=6:STATS_columns:6] {\n";
@@ -1170,7 +1187,8 @@ void Breakthrough::createMovieScriptColumnPnormalized()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = 0.0;\n";
   stream << "do for [i=7:STATS_columns:6] {\n";
@@ -1232,7 +1250,8 @@ void Breakthrough::createMovieScriptColumnDpdt()
   #else
     stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
     stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
-    stream << "set ylabel 'Pressure derivative, {/Helvetica-Italic dp_/dt} / [Pa/s]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set ylabel 'Pressure derivative, {/Helvetica-Italic dp_/dt} / [Pa/s]' "
+              "offset 0.0,0 font 'Helvetica,18'\n";
     stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
   #endif
 
@@ -1251,7 +1270,8 @@ void Breakthrough::createMovieScriptColumnDpdt()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = -1e10;\n";
   stream << "min = 1e10;\n";
@@ -1317,7 +1337,8 @@ void Breakthrough::createMovieScriptColumnDqdt()
   #else
     stream << "set terminal pngcairo size ARG2,ARG3 enhanced font 'Helvetica,10'\n";
     stream << "set xlabel 'Adsorber position / [m]' font 'Helvetica,18'\n";
-    stream << "set ylabel 'Loading derivative, {/Helvetica-Italic dq_i/dt} / [mol/kg/s]' offset 0.0,0 font 'Helvetica,18'\n";
+    stream << "set ylabel 'Loading derivative, {/Helvetica-Italic dq_i/dt} / [mol/kg/s]' "
+              "offset 0.0,0 font 'Helvetica,18'\n";
     stream << "set key outside top center horizontal samplen 2.5 height 0.5 spacing 1.5 font 'Helvetica, 10'\n";
   #endif
 
@@ -1336,7 +1357,8 @@ void Breakthrough::createMovieScriptColumnDqdt()
   stream << "set linetype 12 pt 14 ps 1 lw 4 lc rgb '0x000000'\n";
 
   stream << "set bmargin 4\n";
-  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << p_total*1e-3 << " kPa'\n";
+  stream << "set key title '" << displayName << " {/:Italic T}=" << T << " K, {/:Italic p_t}=" << 
+            p_total*1e-3 << " kPa'\n";
   stream << "stats 'column.data' nooutput\n";
   stream << "max = -1e10;\n";
   stream << "min = 1e10;\n";

@@ -19,7 +19,9 @@ import energy_status_inter;
 import energy_status_intra;
 import component;
 
-inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, double> &lhs, const std::pair<EnergyStatus, double> &rhs)
+
+inline std::pair<EnergyStatus, double> 
+pair_sum(const std::pair<EnergyStatus, double> &lhs, const std::pair<EnergyStatus, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
@@ -31,7 +33,8 @@ export struct PropertyEnergy
   PropertyEnergy(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
-      bookKeepingEnergyStatus(std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, std::make_pair(EnergyStatus(numberOfComponents), 0.0)))
+      bookKeepingEnergyStatus(std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, 
+                              std::make_pair(EnergyStatus(numberOfComponents), 0.0)))
   {
   }
 
@@ -45,7 +48,8 @@ export struct PropertyEnergy
   void resize(size_t newNumberOfComponents)
   {
       numberOfComponents = newNumberOfComponents;
-      bookKeepingEnergyStatus = std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, std::make_pair(EnergyStatus(numberOfComponents), 0.0));
+      bookKeepingEnergyStatus = std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, 
+                                std::make_pair(EnergyStatus(numberOfComponents), 0.0));
   }
 
   inline void addSample(size_t blockIndex, const EnergyStatus &energyStatus, const double &weight)
@@ -63,7 +67,9 @@ export struct PropertyEnergy
 
   EnergyStatus averagedEnergy() const
   {
-    std::pair<EnergyStatus,double> summedBlocks = std::accumulate (bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(), std::make_pair(EnergyStatus(numberOfComponents), 0.0), pair_sum);
+    std::pair<EnergyStatus,double> summedBlocks = 
+      std::accumulate(bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(), 
+                      std::make_pair(EnergyStatus(numberOfComponents), 0.0), pair_sum);
     return summedBlocks.first / summedBlocks.second;
   }
 

@@ -18,6 +18,7 @@ import loadings;
 import enthalpy_of_adsorption;
 import component;
 
+
 inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
@@ -29,7 +30,8 @@ export struct PropertyEnthalpy
   PropertyEnthalpy(size_t numberOfBlocks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
-      bookKeepingEnthalpyOfAdsorptionTerms(std::vector<std::pair<EnthalpyOfAdsorptionTerms, double>>(numberOfBlocks, std::make_pair(EnthalpyOfAdsorptionTerms(numberOfComponents), 0.0)))
+      bookKeepingEnthalpyOfAdsorptionTerms(std::vector<std::pair<EnthalpyOfAdsorptionTerms, double>>(numberOfBlocks, 
+                                           std::make_pair(EnthalpyOfAdsorptionTerms(numberOfComponents), 0.0)))
   {
   }
 
@@ -43,7 +45,8 @@ export struct PropertyEnthalpy
   void resize(size_t newNumberOfComponents)
   {
       numberOfComponents = newNumberOfComponents;
-      bookKeepingEnthalpyOfAdsorptionTerms = std::vector<std::pair<EnthalpyOfAdsorptionTerms, double>>(numberOfBlocks, std::make_pair(EnthalpyOfAdsorptionTerms(numberOfComponents), 0.0));
+      bookKeepingEnthalpyOfAdsorptionTerms = std::vector<std::pair<EnthalpyOfAdsorptionTerms, double>>(numberOfBlocks, 
+                                             std::make_pair(EnthalpyOfAdsorptionTerms(numberOfComponents), 0.0));
   }
 
   inline void addSample(size_t blockIndex, const EnthalpyOfAdsorptionTerms &terms, const double &weight)
@@ -56,7 +59,8 @@ export struct PropertyEnthalpy
 
   EnthalpyOfAdsorption averagedEnthalpy(size_t blockIndex) const
   {
-    return (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].first / bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second).compositeProperty();
+    return (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].first / 
+            bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second).compositeProperty();
   }
 
   EnthalpyOfAdsorption averagedEnthalpy() const
@@ -65,7 +69,8 @@ export struct PropertyEnthalpy
     size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / bookKeepingEnthalpyOfAdsorptionTerms[0].second > 0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
+          bookKeepingEnthalpyOfAdsorptionTerms[0].second > 0.5)
       {
         average += averagedEnthalpy(blockIndex);
         ++numberOfSamples;
@@ -82,7 +87,8 @@ export struct PropertyEnthalpy
     size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
-      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / bookKeepingEnthalpyOfAdsorptionTerms[0].second > 0.5)
+      if (bookKeepingEnthalpyOfAdsorptionTerms[blockIndex].second / 
+          bookKeepingEnthalpyOfAdsorptionTerms[0].second > 0.5)
       {
         EnthalpyOfAdsorption value = averagedEnthalpy(blockIndex) - average;
         sumOfSquares += value * value;
@@ -102,7 +108,8 @@ export struct PropertyEnthalpy
     return std::make_pair(average, confidenceIntervalError);
   }
 
-  std::string writeAveragesStatistics(std::vector<size_t>& swapableComponents, std::vector<Component>& components) const;
+  std::string writeAveragesStatistics(std::vector<size_t>& swapableComponents, 
+                                      std::vector<Component>& components) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnthalpy &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnthalpy &p);

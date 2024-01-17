@@ -108,7 +108,8 @@ export struct Isotherm
       {
         double temp1 = parameters[1] * pressure;
         double temp2 = 1.0 + temp1;
-        return parameters[0] * (temp1 / temp2 + parameters[2] * parameters[2] * temp1 * (1.0 - temp1) / (temp2 * temp2 * temp2));
+        return parameters[0] * (temp1 / temp2 + parameters[2] * parameters[2] * 
+               temp1 * (1.0 - temp1) / (temp2 * temp2 * temp2));
       }
       case Isotherm::Type::Quadratic:
       {
@@ -172,7 +173,8 @@ export struct Isotherm
         else 
         {
           double prefactor = parameters[0] / parameters[2];
-          double temp = std::numbers::pi / (std::pow(parameters[1], 1.0 / parameters[2]) * std::sin(std::numbers::pi * 1.0 / parameters[2]));
+          double temp = std::numbers::pi / (std::pow(parameters[1], 1.0 / parameters[2]) * 
+                        std::sin(std::numbers::pi * 1.0 / parameters[2]));
 
           double term1 = -1.0/(parameters[1] * std::pow(pressure, parameters[2]));
           double numerator = 1.0;
@@ -304,7 +306,8 @@ export struct Isotherm
               std::cout << "p_start: " << p_start << std::endl;
               std::cout << "Left bracket: " << left_bracket << std::endl;
               std::cout << "Right bracket: " << right_bracket << std::endl;
-              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) does NOT converge\n");
+              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) "
+                                       "does NOT converge\n");
             }
           }
           while(s < reduced_grand_potential);
@@ -325,7 +328,8 @@ export struct Isotherm
               std::cout << "p_start: " << p_start << std::endl;
               std::cout << "Left bracket: " << left_bracket << std::endl;
               std::cout << "Right bracket: " << right_bracket << std::endl;
-              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum > 1) does NOT converge\n");
+              throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum > 1) does "
+                                       "NOT converge\n");
             }
           }
           while(s > reduced_grand_potential);
@@ -346,7 +350,8 @@ export struct Isotherm
           {
             std::cout << "Left bracket: " << left_bracket << std::endl;
             std::cout << "Right bracket: " << right_bracket << std::endl;
-            throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) does NOT converge\n");
+            throw std::runtime_error("Error (Inverse bisection): initial bracketing (for sum < 1) does "
+                                     "NOT converge\n");
           }
         }
         while(std::abs(left_bracket - right_bracket) / std::abs(left_bracket + right_bracket) > tiny);

@@ -8,7 +8,10 @@ import double4;
 import <cmath>;
 import <numbers>;
 
-export inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA, const double& scalingB, const double& r, const double& chargeA, const double& chargeB)
+export inline EnergyFactor 
+potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, 
+                       const double& scalingA, const double& scalingB, const double& r, 
+                       const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;
     switch(forcefield.chargeMethod)

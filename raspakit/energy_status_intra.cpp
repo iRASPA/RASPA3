@@ -12,7 +12,6 @@ import <complex>;
 import archive;
 
 
-
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyIntra &e)
 {
   archive << e.versionNumber;

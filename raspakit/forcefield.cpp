@@ -22,7 +22,6 @@ import <exception>;
 import <source_location>;
 import <complex>;
 
-
 import skelement;
 import units;
 import int3;
@@ -30,7 +29,10 @@ import double3;
 import double4;
 import stringutils;
 
-ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, bool applyTailCorrections) noexcept(false) :
+
+ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, 
+                       [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, 
+                       bool applyTailCorrections) noexcept(false) :
     data(selfInteractions.size()* selfInteractions.size(), VDWParameters(0.0, 0.0)),
     shiftPotentials(selfInteractions.size()* selfInteractions.size(), shifted),
     tailCorrections(selfInteractions.size()* selfInteractions.size(), applyTailCorrections),
@@ -85,7 +87,8 @@ void ForceField::preComputeTailCorrection()
           double arg2 = data[i * numberOfPseudoAtoms + j].parameters.y;
           double term3 = (arg2/cutOffVDW) * (arg2/cutOffVDW) * (arg2/cutOffVDW);
           double term6 = term3 * term3;
-          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 
+            (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
           break;
         }
         default:
@@ -258,7 +261,8 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
   std::getline(forceFieldFile, str);
   std::istringstream numberOfSelfInteractionStream(str);
   numberOfSelfInteractionStream >> numberOfSelfInteractions;
-  if (numberOfSelfInteractions < 0 || numberOfSelfInteractions>10000) throw std::runtime_error("Incorrect amount of self-interactions");
+  if (numberOfSelfInteractions < 0 || numberOfSelfInteractions>10000) 
+    throw std::runtime_error("Incorrect amount of self-interactions");
 
 
   //skip comment line
@@ -283,8 +287,10 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
   {
     for (size_t j = i + 1; j < numberOfSelfInteractions; ++j)
     {
-      double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
-      double mix1 = 0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
+      double mix0 = 
+        std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
+      double mix1 = 
+        0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
       
       data[i * numberOfPseudoAtoms + j] = VDWParameters(mix0, mix1);
       data[j * numberOfPseudoAtoms + i] = VDWParameters(mix0, mix1);
@@ -310,7 +316,8 @@ std::string ForceField::printPseudoAtomStatus() const
 
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-      std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].mass, pseudoAtoms[i].charge);
+      std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", 
+                         i, pseudoAtoms[i].name, pseudoAtoms[i].mass, pseudoAtoms[i].charge);
   }
   std::print(stream, "\n");
 
@@ -350,12 +357,14 @@ std::string ForceField::printForceFieldStatus() const
   {
     std::print(stream, "Ewald precision: {}\n", EwaldPrecision);
     std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
-    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", 
+                       numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
   }
   else
   {
     std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
-    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", 
+                       numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
   }
   std::print(stream, "\n\n");
 
@@ -388,9 +397,10 @@ void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
         EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
         double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-        numberOfWaveVectors = int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-                                   static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-                                   static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+        numberOfWaveVectors = 
+          int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+               static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+               static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
 
         //numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
         //if (ReciprocalCutOffSquared[i] < 0.0)
@@ -472,6 +482,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceF
   archive << f.EwaldAlpha;
   archive << f.numberOfWaveVectors;
   archive << f.automaticEwald;
+  archive << f.noCharges;
+  archive << f.omitEwaldFourier;
+  archive << f.minimumRosenbluthFactor;
 
   return archive;
 }
@@ -505,6 +518,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &
   archive >> f.EwaldAlpha;
   archive >> f.numberOfWaveVectors;
   archive >> f.automaticEwald;
+  archive >> f.noCharges;
+  archive >> f.omitEwaldFourier;
+  archive >> f.minimumRosenbluthFactor;
 
   return archive;
 }

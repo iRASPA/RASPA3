@@ -30,13 +30,14 @@ import <optional>;
 import <thread>;
 import <future>;
 
-// system_interactions_intermolecular.cpp
 
+// used in volume moves for computing the state at a new box and new, scaled atom positions
 void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
 
+  bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -91,188 +92,12 @@ void System::computeInterMolecularEnergy(const SimulationBox &box, std::span<con
   }
 }
 
-[[nodiscard]] std::optional<EnergyStatus> System::computeInterMolecularSpanEnergy(std::span<const Atom>::iterator startIterator, std::span<const Atom>::iterator endIterator, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
-{
-  double3 dr, s, t;
-  double rr;
-
-  EnergyStatus energySum(components.size());
-
-  const double overlapCriteria = forceField.overlapCriteria;
-  const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
-  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-
-  for (std::span<const Atom>::iterator it1 = startIterator; it1 != endIterator; ++it1)
-  {
-    size_t molA = static_cast<size_t>(it1->moleculeId);
-    size_t compA = static_cast<size_t>(it1->componentId);
-    double3 posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
-    bool groupIdA = static_cast<bool>(it1->groupId);
-    double scalingVDWA = it1->scalingVDW;
-    double scalingCoulombA = it1->scalingCoulomb;
-    double chargeA = it1->charge;
-
-    for (int index = 0; const Atom& atom : atoms)
-    {
-      if (index != skip)
-      {
-        double3 posB = atom.position;
-        size_t compB = static_cast<size_t>(atom.componentId);
-        size_t molB = static_cast<size_t>(atom.moleculeId);
-        size_t typeB = static_cast<size_t>(atom.type);
-        bool groupIdB = static_cast<bool>(atom.groupId);
-        double scalingVDWB = atom.scalingVDW;
-        double scalingCoulombB = atom.scalingCoulomb;
-        double chargeB = atom.charge;
-        
-        if (!(compA == compB && molA == molB))
-        {
-          dr = posA - posB;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          rr = double3::dot(dr, dr);
-
-          if (rr < cutOffVDWSquared)
-          {
-            EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-            if (energyFactor.energy > overlapCriteria) return std::nullopt;
-
-            energySum(compA, compB).VanDerWaals += 0.5 * energyFactor;
-            energySum(compB, compA).VanDerWaals += 0.5 * energyFactor;
-            energySum.dUdlambda += energyFactor.dUdlambda;
-          }
-          if (!noCharges && rr < cutOffChargeSquared)
-          {
-            double r = std::sqrt(rr);
-            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
-
-            energySum(compA, compB).CoulombicReal += 0.5 * energyFactor;
-            energySum(compB, compA).CoulombicReal += 0.5 * energyFactor;
-            energySum.dUdlambda += energyFactor.dUdlambda;
-          }
-        }
-      }
-      ++index;
-    }
-  }
-  
-  return energySum;
-}
-
-[[nodiscard]] std::optional<RunningEnergy> System::computeInterMolecularEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) const noexcept
-{
-  double3 dr, s, t;
-  double rr;
-
-  RunningEnergy energySum;
-
-  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
-
-  const double overlapCriteria = forceField.overlapCriteria;
-  const double cutOffVDWSquared = cutOffVDW * cutOffVDW;
-  const double cutOffChargeSquared = cutOffCoulomb * cutOffCoulomb;
-
-  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
-  {
-    size_t molA = static_cast<size_t>(it1->moleculeId);
-    size_t compA = static_cast<size_t>(it1->componentId);
-    double3 posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
-    bool groupIdA = static_cast<bool>(it1->groupId);
-    double scalingVDWA = it1->scalingVDW;
-    double scalingCoulombA = it1->scalingCoulomb;
-    double chargeA = it1->charge;
-
-    for (int index = 0; const Atom& atom : atoms)
-    {
-      if (index != skip)
-      {
-        double3 posB = atom.position;
-        size_t compB = static_cast<size_t>(atom.componentId);
-        size_t molB = static_cast<size_t>(atom.moleculeId);
-        size_t typeB = static_cast<size_t>(atom.type);
-        bool groupIdB = static_cast<bool>(atom.groupId);
-        double scalingVDWB = atom.scalingVDW;
-        double scalingCoulombB = atom.scalingCoulomb;
-        double chargeB = atom.charge;
-
-        if (!(compA == compB && molA == molB))
-        {
-          dr = posA - posB;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          rr = double3::dot(dr, dr);
-
-          if (rr < cutOffVDWSquared)
-          {
-            EnergyFactor energyFactor = potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-            if (energyFactor.energy > overlapCriteria) return std::nullopt;
-
-            energySum.moleculeMoleculeVDW += energyFactor.energy;
-            energySum.dudlambdaVDW += energyFactor.dUdlambda;
-          }
-          if (!noCharges && rr < cutOffChargeSquared)
-          {
-            double r = std::sqrt(rr);
-            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
-
-            energySum.moleculeMoleculeCharge += energyFactor.energy;
-            energySum.dudlambdaCharge += energyFactor.dUdlambda;
-          }
-        }
-      }
-      ++index;
-    }
-  }
-  
-  return energySum;
-    
-    //std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
-    //return computeInterMolecularSpanEnergy(moleculeAtoms.begin(), moleculeAtoms.end(), atoms, skip);
-
-    /*
-  ThreadPool &pool = ThreadPool::instance();
-  const size_t numberOfHelperThreads = pool.get_thread_count();
-
-  std::vector<std::future<std::optional<EnergyStatus>>> threads(numberOfHelperThreads);
-
-  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
-  size_t const block_size = moleculeAtoms.size() / (numberOfHelperThreads + 1);
-
-  std::span<const Atom>::iterator block_start = moleculeAtoms.begin();
-  for(size_t i = 0 ; i < numberOfHelperThreads; ++i)
-  {
-      std::span<const Atom>::iterator block_end = block_start;
-      std::advance(block_end,block_size);
-
-      threads[i] = pool.submit(std::bind(&System::computeInterMolecularSpanEnergy, this, block_start, block_end, atoms, skip));
-      block_start=block_end;
-  }
-  std::optional<EnergyStatus> energy = computeInterMolecularSpanEnergy(block_start, moleculeAtoms.end(), atoms, skip);
-
-
-  for(std::future<std::optional<EnergyStatus>> &future : threads)
-  {
-      future.wait();
-  }
-
-  if(!energy.has_value()) return std::nullopt;
-
-  for(size_t i=0; i < threads.size(); ++i)
-  {
-    std::optional<EnergyStatus> energyContribution = threads[i].get();
-    if(!energyContribution.has_value()) return std::nullopt;
-    energy = energy.value() + energyContribution.value();
-  }
-
-  return energy;
-*/
-}
-
 ForceFactor System::computeInterMolecularGradient() noexcept
 {
   double3 dr, posA, posB;
   double rr;
 
+  bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -341,7 +166,8 @@ ForceFactor System::computeInterMolecularGradient() noexcept
   return energy;
 }
 
-
+// used in mc_moves_translation.cpp, mc_moves_rotation.cpp, mc_moves_random_translation.cpp, mc_moves_random_rotation.cpp
+//         mc_moves_swap_cfcmc.cpp, mc_moves_swap_cfcmc_cbmc.cpp, mc_moves_gibbs_swap_cfcmc.cpp
 [[nodiscard]] std::optional<RunningEnergy> System::computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept
 {
   double3 dr, s, t;
@@ -349,6 +175,7 @@ ForceFactor System::computeInterMolecularGradient() noexcept
 
   RunningEnergy energySum{};
 
+  bool noCharges = forceField.noCharges;
   const double overlapCriteria = forceField.overlapCriteria;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;

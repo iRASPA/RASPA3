@@ -2,10 +2,6 @@ module;
 
 module atom;
 
-import archive;
-import double3;
-import stringutils;
-
 import <istream>;
 import <ostream>;
 import <sstream>;
@@ -16,15 +12,10 @@ import <exception>;
 import <source_location>;
 import <complex>;
 
-//std::string Atom::repr() const
-//{
-//  std::ostringstream stream;
-//
-//  std::print(stream, "({}, {}, {}, [{}, {}, {}, {}])\n", position.x, position.y, position.z, 
-//      moleculeId, type, componentId, groupId);
-//
-//  return stream.str();
-//}
+import archive;
+import double3;
+import stringutils;
+
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom)
 {

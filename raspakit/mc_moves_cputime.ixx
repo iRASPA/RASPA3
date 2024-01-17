@@ -12,24 +12,26 @@ export struct MCMoveCpuTime
   MCMoveCpuTime(): propertySampling(0.0), energyPressureComputation(0.0),
                    translationMove(0.0), translationMoveNonEwald(0.0), translationMoveEwald(0.0),
                    randomTranslationMove(0.0), randomTranslationMoveNonEwald(0.0), randomTranslationMoveEwald(0.0),
-                   rotationMove(0.0), rotationMoveNonEwald(0.0), rotationMoveEwald(0.0),
-                   randomRotationMove(0.0), randomRotationMoveNonEwald(0.0), randomRotationMoveEwald(0.0),
-                   reinsertionMoveCBMC(0.0), reinsertionMoveCBMCNonEwald(0.0), reinsertionMoveCBMCEwald(0.0),
-                   swapInsertionMoveCBMC(0.0), swapInsertionMoveCBMCNonEwald(0.0), swapInsertionMoveCBMCEwald(0.0), swapInsertionMoveCBMCTail(0.0),
-                   swapDeletionMoveCBMC(0.0), swapDeletionMoveCBMCNonEwald(0.0), swapDeletionMoveCBMCEwald(0.0), swapDeletionMoveCBMCTail(0.0),
-                   swapLambdaMoveCFCMC(0.0), swapLambdaInsertionMoveCFCMCNonEwald(0.0), swapLambdaInsertionMoveCFCMCEwald(0.0),
-                   swapLambdaChangeMoveCFCMCNonEwald(0.0), swapLambdaChangeMoveCFCMCEwald(0.0),
-                   swapLambdaDeletionMoveCFCMCNonEwald(0.0), swapLambdaDeletionMoveCFCMCEwald(0.0),
-                   swapLambdaMoveCBCFCMC(0.0), swapLambdaInsertionMoveCBCFCMCNonEwald(0.0), swapLambdaInsertionMoveCBCFCMCEwald(0.0),
-                   swapLambdaChangeMoveCBCFCMCNonEwald(0.0), swapLambdaChangeMoveCBCFCMCEwald(0.0), swapLambdaChangeMoveCBCFCMCTail(0.0),
-                   swapLambdaDeletionMoveCBCFCMCNonEwald(0.0), swapLambdaDeletionMoveCBCFCMCEwald(0.0),
-                   GibbsSwapMoveCBMC(0.0), GibbsSwapMoveCBMCNonEwald(0.0), GibbsSwapMoveCBMCEwald(0.0),
-                   GibbsSwapLambdaMoveCFCMC(0.0), 
-                   GibbsSwapLambdaInterChangeMoveCFCMCNonEwald(0.0), GibbsSwapLambdaInterChangeMoveCFCMCEwald(0.0), GibbsSwapLambdaInterChangeMoveCFCMCTail(0.0),
-                   GibbsSwapLambdaChangeMoveCFCMCNonEwald(0.0), GibbsSwapLambdaChangeMoveCFCMCEwald(0.0), GibbsSwapLambdaChangeMoveCFCMCTail(0.0),
-                   GibbsSwapLambdaShuffleMoveCFCMCNonEwald(0.0), GibbsSwapLambdaShuffleMoveCFCMCEwald(0.0), GibbsSwapLambdaShuffleMoveCFCMCTail(0.0),
-                   WidomMoveCBMC(0.0), WidomMoveCBMCNonEwald(0.0), WidomMoveCBMCEwald(0.0),
-                   WidomMoveCFCMC(0.0), WidomMoveCFCMCNonEwald(0.0), WidomMoveCFCMCEwald(0.0),
+                   rotationMove(0.0), rotationMoveNonEwald(0.0), rotationMoveEwald(0.0), randomRotationMove(0.0),
+                   randomRotationMoveNonEwald(0.0), randomRotationMoveEwald(0.0), reinsertionMoveCBMC(0.0),
+                   reinsertionMoveCBMCNonEwald(0.0), reinsertionMoveCBMCEwald(0.0), swapInsertionMoveCBMC(0.0),
+                   swapInsertionMoveCBMCNonEwald(0.0), swapInsertionMoveCBMCEwald(0.0), swapInsertionMoveCBMCTail(0.0),
+                   swapDeletionMoveCBMC(0.0), swapDeletionMoveCBMCNonEwald(0.0), swapDeletionMoveCBMCEwald(0.0),
+                   swapDeletionMoveCBMCTail(0.0),swapLambdaMoveCFCMC(0.0), swapLambdaInsertionMoveCFCMCNonEwald(0.0), 
+                   swapLambdaInsertionMoveCFCMCEwald(0.0), swapLambdaChangeMoveCFCMCNonEwald(0.0), 
+                   swapLambdaChangeMoveCFCMCEwald(0.0),  swapLambdaDeletionMoveCFCMCNonEwald(0.0), 
+                   swapLambdaDeletionMoveCFCMCEwald(0.0), swapLambdaMoveCBCFCMC(0.0), 
+                   swapLambdaInsertionMoveCBCFCMCNonEwald(0.0), swapLambdaInsertionMoveCBCFCMCEwald(0.0),
+                   swapLambdaChangeMoveCBCFCMCNonEwald(0.0), swapLambdaChangeMoveCBCFCMCEwald(0.0), 
+                   swapLambdaChangeMoveCBCFCMCTail(0.0), swapLambdaDeletionMoveCBCFCMCNonEwald(0.0), 
+                   swapLambdaDeletionMoveCBCFCMCEwald(0.0), GibbsSwapMoveCBMC(0.0), GibbsSwapMoveCBMCNonEwald(0.0), 
+                   GibbsSwapMoveCBMCEwald(0.0), GibbsSwapMoveCBMCTail(0.0),GibbsSwapLambdaMoveCFCMC(0.0),
+                   GibbsSwapLambdaInterChangeMoveCFCMCNonEwald(0.0), GibbsSwapLambdaInterChangeMoveCFCMCEwald(0.0), 
+                   GibbsSwapLambdaInterChangeMoveCFCMCTail(0.0), GibbsSwapLambdaChangeMoveCFCMCNonEwald(0.0), 
+                   GibbsSwapLambdaChangeMoveCFCMCEwald(0.0), GibbsSwapLambdaChangeMoveCFCMCTail(0.0),
+                   GibbsSwapLambdaShuffleMoveCFCMCNonEwald(0.0), GibbsSwapLambdaShuffleMoveCFCMCEwald(0.0), 
+                   GibbsSwapLambdaShuffleMoveCFCMCTail(0.0), WidomMoveCBMC(0.0), WidomMoveCBMCNonEwald(0.0), 
+                   WidomMoveCBMCEwald(0.0), WidomMoveCFCMC(0.0), WidomMoveCFCMCNonEwald(0.0), WidomMoveCFCMCEwald(0.0), 
                    WidomMoveCBCFCMC(0.0), WidomMoveCBCFCMCNonEwald(0.0), WidomMoveCBCFCMCEwald(0.0),
                    volumeMove(0.0), volumeMoveNonEwald(0.0), volumeMoveEwald(0.0),
                    GibbsVolumeMove(0.0), GibbsVolumeMoveNonEwald(0.0), GibbsVolumeMoveEwald(0.0)
@@ -97,6 +99,7 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> GibbsSwapMoveCBMC;
   std::chrono::duration<double> GibbsSwapMoveCBMCNonEwald;
   std::chrono::duration<double> GibbsSwapMoveCBMCEwald;
+  std::chrono::duration<double> GibbsSwapMoveCBMCTail;
 
   std::chrono::duration<double> GibbsSwapLambdaMoveCFCMC;
   std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
@@ -132,10 +135,11 @@ export struct MCMoveCpuTime
   inline std::chrono::duration<double> total() const { return propertySampling + energyPressureComputation +
                                                               translationMove + randomTranslationMove +
                                                               rotationMove + randomRotationMove +
-                                                              reinsertionMoveCBMC + swapInsertionMoveCBMC + swapDeletionMoveCBMC +
-                                                              swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC +
-                                                              GibbsSwapMoveCBMC + GibbsSwapLambdaMoveCFCMC +
-                                                              WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC +
+                                                              reinsertionMoveCBMC + swapInsertionMoveCBMC + 
+                                                              swapDeletionMoveCBMC + swapLambdaMoveCFCMC + 
+                                                              swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC + 
+                                                              GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + 
+                                                              WidomMoveCFCMC + WidomMoveCBCFCMC +
                                                               volumeMove + GibbsVolumeMove;}
  
   void clearTimingStatistics();
@@ -198,6 +202,7 @@ export struct MCMoveCpuTime
     GibbsSwapMoveCBMC += b.GibbsSwapMoveCBMC;
     GibbsSwapMoveCBMCNonEwald += b.GibbsSwapMoveCBMCNonEwald;
     GibbsSwapMoveCBMCEwald += b.GibbsSwapMoveCBMCEwald;
+    GibbsSwapMoveCBMCTail += b.GibbsSwapMoveCBMCTail;
 
     GibbsSwapLambdaMoveCFCMC += b.GibbsSwapLambdaMoveCFCMC;
     GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
@@ -275,36 +280,52 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.swapDeletionMoveCBMCTail = a.swapDeletionMoveCBMCEwald + b.swapDeletionMoveCBMCTail;
 
   m.swapLambdaMoveCFCMC = a.swapLambdaMoveCFCMC + b.swapLambdaMoveCFCMC;
-  m.swapLambdaInsertionMoveCFCMCNonEwald = a.swapLambdaInsertionMoveCFCMCNonEwald + b.swapLambdaInsertionMoveCFCMCNonEwald;
+  m.swapLambdaInsertionMoveCFCMCNonEwald = 
+    a.swapLambdaInsertionMoveCFCMCNonEwald + b.swapLambdaInsertionMoveCFCMCNonEwald;
   m.swapLambdaInsertionMoveCFCMCEwald = a.swapLambdaInsertionMoveCFCMCEwald + b.swapLambdaInsertionMoveCFCMCEwald;
   m.swapLambdaChangeMoveCFCMCNonEwald = a.swapLambdaChangeMoveCFCMCNonEwald + b.swapLambdaChangeMoveCFCMCNonEwald;
   m.swapLambdaChangeMoveCFCMCEwald = a.swapLambdaChangeMoveCFCMCEwald + b.swapLambdaChangeMoveCFCMCEwald;
-  m.swapLambdaDeletionMoveCFCMCNonEwald = a. swapLambdaDeletionMoveCFCMCNonEwald + b.swapLambdaDeletionMoveCFCMCNonEwald;
+  m.swapLambdaDeletionMoveCFCMCNonEwald = 
+   a.swapLambdaDeletionMoveCFCMCNonEwald + b.swapLambdaDeletionMoveCFCMCNonEwald;
   m.swapLambdaDeletionMoveCFCMCEwald = a.swapLambdaDeletionMoveCFCMCEwald + b.swapLambdaDeletionMoveCFCMCEwald;
 
   m.swapLambdaMoveCBCFCMC = a.swapLambdaMoveCBCFCMC + b.swapLambdaMoveCBCFCMC;
-  m.swapLambdaInsertionMoveCBCFCMCNonEwald = a.swapLambdaInsertionMoveCBCFCMCNonEwald + b.swapLambdaInsertionMoveCBCFCMCNonEwald;
-  m.swapLambdaInsertionMoveCBCFCMCEwald = a.swapLambdaInsertionMoveCBCFCMCEwald + b.swapLambdaInsertionMoveCBCFCMCEwald;
-  m.swapLambdaChangeMoveCBCFCMCNonEwald = a.swapLambdaChangeMoveCBCFCMCNonEwald + b.swapLambdaChangeMoveCBCFCMCNonEwald;
+  m.swapLambdaInsertionMoveCBCFCMCNonEwald = 
+    a.swapLambdaInsertionMoveCBCFCMCNonEwald + b.swapLambdaInsertionMoveCBCFCMCNonEwald;
+  m.swapLambdaInsertionMoveCBCFCMCEwald = 
+    a.swapLambdaInsertionMoveCBCFCMCEwald + b.swapLambdaInsertionMoveCBCFCMCEwald;
+  m.swapLambdaChangeMoveCBCFCMCNonEwald = 
+    a.swapLambdaChangeMoveCBCFCMCNonEwald + b.swapLambdaChangeMoveCBCFCMCNonEwald;
   m.swapLambdaChangeMoveCBCFCMCEwald = a.swapLambdaChangeMoveCBCFCMCEwald + b.swapLambdaChangeMoveCBCFCMCEwald;
   m.swapLambdaChangeMoveCBCFCMCTail = a.swapLambdaChangeMoveCBCFCMCTail + b.swapLambdaChangeMoveCBCFCMCTail;
-  m.swapLambdaDeletionMoveCBCFCMCNonEwald = a.swapLambdaDeletionMoveCBCFCMCNonEwald + b.swapLambdaDeletionMoveCBCFCMCNonEwald;
+  m.swapLambdaDeletionMoveCBCFCMCNonEwald = 
+    a.swapLambdaDeletionMoveCBCFCMCNonEwald + b.swapLambdaDeletionMoveCBCFCMCNonEwald;
   m.swapLambdaDeletionMoveCBCFCMCEwald = a.swapLambdaDeletionMoveCBCFCMCEwald + b.swapLambdaDeletionMoveCBCFCMCEwald;
 
   m.GibbsSwapMoveCBMC = a.GibbsSwapMoveCBMC + b.GibbsSwapMoveCBMC;
   m.GibbsSwapMoveCBMCNonEwald = a.GibbsSwapMoveCBMCNonEwald + b.GibbsSwapMoveCBMCNonEwald;
   m.GibbsSwapMoveCBMCEwald = a.GibbsSwapMoveCBMCEwald + b.GibbsSwapMoveCBMCEwald;
+  m.GibbsSwapMoveCBMCTail = a.GibbsSwapMoveCBMCTail + b.GibbsSwapMoveCBMCTail;
 
   m.GibbsSwapLambdaMoveCFCMC = a.GibbsSwapLambdaMoveCFCMC + b.GibbsSwapLambdaMoveCFCMC;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = a.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCEwald = a.GibbsSwapLambdaInterChangeMoveCFCMCEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCTail = a.GibbsSwapLambdaInterChangeMoveCFCMCTail + b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
-  m.GibbsSwapLambdaChangeMoveCFCMCNonEwald = a.GibbsSwapLambdaChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaChangeMoveCFCMCEwald = a.GibbsSwapLambdaChangeMoveCFCMCEwald + b.GibbsSwapLambdaChangeMoveCFCMCEwald;
-  m.GibbsSwapLambdaChangeMoveCFCMCTail = a.GibbsSwapLambdaChangeMoveCFCMCTail + b.GibbsSwapLambdaChangeMoveCFCMCTail;
-  m.GibbsSwapLambdaShuffleMoveCFCMCNonEwald = a.GibbsSwapLambdaShuffleMoveCFCMCNonEwald + b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaShuffleMoveCFCMCEwald = a.GibbsSwapLambdaShuffleMoveCFCMCEwald + b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
-  m.GibbsSwapLambdaShuffleMoveCFCMCTail = a.GibbsSwapLambdaShuffleMoveCFCMCTail + b.GibbsSwapLambdaShuffleMoveCFCMCTail;
+  m.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = 
+    a.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
+  m.GibbsSwapLambdaInterChangeMoveCFCMCEwald = 
+    a.GibbsSwapLambdaInterChangeMoveCFCMCEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
+  m.GibbsSwapLambdaInterChangeMoveCFCMCTail = 
+    a.GibbsSwapLambdaInterChangeMoveCFCMCTail + b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
+  m.GibbsSwapLambdaChangeMoveCFCMCNonEwald = 
+    a.GibbsSwapLambdaChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
+  m.GibbsSwapLambdaChangeMoveCFCMCEwald = 
+    a.GibbsSwapLambdaChangeMoveCFCMCEwald + b.GibbsSwapLambdaChangeMoveCFCMCEwald;
+  m.GibbsSwapLambdaChangeMoveCFCMCTail = 
+    a.GibbsSwapLambdaChangeMoveCFCMCTail + b.GibbsSwapLambdaChangeMoveCFCMCTail;
+  m.GibbsSwapLambdaShuffleMoveCFCMCNonEwald = 
+    a.GibbsSwapLambdaShuffleMoveCFCMCNonEwald + b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
+  m.GibbsSwapLambdaShuffleMoveCFCMCEwald = 
+    a.GibbsSwapLambdaShuffleMoveCFCMCEwald + b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
+  m.GibbsSwapLambdaShuffleMoveCFCMCTail = 
+    a.GibbsSwapLambdaShuffleMoveCFCMCTail + b.GibbsSwapLambdaShuffleMoveCFCMCTail;
 
   m.WidomMoveCBMC = a.WidomMoveCBMC + b.WidomMoveCBMC;
   m.WidomMoveCBMCNonEwald = a.WidomMoveCBMCNonEwald + b.WidomMoveCBMCNonEwald;

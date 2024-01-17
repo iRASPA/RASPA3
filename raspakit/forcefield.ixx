@@ -13,6 +13,7 @@ import double4;
 import double3;
 import int3;
 
+
 export struct VDWParameters
 {
   enum class Type : int
@@ -32,7 +33,8 @@ export struct VDWParameters
 
   VDWParameters(): parameters(double4(158.5/ 1.2027242847,3.72,0.0,0.0)), shift(-0.56217796) {}
 
-  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), tailCorrectionEnergy(0.0), type(Type::LennardJones)
+  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), 
+                                                tailCorrectionEnergy(0.0), type(Type::LennardJones)
   {
   }
 
@@ -109,7 +111,13 @@ export struct ForceField
   int3 numberOfWaveVectors{ 8, 8, 8 };
   bool automaticEwald{ true };
 
-  ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, double cutOff, bool shifted, bool tailCorrecions) noexcept(false);
+  bool noCharges{ false };
+  bool omitEwaldFourier{ false };
+
+  double minimumRosenbluthFactor{ 1e-150 };
+
+  ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, 
+             double cutOff, bool shifted, bool tailCorrecions) noexcept(false);
   ForceField(size_t systemId) noexcept(false);
 
   ForceField() noexcept = default;

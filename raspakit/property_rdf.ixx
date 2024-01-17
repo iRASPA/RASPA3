@@ -6,6 +6,7 @@ import <optional>;
 import <cmath>;
 import <string>;
 
+
 export struct PropertyRadialDistributionFunction
 {
   PropertyRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfBins) :

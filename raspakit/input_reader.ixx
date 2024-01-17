@@ -16,7 +16,6 @@ import stringutils;
 import double3;
 import threadpool;
 
-
 import system;
 import atom;
 import component;
@@ -26,6 +25,7 @@ import loadings;
 import enthalpy_of_adsorption;
 import energy_status;
 import averages;
+
 
 export struct InputReader
 {
@@ -71,5 +71,4 @@ export struct InputReader
   // size_t carrierGasComponent{ 0 };
   std::string displayName{"Column"};
   double temperature{ -1.0 };
-
 };

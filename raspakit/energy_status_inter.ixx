@@ -9,6 +9,7 @@ import <cmath>;
 import archive;
 import energy_factor;
 
+
 export struct EnergyInter
 {
   uint64_t versionNumber{ 1 };
@@ -19,7 +20,8 @@ export struct EnergyInter
   EnergyFactor CoulombicFourier;
   EnergyFactor totalInter;
 
-  EnergyInter() : VanDerWaals(0.0, 0.0), VanDerWaalsTailCorrection(0.0, 0.0), CoulombicReal(0.0, 0.0), CoulombicFourier(0.0, 0.0), totalInter(0.0, 0.0)
+  EnergyInter() : VanDerWaals(0.0, 0.0), VanDerWaalsTailCorrection(0.0, 0.0), CoulombicReal(0.0, 0.0), 
+                  CoulombicFourier(0.0, 0.0), totalInter(0.0, 0.0)
   {
   }
 

@@ -32,6 +32,7 @@ std::pair<EnergyStatus, double3x3> System::computeInterMolecularEnergyStrainDeri
   double3 dr, posA, posB;
   double rr;
 
+  bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;

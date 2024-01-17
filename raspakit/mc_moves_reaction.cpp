@@ -9,6 +9,7 @@ import double3x3;
 import simd_quatd;
 import simulationbox;
 import cbmc;
+import cbmc_chain_data;
 import randomnumbers;
 import system;
 import energy_factor;
@@ -35,9 +36,11 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 
-// mc_moves_reaction.cpp
 
-std::optional<RunningEnergy> MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system, [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
+std::optional<RunningEnergy> 
+MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system, 
+                       [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, 
+                       [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
 {
   size_t selectedComponent = 0;
   size_t selectedMolecule = 0;
@@ -48,10 +51,16 @@ std::optional<RunningEnergy> MC_Moves::reactionMove([[maybe_unused]] RandomNumbe
   Component::GrowType growType = system.components[selectedComponent].growType;
 
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::vector<Atom> atoms = system.components[selectedComponent].newAtoms(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = system.growMoleculeSwapInsertion(random, growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, atoms);
-  if (!growData) return std::nullopt;
+  std::vector<Atom> atoms = 
+    system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
 
+  std::optional<ChainData> growData = 
+    CBMC::growMoleculeSwapInsertion(random, system.components, system.forceField, system.simulationBox, 
+                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 
+                                    atoms, system.numberOfTrialDirections);
+
+  if (!growData) return std::nullopt;
 
   return std::nullopt;
 }

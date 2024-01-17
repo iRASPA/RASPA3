@@ -12,6 +12,7 @@ import <print>;
 import randomnumbers;
 import stringutils;
 
+
 Isotherm::Isotherm(Isotherm::Type t, const std::vector<double> &values, size_t numberOfValues):
     type(t),
     parameters(values),
@@ -139,67 +140,80 @@ std::string Isotherm::printAsInputFormat() const
   {
     case Isotherm::Type::Langmuir:
     {
-      std::print(stream, "                Langmuir              {:<11g}  {:<11g}\n", parameters[0], parameters[1]);
+      std::print(stream, "                Langmuir              {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1]);
       break;
     }
     case Isotherm::Type::Anti_Langmuir:
     {
-      std::print(stream, "                Anti-Langmuir         {:<11g}  {:<11g}\n", parameters[0], parameters[1]);
+      std::print(stream, "                Anti-Langmuir         {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1]);
       break;
     }
     case Isotherm::Type::BET:
     {
-      std::print(stream, "                BET                   {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                BET                   {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Henry:
     {
-      std::print(stream, "                Henry                 {:<11g}\n", parameters[0]);
+      std::print(stream, "                Henry                 {:<11g}\n", 
+                         parameters[0]);
       break;
     }
     case Isotherm::Type::Freundlich:
     {
-      std::print(stream, "                Freundlich            {:<11g}  {:<11g}\n", parameters[0], parameters[1]);
+      std::print(stream, "                Freundlich            {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1]);
       break;
     }
     case Isotherm::Type::Sips:
     {
-      std::print(stream, "                Sips                  {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Sips                  {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Langmuir_Freundlich:
     {
-      std::print(stream, "                Langmuir-Freundlich   {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Langmuir-Freundlich   {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Redlich_Peterson:
     {
-      std::print(stream, "                Redlich-Peterson      {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Redlich-Peterson      {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Toth:
     {
-      std::print(stream, "                Toth                  {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Toth                  {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Unilan:
     {
-      std::print(stream, "                Unilan                {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Unilan                {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::OBrien_Myers:
     {
-      std::print(stream, "                O'Brien&Myers         {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                O'Brien&Myers         {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Quadratic:
     {
-      std::print(stream, "                Quadratic             {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Quadratic             {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     case Isotherm::Type::Temkin:
     {
-      std::print(stream, "                Temkin                {:<11g}  {:<11g}  {:<11g}\n", parameters[0], parameters[1], parameters[2]);
+      std::print(stream, "                Temkin                {:<11g}  {:<11g}  {:<11g}\n", 
+                         parameters[0], parameters[1], parameters[2]);
       break;
     }
     default:
@@ -238,12 +252,14 @@ bool Isotherm::isUnphysical() const
     }
     case Isotherm::Type::Sips:
     {
-      if(parameters[0] < 0 || parameters[0] > 1.0e20 || parameters[1] < 0.0 || parameters[1] > 1.0e10 || parameters[2] < 0.0 || parameters[2] > 100.0 ) return true;
+      if(parameters[0] < 0 || parameters[0] > 1.0e20 || parameters[1] < 0.0 || parameters[1] > 1.0e10 || 
+         parameters[2] < 0.0 || parameters[2] > 100.0 ) return true;
       return false;
     }
     case Isotherm::Type::Langmuir_Freundlich:
     {
-      if(parameters[0] < 1.0e-20 || parameters[0] > 1.0e20 || parameters[1] < 0.0 || parameters[1] > 1.0e10 || parameters[2] < 0.0 || parameters[2] > 100.0 ) return true;
+      if(parameters[0] < 1.0e-20 || parameters[0] > 1.0e20 || parameters[1] < 0.0 || parameters[1] > 1.0e10 || 
+         parameters[2] < 0.0 || parameters[2] > 100.0 ) return true;
       return false;
     }
     case Isotherm::Type::Redlich_Peterson:
@@ -433,14 +449,14 @@ std::string Isotherm::gnuplotFunctionString(char c, size_t i) const
     }
     case Isotherm::Type::Unilan:
     {
-      snprintf(stringBuffer, 1024, "(%c[%zd]/(2.0*%c[%zd]))*log((1.0+%c[%zd]*exp(%c[%zd])*x)/(1.0+%c[%zd]*exp(-%c[%zd])*x))",
-              c, i, c, i+2, c, i+1, c, i+2, c, i+1, c, i+2);
+      snprintf(stringBuffer, 1024, "(%c[%zd]/(2.0*%c[%zd]))*log((1.0+%c[%zd]*exp(%c[%zd])*x)/"
+                                   "(1.0+%c[%zd]*exp(-%c[%zd])*x))", c, i, c, i+2, c, i+1, c, i+2, c, i+1, c, i+2);
       return stringBuffer;
     }
     case Isotherm::Type::OBrien_Myers:
     {
-      snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x) + (%c[%zd]**2)*%c[%zd]*x*(1.0-%c[%zd]*x)/(2.0*(1.0+%c[%zd]*x)**3))",
-          c, i, c, i+1, c, i+1, c, i+2, c, i+1, c, i+1, c, i+1);
+      snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x) + (%c[%zd]**2)*%c[%zd]*x*(1.0-%c[%zd]*x)/"
+                                   "(2.0*(1.0+%c[%zd]*x)**3))", c, i, c, i+1, c, i+1, c, i+2, c, i+1, c, i+1, c, i+1);
       return stringBuffer;
     }
     case Isotherm::Type::Quadratic:
@@ -451,8 +467,9 @@ std::string Isotherm::gnuplotFunctionString(char c, size_t i) const
     }
     case Isotherm::Type::Temkin:
     {
-      snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x))+%c[%zd]*%c[%zd]*((%c[%zd]*x/(1.0+%c[%zd]*x))**2)*(%c[%zd]*x/(1.0+%c[%zd]*x)-1.0)", 
-          c, i, c, i+1, c, i+1, c, i, c, i+2, c, i+1, c, i+1, c, i+1, c, i+1);
+      snprintf(stringBuffer, 1024, "%c[%zd]*(%c[%zd]*x/(1.0+%c[%zd]*x))+%c[%zd]*%c[%zd]*((%c[%zd]*x/(1.0+%c[%zd]*x))"
+                                   "**2)*(%c[%zd]*x/(1.0+%c[%zd]*x)-1.0)", 
+                                   c, i, c, i+1, c, i+1, c, i, c, i+2, c, i+1, c, i+1, c, i+1, c, i+1);
       return stringBuffer;
     }
     default:

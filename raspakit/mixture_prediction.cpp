@@ -289,7 +289,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
     }
     for(size_t i = 0; i < Nsorted - 1; i++)
     {
-      Phi[i + (Nsorted - 1) * Nsorted] = -sortedComponents[Nsorted - 1].get().isotherm.value(pstar[Nsorted - 1]) / pstar[Nsorted - 1];
+      Phi[i + (Nsorted - 1) * Nsorted] = -sortedComponents[Nsorted - 1].get().isotherm.value(pstar[Nsorted - 1]) / 
+                                         pstar[Nsorted - 1];
     }
     for(size_t i = 0; i < Nsorted; i++)
     {
@@ -299,7 +300,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
     // corrections
     for(size_t i = 0; i < Nsorted - 1; i++)
     {
-      Phi[(Nsorted - 1) + (Nsorted - 1) * Nsorted] -= Phi[(Nsorted - 1) + i * Nsorted] * Phi[i + (Nsorted - 1) * Nsorted] / 
+      Phi[(Nsorted - 1) + (Nsorted - 1) * Nsorted] -= Phi[(Nsorted - 1) + i * Nsorted] * 
+                                                      Phi[i + (Nsorted - 1) * Nsorted] / 
                                                       Phi[i + i * Nsorted];
       G[Nsorted - 1] -= Phi[(Nsorted - 1) + i * Nsorted] * G[i] / Phi[i + i * Nsorted];
     }
@@ -358,7 +360,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastIAST(const std::vector<d
 
   for(size_t i = 0; i < Nsorted; ++i)
   {
-    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
+    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / 
+                                                std::max(pstar[i], 1e-15);
   }
   if(system.numberOfCarrierGases > 0)
   {
@@ -459,7 +462,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
     double initial_psi = 0.0;
     for(size_t i = 0; i < Nsorted; ++i)
     {
-      double temp_psi = Yi[sortedComponents[i].get().componentId] * sortedComponents[i].get().isotherm.psiForPressure(site, P);
+      double temp_psi = Yi[sortedComponents[i].get().componentId] * 
+                        sortedComponents[i].get().isotherm.psiForPressure(site, P);
       initial_psi += temp_psi;
     }
     cachedPsi[site] = initial_psi;
@@ -496,7 +500,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
     }
     for(size_t i = 0; i < Nsorted - 1; i++)
     {
-      Phi[i + (Nsorted - 1) * Nsorted] = -sortedComponents[Nsorted - 1].get().isotherm.value(site, pstar[Nsorted - 1]) / pstar[Nsorted - 1];
+      Phi[i + (Nsorted - 1) * Nsorted] = -sortedComponents[Nsorted - 1].get().isotherm.value(site, pstar[Nsorted - 1]) 
+                                         / pstar[Nsorted - 1];
     }
     for(size_t i = 0; i < Nsorted; i++)
     {
@@ -506,7 +511,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
     // corrections
     for(size_t i = 0; i < Nsorted - 1; i++)
     {
-      Phi[(Nsorted - 1) + (Nsorted - 1) * Nsorted] -= Phi[(Nsorted - 1) + i * Nsorted] * Phi[i + (Nsorted - 1) * Nsorted] / 
+      Phi[(Nsorted - 1) + (Nsorted - 1) * Nsorted] -= Phi[(Nsorted - 1) + i * Nsorted] * 
+                                                      Phi[i + (Nsorted - 1) * Nsorted] / 
                                                       Phi[i + i * Nsorted];
       G[Nsorted - 1] -= Phi[(Nsorted - 1) + i * Nsorted] * G[i] / Phi[i + i * Nsorted];
     }
@@ -565,7 +571,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
 
   for(size_t i = 0; i < Nsorted; ++i)
   {
-    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / std::max(pstar[i], 1e-15);
+    Xi[sortedComponents[i].get().componentId] = Yi[sortedComponents[i].get().componentId] * P / 
+                                                std::max(pstar[i], 1e-15);
   }
   if(system.numberOfCarrierGases > 0)
   {
@@ -585,7 +592,8 @@ std::pair<size_t, size_t> MixturePrediction::computeFastSIAST(size_t site,
   double inverse_q_total = 0.0;
   for(size_t i = 0; i < Nsorted; ++i)
   {
-    inverse_q_total += Xi[sortedComponents[i].get().componentId] / sortedComponents[i].get().isotherm.value(site, pstar[i]);
+    inverse_q_total += Xi[sortedComponents[i].get().componentId] / 
+                       sortedComponents[i].get().isotherm.value(site, pstar[i]);
   }
   for(size_t i = 0; i < Ncomp; ++i)
   {
@@ -863,7 +871,8 @@ std::pair<size_t, size_t> MixturePrediction::computeSIASTNestedLoopBisection(siz
       sumXi = 0.0;
       for(size_t i = 0; i < Ncomp; ++i)
       {
-        sumXi += Yi[i] * P * components[i].isotherm.inversePressureForPsi(site, right_bracket, cachedP0[i + Ncomp * site]);
+        sumXi += 
+          Yi[i] * P * components[i].isotherm.inversePressureForPsi(site, right_bracket, cachedP0[i + Ncomp * site]);
       }
       ++nr_steps;
       if(nr_steps>100000)
@@ -887,7 +896,8 @@ std::pair<size_t, size_t> MixturePrediction::computeSIASTNestedLoopBisection(siz
       sumXi = 0.0;
       for(size_t i = 0; i < Ncomp; ++i)
       {
-        sumXi += Yi[i] * P * components[i].isotherm.inversePressureForPsi(site, left_bracket, cachedP0[i + Ncomp * site]);
+        sumXi += 
+          Yi[i] * P * components[i].isotherm.inversePressureForPsi(site, left_bracket, cachedP0[i + Ncomp * site]);
       }
       ++nr_steps;
       if(nr_steps>100000)
@@ -999,8 +1009,10 @@ std::pair<size_t, size_t> MixturePrediction::computeExplicitIsotherm(const std::
     alpha2[i] = alpha1[i + 1] + sortedComponents[i].get().isotherm.sites[0].parameters[1] * 
                           Yi[sortedComponents[i].get().componentId] * P;
   }
-  alpha1[0] = alpha1[1] + sortedComponents[0].get().isotherm.sites[0].parameters[1] * Yi[sortedComponents[0].get().componentId] * P;
-  alpha2[0] = alpha1[1] + sortedComponents[0].get().isotherm.sites[0].parameters[1] * Yi[sortedComponents[0].get().componentId] * P;
+  alpha1[0] = alpha1[1] + sortedComponents[0].get().isotherm.sites[0].parameters[1] * 
+                          Yi[sortedComponents[0].get().componentId] * P;
+  alpha2[0] = alpha1[1] + sortedComponents[0].get().isotherm.sites[0].parameters[1] * 
+                          Yi[sortedComponents[0].get().componentId] * P;
 
   double beta = alpha2[0];
 
@@ -1013,8 +1025,9 @@ std::pair<size_t, size_t> MixturePrediction::computeExplicitIsotherm(const std::
   for(size_t i = 0; i < Ncomp; ++i)
   {
     size_t index = sortedComponents[i].get().componentId;
-    Ni[index] = sortedComponents[i].get().isotherm.sites[0].parameters[0] * sortedComponents[i].get().isotherm.sites[0].parameters[1] * 
-                 Yi[index] * P * alpha_prod[i] / beta;
+    Ni[index] = sortedComponents[i].get().isotherm.sites[0].parameters[0] * 
+                sortedComponents[i].get().isotherm.sites[0].parameters[1] * 
+                Yi[index] * P * alpha_prod[i] / beta;
   }
   double N = 0.0;
   for(size_t i = 0; i < Ncomp; ++i)
@@ -1145,7 +1158,8 @@ void MixturePrediction::run(std::ostream &stream)
   std::vector<std::ofstream> streams;
   for (size_t i = 0; i < Ncomp; i++)
   {
-    std::string fileName = std::format("MixturePrediction/System_{}/component_{}_{}.data", system.systemId, std::to_string(i),components[i].name);
+    std::string fileName = std::format("MixturePrediction/System_{}/component_{}_{}.data", 
+                                       system.systemId, std::to_string(i),components[i].name);
     streams.emplace_back(std::ofstream{ fileName });
   }
 
@@ -1332,7 +1346,8 @@ void MixturePrediction::createPlotScript()
     std::filesystem::create_directory("MixturePrediction");
     std::filesystem::create_directory(std::format("MixturePrediction/System_{}", system.systemId));
     std::ofstream stream_graphs(std::format("MixturePrediction/System_{}/make_graphs.bat", system.systemId));
-    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
+    stream_graphs << "set PATH=%PATH%;C:\\Program Files\\gnuplot\\bin;C:\\Program Files\\ffmpeg-master-"
+                     "latest-win64-gpl\\bin;C:\\Program Files\\ffmpeg\\bin\n";
     stream_graphs << "gnuplot.exe plot_pure_components\n";
     stream_graphs << "gnuplot.exe plot_mixture\n";
     stream_graphs << "gnuplot.exe plot_mixture_mol_fractions\n";
@@ -1354,7 +1369,8 @@ void MixturePrediction::createPlotScript()
  
 }
 
-void MixturePrediction::printErrorStatus(double psi_value, double sum, double P, const std::vector<double> Yi, double cachedP0[])
+void MixturePrediction::printErrorStatus(double psi_value, double sum, double P, 
+                                         const std::vector<double> Yi, double cachedP0[])
 {
   std::cout << "psi: " << psi_value << std::endl;
   std::cout << "sum: " << sum << std::endl;

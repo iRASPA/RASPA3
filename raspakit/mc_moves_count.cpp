@@ -13,6 +13,7 @@ import double3;
 import stringutils;
 import archive;
 
+
 void MCMoveCount::clearCountStatistics()
 {
   translationMove = size_t{0};
@@ -48,7 +49,8 @@ const std::string MCMoveCount::writeSystemStatistics(size_t countTotal) const
   return stream.str();
 }
 
-const std::string MCMoveCount::writeComponentStatistics(size_t countTotal, size_t componentId, const std::string &componentName) const
+const std::string MCMoveCount::writeComponentStatistics(size_t countTotal, size_t componentId, 
+                                                        const std::string &componentName) const
 {
   std::ostringstream stream;
 

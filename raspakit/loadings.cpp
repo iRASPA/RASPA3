@@ -19,6 +19,7 @@ import stringutils;
 import component;
 import units;
 
+
 std::string Loadings::printStatus(const Component& comp, std::optional<double> frameworkMass) const
 {
   std::ostringstream stream;
@@ -29,12 +30,14 @@ std::string Loadings::printStatus(const Component& comp, std::optional<double> f
 
     const double toMolePerKg = 1000.0 / frameworkMass.value();
     const double toMgPerG = 1000.0 * comp.mass / frameworkMass.value();
-    const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
+    const double densityConversionFactor = 
+      1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     switch(comp.type)
     {
       case Component::Type::Framework:
-        std::print(stream, "    framework density:   {: .6e} kg/m^3\n", densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
+        std::print(stream, "    framework density:   {: .6e} kg/m^3\n", 
+                           densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
         break;
       default:
         double loading = numberOfMolecules[comp.componentId];
@@ -51,17 +54,20 @@ std::string Loadings::printStatus(const Component& comp, std::optional<double> f
   }
   else
   {
-    const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
+    const double densityConversionFactor = 
+      1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
     std::print(stream, "    molecules:        {: .6e} molec/uc\n", numberOfMolecules[comp.componentId]);
     std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[comp.componentId]);
-    std::print(stream, "    density:          {: .6e} kg/m^3\n", densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
+    std::print(stream, "    density:          {: .6e} kg/m^3\n", 
+                       densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
   }
 
   return stream.str();
 }
 
-std::string Loadings::printStatus(const Component& comp, const Loadings& average, const Loadings& error, std::optional<double> frameworkMass) const
+std::string Loadings::printStatus(const Component& comp, const Loadings& average, 
+                                  const Loadings& error, std::optional<double> frameworkMass) const
 {
   std::ostringstream stream;
 
@@ -69,14 +75,16 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
   {
     const double toMolePerKg = 1000.0 / frameworkMass.value();
     const double toMgPerKg = 1000.0 * comp.mass / frameworkMass.value();
-    const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
+    const double densityConversionFactor = 
+      1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
 
     switch(comp.type)
     {
       case Component::Type::Framework:
-        std::print(stream, "    density:   {: .6e} kg/m^3\n", densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
+        std::print(stream, "    density:   {: .6e} kg/m^3\n", 
+          densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
         break;
       default:
         double loading = numberOfMolecules[comp.componentId];
@@ -103,15 +111,19 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
   }
   else
   {
-    const double densityConversionFactor = 1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
+    const double densityConversionFactor = 
+      1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
     std::print(stream, "    molecules:      {:.6e} molec/uc   ({:.6e} +/- {:.6e})\n",
-        numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId], error.numberOfMolecules[comp.componentId]);
+        numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId], 
+        error.numberOfMolecules[comp.componentId]);
     std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",
-        numberDensities[comp.componentId], average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
+        numberDensities[comp.componentId], average.numberDensities[comp.componentId], 
+        error.numberDensities[comp.componentId]);
     std::print(stream, "    density:        {:.6e} kg/m^3     ({:.6e} +/- {:.6e})\n",
-        densityConversionFactor * comp.mass * numberDensities[comp.componentId], densityConversionFactor * comp.mass * average.numberDensities[comp.componentId],
+        densityConversionFactor * comp.mass * numberDensities[comp.componentId], 
+        densityConversionFactor * comp.mass * average.numberDensities[comp.componentId],
         densityConversionFactor * comp.mass * error.numberDensities[comp.componentId]);
   }
 

@@ -23,8 +23,9 @@ export enum class confidenceLevel : int
     percent_99 = 4
 };
 
-// https://sphweb.bumc.bu.edu/otlt/MPH-Modules/PH717-QuantCore/PH717-Module6-RandomError/PH717-Module6-RandomError11.html
-export constexpr inline std::array<std::array<double, 5>, 21> standardNormalDeviates{
+//https://sphweb.bumc.bu.edu/otlt/MPH-Modules/PH717-QuantCore/PH717-Module6-RandomError/PH717-Module6-RandomError11.html
+export constexpr inline std::array<std::array<double, 5>, 21> standardNormalDeviates
+{
   {{0.0,   0.0,   0.0,   0.0,   0.0},
   {3.078, 6.314, 12.71, 31.82, 63.66},
   {1.886, 2.920, 4.303, 6.965, 9.925},

@@ -16,6 +16,7 @@ import input_reader;
 import energy_status;
 import archive;
 
+
 export struct MonteCarlo
 {
   enum class WeightingMethod : size_t
