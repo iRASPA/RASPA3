@@ -29,6 +29,7 @@ import multi_site_isotherm;
 import bond_potential;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import mc_moves_statistics_particles;
 import mc_moves_cputime;
 import mc_moves_count;
 
@@ -127,6 +128,7 @@ export struct Component
   std::vector<bool> connectivityTable{};
   
   MCMoveProbabilitiesParticles mc_moves_probabilities;
+  MCMoveStatisticsParticles mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;
   MCMoveCount mc_moves_count;
 

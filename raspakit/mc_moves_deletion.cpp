@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_deletion;
 
 import <complex>;
 import <vector>;
@@ -19,7 +19,6 @@ import <iomanip>;
 import double3;
 import double3x3;
 import simd_quatd;
-
 import component;
 import atom;
 import simulationbox;
@@ -38,18 +37,20 @@ import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
 import transition_matrix;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 
 std::pair<std::optional<RunningEnergy>, double3> 
 MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
 {
-  system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.counts += 1;
-  system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalCounts += 1;
   
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
-    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.constructed += 1;
-    system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalConstructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalConstructed += 1;
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
@@ -75,8 +76,10 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference = 
-      system.computeInterMolecularTailEnergyDifference({}, molecule) +
-      system.computeFrameworkMoleculeTailEnergyDifference({}, molecule);
+      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,                           
+                                         system.spanOfMoleculeAtoms(), {}, molecule) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
+                                         system.spanOfFrameworkAtoms(), {}, molecule);
     std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
     system.mc_moves_cputime.swapDeletionMoveCBMCTail += (v2 - v1);
@@ -103,8 +106,8 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
 
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
-      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.accepted += 1;
-      system.components[selectedComponent].mc_moves_probabilities.statistics_SwapDeletionMove_CBMC.totalAccepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.accepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalAccepted += 1;
 
       system.acceptEwaldMove();
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);

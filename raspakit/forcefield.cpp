@@ -485,6 +485,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceF
   archive << f.noCharges;
   archive << f.omitEwaldFourier;
   archive << f.minimumRosenbluthFactor;
+  archive << f.energyOverlapCriteria;
+  archive << f.useDualCutOff;
 
   return archive;
 }
@@ -521,6 +523,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &
   archive >> f.noCharges;
   archive >> f.omitEwaldFourier;
   archive >> f.minimumRosenbluthFactor;
+  archive >> f.energyOverlapCriteria;
+  archive >> f.useDualCutOff;
 
   return archive;
 }

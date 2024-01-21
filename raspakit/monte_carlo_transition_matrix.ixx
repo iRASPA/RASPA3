@@ -47,8 +47,6 @@ export struct MonteCarloTransitionMatrix
 
   BlockErrorEstimation estimation;
 
-  MC_Moves particleMoves;
-
   std::chrono::system_clock::time_point t1;
   std::chrono::system_clock::time_point t2;
 };

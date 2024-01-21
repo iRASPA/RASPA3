@@ -194,8 +194,8 @@ void MonteCarlo::initialize()
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
-      particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, 
-                                      selectedComponent, fractionalMoleculeSystem);
+      MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, 
+                                  selectedComponent, fractionalMoleculeSystem);
 
       for(System &system : systems)
       {
@@ -284,7 +284,7 @@ void MonteCarlo::equilibrate()
       System& selectedSecondSystem = systems[selectedSystemPair.second];
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
-      particleMoves.performRandomMove(random, selectedSystem, selectedSecondSystem, 
+      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, 
                                       selectedComponent, fractionalMoleculeSystem);
 
       selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
@@ -375,7 +375,7 @@ void MonteCarlo::production()
 
     for(Component &component : system.components)
     {
-      component.mc_moves_probabilities.clearMoveStatistics();
+      component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
       component.mc_moves_count.clearCountStatistics();
       
@@ -424,7 +424,7 @@ void MonteCarlo::production()
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
       
-      particleMoves.performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent, 
+      MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent, 
                                                 fractionalMoleculeSystem, estimation.currentBin);
 
       // sample the occupancy within the innerloop
@@ -584,8 +584,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.estimation;
 
-  archive << mc.particleMoves;
-
   archive << static_cast<uint64_t>(0x6f6b6179); // magic number 'okay' in hex
  
   return archive;
@@ -622,9 +620,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;
-
-  archive >> mc.particleMoves;
-
 
   uint64_t magicNumber;
   archive >> magicNumber;

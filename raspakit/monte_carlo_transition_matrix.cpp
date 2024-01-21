@@ -152,7 +152,7 @@ void MonteCarloTransitionMatrix::initialize()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -213,7 +213,7 @@ void MonteCarloTransitionMatrix::equilibrate()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        particleMoves.performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -280,7 +280,7 @@ void MonteCarloTransitionMatrix::production()
 
     for(Component &component : system.components)
     {
-      component.mc_moves_probabilities.clearMoveStatistics();
+      component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
       if(component.hasFractionalMolecule)
       {
@@ -308,7 +308,7 @@ void MonteCarloTransitionMatrix::production()
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        particleMoves.performRandomMoveProduction(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);

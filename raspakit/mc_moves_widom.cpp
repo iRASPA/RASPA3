@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_widom;
 
 import component;
 import atom;
@@ -22,6 +22,8 @@ import running_energy;
 import forcefield;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 import <complex>;
 import <vector>;
@@ -39,10 +41,10 @@ import <iomanip>;
 
 
 std::optional<double> 
-MC_Moves::WidomMove([[maybe_unused]] RandomNumber &random, System& system, size_t selectedComponent)
+MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  system.components[selectedComponent].mc_moves_probabilities.statistics_WidomMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.counts += 1;
 
   double cutOffVDW = system.forceField.cutOffVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
@@ -65,7 +67,7 @@ MC_Moves::WidomMove([[maybe_unused]] RandomNumber &random, System& system, size_
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
   
 
-  system.components[selectedComponent].mc_moves_probabilities.statistics_WidomMove_CBMC.constructed += 1;
+  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
@@ -74,8 +76,10 @@ MC_Moves::WidomMove([[maybe_unused]] RandomNumber &random, System& system, size_
   system.mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
 
   RunningEnergy tailEnergyDifference =
-    system.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
-    system.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
+    Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
+                                         system.spanOfMoleculeAtoms(),newMolecule, {}) +
+    Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
+                                         system.spanOfFrameworkAtoms(), newMolecule, {});
 
   double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
                                                           tailEnergyDifference.total()));

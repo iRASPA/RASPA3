@@ -51,8 +51,7 @@ export struct MonteCarlo
            (random == rhs.random) &&
            (systems == rhs.systems) &&
            (fractionalMoleculeSystem == rhs.fractionalMoleculeSystem) &&
-           (estimation == rhs.estimation) &&
-           (particleMoves == rhs.particleMoves);
+           (estimation == rhs.estimation);
   }
 
 
@@ -78,8 +77,6 @@ export struct MonteCarlo
   std::vector<std::ofstream> streams;
 
   BlockErrorEstimation estimation;
-
-  MC_Moves particleMoves;
 
   std::chrono::duration<double> totalSimulationTime{ 0 };
 

@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_identity_change;
 
 import <optional>;
 import <span>;
@@ -26,12 +26,14 @@ import move_statistics;
 import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 
 std::optional<RunningEnergy> 
 MC_Moves::identityChangeMove([[maybe_unused]] RandomNumber &random, [[maybe_unused]] System& system, 
-                             [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, 
-                             [[maybe_unused]] std::span<Atom> atoms)
+                            [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, 
+                            [[maybe_unused]] std::span<Atom> atoms)
 {
   return std::nullopt;
 }

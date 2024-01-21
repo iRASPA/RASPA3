@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_gibbs_swap_cbmc;
 
 import <optional>;
 import <span>;
@@ -27,6 +27,8 @@ import move_statistics;
 import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> 
@@ -35,10 +37,10 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
   size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
-  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.counts += 1;
-  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalCounts += 1;
-  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.counts += 1;
-  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalCounts += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.counts += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalCounts += 1;
+  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.counts += 1;
+  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalCounts += 1;
 
   double cutOffVDW = systemA.forceField.cutOffVDW;
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
@@ -59,8 +61,8 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
-  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.constructed += 1;
-  systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalConstructed += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.constructed += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = systemA.energyDifferenceEwaldFourier(systemA.storedEik, newMolecule, {});
@@ -70,8 +72,10 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
 
   std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifferenceA =
-      systemA.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
-      systemA.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
+      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,             
+                                         systemA.spanOfMoleculeAtoms(), newMolecule, {}) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), newMolecule, {});
   std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCTail += (v2 - v1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCTail += (v2 - v1);
@@ -100,14 +104,16 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
 
   std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifferenceB =
-      systemB.computeInterMolecularTailEnergyDifference({}, molecule) +
-      systemB.computeFrameworkMoleculeTailEnergyDifference({}, molecule);
+      Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfMoleculeAtoms(), {}, molecule) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                         systemB.spanOfFrameworkAtoms(),  {}, molecule);
   std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCTail += (w2 - w1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCTail += (w2 - w1);
 
-  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.constructed += 1;
-  systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalConstructed += 1;
+  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.constructed += 1;
+  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
 
   double correctionFactorEwaldB = 
     std::exp(systemB.beta * (energyFourierDifferenceB.total() + tailEnergyDifferenceB.total()));
@@ -119,8 +125,8 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
                           (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) 
                           * systemB.simulationBox.volume))
   {
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.accepted += 1;
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalAccepted += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
 
     systemA.acceptEwaldMove();
     systemA.insertMolecule(selectedComponent, growData->atom);
@@ -128,8 +134,8 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     // Debug
     //assert(system.checkMoleculeIds());
 
-    systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.accepted += 1;
-    systemB.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CBMC.totalAccepted += 1;
+    systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
+    systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
 
     systemB.acceptEwaldMove();
     systemB.deleteMolecule(selectedComponent, selectedMolecule, molecule);

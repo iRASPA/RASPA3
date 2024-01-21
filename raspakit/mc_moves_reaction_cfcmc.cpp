@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_reaction_cfcmc;
 
 import component;
 import atom;
@@ -21,6 +21,8 @@ import property_widom;
 import averages;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 import <complex>;
 import <vector>;
@@ -40,7 +42,7 @@ import <iomanip>;
 std::optional<RunningEnergy> 
 MC_Moves::reactionMove_CFCMC([[maybe_unused]] RandomNumber &random, System& system, 
                              [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, 
-                             [[maybe_unused]] const std::vector<size_t> productStoichiometry) const
+                             [[maybe_unused]] const std::vector<size_t> productStoichiometry)
 {
   size_t selectedComponent = 0;
   size_t selectedMolecule = 0;

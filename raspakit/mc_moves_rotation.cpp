@@ -1,6 +1,6 @@
 module;
 
-module mc_moves;
+module mc_moves_rotation;
 
 import component;
 import atom;
@@ -20,6 +20,8 @@ import property_widom;
 import averages;
 import move_statistics;
 import mc_moves_probabilities_particles;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 import <complex>;
 import <vector>;
@@ -41,12 +43,12 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
 {
   double3 angle{};
   std::array<double3,3> axes{double3(1.0,0.0,0.0), double3(0.0,1.0,0.0) ,double3(0.0,0.0,1.0) };
-  double3 maxAngle = system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.maxChange;
+  double3 maxAngle = system.components[selectedComponent].mc_moves_statistics.rotationMove.maxChange;
   size_t selectedDirection = size_t(3.0 * random.uniform());
   angle[selectedDirection] = maxAngle[selectedDirection] * 2.0 * (random.uniform() - 0.5);
 
-  system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.counts[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.totalCounts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.rotationMove.counts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.rotationMove.totalCounts[selectedDirection] += 1;
 
   size_t startingBead = system.components[selectedComponent].startingBead;
   std::vector<Atom> trialPositions(molecule.size());
@@ -59,14 +61,17 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::optional<RunningEnergy> frameworkMolecule = 
-    system.computeFrameworkMoleculeEnergyDifference(trialPositions, molecule);
+    Interactions::computeFrameworkMoleculeEnergyDifference(system.forceField, system.simulationBox,                     
+                                                           system.spanOfFrameworkAtoms(), trialPositions, molecule);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.rotationMoveNonEwald += (t2 - t1);
   system.mc_moves_cputime.rotationMoveNonEwald += (t2 - t1);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> interMolecule = system.computeInterMolecularEnergyDifference(trialPositions, molecule);
+  std::optional<RunningEnergy> interMolecule = 
+    Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,                     
+                                                        system.spanOfMoleculeAtoms(), trialPositions, molecule);
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.rotationMoveNonEwald += (u2 - u1);
   system.mc_moves_cputime.rotationMoveNonEwald += (u2 - u1);
@@ -80,13 +85,13 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
 
   RunningEnergy energyDifference = frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
-  system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.constructed[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.totalConstructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.rotationMove.constructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.rotationMove.totalConstructed[selectedDirection] += 1;
 
   if (random.uniform() < std::exp(-system.beta * energyDifference.total()))
   {
-    system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.accepted[selectedDirection] += 1;
-    system.components[selectedComponent].mc_moves_probabilities.statistics_RotationMove.totalAccepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_statistics.rotationMove.accepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_statistics.rotationMove.totalAccepted[selectedDirection] += 1;
 
     system.acceptEwaldMove();
     std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());

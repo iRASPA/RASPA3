@@ -16,6 +16,8 @@ import simulationbox;
 import units;
 import potential_energy_vdw;
 import potential_energy_coulomb;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 import <iomanip>;
 import <iostream>;
@@ -45,11 +47,11 @@ void System::recomputeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
-  computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergies);
+  Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
+  Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergies);
 
-  computeFrameworkMoleculeTailEnergy(frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
-  computeInterMolecularTailEnergy(moleculeAtomPositions, runningEnergies);
+  Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
+  Interactions::computeInterMolecularTailEnergy(forceField, simulationBox,moleculeAtomPositions, runningEnergies);
 
   computeEwaldFourierEnergy(simulationBox, runningEnergies);
 
@@ -65,11 +67,11 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  computeFrameworkMoleculeEnergy(simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
-  computeInterMolecularEnergy(simulationBox, moleculeAtomPositions, runningEnergy);
+  Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
+  Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
 
-  computeFrameworkMoleculeTailEnergy(frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
-  computeInterMolecularTailEnergy(moleculeAtomPositions, runningEnergy);
+  Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
+  Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
 
   computeEwaldFourierEnergy(simulationBox, runningEnergy);
 

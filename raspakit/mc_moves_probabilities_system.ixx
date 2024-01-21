@@ -6,7 +6,6 @@ import <fstream>;
 
 import archive;
 import double3;
-import move_statistics;
 
 export struct MCMoveProbabilitiesSystem
 {
@@ -17,10 +16,6 @@ export struct MCMoveProbabilitiesSystem
   double probabilityVolumeMove{ 0.0 };
   double probabilityGibbsVolumeMove{ 0.0 };
 
-  MoveStatistics<double> statistics_VolumeMove{ .maxChange = 0.1 };
-  MoveStatistics<double> statistics_GibbsVolumeMove{ .maxChange = 0.1 };
-
-  void clear();
   void optimizeAcceptance();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilitiesSystem &p);

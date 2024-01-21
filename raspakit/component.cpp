@@ -54,6 +54,7 @@ import cif_reader;
 import move_statistics;
 import bond_potential;
 import mc_moves_probabilities_particles;
+import mc_moves_statistics_particles;
 import mc_moves_cputime;
 import mc_moves_count;
 
@@ -93,6 +94,7 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     lambdaGC(numberOfBlocks, numberOfLambdaBins),
     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(),
+    mc_moves_statistics(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   atoms = definedAtoms;
@@ -114,6 +116,7 @@ Component::Component(size_t componentId, std::string fileName, double mass, Simu
     lambdaGC(numberOfBlocks, numberOfLambdaBins),
     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(),
+    mc_moves_statistics(),
     averageRosenbluthWeights(numberOfBlocks)
 {
   // expand the fractional atoms based on the space-group
@@ -674,6 +677,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive << c.mc_moves_probabilities;
+  archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
   archive << c.mc_moves_count;
 
@@ -769,6 +773,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive >> c.mc_moves_probabilities;
+  archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
   archive >> c.mc_moves_count;
 

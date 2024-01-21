@@ -105,6 +105,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     //noCharges(false),
     //omitEwaldFourier(false),
     mc_moves_probabilities(),
+    mc_moves_statistics(),
     reactions(),
     tmmc()
 {
@@ -186,6 +187,7 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c, [[mayb
                //noCharges(false),
                //omitEwaldFourier(false),
                mc_moves_probabilities(),
+               mc_moves_statistics(),
                reactions(),
                tmmc()
 {
@@ -607,10 +609,10 @@ void System::removeRedundantMoves()
 
 void System::optimizeMCMoves()
 {
-  mc_moves_probabilities.optimizeAcceptance();
+  mc_moves_statistics.optimizeAcceptance();
   for (Component& component : components)
   {
-    component.mc_moves_probabilities.optimizeMCMoves();
+    component.mc_moves_statistics.optimizeMCMoves();
   }
 }
 
@@ -1043,7 +1045,7 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
 
 void System::clearMoveStatistics()
 {
-  mc_moves_probabilities.clear();
+  mc_moves_statistics.clear();
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s)
@@ -1101,6 +1103,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.CoulombicFourierEnergySingleIon;
   archive << s.netCharge;
   archive << s.mc_moves_probabilities;
+  archive << s.mc_moves_statistics;
   archive << s.mc_moves_cputime;
   archive << s.mc_moves_count;
   archive << s.reactions;
@@ -1187,6 +1190,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.CoulombicFourierEnergySingleIon;
   archive >> s.netCharge;
   archive >> s.mc_moves_probabilities;
+  archive >> s.mc_moves_statistics;
   archive >> s.mc_moves_cputime;
   archive >> s.mc_moves_count;
   archive >> s.reactions;

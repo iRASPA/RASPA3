@@ -57,14 +57,16 @@ std::string System::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
 
-  if (mc_moves_probabilities.probabilityVolumeMove > 0.0) std::print(stream, "{}", formatMoveStatistics( "Volume", mc_moves_probabilities.statistics_VolumeMove));
-  if (mc_moves_probabilities.probabilityGibbsVolumeMove > 0.0) std::print(stream, "{}", formatMoveStatistics("Gibbs Volume", mc_moves_probabilities.statistics_GibbsVolumeMove));
+  if (mc_moves_statistics.volumeMove.totalCounts > 0.0) 
+    std::print(stream, "{}", formatMoveStatistics( "Volume", mc_moves_statistics.volumeMove));
+  if (mc_moves_statistics.GibbsVolumeMove.totalCounts > 0.0) 
+    std::print(stream, "{}", formatMoveStatistics("Gibbs Volume", mc_moves_statistics.GibbsVolumeMove));
 
   for (size_t componentId = 0; const Component& component: components)
   {
     std::print(stream,"Component {} [{}]\n", componentId, component.name);
 
-    std::print(stream, "{}", component.mc_moves_probabilities.writeMCMoveStatistics());
+    std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics());
 
     if(component.hasFractionalMolecule)
     {

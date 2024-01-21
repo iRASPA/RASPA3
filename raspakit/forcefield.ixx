@@ -115,6 +115,8 @@ export struct ForceField
   bool omitEwaldFourier{ false };
 
   double minimumRosenbluthFactor{ 1e-150 };
+  double energyOverlapCriteria = 1e6;
+  bool useDualCutOff{ false };
 
   ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, 
              double cutOff, bool shifted, bool tailCorrecions) noexcept(false);

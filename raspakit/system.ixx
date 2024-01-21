@@ -46,6 +46,7 @@ import bond_potential;
 import isotherm;
 import move_statistics;
 import mc_moves_probabilities_system;
+import mc_moves_statistics_system;
 import mc_moves_cputime;
 import mc_moves_count;
 import reaction;
@@ -163,6 +164,7 @@ export struct System
   std::vector<double> netCharge;
 
   MCMoveProbabilitiesSystem mc_moves_probabilities;
+  MCMoveStatisticsSystem mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;
   MCMoveCount mc_moves_count;
 
@@ -214,34 +216,14 @@ export struct System
   ForceFactor computeInterMolecularGradient() noexcept;
   ForceFactor computeFrameworkMoleculeGradient() noexcept;
 
-  void computeFrameworkMoleculeEnergy(const SimulationBox &box, std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
-  void computeFrameworkMoleculeTailEnergy(std::span<const Atom> frameworkAtomPositions, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
-  inline void computeInterMolecularEnergy(RunningEnergy &energyStatus) noexcept
+  inline void computeInterMolecularEnergy([[maybe_unused]] RunningEnergy &energyStatus) noexcept
   {
-    computeInterMolecularEnergy(simulationBox, spanOfMoleculeAtoms(), energyStatus);
+    //computeInterMolecularEnergy(simulationBox, spanOfMoleculeAtoms(), energyStatus);
   }
-  void computeInterMolecularEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
-  void computeInterMolecularTailEnergy(std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus) noexcept;
-  void computeTailCorrectionVDWEnergy(RunningEnergy &energyStatus) noexcept;
   void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
   void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
   void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
   ForceFactor computeEwaldFourierGradient();
-
-
-  [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
-  [[nodiscard]] RunningEnergy computeFrameworkMoleculeTailEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
-  [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
-  [[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(std::span<const Atom> newatoms, std::span<const Atom> oldatoms) const noexcept;
-
-  [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) const noexcept;
-
-  [[nodiscard]] EnergyStatus computeTailCorrectionVDWOldEnergy() const noexcept;
-  [[nodiscard]] EnergyStatus computeTailCorrectionVDWAddEnergy(size_t selectedComponent) const noexcept;
-  [[nodiscard]] EnergyStatus computeTailCorrectionVDWRemoveEnergy(size_t selectedComponent) const noexcept;
-
-  [[nodiscard]] std::vector<double> computeInterMolecularInteractionsEnergy() const noexcept;
-  [[nodiscard]] std::vector<double> computeInterMolecularInteractionsForce() noexcept;
 
   size_t randomFramework(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(numberOfFrameworks)); }
   size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }

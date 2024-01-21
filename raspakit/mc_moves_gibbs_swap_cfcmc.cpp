@@ -6,7 +6,7 @@ module;
   #include <assert.h>
 #endif
 
-module mc_moves;
+module mc_moves_gibbs_swap_cfcmc;
 
 import <optional>;
 import <span>;
@@ -35,6 +35,8 @@ import move_statistics;
 import component;
 import mc_moves_probabilities_particles;
 import simulationbox;
+import interactions_framework_molecule;
+import interactions_intermolecular;
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
 // Implementation advantage: the number of fractional molecules per system remains constant.
@@ -51,7 +53,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
   double oldLambda = systemA.components[selectedComponent].lambdaGC.lambdaValue();
 
   double maxChange = 
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.maxChange[2];
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.maxChange[2];
   std::make_signed_t<std::size_t> selectedNewBin = lambdaA.selectNewBin(random, maxChange);
 
   assert(systemA.containsTheFractionalMolecule == true);
@@ -86,8 +88,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
      const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
      std::vector<Atom> oldFractionalMoleculeB2(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
 
-     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[0] += 1;
-     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[0] += 1;
+     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[0] += 1;
+     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[0] += 1;
 
 
      // System A: Changing the fractional molecule into a whole molecule, keeping its position fixed
@@ -101,7 +103,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
      std::optional<RunningEnergy> frameworkDifferenceA = 
-       systemA.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+       Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,                 
+                                          systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
      std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
@@ -115,7 +118,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point u1A = std::chrono::system_clock::now();
      std::optional<RunningEnergy> moleculeDifferenceA = 
-       systemA.computeInterMolecularEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+       Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,                      
+                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
      std::chrono::system_clock::time_point u2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
@@ -136,8 +140,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point m1A = std::chrono::system_clock::now();
      RunningEnergy tailEnergyDifferenceA = 
-       systemA.computeInterMolecularTailEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA) +
-       systemA.computeFrameworkMoleculeTailEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+       Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA) +
+       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,                
+                                         systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
      std::chrono::system_clock::time_point m2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
@@ -155,7 +161,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point w1A = std::chrono::system_clock::now();
      std::optional<RunningEnergy> frameworkDifferenceA2 = 
-       systemA.computeFrameworkMoleculeEnergyDifference(newMolecule, {});
+       Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                                              systemA.spanOfFrameworkAtoms(), newMolecule, {});
      std::chrono::system_clock::time_point w2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
@@ -170,7 +177,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point x1A = std::chrono::system_clock::now();
      std::optional<RunningEnergy> moleculeDifferenceA2 = 
-       systemA.computeInterMolecularEnergyDifference(newMolecule, {});
+       Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                                           systemA.spanOfMoleculeAtoms(), newMolecule, {});
      std::chrono::system_clock::time_point x2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
@@ -190,8 +198,11 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2A - y1A);
 
      std::chrono::system_clock::time_point z1A = std::chrono::system_clock::now();
-     RunningEnergy tailEnergyDifferenceA2 = systemA.computeInterMolecularTailEnergyDifference(newMolecule, {}) +
-                                            systemA.computeFrameworkMoleculeTailEnergyDifference(newMolecule, {});
+     RunningEnergy tailEnergyDifferenceA2 = 
+       Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), newMolecule, {}) +
+       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), newMolecule, {});
      std::chrono::system_clock::time_point z2A = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
@@ -220,7 +231,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
      
      std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
      std::optional<RunningEnergy> frameworkDifferenceB = 
-       systemB.computeFrameworkMoleculeEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+       Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
      std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
@@ -236,7 +248,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point u1B = std::chrono::system_clock::now();
      std::optional<RunningEnergy> moleculeDifferenceB = 
-       systemB.computeInterMolecularEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+       Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                 systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
      std::chrono::system_clock::time_point u2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
@@ -259,8 +272,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point m1B = std::chrono::system_clock::now();
      RunningEnergy tailEnergyDifferenceB = 
-       systemB.computeInterMolecularTailEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB) +
-       systemB.computeFrameworkMoleculeTailEnergyDifference(selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+       Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB) +
+       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
      std::chrono::system_clock::time_point m2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
@@ -283,7 +298,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point w1B = std::chrono::system_clock::now();
      std::optional<RunningEnergy> frameworkDifferenceB2 = 
-       systemB.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+       Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
      std::chrono::system_clock::time_point w2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
@@ -299,7 +315,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point x1B = std::chrono::system_clock::now();
      std::optional<RunningEnergy> moleculeDifferenceB2 = 
-       systemB.computeInterMolecularEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+       Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
      std::chrono::system_clock::time_point x2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
@@ -322,8 +339,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point z1B = std::chrono::system_clock::now();
      RunningEnergy tailEnergyDifferenceB2 = 
-       systemB.computeInterMolecularTailEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB) +
-       systemB.computeFrameworkMoleculeTailEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+       Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB) +
+       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
      std::chrono::system_clock::time_point z2B = std::chrono::system_clock::now();
      systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
      systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
@@ -339,14 +358,14 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
      double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) / 
                         (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
 
-     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[0] += 1;
-     systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
+     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[0] += 1;
+     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
 
      if (random.uniform() < preFactor * std::exp(-systemA.beta * 
                                           (energyDifferenceA.total() + energyDifferenceB.total()) + biasTerm))
      {
-       systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[0] += 1;
-       systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
+       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[0] += 1;
+       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
        
        // restore
        std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
@@ -404,8 +423,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
   {
     // Move fractional molecule to the other box (from A to a random position in B)
 
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[1] += 1;
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[1] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[1] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[1] += 1;
 
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -426,7 +445,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA = 
-      systemA.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
     std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (t2A - t1A);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (t2A - t1A);
@@ -441,7 +461,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
  
     std::chrono::system_clock::time_point u1A = std::chrono::system_clock::now();
     std::optional<RunningEnergy> moleculeDifferenceA = 
-      systemA.computeInterMolecularEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+      Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
     std::chrono::system_clock::time_point u2A = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (u2A - u1A);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (u2A - u1A);
@@ -464,8 +485,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point w1A = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceA = 
-      systemA.computeInterMolecularTailEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA) +
-      systemA.computeFrameworkMoleculeTailEnergyDifference(fractionalMoleculeA, oldFractionalMoleculeA);
+      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
     std::chrono::system_clock::time_point w2A = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCTail += (w2A - w1A);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCTail += (w2A - w1A);
@@ -476,7 +499,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceB = 
-      systemB.computeFrameworkMoleculeEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
     std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (t2B - t1B);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (t2B - t1B);
@@ -493,7 +517,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point u1B = std::chrono::system_clock::now();
     std::optional<RunningEnergy> moleculeDifferenceB = 
-      systemB.computeInterMolecularEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+      Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
     std::chrono::system_clock::time_point u2B = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (u2B - u1B);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCNonEwald += (u2B - u1B);
@@ -516,8 +541,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point w1B = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifferenceB = 
-      systemB.computeInterMolecularTailEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB) +
-      systemB.computeFrameworkMoleculeTailEnergyDifference(fractionalMoleculeB, oldFractionalMoleculeB);
+      Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
     std::chrono::system_clock::time_point w2B = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCTail += (w2B - w1B);
     systemA.mc_moves_cputime.GibbsSwapLambdaShuffleMoveCFCMCTail += (w2B - w1B);
@@ -526,8 +553,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     RunningEnergy energyDifferenceB = frameworkDifferenceB.value() + moleculeDifferenceB.value() + 
                                       EwaldEnergyDifferenceB + tailEnergyDifferenceB;
 
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[1] += 1;
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[1] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[1] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[1] += 1;
 
     double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
 
@@ -536,8 +563,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     if (random.uniform() < preFactor * exp(-systemA.beta * (energyDifferenceA.total() + energyDifferenceB.total()) 
                                            + biasTerm))
     {
-      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[1] += 1;
-      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[1] += 1;
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[1] += 1;
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[1] += 1;
 
       systemA.acceptEwaldMove();
       systemB.acceptEwaldMove();
@@ -565,8 +592,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     
     
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.counts[2] += 1;
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalCounts[2] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[2] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[2] += 1;
     
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
@@ -577,7 +604,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkEnergyDifference = 
-      systemA.computeFrameworkMoleculeEnergyDifference(trialPositions, fractionalMoleculeA);
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCNonEwald += (t2 - t1);
     systemA.mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCNonEwald += (t2 - t1);
@@ -586,7 +614,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
     std::optional<RunningEnergy> interEnergyDifference = 
-      systemA.computeInterMolecularEnergyDifference(trialPositions, fractionalMoleculeA);
+      Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), trialPositions, fractionalMoleculeA);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCNonEwald += (u2 - u1);
     systemA.mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCNonEwald += (u2 - u1);
@@ -602,8 +631,10 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point w1 = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifference = 
-      systemA.computeInterMolecularTailEnergyDifference(trialPositions, fractionalMoleculeA) +
-      systemA.computeFrameworkMoleculeTailEnergyDifference(trialPositions, fractionalMoleculeA);
+      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                         systemA.spanOfMoleculeAtoms(), trialPositions, fractionalMoleculeA) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                         systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
     std::chrono::system_clock::time_point w2 = std::chrono::system_clock::now();
     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCTail += (w2 - w1);
     systemA.mc_moves_cputime.GibbsSwapLambdaChangeMoveCFCMCTail += (w2 - w1);
@@ -612,8 +643,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     RunningEnergy energyDifference = frameworkEnergyDifference.value() + interEnergyDifference.value() + 
                                      EwaldFourierDifference + tailEnergyDifference;
     
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.constructed[2] += 1;
-    systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalConstructed[2] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[2] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[2] += 1;
     
     
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
@@ -621,8 +652,8 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     {
       systemA.acceptEwaldMove();
 
-      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.accepted[2] += 1;
-      systemA.components[selectedComponent].mc_moves_probabilities.statistics_GibbsSwapMove_CFCMC.totalAccepted[2] += 1;
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[2] += 1;
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[2] += 1;
     
       std::copy(trialPositions.begin(), trialPositions.end(), fractionalMoleculeA.begin());
     
