@@ -1,0 +1,49 @@
+export module equation_of_states;
+
+import <vector>;
+
+import component;
+import simulationbox;
+
+export struct EquationOfState
+{
+  enum class Type : int
+  {
+    PengRobinson = 0,
+    PengRobinsonGasem = 1,
+    SoaveRedlichKwong = 2
+  };
+  enum class MultiComponentMixingRules : int
+  {
+    VanDerWaals = 0
+  };
+  enum class FluidState : int
+  {
+    Unknown = 0,
+    SuperCriticalFluid = 1,
+    Vapor = 2,
+    Liquid = 3,
+    VaporLiquid = 4
+  };
+
+  EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
+  EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
+  EquationOfState::MultiComponentMixingRules
+    multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
+
+  EquationOfState(EquationOfState::Type type,
+                  EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
+                  double temperature,
+                  double pressure,
+                  const SimulationBox &simulationBox,
+                  double HeliumVoidFraction,
+                  std::vector<Component> &components); 
+
+  void computeComponentFluidProperties(EquationOfState::Type equationOfState,                           
+                                       EquationOfState::MultiComponentMixingRules multiComponentMixingRules,         
+                                       double temperature,
+                                       double pressure,
+                                       const SimulationBox &simulationBox,
+                                       double HeliumVoidFraction,
+                                       std::vector<Component> &components);
+};

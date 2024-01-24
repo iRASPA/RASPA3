@@ -141,7 +141,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
   determineFractionalComponents();
   rescaleMoveProbabilities();
   rescaleMolarFractions();
-  computeComponentFluidProperties();
+  //computeComponentFluidProperties();
   computeFrameworkDensity();
   computeNumberOfPseudoAtoms();
 

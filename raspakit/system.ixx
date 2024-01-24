@@ -52,28 +52,10 @@ import mc_moves_count;
 import reaction;
 import reactions;
 import transition_matrix;
+import equation_of_states;
 
 export struct System
 {
-  enum class FluidState : int
-  {
-    Unknown = 0,
-    SuperCriticalFluid = 1,
-    Vapor = 2,
-    Liquid = 3,
-    VaporLiquid = 4
-  };
-  enum class EquationOfState : int
-  {
-    PengRobinson = 0,
-    PengRobinsonGasem = 1,
-    SoaveRedlichKwong = 2
-  };
-  enum class MultiComponentMixingRules : int
-  {
-    VanDerWaals = 0
-  };
-
   System() = default;
   System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
@@ -89,9 +71,10 @@ export struct System
 
   size_t systemId{};
 
-  FluidState fluidState{ FluidState::Unknown };
-  EquationOfState equationOfState{ EquationOfState::PengRobinson };
-  MultiComponentMixingRules multiComponentMixingRules{ MultiComponentMixingRules::VanDerWaals };
+  EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
+  EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
+  EquationOfState::MultiComponentMixingRules 
+    multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
 
   double temperature{ 300.0 };
   double pressure{ 1e4 };

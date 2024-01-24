@@ -86,7 +86,7 @@ void MonteCarloTransitionMatrix::initialize()
     system.determineFractionalComponents();
     system.rescaleMoveProbabilities();
     system.rescaleMolarFractions();
-    system.computeComponentFluidProperties();
+    //system.computeComponentFluidProperties();
     system.computeFrameworkDensity();
     system.computeNumberOfPseudoAtoms();
 
