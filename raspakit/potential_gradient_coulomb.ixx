@@ -11,7 +11,7 @@ import force_factor;
 
 // return D[U[r],r] / r
 
-export inline ForceFactor 
+export [[clang::always_inline]] inline ForceFactor 
 potentialCoulombGradient(const ForceField& forcefield, const bool &groupIdA, const bool &groupIdB, 
                          const double &scalingA, const double &scalingB, const double& r, 
                          const double& chargeA, const double& chargeB)

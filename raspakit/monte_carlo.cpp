@@ -22,6 +22,7 @@ import <exception>;
 import <source_location>;
 
 import stringutils;
+import hardware_info;
 import archive;
 import system;
 import randomnumbers;
@@ -100,11 +101,11 @@ void MonteCarlo::createOutputFiles()
 {
   for (System &system: systems)
   {
-    std::string directoryNameString = std::format("Output/System_{}/", system.systemId);
+    std::string directoryNameString = std::format("output/system_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
     std::filesystem::create_directories(directoryName);
 
-    std::string fileNameString = std::format("Output/System_{}/output_{}_{}.data",
+    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
         system.systemId, system.temperature, system.input_pressure);
     streams.emplace_back(fileNameString, std::ios::out );
   }
@@ -155,7 +156,7 @@ void MonteCarlo::initialize()
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
-    std::print(stream, "{}", system.writeOutputHeaderHardware());
+    std::print(stream, "{}", HardwareInfo::writeInfo());
     std::print(stream, "{}", Units::printStatus());
     std::print(stream, "{}", system.simulationBox.printParameters());
     std::print(stream, "{}", system.forceField.printPseudoAtomStatus());

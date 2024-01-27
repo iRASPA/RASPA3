@@ -31,6 +31,8 @@ export struct EquationOfState
   EquationOfState::MultiComponentMixingRules
     multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
 
+  EquationOfState() = default;
+
   EquationOfState(EquationOfState::Type type,
                   EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
                   double temperature,
@@ -38,6 +40,8 @@ export struct EquationOfState
                   const SimulationBox &simulationBox,
                   double HeliumVoidFraction,
                   std::vector<Component> &components); 
+
+  bool operator==(EquationOfState const&) const = default;
 
   void computeComponentFluidProperties(EquationOfState::Type equationOfState,                           
                                        EquationOfState::MultiComponentMixingRules multiComponentMixingRules,         

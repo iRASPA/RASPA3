@@ -20,7 +20,7 @@ module;
   #include <sys/sysctl.h>
 #endif
 
-module system;
+module hardware_info;
 
 import <iostream>;
 import <random>;
@@ -30,9 +30,7 @@ import <print>;
 
 import stringutils;
 
-// system_hardware_info.cpp
-
-std::string System::writeOutputHeaderHardware() const
+std::string HardwareInfo::writeInfo() 
 {
   std::ostringstream stream;
     // see what compiler is used
@@ -166,184 +164,182 @@ std::string System::writeOutputHeaderHardware() const
         std::print(stream, "[From GetVersionExW] Service Pack :  {}.{}\n", osvi.wServicePackMajor, osvi.wServicePackMinor);
     }
    
-
     if (osvi.dwMajorVersion >= 6)
     {
-       
-        if (!IsWindowsXPOrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Pre-Windows XP\n");
-        }
-        else if (!IsWindowsXPSP1OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows XP\n");
-        }
-        else if (!IsWindowsXPSP2OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows XP-SP1\n");
-        }
-        else if (!IsWindowsXPSP3OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows XP-SP2\n");
-        }
-        else if (!IsWindowsVistaOrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows XP-SP3\n");
-        }
-        else if (!IsWindowsVistaSP1OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows Vista\n");
-        }
-        else if (!IsWindowsVistaSP2OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows Vista-SP1\n");
-        }
-        else if (!IsWindows7OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows Vista-SP2\n");
-        }
-        else if (!IsWindows7SP1OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows 7\n");
-        }
-        else if (!IsWindows8OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows 7-SP1\n");
-        }
-        else if (!IsWindows8Point1OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows 8\n");
-        }
-        else if (!IsWindows10OrGreater())
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows 8-Point1\n");
-        }
-        else
-        {
-            std::print(stream, "[From Version Helper-Functions] Windows 10 Or Greater\n");
-        }
+      if (!IsWindowsXPOrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Pre-Windows XP\n");
+      }
+      else if (!IsWindowsXPSP1OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows XP\n");
+      }
+      else if (!IsWindowsXPSP2OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows XP-SP1\n");
+      }
+      else if (!IsWindowsXPSP3OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows XP-SP2\n");
+      }
+      else if (!IsWindowsVistaOrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows XP-SP3\n");
+      }
+      else if (!IsWindowsVistaSP1OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows Vista\n");
+      }
+      else if (!IsWindowsVistaSP2OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows Vista-SP1\n");
+      }
+      else if (!IsWindows7OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows Vista-SP2\n");
+      }
+      else if (!IsWindows7SP1OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows 7\n");
+      }
+      else if (!IsWindows8OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows 7-SP1\n");
+      }
+      else if (!IsWindows8Point1OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows 8\n");
+      }
+      else if (!IsWindows10OrGreater())
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows 8-Point1\n");
+      }
+      else
+      {
+        std::print(stream, "[From Version Helper-Functions] Windows 10 Or Greater\n");
+      }
 
-        if (IsWindowsServer())
-        {
-            std::print(stream, "[From Version Helper-Functions] Window Server\n");
-        }
-       
+      if (IsWindowsServer())
+      {
+        std::print(stream, "[From Version Helper-Functions] Window Server\n");
+      }
+     
 
-        if (osvi.dwMajorVersion == 10)
+      if (osvi.dwMajorVersion == 10)
+      {
+        if (osvi.dwMinorVersion == 0)
         {
-            if (osvi.dwMinorVersion == 0)
-            {
-                if (osvi.wProductType == VER_NT_WORKSTATION)
-                {
-                    if (osvi.dwBuildNumber >= 22000)
-                        std::print(stream, "Microsoft Windows 11 ");
-                    else
-                        std::print(stream, "Microsoft Windows 10 ");
-                }
-                else
-                {
-                    if (osvi.dwBuildNumber >= 20348)
-                        std::print(stream, "Microsoft Windows Server 2022 ");
-                    else if (osvi.dwBuildNumber >= 17763)
-                        std::print(stream, "Microsoft Windows Server 2019 ");
-                    else
-                        std::print(stream, "Microsoft Windows Server 2016 ");
-                }
-            }
+          if (osvi.wProductType == VER_NT_WORKSTATION)
+          {
+            if (osvi.dwBuildNumber >= 22000)
+              std::print(stream, "Microsoft Windows 11 ");
+            else
+              std::print(stream, "Microsoft Windows 10 ");
+          }
+          else
+          {
+            if (osvi.dwBuildNumber >= 20348)
+              std::print(stream, "Microsoft Windows Server 2022 ");
+            else if (osvi.dwBuildNumber >= 17763)
+              std::print(stream, "Microsoft Windows Server 2019 ");
+            else
+              std::print(stream, "Microsoft Windows Server 2016 ");
+          }
         }
-        else if (osvi.dwMajorVersion == 6)
+      }
+      else if (osvi.dwMajorVersion == 6)
+      {
+        if (osvi.dwMinorVersion == 3)
         {
-            if (osvi.dwMinorVersion == 3)
-            {
-                if (osvi.wProductType == VER_NT_WORKSTATION)
-                    std::print(stream, "Microsoft Windows 8.1 ");
-                else
-                    std::print(stream, "Microsoft Windows Server 2012 R2 ");
-            }
-            else if (osvi.dwMinorVersion == 2)
-            {
-                if (osvi.wProductType == VER_NT_WORKSTATION)
-                    std::print(stream, "Microsoft Windows 8 ");
-                else
-                    std::print(stream, "Microsoft Windows Server 2012 ");
-            }
-            else if (osvi.dwMinorVersion == 1)
-            {
-                if (osvi.wProductType == VER_NT_WORKSTATION)
-                    std::print(stream, "Microsoft Windows 7 ");
-                else
-                    std::print(stream, "Microsoft Windows Server 2008 R2 ");
-            }
-            else if (osvi.dwMinorVersion == 0)
-            {
-                if (osvi.wProductType == VER_NT_WORKSTATION)
-                    std::print(stream, "Microsoft Windows Vista ");
-                else
-                    std::print(stream, "Microsoft Windows Server 2008 ");
-            }
+          if (osvi.wProductType == VER_NT_WORKSTATION)
+            std::print(stream, "Microsoft Windows 8.1 ");
+          else
+           std::print(stream, "Microsoft Windows Server 2012 R2 ");
         }
+        else if (osvi.dwMinorVersion == 2)
+        {
+          if (osvi.wProductType == VER_NT_WORKSTATION)
+            std::print(stream, "Microsoft Windows 8 ");
+          else
+            std::print(stream, "Microsoft Windows Server 2012 ");
+        }
+        else if (osvi.dwMinorVersion == 1)
+        {
+          if (osvi.wProductType == VER_NT_WORKSTATION)
+            std::print(stream, "Microsoft Windows 7 ");
+          else
+            std::print(stream, "Microsoft Windows Server 2008 R2 ");
+        }
+        else if (osvi.dwMinorVersion == 0)
+        {
+          if (osvi.wProductType == VER_NT_WORKSTATION)
+            std::print(stream, "Microsoft Windows Vista ");
+          else
+            std::print(stream, "Microsoft Windows Server 2008 ");
+        }
+      }
     }
 
     DWORD dwType;
     if ((GetProductInfo != nullptr) && GetProductInfo(osvi.dwMajorVersion, osvi.dwMinorVersion, 0, 0, &dwType))
     {
-        switch (dwType)
-        {
-        case PRODUCT_ULTIMATE:
-            std::print(stream, "Ultimate Edition\n");
-            break;
-        case PRODUCT_PROFESSIONAL:
-            std::print(stream, "Professional\n");
-            break;
-        case PRODUCT_HOME_PREMIUM:
-            std::print(stream, "Home Premium Edition\n");
-            break;
-        case PRODUCT_HOME_BASIC:
-            std::print(stream, "Home Basic Edition\n");
-            break;
-        case PRODUCT_ENTERPRISE:
-            std::print(stream, "Enterprise Edition\n");
-            break;
-        case PRODUCT_BUSINESS:
-            std::print(stream, "Business Edition\n");
-            break;
-        case PRODUCT_STARTER:
-            std::print(stream, "Starter Edition\n");
-            break;
-        case PRODUCT_CLUSTER_SERVER:
-            std::print(stream, "Cluster Server Edition\n");
-            break;
-        case PRODUCT_DATACENTER_SERVER:
-            std::print(stream, "Datacenter Edition\n");
-            break;
-        case PRODUCT_DATACENTER_SERVER_CORE:
-            std::print(stream, "Datacenter Edition (core installation)\n");
-            break;
-        case PRODUCT_ENTERPRISE_SERVER:
-            std::print(stream, "Enterprise Edition\n");
-            break;
-        case PRODUCT_ENTERPRISE_SERVER_CORE:
-            std::print(stream, "Enterprise Edition (core installation)\n");
-            break;
-        case PRODUCT_ENTERPRISE_SERVER_IA64:
-            std::print(stream, "Enterprise Edition for Itanium-based Systems\n");
-            break;
-        case PRODUCT_SMALLBUSINESS_SERVER:
-            std::print(stream, "Small Business Server\n");
-            break;
-        case PRODUCT_SMALLBUSINESS_SERVER_PREMIUM:
-            std::print(stream, "Small Business Server Premium Edition\n");
-            break;
-        case PRODUCT_STANDARD_SERVER:
-            std::print(stream, "Standard Edition\n");
-            break;
-        case PRODUCT_STANDARD_SERVER_CORE:
-            std::print(stream, "Standard Edition (core installation)\n");
-            break;
-        case PRODUCT_WEB_SERVER:
-            std::print(stream, "Web Server Edition\n");
-            break;
-        }
+      switch (dwType)
+      {
+      case PRODUCT_ULTIMATE:
+        std::print(stream, "Ultimate Edition\n");
+        break;
+      case PRODUCT_PROFESSIONAL:
+        std::print(stream, "Professional\n");
+        break;
+      case PRODUCT_HOME_PREMIUM:
+        std::print(stream, "Home Premium Edition\n");
+        break;
+      case PRODUCT_HOME_BASIC:
+        std::print(stream, "Home Basic Edition\n");
+        break;
+      case PRODUCT_ENTERPRISE:
+        std::print(stream, "Enterprise Edition\n");
+        break;
+      case PRODUCT_BUSINESS:
+        std::print(stream, "Business Edition\n");
+        break;
+      case PRODUCT_STARTER:
+        std::print(stream, "Starter Edition\n");
+        break;
+      case PRODUCT_CLUSTER_SERVER:
+        std::print(stream, "Cluster Server Edition\n");
+        break;
+      case PRODUCT_DATACENTER_SERVER:
+        std::print(stream, "Datacenter Edition\n");
+        break;
+      case PRODUCT_DATACENTER_SERVER_CORE:
+        std::print(stream, "Datacenter Edition (core installation)\n");
+        break;
+      case PRODUCT_ENTERPRISE_SERVER:
+        std::print(stream, "Enterprise Edition\n");
+        break;
+      case PRODUCT_ENTERPRISE_SERVER_CORE:
+        std::print(stream, "Enterprise Edition (core installation)\n");
+        break;
+      case PRODUCT_ENTERPRISE_SERVER_IA64:
+        std::print(stream, "Enterprise Edition for Itanium-based Systems\n");
+        break;
+      case PRODUCT_SMALLBUSINESS_SERVER:
+        std::print(stream, "Small Business Server\n");
+        break;
+      case PRODUCT_SMALLBUSINESS_SERVER_PREMIUM:
+        std::print(stream, "Small Business Server Premium Edition\n");
+        break;
+      case PRODUCT_STANDARD_SERVER:
+        std::print(stream, "Standard Edition\n");
+        break;
+      case PRODUCT_STANDARD_SERVER_CORE:
+        std::print(stream, "Standard Edition (core installation)\n");
+        break;
+      case PRODUCT_WEB_SERVER:
+        std::print(stream, "Web Server Edition\n");
+        break;
+      }
     }
 
 
@@ -351,27 +347,27 @@ std::string System::writeOutputHeaderHardware() const
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) == 0)
     {
-        char hostname[128] = "";
-        gethostname(hostname, sizeof(hostname));
-        struct hostent* ent = gethostbyname(hostname);
-        if (ent)
-        {
-            struct in_addr ip_addr = *(struct in_addr*)(ent->h_addr);
-            std::print(stream, "Hostname: {}, ip address: {}\n", hostname, inet_ntoa(ip_addr));
-        }
+      char hostname[128] = "";
+      gethostname(hostname, sizeof(hostname));
+      struct hostent* ent = gethostbyname(hostname);
+      if (ent)
+      {
+        struct in_addr ip_addr = *(struct in_addr*)(ent->h_addr);
+        std::print(stream, "Hostname: {}, ip address: {}\n", hostname, inet_ntoa(ip_addr));
+      }
     }
 
     if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL)
-        std::print(stream, "Processor Architecture 32-bit\n");
+      std::print(stream, "Processor Architecture 32-bit\n");
     else if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
-        std::print(stream, "Processor Architecture 64-bit\n");
+      std::print(stream, "Processor Architecture 64-bit\n");
     else if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64)
-        std::print(stream, "Processor Architecture Intel Itanium\n");
+      std::print(stream, "Processor Architecture Intel Itanium\n");
     else if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM)
-        std::print(stream, "Processor Architecture ARM\n");
+      std::print(stream, "Processor Architecture ARM\n");
 #if !defined(__MINGW32__) && !defined(__MINGW64__)
     else if (systemInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM64)
-        std::print(stream, "Processor Architecture ARM64\n");
+      std::print(stream, "Processor Architecture ARM64\n");
 #endif
 
     int CPUInfo[4] = { -1 };
@@ -382,14 +378,14 @@ std::string System::writeOutputHeaderHardware() const
     nExIds = CPUInfo[0];
     for (i = 0x80000000; i <= nExIds; ++i)
     {
-        __cpuid(CPUInfo, i);
-        // Interpret CPU brand string
-        if (i == 0x80000002)
-            memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000003)
-            memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
-        else if (i == 0x80000004)
-            memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
+      __cpuid(CPUInfo, i);
+      // Interpret CPU brand string
+      if (i == 0x80000002)
+        memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
+      else if (i == 0x80000003)
+        memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
+      else if (i == 0x80000004)
+        memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
     }
     //string includes manufacturer, model and clockspeed
     std::print(stream, "CPU Type:{}\n", CPUBrandString);

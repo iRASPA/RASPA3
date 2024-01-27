@@ -11,7 +11,7 @@ import force_factor;
 // return D[U[r],r] / r
 // because for LJ then sqrt is avoided (only needs rr, not r)
 
-export inline ForceFactor 
+export [[clang::always_inline]] inline ForceFactor 
 potentialVDWGradient(const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, 
                      const double& scalingA, const double& scalingB, const double& rr, 
                      const size_t& typeA, const size_t& typeB)

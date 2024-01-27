@@ -17,6 +17,7 @@ import <chrono>;
 import <print>;
 
 import stringutils;
+import hardware_info;
 import input_reader;
 import component;
 import system;
@@ -30,7 +31,7 @@ IsothermFittingSimulation::IsothermFittingSimulation(InputReader &inputReader):
 {
   for(System &system: systems)
   {
-    std::string directoryNameString = std::format("Output/System_{}/", system.systemId);
+    std::string directoryNameString = std::format("output/system_{}/", system.systemId);
     std::filesystem::path directoryName{ directoryNameString };
     std::filesystem::create_directories(directoryName);
   }
@@ -42,14 +43,14 @@ void IsothermFittingSimulation::run()
   {
     IsothermFitting fitting(system);
 
-    std::string fileNameString = std::format("Output/System_{}/output_{}_{}.data",
+    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
         system.systemId, system.temperature, system.input_pressure);
     std::ofstream fstream(fileNameString, std::ios::out );
     std::ostream stream(fstream.rdbuf());
     //std::ostream stream(std::cout.rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
-    std::print(stream, "{}", system.writeOutputHeaderHardware());
+    std::print(stream, "{}", HardwareInfo::writeInfo());
     std::print(stream, "{}", fitting.writeHeader());
 
     fitting.createPlotScript();

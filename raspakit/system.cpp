@@ -71,6 +71,7 @@ import reactions;
 import cbmc;
 import cbmc_chain_data;
 
+
 // construct System programmatically
 System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 
@@ -102,8 +103,6 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     currentEnergyStatus(c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    //noCharges(false),
-    //omitEwaldFourier(false),
     mc_moves_probabilities(),
     mc_moves_statistics(),
     reactions(),
@@ -134,6 +133,8 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     // For multiple framework, the simulation box is the union of the boxes
     simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
   }
+
+  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T, P, simulationBox, HeliumVoidFraction, components);
 
   registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 0.0);
   removeRedundantMoves();
@@ -441,6 +442,11 @@ std::vector<Atom>::const_iterator System::iteratorForMolecule(size_t selectedCom
 }
 
 std::span<const Atom> System::spanOfFrameworkAtoms() const
+{
+  return std::span(atomPositions.begin(), atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
+}
+
+std::span<Atom> System::spanOfFrameworkAtoms()
 {
   return std::span(atomPositions.begin(), atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
@@ -1053,9 +1059,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.versionNumber;
 
   archive << s.systemId;
-  archive << s.fluidState;
-  archive << s.equationOfState;
-  archive << s.multiComponentMixingRules;
   archive << s.temperature;
   archive << s.pressure;
   archive << s.input_pressure;
@@ -1140,9 +1143,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   }
 
   archive >> s.systemId;
-  archive >> s.fluidState;
-  archive >> s.equationOfState;
-  archive >> s.multiComponentMixingRules;
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;

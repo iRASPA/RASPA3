@@ -7,7 +7,8 @@ import double4;
 import <cmath>;
 import <iostream>;
 
-export inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const bool &groupIdA, const bool &groupIdB, const double &scalingA, const double &scalingB, const double& rr, const size_t& typeA, const size_t& typeB)
+export [[clang::always_inline]] inline EnergyFactor 
+potentialVDWEnergy(const ForceField& forcefield, const bool &groupIdA, const bool &groupIdB, const double &scalingA, const double &scalingB, const double& rr, const size_t& typeA, const size_t& typeB)
 {
     VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 

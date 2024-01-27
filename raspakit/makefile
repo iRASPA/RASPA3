@@ -19,7 +19,7 @@ $(OBJ): %.o: %.cpp %.pcm
 	$(CXX) $(CXXFLAGS) -x c++-module --precompile -o $@ $<
 	$(CXX) $(CXXFLAGS) -x c++-module $< -c -o $@.o
 
-system_hardware_info.pcm system_interactions_ewald.pcm  system_interactions_framework_molecule_pressure.pcm system_integration.pcm system_interactions_ewald_pressure.pcm system_md_loop.pcm system_interactions_intermolecular_pressure.pcm system_interactions.pcm system_reservoir.pcm system_print_movestatistics.pcm:
+system_interactions_ewald.pcm   system_integration.pcm system_interactions_ewald_pressure.pcm system_md_loop.pcm system_interactions.pcm system_reservoir.pcm system_print_movestatistics.pcm:
 	: do nothing for $@
 
 # dependencies
@@ -54,11 +54,8 @@ sample_movies.pcm: units.pcm atom.pcm simulationbox.pcm forcefield.pcm
 property_simulationbox.pcm: averages.pcm simulationbox.pcm
 equation_of_states.pcm: units.pcm component.pcm
 system.pcm: equation_of_states.pcm cbmc.pcm transition_matrix.pcm reaction.pcm reactions.pcm mc_moves_cputime.pcm mc_moves_count.pcm mc_moves_statistics_system.pcm mc_moves_probabilities_system.pcm move_statistics.pcm atom.pcm component.pcm simulationbox.pcm forcefield.pcm units.pcm loadings.pcm averages.pcm sample_movies.pcm enthalpy_of_adsorption.pcm energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm property_rdf.pcm property_simulationbox.pcm property_energy.pcm property_pressure.pcm property_loading.pcm property_enthalpy.pcm property_widom.pcm energy_factor.pcm force_factor.pcm running_energy.pcm isotherm.pcm multi_site_isotherm.pcm pressure_range.pcm bond_potential.pcm
-system_hardware_info.cpp: system.pcm
 system_print_movestatistics.cpp: system.pcm 
 system_interactions.cpp: system.pcm
-system_interactions_framework_molecule_pressure.cpp: system.pcm
-system_interactions_intermolecular_pressure.cpp: system.pcm
 system_interactions_ewald.cpp: system.pcm
 system_interactions_ewald_pressure.cpp: system.pcm
 system_md_loop.cpp: system.pcm

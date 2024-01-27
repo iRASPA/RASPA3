@@ -71,10 +71,11 @@ export struct System
 
   size_t systemId{};
 
-  EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
-  EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
-  EquationOfState::MultiComponentMixingRules 
-    multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
+
+  //EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
+  //EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
+  //EquationOfState::MultiComponentMixingRules 
+  //  multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
 
   double temperature{ 300.0 };
   double pressure{ 1e4 };
@@ -88,6 +89,8 @@ export struct System
   size_t numberOfRigidFrameworkAtoms{ 0 };
 
   std::vector<Component> components;
+
+  EquationOfState equationOfState;
 
   Loadings loadings;
   PropertyLoading averageLoadings;
@@ -219,6 +222,7 @@ export struct System
   std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule); 
   const std::span<const Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const; 
   std::span<const Atom> spanOfFrameworkAtoms() const;
+  std::span<Atom> spanOfFrameworkAtoms();
   std::span<const Atom> spanOfRigidFrameworkAtoms() const;
   std::span<const Atom> spanOfFlexibleAtoms() const;
   std::span<const Atom> spanOfMoleculeAtoms() const;
@@ -271,7 +275,6 @@ export struct System
   void optimizeMCMoves();
 
   std::string writeOutputHeader() const;
-  std::string writeOutputHeaderHardware() const;
   std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const;
