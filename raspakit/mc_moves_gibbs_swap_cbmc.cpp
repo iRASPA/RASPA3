@@ -66,7 +66,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifferenceA = //systemA.energyDifferenceEwaldFourier(systemA.storedEik, newMolecule, {});
+  RunningEnergy energyFourierDifferenceA = 
     Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
                                                systemA.storedEik, systemA.totalEik,
                                                systemA.forceField, systemA.simulationBox,
@@ -102,7 +102,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
 
   std::chrono::system_clock::time_point uB1 = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifferenceB = //systemB.energyDifferenceEwaldFourier(systemB.storedEik, {}, molecule);
+  RunningEnergy energyFourierDifferenceB = 
     Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
                                                systemB.storedEik, systemB.totalEik,
                                                systemB.forceField, systemB.simulationBox,

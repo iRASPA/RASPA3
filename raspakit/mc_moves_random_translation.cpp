@@ -74,7 +74,7 @@ MC_Moves::randomTranslationMove(RandomNumber &random, System & system,
   if (!interMolecule.has_value()) return std::nullopt;
 
   std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-  RunningEnergy ewaldFourierEnergy = //system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+  RunningEnergy ewaldFourierEnergy = 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                  system.storedEik, system.totalEik,
                                                  system.forceField, system.simulationBox,

@@ -71,12 +71,6 @@ export struct System
 
   size_t systemId{};
 
-
-  //EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
-  //EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
-  //EquationOfState::MultiComponentMixingRules 
-  //  multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
-
   double temperature{ 300.0 };
   double pressure{ 1e4 };
   double input_pressure{ 1e4 };
@@ -100,15 +94,26 @@ export struct System
   std::vector<size_t> swapableComponents{};
   std::vector<size_t> initialNumberOfMolecules{};
 
-  std::vector<size_t> numberOfMoleculesPerComponent{};                                            // total # of molecules per component (include fractional molecules)
-                                                                                                  
-  std::vector<size_t> numberOfIntegerMoleculesPerComponent{};                                     // # integer molecules
-  std::vector<size_t> numberOfFractionalMoleculesPerComponent{};                                  // # fractional molecules
-                                                                                                  
-  std::vector<size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};                          // # fractional molecules for CFCMC grand-canonical or CFCMC Widom
-  std::vector<size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};                      // # fractional molecules for pair-CFCMC grand-canonical
-  std::vector<size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};                       // # fractional molecules for CFCMC-Gibbs
-  std::vector<std::vector<size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};       // # reactant fractional molecules for all reactions using CFCMC
+  // total # of molecules per component (include fractional molecules)
+  std::vector<size_t> numberOfMoleculesPerComponent{};
+  
+  // # integer molecules   
+  std::vector<size_t> numberOfIntegerMoleculesPerComponent{};
+
+  // # fractional molecules
+  std::vector<size_t> numberOfFractionalMoleculesPerComponent{};
+
+  // # fractional molecules for CFCMC grand-canonical or CFCMC Widom
+  std::vector<size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for pair-CFCMC grand-canonical
+  std::vector<size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
+
+  // # fractional molecules for CFCMC-Gibbs
+  std::vector<size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};
+
+  // # reactant fractional molecules for all reactions using CFCMC
+  std::vector<std::vector<size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};
 
   std::vector<double> idealGasEnergiesPerComponent{};
 
@@ -206,10 +211,6 @@ export struct System
   {
     //computeInterMolecularEnergy(simulationBox, spanOfMoleculeAtoms(), energyStatus);
   }
-  //void computeEwaldFourierEnergy(const SimulationBox &box, RunningEnergy &energyStatus);
-  //void computeEwaldFourierEnergy(const SimulationBox &box, std::span<const Atom> moleculeAtomPositions, RunningEnergy& energyStatus);
-  //void computeEwaldFourierRigidEnergy(const SimulationBox& box, RunningEnergy& energyStatus);
-  //ForceFactor computeEwaldFourierGradient();
 
   size_t randomFramework(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(numberOfFrameworks)); }
   size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }
@@ -298,18 +299,10 @@ export struct System
   
   std::vector<Atom> randomConfiguration(RandomNumber &random, size_t selectedComponent, const std::span<const Atom> atoms);
 
-  //RunningEnergy energyDifferenceEwaldFourier(std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedWavevectors,
-  //                                           std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
-  //void registerEwaldFourierEnergySingleIon(double3 position, double charge);
-  //void acceptEwaldMove();
-
   void sampleProperties(size_t currentBlock);
   
   void writeCPUTimeStatistics(std::ostream &stream) const;
 
-  //[[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative() noexcept;
-  //[[nodiscard]] std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative() noexcept;
-  //[[nodiscard]] std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative() noexcept;
   [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
 
   void clearMoveStatistics();

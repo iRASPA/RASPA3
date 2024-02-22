@@ -134,7 +134,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point v1A = std::chrono::system_clock::now();
      RunningEnergy EwaldFourierDifferenceA = 
-       //systemA.energyDifferenceEwaldFourier(systemA.storedEik, fractionalMoleculeA, oldFractionalMoleculeA);
        Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
                                                   systemA.storedEik, systemA.totalEik,
                                                   systemA.forceField, systemA.simulationBox,
@@ -197,7 +196,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
 
      std::chrono::system_clock::time_point y1A = std::chrono::system_clock::now();
-     RunningEnergy EwaldFourierDifferenceA2 = //systemA.energyDifferenceEwaldFourier(systemA.totalEik, newMolecule, {});
+     RunningEnergy EwaldFourierDifferenceA2 = 
        Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
                                                   systemA.storedEik, systemA.totalEik,
                                                   systemA.forceField, systemA.simulationBox,
@@ -274,7 +273,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point v1B = std::chrono::system_clock::now();
      RunningEnergy EwaldFourierDifferenceB = 
-       //systemB.energyDifferenceEwaldFourier(systemB.storedEik, selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
        Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
                                                   systemB.storedEik, systemB.totalEik,
                                                   systemB.forceField, systemB.simulationBox,
@@ -345,7 +343,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      std::chrono::system_clock::time_point y1B = std::chrono::system_clock::now();
      RunningEnergy EwaldFourierDifferenceB2 = 
-       //systemB.energyDifferenceEwaldFourier(systemB.totalEik, fractionalMoleculeB, oldFractionalMoleculeB);
        Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
                                                   systemB.storedEik, systemB.totalEik,
                                                   systemB.forceField, systemB.simulationBox,
@@ -497,7 +494,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
  
     std::chrono::system_clock::time_point v1A = std::chrono::system_clock::now();
     RunningEnergy EwaldEnergyDifferenceA = 
-      //systemA.energyDifferenceEwaldFourier(systemA.storedEik, fractionalMoleculeA, oldFractionalMoleculeA);
       Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
                                                  systemA.storedEik, systemA.totalEik,
                                                  systemA.forceField, systemA.simulationBox,
@@ -557,7 +553,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     std::chrono::system_clock::time_point v1B = std::chrono::system_clock::now();
     RunningEnergy EwaldEnergyDifferenceB = 
-      //systemB.energyDifferenceEwaldFourier(systemB.storedEik, fractionalMoleculeB, oldFractionalMoleculeB);
       Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
                                                  systemB.storedEik, systemB.totalEik,
                                                  systemB.forceField, systemB.simulationBox,
@@ -653,7 +648,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
     RunningEnergy EwaldFourierDifference = 
-      //systemA.energyDifferenceEwaldFourier(systemA.storedEik, trialPositions, fractionalMoleculeA);
       Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
                                                  systemA.storedEik, systemA.totalEik,
                                                  systemA.forceField, systemA.simulationBox,

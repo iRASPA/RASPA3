@@ -71,7 +71,7 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifference = //system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+  RunningEnergy energyFourierDifference = 
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                system.storedEik, system.totalEik,
                                                system.forceField, system.simulationBox,

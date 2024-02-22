@@ -69,11 +69,11 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    RunningEnergy energyFourierDifference = //system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
+    RunningEnergy energyFourierDifference = 
       Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik,
-                                               system.forceField, system.simulationBox,
-                                               {}, molecule);
+                                                 system.storedEik, system.totalEik,
+                                                 system.forceField, system.simulationBox,
+                                                 {}, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
     system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);

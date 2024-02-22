@@ -27,20 +27,11 @@ Ubuntu 22.04
 ============
 sudo apt install build-essential git clang-14 libc++-dev libc++abi-dev gfortran liblapack-dev libfmt-dev libomp-dev
 
-Modify libfmt
-=============
-edit:
-/usr/include/fmt/core.h
-change line 1358 from: return to_string_view(val)
-to: return basic_string_view<char>(val);
-
-(This should be solved in 'clang-15' when 'std::print' is fully implemented.
-
 Compilation
 ===========
-make -f makefile-llvm all
+make -j 32
 
-to clean: make -f makefile-llvm allclean
+to clean: make clean
 
 Running
 =======
