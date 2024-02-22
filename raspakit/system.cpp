@@ -1109,6 +1109,11 @@ void System::recomputeTotalEnergies() noexcept
 {
   runningEnergies.zero();
 
+  if(fixedFrameworkStoredEik.empty())
+  {
+    precomputeTotalRigidEnergy();
+  }
+
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
   [[maybe_unused]]std::span<const Atom> flexibleAtomPositions = spanOfFlexibleAtoms();
@@ -1119,7 +1124,6 @@ void System::recomputeTotalEnergies() noexcept
   Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
   Interactions::computeInterMolecularTailEnergy(forceField, simulationBox,moleculeAtomPositions, runningEnergies);
 
-  //computeEwaldFourierEnergy(simulationBox, runningEnergies);
   Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy,
                                           fixedFrameworkStoredEik, storedEik,
                                           forceField, simulationBox,
@@ -1135,6 +1139,11 @@ RunningEnergy System::computeTotalEnergies() noexcept
 {
   RunningEnergy runningEnergy{};
 
+  if(fixedFrameworkStoredEik.empty())
+  {
+    precomputeTotalRigidEnergy();
+  }
+
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
   [[maybe_unused]]std::span<const Atom> flexibleAtomPositions = spanOfFlexibleAtoms();
@@ -1145,7 +1154,6 @@ RunningEnergy System::computeTotalEnergies() noexcept
   Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
   Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
 
-  //computeEwaldFourierEnergy(simulationBox, runningEnergy);
   Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, 
                                           fixedFrameworkStoredEik, storedEik,
                                           forceField, simulationBox,

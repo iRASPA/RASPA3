@@ -99,7 +99,8 @@ PYBIND11_MODULE(RaspaKit, m)
 
   pybind11::class_<System>(m, "System")
         .def(pybind11::init<size_t, double, double, ForceField, std::vector<Component>, std::vector<size_t>, size_t>())
-        .def("recomputeTotalEnergies", (void (System::*)(RunningEnergy &)) &System::recomputeTotalEnergies)
+        .def("precomputeTotalRigidEnergy", &System::precomputeTotalRigidEnergy)
+        .def("computeTotalEnergies", &System::computeTotalEnergies)
         .def_readwrite("atomPositions", &System::atomPositions);
 
 }

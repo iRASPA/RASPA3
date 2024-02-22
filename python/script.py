@@ -48,6 +48,5 @@ system.atomPositions[77].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
 #print(system.atomPositions)
 
-energy = RunningEnergy()
-system.computeInterMolecularEnergy(energy)
+energy = system.computeTotalEnergies()
 print(1.2027242847 * energy.moleculeMoleculeVDW)
