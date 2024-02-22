@@ -23,6 +23,7 @@ import move_statistics;
 import mc_moves_probabilities_system;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 import <complex>;
 import <vector>;
@@ -71,7 +72,12 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (t2A - t1A);
 
   std::chrono::system_clock::time_point t3A = std::chrono::system_clock::now();
-  systemA.computeEwaldFourierEnergy(newBoxA, newPositionsA, newTotalEnergyA);
+  //systemA.computeEwaldFourierEnergy(newBoxA, newPositionsA, newTotalEnergyA);
+  Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
+                                          systemA.fixedFrameworkStoredEik, systemA.totalEik,
+                                          systemA.forceField, newBoxA,
+                                          systemA.components, systemA.numberOfMoleculesPerComponent,
+                                          newPositionsA, newPositionsA, newTotalEnergyA);
   std::chrono::system_clock::time_point t4A = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4A - t3A);
 
@@ -94,7 +100,12 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (t2B - t1B);
 
   std::chrono::system_clock::time_point t3B = std::chrono::system_clock::now();
-  systemB.computeEwaldFourierEnergy(newBoxB, newPositionsB, newTotalEnergyB);
+  //systemB.computeEwaldFourierEnergy(newBoxB, newPositionsB, newTotalEnergyB);
+  Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
+                                          systemB.fixedFrameworkStoredEik, systemB.totalEik,
+                                          systemB.forceField, newBoxB,
+                                          systemB.components, systemB.numberOfMoleculesPerComponent,
+                                          newPositionsB, newPositionsB, newTotalEnergyB);
   std::chrono::system_clock::time_point t4B = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (t4B - t3B);
 
@@ -113,14 +124,16 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.begin(), newPositionsA.end(), systemA.atomPositions.begin());
-    systemA.acceptEwaldMove();
+    //systemA.acceptEwaldMove();
+    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
     systemB.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
     systemB.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.begin(), newPositionsB.end(), systemB.atomPositions.begin());
-    systemB.acceptEwaldMove();
+    //systemB.acceptEwaldMove();
+    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
     return std::make_pair(newTotalEnergyA, newTotalEnergyB);
   }

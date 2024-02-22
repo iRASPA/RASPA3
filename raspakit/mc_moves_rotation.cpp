@@ -22,6 +22,7 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 import <complex>;
 import <vector>;
@@ -78,7 +79,11 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
   if (!interMolecule.has_value()) return std::nullopt;
 
   std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
-  RunningEnergy ewaldFourierEnergy = system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+  RunningEnergy ewaldFourierEnergy = //system.energyDifferenceEwaldFourier(system.storedEik, trialPositions, molecule);
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik,
+                                               system.forceField, system.simulationBox,
+                                               trialPositions, molecule);
   std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.rotationMoveEwald += (v2 - v1);
   system.mc_moves_cputime.rotationMoveEwald += (v2 - v1);
@@ -93,7 +98,8 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
     system.components[selectedComponent].mc_moves_statistics.rotationMove.accepted[selectedDirection] += 1;
     system.components[selectedComponent].mc_moves_statistics.rotationMove.totalAccepted[selectedDirection] += 1;
 
-    system.acceptEwaldMove();
+    //system.acceptEwaldMove();
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(trialPositions.cbegin(), trialPositions.cend(), molecule.begin());
 
     return energyDifference;

@@ -24,6 +24,7 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 import <complex>;
 import <vector>;
@@ -70,7 +71,11 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+  RunningEnergy energyFourierDifference = //system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, {});
+    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik,
+                                               system.forceField, system.simulationBox,
+                                               newMolecule, {});
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
   system.mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);

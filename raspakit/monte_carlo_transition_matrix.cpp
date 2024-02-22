@@ -46,6 +46,7 @@ import property_enthalpy;
 import mc_moves_probabilities_particles;
 import property_pressure;
 import transition_matrix;
+import interactions_ewald;
 
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept :
@@ -81,7 +82,10 @@ void MonteCarloTransitionMatrix::initialize()
 {
   for (System &system: systems)
   {
-    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+    //system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                     system.forceField, system.simulationBox,
+                                                     double3(0.0, 0.0, 0.0), 1.0);
     system.removeRedundantMoves();
     system.determineSwapableComponents();
     system.determineFractionalComponents();

@@ -25,6 +25,7 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 import <complex>;
 import <vector>;
@@ -82,7 +83,11 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
 
     std::chrono::system_clock::time_point v1 = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = 
-      system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
+      //system.energyDifferenceEwaldFourier(system.storedEik, newMolecule, molecule);
+      Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                 system.storedEik, system.totalEik,
+                                                 system.forceField, system.simulationBox,
+                                                 newMolecule, molecule);
     std::chrono::system_clock::time_point v2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCEwald += (v2 - v1);
     system.mc_moves_cputime.reinsertionMoveCBMCEwald += (v2 - v1);
@@ -110,7 +115,8 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
       system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.accepted += 1;
       system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.totalAccepted += 1;
 
-      system.acceptEwaldMove();
+      //system.acceptEwaldMove();
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       std::copy(newMolecule.begin(), newMolecule.end(), molecule.begin());
 
       if(system.forceField.useDualCutOff)

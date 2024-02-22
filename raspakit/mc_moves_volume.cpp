@@ -24,6 +24,7 @@ import mc_moves_probabilities_particles;
 import mc_moves_probabilities_system;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 import <complex>;
 import <vector>;
@@ -64,7 +65,13 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   //system.mc_moves_cputime.cpuTime_VolumeMove_NonEwald += (t2 - t1);
 
   //std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-  system.computeEwaldFourierEnergy(newBox, newPositions, newTotalEnergy);
+  //system.computeEwaldFourierEnergy(newBox, newPositions, newTotalEnergy);
+  Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                          system.fixedFrameworkStoredEik, system.totalEik,
+                                          system.forceField, newBox,
+                                          system.components, system.numberOfMoleculesPerComponent,
+                                          newPositions, newPositions, newTotalEnergy);
+
   //std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
   //system.mc_moves_cputime.cpuTime_VolumeMove_Ewald += (t4 - t3);
 
@@ -81,7 +88,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     system.simulationBox = newBox;
     std::copy(newPositions.begin(), newPositions.end(), system.atomPositions.begin());
 
-    system.acceptEwaldMove();
+    //system.acceptEwaldMove();
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
     return newTotalEnergy;
   }

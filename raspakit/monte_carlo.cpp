@@ -54,6 +54,7 @@ import mc_moves_cputime;
 import mc_moves_count;
 import property_pressure;
 import transition_matrix;
+import interactions_ewald;
 
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
@@ -123,7 +124,11 @@ void MonteCarlo::initialize()
 
   for (System &system: systems)
   {
-    system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+    //system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
+    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                     system.forceField, system.simulationBox,
+                                                     double3(0.0, 0.0, 0.0), 1.0);
+
     system.removeRedundantMoves();
     system.determineSwapableComponents();
     system.determineFractionalComponents();

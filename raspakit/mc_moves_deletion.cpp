@@ -39,6 +39,7 @@ import mc_moves_probabilities_particles;
 import transition_matrix;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import interactions_ewald;
 
 
 std::pair<std::optional<RunningEnergy>, double3> 
@@ -68,7 +69,11 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (t2 - t1);
 
     std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-    RunningEnergy energyFourierDifference = system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
+    RunningEnergy energyFourierDifference = //system.energyDifferenceEwaldFourier(system.storedEik, {}, molecule);
+      Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                               system.storedEik, system.totalEik,
+                                               system.forceField, system.simulationBox,
+                                               {}, molecule);
     std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
     system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (u2 - u1);
@@ -109,7 +114,8 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
       system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.accepted += 1;
       system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalAccepted += 1;
 
-      system.acceptEwaldMove();
+      //system.acceptEwaldMove();
+      Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
       return {retraceData.energies - energyFourierDifference - tailEnergyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
