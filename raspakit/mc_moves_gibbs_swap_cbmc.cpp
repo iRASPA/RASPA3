@@ -30,6 +30,7 @@ import simulationbox;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
+import interactions_external_field;
 
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> 
@@ -128,6 +129,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     std::exp(systemB.beta * (energyFourierDifferenceB.total() + tailEnergyDifferenceB.total()));
 
 
+  // apply acceptance/rejection rule
   if (random.uniform() < (correctionFactorEwaldA * growData->RosenbluthWeight * 
                           static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) * 
                           systemA.simulationBox.volume) / (correctionFactorEwaldB * retraceData.RosenbluthWeight *
@@ -137,7 +139,6 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
 
-    //systemA.acceptEwaldMove();
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
     systemA.insertMolecule(selectedComponent, growData->atom);
 
@@ -147,7 +148,6 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
     systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
 
-    //systemB.acceptEwaldMove();
     Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
     systemB.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 

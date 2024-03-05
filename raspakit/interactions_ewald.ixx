@@ -83,22 +83,3 @@ export namespace Interactions
                        std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
                        std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik);
 }
-
-export struct Ewald
-{
-  std::vector<std::complex<double>> eik_xy;
-  std::vector<std::complex<double>> eik_x;
-  std::vector<std::complex<double>> eik_y;
-  std::vector<std::complex<double>> eik_z;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik;
-  double CoulombicFourierEnergySingleIon{ 0.0 };
-
-
-  ForceFactor computeEwaldFourierGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                               std::span<Atom> atomPositions);
-
-
-  void acceptEwaldMove(const ForceField &forceField);
-};

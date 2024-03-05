@@ -2,6 +2,21 @@ module;
 
 module mc_moves_volume;
 
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <numeric>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+
 import component;
 import atom;
 import double3;
@@ -26,24 +41,11 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <numeric>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
-
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
+  std::chrono::system_clock::time_point time_begin, time_end;
+
   system.mc_moves_statistics.volumeMove.counts += 1;
   system.mc_moves_statistics.volumeMove.totalCounts += 1;
 
@@ -59,26 +61,25 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   std::vector<Atom> newPositions = system.scaledCenterOfMassPositions(scale);
 
   RunningEnergy newTotalEnergy;
-  //std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  time_begin = std::chrono::system_clock::now();
   Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
-  //std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  //system.mc_moves_cputime.cpuTime_VolumeMove_NonEwald += (t2 - t1);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
 
-  //std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-  //system.computeEwaldFourierEnergy(newBox, newPositions, newTotalEnergy);
+  time_begin = std::chrono::system_clock::now();
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.totalEik,
                                           system.forceField, newBox,
                                           system.components, system.numberOfMoleculesPerComponent,
                                           newPositions, newPositions, newTotalEnergy);
-
-  //std::chrono::system_clock::time_point t4 = std::chrono::system_clock::now();
-  //system.mc_moves_cputime.cpuTime_VolumeMove_Ewald += (t4 - t3);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
 
 
   system.mc_moves_statistics.volumeMove.constructed += 1;
   system.mc_moves_statistics.volumeMove.totalConstructed += 1;
 
+  // apply acceptance/rejection rule
   if(random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
         - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.beta))
   {
@@ -88,7 +89,6 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     system.simulationBox = newBox;
     std::copy(newPositions.begin(), newPositions.end(), system.atomPositions.begin());
 
-    //system.acceptEwaldMove();
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
     return newTotalEnergy;

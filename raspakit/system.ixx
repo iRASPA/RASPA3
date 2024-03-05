@@ -65,8 +65,6 @@ export struct System
   System(const System &s) = delete;
   System(System&& s) = default;
 
-  bool operator==(System const&) const = default;
-
   uint64_t versionNumber{ 1 };
 
   size_t systemId{};

@@ -33,28 +33,9 @@ export struct MonteCarlo
     Production = 3
   };
 
-  MonteCarlo(): random(std::nullopt) {};
+  MonteCarlo();
 
   MonteCarlo(InputReader& reader) noexcept;
-
-  bool operator==(MonteCarlo const &rhs) const
-  {
-    return (versionNumber == rhs.versionNumber) &&
-           (numberOfCycles == rhs.numberOfCycles) &&
-           (numberOfSteps == rhs.numberOfSteps) &&
-           (numberOfInitializationCycles == rhs.numberOfInitializationCycles) &&
-           (numberOfEquilibrationCycles == rhs.numberOfEquilibrationCycles) &&
-           (optimizeMCMovesEvery == rhs.optimizeMCMovesEvery) &&
-           (printEvery == rhs.printEvery) &&
-           (currentCycle == rhs.currentCycle) &&
-           (simulationStage == rhs.simulationStage) &&
-           (random == rhs.random) &&
-           (systems == rhs.systems) &&
-           (fractionalMoleculeSystem == rhs.fractionalMoleculeSystem) &&
-           (estimation == rhs.estimation);
-  }
-
-
 
   uint64_t versionNumber{ 1 };
 

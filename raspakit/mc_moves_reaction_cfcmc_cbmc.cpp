@@ -2,6 +2,20 @@ module;
 
 module mc_moves_reaction_cfcmc_cbmc;
 
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+
 import component;
 import atom;
 import double3;
@@ -23,20 +37,8 @@ import move_statistics;
 import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
-
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
+import interactions_ewald;
+import interactions_external_field;
 
 
 std::optional<RunningEnergy> 

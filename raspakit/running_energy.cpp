@@ -23,6 +23,8 @@ void RunningEnergy::print(std::ostream &stream, const std::string &label)
   std::print(stream, "Energy status {}\n", label);
   std::print(stream, "===============================================================================\n\n");
   std::print(stream, "Total potential energy:      {: .6e}\n", conv * total());
+  std::print(stream, "    external field VDW:      {: .6e}\n", conv * externalFieldVDW);
+  std::print(stream, "    external field Real:     {: .6e}\n", conv * externalFieldCharge);
   std::print(stream, "    framework-molecule VDW:  {: .6e}\n", conv * frameworkMoleculeVDW);
   std::print(stream, "    framework-molecule Real: {: .6e}\n", conv * frameworkMoleculeCharge);
   std::print(stream, "    molecule-molecule VDW:   {: .6e}\n", conv * moleculeMoleculeVDW);
@@ -42,8 +44,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Runnin
 {
   archive << e.versionNumber;
 
+  archive << e.externalFieldVDW;
   archive << e.frameworkMoleculeVDW;
   archive << e.moleculeMoleculeVDW;
+  archive << e.externalFieldCharge;
   archive << e.frameworkMoleculeCharge;
   archive << e.moleculeMoleculeCharge;
   archive << e.ewald;
@@ -69,8 +73,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
                                          location.line(), location.file_name()));
   }
 
+  archive >> e.externalFieldVDW;
   archive >> e.frameworkMoleculeVDW;
   archive >> e.moleculeMoleculeVDW;
+  archive >> e.externalFieldCharge;
   archive >> e.frameworkMoleculeCharge;
   archive >> e.moleculeMoleculeCharge;
   archive >> e.ewald;

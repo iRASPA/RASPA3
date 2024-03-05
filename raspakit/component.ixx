@@ -60,8 +60,6 @@ export struct Component
             size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, 
             size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
 
-  bool operator==(Component const&) const = default;
-
   uint64_t versionNumber{ 1 };
 
   Type type { 0 };

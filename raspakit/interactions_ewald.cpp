@@ -1118,11 +1118,3 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
 
   return std::make_pair(energy, strainDerivative);
 }
-
-void Ewald::acceptEwaldMove(const ForceField &forceField)
-{
-  if(forceField.noCharges) return;
-  if(forceField.omitEwaldFourier) return;
-
-  storedEik = totalEik;
-}

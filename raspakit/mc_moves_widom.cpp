@@ -2,6 +2,20 @@ module;
 
 module mc_moves_widom;
 
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+
 import component;
 import atom;
 import double3;
@@ -25,20 +39,7 @@ import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
-
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
+import interactions_external_field;
 
 
 std::optional<double> 

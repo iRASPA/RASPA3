@@ -57,6 +57,10 @@ import transition_matrix;
 import interactions_ewald;
 
 
+MonteCarlo::MonteCarlo(): random(std::nullopt) 
+{
+};
+
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
     numberOfCycles(reader.numberOfCycles),
     numberOfInitializationCycles(reader.numberOfInitializationCycles),

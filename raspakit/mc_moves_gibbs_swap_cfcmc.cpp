@@ -38,6 +38,8 @@ import simulationbox;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
+import interactions_external_field;
+
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
 // Implementation advantage: the number of fractional molecules per system remains constant.
@@ -375,6 +377,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[0] += 1;
      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
 
+     // apply acceptance/rejection rule
      if (random.uniform() < preFactor * std::exp(-systemA.beta * 
                                           (energyDifferenceA.total() + energyDifferenceB.total()) + biasTerm))
      {
@@ -407,7 +410,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
        }
        systemA.insertMolecule(selectedComponent, addedMolecule);
        
-       //systemA.acceptEwaldMove();
        Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
 
@@ -421,7 +423,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
          atom.groupId = uint8_t{ 1 };
        }
 
-       //systemB.acceptEwaldMove();
        Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
        return std::make_pair(energyDifferenceA, energyDifferenceB);
@@ -582,14 +583,13 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
+    // apply acceptance/rejection rule
     if (random.uniform() < preFactor * exp(-systemA.beta * (energyDifferenceA.total() + energyDifferenceB.total()) 
                                            + biasTerm))
     {
       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[1] += 1;
       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[1] += 1;
 
-      //systemA.acceptEwaldMove();
-      //systemB.acceptEwaldMove();
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
     
@@ -673,11 +673,11 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[2] += 1;
     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[2] += 1;
     
-    
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
+
+    // apply acceptance/rejection rule
     if (random.uniform() < std::exp(-systemA.beta * energyDifference.total() + biasTerm))
     {
-      //systemA.acceptEwaldMove();
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[2] += 1;

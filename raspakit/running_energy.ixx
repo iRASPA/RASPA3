@@ -17,8 +17,8 @@ import scaling;
 
 export struct RunningEnergy
 {
-  RunningEnergy() : frameworkMoleculeVDW(0.0), moleculeMoleculeVDW(0.0), 
-                    frameworkMoleculeCharge(0.0), moleculeMoleculeCharge(0.0),
+  RunningEnergy() : externalFieldVDW(0.0), frameworkMoleculeVDW(0.0), moleculeMoleculeVDW(0.0), 
+                    externalFieldCharge(0.0), frameworkMoleculeCharge(0.0), moleculeMoleculeCharge(0.0),
                     ewald(0.0),
                     intraVDW(0.0), intraCoul(0.0),
                     tail(0.0),
@@ -33,8 +33,8 @@ export struct RunningEnergy
   
   inline double total() const
   {
-      return frameworkMoleculeVDW + moleculeMoleculeVDW + 
-             frameworkMoleculeCharge + moleculeMoleculeCharge +
+      return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 
+             externalFieldCharge + frameworkMoleculeCharge + moleculeMoleculeCharge +
              ewald + 
              intraVDW + intraCoul + 
              tail + 
@@ -49,8 +49,10 @@ export struct RunningEnergy
 
   inline void zero()
   {
+    externalFieldVDW = 0.0;
     frameworkMoleculeVDW = 0.0;
     moleculeMoleculeVDW = 0.0;
+    externalFieldCharge = 0.0;
     frameworkMoleculeCharge = 0.0;
     moleculeMoleculeCharge = 0.0;
     ewald = 0.0;
@@ -65,8 +67,10 @@ export struct RunningEnergy
 
   inline RunningEnergy& operator+=(const RunningEnergy& b)
   {
+    externalFieldVDW += b.externalFieldVDW;
     frameworkMoleculeVDW += b.frameworkMoleculeVDW;
     moleculeMoleculeVDW += b.moleculeMoleculeVDW;
+    externalFieldCharge += b.externalFieldCharge;
     frameworkMoleculeCharge += b.frameworkMoleculeCharge;
     moleculeMoleculeCharge += b.moleculeMoleculeCharge;
     ewald += b.ewald;
@@ -83,8 +87,10 @@ export struct RunningEnergy
 
   inline RunningEnergy& operator-=(const RunningEnergy& b)
   {
+    externalFieldVDW -= b.externalFieldVDW;
     frameworkMoleculeVDW -= b.frameworkMoleculeVDW;
     moleculeMoleculeVDW -= b.moleculeMoleculeVDW;
+    externalFieldCharge -= b.externalFieldCharge;
     frameworkMoleculeCharge -= b.frameworkMoleculeCharge;
     moleculeMoleculeCharge -= b.moleculeMoleculeCharge;
     ewald -= b.ewald;
@@ -102,8 +108,10 @@ export struct RunningEnergy
   inline RunningEnergy operator-() const
   {
     RunningEnergy v{};
+    v.externalFieldVDW = -externalFieldVDW;
     v.frameworkMoleculeVDW = -frameworkMoleculeVDW;
     v.moleculeMoleculeVDW = -moleculeMoleculeVDW;
+    v.externalFieldCharge = -externalFieldCharge;
     v.frameworkMoleculeCharge = -frameworkMoleculeCharge;
     v.moleculeMoleculeCharge = -moleculeMoleculeCharge;
     v.ewald = -ewald;
@@ -120,8 +128,10 @@ export struct RunningEnergy
 
   uint64_t versionNumber{ 1 };
 
+  double externalFieldVDW;
   double frameworkMoleculeVDW;
   double moleculeMoleculeVDW;
+  double externalFieldCharge;
   double frameworkMoleculeCharge;
   double moleculeMoleculeCharge;
   double ewald;
@@ -137,27 +147,13 @@ export struct RunningEnergy
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnergy &c);
 };
 
-export inline bool operator==(const RunningEnergy& a, const RunningEnergy& b) 
-{
-  return (std::abs(b.frameworkMoleculeVDW - a.frameworkMoleculeVDW) < 1e-3) &&
-         (std::abs(b.moleculeMoleculeVDW - a.moleculeMoleculeVDW) < 1e-3) &&
-         (std::abs(b.moleculeMoleculeCharge - a.moleculeMoleculeCharge) < 1e-3) &&
-         (std::abs(b.ewald - a.ewald) < 1e-3) &&
-         (std::abs(b.intraVDW - a.intraVDW) < 1e-3) &&
-         (std::abs(b.intraCoul - a.intraCoul) < 1e-3) &&
-         (std::abs(b.tail - a.tail) < 1e-3) &&
-         (std::abs(b.polarization - a.polarization) < 1e-3) &&
-         (std::abs(b.dudlambdaVDW - a.dudlambdaVDW) < 1e-3) &&
-         (std::abs(b.dudlambdaCharge - a.dudlambdaCharge) < 1e-3) &&
-         (std::abs(b.dudlambdaEwald - a.dudlambdaEwald) < 1e-3);
-}
-
-
 export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnergy& b)
 {
   RunningEnergy m{};
+  m.externalFieldVDW = a.externalFieldVDW + b.externalFieldVDW;
   m.frameworkMoleculeVDW = a.frameworkMoleculeVDW + b.frameworkMoleculeVDW;
   m.moleculeMoleculeVDW = a.moleculeMoleculeVDW + b.moleculeMoleculeVDW;
+  m.externalFieldCharge = a.externalFieldCharge + b.externalFieldCharge;
   m.frameworkMoleculeCharge = a.frameworkMoleculeCharge + b.frameworkMoleculeCharge;
   m.moleculeMoleculeCharge = a.moleculeMoleculeCharge + b.moleculeMoleculeCharge;
   m.ewald = a.ewald + b.ewald;
@@ -175,8 +171,10 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
 export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnergy& b)
 {
   RunningEnergy m{};
+  m.externalFieldVDW = a.externalFieldVDW - b.externalFieldVDW;
   m.frameworkMoleculeVDW = a.frameworkMoleculeVDW - b.frameworkMoleculeVDW;
   m.moleculeMoleculeVDW = a.moleculeMoleculeVDW - b.moleculeMoleculeVDW;
+  m.externalFieldCharge = a.externalFieldCharge - b.externalFieldCharge;
   m.frameworkMoleculeCharge = a.frameworkMoleculeCharge - b.frameworkMoleculeCharge;
   m.moleculeMoleculeCharge = a.moleculeMoleculeCharge - b.moleculeMoleculeCharge;
   m.ewald = a.ewald - b.ewald;
@@ -194,8 +192,10 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
 export inline RunningEnergy operator*(double a, const RunningEnergy b)
 {
   RunningEnergy m{};
+  m.externalFieldVDW = a * b.externalFieldVDW;
   m.frameworkMoleculeVDW = a * b.frameworkMoleculeVDW;
   m.moleculeMoleculeVDW = a * b.moleculeMoleculeVDW;
+  m.externalFieldCharge = a * b.externalFieldCharge;
   m.frameworkMoleculeCharge = a * b.frameworkMoleculeCharge;
   m.moleculeMoleculeCharge = a * b.moleculeMoleculeCharge;
   m.ewald = a * b.ewald;
@@ -213,8 +213,10 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
 export inline RunningEnergy operator*(const RunningEnergy a, double b)
 {
   RunningEnergy m{};
+  m.externalFieldVDW = b * a.externalFieldVDW;
   m.frameworkMoleculeVDW = b * a.frameworkMoleculeVDW;
   m.moleculeMoleculeVDW = b * a.moleculeMoleculeVDW;
+  m.externalFieldCharge = b * a.externalFieldCharge;
   m.frameworkMoleculeCharge = b * a.frameworkMoleculeCharge;
   m.moleculeMoleculeCharge = b * a.moleculeMoleculeCharge;
   m.ewald = b * a.ewald;
