@@ -110,7 +110,20 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     mc_moves_probabilities(),
     mc_moves_statistics(),
     reactions(),
-    tmmc()
+    tmmc(),
+    computeConventionalRadialDistributionFunction(false),
+    writeConventionalRadialDistributionFunctionEvery(1000),
+    conventionalRadialDistributionFunctionHistogramSize(128),
+    conventionalRadialDistributionFunctionRange(15.0),
+    conventionalRadialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), 
+                                           conventionalRadialDistributionFunctionHistogramSize,
+                                           conventionalRadialDistributionFunctionRange),
+    computeRadialDistributionFunction(false),
+    writeRadialDistributionFunctionEvery(1000),
+    radialDistributionFunctionHistogramSize(128),
+    radialDistributionFunctionRange(15.0),
+    radialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), radialDistributionFunctionHistogramSize,
+                               radialDistributionFunctionRange)
 {
   for (Component& component : components)
   {
@@ -197,7 +210,20 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c,
     mc_moves_probabilities(),
     mc_moves_statistics(),
     reactions(),
-    tmmc()
+    tmmc(),
+    computeConventionalRadialDistributionFunction(false),
+    writeConventionalRadialDistributionFunctionEvery(1000),
+    conventionalRadialDistributionFunctionHistogramSize(128),
+    conventionalRadialDistributionFunctionRange(15.0),
+    conventionalRadialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), 
+                                           conventionalRadialDistributionFunctionHistogramSize,
+                                           conventionalRadialDistributionFunctionRange),
+    computeRadialDistributionFunction(false),
+    writeRadialDistributionFunctionEvery(1000),
+    radialDistributionFunctionHistogramSize(128),
+    radialDistributionFunctionRange(15.0),
+    radialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), radialDistributionFunctionHistogramSize,
+                               radialDistributionFunctionRange)
 {
     
 }

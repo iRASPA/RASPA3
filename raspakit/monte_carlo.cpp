@@ -49,6 +49,8 @@ import property_simulationbox;
 import property_energy;
 import property_loading;
 import property_enthalpy;
+import property_conventional_rdf;
+import property_rdf;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
@@ -446,11 +448,29 @@ void MonteCarlo::production()
       ++numberOfSteps;
     }
 
-
+    // sample properties
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin);
 
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        if(system.computeConventionalRadialDistributionFunction)
+        {
+          system.conventionalRadialDistributionFunction.sample(system.simulationBox, system.spanOfFrameworkAtoms(), 
+                                                               system.spanOfMoleculeAtoms(), estimation.currentBin);
+        }
+
+        if(system.computeRadialDistributionFunction)
+        {
+          system.radialDistributionFunction.sample(system.simulationBox, system.spanOfFrameworkAtoms(), 
+                                                   system.spanOfMoleculeAtoms(), estimation.currentBin);
+        }
+      }
+    }
+
+    for (System& system : systems)
+    {
       // add the sample energy to the averages
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
@@ -482,6 +502,21 @@ void MonteCarlo::production()
       }
     }
 
+    // output properties to files
+    for (System& system : systems)
+    {
+      if(system.computeConventionalRadialDistributionFunction && currentCycle % system.writeConventionalRadialDistributionFunctionEvery == 0uz )
+      {
+        system.conventionalRadialDistributionFunction.writeOutput(system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms);
+      }
+
+      if(system.computeRadialDistributionFunction && currentCycle % system.writeRadialDistributionFunctionEvery == 0uz )
+      {
+        system.radialDistributionFunction.writeOutput(system.systemId);
+      }
+    }
+
+    // write binary-restart file
     if (currentCycle % printEvery == 0uz)
     {
       std::ofstream ofile("restart_data.bin_temp", std::ios::binary);

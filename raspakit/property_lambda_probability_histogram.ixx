@@ -279,7 +279,11 @@ export struct PropertyLambdaProbabilityHistogram
                      [](const double & a, const double & b){ return a + b; });
     }
 
-    return summedBlocks;
+    std::vector<double> average(numberOfBins);
+    std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
+                 [&](const double &sample){return sample / static_cast<double>(numberOfBlocks);});
+
+    return average;
   }
 
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
@@ -338,7 +342,7 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double> averagedData(numberOfBins);
     std::transform(summedBlocks.cbegin(), summedBlocks.cend(), averagedData.begin(),
-                   [&](const double &sample){return -std::log(sample) / beta;});
+                   [&](const double &sample){return -std::log(sample / static_cast<double>(numberOfBlocks)) / beta;});
     return averagedData;
   }
 

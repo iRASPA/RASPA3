@@ -38,6 +38,7 @@ import property_energy;
 import property_pressure;
 import property_loading;
 import property_enthalpy;
+import property_conventional_rdf;
 import property_rdf;
 import multi_site_isotherm;
 import pressure_range;
@@ -178,6 +179,22 @@ export struct System
   size_t maxIsothermTerms{ 0 };
 
   bool containsTheFractionalMolecule{ true };
+
+
+  // sampling the conventional radial distribution function (RDF)
+  bool computeConventionalRadialDistributionFunction;
+  size_t writeConventionalRadialDistributionFunctionEvery;
+  size_t conventionalRadialDistributionFunctionHistogramSize;
+  double conventionalRadialDistributionFunctionRange;
+  PropertyConventionalRadialDistributionFunction conventionalRadialDistributionFunction;
+
+  // sampling the radial distribution function (RDF)
+  bool computeRadialDistributionFunction;
+  size_t writeRadialDistributionFunctionEvery;
+  size_t radialDistributionFunctionHistogramSize;
+  double radialDistributionFunctionRange;
+  PropertyRadialDistributionFunction radialDistributionFunction;
+
 
   /// The fractional molecule for grand-canonical is stored first
   inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0;}

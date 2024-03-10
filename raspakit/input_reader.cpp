@@ -36,6 +36,8 @@ import mc_moves_probabilities_particles;
 import reaction;
 import reactions;
 import transition_matrix;
+import property_conventional_rdf;
+import property_rdf;
 
 
 template<class T>
@@ -1375,6 +1377,49 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "computeConventionalRDF"))
+      {
+        std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].computeConventionalRadialDistributionFunction = values[i];
+        }
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "writeConventionalRDFEvery"))
+      {
+        std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].writeConventionalRadialDistributionFunctionEvery = values[i];
+        }
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "conventionalRDFistogramSize"))
+      {
+        std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].conventionalRadialDistributionFunctionHistogramSize = values[i];
+        }
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "conventionalRDFRange"))
+      {
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].conventionalRadialDistributionFunctionRange = values[i];
+        }
+        continue;
+      }
 
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
@@ -1386,7 +1431,7 @@ InputReader::InputReader()
 
   }
 
-  // Post-compute
+  // Post-initialize
   // ========================================================
   
   // read and initialize the components from file
@@ -1394,6 +1439,19 @@ InputReader::InputReader()
   {
     systems[i].initializeComponents();
   }
+
+  for(System &system: systems)
+  {
+    system.conventionalRadialDistributionFunction = 
+      PropertyConventionalRadialDistributionFunction(numberOfBlocks, system.forceField.pseudoAtoms.size(), 
+                                                     system.conventionalRadialDistributionFunctionHistogramSize,
+                                                     system.conventionalRadialDistributionFunctionRange);
+  }
+  
+
+  // Post-compute
+  // ========================================================
+  
 
   for (size_t i = 0uz; i < systems.size(); ++i)
   {

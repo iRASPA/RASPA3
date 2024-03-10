@@ -32,6 +32,11 @@ export struct layout_symmetric_matrix
       return _extents;
     }
 
+    constexpr size_type required_span_size() const noexcept
+    {
+      return n * (n + 1) /2;
+    }
+
     constexpr size_type operator()(size_type i, size_type j) const noexcept
     {
       if (i < j) std::swap(i, j);

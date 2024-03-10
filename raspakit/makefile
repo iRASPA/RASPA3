@@ -49,7 +49,7 @@ potential_gradient_coulomb.pcm: force_factor.pcm forcefield.pcm
 sample_movies.pcm: units.pcm atom.pcm simulationbox.pcm forcefield.pcm
 property_simulationbox.pcm: averages.pcm simulationbox.pcm
 equation_of_states.pcm: units.pcm component.pcm
-system.pcm: equation_of_states.pcm cbmc.pcm transition_matrix.pcm reaction.pcm reactions.pcm mc_moves_cputime.pcm mc_moves_count.pcm mc_moves_statistics_system.pcm mc_moves_probabilities_system.pcm move_statistics.pcm atom.pcm component.pcm simulationbox.pcm forcefield.pcm units.pcm loadings.pcm averages.pcm sample_movies.pcm enthalpy_of_adsorption.pcm energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm property_rdf.pcm property_simulationbox.pcm property_energy.pcm property_pressure.pcm property_loading.pcm property_enthalpy.pcm property_widom.pcm energy_factor.pcm force_factor.pcm running_energy.pcm isotherm.pcm multi_site_isotherm.pcm pressure_range.pcm bond_potential.pcm
+system.pcm: equation_of_states.pcm cbmc.pcm transition_matrix.pcm reaction.pcm reactions.pcm mc_moves_cputime.pcm mc_moves_count.pcm mc_moves_statistics_system.pcm mc_moves_probabilities_system.pcm move_statistics.pcm atom.pcm component.pcm simulationbox.pcm forcefield.pcm units.pcm loadings.pcm averages.pcm sample_movies.pcm enthalpy_of_adsorption.pcm energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm property_conventional_rdf.pcm property_rdf.pcm property_simulationbox.pcm property_energy.pcm property_pressure.pcm property_loading.pcm property_enthalpy.pcm property_widom.pcm energy_factor.pcm force_factor.pcm running_energy.pcm isotherm.pcm multi_site_isotherm.pcm pressure_range.pcm bond_potential.pcm
 interactions_intermolecular.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
 interactions_framework_molecule.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
 interactions_ewald.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
@@ -89,7 +89,9 @@ mc_moves_reaction_cfcmc_cbmc.pcm: cbmc.pcm interactions_external_field.pcm inter
 mc_moves_widom.pcm: cbmc.pcm interactions_external_field.pcm interactions_ewald.pcm interactions_intermolecular.pcm interactions_framework_molecule.pcm running_energy.pcm atom.pcm system.pcm
 monte_carlo.pcm: averages.pcm system.pcm property_enthalpy.pcm mc_moves.pcm input_reader.pcm energy_status.pcm
 monte_carlo_transition_matrix.pcm: averages.pcm system.pcm property_enthalpy.pcm mc_moves.pcm input_reader.pcm energy_status.pcm
-input_reader.pcm: transition_matrix.pcm system.pcm atom.pcm component.pcm simulationbox.pcm forcefield.pcm loadings.pcm enthalpy_of_adsorption.pcm energy_status.pcm averages.pcm
+property_rdf.pcm: averages.pcm atom.pcm simulationbox.pcm forcefield.pcm
+property_conventional_rdf.pcm: averages.pcm atom.pcm simulationbox.pcm forcefield.pcm
+input_reader.pcm: property_conventional_rdf.pcm property_rdf.pcm transition_matrix.pcm system.pcm atom.pcm component.pcm simulationbox.pcm forcefield.pcm loadings.pcm enthalpy_of_adsorption.pcm energy_status.pcm averages.pcm
 isotherm_fitting.pcm: multi_site_isotherm.pcm component.pcm input_reader.pcm system.pcm
 isotherm_fitting_simulation.pcm: isotherm_fitting.pcm input_reader.pcm component.pcm system.pcm multi_site_isotherm.pcm
 mixture_prediction.pcm: atom.pcm isotherm.pcm multi_site_isotherm.pcm component.pcm bond_potential.pcm system.pcm
