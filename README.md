@@ -8,7 +8,7 @@ Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA)
 
 Authors
 =======
-Drs. Your Rani, University of Amsterdam<br>
+Drs. Youri Ran, University of Amsterdam<br>
 Drs. Shrinjay Shoarma, Delft University of Technology<br>
 Drs. Zhao Li, Northwestern University<br>
 Dr. David Dubbeldam, University of Amsterdam<br>

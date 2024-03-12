@@ -32,23 +32,3 @@
    #include <execution>
    #include <algorithm>
    std::sort(std::execution::par_unseq, input.begin(), input.end());
-
-
-
-5) dU/dlambda
-
-For generic different lambdas:
-
-if (!noCharges && rr < cutOffChargeSquared)
-{
-  double r = std::sqrt(rr);
-  ForceFactor energyFactor = potentialCoulombGradient(forceField, scaleCoulombA * scaleCoulombB, r, chargeA, chargeB);
-
-  energy += EnergyFactor(energyFactor.energy, (scaleCoulombA < 1.0 ? scaleCoulombB * energyFactor.dUdlambda : 0.0) +
-                                              (scaleCoulombB < 1.0 ? scaleCoulombA * energyFactor.dUdlambda : 0.0));
-
-  const double3 f = energyFactor.forceFactor * dr;
-
-  it1->gradient += f;
-  it2->gradient -= f;
-}

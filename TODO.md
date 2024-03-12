@@ -14,8 +14,7 @@
 tests
 =====
 1) independence of Coulomb cutoff to test Fourier vs real
-2) tests for lambda-derivatives    DONE
-3) check Gibbs cutoff per system
+2) check Gibbs cutoff per system
 
 
 long-term:

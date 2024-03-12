@@ -1,8 +1,0 @@
-Microsoft compiler:
-
-1) std::span<Atom> span = std::span<Atom>(trialPositionSet.begin(), trialPositionSet.end());
-Does NOT generate a span anymore.
-Solution: using the 'trialPositionSet' directly now works.
-
-2) integer divided by a double gives an erroneous result.
-Solution: first cast the integer to a double explicitly
