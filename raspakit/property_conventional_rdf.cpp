@@ -35,6 +35,9 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       posB = it2->position;
       size_t typeB = static_cast<size_t>(it2->type);
 
+      pairCount[typeB + typeA * numberOfPseudoAtoms]++;
+      pairCount[typeA + typeB * numberOfPseudoAtoms]++;
+
       dr = posA - posB;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       rr = double3::dot(dr, dr);
@@ -45,10 +48,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       {
         size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
         sumProperty[index][bin] += 1.0;
-        pairCount[typeB + typeA * numberOfPseudoAtoms]++;
         index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
         sumProperty[index][bin] += 1.0;
-        pairCount[typeA + typeB * numberOfPseudoAtoms]++;
       }
     }
   }
@@ -71,6 +72,9 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         posB = it2->position;
         size_t typeB = static_cast<size_t>(it2->type);
 
+        pairCount[typeB + typeA * numberOfPseudoAtoms]++;
+        pairCount[typeA + typeB * numberOfPseudoAtoms]++;
+
         dr = posA - posB;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
         rr = double3::dot(dr, dr);
@@ -81,10 +85,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         {
           size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
           sumProperty[index][bin] += 1.0;
-          pairCount[typeB + typeA * numberOfPseudoAtoms]++;
           index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
           sumProperty[index][bin] += 1.0;
-          pairCount[typeA + typeB * numberOfPseudoAtoms]++;
         }
       }
     }
@@ -159,7 +161,7 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size
 
 
 void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId, double volume,
-                                                                 std::vector<size_t> &numberOfPseudoAtomsType)
+                                                                 [[maybe_unused]]std::vector<size_t> &numberOfPseudoAtomsType)
 {
   std::filesystem::create_directory("conventional_rdf");
 
@@ -181,8 +183,11 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceFiel
 
         auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
 
-        double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * 
-                               static_cast<double>(numberOfPseudoAtomsType[atomTypeA] * numberOfPseudoAtomsType[atomTypeB]));
+        // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
+        // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
+        double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
+                                                 pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) / static_cast<double>(totalNumberOfCounts);
+        double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
 
         for(size_t bin = 0; bin != numberOfBins; ++bin)
         {

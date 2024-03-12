@@ -49,8 +49,6 @@ import property_simulationbox;
 import property_energy;
 import property_loading;
 import property_enthalpy;
-import property_conventional_rdf;
-import property_rdf;
 import mc_moves_probabilities_particles;
 import mc_moves_cputime;
 import mc_moves_count;
@@ -130,7 +128,6 @@ void MonteCarlo::initialize()
 
   for (System &system: systems)
   {
-    //system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      system.forceField, system.simulationBox,
                                                      double3(0.0, 0.0, 0.0), 1.0);
@@ -140,7 +137,6 @@ void MonteCarlo::initialize()
     system.determineFractionalComponents();
     system.rescaleMoveProbabilities();
     system.rescaleMolarFractions();
-    //system.computeComponentFluidProperties();
     system.computeFrameworkDensity();
     system.computeNumberOfPseudoAtoms();
 
@@ -451,22 +447,7 @@ void MonteCarlo::production()
     // sample properties
     for (System& system : systems)
     {
-      system.sampleProperties(estimation.currentBin);
-
-      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
-      {
-        if(system.computeConventionalRadialDistributionFunction)
-        {
-          system.conventionalRadialDistributionFunction.sample(system.simulationBox, system.spanOfFrameworkAtoms(), 
-                                                               system.spanOfMoleculeAtoms(), estimation.currentBin);
-        }
-
-        if(system.computeRadialDistributionFunction)
-        {
-          system.radialDistributionFunction.sample(system.simulationBox, system.spanOfFrameworkAtoms(), 
-                                                   system.spanOfMoleculeAtoms(), estimation.currentBin);
-        }
-      }
+      system.sampleProperties(estimation.currentBin, currentCycle);
     }
 
     for (System& system : systems)
@@ -507,7 +488,8 @@ void MonteCarlo::production()
     {
       if(system.computeConventionalRadialDistributionFunction && currentCycle % system.writeConventionalRadialDistributionFunctionEvery == 0uz )
       {
-        system.conventionalRadialDistributionFunction.writeOutput(system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms);
+        system.conventionalRadialDistributionFunction.writeOutput(system.forceField, system.systemId, system.simulationBox.volume, 
+                                                                  system.totalNumberOfPseudoAtoms);
       }
 
       if(system.computeRadialDistributionFunction && currentCycle % system.writeRadialDistributionFunctionEvery == 0uz )

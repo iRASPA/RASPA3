@@ -338,7 +338,7 @@ void MonteCarloTransitionMatrix::production()
       }
 
       
-      system.sampleProperties(estimation.currentBin);
+      system.sampleProperties(estimation.currentBin, estimation.currentBin);
     }
 
     if (i % printEvery == 0)

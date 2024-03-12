@@ -11,6 +11,9 @@ import atom;
 import simulationbox;
 import forcefield;
 
+// Computes Radial Distribution Function
+// Also works correctly for a small number of molecules (RDF still goes to unity)
+
 export struct PropertyConventionalRadialDistributionFunction
 {
   PropertyConventionalRadialDistributionFunction() {};

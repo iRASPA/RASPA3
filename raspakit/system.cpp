@@ -1028,7 +1028,7 @@ void System::writeComponentFittingStatus(std::ostream &stream,
   std::print(stream, "\n\n");
 }
 
-void System::sampleProperties(size_t currentBlock)
+void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 {
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   double w = weight();
@@ -1060,6 +1060,22 @@ void System::sampleProperties(size_t currentBlock)
 
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
   }
+
+  if (currentCycle % 10uz == 0uz)
+  {
+    if(computeConventionalRadialDistributionFunction)
+    {
+      conventionalRadialDistributionFunction.sample(simulationBox, spanOfFrameworkAtoms(),
+                                                    spanOfMoleculeAtoms(), currentBlock);
+    }
+
+    if(computeRadialDistributionFunction)
+    {
+      radialDistributionFunction.sample(simulationBox, spanOfFrameworkAtoms(),
+                                        spanOfMoleculeAtoms(), currentBlock);
+    }
+  }
+
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
