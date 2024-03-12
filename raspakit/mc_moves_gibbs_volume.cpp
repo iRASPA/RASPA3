@@ -63,7 +63,7 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
 
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
   double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(), 
-                        systemA.numberOfIntegerMoleculesPerComponent.end()));
+                                                              systemA.numberOfIntegerMoleculesPerComponent.end()));
   double scaleA = std::pow(newVolumeA/oldVolumeA, 1.0/3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::vector<Atom> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
@@ -73,6 +73,11 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
+
+  time_begin = std::chrono::system_clock::now();
+  Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
+  time_end = std::chrono::system_clock::now();
+  systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
@@ -100,6 +105,11 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
+
+  time_begin = std::chrono::system_clock::now();
+  Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
+  time_end = std::chrono::system_clock::now();
+  systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,

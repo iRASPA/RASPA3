@@ -67,6 +67,11 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
+  Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
+  time_end = std::chrono::system_clock::now();
+  system.mc_moves_cputime.volumeMoveTail += (time_end - time_begin);
+
+  time_begin = std::chrono::system_clock::now();
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.totalEik,
                                           system.forceField, newBox,

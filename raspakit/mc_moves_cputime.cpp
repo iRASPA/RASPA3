@@ -130,10 +130,12 @@ void MCMoveCpuTime::clearTimingStatistics()
   volumeMove = std::chrono::duration<double>::zero();
   volumeMoveNonEwald = std::chrono::duration<double>::zero();
   volumeMoveEwald = std::chrono::duration<double>::zero();
+  volumeMoveTail = std::chrono::duration<double>::zero();
 
   GibbsVolumeMove = std::chrono::duration<double>::zero();
   GibbsVolumeMoveNonEwald = std::chrono::duration<double>::zero();
   GibbsVolumeMoveEwald = std::chrono::duration<double>::zero();
+  GibbsVolumeMoveTail = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -146,8 +148,9 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
     std::print(stream, "Volume:                          {:14f} [s]\n", volumeMove.count());
     std::print(stream, "    Non-Ewald:                   {:14f} [s]\n", volumeMoveNonEwald.count());
     std::print(stream, "    Ewald:                       {:14f} [s]\n", volumeMoveEwald.count());
+    std::print(stream, "    Tail:                        {:14f} [s]\n", volumeMoveTail.count());
     std::print(stream, "    Overhead:                    {:14f} [s]\n",
-                 volumeMove.count() - volumeMoveNonEwald.count() - volumeMoveEwald.count());
+                 volumeMove.count() - volumeMoveNonEwald.count() - volumeMoveEwald.count() - volumeMoveTail.count());
   }
 
   if(GibbsVolumeMove > std::chrono::duration<double>::zero())
@@ -156,8 +159,9 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
     std::print(stream, "Gibbs Volume:                    {:14f} [s]\n", GibbsVolumeMove.count());
     std::print(stream, "    Non-Ewald:                   {:14f} [s]\n", GibbsVolumeMoveNonEwald.count());
     std::print(stream, "    Ewald:                       {:14f} [s]\n", GibbsVolumeMoveEwald.count());
+    std::print(stream, "    Tail:                        {:14f} [s]\n", GibbsVolumeMoveTail.count());
     std::print(stream, "    Overhead:                    {:14f} [s]\n",
-                 GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count());
+                 GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count() - GibbsVolumeMoveTail.count());
   }
 
   std::print(stream, "\n");
@@ -592,8 +596,9 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Volume:                      {:14f} [s]\n", volumeMove.count());
     std::print(stream, "    Non-Ewald:               {:14f} [s]\n", volumeMoveNonEwald.count());
     std::print(stream, "    Ewald:                   {:14f} [s]\n", volumeMoveEwald.count());
+    std::print(stream, "    Tail:                    {:14f} [s]\n", volumeMoveTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
-                 volumeMove.count() - volumeMoveNonEwald.count() - volumeMoveEwald.count());
+                 volumeMove.count() - volumeMoveNonEwald.count() - volumeMoveEwald.count() - volumeMoveTail.count());
   }
 
   if(WidomMoveCBMC > std::chrono::duration<double>::zero())
@@ -639,8 +644,9 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "Gibbs Volume:                {:14f} [s]\n", GibbsVolumeMove.count());
     std::print(stream, "    Non-Ewald:               {:14f} [s]\n", GibbsVolumeMoveNonEwald.count());
     std::print(stream, "    Ewald:                   {:14f} [s]\n", GibbsVolumeMoveEwald.count());
+    std::print(stream, "    Tail:                    {:14f} [s]\n", GibbsVolumeMoveTail.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
-                 GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count());
+                 GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count() - GibbsVolumeMoveTail.count());
   }
 
   std::print(stream, "\n");
@@ -780,10 +786,12 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << t.volumeMove;
   archive << t.volumeMoveNonEwald;
   archive << t.volumeMoveEwald;
+  archive << t.volumeMoveTail;
 
   archive << t.GibbsVolumeMove;
   archive << t.GibbsVolumeMoveNonEwald;
   archive << t.GibbsVolumeMoveEwald;
+  archive << t.GibbsVolumeMoveTail;
 
   return archive;
 }
@@ -919,10 +927,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
   archive >> t.volumeMove;
   archive >> t.volumeMoveNonEwald;
   archive >> t.volumeMoveEwald;
+  archive >> t.volumeMoveTail;
 
   archive >> t.GibbsVolumeMove;
   archive >> t.GibbsVolumeMoveNonEwald;
   archive >> t.GibbsVolumeMoveEwald;
+  archive >> t.GibbsVolumeMoveTail;
 
   return archive;
 }

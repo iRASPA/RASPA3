@@ -135,10 +135,12 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> volumeMove{ 0.0 };
   std::chrono::duration<double> volumeMoveNonEwald{ 0.0 };
   std::chrono::duration<double> volumeMoveEwald{ 0.0 };
+  std::chrono::duration<double> volumeMoveTail{ 0.0 };
 
   std::chrono::duration<double> GibbsVolumeMove{ 0.0 };
   std::chrono::duration<double> GibbsVolumeMoveNonEwald{ 0.0 };
   std::chrono::duration<double> GibbsVolumeMoveEwald{ 0.0 };
+  std::chrono::duration<double> GibbsVolumeMoveTail{ 0.0 };
 
   inline std::chrono::duration<double> total() const { return propertySampling + energyPressureComputation +
                                                               translationMove + randomTranslationMove +
@@ -273,10 +275,12 @@ export struct MCMoveCpuTime
     volumeMove += b.volumeMove;
     volumeMoveNonEwald += b.volumeMoveNonEwald;
     volumeMoveEwald += b.volumeMoveEwald;
+    volumeMoveTail += b.volumeMoveTail;
 
     GibbsVolumeMove += b.GibbsVolumeMove;
     GibbsVolumeMoveNonEwald += b.GibbsVolumeMoveNonEwald;
     GibbsVolumeMoveEwald += b.GibbsVolumeMoveEwald;
+    GibbsVolumeMoveTail += b.GibbsVolumeMoveTail;
 
     return *this;
   }
@@ -414,10 +418,12 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.volumeMove = a.volumeMove + b.volumeMove;
   m.volumeMoveNonEwald = a.volumeMoveNonEwald + b.volumeMoveNonEwald;
   m.volumeMoveEwald = a.volumeMoveEwald + b.volumeMoveEwald;
+  m.volumeMoveTail = a.volumeMoveTail + b.volumeMoveTail;
 
   m.GibbsVolumeMove = a.GibbsVolumeMove + b.GibbsVolumeMove;
   m.GibbsVolumeMoveNonEwald = a.GibbsVolumeMoveNonEwald + b.GibbsVolumeMoveNonEwald;
   m.GibbsVolumeMoveEwald = a.GibbsVolumeMoveEwald + b.GibbsVolumeMoveEwald;
+  m.GibbsVolumeMoveTail = a.GibbsVolumeMoveTail + b.GibbsVolumeMoveTail;
 
   return m;
 }
