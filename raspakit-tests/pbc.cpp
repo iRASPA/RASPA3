@@ -7,7 +7,9 @@ import <algorithm>;
 import double3;
 import double3x3;
 import simulationbox;
-
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(pdb, triclinic)
 {

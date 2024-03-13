@@ -18,6 +18,9 @@ import simulationbox;
 import energy_factor;
 import running_energy;
 import force_factor;
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
 {

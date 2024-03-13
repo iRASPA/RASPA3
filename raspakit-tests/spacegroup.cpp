@@ -16,6 +16,9 @@ import system;
 import simulationbox;
 import energy_factor;
 import running_energy;
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
 {

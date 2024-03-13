@@ -67,6 +67,8 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
       }
     }
   }
+
+  preComputeTailCorrection();
 }
 
 void ForceField::preComputeTailCorrection()

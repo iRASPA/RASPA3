@@ -19,6 +19,9 @@ import running_energy;
 import force_factor;
 import energy_status;
 import units;
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
 {

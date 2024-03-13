@@ -15,6 +15,9 @@ import simulationbox;
 import energy_factor;
 import force_factor;
 import running_energy;
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(Gradients, Test_CH4_in_Box_25x25x25)
 {

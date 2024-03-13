@@ -17,7 +17,9 @@ import system;
 import simulationbox;
 import energy_factor;
 import running_energy;
-
+import interactions_intermolecular;
+import interactions_framework_molecule;
+import interactions_ewald;
 
 TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
@@ -70,8 +72,8 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   RunningEnergy energy;
-  system.computeInterMolecularEnergy(system.simulationBox, atomPositions, energy);
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1545.62921755, 1e-6);
   EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, -592.13188606, 1e-6);
@@ -164,8 +166,8 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
   atomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
   
   RunningEnergy energy;
-  system.computeInterMolecularEnergy(system.simulationBox, atomPositions, energy);
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);            
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -2525.36580663, 1e-6);
   EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, 2167.45591472, 1e-6);
@@ -248,36 +250,27 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
 
   System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
-  atomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
-  atomPositions[1].position = double3(10.011, 4.97475 + 2.0, 0.0);
-  atomPositions[2].position = double3(10.011, 4.97475 + 2.0, -1.149);
-  atomPositions[3].position = double3(10.011, 4.97475 - 2.0, 1.149);
-  atomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
-  atomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
+  std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();                                                  
+  moleculeAtomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
+  moleculeAtomPositions[1].position = double3(10.011, 4.97475 + 2.0, 0.0);
+  moleculeAtomPositions[2].position = double3(10.011, 4.97475 + 2.0, -1.149);
+  moleculeAtomPositions[3].position = double3(10.011, 4.97475 - 2.0, 1.149);
+  moleculeAtomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
+  moleculeAtomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
 
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+  //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();                                           
+  //system.forceField.initializeEwaldParameters(perpendicularWidths);   
 
-  RunningEnergy energy;
-  system.computeInterMolecularEnergy(system.simulationBox, atomPositions, energy);
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
-  system.computeTailCorrectionVDWEnergy(energy);
+  RunningEnergy energy = system.computeTotalEnergies();
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -2657.36121975, 1e-6);
   EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, 1971.00612979, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -242.94298709, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeCharge * 1.2027242847, 162.41877650, 1e-6);
-  EXPECT_NEAR(energy.tail * 1.2027242847,-23109.79642071, 1e-6);
-
-
-  RunningEnergy rigidenergy;
-
-  system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
-  system.computeEwaldFourierRigidEnergy(system.simulationBox, rigidenergy);
-  system.computeEwaldFourierEnergy(system.simulationBox, energy);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1197.23909965, 1e-6);
+  EXPECT_NEAR(energy.tail * 1.2027242847,-127.81601515, 1e-6);
+  EXPECT_NEAR(energy.ewald * 1.2027242847, -1197.23909965, 1e-6);
 }
 
 
