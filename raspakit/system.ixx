@@ -219,9 +219,6 @@ export struct System
   RunningEnergy computeTotalEnergies() noexcept;
   void computeTotalGradients() noexcept;
 
-  ForceFactor computeInterMolecularGradient() noexcept;
-  ForceFactor computeFrameworkMoleculeGradient() noexcept;
-
   size_t randomFramework(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(numberOfFrameworks)); }
   size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }
   size_t numerOfAdsorbateComponents() { return components.size() - numberOfFrameworks; }

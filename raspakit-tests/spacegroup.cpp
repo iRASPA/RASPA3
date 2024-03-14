@@ -42,7 +42,7 @@ TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
   system.atomPositions[1].position = double3(0.0, 0.0, 3.72 * std::pow(2.0, 1.0 / 6.0));
 
   RunningEnergy energy;
-  system.computeInterMolecularEnergy(system.simulationBox, system.atomPositions, energy);
+  Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, system.atomPositions, energy);
 
   EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -158.5, 1e-12);
 }
@@ -152,7 +152,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
   atomPositions[0].position = double3(0.5 * 11.8671, 0.5 * 11.8671, 0.5 * 11.8671);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
 }
@@ -262,7 +262,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
   atomPositions[0].position = double3(0.5 * 11.8671, 0.5 * 11.8671, 0.5 * 11.8671);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -602.89568378, 1e-6);
 }
@@ -304,7 +304,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
   atomPositions[0].position = double3(0.5 * 11.8671, 0.5 * 11.8671, 0.5 * 11.8671);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
 }
@@ -380,7 +380,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
   atomPositions[0].position = double3(10.011, 4.097475, 0.0);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1784.82292180, 1e-6);
 }
@@ -456,7 +456,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
   atomPositions[0].position = double3(10.011, 4.097475, 0.0);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1828.89015075, 1e-6);
 }
@@ -782,7 +782,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
   atomPositions[0].position = double3(10.011, 4.097475, 0.0);
 
   RunningEnergy energy;
-  system.computeFrameworkMoleculeEnergy(system.simulationBox, frameworkAtoms, atomPositions, energy);
+  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1784.82292180, 1e-6);
 }

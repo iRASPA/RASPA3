@@ -51,7 +51,8 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<EnergyStatus, double3x3> pressureInfo = system.computeInterMolecularEnergyStrainDerivative();
+  std::pair<EnergyStatus, double3x3> pressureInfo = 
+    Interactions::computeInterMolecularEnergyStrainDerivative(system.forceField, system.components, system.simulationBox, moleculeAtomPositions);
 
   std::vector<std::pair<double3x3, double>> strains{
      std::pair{double3x3{double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.ax},
@@ -75,14 +76,14 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward2),
       [&strainBox_forward2, &inv](const Atom &m) { return Atom(strainBox_forward2.unitCell * (inv * m.position), 0.0, 1.0, m.type, m.componentId, m.moleculeId); });
     RunningEnergy EnergyForward2;
-    system.computeInterMolecularEnergy(strainBox_forward2, moleculeAtomPositions_forward2, EnergyForward2);
+    Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward2, moleculeAtomPositions_forward2, EnergyForward2);
 
     SimulationBox strainBox_forward1 = SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward1),
       [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.unitCell * (inv * m.position), 0.0, 1.0, m.type, m.componentId, m.moleculeId); });
     RunningEnergy EnergyForward1;
-    system.computeInterMolecularEnergy(strainBox_forward1, moleculeAtomPositions_forward1, EnergyForward1);
+    Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward1, moleculeAtomPositions_forward1, EnergyForward1);
     
     
     SimulationBox strainBox_backward1 = SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
@@ -90,14 +91,14 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward1),
       [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.unitCell * (inv * m.position), 0.0, 1.0, m.type, m.componentId, m.moleculeId); });
     RunningEnergy EnergyBackward1;
-    system.computeInterMolecularEnergy(strainBox_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
+    Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
 
     SimulationBox strainBox_backward2 = SimulationBox((identity - strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward2),
       [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.unitCell * (inv * m.position), 0.0, 1.0, m.type, m.componentId, m.moleculeId); });
     RunningEnergy EnergyBackward2;
-    system.computeInterMolecularEnergy(strainBox_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
+    Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
     
     double strainDerivative = (-EnergyForward2.total() + 8.0 * EnergyForward1.total() - 8.0 * EnergyBackward1.total() + EnergyBackward2.total()) / (6.0 * delta);
     
