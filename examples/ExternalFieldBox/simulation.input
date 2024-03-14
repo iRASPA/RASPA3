@@ -1,0 +1,24 @@
+SimulationType                MonteCarlo
+NumberOfCycles                1000000
+NumberOfInitializationCycles  15000
+NumberOfEquilibrationCycles   0
+PrintEvery                    1000
+NumberOfBlocks                5
+
+Box 0
+BoxLengths 30 30 30
+ExternalField yes
+EwaldPrecision 1e-6
+ChargeMethod None
+OmitEwaldFourier no
+
+computeConventionalRDF yes
+
+ExternalTemperature 300.0
+ExternalPressure 1e5
+
+Component 0 MoleculeName               methane
+            TranslationProbability     1.0
+            RotationProbability        1.0
+            ReinsertionProbability     1.0
+            CreateNumberOfMolecules    50

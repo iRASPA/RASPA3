@@ -98,6 +98,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
     idealGasEnergiesPerComponent(c.size()),
     forceField(forcefield),
+    hasExternalField(false),
     numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
     totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
     averageSimulationBox(numberOfBlocks),
@@ -195,6 +196,7 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c,
     numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
     idealGasEnergiesPerComponent(c.size()),
     forceField(forcefield),
+    hasExternalField(false),
     numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
     totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
     simulationBox(0.0, 0.0, 0.0, 90.0 * std::numbers::pi / 180.0, 
@@ -423,7 +425,7 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
           std::vector<Atom> atoms = 
             components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);
           Component::GrowType growType  = components[componentId].growType;
-          growData = CBMC::growMoleculeSwapInsertion(random, this->components, this->forceField, this->simulationBox, 
+          growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox, 
                                    this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,
                                    growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,
                                    numberOfMoleculesPerComponent[componentId], 0.0, atoms, numberOfTrialDirections);
@@ -442,7 +444,7 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
         std::vector<Atom> atoms = 
           components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);
         Component::GrowType growType  = components[componentId].growType;
-        growData = CBMC::growMoleculeSwapInsertion(random, this->components, this->forceField, this->simulationBox, 
+        growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox, 
                                  this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta, 
                                  growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,
                                  numberOfMoleculesPerComponent[componentId], 1.0, atoms, numberOfTrialDirections);
@@ -1404,6 +1406,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
   archive << s.idealGasEnergiesPerComponent;
   archive << s.forceField;
+  archive << s.hasExternalField;
   archive << s.numberOfPseudoAtoms;
   archive << s.totalNumberOfPseudoAtoms;
   archive << s.frameworkMass;
@@ -1488,6 +1491,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
   archive >> s.idealGasEnergiesPerComponent;
   archive >> s.forceField;
+  archive >> s.hasExternalField;
   archive >> s.numberOfPseudoAtoms;
   archive >> s.totalNumberOfPseudoAtoms;
   archive >> s.frameworkMass;

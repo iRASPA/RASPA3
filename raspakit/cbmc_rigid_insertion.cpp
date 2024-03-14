@@ -31,13 +31,13 @@ import component;
 
 
 [[nodiscard]] std::optional<ChainData>                                                                                
-growRigidMoleculeChain(RandomNumber &random, const ForceField &forceField, const SimulationBox &simulationBox,        
+growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,  const ForceField &forceField, const SimulationBox &simulationBox,        
                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,                     
                        double beta, double cutOff, double cutOffCoulomb, size_t startingBead,                         
                        std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept;   
 
 [[nodiscard]] std::optional<ChainData> 
-CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, const std::vector<Component> &components, 
+CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                                      const ForceField &forceField, const SimulationBox &simulationBox, 
                                      std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                      double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
@@ -51,7 +51,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, const std::vector<Com
   size_t startingBead = components[selectedComponent].startingBead;
 
   std::optional<FirstBeadData> 
-    const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(random, forceField, simulationBox,
+    const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(random, hasExternalField, forceField, simulationBox,
                                                 frameworkAtoms, moleculeAtoms, beta, cutOff, cutOffCoulomb, 
                                                 atoms[startingBead], numberOfTrialDirections);
 
@@ -65,7 +65,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, const std::vector<Com
   }
 
   std::optional<ChainData> const rigidRotationData = 
-    CBMC::growRigidMoleculeChain(random, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
+    CBMC::growRigidMoleculeChain(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
                            cutOffCoulomb, startingBead, atoms, numberOfTrialDirections);
   
   if (!rigidRotationData) return std::nullopt;
@@ -77,7 +77,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, const std::vector<Com
 
 // helper function
 [[nodiscard]] std::optional<ChainData> 
-CBMC::growRigidMoleculeChain(RandomNumber &random, const ForceField &forceField, const SimulationBox &simulationBox, 
+CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t startingBead, 
                              std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept
@@ -90,7 +90,7 @@ CBMC::growRigidMoleculeChain(RandomNumber &random, const ForceField &forceField,
   };
   
   const std::vector<std::pair<std::vector<Atom>, RunningEnergy>>  externalEnergies = 
-    CBMC::computeExternalNonOverlappingEnergies(forceField, simulationBox, frameworkAtoms, moleculeAtoms, 
+    CBMC::computeExternalNonOverlappingEnergies(hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, 
                                 cutOff, cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 

@@ -33,7 +33,6 @@ import threadpool;
 export namespace CBMC                                                                                                   
 { 
   [[nodiscard]] std::optional<RunningEnergy> 
-  computeExternalFieldEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
-                             std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, 
-                             std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
+  computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
+                             double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms) noexcept;
 }

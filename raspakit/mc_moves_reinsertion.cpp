@@ -62,7 +62,7 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
 
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainData> growData = 
-    CBMC::growMoleculeReinsertion(random, system.components, system.forceField, system.simulationBox, 
+    CBMC::growMoleculeReinsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                   system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                   cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
                                   system.numberOfTrialDirections);
@@ -79,7 +79,7 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
 
   time_begin = std::chrono::system_clock::now();
   ChainData retraceData = 
-    CBMC::retraceMoleculeReinsertion(random, system.components, system.forceField, system.simulationBox, 
+    CBMC::retraceMoleculeReinsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                      cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
                                      growData->storedR, system.numberOfTrialDirections);
@@ -102,10 +102,10 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
   std::optional<RunningEnergy> energyOld;
   if(system.forceField.useDualCutOff)
   {
-    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.forceField, system.simulationBox, 
+    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.hasExternalField, system.forceField, system.simulationBox, 
                                system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), 
                                system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, growData->atom);
-    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.forceField, system.simulationBox, 
+    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.hasExternalField, system.forceField, system.simulationBox, 
                                system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
                                system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, retraceData.atom);
     correctionFactorDualCutOff = std::exp(-system.beta * (energyNew->total() - growData->energies.total() 

@@ -59,7 +59,7 @@ MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system,
     system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
 
   std::optional<ChainData> growData = 
-    CBMC::growMoleculeSwapInsertion(random, system.components, system.forceField, system.simulationBox, 
+    CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                     system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                     growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 
                                     atoms, system.numberOfTrialDirections);

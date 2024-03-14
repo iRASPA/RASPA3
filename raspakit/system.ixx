@@ -117,6 +117,7 @@ export struct System
   std::vector<double> idealGasEnergiesPerComponent{};
 
   ForceField forceField;
+  bool hasExternalField;
 
   std::vector<std::vector<size_t>> numberOfPseudoAtoms;
   std::vector<size_t> totalNumberOfPseudoAtoms;

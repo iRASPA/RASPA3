@@ -22,7 +22,7 @@ export namespace CBMC
 {
   // insertion
   [[nodiscard]] std::optional<ChainData>
-  growMoleculeSwapInsertion(RandomNumber &random, const std::vector<Component> &components, 
+  growMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                             const ForceField &forceField, const SimulationBox &simulationBox, 
                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                             Component::GrowType growType, double cutOff, double cutOffCoulomb, 
@@ -31,7 +31,7 @@ export namespace CBMC
   
   // deletion
   [[nodiscard]] ChainData
-  retraceMoleculeSwapDeletion(RandomNumber &random, const std::vector<Component> &components, 
+  retraceMoleculeSwapDeletion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                               const ForceField &forceField, const SimulationBox &simulationBox, 
                               std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                               double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
@@ -40,7 +40,8 @@ export namespace CBMC
   
   // reinsertion grow
   [[nodiscard]] std::optional<ChainData>
-  growMoleculeReinsertion(RandomNumber &random, const std::vector<Component> &components, const ForceField &forceField, 
+  growMoleculeReinsertion(RandomNumber &random, bool hasExternalField, 
+                          const std::vector<Component> &components, const ForceField &forceField, 
                           const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                           std::span<const Atom> moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, 
                           size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule, 
@@ -48,7 +49,7 @@ export namespace CBMC
   
   // reinsertion retrace
   [[nodiscard]] ChainData
-  retraceMoleculeReinsertion(RandomNumber &random, const std::vector<Component> &components, 
+  retraceMoleculeReinsertion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                              const ForceField &forceField, const SimulationBox &simulationBox, 
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 

@@ -67,7 +67,7 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
   // compute external field energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule =
-    Interactions::computeExternalFieldEnergyDifference(system.forceField, system.simulationBox,
+    Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
                                                        trialMolecule, molecule);
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.rotationMoveExternalFieldMolecule += (time_end - time_begin);

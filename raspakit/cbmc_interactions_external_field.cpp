@@ -33,11 +33,41 @@ import threadpool;
 
 
 [[nodiscard]] std::optional<RunningEnergy> 
-CBMC::computeExternalFieldEnergy([[maybe_unused]] const ForceField &forceField, [[maybe_unused]] const SimulationBox &simulationBox, 
-                                 [[maybe_unused]] std::span<const Atom> moleculeAtoms, [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb, 
-                                 [[maybe_unused]] std::span<Atom> atoms, [[maybe_unused]] std::make_signed_t<std::size_t> skip) noexcept
+CBMC::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField, 
+                                 [[maybe_unused]] const SimulationBox &simulationBox, 
+                                 [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb, 
+                                 [[maybe_unused]] std::span<Atom> atoms) noexcept
 {
   RunningEnergy energySum;
+
+  const double overlapCriteria = forceField.overlapCriteria;
+
+  if(hasExternalField)
+  {
+    if (atoms.empty()) return energySum;
+
+    for (std::span<const Atom>::iterator it1 = atoms.begin(); it1 != atoms.end(); ++it1)
+    {
+      [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
+      [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
+      [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
+      [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
+      [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
+      [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
+      [[maybe_unused]] double chargeA = it1->charge;
+      [[maybe_unused]] double3 posA = it1->position;
+      [[maybe_unused]] double3 s = (simulationBox.inverseUnitCell * posA).fract();
+
+
+      // Fill in the energy based on the atom properties and the fractional position 's'
+      EnergyFactor energyFactor = EnergyFactor(0.0, 0.0);
+      if (energyFactor.energy > overlapCriteria) return std::nullopt;
+
+      energySum.externalFieldVDW += energyFactor.energy;
+      energySum.dudlambdaVDW += energyFactor.dUdlambda;
+    }
+
+  }
 
   return energySum;
 }

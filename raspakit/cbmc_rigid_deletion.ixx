@@ -18,7 +18,7 @@ import component;
 export namespace CBMC                                                                                                   
 {
   [[nodiscard]] ChainData
-  retraceRigidMoleculeSwapDeletion(RandomNumber &random, const std::vector<Component> &components, 
+  retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                                    const ForceField &forcefield, const SimulationBox &simulationBox, 
                                    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                    double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 

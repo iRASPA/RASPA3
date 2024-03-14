@@ -19,7 +19,7 @@ import component;
 export namespace CBMC                                                                                                   
 {
   [[nodiscard]] std::optional<ChainData> 
-  growRigidMoleculeSwapInsertion(RandomNumber &random, const std::vector<Component> &components, 
+  growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField,  const std::vector<Component> &components, 
                                  const ForceField &forceField, const SimulationBox &simulationBox, 
                                  std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                  double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
@@ -27,7 +27,7 @@ export namespace CBMC
                                  size_t numberOfTrialDirections) noexcept;
 
   [[nodiscard]] std::optional<ChainData>                                                                                  
-  growRigidMoleculeChain(RandomNumber &random, const ForceField &forceField, const SimulationBox &simulationBox,    
+  growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,    
                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,    
                          double cutOff, double cutOffCoulomb, size_t startingBead,                                  
                          std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept;

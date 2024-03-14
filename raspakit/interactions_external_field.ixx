@@ -18,13 +18,13 @@ import component;
 
 export namespace Interactions
 {
-  void computeExternalFieldEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+  void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
                                   std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
 
-  void computeExternalFieldTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+  void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
                                       std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
 
   [[nodiscard]] std::optional<RunningEnergy>
-  computeExternalFieldEnergyDifference(const ForceField &forceField, const SimulationBox &simulationBox,
+  computeExternalFieldEnergyDifference(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
                                        std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 }

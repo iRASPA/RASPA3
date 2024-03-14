@@ -63,7 +63,7 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
 
     time_begin = std::chrono::system_clock::now();
     ChainData retraceData = 
-      CBMC::retraceMoleculeSwapDeletion(random, system.components, system.forceField, system.simulationBox, 
+      CBMC::retraceMoleculeSwapDeletion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, 
                                         cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
                                         1.0, 0.0, system.numberOfTrialDirections);

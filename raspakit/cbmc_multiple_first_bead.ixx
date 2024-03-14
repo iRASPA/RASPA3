@@ -12,28 +12,28 @@ import simulationbox;
 export namespace CBMC
 {
   [[nodiscard]] std::optional<FirstBeadData> 
-  growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, const ForceField &forceField, 
+  growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, 
                                              const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                              std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                              double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) 
                                              noexcept;
 
   [[nodiscard]] FirstBeadData 
-  retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, const ForceField &forcefield, 
+  retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, bool hasExternalField, const ForceField &forcefield, 
                                             const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                             std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                             double cutOffCoulomb, const Atom& atom, double scaling, double storedR, 
                                             size_t numberOfTrialDirections) noexcept;
 
   [[nodiscard]] std::optional<FirstBeadData> 
-  growRigidMultipleFirstBeadReinsertion(RandomNumber &random, const ForceField &forceField, 
+  growRigidMultipleFirstBeadReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, 
                                         const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                         std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                         double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) 
                                         noexcept;
 
   [[nodiscard]] FirstBeadData 
-  retraceRigidMultipleFirstBeadReinsertion(RandomNumber &random, const ForceField &forceField, 
+  retraceRigidMultipleFirstBeadReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, 
                                            const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                            std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                            double cutOffCoulomb, const Atom& atom, double storedR, 

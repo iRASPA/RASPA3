@@ -32,14 +32,14 @@ import cbmc_multiple_first_bead;
 
 
 [[nodiscard]] ChainData                                                                                                 
-retraceRigidChain(RandomNumber &random, const ForceField &forcefield, const SimulationBox &simulationBox,               
+retraceRigidChain(RandomNumber &random, bool hasExternalField, const ForceField &forcefield, const SimulationBox &simulationBox,               
                   std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,               
                   double cutOff, double cutOffCoulomb, size_t startingBead, [[maybe_unused]] double scaling,            
                   std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept;
 
 
 [[nodiscard]] ChainData 
-CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, const std::vector<Component> &components, 
+CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
                                  const ForceField &forcefield, const SimulationBox &simulationBox, 
                                  std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                  double beta, double cutOff, double cutOffCoulomb, 
@@ -50,7 +50,7 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, const std::vector<C
   size_t startingBead = components[selectedComponent].startingBead;
 
   const FirstBeadData firstBeadData = 
-    CBMC::retraceRigidMultipleFirstBeadSwapDeletion(random, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, 
+    CBMC::retraceRigidMultipleFirstBeadSwapDeletion(random, hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, 
                       beta, cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR, numberOfTrialDirections);
 
   if(molecule.size() == 1)
@@ -60,7 +60,7 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, const std::vector<C
   }
 
   const ChainData rigidRotationData = 
-    retraceRigidChain(random, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, cutOffCoulomb, 
+    retraceRigidChain(random, hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, cutOffCoulomb, 
                       startingBead, scaling, molecule, numberOfTrialDirections);
 
   return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), 
@@ -70,7 +70,7 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, const std::vector<C
 
 
 [[nodiscard]] ChainData 
-retraceRigidChain(RandomNumber &random, const ForceField &forcefield, const SimulationBox &simulationBox, 
+retraceRigidChain(RandomNumber &random, bool hasExternalField, const ForceField &forcefield, const SimulationBox &simulationBox, 
                   std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                   double cutOff, double cutOffCoulomb, size_t startingBead, [[maybe_unused]] double scaling, 
                   std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept
@@ -85,7 +85,7 @@ retraceRigidChain(RandomNumber &random, const ForceField &forcefield, const Simu
   };
 
   const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> externalEnergies = 
-    CBMC::computeExternalNonOverlappingEnergies(forcefield, simulationBox, frameworkAtoms, moleculeAtoms, cutOff, 
+    CBMC::computeExternalNonOverlappingEnergies(hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, cutOff, 
                                         cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));
 
   std::vector<double> logBoltmannFactors{};

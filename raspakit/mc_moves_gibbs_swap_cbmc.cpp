@@ -52,7 +52,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
                                                           systemA.numberOfMoleculesPerComponent[selectedComponent]);
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::optional<ChainData> growData = 
-    CBMC::growMoleculeSwapInsertion(random, systemA.components, systemA.forceField, systemA.simulationBox, 
+    CBMC::growMoleculeSwapInsertion(random, systemA.hasExternalField, systemA.components, systemA.forceField, systemA.simulationBox, 
                                     systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
                                     growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 
                                     atoms, systemA.numberOfTrialDirections);
@@ -94,7 +94,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
 
   std::chrono::system_clock::time_point tB1 = std::chrono::system_clock::now();
   ChainData retraceData = 
-    CBMC::retraceMoleculeSwapDeletion(random, systemB.components, systemB.forceField, systemB.simulationBox, 
+    CBMC::retraceMoleculeSwapDeletion(random, systemB.hasExternalField, systemB.components, systemB.forceField, systemB.simulationBox, 
                                       systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
                                       cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
                                       1.0, 0.0, systemB.numberOfTrialDirections);

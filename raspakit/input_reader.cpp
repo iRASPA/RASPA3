@@ -440,6 +440,14 @@ InputReader::InputReader()
         };
       }
 
+      if (caseInSensStringCompare(keyword, "ExternalField"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        systems.back().hasExternalField = value;
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, std::string("Box")))
       {
         ForceField currentForceField = ForceField(numberOfSystems);

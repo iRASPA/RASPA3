@@ -36,7 +36,7 @@ pair_acc(const std::pair<EnergyStatus, double3x3> &lhs, const std::pair<EnergySt
 }
 
 [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> 
-CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const SimulationBox &simulationBox, 
+CBMC::computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
                                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                             [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb,  
                                             [[maybe_unused]] std::vector<Atom>& trialPositions) noexcept
@@ -46,8 +46,8 @@ CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const 
     {
         // skip trial-positions that have an overlap in inter-molecular energy
         std::optional<RunningEnergy> externalFieldEnergy = 
-          CBMC::computeExternalFieldEnergy(forceField, simulationBox, moleculeAtoms, 
-                                            cutOffVDW, cutOffCoulomb, { it,1 });
+          CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
+                                           cutOffVDW, cutOffCoulomb, { it,1 });
         if(!externalFieldEnergy.has_value()) continue;
 
         // skip trial-positions that have an overlap in inter-molecular energy
@@ -69,7 +69,7 @@ CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const 
 }
 
 const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> 
-CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const SimulationBox &simulationBox, 
+CBMC::computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
                                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                             [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb, 
                                             std::vector<std::vector<Atom>>& trialPositionSets, 
@@ -80,8 +80,8 @@ CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const 
     for (std::vector<Atom> trialPositionSet : trialPositionSets)
     {
         std::optional<RunningEnergy> eternalFieldEnergy = 
-          CBMC::computeExternalFieldEnergy(forceField, simulationBox, moleculeAtoms, cutOffVDW, cutOffCoulomb, 
-                                            trialPositionSet, skip);
+          CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
+                                           cutOffVDW, cutOffCoulomb, trialPositionSet);
         if(!eternalFieldEnergy.has_value()) continue;
 
         std::optional<RunningEnergy> interEnergy = 
@@ -101,7 +101,7 @@ CBMC::computeExternalNonOverlappingEnergies(const ForceField &forceField, const 
 }
 
 const std::optional<RunningEnergy> 
-CBMC::computeExternalNonOverlappingEnergyDualCutOff(const ForceField &forceField, const SimulationBox &simulationBox, 
+CBMC::computeExternalNonOverlappingEnergyDualCutOff(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
                                                     std::span<const Atom> frameworkAtoms, 
                                                     std::span<const Atom> moleculeAtoms, 
                                                     double cutOffVDW, double cutOffCoulomb, 
@@ -110,8 +110,8 @@ CBMC::computeExternalNonOverlappingEnergyDualCutOff(const ForceField &forceField
   std::pair<std::vector<Atom>,RunningEnergy> energies;
 
   std::optional<RunningEnergy> externalFieldEnergy = 
-    CBMC::computeExternalFieldEnergy(forceField, simulationBox, moleculeAtoms, cutOffVDW, cutOffCoulomb, 
-                                     trialPositionSet, -1);
+    CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, cutOffVDW, cutOffCoulomb, 
+                                     trialPositionSet);
   if(!externalFieldEnergy.has_value()) return std::nullopt;
 
   std::optional<RunningEnergy> interEnergy = 

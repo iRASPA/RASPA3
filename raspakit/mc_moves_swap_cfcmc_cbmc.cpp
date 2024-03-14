@@ -96,7 +96,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     // compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldDifference = 
-      Interactions::computeExternalFieldEnergyDifference(system.forceField, system.simulationBox,
+      Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
                                                          fractionalMolecule, oldFractionalMolecule);
     time_end = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCExternalField += (time_end - time_begin);
@@ -174,7 +174,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainData> growData = 
-      CBMC::growMoleculeSwapInsertion(random, system.components, system.forceField, system.simulationBox, 
+      CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                       system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                       growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, 
                                       newatoms, system.numberOfTrialDirections);
@@ -299,7 +299,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
       //             molecule is removed.
       time_begin = std::chrono::system_clock::now();
       ChainData retraceData = 
-        CBMC::retraceMoleculeSwapDeletion(random, system.components, system.forceField, system.simulationBox, 
+        CBMC::retraceMoleculeSwapDeletion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                           system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                           cutOffVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule, 
                                           fractionalMolecule, oldLambda, 0.0, system.numberOfTrialDirections);
@@ -353,7 +353,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
       // compute external field energy contribution
       time_begin = std::chrono::system_clock::now();
       std::optional<RunningEnergy> externalFieldDifference = 
-        Interactions::computeExternalFieldEnergyDifference(system.forceField, system.simulationBox,
+        Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
                                                            newFractionalMolecule, savedFractionalMolecule);
       time_end = std::chrono::system_clock::now();
       system.components[selectedComponent].mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCExternalField += (time_end - time_begin);
@@ -491,7 +491,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     // compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldEnergyDifference = 
-      Interactions::computeExternalFieldEnergyDifference(system.forceField, system.simulationBox,
+      Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
                                                          trialPositions, molecule);
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
