@@ -6,7 +6,6 @@ PrintEvery                    1000
 NumberOfBlocks                5
 
 Framework 0
-Forcefield ExampleMoleculeForceField
 FrameworkName MFI_SI
 NumberOfUnitCells 2 2 2
 EwaldPrecision 1e-6
@@ -20,7 +19,6 @@ ExternalPressure 1e4
 #WriteMoviesEvery 1000
 
 Component 0 MoleculeName               methane
-#           MoleculeDefinition         ExampleDefinitions
             TranslationProbability     1.0
             RotationProbability        1.0
             ReinsertionProbability     1.0

@@ -6,7 +6,6 @@ PrintEvery                    1000
 NumberOfBlocks                5
 
 Framework 0
-Forcefield ExampleMoleculeForceField
 FrameworkName MFI_SI
 NumberOfUnitCells 2 2 2
 ChargeMethod None
@@ -22,7 +21,7 @@ ExternalPressure 1e4
 
 Component 0 MoleculeName               CO2
             MolFraction                0.25
-	          ThermodynamicIntegration   yes
+            ThermodynamicIntegration   yes
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
@@ -35,7 +34,7 @@ Component 0 MoleculeName               CO2
 
 Component 1 MoleculeName               methane
             MolFraction                0.75
-	          ThermodynamicIntegration   no
+            ThermodynamicIntegration   no
             TranslationProbability     0.5
             RotationProbability        0.5
             ReinsertionProbability     0.5
