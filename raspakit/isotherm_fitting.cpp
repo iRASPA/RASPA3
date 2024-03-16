@@ -116,7 +116,7 @@ std::vector<std::pair<double, double>> IsothermFitting::readData(size_t componen
 {
   std::string filename = system.components[componentId].filename;
   std::ifstream fileInput{ filename };
-  std::string errorOpeningFile = "[IsothermFitting] File '" + filename + "' exists, but error opening file";
+  std::string errorOpeningFile = "[IsothermFitting] File '" + filename + "' exists, but error opening file\n";
   if (!fileInput) throw std::runtime_error(errorOpeningFile);
 
   size_t columnPressure = system.components[componentId].columnPressure;
@@ -158,7 +158,7 @@ std::vector<std::pair<double, double>> IsothermFitting::readData(size_t componen
 
   if(rawData.empty())
   {
-    throw std::runtime_error("Error: no pressure points found");
+    throw std::runtime_error("Error: no pressure points found\n");
   }
 
   // sort the pressures

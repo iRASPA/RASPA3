@@ -67,7 +67,7 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}\n", 
                                              keyword, lineNumber));
       }
       return list;
@@ -82,7 +82,7 @@ std::vector<T> parseListOfSystemValues(const std::string& arguments, const std::
     {
       if (list.empty()) 
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}\n", 
                                              keyword, lineNumber));
       }
       return list;
@@ -117,7 +117,7 @@ int parseBoolean(const std::string& arguments, const std::string& keyword, size_
     if (caseInSensStringCompare(str, "no")) return false;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 template<>
@@ -134,7 +134,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
     {
       if (list.empty())
       {
-        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+        throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}\n", 
                                              keyword, lineNumber));
       }
       return list;
@@ -160,7 +160,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
       {
         if (list.empty()) 
         {
-          throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}", 
+          throw std::runtime_error(std::format("No values could be read for keyword '{}' at line: {}\n", 
                                                keyword, lineNumber));
         }
         return list;
@@ -170,7 +170,7 @@ std::vector<bool> parseListOfSystemValues(const std::string& arguments, const st
 
   if (list.empty()) 
   {
-    throw std::runtime_error( std::format("No values could be read for keyword '{}' at line: {}", keyword, lineNumber));
+    throw std::runtime_error( std::format("No values could be read for keyword '{}' at line: {}\n", keyword, lineNumber));
   }
   return list;
 }
@@ -188,7 +188,7 @@ size_t parseInteger(const std::string& arguments, const std::string& keyword, si
     return value;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 double parseDouble(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -203,7 +203,7 @@ double parseDouble(const std::string& arguments, const std::string& keyword, siz
       return value;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 double3 parseDouble3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -218,7 +218,7 @@ double3 parseDouble3(const std::string& arguments, const std::string& keyword, s
     return value;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -233,7 +233,7 @@ int3 parseInt3(const std::string& arguments, const std::string& keyword, size_t 
     return value;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 std::string parseString(const std::string& arguments, const std::string& keyword, size_t lineNumber)
@@ -248,7 +248,7 @@ std::string parseString(const std::string& arguments, const std::string& keyword
     return value;
   };
 
-  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}", keyword, lineNumber));
+  throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
 
@@ -261,13 +261,13 @@ InputReader::InputReader()
   std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
   if (!std::filesystem::exists(pathfile)) 
   {
-    throw std::runtime_error(std::format("Required file '{}' not found", simulationSettingsFileName));
+    throw std::runtime_error(std::format("Required file '{}' not found\n", simulationSettingsFileName));
   }
 
   std::ifstream fileInput{ pathfile };
   if (!fileInput) 
   {
-    throw std::runtime_error(std::format("File '{}' exists, but error opening file", simulationSettingsFileName));
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file\n", simulationSettingsFileName));
   }
 
   std::string line{};
@@ -1163,7 +1163,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 2uz)
         {
-          throw std::runtime_error("Error: Langmuir requires two parameters");
+          throw std::runtime_error("Error: Langmuir requires two parameters\n");
         }
         values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
@@ -1178,7 +1178,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 2uz)
         {
-          throw std::runtime_error("Error: Anti-Langmuir requires two parameters");
+          throw std::runtime_error("Error: Anti-Langmuir requires two parameters\n");
         }
         values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Anti_Langmuir, values, 2);
@@ -1193,7 +1193,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: BET requires three parameters");
+          throw std::runtime_error("Error: BET requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::BET, values, 3);
@@ -1208,7 +1208,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 1uz)
         {
-          throw std::runtime_error("Error: Henry requires one parameter");
+          throw std::runtime_error("Error: Henry requires one parameter\n");
         }
         values.resize(1uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Henry, values, 1);
@@ -1223,7 +1223,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 2uz)
         {
-          throw std::runtime_error("Error: Freundlich requires two parameters");
+          throw std::runtime_error("Error: Freundlich requires two parameters\n");
         }
         values.resize(2uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Freundlich, values, 2);
@@ -1238,7 +1238,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Sips requires three parameters");
+          throw std::runtime_error("Error: Sips requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Sips, values, 3);
@@ -1253,7 +1253,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Langmuir requires three parameters");
+          throw std::runtime_error("Error: Langmuir requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir_Freundlich, values, 3);
@@ -1268,7 +1268,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Redlich-Peterson requires three parameters");
+          throw std::runtime_error("Error: Redlich-Peterson requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Redlich_Peterson, values, 3);
@@ -1283,7 +1283,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Toth requires three parameters");
+          throw std::runtime_error("Error: Toth requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Toth, values, 3);
@@ -1298,7 +1298,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Unilan requires three parameters");
+          throw std::runtime_error("Error: Unilan requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Unilan, values, 3);
@@ -1313,7 +1313,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: O'Brien&Myers requires three parameters");
+          throw std::runtime_error("Error: O'Brien&Myers requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::OBrien_Myers, values, 3);
@@ -1328,7 +1328,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Quadratic requires three parameters");
+          throw std::runtime_error("Error: Quadratic requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Quadratic, values, 3);
@@ -1343,7 +1343,7 @@ InputReader::InputReader()
         std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
         if(values.size() < 3uz)
         {
-          throw std::runtime_error("Error: Temkin requires three parameters");
+          throw std::runtime_error("Error: Temkin requires three parameters\n");
         }
         values.resize(3uz);
         const Isotherm isotherm = Isotherm(Isotherm::Type::Temkin, values, 3);
@@ -1431,7 +1431,7 @@ InputReader::InputReader()
 
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
-        throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}", 
+        throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}\n", 
                                              keyword, lineNumber));
       }
 
@@ -1494,7 +1494,7 @@ InputReader::InputReader()
          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
       {
         throw std::runtime_error(std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal" 
-                                             "to twice the number of components {})", 
+                                             "to twice the number of components {})\n", 
                                              reactionId, reaction.productStoichiometry.size() + 
                                              reaction.reactantStoichiometry.size(), 
                                              2uz * systems[i].numerOfAdsorbateComponents()));
@@ -1517,7 +1517,7 @@ InputReader::InputReader()
     if(numberOfDUDlambda > 1)
     {
       throw std::runtime_error(std::format("Error [System {}]: multiple thermodynamic integrations present " 
-                                           "(there can be only one)", i));
+                                           "(there can be only one)\n", i));
     }
   }
 
@@ -1569,11 +1569,11 @@ InputReader::InputReader()
     {
       if(systems[i].numberOfCarrierGases == 0uz)
       {
-        throw std::runtime_error("Error [Breakthrough]: no carrier gas component present");
+        throw std::runtime_error("Error [Breakthrough]: no carrier gas component present\n");
       }
       if(systems[i].numberOfCarrierGases > 1)
       {
-        throw std::runtime_error("Error [Breakthrough]: multiple carrier gas component present (there can be only one)");
+        throw std::runtime_error("Error [Breakthrough]: multiple carrier gas component present (there can be only one)\n");
       }
     }
   }
@@ -1596,7 +1596,7 @@ InputReader::InputReader()
           if(numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
           {
             throw std::runtime_error(std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate "
-                                                 "range ({}-{}).", numberOfMolecules, systems[i].tmmc.minMacrostate,
+                                                 "range ({}-{})\n", numberOfMolecules, systems[i].tmmc.minMacrostate,
                                                  systems[i].tmmc.maxMacrostate));
           }
         }
@@ -1609,7 +1609,7 @@ void InputReader::requireExistingSystem(const std::string& keyword, size_t lineN
 {
   if (systems.empty()) 
   {
-    throw std::runtime_error(std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", 
+    throw std::runtime_error(std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}\n", 
                                          keyword, lineNumber));
   }
 }
@@ -1619,11 +1619,11 @@ void InputReader::requireExistingSystemAndComponent(const std:: string &keyword,
   if (systems.empty()) 
   {
     throw std::runtime_error(
-       std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}", keyword, lineNumber));
+       std::format("No system (Framework or Box) defined yet at keyword '{}' at line: {}\n", keyword, lineNumber));
   }
   if (systems[0uz].components.empty()) 
   {
     throw std::runtime_error(
-      std::format("No component defined yet at keyword '{}' at line: {}", keyword, lineNumber));
+      std::format("No component defined yet at keyword '{}' at line: {}\n", keyword, lineNumber));
   }
 }

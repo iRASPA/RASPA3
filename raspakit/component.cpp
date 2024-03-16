@@ -197,7 +197,7 @@ std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNu
     {
       if (list.empty())
       {
-          throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
       }
       return list;
     }
@@ -211,7 +211,7 @@ std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNu
     {
       if (list.empty())
       {
-          throw std::runtime_error(std::format("No values could be read at line: {}", lineNumber));
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
       }
       return list;
     }
@@ -237,14 +237,14 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
 
   if (!std::filesystem::exists(moleculeFileName)) 
   {
-    throw std::runtime_error(std::format("File '{}' not found", moleculeFileName));
+    throw std::runtime_error(std::format("File '{}' not found\n", moleculeFileName));
   }
 
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
   std::ifstream moleculeFile{ moleculePathfile };
   if (!moleculeFile) 
   {
-    throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file", moleculeFileName));
+    throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file\n", moleculeFileName));
   }
 
   std::string str{};
@@ -257,13 +257,13 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::getline(moleculeFile, str);
   std::istringstream critical_temperature_stream(str);
   critical_temperature_stream >> criticalTemperature;
-  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical temperature");
+  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical temperature\n");
 
   // read critical pressure
   std::getline(moleculeFile, str);
   std::istringstream critical_pressure_stream(str);
   critical_pressure_stream >> criticalPressure;
-  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical pressure");
+  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical pressure\n");
 
   // read acentric factor
   std::getline(moleculeFile, str);
@@ -279,7 +279,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   std::getline(moleculeFile, str);
   std::istringstream my_stream(str);
   my_stream >> n;
-  if (n < 0 || n > 10000) throw std::runtime_error("Incorrect amount of pseudo=atoms");
+  if (n < 0 || n > 10000) throw std::runtime_error("Incorrect amount of pseudo=atoms\n");
 
   definedAtoms.resize(n);
 
@@ -320,7 +320,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     if (it == forceField.pseudoAtoms.end())
     {
       throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found "
-                                           "(define in 'the pseudo_atoms.def' file)", atomTypeString));
+                                           "(define in 'the pseudo_atoms.def' file)\n", atomTypeString));
     }
     
     size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
@@ -385,7 +385,7 @@ void Component::readFramework(const ForceField& forceField, const std::string& f
     frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
 
   if (!std::filesystem::exists(frameworkPathfile)) 
-    throw std::runtime_error(std::format("File '{}' not found", frameworkFileName));
+    throw std::runtime_error(std::format("File '{}' not found\n", frameworkFileName));
 
   std::ifstream t(frameworkPathfile);
   std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());

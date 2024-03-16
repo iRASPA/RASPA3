@@ -293,7 +293,7 @@ bool Isotherm::isUnphysical() const
       return false;
     }
     default:
-      throw std::runtime_error("Error: unkown isotherm type");
+      throw std::runtime_error("Error: unkown isotherm type\n");
   }
 }
 
@@ -388,7 +388,7 @@ void Isotherm::randomize(RandomNumber &random, double maximumLoading)
       break;
     }
     default:
-      throw std::runtime_error("Error: unkown isotherm type");
+      throw std::runtime_error("Error: unkown isotherm type\n");
   }
 }
 
@@ -473,6 +473,6 @@ std::string Isotherm::gnuplotFunctionString(char c, size_t i) const
       return stringBuffer;
     }
     default:
-      throw std::runtime_error("Error: unkown isotherm type");
+      throw std::runtime_error("Error: unkown isotherm type\n");
   }
 }
