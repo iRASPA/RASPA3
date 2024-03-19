@@ -31,6 +31,7 @@ import int3;
 import double3;
 import cubic;
 import atom;
+import framework;
 import component;
 import simulationbox;
 import forcefield;
@@ -76,13 +77,15 @@ import interactions_ewald;
 
 
 // construct System programmatically
-System::System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> c, 
+System::System(size_t id, std::optional<SimulationBox> box, double T, double P, ForceField forcefield, 
+               std::vector<Framework> f, std::vector<Component> c, 
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 
     temperature(T),
     pressure(P / Units::PressureConversionFactor),
     input_pressure(P),
     beta(1.0 / (Units::KB * T)),
+    frameworkComponents(f),
     components(c),
     loadings(c.size()),
     averageLoadings(numberOfBlocks, c.size()),
@@ -126,39 +129,11 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
     radialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), radialDistributionFunctionHistogramSize,
                                radialDistributionFunctionRange)
 {
-  for (Component& component : components)
+  if(box.has_value())
   {
-    if(component.type == Component::Type::Framework)
-    {  
-      numberOfMoleculesPerComponent[component.componentId] += 1;
-      numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
-      numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
-      ++numberOfFrameworks;
-
-      // add Framework-atoms to the atomPositions-list
-      for (const Atom& atom : component.atoms)
-      {
-          atomPositions.push_back(atom);
-      }
-      numberOfFrameworkAtoms += component.atoms.size();
-
-      if (component.rigid)
-      {
-        numberOfRigidFrameworkAtoms += component.atoms.size();
-      }
-    }
-
-    // For multiple framework, the simulation box is the union of the boxes
-    simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
+    simulationBox = box.value();
   }
 
-  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, 
-                                    EquationOfState::MultiComponentMixingRules::VanDerWaals, 
-                                    T, P, simulationBox, HeliumVoidFraction, components);
-
-  Interactions::computeEwaldFourierEnergySingleIon(eik_x, eik_y, eik_z, eik_xy,
-                                                   forceField, simulationBox,
-                                                   double3(0.0, 0.0, 0.0), 1.0);
   removeRedundantMoves();
   determineSwapableComponents();
   determineFractionalComponents();
@@ -167,11 +142,22 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
   computeFrameworkDensity();
   computeNumberOfPseudoAtoms();
 
+  createFrameworks();
+  determineSimulationBox();
+
   double3 perpendicularWidths = simulationBox.perpendicularWidths();
   forceField.initializeEwaldParameters(perpendicularWidths);
 
+  Interactions::computeEwaldFourierEnergySingleIon(eik_x, eik_y, eik_z, eik_xy,
+                                                   forceField, simulationBox,
+                                                   double3(0.0, 0.0, 0.0), 1.0);
+
   RandomNumber random(1400);
   createInitialMolecules(random);
+
+  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, 
+                                    EquationOfState::MultiComponentMixingRules::VanDerWaals, 
+                                    T, P, simulationBox, HeliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swapableComponents.size());
 }
@@ -181,6 +167,7 @@ System::System(size_t id, double T, double P, ForceField forcefield, std::vector
 System::System(size_t s, ForceField forcefield, std::vector<Component> c, 
                [[maybe_unused]] std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(s),
+    frameworkComponents(),
     components(c),
     loadings(c.size()),
     averageLoadings(numberOfBlocks, c.size()),
@@ -260,56 +247,30 @@ void System::addComponent(const Component&& component) noexcept(false)
 
 }
 
-// read the component from file if needed and initialize
-void System::initializeComponents()
+void System::createFrameworks()
 {
-  // sort rigid frameworks first, before flexible frameworks
-  std::sort(components.begin(), components.begin() + std::make_signed_t<std::size_t>(numberOfFrameworks), 
-     [](const Component& a, const Component& b)
-        {
-            return a.rigid > b.rigid;
-        });
-
-  // read components from file
-  for (Component& component : components)
+  for (Framework& framework : frameworkComponents)
   {
-    switch (component.type)
+    std::vector<Atom> atoms = framework.frameworkAtoms();
+    for (const Atom& atom : atoms)
     {
-    case Component::Type::Adsorbate:
-    case Component::Type::Cation:
-      if (component.filenameData.has_value())
-      {
-       component.readComponent(forceField, component.filenameData.value());
-      }
-      break;
-    case Component::Type::Framework:
-      if (component.filenameData.has_value())
-      {
-        component.readFramework(forceField, component.filenameData.value());
-      }
-
-      numberOfMoleculesPerComponent[component.componentId] += 1;
-      numberOfFractionalMoleculesPerComponent[component.componentId] = 0;
-      numberOfIntegerMoleculesPerComponent[component.componentId] += 1;
-      ++numberOfFrameworks;
-
-      // add Framework-atoms to the atomPositions-list
-      for (const Atom& atom : component.atoms)
-      {
-        atomPositions.push_back(atom);
-      }
-      numberOfFrameworkAtoms += component.atoms.size();
-
-      if (component.rigid)
-      {
-        numberOfRigidFrameworkAtoms += component.atoms.size();
-      }
-      
-      // For multiple framework, the simulation box is the union of the boxes
-      simulationBox = max(simulationBox, component.simulationBox.scaled(component.numberOfUnitCells));
-      break;
+      atomPositions.push_back(atom);
     }
+    numberOfFrameworkAtoms += atoms.size();
+    numberOfRigidFrameworkAtoms += atoms.size();
+    
+    // For multiple framework, the simulation box is the union of the boxes
+    simulationBox = max(simulationBox, framework.simulationBox.scaled(framework.numberOfUnitCells));
   }
+}
+
+void System::determineSimulationBox()
+{
+  for (Framework& framework : frameworkComponents)
+  {
+    // For multiple framework, the simulation box is the union of the boxes
+    simulationBox = max(simulationBox, framework.simulationBox.scaled(framework.numberOfUnitCells));
+  } 
 }
 
 void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms, size_t moleculeId)
@@ -478,32 +439,35 @@ std::vector<Atom>::const_iterator System::iteratorForMolecule(size_t selectedCom
     index += size * numberOfMoleculesPerComponent[i];
   }
   size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
+  index += size * selectedMolecule + numberOfFrameworkAtoms;
   return atomPositions.cbegin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
 std::span<const Atom> System::spanOfFrameworkAtoms() const
 {
-  return std::span(atomPositions.begin(), 
-                   atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms)); 
+  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
+  //return std::span(atomPositions.begin(), 
+  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms)); 
 }
 
 std::span<Atom> System::spanOfFrameworkAtoms()
 {
-  return std::span(atomPositions.begin(), 
-                   atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
+  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
+  //return std::span(atomPositions.begin(), 
+  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
 
 std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
 {
-  return std::span(atomPositions.begin(), 
-                   atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfRigidFrameworkAtoms));
+  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
+  //return std::span(atomPositions.begin(), 
+  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
 
 
 std::span<const Atom> System::spanOfFlexibleAtoms() const
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfRigidFrameworkAtoms), 
+  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms), 
                    atomPositions.end());
 }
 
@@ -530,7 +494,7 @@ std::span<Atom> System::spanOfMolecule(size_t selectedComponent, size_t selected
   }
   size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomPositions[index], size);
+  return std::span(&atomPositions[index + numberOfFrameworkAtoms], size);
 }
 
 const std::span<const Atom> System::spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const
@@ -543,7 +507,7 @@ const std::span<const Atom> System::spanOfMolecule(size_t selectedComponent, siz
   }
   size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomPositions[index], size);
+  return std::span(&atomPositions[index + numberOfFrameworkAtoms], size);
 }
 
 size_t System::indexOfFirstMolecule(size_t selectedComponent)
@@ -554,7 +518,7 @@ size_t System::indexOfFirstMolecule(size_t selectedComponent)
     size_t size = components[i].atoms.size();
     index += size * numberOfMoleculesPerComponent[i];
   }
-  return index;
+  return index + numberOfFrameworkAtoms;
 }
 
 void System::determineSwapableComponents()
@@ -711,12 +675,9 @@ void System::rescaleMolarFractions()
 
 void System::computeFrameworkDensity()
 {
-  for (Component& component : components)
+  for (Framework& component : frameworkComponents)
   {
-    if(component.type == Component::Type::Framework)
-    {
-      frameworkMass = frameworkMass.value_or(0.0) + component.mass;
-    }
+    frameworkMass = frameworkMass.value_or(0.0) + component.mass;
   }
 }
 
@@ -1002,6 +963,10 @@ std::string System::writeComponentStatus() const
 
   std::print(stream, "Component definitions\n");
   std::print(stream, "===============================================================================\n\n");
+  for (const Framework& component : frameworkComponents)
+  {
+    std::print(stream, "{}", component.printStatus(forceField));
+  }
   for (const Component& component : components)
   {
     std::print(stream, "{}", component.printStatus(forceField));
@@ -1160,7 +1125,6 @@ void System::recomputeTotalEnergies() noexcept
 
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-  [[maybe_unused]]std::span<const Atom> flexibleAtomPositions = spanOfFlexibleAtoms();
 
   Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
   Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergies);
@@ -1172,7 +1136,7 @@ void System::recomputeTotalEnergies() noexcept
                                           fixedFrameworkStoredEik, storedEik,
                                           forceField, simulationBox,
                                           components, numberOfMoleculesPerComponent,
-                                          flexibleAtomPositions, atomPositions, runningEnergies);
+                                          moleculeAtomPositions, runningEnergies);
 
   // correct for the energy of rigid parts
   runningEnergies -= rigidEnergies;
@@ -1190,7 +1154,6 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-  [[maybe_unused]]std::span<const Atom> flexibleAtomPositions = spanOfFlexibleAtoms();
 
   Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
   Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
@@ -1202,7 +1165,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
                                           fixedFrameworkStoredEik, storedEik,
                                           forceField, simulationBox,
                                           components, numberOfMoleculesPerComponent,
-                                          flexibleAtomPositions, atomPositions, runningEnergy);
+                                          moleculeAtomPositions, runningEnergy);
 
   // correct for the energy of rigid parts
   runningEnergy -= rigidEnergies;

@@ -270,8 +270,7 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
                           const ForceField &forceField, const SimulationBox &simulationBox,            
                           const std::vector<Component> &components,
                           const std::vector<size_t> &numberOfMoleculesPerComponent,
-                          std::span<const Atom> flexibleAtomPositions, 
-                          std::span<const Atom> atomPositions, RunningEnergy &energyStatus)
+                          std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -283,7 +282,7 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
   if(forceField.noCharges) return;
   if(forceField.omitEwaldFourier) return;
 
-  size_t numberOfAtoms = flexibleAtomPositions.size();
+  size_t numberOfAtoms = moleculeAtomPositions.size();
 
   size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
   size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
@@ -307,7 +306,7 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
     eik_x[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
     eik_y[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
     eik_z[i + 0 * numberOfAtoms] = std::complex<double>(1.0, 0.0);
-    double3 s = 2.0 * std::numbers::pi * (inv_box * flexibleAtomPositions[i].position);
+    double3 s = 2.0 * std::numbers::pi * (inv_box * moleculeAtomPositions[i].position);
     eik_x[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.x), std::sin(s.x));
     eik_y[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.y), std::sin(s.y));
     eik_z[i + 1 * numberOfAtoms] = std::complex<double>(std::cos(s.z), std::sin(s.z));
@@ -369,9 +368,9 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz>=0 ? eikz_temp.imag() : -eikz_temp.imag());
-            double charge = flexibleAtomPositions[i].charge;
-            double scaling = flexibleAtomPositions[i].scalingCoulomb;
-            bool groupIdA = static_cast<bool>(flexibleAtomPositions[i].groupId);
+            double charge = moleculeAtomPositions[i].charge;
+            double scaling = moleculeAtomPositions[i].scalingCoulomb;
+            bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
             cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
             cksum.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
@@ -395,11 +394,11 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
 
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for(size_t i = 0; i != flexibleAtomPositions.size(); ++i)
+  for(size_t i = 0; i != moleculeAtomPositions.size(); ++i)
   {
-    double charge = flexibleAtomPositions[i].charge;
-    double scaling = flexibleAtomPositions[i].scalingCoulomb;
-    bool groupIdA = static_cast<bool>(flexibleAtomPositions[i].groupId);
+    double charge = moleculeAtomPositions[i].charge;
+    double scaling = moleculeAtomPositions[i].scalingCoulomb;
+    bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
     energyStatus.ewald -= prefactor_self * scaling * charge * scaling * charge;
     energyStatus.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
@@ -411,30 +410,27 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
     size_t size = components[l].atoms.size();
     for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      if(!(components[l].type == Component::Type::Framework && components[l].rigid))
+      std::span<const Atom> span = std::span(&moleculeAtomPositions[index], size);
+      for(size_t i = 0; i != span.size() - 1; i++)
       {
-        std::span<const Atom> span = std::span(&atomPositions[index], size);
-        for(size_t i = 0; i != span.size() - 1; i++)
+        double chargeA = span[i].charge;
+        double scalingA = span[i].scalingCoulomb;
+        bool groupIdA = static_cast<bool>(span[i].groupId);
+        double3 posA = span[i].position;
+        for(size_t j = i + 1; j != span.size(); j++)
         {
-          double chargeA = span[i].charge;
-          double scalingA = span[i].scalingCoulomb;
-          bool groupIdA = static_cast<bool>(span[i].groupId);
-          double3 posA = span[i].position;
-          for(size_t j = i + 1; j != span.size(); j++)
-          {
-            double chargeB = span[j].charge;
-            double scalingB = span[j].scalingCoulomb;
-            bool groupIdB = static_cast<bool>(span[j].groupId);
-            double3 posB = span[j].position;
+          double chargeB = span[j].charge;
+          double scalingB = span[j].scalingCoulomb;
+          bool groupIdB = static_cast<bool>(span[j].groupId);
+          double3 posB = span[j].position;
 
-            double3 dr = posA - posB;
-            dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-            double r = std::sqrt(double3::dot(dr, dr));
+          double3 dr = posA - posB;
+          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          double r = std::sqrt(double3::dot(dr, dr));
 
-            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-            energyStatus.ewald -= scalingA * scalingB * temp;
-            energyStatus.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
-          }
+          double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+          energyStatus.ewald -= scalingA * scalingB * temp;
+          energyStatus.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
         }
       }
       index += size;

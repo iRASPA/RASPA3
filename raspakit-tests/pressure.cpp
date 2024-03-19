@@ -12,6 +12,7 @@ import double3x3;
 
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import simulationbox;
@@ -38,11 +39,10 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
   Component c = Component(0,
     "methane",
     16.04246,
-    SimulationBox(25.0, 25.0, 25.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { c }, { 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { c }, { 20 }, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 
@@ -132,7 +132,6 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
       Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 3, 0, 0),
@@ -140,13 +139,12 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
       Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 4, 1, 0),
     }, 5);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 1, 1 }, 5);
+  System system = System(0, 300.0, 1e4, forceField, {}, { na, cl }, { 1, 1 }, 5);
 
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();

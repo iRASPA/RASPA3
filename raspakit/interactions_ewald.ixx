@@ -47,8 +47,7 @@ export namespace Interactions
                                  const SimulationBox &simulationBox,
                                  const std::vector<Component> &components,
                                  const std::vector<size_t> &numberOfMoleculesPerComponent,
-                                 std::span<const Atom> flexibleAtomPositions, 
-                                 std::span<const Atom> atoms, 
+                                 std::span<const Atom> moleculeAtoms, 
                                  RunningEnergy &energyStatus);
 
   RunningEnergy energyDifferenceEwaldFourier(std::vector<std::complex<double>> &eik_x,

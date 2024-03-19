@@ -50,24 +50,17 @@ export struct Component
   };
 
   Component();
-  Component(Component::Type type, size_t currentComponent, const std::string &componentName, 
+  Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName, 
             std::optional<const std::string> fileName, size_t numberOfBlocks, size_t numberOfLambdaBins) 
             noexcept(false);
-  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+  Component(size_t componentId, std::string componentName, double mass,
             double T_c, double P_c, double w, std::vector<Atom> definedAtoms, 
-            size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
-  Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
-            size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, 
             size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
 
   uint64_t versionNumber{ 1 };
 
   Type type { 0 };
   GrowType growType{ 0  };
-
-  SimulationBox simulationBox;
-  size_t spaceGroupHallNumber{ 1 };
-  int3 numberOfUnitCells{ 1, 1, 1};
 
   size_t componentId{ 0 };
   std::string name{};
@@ -152,7 +145,6 @@ export struct Component
   PressureScale pressureScale{ PressureScale::Log };
 
   void readComponent(const ForceField& forceField, const std::string& fileName);
-  void readFramework(const ForceField& forceField, const std::string& fileName);
 
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;

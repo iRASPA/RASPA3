@@ -59,7 +59,7 @@ std::pair<T,U> &operator+=(std::pair<T,U> & l, const std::pair<T,U> & r) {
 Breakthrough::Breakthrough(System &system):
     system(system),
     displayName(system.components.front().name),
-    components(system.vectorOfAdsorbateComponents()),
+    components(system.components),
     Ncomp(components.size()),
     Ngrid(system.columnNumberOfGridPoints),
     printEvery(10000),

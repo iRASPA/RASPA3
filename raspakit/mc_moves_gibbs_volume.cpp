@@ -84,7 +84,7 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
                                           systemA.fixedFrameworkStoredEik, systemA.totalEik,
                                           systemA.forceField, newBoxA,
                                           systemA.components, systemA.numberOfMoleculesPerComponent,
-                                          newPositionsA, newPositionsA, newTotalEnergyA);
+                                          newPositionsA, newTotalEnergyA);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 
@@ -116,7 +116,7 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
                                           systemB.fixedFrameworkStoredEik, systemB.totalEik,
                                           systemB.forceField, newBoxB,
                                           systemB.components, systemB.numberOfMoleculesPerComponent,
-                                          newPositionsB, newPositionsB, newTotalEnergyB);
+                                          newPositionsB, newTotalEnergyB);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 

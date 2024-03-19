@@ -40,8 +40,12 @@ export struct InputReader
     MixturePrediction = 6,
     Fitting = 7
   };
-  InputReader();
-  ~InputReader() {};
+  InputReader(size_t totalNumberOfSystems, size_t numberOfComponents, size_t numberOfBlocks);
+
+  static std::tuple<size_t, size_t, size_t> readNumberOfSystemsComponentsAndBlocks();
+
+  void readForceFields(std::vector<ForceField> &forcefields);
+  std::vector<ForceField> forceFields;
 
   void requireExistingSystem(const std::string& keyword, size_t lineNumber);
   void requireExistingSystemAndComponent(const std::string& keyword, size_t lineNumber);

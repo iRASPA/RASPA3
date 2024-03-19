@@ -11,6 +11,7 @@ import double3x3;
 
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import simulationbox;
@@ -32,11 +33,10 @@ TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
   Component c = Component(0,
     "methane",
     16.04246,
-    SimulationBox(25.0, 25.0, 25.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { c }, { 2 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { c }, { 2 }, 5);
 
   system.atomPositions[0].position = double3(0.0, 0.0, 0.0);
   system.atomPositions[1].position = double3(0.0, 0.0, 3.72 * std::pow(2.0, 1.0 / 6.0));
@@ -61,7 +61,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
     1,
     {
       Atom(double3(0.368300000000,     0.184700000000,     0.000000000000),       2.05,  1.0, 0, 0, 0),
@@ -137,15 +137,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
       Atom(double3(0.000000000000,     0.184700000000,     0.368300000000),       2.05,  1.0, 0, 0, 0),
       Atom(double3(0.890200000000,     0.109800000000,     0.342900000000),      -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -171,7 +170,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
     1,
     {
       Atom(double3(0.368300000000,     0.184700000000,     0.000000000000),       2.05,  1.0, 0, 0, 0),
@@ -247,15 +246,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
       Atom(double3(0.000000000000,     0.184700000000,     0.368300000000),       2.05,  1.0, 0, 0, 0),
       Atom(double3(0.890200000000,     0.109800000000,     0.342900000000),      -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -281,7 +279,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     {
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
@@ -289,15 +287,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
       Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -323,7 +320,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -365,15 +362,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f } , { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -399,7 +395,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -441,15 +437,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -475,7 +470,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     1,
     {
       Atom(double3(0.422380000000,    0.056500000000,    0.664020000000),  2.05,  1.0, 0, 0, 0),
@@ -767,15 +762,14 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
       Atom(double3(0.996300000000,    0.449800000000,    0.792000000000), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.996000000000,    0.652800000000,    0.792200000000), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
-    SimulationBox(0.0, 0.0, 0.0),
     190.564, 45599200, 0.01142,
     { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 1 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();

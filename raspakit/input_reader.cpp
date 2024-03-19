@@ -21,6 +21,7 @@ import int3;
 import stringutils;
 import system;
 import atom;
+import framework;
 import component;
 import simulationbox;
 import forcefield;
@@ -251,12 +252,144 @@ std::string parseString(const std::string& arguments, const std::string& keyword
   throw std::runtime_error(std::format("Numbers could not be read for keyword '{}' at line: {}\n", keyword, lineNumber));
 }
 
-
-InputReader::InputReader()
+std::tuple<size_t, size_t, size_t> InputReader::readNumberOfSystemsComponentsAndBlocks()
 {
+  size_t numberOfSystems{};
+  size_t numberOfComponents{};
+  size_t numberOfBlocks{5uz};
+  size_t lineNumber{};
+
   const std::string simulationSettingsFileName{"simulation.input"};
 
-  std::cout << "Path: " << std::filesystem::current_path() << std::endl;
+  std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
+  if (!std::filesystem::exists(pathfile))
+  {
+    throw std::runtime_error(std::format("Required file '{}' not found\n", simulationSettingsFileName));
+  }
+
+  std::ifstream fileInput{ pathfile };
+  if (!fileInput)
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file\n", simulationSettingsFileName));
+  }
+
+  std::string line{};
+  std::string keyword{};
+  std::string arguments{};
+
+  while (std::getline(fileInput, line))
+  {
+    lineNumber += 1uz;
+    if (!line.empty())
+    {
+      std::istringstream iss(line);
+
+      iss >> keyword;
+      keyword = trim(keyword);
+      std::getline(iss, arguments);
+
+      if (caseInSensStringCompare(keyword, std::string("Box")))
+      {
+        numberOfSystems++;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, std::string("Framework")))
+      {
+        numberOfSystems++;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, std::string("Component")))
+      {
+        numberOfComponents++;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
+      {
+        numberOfBlocks = parse<size_t>(arguments, keyword, lineNumber);
+        continue;
+      }
+
+    }
+  }
+  return {numberOfSystems, numberOfComponents, numberOfBlocks};
+}
+
+
+void InputReader::readForceFields(std::vector<ForceField> &forcefields)
+{
+  size_t numberOfSystems{};
+  const std::string simulationSettingsFileName{"simulation.input"};
+
+  std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
+  if (!std::filesystem::exists(pathfile))
+  {
+    throw std::runtime_error(std::format("Required file '{}' not found\n", simulationSettingsFileName));
+  }
+
+  std::ifstream fileInput{ pathfile };
+  if (!fileInput)
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file\n", simulationSettingsFileName));
+  }
+
+  std::string line{};
+  std::string keyword{};
+  std::string arguments{};
+
+  while (std::getline(fileInput, line))
+  {
+    if (!line.empty())
+    {
+      std::istringstream iss(line);
+
+      iss >> keyword;
+      keyword = trim(keyword);
+      std::getline(iss, arguments);
+
+      if (caseInSensStringCompare(keyword, std::string("Box")))
+      {
+        numberOfSystems++;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, std::string("Framework")))
+      {
+        numberOfSystems++;
+        continue;
+      }
+      if (caseInSensStringCompare(keyword, std::string("ForceField")))
+      {
+        std::string str;
+        std::istringstream ss(arguments);
+        if (ss >> str)
+        {
+          // set forcefield as default if declared 'globally'
+          if(numberOfSystems < 1)
+          {
+            ForceField forcefield(0);
+            for(size_t i = 0; i != forcefields.size(); ++i)
+            {
+              forcefields[i] = forcefield;
+            }
+          }
+          else 
+          {
+            ForceField forcefield(numberOfSystems - 1);
+            forcefields[numberOfSystems - 1] = forcefield;
+          }
+        }
+      }
+
+    }
+  }
+}
+
+
+InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_unused]]size_t numberOfComponents, [[maybe_unused]]size_t numberOfBlocks):
+  forceFields(totalNumberOfSystems, ForceField(0))
+{
+  readForceFields(forceFields);
+
+  const std::string simulationSettingsFileName{"simulation.input"};
 
   std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
   if (!std::filesystem::exists(pathfile)) 
@@ -393,11 +526,6 @@ InputReader::InputReader()
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
-      {
-        numberOfBlocks = parse<size_t>(arguments, keyword, lineNumber);
-        continue;
-      }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfLambdaBins")))
       {
@@ -450,9 +578,8 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("Box")))
       {
-        ForceField currentForceField = ForceField(numberOfSystems);
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, currentForceField, std::vector<Component>{}, 
+        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{}, 
                              std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
@@ -475,9 +602,8 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, std::string("Framework")))
       {
-        ForceField currentForceField = ForceField(numberOfSystems);
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, currentForceField, std::vector<Component>{}, 
+        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{}, 
                              std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
@@ -496,9 +622,8 @@ InputReader::InputReader()
           case SimulationType::Minimization:
           case SimulationType::Test:
           {
-
-            systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        frameworkName, frameworkName, numberOfBlocks, numberOfLambdaBins));
+            systems.back().frameworkComponents.emplace_back(Framework(systems.back().frameworkComponents.size(), 
+                                        forceFields[numberOfSystems - 1], frameworkName, frameworkName));
             continue;
             break;
           }
@@ -506,8 +631,8 @@ InputReader::InputReader()
           case SimulationType::MixturePrediction:
           case SimulationType::Fitting:
           {
-            systems.back().addComponent(Component(Component::Type::Framework, systems.back().components.size(), 
-                                        frameworkName, std::nullopt, numberOfBlocks, numberOfLambdaBins));
+            systems.back().frameworkComponents.emplace_back(Framework(systems.back().frameworkComponents.size(), 
+                                        forceFields[numberOfSystems - 1], frameworkName, std::nullopt));
             continue;
             break;
           }
@@ -517,9 +642,9 @@ InputReader::InputReader()
 
       if (caseInSensStringCompare(keyword, "NumberOfUnitCells"))
       {
-          requireExistingSystemAndComponent(keyword, lineNumber);
+          //requireExistingSystemAndComponent(keyword, lineNumber);
           int3 value = parseInt3(arguments, keyword, lineNumber);
-          systems.back().components.back().numberOfUnitCells = value;
+          systems.back().frameworkComponents.back().numberOfUnitCells = value;
           continue;
       }
 
@@ -830,13 +955,13 @@ InputReader::InputReader()
             case SimulationType::MolecularDynamics:
             case SimulationType::Minimization:
             case SimulationType::Test:
-              systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
+              systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(), systems[i].forceField,
                     values[i], values[i], numberOfBlocks, numberOfLambdaBins));
               break;
             case SimulationType::Breakthrough:
             case SimulationType::MixturePrediction:
             case SimulationType::Fitting:
-              systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(),
+              systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(), systems[i].forceField,
                     values[i], std::nullopt, numberOfBlocks, numberOfLambdaBins));
               break;
           }
@@ -1429,6 +1554,16 @@ InputReader::InputReader()
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, std::string("ForceField")))
+      {
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
+      {
+        continue;
+      }
+
       if (!(keyword.starts_with("//") || (keyword.starts_with("#"))))
       {
         throw std::runtime_error(std::format("Error [Input]: unrecognized keyword '{}' at line: {}\n", 
@@ -1442,12 +1577,6 @@ InputReader::InputReader()
   // Post-initialize
   // ========================================================
   
-  // read and initialize the components from file
-  for (size_t i = 0uz; i < systems.size(); ++i)
-  {
-    systems[i].initializeComponents();
-  }
-
   for(System &system: systems)
   {
     system.conventionalRadialDistributionFunction = 

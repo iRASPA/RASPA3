@@ -145,7 +145,7 @@ ForceField::ForceField(size_t systemId) noexcept(false)
     }
   }
 
-  std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingRulesFileName << std::endl;
+  //std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingRulesFileName << std::endl;
   ReadPseudoAtoms(pseudoAtomsFileName);
   ReadForceFieldMixing(forceFieldMixingRulesFileName);
   preComputeTailCorrection();

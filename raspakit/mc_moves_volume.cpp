@@ -76,7 +76,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
                                           system.fixedFrameworkStoredEik, system.totalEik,
                                           system.forceField, newBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          newPositions, newPositions, newTotalEnergy);
+                                          newPositions, newTotalEnergy);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
 

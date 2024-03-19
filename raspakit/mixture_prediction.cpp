@@ -74,7 +74,7 @@ std::vector<size_t> sortedIndices(const std::span<const Component> &v)
 MixturePrediction::MixturePrediction(const System &system) :
                                      system(system),
                                      displayName(system.components.front().name),
-                                     components(system.vectorOfAdsorbateComponents()),
+                                     components(system.components),
                                      sortedComponentIndices(sortedIndices(components)),
                                      sortedComponents(components.begin(),components.end()),
                                      Ncomp(components.size()),

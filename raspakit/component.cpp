@@ -65,7 +65,7 @@ Component::Component()
 }
 
 // create Component in 'inputreader.cpp'
-Component::Component(Component::Type type, size_t currentComponent, const std::string &componentName,
+Component::Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName,
                      std::optional<const std::string> fileName,
                      size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
                      type(type), 
@@ -76,14 +76,17 @@ Component::Component(Component::Type type, size_t currentComponent, const std::s
                      lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
                      averageRosenbluthWeights(numberOfBlocks)
 {
+  if (filenameData.has_value())
+  {
+    readComponent(forceField, filenameData.value());
+  }
 }
 
 // create programmatically an 'adsorbate' component
-Component::Component(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+Component::Component(size_t componentId, std::string componentName, double mass,
                      double T_c, double P_c, double w, std::vector<Atom> definedAtoms,
                      size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
     type(Type::Adsorbate),
-    simulationBox(simulationBox),
     componentId(componentId),
     name(componentName),
     criticalTemperature(T_c),
@@ -100,87 +103,6 @@ Component::Component(size_t componentId, std::string componentName, double mass,
   atoms = definedAtoms;
 }
 
-// create programmatically an 'framework' component
-Component::Component(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, 
-                     size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells, 
-                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
-    type(Type::Framework),
-    simulationBox(simulationBox),
-    spaceGroupHallNumber(spaceGroupHallNumber),
-    numberOfUnitCells(numberOfUnitCells),
-    componentId(componentId),
-    name(fileName),
-    filenameData(fileName),
-    mass(mass),
-    definedAtoms(definedAtoms),
-    lambdaGC(numberOfBlocks, numberOfLambdaBins),
-    lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
-    mc_moves_probabilities(),
-    mc_moves_statistics(),
-    averageRosenbluthWeights(numberOfBlocks)
-{
-  // expand the fractional atoms based on the space-group
-  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
-  std::vector<Atom> expandedAtoms;
-  expandedAtoms.reserve(definedAtoms.size() * 256uz);
-  for (const Atom& atom : definedAtoms)
-  {
-    Atom atomCopy = atom;
-
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
-    for (const double3& pos : listOfPositions)
-    {
-      atomCopy.position = simulationBox.unitCell * pos.fract();
-      expandedAtoms.push_back(atomCopy);
-    }
-  }
-
-  // eliminate duplicates
-  std::vector<Atom> unitCellAtoms;
-  for (size_t i = 0; i < expandedAtoms.size(); ++i)
-  {
-    bool overLap = false;
-    for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
-    {
-      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
-      {
-        overLap = true;
-        break;
-      }
-    }
-    if (!overLap)
-    {
-      unitCellAtoms.push_back(expandedAtoms[i]);
-    }
-  }
-
-  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
-  {
-    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
-    {
-      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-      {
-        for (const Atom& atom : unitCellAtoms)
-        {
-          Atom atomCopy = atom;
-          atomCopy.position += simulationBox.unitCell * 
-                               double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          atoms.push_back(atomCopy);
-        }
-      }
-    }
-  }
-
-
-  for (size_t i = 0; i < atoms.size(); ++i)
-  {
-    atoms[i].componentId = static_cast<uint8_t>(componentId);
-    atoms[i].moleculeId = 0;
-  }
-}
 
 
 template<typename T>
@@ -374,94 +296,6 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   }
 }
 
-void Component::readFramework(const ForceField& forceField, const std::string& fileName)
-{
-  const char* env_p = std::getenv("RASPA_DIR");
-
-  const std::string frameworkFileName = fileName + ".cif";
-
-  std::filesystem::path frameworkPathfile = std::filesystem::path(frameworkFileName);
-  if (!std::filesystem::exists(frameworkPathfile)) 
-    frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
-
-  if (!std::filesystem::exists(frameworkPathfile)) 
-    throw std::runtime_error(std::format("File '{}' not found\n", frameworkFileName));
-
-  std::ifstream t(frameworkPathfile);
-  std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
- 
-  CIFReader parser = CIFReader(fileContent, forceField);
-  simulationBox = parser.simulationBox;
-  definedAtoms = parser.fractionalAtoms;
-
-  // expand the fractional atoms based on the space-group
-  size_t number = parser._spaceGroupHallNumber.value_or(1);
-  SKSpaceGroup spaceGroup = SKSpaceGroup(number);
-  std::vector<Atom> expandedAtoms;
-  expandedAtoms.reserve(parser.fractionalAtoms.size() * 256);
-  for (const Atom &atom : definedAtoms)
-  {
-    Atom atomCopy = atom;
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
-    for (const double3& pos : listOfPositions)
-    {
-      atomCopy.position = parser.simulationBox.unitCell * pos.fract();
-      expandedAtoms.push_back(atomCopy);
-    }
-  }
-
-  // eliminate duplicates
-  std::vector<Atom> unitCellAtoms;
-  for (size_t i = 0; i < expandedAtoms.size(); ++i)
-  {
-    bool overLap = false;
-    for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
-    {
-      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
-      {
-        overLap = true;
-        break;
-      }
-    }
-    if (!overLap)
-    {
-      unitCellAtoms.push_back(expandedAtoms[i]);
-    }
-  }
-
-  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
-  {
-    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
-    {
-      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-      {
-        for (const Atom& atom : unitCellAtoms)
-        {
-          Atom atomCopy = atom;
-          atomCopy.position += simulationBox.unitCell * 
-            double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          atoms.push_back(atomCopy);
-        }
-      }
-    }
-  }
-
-  mass = 0.0;
-  for (const Atom& atom : atoms)
-  {
-    size_t atomType = static_cast<size_t>(atom.type);
-    mass += forceField.pseudoAtoms[atomType].mass;
-  }
-
-  for (size_t i = 0; i < atoms.size(); ++i)
-  {
-    atoms[i].componentId = static_cast<uint8_t>(componentId);
-    atoms[i].moleculeId = 0;
-  }  
-}
 
 std::string Component::printStatus(const ForceField& forceField) const
 {
@@ -617,10 +451,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.type;
   archive << c.growType;
 
-  archive << c.simulationBox;
-  archive << c.spaceGroupHallNumber;
-  archive << c.numberOfUnitCells;
-
   archive << c.componentId;
   archive << c.name;
   archive << c.filenameData;
@@ -712,10 +542,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.type;
   archive >> c.growType;
-
-  archive >> c.simulationBox;
-  archive >> c.spaceGroupHallNumber;
-  archive >> c.numberOfUnitCells;
 
   archive >> c.componentId;
   archive >> c.name;

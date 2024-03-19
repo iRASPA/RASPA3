@@ -12,6 +12,7 @@ import double3x3;
 
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import simulationbox;
@@ -44,7 +45,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
@@ -52,13 +52,12 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -136,7 +135,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
@@ -144,13 +142,12 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -230,7 +227,6 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
@@ -238,13 +234,12 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -327,7 +322,6 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   Component c = Component(0,
     "CO2",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -335,7 +329,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { c }, { 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { c }, { 20 }, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -457,7 +451,7 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, 300.0, 1e4, forceField, { f }, { c }, { 0, 2 }, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());

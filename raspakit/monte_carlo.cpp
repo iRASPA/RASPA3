@@ -140,6 +140,9 @@ void MonteCarlo::initialize()
     system.computeFrameworkDensity();
     system.computeNumberOfPseudoAtoms();
 
+    system.createFrameworks();
+    system.determineSimulationBox();
+
     double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
     system.forceField.initializeEwaldParameters(perpendicularWidths);
 

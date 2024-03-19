@@ -12,6 +12,7 @@ import double3;
 
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import simulationbox;
@@ -40,7 +41,7 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     {
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
@@ -48,11 +49,10 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
       Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -60,7 +60,7 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -100,7 +100,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -142,11 +142,10 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     { 
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -154,7 +153,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f } , { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -194,7 +193,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
     12.0,
     false,
     true);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -236,11 +235,10 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -248,7 +246,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f } ,{ c }, { 2 }, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();                                                  
   moleculeAtomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -272,5 +270,4 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
   EXPECT_NEAR(energy.tail * 1.2027242847,-127.81601515, 1e-6);
   EXPECT_NEAR(energy.ewald * 1.2027242847, -1197.23909965, 1e-6);
 }
-
 

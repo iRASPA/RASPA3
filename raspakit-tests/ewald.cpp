@@ -11,6 +11,7 @@ import double3x3;
 
 import atom;
 import forcefield;
+import framework;
 import component;
 import system;
 import simulationbox;
@@ -45,7 +46,6 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
   Component c = Component(0,
     "CO2",
     43.9988,
-    SimulationBox(10.0, 10.0, 10.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 0, 0),
@@ -53,7 +53,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 0, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { c }, { 2 }, 5);
+  System system = System(0, SimulationBox(10.0, 10.0, 10.0), 300.0, 1e4, forceField, {}, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(-1.0, 0.0,  1.149);
@@ -79,7 +79,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          system.spanOfMoleculeAtoms(), system.atomPositions, energy);
+                                          system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, 90.54613836, 1e-6);
 }
@@ -107,7 +107,6 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(10.0, 10.0, 10.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 3, 0, 0),
@@ -115,13 +114,12 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(10.0, 10.0, 10.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 1, 1 }, 5);
+  System system = System(0, 300.0, 1e4, forceField, {}, { na, cl }, { 1, 1 }, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomPositions = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -205,7 +203,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     {
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
@@ -213,11 +211,10 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
       Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -225,7 +222,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -250,7 +247,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          system.spanOfMoleculeAtoms(), system.atomPositions, energy);
+                                          system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 17464.2371790130, 1e-6);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -702.65863478, 1e-6);
@@ -275,7 +272,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
     12.0,
     true,
     false);
-  Component f = Component(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     {
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
@@ -283,11 +280,10 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
       Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -295,7 +291,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -320,7 +316,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          system.spanOfMoleculeAtoms(), system.atomPositions, energy);
+                                          system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 9673.9032373025, 1e-6);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -721.64644486, 1e-6);
@@ -345,7 +341,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -387,11 +383,10 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(1, 1, 1), 5, 21);
+    int3(1, 1, 1));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -399,7 +394,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -424,7 +419,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          system.spanOfMoleculeAtoms(), system.atomPositions, energy);
+                                          system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 12028.1731827280, 1e-6);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1191.77790165, 1e-6);
@@ -450,7 +445,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
     12.0,
     true,
     false);
-  Component f = Component(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
     292,
     {
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0),
@@ -492,11 +487,10 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
       Atom(double3(0.2883,  -0.25,     0.0579), -1.025, 1.0, 1, 0, 0),
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 1, 0, 0)
     },
-    int3(2, 2, 2), 5, 21);
+    int3(2, 2, 2));
   Component c = Component(1,
     "CO2",
     43.9988,
-    SimulationBox(0.0, 0.0, 0.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
@@ -504,7 +498,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { f, c }, { 0, 2 }, 5);
+  System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -529,7 +523,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
                                           system.components, system.numberOfMoleculesPerComponent,
-                                          system.spanOfMoleculeAtoms(), system.atomPositions, energy);
+                                          system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 6309.7866899037, 1e-6);
   EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1197.23909965, 1e-6);
@@ -558,7 +552,6 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   Component na = Component(0,
     "Na",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
@@ -566,13 +559,12 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   Component cl = Component(1,
     "Cl",
     43.9988,
-    SimulationBox(25.0, 25.0, 25.0),
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+  System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
 
   //std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -635,25 +627,25 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward2_x);
+                                            system.spanOfMoleculeAtoms(), forward2_x);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward1_x);
+                                            system.spanOfMoleculeAtoms(), forward1_x);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward1_x);
+                                            system.spanOfMoleculeAtoms(), backward1_x);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 1.0 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward2_x);
+                                            system.spanOfMoleculeAtoms(), backward2_x);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
 
     // finite difference y
@@ -662,25 +654,25 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward2_y);
+                                            system.spanOfMoleculeAtoms(), forward2_y);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward1_y);
+                                            system.spanOfMoleculeAtoms(), forward1_y);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward1_y);
+                                            system.spanOfMoleculeAtoms(), backward1_y);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 1.0 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward2_y);
+                                            system.spanOfMoleculeAtoms(), backward2_y);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
 
     // finite difference z
@@ -689,25 +681,25 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward2_z);
+                                            system.spanOfMoleculeAtoms(), forward2_z);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, forward1_z);
+                                            system.spanOfMoleculeAtoms(), forward1_z);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward1_z);
+                                            system.spanOfMoleculeAtoms(), backward1_z);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 1.0 * delta;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, system.simulationBox,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            system.spanOfMoleculeAtoms(), atomPositions, backward2_z);
+                                            system.spanOfMoleculeAtoms(), backward2_z);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
 
     gradient.x = (-forward2_x.ewald + 8.0 * forward1_x.ewald - 8.0 * backward1_x.ewald + backward2_x.ewald) / (6.0 * delta);
@@ -760,7 +752,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
        Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
-  System system = System(0, 300.0, 1e4, forceField, { na, cl }, { 20, 20 }, 5);
+  System system = System(0, 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
 
   //std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -834,7 +826,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, strainBox_forward2,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            moleculeAtomPositions_forward2, moleculeAtomPositions_forward2, EnergyForward2);
+                                            moleculeAtomPositions_forward2, EnergyForward2);
 
     SimulationBox strainBox_forward1 = SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward1{};
@@ -845,7 +837,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, strainBox_forward2,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            moleculeAtomPositions_forward1, moleculeAtomPositions_forward1, EnergyForward1);
+                                            moleculeAtomPositions_forward1, EnergyForward1);
 
 
     SimulationBox strainBox_backward1 = SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
@@ -857,7 +849,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, strainBox_forward2,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            moleculeAtomPositions_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
+                                            moleculeAtomPositions_backward1, EnergyBackward1);
 
     SimulationBox strainBox_backward2 = SimulationBox((identity - strain.first) * system.simulationBox.unitCell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward2{};
@@ -868,7 +860,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                                             system.fixedFrameworkStoredEik, system.storedEik,
                                             system.forceField, strainBox_forward2,
                                             system.components, system.numberOfMoleculesPerComponent,
-                                            moleculeAtomPositions_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
+                                            moleculeAtomPositions_backward2, EnergyBackward2);
 
     double strainDerivativeApproximation = (-EnergyForward2.total() + 8.0 * EnergyForward1.total() - 8.0 * EnergyBackward1.total() + EnergyBackward2.total()) / (6.0 * delta);
 

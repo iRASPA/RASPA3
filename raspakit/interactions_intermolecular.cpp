@@ -105,25 +105,33 @@ void Interactions::computeInterMolecularTailEnergy(const ForceField &forceField,
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
-    size_t typeA = static_cast<size_t>(it1->type);
-    [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
-    double scalingVDWA = it1->scalingVDW;
+    [[maybe_unused]]size_t molA = static_cast<size_t>(it1->moleculeId);
+    [[maybe_unused]]size_t compA = static_cast<size_t>(it1->componentId);
+    [[maybe_unused]]size_t typeA = static_cast<size_t>(it1->type);
+    [[maybe_unused]]bool groupIdA = static_cast<bool>(it1->groupId);
+    [[maybe_unused]]double scalingVDWA = it1->scalingVDW;
 
+    //for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
-      size_t typeB = static_cast<size_t>(it2->type);
-      bool groupIdB = static_cast<bool>(it2->groupId);
-      double scalingVDWB = it2->scalingVDW;
+      [[maybe_unused]]size_t molB = static_cast<size_t>(it2->moleculeId);
+      [[maybe_unused]]size_t compB = static_cast<size_t>(it2->componentId);
+      [[maybe_unused]]size_t typeB = static_cast<size_t>(it2->type);
+      [[maybe_unused]]bool groupIdB = static_cast<bool>(it2->groupId);
+      [[maybe_unused]]double scalingVDWB = it2->scalingVDW;
 
-      double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
-      energyStatus.tail += scalingVDWA * scalingVDWB * temp;
-      energyStatus.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0) 
-                                 + (groupIdB ? scalingVDWA * temp : 0.0);
+      if (!(compA == compB && molA == molB))
+      {
+        double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
+        energyStatus.tail += scalingVDWA * scalingVDWB * temp;
+        energyStatus.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0) 
+                                   + (groupIdB ? scalingVDWA * temp : 0.0);
+      }
     }
 
-    double temp = preFactor * forceField(typeA, typeA).tailCorrectionEnergy;
-    energyStatus.tail += scalingVDWA * scalingVDWA * temp;
-    energyStatus.dudlambdaVDW += (groupIdA ? 2.0 * scalingVDWA * temp : 0.0);
+    //double temp = preFactor * forceField(typeA, typeA).tailCorrectionEnergy;
+    //energyStatus.tail -= scalingVDWA * scalingVDWA * temp;
+    //energyStatus.dudlambdaVDW += (groupIdA ? 2.0 * scalingVDWA * temp : 0.0);
   }
 }
 
@@ -252,24 +260,26 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
 
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
 
+  if(moleculeAtoms.empty()) return energySum;
+
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
-    size_t compA = static_cast<size_t>(it1->componentId);
-    size_t molA = static_cast<size_t>(it1->moleculeId);
-    size_t typeA = static_cast<size_t>(it1->type);
-    bool groupIdA = static_cast<bool>(it1->groupId);
-    double scalingVDWA = it1->scalingVDW;
+    [[maybe_unused]]size_t compA = static_cast<size_t>(it1->componentId);
+    [[maybe_unused]]size_t molA = static_cast<size_t>(it1->moleculeId);
+    [[maybe_unused]]size_t typeA = static_cast<size_t>(it1->type);
+    [[maybe_unused]]bool groupIdA = static_cast<bool>(it1->groupId);
+    [[maybe_unused]]double scalingVDWA = it1->scalingVDW;
 
     for (const Atom& atom : newatoms)
     {
-      size_t compB = static_cast<size_t>(atom.componentId);
-      size_t molB = static_cast<size_t>(atom.moleculeId);
+      [[maybe_unused]]size_t compB = static_cast<size_t>(atom.componentId);
+      [[maybe_unused]]size_t molB = static_cast<size_t>(atom.moleculeId);
 
       if (!(compA == compB && molA == molB))
       {
-        size_t typeB = static_cast<size_t>(atom.type);
-        bool groupIdB = static_cast<bool>(atom.groupId);
-        double scalingVDWB = atom.scalingVDW;
+        [[maybe_unused]]size_t typeB = static_cast<size_t>(atom.type);
+        [[maybe_unused]]bool groupIdB = static_cast<bool>(atom.groupId);
+        [[maybe_unused]]double scalingVDWB = atom.scalingVDW;
 
         double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
         energySum.tail += scalingVDWA * scalingVDWB * temp;
@@ -280,14 +290,14 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
 
     for (const Atom& atom : oldatoms)
     {
-      size_t compB = static_cast<size_t>(atom.componentId);
-      size_t molB = static_cast<size_t>(atom.moleculeId);
+      [[maybe_unused]] size_t compB = static_cast<size_t>(atom.componentId);
+      [[maybe_unused]] size_t molB = static_cast<size_t>(atom.moleculeId);
 
       if (!(compA == compB && molA == molB))
       {
-        size_t typeB = static_cast<size_t>(atom.type);
-        bool groupIdB = static_cast<bool>(atom.groupId);
-        double scalingVDWB = atom.scalingVDW;
+        [[maybe_unused]] size_t typeB = static_cast<size_t>(atom.type);
+        [[maybe_unused]] bool groupIdB = static_cast<bool>(atom.groupId);
+        [[maybe_unused]] double scalingVDWB = atom.scalingVDW;
 
         double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
         energySum.tail -= scalingVDWA * scalingVDWB * temp;
@@ -297,6 +307,7 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
     }
   }
 
+  /*
   for (const Atom& atomA : newatoms)
   {
     size_t typeA = static_cast<size_t>(atomA.type);
@@ -334,6 +345,8 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
                               + (groupIdB ? scalingVDWA * temp : 0.0);
     }
   }
+  */
+
 
   return energySum;
 }

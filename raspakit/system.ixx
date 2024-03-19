@@ -22,6 +22,7 @@ import threadpool;
 
 import atom;
 import component;
+import framework;
 import simulationbox;
 import forcefield;
 import averages;
@@ -58,7 +59,8 @@ import equation_of_states;
 export struct System
 {
   System() = default;
-  System(size_t id, double T, double P, ForceField forcefield, std::vector<Component> components, 
+  System(size_t id, std::optional<SimulationBox> box, double T, double P, ForceField forcefield, 
+         std::vector<Framework> frameworkComponents, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
   System(size_t s, ForceField forcefield, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
@@ -81,6 +83,7 @@ export struct System
   size_t numberOfFrameworkAtoms{ 0 };
   size_t numberOfRigidFrameworkAtoms{ 0 };
 
+  std::vector<Framework> frameworkComponents;
   std::vector<Component> components;
 
   EquationOfState equationOfState;
@@ -144,13 +147,13 @@ export struct System
 
   size_t numberOfTrialDirections{ 10 };
 
-  std::vector<std::complex<double>> eik_xy;
-  std::vector<std::complex<double>> eik_x;
-  std::vector<std::complex<double>> eik_y;
-  std::vector<std::complex<double>> eik_z;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik;
-  std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik;
+  std::vector<std::complex<double>> eik_xy{};
+  std::vector<std::complex<double>> eik_x{};
+  std::vector<std::complex<double>> eik_y{};
+  std::vector<std::complex<double>> eik_z{};
+  std::vector<std::pair<std::complex<double>, std::complex<double>>> storedEik{};
+  std::vector<std::pair<std::complex<double>, std::complex<double>>> fixedFrameworkStoredEik{};
+  std::vector<std::pair<std::complex<double>, std::complex<double>>> totalEik{};
   double CoulombicFourierEnergySingleIon{ 0.0 };
   std::vector<double> netCharge;
 
@@ -210,8 +213,10 @@ export struct System
            numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent]; }
 
   void addComponent(const Component&& component) noexcept(false);
-  void initializeComponents();
+
+  void createFrameworks();
   void createInitialMolecules(RandomNumber &random);
+  void determineSimulationBox();
 
   void MD_Loop();
 
@@ -221,8 +226,8 @@ export struct System
   void computeTotalGradients() noexcept;
 
   size_t randomFramework(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(numberOfFrameworks)); }
-  size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>((components.size() - numberOfFrameworks)) + static_cast<double>(numberOfFrameworks)); }
-  size_t numerOfAdsorbateComponents() { return components.size() - numberOfFrameworks; }
+  size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(components.size())); }
+  size_t numerOfAdsorbateComponents() { return components.size(); }
   size_t randomMoleculeOfComponent(RandomNumber &random, size_t selectedComponent);
   size_t randomIntegerMoleculeOfComponent(RandomNumber &random, size_t selectedComponent);
 
@@ -236,19 +241,6 @@ export struct System
   std::span<const Atom> spanOfFlexibleAtoms() const;
   std::span<const Atom> spanOfMoleculeAtoms() const;
   std::span<Atom> spanOfMoleculeAtoms();
-  std::span<const Component> spanOfAdsorbateComponents() const {return std::span(components.cbegin() + 
-        static_cast<std::vector<Component>::difference_type>(numberOfFrameworks), components.size() - numberOfFrameworks);}
-
-  std::vector<Component> vectorOfAdsorbateComponents() const 
-  {
-    std::span<const Component> span = spanOfAdsorbateComponents();
-    std::vector<Component> comps(span.begin(), span.end());
-    for(size_t i = 0; i < comps.size(); ++i)
-    {
-      comps[i].componentId = i;
-    }
-    return comps;
-  }
 
   size_t numberOfMolecules() const {
       return std::reduce(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
