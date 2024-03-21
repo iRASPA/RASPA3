@@ -13,6 +13,7 @@ import <fstream>;
 
 import stringutils;
 
+import int3;
 import double3;
 import threadpool;
 
@@ -25,6 +26,29 @@ import loadings;
 import enthalpy_of_adsorption;
 import energy_status;
 import averages;
+
+struct InputDataSystem
+{
+  // sampling the conventional radial distribution function (RDF)
+  bool computeConventionalRadialDistributionFunction{ false };
+  size_t sampleConventionalRadialDistributionFunctionEvery{ 10 };
+  size_t writeConventionalRadialDistributionFunctionEvery { 5000 };
+  size_t conventionalRadialDistributionFunctionHistogramSize{ 128 };
+  double conventionalRadialDistributionFunctionRange{ 12 };
+
+  // sampling the radial distribution function (RDF)
+  bool computeRadialDistributionFunction{ false };
+  size_t sampleRadialDistributionFunctionEvery{ 10 };
+  size_t writeRadialDistributionFunctionEvery{ 5000 };
+  size_t radialDistributionFunctionHistogramSize{ 128 };
+  double radialDistributionFunctionRange{ 15.0 };
+
+  // sampling the 3D density
+  bool computeDensityGrid{ false };
+  size_t sampleDensityGridEvery{ 1 };
+  size_t writeDensityGridEvery{ 5000 };
+  int3 densityGridSize{ 128, 128, 128 };
+};
 
 
 export struct InputReader
@@ -46,6 +70,8 @@ export struct InputReader
 
   void readForceFields(std::vector<ForceField> &forcefields);
   std::vector<ForceField> forceFields;
+
+  std::vector<InputDataSystem> inputDataSystem;
 
   void requireExistingSystem(const std::string& keyword, size_t lineNumber);
   void requireExistingSystemAndComponent(const std::string& keyword, size_t lineNumber);

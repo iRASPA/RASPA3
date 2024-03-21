@@ -37,8 +37,8 @@ export struct SimulationBox
   SimulationBox() :
       lengthA(0.0), lengthB(0.0), lengthC(0.0), 
       angleAlpha(0.0), angleBeta(0.0), angleGamma(0.0),
-      unitCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
-      inverseUnitCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
+      cell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
+      inverseCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
       volume(0.0)
   {
   };
@@ -58,23 +58,23 @@ export struct SimulationBox
       case SimulationBox::Type::Rectangular:
       {
         double3 s;
-        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseUnitCell.ax + 
-                                                                        ((dr.x >= 0.0) ? 0.5 : -0.5))) * unitCell.ax;
-        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseUnitCell.by + 
-                                                                        ((dr.y >= 0.0) ? 0.5 : -0.5))) * unitCell.by;
-        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseUnitCell.cz + 
-                                                                        ((dr.z >= 0.0) ? 0.5 : -0.5))) * unitCell.cz;
+        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax + 
+                                                                        ((dr.x >= 0.0) ? 0.5 : -0.5))) * cell.ax;
+        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by + 
+                                                                        ((dr.y >= 0.0) ? 0.5 : -0.5))) * cell.by;
+        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz + 
+                                                                        ((dr.z >= 0.0) ? 0.5 : -0.5))) * cell.cz;
         return s;
       }
       default:
       {
-        double3 s = inverseUnitCell * dr;
+        double3 s = inverseCell * dr;
         s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
         s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
         s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
 
         // compute value in variable first to avoid microsoft compiler bug
-        double3 r = unitCell * s;
+        double3 r = cell * s;
         return r;
       }
     }
@@ -98,8 +98,8 @@ export struct SimulationBox
   double angleAlpha;
   double angleBeta;
   double angleGamma;
-  double3x3 unitCell;
-  double3x3 inverseUnitCell;
+  double3x3 cell;
+  double3x3 inverseCell;
   double volume;
   Type type = Type::Rectangular;
 
@@ -111,7 +111,7 @@ export struct SimulationBox
     angleAlpha += b.angleAlpha;
     angleBeta += b.angleBeta;
     angleGamma += b.angleGamma;
-    unitCell += b.unitCell;
+    cell += b.cell;
     volume += volume;
 
     return *this;
@@ -128,9 +128,9 @@ export struct SimulationBox
     double3 v2 = double3(lengthB * cos(angleGamma), lengthB * sin(angleGamma), 0.0);
     double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp, 
                          lengthC * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
-    unitCell = double3x3(v1, v2, v3);
-    inverseUnitCell = unitCell.inverse();
-    volume = unitCell.determinant();
+    cell = double3x3(v1, v2, v3);
+    inverseCell = cell.inverse();
+    volume = cell.determinant();
   }
 
   void scale(int3 scale)
@@ -144,9 +144,9 @@ export struct SimulationBox
     double3 v2 = double3(lengthB * cos(angleGamma), lengthB * sin(angleGamma), 0.0);
     double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp, 
                          lengthC * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
-    unitCell = double3x3(v1, v2, v3);
-    inverseUnitCell = unitCell.inverse();
-    volume = unitCell.determinant();
+    cell = double3x3(v1, v2, v3);
+    inverseCell = cell.inverse();
+    volume = cell.determinant();
   }
 
   SimulationBox scaled(double scale)
@@ -165,9 +165,9 @@ export struct SimulationBox
     double3 v2 = double3(v.lengthB * cos(v.angleGamma), v.lengthB * sin(v.angleGamma), 0.0);
     double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp, 
                          v.lengthC * sqrt(1.0 - cos(v.angleBeta) * cos(v.angleBeta) - temp * temp));
-    v.unitCell = double3x3(v1, v2, v3);
-    v.inverseUnitCell = v.unitCell.inverse();
-    v.volume = v.unitCell.determinant();
+    v.cell = double3x3(v1, v2, v3);
+    v.inverseCell = v.cell.inverse();
+    v.volume = v.cell.determinant();
     v.type = type;
 
     return v;
@@ -189,9 +189,9 @@ export struct SimulationBox
     double3 v2 = double3(v.lengthB * cos(v.angleGamma), v.lengthB * sin(v.angleGamma), 0.0);
     double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp, 
                          v.lengthC * sqrt(1.0 - cos(v.angleBeta) * cos(v.angleBeta) - temp * temp));
-    v.unitCell = double3x3(v1, v2, v3);
-    v.inverseUnitCell = v.unitCell.inverse();
-    v.volume = v.unitCell.determinant();
+    v.cell = double3x3(v1, v2, v3);
+    v.inverseCell = v.cell.inverse();
+    v.volume = v.cell.determinant();
     v.type = type;
 
     return v;
@@ -211,7 +211,7 @@ export inline SimulationBox operator+(const SimulationBox& a, const SimulationBo
   m.angleAlpha = a.angleAlpha + b.angleAlpha;
   m.angleBeta = a.angleBeta + b.angleBeta;
   m.angleGamma = a.angleGamma + b.angleGamma;
-  m.unitCell = a.unitCell + b.unitCell;
+  m.cell = a.cell + b.cell;
   m.volume = a.volume + b.volume;
 
   return m;
@@ -227,7 +227,7 @@ export inline SimulationBox operator-(const SimulationBox& a, const SimulationBo
   m.angleAlpha = a.angleAlpha - b.angleAlpha;
   m.angleBeta = a.angleBeta - b.angleBeta;
   m.angleGamma = a.angleGamma - b.angleGamma;
-  m.unitCell = a.unitCell - b.unitCell;
+  m.cell = a.cell - b.cell;
   m.volume = a.volume - b.volume;
 
   return m;
@@ -243,7 +243,7 @@ export inline SimulationBox operator*(const SimulationBox& a, const SimulationBo
   m.angleAlpha = a.angleAlpha * b.angleAlpha;
   m.angleBeta = a.angleBeta * b.angleBeta;
   m.angleGamma = a.angleGamma * b.angleGamma;
-  m.unitCell = a.unitCell * b.unitCell;
+  m.cell = a.cell * b.cell;
   m.volume = a.volume * b.volume;
   return m;
 }
@@ -258,7 +258,7 @@ export inline SimulationBox operator*(const double& a, const SimulationBox& b)
   m.angleAlpha = a * b.angleAlpha;
   m.angleBeta = a * b.angleBeta;
   m.angleGamma = a * b.angleGamma;
-  m.unitCell = a * b.unitCell;
+  m.cell = a * b.cell;
   m.volume = a * b.volume;
   return m;
 }
@@ -275,7 +275,7 @@ export inline SimulationBox operator/(const SimulationBox& a, const double& b)
   m.angleAlpha = a.angleAlpha * temp;
   m.angleBeta = a.angleBeta * temp;
   m.angleGamma = a.angleGamma * temp;
-  m.unitCell = a.unitCell * temp;
+  m.cell = a.cell * temp;
   m.volume = a.volume * temp;
   return m;
 }
@@ -291,7 +291,7 @@ export inline SimulationBox sqrt(const SimulationBox& a)
   m.angleAlpha = std::sqrt(a.angleAlpha);
   m.angleBeta = std::sqrt(a.angleBeta);
   m.angleGamma = std::sqrt(a.angleGamma);
-  m.unitCell = sqrt(a.unitCell);
+  m.cell = sqrt(a.cell);
   m.volume = std::sqrt(a.volume);
 
   return m;
@@ -317,5 +317,5 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
 
 export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b)
 {
-  return SimulationBox(a * b.unitCell);
+  return SimulationBox(a * b.cell);
 }

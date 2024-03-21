@@ -39,6 +39,7 @@ import reactions;
 import transition_matrix;
 import property_conventional_rdf;
 import property_rdf;
+import property_density_grid;
 
 
 template<class T>
@@ -385,7 +386,8 @@ void InputReader::readForceFields(std::vector<ForceField> &forcefields)
 
 
 InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_unused]]size_t numberOfComponents, [[maybe_unused]]size_t numberOfBlocks):
-  forceFields(totalNumberOfSystems, ForceField(0))
+  forceFields(totalNumberOfSystems, ForceField(0)),
+  inputDataSystem(totalNumberOfSystems)
 {
   readForceFields(forceFields);
 
@@ -1510,49 +1512,63 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "computeConventionalRDF"))
+      if (caseInSensStringCompare(keyword, "ComputeConventionalRDF"))
       {
-        std::vector<bool> values = parseListOfSystemValues<bool>(arguments, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0uz; i < systems.size(); ++i)
-        {
-          systems[i].computeConventionalRadialDistributionFunction = values[i];
-        }
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].computeConventionalRadialDistributionFunction = value;
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "writeConventionalRDFEvery"))
+      if (caseInSensStringCompare(keyword, "WriteConventionalRDFEvery"))
       {
-        std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0uz; i < systems.size(); ++i)
-        {
-          systems[i].writeConventionalRadialDistributionFunctionEvery = values[i];
-        }
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].writeConventionalRadialDistributionFunctionEvery = value;
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "conventionalRDFistogramSize"))
+      if (caseInSensStringCompare(keyword, "ConventionalRDFistogramSize"))
       {
-        std::vector<size_t> values = parseListOfSystemValues<size_t>(arguments, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0uz; i < systems.size(); ++i)
-        {
-          systems[i].conventionalRadialDistributionFunctionHistogramSize = values[i];
-        }
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].conventionalRadialDistributionFunctionHistogramSize = value;
         continue;
       }
 
-      if (caseInSensStringCompare(keyword, "conventionalRDFRange"))
+      if (caseInSensStringCompare(keyword, "ConventionalRDFRange"))
       {
-        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0uz; i < systems.size(); ++i)
-        {
-          systems[i].conventionalRadialDistributionFunctionRange = values[i];
-        }
+        double value = parseDouble(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].conventionalRadialDistributionFunctionRange = value;
         continue;
       }
+
+      if (caseInSensStringCompare(keyword, "ComputeDensityGrid"))
+      {
+        bool value = parseBoolean(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].computeDensityGrid = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "SampleDensityGridEvery"))
+      {
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].sampleDensityGridEvery = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "WriteDensityGridEvery"))
+      {
+        size_t value = parse<size_t>(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].writeDensityGridEvery = value;
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "DensityGridSize"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+        int3 value = parseInt3(arguments, keyword, lineNumber);
+        inputDataSystem[numberOfSystems - 1].densityGridSize = value;
+        continue;
+      }
+
 
       if (caseInSensStringCompare(keyword, std::string("ForceField")))
       {
@@ -1574,15 +1590,41 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
 
   }
 
-  // Post-initialize
+  // Create property measurements
   // ========================================================
   
-  for(System &system: systems)
+  for(size_t i = 0; i < inputDataSystem.size(); ++i)
   {
-    system.conventionalRadialDistributionFunction = 
-      PropertyConventionalRadialDistributionFunction(numberOfBlocks, system.forceField.pseudoAtoms.size(), 
-                                                     system.conventionalRadialDistributionFunctionHistogramSize,
-                                                     system.conventionalRadialDistributionFunctionRange);
+    if(inputDataSystem[i].computeConventionalRadialDistributionFunction)
+    {
+      systems[i].propertyConventionalRadialDistributionFunction =
+        PropertyConventionalRadialDistributionFunction(numberOfBlocks, 
+                                                       systems[i].forceField.pseudoAtoms.size(), 
+                                                       inputDataSystem[i].conventionalRadialDistributionFunctionHistogramSize,
+                                                       inputDataSystem[i].conventionalRadialDistributionFunctionRange,
+                                                       inputDataSystem[i].sampleConventionalRadialDistributionFunctionEvery,
+                                                       inputDataSystem[i].writeConventionalRadialDistributionFunctionEvery);
+    }
+
+    if(inputDataSystem[i].computeRadialDistributionFunction)
+    {
+      systems[i].propertyRadialDistributionFunction =
+        PropertyRadialDistributionFunction(numberOfBlocks, 
+                                           systems[i].forceField.pseudoAtoms.size(), 
+                                           inputDataSystem[i].radialDistributionFunctionHistogramSize,
+                                           inputDataSystem[i].radialDistributionFunctionRange,
+                                           inputDataSystem[i].sampleRadialDistributionFunctionEvery,
+                                           inputDataSystem[i].writeRadialDistributionFunctionEvery);
+    }
+
+    if(inputDataSystem[i].computeDensityGrid)
+    {
+      systems[i].propertyDensityGrid = PropertyDensityGrid(systems[i].frameworkComponents.size(),
+                                                           systems[i].components.size(), 
+                                                           inputDataSystem[i].densityGridSize,
+                                                           inputDataSystem[i].sampleDensityGridEvery,
+                                                           inputDataSystem[i].writeDensityGridEvery);
+    }
   }
   
 

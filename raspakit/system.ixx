@@ -41,6 +41,7 @@ import property_loading;
 import property_enthalpy;
 import property_conventional_rdf;
 import property_rdf;
+import property_density_grid;
 import multi_site_isotherm;
 import pressure_range;
 import units;
@@ -184,21 +185,10 @@ export struct System
 
   bool containsTheFractionalMolecule{ true };
 
-
-  // sampling the conventional radial distribution function (RDF)
-  bool computeConventionalRadialDistributionFunction;
-  size_t writeConventionalRadialDistributionFunctionEvery;
-  size_t conventionalRadialDistributionFunctionHistogramSize;
-  double conventionalRadialDistributionFunctionRange;
-  PropertyConventionalRadialDistributionFunction conventionalRadialDistributionFunction;
-
-  // sampling the radial distribution function (RDF)
-  bool computeRadialDistributionFunction;
-  size_t writeRadialDistributionFunctionEvery;
-  size_t radialDistributionFunctionHistogramSize;
-  double radialDistributionFunctionRange;
-  PropertyRadialDistributionFunction radialDistributionFunction;
-
+  // property measurements
+  std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
+  std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
+  std::optional<PropertyDensityGrid> propertyDensityGrid;
 
   /// The fractional molecule for grand-canonical is stored first
   inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0;}

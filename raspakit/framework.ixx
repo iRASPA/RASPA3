@@ -71,7 +71,7 @@ export struct Framework
   std::vector<std::pair<size_t, size_t>> intraCoulomb{};
   std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
 
-  std::vector<Atom> frameworkAtoms();
+  std::vector<Atom> frameworkAtoms() const;
   void readFramework(const ForceField& forceField, const std::string& fileName);
 
   std::string printStatus(const ForceField& forceField) const;

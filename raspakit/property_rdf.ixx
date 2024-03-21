@@ -15,13 +15,15 @@ export struct PropertyRadialDistributionFunction
 {
   PropertyRadialDistributionFunction() {};
 
-  PropertyRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins, double range) :
+  PropertyRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins, double range, size_t sampleEvery, size_t writeEvery) :
     numberOfBlocks(numberOfBlocks),
     numberOfPseudoAtoms(numberOfPseudoAtoms),
     numberOfPseudoAtomsSymmetricMatrix(numberOfPseudoAtoms * (numberOfPseudoAtoms + 1) / 2),
     numberOfBins(numberOfBins),
     range(range),
     deltaR(range / static_cast<double>(numberOfBins)),
+    sampleEvery(sampleEvery),
+    writeEvery(writeEvery),
     sumProperty(numberOfBlocks * numberOfPseudoAtomsSymmetricMatrix * numberOfBins),
     numberOfCounts(0uz)
   {
@@ -49,9 +51,11 @@ export struct PropertyRadialDistributionFunction
   size_t numberOfBins;
   double range;
   double deltaR;
+  size_t sampleEvery;
+  size_t writeEvery;
   std::vector<double> sumProperty;
   size_t numberOfCounts;
 
-  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t block);
-  void writeOutput(size_t systemId);
+  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
+  void writeOutput(size_t systemId, size_t currentCycle);
 };

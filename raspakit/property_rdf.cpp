@@ -14,12 +14,15 @@ import double3;
 import atom;
 import simulationbox;
 
-void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t block)
+void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, 
+                                                std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block)
 {
   double3 dr, posA, posB, f;
   double rr, r;
 
   if(moleculeAtoms.empty()) return;
+
+  if(currentCycle % sampleEvery != 0uz) return;
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -77,6 +80,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
   numberOfCounts++;
 }
 
-void PropertyRadialDistributionFunction::writeOutput([[maybe_unused]] size_t systemId)
+void PropertyRadialDistributionFunction::writeOutput([[maybe_unused]] size_t systemId, [[maybe_unused]]size_t currentCycle)
 {
+  if(currentCycle % writeEvery != 0uz) return;
 }

@@ -47,7 +47,7 @@ double Interactions::computeEwaldFourierEnergySingleIon(std::vector<std::complex
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -140,7 +140,7 @@ void Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<doubl
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -274,7 +274,7 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -458,7 +458,7 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -664,7 +664,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(std::vector<std::comple
 
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
@@ -901,7 +901,7 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
-  double3x3 inv_box = simulationBox.inverseUnitCell;
+  double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);

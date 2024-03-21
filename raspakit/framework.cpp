@@ -99,7 +99,7 @@ Framework::Framework(size_t componentId, std::string fileName, double mass, Simu
     std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
     for (const double3& pos : listOfPositions)
     {
-      atomCopy.position = simulationBox.unitCell * pos.fract();
+      atomCopy.position = simulationBox.cell * pos.fract();
       expandedAtoms.push_back(atomCopy);
     }
   }
@@ -151,7 +151,7 @@ Framework::Framework(size_t componentId, std::string fileName, double mass, Simu
   }
 }
 
-std::vector<Atom> Framework::frameworkAtoms()
+std::vector<Atom> Framework::frameworkAtoms() const
 {
   std::vector<Atom> atoms1{};
 
@@ -164,7 +164,7 @@ std::vector<Atom> Framework::frameworkAtoms()
         for (const Atom& atom : unitCellAtoms)
         {
           Atom atomCopy = atom;
-          atomCopy.position += simulationBox.unitCell *
+          atomCopy.position += simulationBox.cell *
                                double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
           atoms1.push_back(atomCopy);
         }
@@ -244,7 +244,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
     std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
     for (const double3& pos : listOfPositions)
     {
-      atomCopy.position = parser.simulationBox.unitCell * pos.fract();
+      atomCopy.position = parser.simulationBox.cell * pos.fract();
       expandedAtoms.push_back(atomCopy);
     }
   }
@@ -289,7 +289,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   //}
 
   mass = 0.0;
-  for (const Atom& atom : atoms)
+  for (const Atom& atom : unitCellAtoms)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     mass += forceField.pseudoAtoms[atomType].mass;
@@ -308,7 +308,8 @@ std::string Framework::printStatus(const ForceField& forceField) const
 
   std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
 
-  std::print(stream, "    number Of Atoms:  {}\n", atoms.size());
+  std::print(stream, "    number Of Atoms:  {}\n", unitCellAtoms.size());
+  std::print(stream, "    Mass:             {} [amu]\n", mass);
   
   for (size_t i = 0; i < definedAtoms.size(); ++i)
   {

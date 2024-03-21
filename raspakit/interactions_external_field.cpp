@@ -44,7 +44,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
       [[maybe_unused]] double3 posA = it1->position;
-      [[maybe_unused]] double3 s = (simulationBox.inverseUnitCell * posA).fract();
+      [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
 
       // Fill in the energy based on the atom properties and the fractional position 's'
@@ -107,7 +107,7 @@ Interactions::computeExternalFieldEnergyDifference(bool hasExternalField, [[mayb
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;
       [[maybe_unused]] double3 posA = it1->position;
-      [[maybe_unused]] double3 s = (simulationBox.inverseUnitCell * posA).fract();
+      [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
 
       // Fill in the energy based on the atom properties and the fractional position 's'

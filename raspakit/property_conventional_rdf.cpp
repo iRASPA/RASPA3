@@ -19,10 +19,13 @@ import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t block)
+void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, 
+                                                            std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block)
 {
   double3 dr, posA, posB, f;
   double rr, r;
+
+  if(currentCycle % sampleEvery != 0uz) return;
 
   if(moleculeAtoms.empty()) return;
 
@@ -161,8 +164,11 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size
 
 
 void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId, double volume,
-                                                                 [[maybe_unused]]std::vector<size_t> &numberOfPseudoAtomsType)
+                                                                 [[maybe_unused]]std::vector<size_t> &numberOfPseudoAtomsType,
+                                                                 size_t currentCycle)
 {
+  if(currentCycle % writeEvery != 0uz) return;
+
   std::filesystem::create_directory("conventional_rdf");
 
   for(size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
@@ -171,7 +177,7 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceFiel
     {
       if(pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
       {
-        std::ofstream stream_rdf_output(std::format("conventional_rdf/rdf_{}_{}_{}.data", 
+        std::ofstream stream_rdf_output(std::format("conventional_rdf/rdf_{}_{}.s{}.data", 
               forceField.pseudoAtoms[atomTypeA].name,
               forceField.pseudoAtoms[atomTypeB].name,
               systemId));

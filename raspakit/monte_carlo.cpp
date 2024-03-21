@@ -104,14 +104,11 @@ void MonteCarlo::run()
 
 void MonteCarlo::createOutputFiles()
 {
+  std::filesystem::create_directories("output");
   for (System &system: systems)
   {
-    std::string directoryNameString = std::format("output/system_{}/", system.systemId);
-    std::filesystem::path directoryName{ directoryNameString };
-    std::filesystem::create_directories(directoryName);
-
-    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
-        system.systemId, system.temperature, system.input_pressure);
+    std::string fileNameString = std::format("output/output_{}_{}.s{}.data",
+        system.temperature, system.input_pressure, system.systemId);
     streams.emplace_back(fileNameString, std::ios::out );
   }
 }
@@ -489,15 +486,19 @@ void MonteCarlo::production()
     // output properties to files
     for (System& system : systems)
     {
-      if(system.computeConventionalRadialDistributionFunction && currentCycle % system.writeConventionalRadialDistributionFunctionEvery == 0uz )
+      if(system.propertyConventionalRadialDistributionFunction.has_value())
       {
-        system.conventionalRadialDistributionFunction.writeOutput(system.forceField, system.systemId, system.simulationBox.volume, 
-                                                                  system.totalNumberOfPseudoAtoms);
+        system.propertyConventionalRadialDistributionFunction->writeOutput(system.forceField, system.systemId, system.simulationBox.volume, 
+                                                                           system.totalNumberOfPseudoAtoms, currentCycle);
       }
 
-      if(system.computeRadialDistributionFunction && currentCycle % system.writeRadialDistributionFunctionEvery == 0uz )
+      if(system.propertyRadialDistributionFunction.has_value())
       {
-        system.radialDistributionFunction.writeOutput(system.systemId);
+        system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
+      }
+      if(system.propertyDensityGrid.has_value())
+      {
+        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField, system.frameworkComponents, system.components, currentCycle);
       }
     }
 

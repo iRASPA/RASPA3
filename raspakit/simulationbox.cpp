@@ -33,11 +33,11 @@ SimulationBox::SimulationBox(double a, double b, double c, Type type): type(type
   double3 v1 = double3(a,   0.0, 0.0);
   double3 v2 = double3(0.0, b,   0.0);
   double3 v3 = double3(0.0, 0.0, c);
-  unitCell = double3x3(v1, v2, v3);
+  cell = double3x3(v1, v2, v3);
   if (a != 0.0 && b != 0.0 && c != 0.0)
   {
-    inverseUnitCell = unitCell.inverse();
-    volume = unitCell.determinant();
+    inverseCell = cell.inverse();
+    volume = cell.determinant();
   }
   else
   {
@@ -53,11 +53,11 @@ SimulationBox::SimulationBox(double a, double b, double c, double alpha, double 
   double3 v1 = double3(a, 0.0, 0.0);
   double3 v2 = double3(b * cos(gamma), b * sin(gamma), 0.0);
   double3 v3 = double3(c * cos(beta), c * temp, c * sqrt(1.0 - cos(beta) * cos(beta) - temp * temp));
-  unitCell = double3x3(v1, v2, v3);
+  cell = double3x3(v1, v2, v3);
   if(a != 0.0 && b != 0.0 && c != 0.0)
   {
-    inverseUnitCell = unitCell.inverse();
-    volume = unitCell.determinant();
+    inverseCell = cell.inverse();
+    volume = cell.determinant();
   }
   else
   {
@@ -67,13 +67,13 @@ SimulationBox::SimulationBox(double a, double b, double c, double alpha, double 
 
 SimulationBox::SimulationBox( double3x3 m, Type type): type(type)
 {
-  this->unitCell = m;
-  this->inverseUnitCell = m.inverse();
+  this->cell = m;
+  this->inverseCell = m.inverse();
   this->volume = m.determinant();
 
-  double3 column1 = unitCell[0];
-  double3 column2 = unitCell[1];
-  double3 column3 = unitCell[2];
+  double3 column1 = cell[0];
+  double3 column2 = cell[1];
+  double3 column3 = cell[2];
   this->lengthA = column1.length();
   this->lengthB = column2.length();
   this->lengthC = column3.length();
@@ -85,18 +85,18 @@ SimulationBox::SimulationBox( double3x3 m, Type type): type(type)
 
 double3 SimulationBox::randomPosition(RandomNumber &random) const
 {
-  return double3(unitCell.ax * random.uniform(),
-                 unitCell.by * random.uniform(),
-                 unitCell.cz * random.uniform());
+  return double3(cell.ax * random.uniform(),
+                 cell.by * random.uniform(),
+                 cell.cz * random.uniform());
 }
 
 double3 SimulationBox::perpendicularWidths() const
 {
-  double3 c1 = double3::cross(unitCell[0], unitCell[1]);
-  double3 c2 = double3::cross(unitCell[1], unitCell[2]);
-  double3 c3 = double3::cross(unitCell[0], unitCell[2]);
+  double3 c1 = double3::cross(cell[0], cell[1]);
+  double3 c2 = double3::cross(cell[1], cell[2]);
+  double3 c3 = double3::cross(cell[0], cell[2]);
 
-  double v = std::fabs(unitCell[0].x * c2.x + unitCell[0].y * c2.y + unitCell[0].z * c2.z);
+  double v = std::fabs(cell[0].x * c2.x + cell[0].y * c2.y + cell[0].z * c2.z);
 
   // calculate cell perpendicular widths
   return double3(v / std::sqrt(double3::dot(c2, c2)),
@@ -114,9 +114,9 @@ void SimulationBox::setBoxLengths(double3 lengths)
   double3 v2 = double3(lengths.y * cos(angleGamma), lengths.y * sin(angleGamma), 0.0);
   double3 v3 = double3(lengths.z * cos(angleBeta), lengths.z * temp, 
                        lengths.z * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
-  unitCell = double3x3(v1, v2, v3);
-  inverseUnitCell = unitCell.inverse();
-  volume = unitCell.determinant();
+  cell = double3x3(v1, v2, v3);
+  inverseCell = cell.inverse();
+  volume = cell.determinant();
 }
 
 void SimulationBox::setBoxAngles(double3 angles)
@@ -133,22 +133,22 @@ void SimulationBox::setBoxAngles(double3 angles)
   double3 v2 = double3(lengths.y * cos(angles.z), lengths.y * sin(angles.z), 0.0);
   double3 v3 = double3(lengths.z * cos(angles.y), lengths.z * temp, 
                        lengths.z * sqrt(1.0 - cos(angles.y) * cos(angles.y) - temp * temp));
-  unitCell = double3x3(v1, v2, v3);
-  inverseUnitCell = unitCell.inverse();
-  volume = unitCell.determinant();
+  cell = double3x3(v1, v2, v3);
+  inverseCell = cell.inverse();
+  volume = cell.determinant();
 }
 
 
 double3 SimulationBox::lengths()
 {
-  return double3(unitCell[0].length(), unitCell[1].length(), unitCell[2].length());
+  return double3(cell[0].length(), cell[1].length(), cell[2].length());
 }
 
 double3 SimulationBox::angles()
 {
-  double3 column1 = unitCell[0];
-  double3 column2 = unitCell[1];
-  double3 column3 = unitCell[2];
+  double3 column1 = cell[0];
+  double3 column2 = cell[1];
+  double3 column3 = cell[2];
   double length1 = column1.length();
   double length2 = column2.length();
   double length3 = column3.length();
@@ -173,9 +173,9 @@ std::string SimulationBox::printStatus() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ax, unitCell.bx, unitCell.cx);
-  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.ay, unitCell.by, unitCell.cy);
-  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", unitCell.az, unitCell.bz, unitCell.cz);
+  std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}\n", cell.ax, cell.bx, cell.cx);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", cell.ay, cell.by, cell.cy);
+  std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}\n", cell.az, cell.bz, cell.cz);
   std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}\n", lengthA, lengthB, lengthC);
   double conv = 180.0 / std::numbers::pi;
   std::print(stream, "Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * angleAlpha, conv * angleBeta, conv * angleGamma);
@@ -187,14 +187,14 @@ std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unu
 {
   std::ostringstream stream;
   std::print(stream, "Box:     {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", 
-                     unitCell.ax, unitCell.bx, unitCell.cx,
-                     average.unitCell.ax, average.unitCell.bx, average.unitCell.cx);
+                     cell.ax, cell.bx, cell.cx,
+                     average.cell.ax, average.cell.bx, average.cell.cx);
   std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", 
-                     unitCell.ay, unitCell.by, unitCell.cy,
-                     average.unitCell.ay, average.unitCell.by, average.unitCell.cy);
+                     cell.ay, cell.by, cell.cy,
+                     average.cell.ay, average.cell.by, average.cell.cy);
   std::print(stream, "         {:9.5f} {:9.5f} {:9.5f}           {:9.5f} {:9.5f} {:9.5f}\n", 
-                     unitCell.az, unitCell.bz, unitCell.cz,
-                     average.unitCell.az, average.unitCell.bz, average.unitCell.cz);
+                     cell.az, cell.bz, cell.cz,
+                     average.cell.az, average.cell.bz, average.cell.cz);
   std::print(stream, "Lengths: {:9.5f} {:9.5f} {:9.5f}  Average: {:9.5f} {:9.5f} {:9.5f}\n", 
                      lengthA, lengthB, lengthC,
                      average.lengthA, average.lengthB, average.lengthC);
@@ -217,8 +217,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Simula
   archive << box.angleAlpha;
   archive << box.angleBeta;
   archive << box.angleGamma;
-  archive << box.unitCell;
-  archive << box.inverseUnitCell;
+  archive << box.cell;
+  archive << box.inverseCell;
   archive << box.volume;
   archive << box.type;
 
@@ -242,8 +242,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBo
   archive >> box.angleAlpha;
   archive >> box.angleBeta;
   archive >> box.angleGamma;
-  archive >> box.unitCell;
-  archive >> box.inverseUnitCell;
+  archive >> box.cell;
+  archive >> box.inverseCell;
   archive >> box.volume;
   archive >> box.type;
 

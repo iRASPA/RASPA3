@@ -114,20 +114,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, double P, 
     mc_moves_probabilities(),
     mc_moves_statistics(),
     reactions(),
-    tmmc(),
-    computeConventionalRadialDistributionFunction(false),
-    writeConventionalRadialDistributionFunctionEvery(1000),
-    conventionalRadialDistributionFunctionHistogramSize(128),
-    conventionalRadialDistributionFunctionRange(15.0),
-    conventionalRadialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), 
-                                           conventionalRadialDistributionFunctionHistogramSize,
-                                           conventionalRadialDistributionFunctionRange),
-    computeRadialDistributionFunction(false),
-    writeRadialDistributionFunctionEvery(1000),
-    radialDistributionFunctionHistogramSize(128),
-    radialDistributionFunctionRange(15.0),
-    radialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), radialDistributionFunctionHistogramSize,
-                               radialDistributionFunctionRange)
+    tmmc()
 {
   if(box.has_value())
   {
@@ -199,20 +186,7 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c,
     mc_moves_probabilities(),
     mc_moves_statistics(),
     reactions(),
-    tmmc(),
-    computeConventionalRadialDistributionFunction(false),
-    writeConventionalRadialDistributionFunctionEvery(1000),
-    conventionalRadialDistributionFunctionHistogramSize(128),
-    conventionalRadialDistributionFunctionRange(15.0),
-    conventionalRadialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), 
-                                           conventionalRadialDistributionFunctionHistogramSize,
-                                           conventionalRadialDistributionFunctionRange),
-    computeRadialDistributionFunction(false),
-    writeRadialDistributionFunctionEvery(1000),
-    radialDistributionFunctionHistogramSize(128),
-    radialDistributionFunctionRange(15.0),
-    radialDistributionFunction(numberOfBlocks, forceField.pseudoAtoms.size(), radialDistributionFunctionHistogramSize,
-                               radialDistributionFunctionRange)
+    tmmc()
 {
     
 }
@@ -677,7 +651,7 @@ void System::computeFrameworkDensity()
 {
   for (Framework& component : frameworkComponents)
   {
-    frameworkMass = frameworkMass.value_or(0.0) + component.mass;
+    frameworkMass = frameworkMass.value_or(0.0) + component.mass * component.numberOfUnitCells.x * component.numberOfUnitCells.y * component.numberOfUnitCells.z;;
   }
 }
 
@@ -1028,19 +1002,21 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
   }
 
-  if (currentCycle % 10uz == 0uz)
+  if(propertyConventionalRadialDistributionFunction.has_value())
   {
-    if(computeConventionalRadialDistributionFunction)
-    {
-      conventionalRadialDistributionFunction.sample(simulationBox, spanOfFrameworkAtoms(),
-                                                    spanOfMoleculeAtoms(), currentBlock);
-    }
+    propertyConventionalRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(),
+                                                           spanOfMoleculeAtoms(), currentCycle, currentBlock);
+  }
 
-    if(computeRadialDistributionFunction)
-    {
-      radialDistributionFunction.sample(simulationBox, spanOfFrameworkAtoms(),
-                                        spanOfMoleculeAtoms(), currentBlock);
-    }
+  if(propertyRadialDistributionFunction.has_value())
+  {
+    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(),
+                                               spanOfMoleculeAtoms(), currentCycle, currentBlock);
+  }
+
+  if(propertyDensityGrid.has_value())
+  {
+    propertyDensityGrid->sample(frameworkComponents, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
 
