@@ -89,12 +89,18 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
     }
 
     std::vector<double>::iterator it_begin = grid_cell.begin() + std::distance(&data_cell[0,0,0,0], &data_cell[i,0,0,0]);
-      //static_cast<std::vector<Atom>::difference_type>(totalGridSize*i);
-    std::vector<double>::iterator end_begin = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
+    std::vector<double>::iterator it_end = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-    for (std::vector<double>::iterator it = it_begin; it != end_begin; ++it)
+    std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+    double normalization{ 1.0 };
+    if (maximum != it_end)
     {
-      std::print(ostream, "{}\n", *it);
+      normalization = static_cast<double>(1.0 / *maximum);
+    }
+
+    for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
+    {
+      std::print(ostream, "{}\n", *it * normalization);
     }
   }
 
@@ -130,12 +136,18 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
       }
 
       std::vector<double>::iterator it_begin = grid_unitcell.begin() + std::distance(&data_unitcell[0,0,0,0,0], &data_unitcell[i,k,0,0,0]);
-        //static_cast<std::vector<Atom>::difference_type>(totalGridSize*(i*components.size()+k));
-      std::vector<double>::iterator end_begin = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
+      std::vector<double>::iterator it_end = it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-      for (std::vector<double>::iterator it = it_begin; it != end_begin; ++it)
+      std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+      double normalization{ 1.0 };
+      if (maximum != it_end)
       {
-        std::print(ostream, "{}\n", *it);
+        normalization = static_cast<double>(1.0 / *maximum);
+      }
+
+      for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
+      {
+        std::print(ostream, "{}\n", *it * normalization);
       }
     }
   }
