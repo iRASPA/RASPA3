@@ -1,6 +1,8 @@
 module cbmc_util;
 
 import <vector>;
+import <algorithm>;
+import <cmath>;
 
 import atom;
 import double3x3;
@@ -36,7 +38,7 @@ size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector <double> LogB
   double SumShiftedBoltzmannFactors = 0.0;
   for (size_t i = 0; i < LogBoltzmannFactors.size(); ++i)
   {
-    ShiftedBoltzmannFactors[i] = exp(LogBoltzmannFactors[i] - largest_value);
+    ShiftedBoltzmannFactors[i] = std::exp(LogBoltzmannFactors[i] - largest_value);
     SumShiftedBoltzmannFactors += ShiftedBoltzmannFactors[i];
   }
 

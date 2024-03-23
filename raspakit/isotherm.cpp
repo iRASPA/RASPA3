@@ -7,7 +7,12 @@ import <iostream>;
 import <sstream>;
 import <cmath>;
 import <vector>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import randomnumbers;
 import stringutils;

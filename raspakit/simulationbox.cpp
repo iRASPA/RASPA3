@@ -9,10 +9,15 @@ import <iostream>;
 import <ostream>;
 import <sstream>;
 import <fstream>;
-import <print>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import randomnumbers;
 import double3x3;

@@ -5,7 +5,11 @@ import <iostream>;
 import <sstream>;
 import <fstream>;
 import <cmath>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import archive;
 import stringutils;

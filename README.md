@@ -23,6 +23,7 @@ Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implemen
 Windows
 =======
 Visual studio 2022 project file included.
+Showstopper: msvc does not support the multidimensional subscript operator
 
 Ubuntu
 ======
@@ -33,13 +34,16 @@ sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev pytho
 
 Redhat/Centos 8
 ===============
-yum groupinstall 'Development Tools'
-yum module install llvm-toolset
-yum install llvm-devel clang-devel
-yum install lldb python3-lit
-yum install cmake
-yum install lapack
-Showstopper: no libc++ for Redhat-8
+sudo dnf group install "Development Tools"
+sudo dnf install llvm-toolset
+sudo dnf install llvm-devel clang-devel
+sudo dnf install lldb python3-lit
+sudo dnf install cmake
+#sudo dnf install fmt-devel
+sudo dnf --enablerepo=devel install python3-devel python3.11-pybind11-devel
+sudo dnf --enablerepo=devel install pybind11-devel
+sudo dnf --enablerepo=devel install lapack-devel
+Note: no libc++-devel for Redhat-8
 
 Redhat 9
 ===============
@@ -48,10 +52,11 @@ sudo dnf install llvm-toolset
 sudo dnf install llvm-devel clang-devel
 sudo dnf install lldb python3-lit
 sudo dnf install cmake
-sudo dnf --enablerepo=devel install python3-pybind11
+sudo dnf install fmt-devel
+sudo dnf --enablerepo=devel install python3-devel python3-pybind11
 sudo dnf --enablerepo=devel install pybind11-devel
 sudo dnf --enablerepo=devel install lapack-devel
-Note: no libc++-devel for Redhat-9
+Note: no libc++-devel for Redhat-9, the one of Fedora 38 works
 wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm
 wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm
 wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm

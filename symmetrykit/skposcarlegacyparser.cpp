@@ -3,6 +3,7 @@ module;
 #include <string>
 #include <vector>
 #include <locale>
+#include <optional>
 
 module skposcarlegacyparser;
 
@@ -10,6 +11,8 @@ import skstructure;
 import double3;
 import double3x3;
 import skasymmetricatom;
+import characterset;
+import skcell;
 
 std::string& tolower(std::string& s)
 {

@@ -25,6 +25,7 @@ import cbmc_rigid_deletion;
 import cbmc_rigid_reinsertion;
 import cbmc_flexible_insertion;
 import component;
+import cbmc_chain_data;
 
 
 [[nodiscard]] std::optional<ChainData> 

@@ -12,6 +12,14 @@ import <vector>;
 import <algorithm>;
 import <format>;
 import <numbers>;
+import <span>;
+import <array>;
+import <cmath>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import double3;
 import atom;
@@ -153,7 +161,7 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size
 
   std::vector<double> standardError(numberOfBins);
   std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                 [&](const double &sigma){return sigma / sqrt(static_cast<double>(numberOfBlocks));});
+                 [&](const double &sigma){return sigma / std::sqrt(static_cast<double>(numberOfBlocks));});
 
   std::vector<double> confidenceIntervalError(numberOfBins);
   std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),

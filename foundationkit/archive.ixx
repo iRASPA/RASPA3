@@ -13,6 +13,14 @@ import <bit>;
 import <chrono>;
 import <complex>;
 
+
+// on linux uint64_t is unsigned long        8
+//          size_t   is unsigned long        8
+//          size_t is an alias for uint64_t
+// on mac   uint64_t is unsigned long long   8
+//          size_t   is unsigned long        8
+//          size_t is an alias for unsigned long
+
 export template <class STREAM> class Archive
 {
 public:
@@ -187,6 +195,7 @@ public:
     return *this;
   }
 
+  #if defined(__APPLE__) && defined(__MACH__)
   Archive& operator>>(uint64_t& v)
   {
     stream.read(std::bit_cast<char*>(&v), sizeof(uint64_t)); 
@@ -208,7 +217,7 @@ public:
     stream.write(std::bit_cast<const char*>(&w), sizeof(uint64_t));
     return *this;
   }
-
+  #endif
 
   Archive& operator>>(size_t& v)
   {

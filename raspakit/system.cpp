@@ -20,9 +20,13 @@ import <chrono>;
 import <algorithm>;
 import <numeric>;
 import <format>;
-import <print>;
 import <exception>;
 import <source_location>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import archive;
 import randomnumbers;
@@ -74,6 +78,7 @@ import cbmc_chain_data;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
+import equation_of_states;
 
 
 // construct System programmatically

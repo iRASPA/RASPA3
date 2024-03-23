@@ -11,8 +11,14 @@ import <tuple>;
 import <vector>;
 import <algorithm>;
 import <format>;
-import <print>;
 import <numbers>;
+import <span>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import int3;
 import double3;

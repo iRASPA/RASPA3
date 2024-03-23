@@ -5,6 +5,12 @@ import <iostream>;
 import <sstream>;
 import <fstream>;
 import <cmath>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import archive;
 import energy_factor;

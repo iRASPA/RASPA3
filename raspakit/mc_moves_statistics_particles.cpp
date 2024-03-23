@@ -3,11 +3,16 @@ module mc_moves_statistics_particles;
 import <string>;
 import <sstream>;
 import <fstream>;
-import <print>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import archive;
 import double3;

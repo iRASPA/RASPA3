@@ -26,7 +26,13 @@ import <iostream>;
 import <random>;
 import <chrono>;
 import <sstream>;
-import <print>;
+import <type_traits>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import stringutils;
 
@@ -95,8 +101,11 @@ std::string HardwareInfo::writeInfo()
     std::chrono::weekday weekday{ dp };
     std::chrono::hh_mm_ss<std::chrono::minutes> time{ std::chrono::duration_cast<std::chrono::minutes>(now - dp) };
     std::print(stream, "{}\n", now);
+
+#if defined(__has_include) && __has_include(<print>)
     std::print(stream, "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
     std::print(stream, "The start time was {}\n\n", time);
+#endif
 
     // get hostname and cpu-info for linux
 #if defined (__linux__)|| defined(__linux)

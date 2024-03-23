@@ -5,6 +5,11 @@ import <fstream>;
 import <format>;
 import <exception>;
 import <source_location>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import archive;
 

@@ -5,17 +5,23 @@ module property_enthalpy;
 
 import <string>;
 import <iostream>;
+import <fstream>;
 import <sstream>;
 import <vector>;
 import <cmath>;
 import <optional>;
 import <array>;
-import <print>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
+import archive;
 import stringutils;
 import component;
 import units;

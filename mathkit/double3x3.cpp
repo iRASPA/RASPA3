@@ -16,12 +16,14 @@ module double3x3;
 import <cmath>;
 import <numbers>;
 import <ostream>;
+import <fstream>;
 import <vector>;
 import <complex>;
 
 import int3x3;
 import simd_quatd;
 import double3;
+import archive;
 
 // dlambda_limit, below which two lambdas are relatively equal
 double dlambda_limit = 1.0E-3;

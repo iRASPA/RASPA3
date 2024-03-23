@@ -16,7 +16,12 @@ import <algorithm>;
 import <numeric>;
 import <ostream>;
 import <filesystem>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import stringutils;
 import atom;

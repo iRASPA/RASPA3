@@ -2,11 +2,17 @@ module;
 
 module enthalpy_of_adsorption;
 
-import <print>;
+import <fstream>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import archive;
 

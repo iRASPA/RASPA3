@@ -5,16 +5,23 @@ module loadings;
 
 import <string>;
 import <optional>;
+import <fstream>;
 import <iostream>;
 import <sstream>;
 import <vector>;
 import <ostream>;
 import <format>;
-import <print>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
+
+import archive;
 import stringutils;
 import component;
 import units;
@@ -41,12 +48,12 @@ std::string Loadings::printStatus(const Component& comp, std::optional<double> f
         break;
       default:
         double loading = numberOfMolecules[comp.componentId];
-        std::print(stream, "    absolute adsorption: {: .6e} molec/uc\n", loading);
+        std::print(stream, "    absolute adsorption: {: .6e} molecules\n", loading);
         std::print(stream, "                         {: .6e} mol/kg-framework\n", loading * toMolePerKg);
         std::print(stream, "                         {: .6e} mg/g-framework\n", loading * toMgPerG);
 
         double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
-        std::print(stream, "    excess adsorption:   {: .6e} molec/uc\n", excess_loading);
+        std::print(stream, "    excess adsorption:   {: .6e} molecules\n", excess_loading);
         std::print(stream, "                         {: .6e} mol/kg-framework\n", excess_loading * toMolePerKg);
         std::print(stream, "                         {: .6e} mg/g-framework\n", excess_loading * toMgPerG);
         break;
@@ -57,7 +64,7 @@ std::string Loadings::printStatus(const Component& comp, std::optional<double> f
     const double densityConversionFactor = 
       1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
-    std::print(stream, "    molecules:        {: .6e} molec/uc\n", numberOfMolecules[comp.componentId]);
+    std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[comp.componentId]);
     std::print(stream, "    number density:   {: .6e} molec/A^3\n", numberDensities[comp.componentId]);
     std::print(stream, "    density:          {: .6e} kg/m^3\n", 
                        densityConversionFactor * comp.mass * numberDensities[comp.componentId]);
@@ -90,21 +97,21 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
         double loading = numberOfMolecules[comp.componentId];
         double loading_avg = average.numberOfMolecules[comp.componentId];
         double loading_error = error.numberOfMolecules[comp.componentId];
-        std::print(stream, "    absolute adsorption: {:.6e} molec/uc ({:.6e} +/- {:.6e})]\n",
+        std::print(stream, "    absolute adsorption: {:.6e} molecules ({:.6e} +/- {:.6e})]\n",
             loading, loading_avg, loading_error);
-        std::print(stream, "                         {:.6e} mol/kg   ({:.6e} +/- {:.6e})]\n",
+        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})]\n",
             loading * toMolePerKg, loading_avg * toMolePerKg, loading_error * toMolePerKg);
-        std::print(stream, "                         {:.6e} mg/g     ({:.6e} +/- {:.6e})]\n",
+        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})]\n",
             loading * toMgPerKg, loading_avg * toMgPerKg, loading_error * toMgPerKg);
 
         double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
         double excess_loading_avg = average.numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
         double excess_loading_error = error.numberOfMolecules[comp.componentId];
-        std::print(stream, "    excess adsorption:   {:.6e} molec/uc ({:.6e} +/- {:.6e})]\n", 
+        std::print(stream, "    excess adsorption:   {:.6e} molecules ({:.6e} +/- {:.6e})]\n", 
                 excess_loading, excess_loading_avg, excess_loading_error);
-        std::print(stream, "                         {:.6e} mol/kg   ({:.6e} +/- {:.6e})]\n",
+        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})]\n",
                 excess_loading * toMolePerKg, excess_loading_avg * toMolePerKg, excess_loading_error * toMolePerKg);
-        std::print(stream, "                         {:.6e} mg/g     ({:.6e} +/- {:.6e})]\n",
+        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})]\n",
                 excess_loading * toMgPerKg, excess_loading_avg * toMgPerKg, excess_loading_error * toMgPerKg);
       break;
     }
@@ -115,7 +122,7 @@ std::string Loadings::printStatus(const Component& comp, const Loadings& average
       1.0 / (1000.0 * Units::Angstrom  * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
-    std::print(stream, "    molecules:      {:.6e} molec/uc   ({:.6e} +/- {:.6e})\n",
+    std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
         numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId], 
         error.numberOfMolecules[comp.componentId]);
     std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",

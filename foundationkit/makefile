@@ -26,7 +26,7 @@ libfoundationkit.a: $(OBJ)
 	ranlib -c libfoundationkit.a
 
 libfoundationkit.so: $(OBJ)
-	$(CXX) $(CXXFLAGS) -shared -undefined dynamic_lookup `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ)  -o $@
+	$(CXX) $(CXXFLAGS) -shared $(LINK_FLAGS) `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ)  -o $@
 
 clean:
 	rm -f *.pcm *.o *.a

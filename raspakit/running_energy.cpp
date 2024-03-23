@@ -7,12 +7,18 @@ import units;
 import <string>;
 import <iostream>;
 import <sstream>;
+import <fstream>;
 import <vector>;
-import <print>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import archive;
 import stringutils;

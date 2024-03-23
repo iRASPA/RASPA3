@@ -3,6 +3,7 @@ module;
 module double3;
 
 import <iostream>;
+import <fstream>;
 import <cmath>;
 import <complex>;
 

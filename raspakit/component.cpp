@@ -23,17 +23,24 @@ import <exception>;
 import <iterator>;
 import <chrono>;
 import <cstddef>;
-import <print>;
+import <type_traits>;
 #if defined(_WIN32)
 import <cassert>;
 #endif
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import int3;
 import double3;
 import double3x3;
+import randomnumbers;
+import archive;
 import skposcarparser;
 import characterset;
 import stringutils;

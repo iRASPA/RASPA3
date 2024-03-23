@@ -2,6 +2,19 @@ module;
 
 module interactions_framework_molecule;
 
+import <numbers>;
+import <optional>;
+import <iostream>;
+import <algorithm>;
+import <vector>;
+import <span>;
+import <cmath>;
+import <thread>;
+import <future>;
+import <deque>;
+import <semaphore>;
+import <atomic>;
+
 import energy_status;
 import potential_energy_vdw;
 import potential_energy_coulomb;
@@ -20,19 +33,8 @@ import threadpool;
 import threading;
 import energy_factor;
 import force_factor;
+import component;
 
-import <numbers>;
-import <optional>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <thread>;
-import <future>;
-import <deque>;
-import <semaphore>;
-import <atomic>;
 
 // Used to compute the total framework-molecule energy
 //

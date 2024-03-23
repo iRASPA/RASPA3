@@ -12,7 +12,13 @@ import <istream>;
 import <ostream>;
 import <fstream>;
 import <sstream>;
-import <print>;
+import <type_traits>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 #if defined(_WIN32)
   import <cassert>;

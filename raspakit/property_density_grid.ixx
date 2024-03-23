@@ -6,8 +6,12 @@ import <optional>;
 import <cmath>;
 import <string>;
 import <span>;
-import <mdspan>;
 import <algorithm>;
+#if defined(__has_include) && __has_include(<mdspan>)
+  import <mdspan>;
+#else
+  import mdspan;
+#endif
 
 import int3;
 import double3;
@@ -36,9 +40,17 @@ export struct PropertyDensityGrid
   }
 
   std::vector<double> grid_cell;
-  std::mdspan<double, std::dextents<size_t, 4>> data_cell;
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 4>> data_cell;
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell;
+  #endif
   std::vector<double> grid_unitcell;
-  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell;
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell;
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell;
+  #endif
   size_t totalGridSize;
   int3 numberOfGridPoints;
   double3 gridSize;

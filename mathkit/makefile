@@ -34,6 +34,7 @@ float3x4.pcm: float3.pcm float4.pcm
 float4x4.pcm: float3.pcm float4.pcm double3x3.pcm double4x4.pcm simd_quatd.pcm float3x3.pcm
 ringmatrix.pcm: int3x3.pcm
 matrix.pcm: ringmatrix.pcm
+symmetric_matrix_layout.pcm: mdspan.pcm
 
 
 libmathkit.a: $(OBJ)
@@ -41,7 +42,7 @@ libmathkit.a: $(OBJ)
 	ranlib -c libmathkit.a
 
 libmathkit.so: $(OBJ)
-	$(CXX) $(CXXFLAGS) -shared -undefined dynamic_lookup `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ) -o $@
+	$(CXX) $(CXXFLAGS) -shared $(LINK_FLAGS) `python3 -m pybind11 --includes` `python3-config --ldflags` $(OBJPCM) $(OBJ) -o $@
 
 clean:
 	rm -f *.pcm *.o *.a *.so

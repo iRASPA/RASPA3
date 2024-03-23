@@ -5,11 +5,17 @@ module property_energy;
 import <iostream>;
 import <random>;
 import <sstream>;
-import <print>;
+import <fstream>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import archive;
 import stringutils;

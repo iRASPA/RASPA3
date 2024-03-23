@@ -8,6 +8,8 @@ import <vector>;
 import <algorithm>;
 import <numeric>;
 import <iterator>;
+import <span>;
+import <tuple>;
 
 import cbmc_util;
 import atom;

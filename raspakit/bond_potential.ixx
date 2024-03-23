@@ -4,8 +4,14 @@ import <string>;
 import <map>;
 import <vector>;
 import <array>;
-import <print>;
 import <fstream>;
+import <type_traits>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import stringutils;
 import archive;

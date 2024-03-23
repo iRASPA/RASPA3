@@ -3,7 +3,12 @@ export module units;
 import <numbers>;
 import <string>;
 import <sstream>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 export namespace Units
 {

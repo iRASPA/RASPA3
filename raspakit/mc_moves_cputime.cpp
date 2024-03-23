@@ -3,12 +3,16 @@ module mc_moves_cputime;
 import <chrono>;
 import <string>;
 import <sstream>;
-import <print>;
 import <format>;
 import <exception>;
 import <source_location>;
 import <fstream>;
 import <complex>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import double3;
 import stringutils;

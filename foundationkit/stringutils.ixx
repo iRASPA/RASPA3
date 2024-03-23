@@ -4,24 +4,26 @@ import <string>;
 import <locale>;
 import <algorithm>;
 import <cctype>;
-import <print>;
 import <format>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#endif
 
-#if defined (__APPLE__) || defined (__linux__) || defined(__linux)
+
+#if defined(__has_include) && __has_include(<print>)
   export namespace std
   {
     template<typename... Args> constexpr void print(std::ostream & os, const std::string_view str_fmt, Args&&... args)
     {
       os << std::vformat(str_fmt, std::make_format_args(args...));
     }
-  
+
     template<typename... Args> constexpr void print(std::ofstream & ofs, const std::string_view str_fmt, Args&&... args)
     {
       ofs << std::vformat(str_fmt, std::make_format_args(args...));
     }
   }
 #endif
-
 
 export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {

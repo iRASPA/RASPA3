@@ -15,7 +15,7 @@ import simd_quatd;
 
 export struct RandomNumber
 {
-  RandomNumber(std::optional<unsigned long long> s)
+  RandomNumber(std::optional<size_t> s)
   {
     std::random_device rd;
     seed = s.has_value() ? s.value() : rd();
@@ -32,8 +32,8 @@ export struct RandomNumber
   }
 
   std::mt19937_64 mt;
-  unsigned long long seed{ 1400 };
-  unsigned long long count{ 0 };
+  size_t seed{ 1400 };
+  size_t count{ 0 };
   std::uniform_real_distribution<double> uniformDistribution;
   std::normal_distribution<double> normalDistribution;
 

@@ -2,7 +2,12 @@ export module symmetric_matrix_layout;
 
 import <vector>;
 import <optional>;
-import <mdspan>;
+#if defined(__has_include) && __has_include(<mdspan>)
+  import <mdspan>;
+#else
+  import mdspan;
+#endif
+
 
 export struct layout_symmetric_matrix
 {

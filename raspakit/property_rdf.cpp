@@ -9,7 +9,10 @@ import <sstream>;
 import <tuple>;
 import <vector>;
 import <algorithm>;
+import <cmath>;
+import <span>;
 
+import archive;
 import double3;
 import atom;
 import simulationbox;

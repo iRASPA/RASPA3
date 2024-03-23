@@ -4,7 +4,6 @@ module breakthrough;
 
 import <vector>;
 import <span>;
-import <mdspan>;
 import <cmath>;
 import <string>;
 import <iostream>;
@@ -15,7 +14,18 @@ import <algorithm>;
 import <numeric>;
 import <sstream>;
 import <chrono>;
-import <print>;
+import <type_traits>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  import <mdspan>;
+#else
+  import mdspan;
+#endif
+
 
 import stringutils;
 import input_reader;
@@ -461,12 +471,21 @@ void Breakthrough::computeEquilibriumLoadings()
 
 
 // calculate the derivatives Dq/dt and Dp/dt along the column
+#if defined(__has_include) && __has_include(<mdspan>)
 void Breakthrough::computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
                                            std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &q,
                                            const std::vector<double> &v,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &p)
+#else
+void Breakthrough::computeFirstDerivatives(std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dqdt,
+                                           std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dpdt,
+                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q_eq,
+                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q,
+                                           const std::vector<double> &v,
+                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &p)
+#endif
 {
   double idx = 1.0 / dx;
   double idx2 = 1.0 / (dx * dx);

@@ -19,8 +19,13 @@ import <cstring>;
 import <climits>;
 import <unordered_set>;
 import <chrono>;
-import <print>;
 import <optional>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import randomnumbers;
 import stringutils;

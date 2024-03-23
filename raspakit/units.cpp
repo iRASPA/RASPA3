@@ -5,7 +5,12 @@ module units;
 import <string>;
 import <sstream>;
 import <ostream>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import stringutils;
 

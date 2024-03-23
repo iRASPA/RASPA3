@@ -4,6 +4,7 @@ import <array>;
 import <tuple>;
 import <utility>;
 import <memory>;
+import <cstdint>;
 
 import double4x4;
 import double3;

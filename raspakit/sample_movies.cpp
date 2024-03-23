@@ -9,7 +9,12 @@ import <fstream>;
 import <streambuf>;
 import <filesystem>;
 import <numbers>;
-import <print>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import double3;
 import stringutils;

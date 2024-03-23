@@ -16,10 +16,15 @@ import <sstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
-import <print>;
 import <complex>;
 import <exception>;
 import <source_location>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
+
 
 import stringutils;
 import hardware_info;
@@ -657,6 +662,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   if(magicNumber != static_cast<uint64_t>(0x6f6b6179))
   {
   }
-  std::print("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<uint64_t>(0x6f6b6179));
   return archive;
 }
