@@ -9,6 +9,9 @@ import <sstream>;
 import <cmath>;
 import <cctype>;
 import <numbers>;
+import <iostream>;
+import <exception>;
+import <format>;
 
 import double3;
 import skspacegroup;
@@ -245,6 +248,13 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           if (ss >> value2)
           {
             std::optional<size_t> index1 = forceField.findPseudoAtom(value2);
+
+            // TODO: add pseudoAtom if not found
+            if(!index1.has_value())
+            {
+              throw(std::format("[cif reader]: atom type {} not recognized\n", value2));
+            }
+
             if (index1.has_value())
             {
               atom.type = static_cast<uint16_t>(index1.value());

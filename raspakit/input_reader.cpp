@@ -316,7 +316,7 @@ std::tuple<size_t, size_t, size_t> InputReader::readNumberOfSystemsComponentsAnd
 }
 
 
-void InputReader::readForceFields(std::vector<ForceField> &forcefields)
+void InputReader::readForceFields()
 {
   size_t numberOfSystems{};
   const std::string simulationSettingsFileName{"simulation.input"};
@@ -367,15 +367,15 @@ void InputReader::readForceFields(std::vector<ForceField> &forcefields)
           if(numberOfSystems < 1)
           {
             ForceField forcefield(0);
-            for(size_t i = 0; i != forcefields.size(); ++i)
+            for(size_t i = 0; i != forceFields.size(); ++i)
             {
-              forcefields[i] = forcefield;
+              forceFields[i] = forcefield;
             }
           }
           else 
           {
             ForceField forcefield(numberOfSystems - 1);
-            forcefields[numberOfSystems - 1] = forcefield;
+            forceFields[numberOfSystems - 1] = forcefield;
           }
         }
       }
@@ -384,12 +384,61 @@ void InputReader::readForceFields(std::vector<ForceField> &forcefields)
   }
 }
 
+void InputReader::readComponentNames()
+{
+  size_t numberOfComponents{};
+  size_t lineNumber{};
+  const std::string simulationSettingsFileName{"simulation.input"};
+
+  std::filesystem::path pathfile = std::filesystem::path(simulationSettingsFileName);
+  if (!std::filesystem::exists(pathfile))
+  {
+    throw std::runtime_error(std::format("Required file '{}' not found\n", simulationSettingsFileName));
+  }
+
+  std::ifstream fileInput{ pathfile };
+  if (!fileInput)
+  {
+    throw std::runtime_error(std::format("File '{}' exists, but error opening file\n", simulationSettingsFileName));
+  }
+
+  std::string line{};
+  std::string keyword{};
+  std::string arguments{};
+
+  while (std::getline(fileInput, line))
+  {
+    lineNumber += 1uz;
+    if (!line.empty())
+    {
+      std::istringstream iss(line);
+
+      iss >> keyword;
+      keyword = trim(keyword);
+      std::getline(iss, arguments);
+
+      if (caseInSensStringCompare(keyword, std::string("Component")))
+      {
+        numberOfComponents++;
+      }
+      if (caseInSensStringCompare(keyword, std::string("MoleculeName")))
+      {
+        std::string name = parseString(arguments, keyword, lineNumber);
+        componentNames[numberOfComponents - 1] = name;
+      }
+
+
+    }
+  }
+}
 
 InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_unused]]size_t numberOfComponents, [[maybe_unused]]size_t numberOfBlocks):
   forceFields(totalNumberOfSystems, ForceField(0)),
+  componentNames(numberOfComponents),
   inputDataSystem(totalNumberOfSystems)
 {
-  readForceFields(forceFields);
+  readForceFields();
+  readComponentNames();
 
   const std::string simulationSettingsFileName{"simulation.input"};
 
@@ -941,36 +990,36 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
       {
         requireExistingSystem(keyword, lineNumber);
         
-        std::istringstream ss(arguments);
-        std::string c, moleculeNameKeyword,remainder;
-        ss >> c >> moleculeNameKeyword;
-        std::getline(ss, remainder);
-
-        std::vector<std::string> values = parseListOfSystemValues<std::string>(remainder, keyword, lineNumber);
-        values.resize(systems.size(), values.back());
-        for (size_t i = 0uz; i < systems.size(); ++i)
+        switch(simulationType)
         {
-          switch(simulationType)
-          {
-            case SimulationType::MonteCarlo:
-            case SimulationType::MonteCarloTransitionMatrix:
-            case SimulationType::MolecularDynamics:
-            case SimulationType::Minimization:
-            case SimulationType::Test:
+          case SimulationType::MonteCarlo:
+          case SimulationType::MonteCarloTransitionMatrix:
+          case SimulationType::MolecularDynamics:
+          case SimulationType::Minimization:
+          case SimulationType::Test:
+            for(size_t i = 0; i != systems.size(); ++i)
+            {
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(), systems[i].forceField,
-                    values[i], values[i], numberOfBlocks, numberOfLambdaBins));
-              break;
-            case SimulationType::Breakthrough:
-            case SimulationType::MixturePrediction:
-            case SimulationType::Fitting:
+                    componentNames[systems[i].components.size()], componentNames[systems[i].components.size()], numberOfBlocks, numberOfLambdaBins));
+            }
+            break;
+          case SimulationType::Breakthrough:
+          case SimulationType::MixturePrediction:
+          case SimulationType::Fitting:
+            for(size_t i = 0; i != systems.size(); ++i)
+            {
               systems[i].addComponent(Component(Component::Type::Adsorbate, systems[i].components.size(), systems[i].forceField,
-                    values[i], std::nullopt, numberOfBlocks, numberOfLambdaBins));
-              break;
-          }
+                    componentNames[systems[i].components.size()], std::nullopt, numberOfBlocks, numberOfLambdaBins));
+            }
+            break;
         }
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "MoleculeDefinition"))
+      {
+        continue;
+      }
       
       if (caseInSensStringCompare(keyword, "CreateNumberOfMolecules"))
       {
@@ -1576,6 +1625,11 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
       }
 
       if (caseInSensStringCompare(keyword, std::string("NumberOfBlocks")))
+      {
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, std::string("MoleculeName")))
       {
         continue;
       }

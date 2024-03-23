@@ -68,8 +68,10 @@ export struct InputReader
 
   static std::tuple<size_t, size_t, size_t> readNumberOfSystemsComponentsAndBlocks();
 
-  void readForceFields(std::vector<ForceField> &forcefields);
   std::vector<ForceField> forceFields;
+  std::vector<std::string> componentNames;
+  void readForceFields();
+  void readComponentNames();
 
   std::vector<InputDataSystem> inputDataSystem;
 

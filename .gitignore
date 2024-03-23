@@ -12,6 +12,9 @@ Package.StoreAssociation.xml
 *.appxbundle
 *.appxupload
 
+# raspa test-executables
+test_*
+
 # C++ objects and libs
 *.slo
 *.lo

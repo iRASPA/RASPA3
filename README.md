@@ -26,9 +26,39 @@ Visual studio 2022 project file included.
 
 Ubuntu
 ======
+sudo apt install build-essential git cmake
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
 wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-sudo apt install build-essential git clang-17 libc++-dev libc++abi-dev gfortran liblapack-dev libfmt-dev libomp-dev
+sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 liblapack-dev
+
+Redhat/Centos 8
+===============
+yum groupinstall 'Development Tools'
+yum module install llvm-toolset
+yum install llvm-devel clang-devel
+yum install lldb python3-lit
+yum install cmake
+yum install lapack
+Showstopper: no libc++ for Redhat-8
+
+Redhat 9
+===============
+sudo dnf group install "Development Tools"
+sudo dnf install llvm-toolset
+sudo dnf install llvm-devel clang-devel
+sudo dnf install lldb python3-lit
+sudo dnf install cmake
+sudo dnf --enablerepo=devel install python3-pybind11
+sudo dnf --enablerepo=devel install pybind11-devel
+sudo dnf --enablerepo=devel install lapack-devel
+Note: no libc++-devel for Redhat-9
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-16.0.6-1.fc38.x86_64.rpm
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-devel-16.0.6-1.fc38.x86_64.rpm
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-static-16.0.6-1.fc38.x86_64.rpm
+sudo dnf install libcxx*.rpm
 
 Compilation
 ===========

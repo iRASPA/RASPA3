@@ -1,3 +1,0 @@
-#! /bin/sh -f
-export RASPA_DIR=`pwd`
-../../raspa3.exe $1

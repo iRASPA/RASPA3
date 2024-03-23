@@ -167,11 +167,11 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
   m.interEnergy = a.interEnergy + b.interEnergy;
   for (size_t i = 0; i < a.intraEnergies.size(); ++i)
   {
-      m.intraEnergies[i] = a.intraEnergies[i] + b.intraEnergies[i];
+    m.intraEnergies[i] = a.intraEnergies[i] + b.intraEnergies[i];
   }
   for (size_t i = 0; i < a.interEnergies.size(); ++i)
   {
-      m.interEnergies[i] = a.interEnergies[i] + b.interEnergies[i];
+    m.interEnergies[i] = a.interEnergies[i] + b.interEnergies[i];
   }
 
   return m;

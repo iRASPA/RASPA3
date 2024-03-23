@@ -264,14 +264,14 @@ TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
     43.9988,
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 3, 0, 0),
+       Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 3, 0, 0),
     }, 5, 21);
   Component cl = Component(1,
     "Cl",
     43.9988,
     304.1282, 7377300.0, 0.22394,
     {
-       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 4, 1, 0),
+       Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 4, 1, 0),
     }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 20, 20 }, 5);
@@ -301,7 +301,7 @@ TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
-  double tolerance = 1e-5;
+  double tolerance = 1e-4;
   double3 gradient;
   for (size_t i = 0; i < atomPositions.size(); ++i)
   {

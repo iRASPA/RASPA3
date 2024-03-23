@@ -1065,34 +1065,33 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
   }
 
   // Subtract exclusion-energy
-  /*
+  size_t index{};
   for(size_t l = 0; l != components.size(); ++l)
   {
-    if (!(components[l].type == Component::Type::Framework && components[l].rigid))
+    size_t size = components[l].atoms.size();
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+      std::span<const Atom> span = std::span(&atomPositions[index], size);
+      for(size_t i = 0; i != span.size() - 1; i++)
       {
-          std::span<Atom> span = spanOfMolecule(l, m);
-          for(size_t i = 0; i != span.size() - 1; i++)
-          {
-            double factorA = span[i].scalingCoulomb * span[i].charge;
-            double3 posA = span[i].position;
-            for(size_t j = i + 1; j != span.size(); j++)
-            {
-              double factorB = span[j].scalingCoulomb * span[j].charge;
-              double3 posB = span[j].position;
+        double factorA = span[i].scalingCoulomb * span[i].charge;
+        double3 posA = span[i].position;
+        for(size_t j = i + 1; j != span.size(); j++)
+        {
+          double factorB = span[j].scalingCoulomb * span[j].charge;
+          double3 posB = span[j].position;
 
-              double3 dr = posA - posB;
-              dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-              double r = std::sqrt(double3::dot(dr, dr));
+          double3 dr = posA - posB;
+          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          double r = std::sqrt(double3::dot(dr, dr));
 
-              energy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
-                                                           factorA * factorB * std::erf(alpha * r) / r, 0.0);
-            }
-          }
+          energy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
+                                                       factorA * factorB * std::erf(alpha * r) / r, 0.0);
+        }
       }
+      index += size;
     }
-  }*/
+  }
 
 
   // Handle net-charges

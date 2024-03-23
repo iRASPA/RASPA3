@@ -45,9 +45,9 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
     data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
   }
 
-  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = i + 1; j < selfInteractions.size(); ++j)
+    for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
     {
       double mix0 = std::sqrt(selfInteractions[i].parameters.x * selfInteractions[j].parameters.x);
       double mix1 = 0.5 * (selfInteractions[i].parameters.y + selfInteractions[j].parameters.y);
@@ -57,9 +57,9 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
     }
   }
 
-  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = 0; j < selfInteractions.size(); ++j)
+    for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
       if(shiftPotentials[i * numberOfPseudoAtoms + j])
       {
@@ -133,15 +133,15 @@ ForceField::ForceField(size_t systemId) noexcept(false)
   {
     if(!std::filesystem::exists(std::filesystem::path{pseudoAtomsFileName}))
     {
-      pseudoAtomsFileName = env_p + defaultPseudoAtomsFileName;
+      pseudoAtomsFileName = env_p + std::string("/") + defaultPseudoAtomsFileName;
     }
     if(!std::filesystem::exists(std::filesystem::path{forceFieldMixingRulesFileName}))
     {
-      forceFieldMixingRulesFileName = env_p + defaultForceFieldMixingRulesFileName;
+      forceFieldMixingRulesFileName = env_p + std::string("/") + defaultForceFieldMixingRulesFileName;
     }
     if(!std::filesystem::exists(std::filesystem::path{forceFieldOverwriteFileName}))
     {
-      forceFieldOverwriteFileName = env_p + defaultForceFieldOverwriteFileName;
+      forceFieldOverwriteFileName = env_p + std::string("/") + defaultForceFieldOverwriteFileName;
     }
   }
 
@@ -156,13 +156,13 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
   std::filesystem::path pseudoAtomsPathfile = std::filesystem::path(pseudoAtomsFileName);
   if (!std::filesystem::exists(pseudoAtomsPathfile)) 
   {
-    throw std::runtime_error(std::format("File '{}' not found", pseudoAtomsFileName));
+    throw std::runtime_error(std::format("[Pseudo-atoms reader]: File '{}' not found", pseudoAtomsFileName));
   }
 
   std::ifstream pseudoAtomsFile{ pseudoAtomsPathfile };
   if (!pseudoAtomsFile) 
   {
-    throw std::runtime_error(std::format("File '{}' exists, but error opening file", pseudoAtomsFileName));
+    throw std::runtime_error(std::format("[Pseudo-atoms reader]: File '{}' exists, but error opening file", pseudoAtomsFileName));
   }
 
   std::string str{};
@@ -184,28 +184,51 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
 
   for (size_t i = 0; i < numberOfPseudoAtoms; i++)
   {
-    std::string name, print, as, chem, oxidation, mass, charge;
+    std::string nameString, printString, asString, chemString, oxidationString, massString, chargeString;
 
     std::getline(pseudoAtomsFile, str);
     std::istringstream atomStream(str);
 
-    atomStream >> name;       // read name
-    atomStream >> print;      // read print
-    atomStream >> as;         // read as
-    atomStream >> chem;       // read name
-    atomStream >> oxidation;  // read name
-    atomStream >> mass;       // read name
-    atomStream >> charge;     // read charge
+    atomStream >> nameString;       // read name
+    atomStream >> printString;      // read print
+    atomStream >> asString;         // read as
+    atomStream >> chemString;       // read name
+    atomStream >> oxidationString;  // read name
+    atomStream >> massString;       // read name
+    atomStream >> chargeString;     // read charge
 
     size_t atomicNumber{ 1 };
-    auto it = PredefinedElements::atomicNumberData.find(chem);
-    // FIX
-    if (it != PredefinedElements::atomicNumberData.end()) atomicNumber = static_cast<size_t>(it->second);
+    auto it = PredefinedElements::atomicNumberData.find(chemString);
 
-    pseudoAtoms.emplace_back(PseudoAtom(name, std::stod(mass), std::stod(charge), atomicNumber, true));
+    if (it != PredefinedElements::atomicNumberData.end()) 
+    {
+      atomicNumber = static_cast<size_t>(it->second);
+    }
+
+    double mass{};
+    try
+    {
+      mass = std::stod(massString);
+    }
+    catch (std::exception const& e)
+    {
+      throw std::runtime_error(std::format("[Pseudo-atom reader]: could not convert '{}' to double [{}]\n", massString, e.what()));
+    }
+
+    double charge{};
+    try
+    {
+      charge = std::stod(chargeString);
+    }
+    catch (std::exception const& e)
+    {
+      throw std::runtime_error(std::format("[Pseudo-atom reader]: could not convert '{}' to double [{}]\n", chargeString, e.what()));
+    }
+
+    pseudoAtoms.emplace_back(PseudoAtom(nameString, mass, charge, atomicNumber, true));
   }
 
-  data = std::vector<VDWParameters>(numberOfPseudoAtoms * numberOfPseudoAtoms);
+  data = std::vector<VDWParameters>(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters(0.0, 0.0));
   tailCorrections = std::vector<bool>(numberOfPseudoAtoms * numberOfPseudoAtoms, false);
   shiftPotentials = std::vector<bool>(numberOfPseudoAtoms * numberOfPseudoAtoms, true);
 }
@@ -215,13 +238,13 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
   std::filesystem::path forceFieldPathfile = std::filesystem::path(forceFieldMixingFileName);
   if (!std::filesystem::exists(forceFieldPathfile)) 
   {
-    throw std::runtime_error(std::format("File '{}' not found", forceFieldMixingFileName));
+    throw std::runtime_error(std::format("[Forcefield reader]: File '{}' not found", forceFieldMixingFileName));
   }
 
   std::ifstream forceFieldFile{ forceFieldPathfile };
   if (!forceFieldFile) 
   {
-    throw std::runtime_error(std::format("File '{}' exists, but error opening file", forceFieldMixingFileName));
+    throw std::runtime_error(std::format("[Forcefield reader]: File '{}' exists, but error opening file", forceFieldMixingFileName));
   }
 
   std::string str{};
@@ -279,15 +302,54 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
 
     my_stream >> name;        // read name
     my_stream >> ffType;      // read VDW-type
-    my_stream >> param[0];    // read epsilon
-    my_stream >> param[1];    // read sigma
+  
+    std::optional<size_t> index = findPseudoAtom(name);
+    if(!index.has_value())
+    {
+      throw std::runtime_error(std::format("[Forcefield reader]: unknown pseudo-atom '{}'\n", name));
+    }
 
-    data[i * numberOfPseudoAtoms + i] = VDWParameters(std::stod(param[0]) * Units::KelvinToEnergy, std::stod(param[1]));
+    if(caseInSensStringCompare(ffType,"none"))
+    {
+      double param0{};
+      double param1{};
+      data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
+    }
+    else if(caseInSensStringCompare(ffType,"lennard-jones"))
+    {
+      my_stream >> param[0];    // read epsilon
+      my_stream >> param[1];    // read sigma
+
+      double param0{};
+      try
+      {
+        param0 = std::stod(param[0]);
+      }
+      catch (std::exception const& e)
+      {
+        throw std::runtime_error(std::format("[Forcefield reader]: could not convert '{}' to double [{}]\n", param[0], str));
+      }
+      double param1{};
+      try
+      {
+        param1 = std::stod(param[1]);
+      }
+      catch (std::exception const& e)
+      {
+        throw std::runtime_error(std::format("[Forcefield reader]: could not convert '{}' to double [{}]\n", param[1], str));
+      }
+      data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
+    }
+    else
+    {
+      throw std::runtime_error(std::format("[Forcefield reader]: unrecognized potential form[{}]\n", ffType));
+    }
+
   }
 
-  for (size_t i = 0; i < numberOfSelfInteractions; ++i)
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = i + 1; j < numberOfSelfInteractions; ++j)
+    for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
     {
       double mix0 = 
         std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
@@ -376,12 +438,12 @@ std::string ForceField::printForceFieldStatus() const
 
 std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
 {
-  std::vector<PseudoAtom>::const_iterator it = std::find_if(
+  std::vector<PseudoAtom>::const_iterator match = std::find_if(
         pseudoAtoms.begin(), pseudoAtoms.end(),
         [&name](const PseudoAtom& x) { return x.name == name; });
-  if (it != std::end(pseudoAtoms))
+  if (match != std::end(pseudoAtoms))
   {
-    return (it - pseudoAtoms.begin());
+    return static_cast<size_t>(std::distance(pseudoAtoms.begin(), match));
   }
  
   return std::nullopt;

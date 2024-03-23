@@ -153,20 +153,20 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     const char* env_p = std::getenv("RASPA_DIR");
     if (env_p)
     {
-      moleculeFileName = env_p + defaultMoleculeFileName;
+      moleculeFileName = env_p + std::string("/") + defaultMoleculeFileName;
     }
   }
 
   if (!std::filesystem::exists(moleculeFileName)) 
   {
-    throw std::runtime_error(std::format("File '{}' not found\n", moleculeFileName));
+    throw std::runtime_error(std::format("[Component reader]: File '{}' not found\n", moleculeFileName));
   }
 
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
   std::ifstream moleculeFile{ moleculePathfile };
   if (!moleculeFile) 
   {
-    throw std::runtime_error(std::format("[Component] File '{}' exists, but error opening file\n", moleculeFileName));
+    throw std::runtime_error(std::format("[Component reader] File '{}' exists, but error opening file\n", moleculeFileName));
   }
 
   std::string str{};
@@ -233,19 +233,9 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     atomStream >> id >> atomTypeString >> pos.x >> pos.y >> pos.z;
 
     // find atom-type based on read 'atomTypeString'
-    auto it = std::find_if(forceField.pseudoAtoms.begin(), forceField.pseudoAtoms.end(), 
-                           [&](const PseudoAtom &atom) 
-                           {
-                             return atomTypeString == atom.name; 
-                           });
-    
-    if (it == forceField.pseudoAtoms.end())
-    {
-      throw std::runtime_error(std::format("readComponent: Atom-string '{}' not found "
-                                           "(define in 'the pseudo_atoms.def' file)\n", atomTypeString));
-    }
-    
-    size_t pseudoAtomType = static_cast<size_t>(std::distance(forceField.pseudoAtoms.begin(), it));
+    std::optional<size_t> index = forceField.findPseudoAtom(atomTypeString);
+    size_t pseudoAtomType = index.value();
+
     this->mass += forceField.pseudoAtoms[pseudoAtomType].mass;
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;

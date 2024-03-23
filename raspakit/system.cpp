@@ -1168,7 +1168,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                                                       spanOfMoleculeAtoms()));
   pressureInfo = pair_acc(pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(eik_x, eik_y, eik_z, eik_xy,
                                                                     fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                                                                    components, numberOfMoleculesPerComponent, atomPositions));
+                                                                    components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms()));
 
   pressureInfo.first.sumTotal();
 

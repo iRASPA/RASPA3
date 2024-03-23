@@ -1,0 +1,6 @@
+#CoreShells bond  BondDipoles UreyBradley bend  inv  tors improper-torsion bond/bond bond/bend bend/bend stretch/torsion bend/torsion
+          0    1            0           1    0    0     0                0         0         0         0               0            0
+#bond stretch atom n1-n2, equilibrium distance, bondforce-constant
+Si O  HARMONIC_BOND 251778.0783723000 1.605
+#Urey-Bradly atom n1-n2, equilibrium distance, bondforce-constant
+O  Si O   HARMONIC_UREYBRADLEY 51866.2841446938 2.61786
