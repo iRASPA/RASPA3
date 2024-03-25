@@ -302,7 +302,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
         CBMC::retraceMoleculeSwapDeletion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                           system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                           cutOffVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule, 
-                                          fractionalMolecule, oldLambda, 0.0, system.numberOfTrialDirections);
+                                          fractionalMolecule, oldLambda, system.numberOfTrialDirections);
       time_end = std::chrono::system_clock::now();
       system.components[selectedComponent].mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCNonEwald += (time_end - time_begin);
       system.mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCNonEwald += (time_end - time_begin);

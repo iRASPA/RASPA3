@@ -44,14 +44,13 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalFie
                                  std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                  double beta, double cutOff, double cutOffCoulomb, 
                                  [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, 
-                                 std::span<Atom> molecule, double scaling, double storedR, size_t 
-                                 numberOfTrialDirections) noexcept
+                                 std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
 
   const FirstBeadData firstBeadData = 
     CBMC::retraceRigidMultipleFirstBeadSwapDeletion(random, hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, 
-                      beta, cutOff, cutOffCoulomb, molecule[startingBead], scaling, storedR, numberOfTrialDirections);
+                      beta, cutOff, cutOffCoulomb, molecule[startingBead], scaling, numberOfTrialDirections);
 
   if(molecule.size() == 1)
   {

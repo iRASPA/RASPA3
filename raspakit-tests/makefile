@@ -63,5 +63,5 @@ dudlambda.o: $(GTEST_HEADERS)
 spacegroup.o: $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c spacegroup.cpp
 
-test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o main.o gtest_main.a
+test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o cbmc_interactions.o insertion_deletion.o main.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -L../mathkit -L../foundationkit -L../symmetrykit -L../raspakit  -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lpthread $^ -o $@

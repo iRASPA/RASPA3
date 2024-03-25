@@ -302,7 +302,7 @@ void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
   }
 }
 
-void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom>& molecule)
+void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> molecule)
 {
   // Update the number of pseudo atoms per type (used for tail-corrections)
   for(const Atom& atom: molecule)
@@ -409,7 +409,7 @@ size_t System::randomIntegerMoleculeOfComponent(RandomNumber &random, size_t sel
 }
 
 
-std::vector<Atom>::const_iterator System::iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule)
+std::vector<Atom>::iterator System::iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
   size_t index{ 0 };
   for (size_t i = 0; i < selectedComponent; ++i)
@@ -419,7 +419,7 @@ std::vector<Atom>::const_iterator System::iteratorForMolecule(size_t selectedCom
   }
   size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule + numberOfFrameworkAtoms;
-  return atomPositions.cbegin() + static_cast<std::vector<Atom>::difference_type>(index);
+  return atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
 std::span<const Atom> System::spanOfFrameworkAtoms() const

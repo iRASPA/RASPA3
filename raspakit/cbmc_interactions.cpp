@@ -41,30 +41,36 @@ CBMC::computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceFi
                                             [[maybe_unused]] double cutOffVDW, [[maybe_unused]] double cutOffCoulomb,  
                                             [[maybe_unused]] std::vector<Atom>& trialPositions) noexcept
 {
-    std::vector<std::pair<Atom, RunningEnergy>> energies{};
-    for (auto it = trialPositions.begin(); it != trialPositions.end(); ++it)
-    {
-        // skip trial-positions that have an overlap in inter-molecular energy
-        std::optional<RunningEnergy> externalFieldEnergy = 
-          CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
-                                           cutOffVDW, cutOffCoulomb, { it,1 });
-        if(!externalFieldEnergy.has_value()) continue;
+  std::vector<std::pair<Atom, RunningEnergy>> energies{};
 
-        // skip trial-positions that have an overlap in inter-molecular energy
-        std::optional<RunningEnergy> interEnergy = 
-          CBMC::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtoms, 
-                                            cutOffVDW, cutOffCoulomb, { it,1 });
-        if(!interEnergy.has_value()) continue;
+  // loop over the trial-positions and compute the external energy of each trial position '{it, 1}'
+  for (auto it = trialPositions.begin(); it != trialPositions.end(); ++it)
+  {
+      std::optional<RunningEnergy> externalFieldEnergy = 
+        CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
+                                         cutOffVDW, cutOffCoulomb, {it, 1});
 
-        // skip trial-positions that have an overlap in framework-molecule energy
-        std::optional<RunningEnergy> frameworkEnergy = 
-          CBMC::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtoms, 
-                                               cutOffVDW, cutOffCoulomb, { it,1 });
-        if(!frameworkEnergy.has_value()) continue;
+      // skip trial-positions that have an overlap in inter-molecular energy
+      if(!externalFieldEnergy.has_value()) continue;
 
-        energies.push_back(std::make_pair(*it, 
-              externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value()));
-    }
+      std::optional<RunningEnergy> interEnergy = 
+        CBMC::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtoms, 
+                                          cutOffVDW, cutOffCoulomb, {it, 1});
+
+      // skip trial-positions that have an overlap in inter-molecular energy
+      if(!interEnergy.has_value()) continue;
+
+      std::optional<RunningEnergy> frameworkEnergy = 
+        CBMC::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtoms, 
+                                             cutOffVDW, cutOffCoulomb, {it,1});
+
+      // skip trial-positions that have an overlap in framework-molecule energy
+      if(!frameworkEnergy.has_value()) continue;
+
+      // store position and energy
+      energies.push_back(std::make_pair(*it, 
+            externalFieldEnergy.value() + interEnergy.value() + frameworkEnergy.value()));
+  }
     return energies;
 }
 

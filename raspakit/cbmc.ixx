@@ -35,7 +35,7 @@ export namespace CBMC
                               const ForceField &forceField, const SimulationBox &simulationBox, 
                               std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                               double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
-                              std::span<Atom> molecule, double scaling, double storedR, 
+                              std::span<Atom> molecule, double scaling,
                               size_t numberOfTrialDirections) noexcept; 
   
   // reinsertion grow

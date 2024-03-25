@@ -30,6 +30,8 @@ CBMC::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasE
                                                  size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
+
+  // create trial positions randomly in the simulation box
   std::for_each(trialPositions.begin(), trialPositions.end(),
       [&](Atom& a) {a.position = simulationBox.randomPosition(random); });
 
@@ -37,6 +39,7 @@ CBMC::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasE
     computeExternalNonOverlappingEnergies(hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, 
                                           cutOff, cutOffCoulomb, trialPositions);
 
+  // if all positions over lap return failure
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltmannFactors{};
@@ -50,7 +53,7 @@ CBMC::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasE
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-  if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+  //if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
   return FirstBeadData(externalEnergies[selected].first, externalEnergies[selected].second, 
                        RosenbluthWeight / double(numberOfTrialDirections), 0.0);
@@ -61,12 +64,14 @@ CBMC::retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, bool hasEx
                                                 const SimulationBox &simulationBox, 
                                                 std::span<const Atom> frameworkAtoms, 
                                                 std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
-                                                double cutOffCoulomb, const Atom& atom, double scaling, 
-                                                [[maybe_unused]] double storedR, size_t numberOfTrialDirections) 
+                                                double cutOffCoulomb, const Atom atom, double scaling, 
+                                                size_t numberOfTrialDirections) 
                                                 noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   for(Atom &trialPosition: trialPositions) {trialPosition.setScaling(scaling);}
+
+  // set the trial positions of the first bead randomly in the simulation box for the 1..N_trial atomns, but leave the first as the old
   std::for_each(trialPositions.begin() + 1, trialPositions.end(),
           [&](Atom& a) {a.position = simulationBox.randomPosition(random);});
 
@@ -125,19 +130,18 @@ CBMC::retraceRigidMultipleFirstBeadReinsertion([[maybe_unused]] RandomNumber &ra
                                                const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                                std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                                double cutOffCoulomb, const Atom& atom, double storedR, 
-                                               size_t numberOfTrialDirections) noexcept
+                                               size_t numberOfTrialDirections)
 {
   std::vector<Atom> trialPositions({ atom });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = 
     computeExternalNonOverlappingEnergies(hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, 
                                           cutOff, cutOffCoulomb, trialPositions);
-
-  //if (externalEnergies.empty())
-  //{
-  //  throw std::runtime_error("Error in retraceMultipleFirstBeadReinsertione: all overlap, \
-  //                            including existing configuration");
-  //}
+  if (externalEnergies.empty())
+  {
+    throw std::runtime_error("[retraceMultipleFirstBeadReinsertion]: all overlap, \
+                              including existing configuration\n");
+  }
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),

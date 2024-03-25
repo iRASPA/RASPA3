@@ -22,7 +22,7 @@ export namespace CBMC
   retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, bool hasExternalField, const ForceField &forcefield, 
                                             const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                             std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
-                                            double cutOffCoulomb, const Atom& atom, double scaling, double storedR, 
+                                            double cutOffCoulomb, const Atom atom, double scaling,
                                             size_t numberOfTrialDirections) noexcept;
 
   [[nodiscard]] std::optional<FirstBeadData> 
@@ -37,5 +37,5 @@ export namespace CBMC
                                            const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                                            std::span<const Atom> moleculeAtoms, double beta, double cutOff, 
                                            double cutOffCoulomb, const Atom& atom, double storedR, 
-                                           size_t numberOfTrialDirections) noexcept;
+                                           size_t numberOfTrialDirections);
 }

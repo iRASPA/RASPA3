@@ -75,11 +75,11 @@ CBMC::retraceMoleculeSwapDeletion(RandomNumber &random, bool hasExternalField, c
                                   const ForceField &forceField, const SimulationBox &simulationBox, 
                                   std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                   double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent,
-                                  size_t selectedMolecule, std::span<Atom> molecule, double scaling, double storedR, 
+                                  size_t selectedMolecule, std::span<Atom> molecule, double scaling,
                                   size_t numberOfTrialDirections) noexcept
 {
   return CBMC::retraceRigidMoleculeSwapDeletion(random, hasExternalField, components, forceField, simulationBox, frameworkAtoms, 
                                                 moleculeAtoms, beta, cutOff,cutOffCoulomb, selectedComponent, 
-                                                selectedMolecule, molecule, scaling, storedR, numberOfTrialDirections);
+                                                selectedMolecule, molecule, scaling, numberOfTrialDirections);
 }
 

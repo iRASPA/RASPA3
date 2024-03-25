@@ -3,11 +3,23 @@ module cbmc_util;
 import <vector>;
 import <algorithm>;
 import <cmath>;
+import <iostream>;
+import <exception>;
+import <format>;
+#if defined(__has_include) && __has_include(<stacktrace>)
+  import <stacktrace>;
+#endif
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#else
+  import print;
+#endif
 
 import atom;
 import double3x3;
 import double3;
 import randomnumbers;
+import stringutils;
 
 
 std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, size_t startingBead)
@@ -25,13 +37,22 @@ std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::vector<A
 
 
 // LogBoltzmannFactors are (-Beta U)
-size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector <double> LogBoltzmannFactors) noexcept
+size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector <double> LogBoltzmannFactors)
 {
   std::vector<double> ShiftedBoltzmannFactors(LogBoltzmannFactors.size());
 
   // Energies are always bounded from below [-U_max, infinity>
   // Find the lowest energy value, i.e. the largest value of (-Beta U)
-  double largest_value = *std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());
+  std::vector<double>::iterator match = std::max_element(LogBoltzmannFactors.begin(), LogBoltzmannFactors.end());;
+  if(match == LogBoltzmannFactors.end())
+  {
+    #if defined(__has_include) && __has_include(<stacktrace>)
+      auto trace = std::stacktrace::current();
+      std::cout << std::to_string(trace) << '\n';
+    #endif
+    throw std::runtime_error("[cbmc-utils]: no maximum value found\n");
+  }
+  double largest_value = *match;
 
   // Standard trick: shift the Boltzmann factors down to avoid numerical problems
   // The largest value of 'ShiftedBoltzmannFactors' will be 1 (which corresponds to the lowest energy).

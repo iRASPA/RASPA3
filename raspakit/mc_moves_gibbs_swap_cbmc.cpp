@@ -97,7 +97,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     CBMC::retraceMoleculeSwapDeletion(random, systemB.hasExternalField, systemB.components, systemB.forceField, systemB.simulationBox, 
                                       systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
                                       cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
-                                      1.0, 0.0, systemB.numberOfTrialDirections);
+                                      1.0, systemB.numberOfTrialDirections);
   std::chrono::system_clock::time_point tB2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (tB2 - tB1);

@@ -66,7 +66,7 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
       CBMC::retraceMoleculeSwapDeletion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, 
                                         cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
-                                        1.0, 0.0, system.numberOfTrialDirections);
+                                        1.0, system.numberOfTrialDirections);
     time_end = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
