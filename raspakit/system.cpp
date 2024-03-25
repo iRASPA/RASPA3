@@ -1485,3 +1485,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   return archive;
 }
 
+std::string System::repr() const
+{
+  return std::string("system test");
+}

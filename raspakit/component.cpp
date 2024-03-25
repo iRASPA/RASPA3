@@ -247,7 +247,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;
 
-    definedAtoms[i] = Atom(pos, charge, scaling, static_cast<uint16_t>(pseudoAtomType), 
+    definedAtoms[i] = Atom(pos, charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType), 
                            static_cast<uint8_t>(componentId), 0);
   }
 
@@ -373,8 +373,8 @@ std::vector<Atom> Component::recenteredCopy(double scaling, size_t moleculeId) c
   for (size_t i = 0; i < atoms.size(); ++i)
   {
     new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
-                 atoms[i].charge, scaling, static_cast<uint16_t>(atoms[i].type), 
-                 static_cast<uint8_t>(componentId), static_cast<uint32_t>(moleculeId));
+                 atoms[i].charge, scaling, static_cast<uint32_t>(moleculeId), static_cast<uint16_t>(atoms[i].type), 
+                 static_cast<uint8_t>(componentId), static_cast<uint8_t>(atoms[i].groupId));
   }
 
   return new_atoms;

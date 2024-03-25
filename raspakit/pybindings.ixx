@@ -48,7 +48,7 @@ PYBIND11_MODULE(RaspaKit, m)
         .def_readwrite("frameworkMoleculeVDW", &RunningEnergy::frameworkMoleculeVDW);
 
   pybind11::class_<Atom>(m, "Atom")
-        .def(pybind11::init<double3, double, double, uint16_t, uint8_t, uint32_t>())
+        .def(pybind11::init<double3, double, double, uint32_t, uint16_t, uint8_t, uint8_t>())
         .def_readwrite("position", &Atom::position)
         .def("__repr__", &Atom::repr);
 
@@ -90,6 +90,12 @@ PYBIND11_MODULE(RaspaKit, m)
   forceField.def("__repr__", &ForceField::repr);
 
 
+  pybind11::class_<Framework>(m, "Framework")
+        .def(pybind11::init<size_t, std::string, double,
+                            SimulationBox, size_t, std::vector<Atom>, int3>())
+        .def_readonly("name", &Framework::name)
+        .def("__repr__", &Framework::repr);
+
   pybind11::class_<Component>(m, "Component")
         .def(pybind11::init<size_t, std::string, double,
                             double, double, double, std::vector<Atom>, size_t, size_t>())
@@ -99,9 +105,9 @@ PYBIND11_MODULE(RaspaKit, m)
   pybind11::class_<System>(m, "System")
         .def(pybind11::init<size_t, std::optional<SimulationBox>, double, double, ForceField, std::vector<Framework>, 
                             std::vector<Component>, std::vector<size_t>, size_t>())
-        .def("precomputeTotalRigidEnergy", &System::precomputeTotalRigidEnergy)
         .def("computeTotalEnergies", &System::computeTotalEnergies)
-        .def_readwrite("atomPositions", &System::atomPositions);
+        .def_readwrite("atomPositions", &System::atomPositions)
+        .def("__repr__", &System::repr);
 
 }
 

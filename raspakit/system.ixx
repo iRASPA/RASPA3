@@ -305,4 +305,6 @@ export struct System
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);    
+
+  std::string repr() const;
 };

@@ -42,18 +42,20 @@ TEST(cbmc_interactions, framework_molecule_1)
     false);
   Framework f = Framework(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
-    {
-      Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
-      Atom(double3(0.5,    0.2179, 0),      -1.025, 1.0, 1, 0, 0),
-      Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
-      Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0),
+      Atom(double3(0.5,    0.2179, 0),      -1.025, 1.0, 0, 1, 0, 0),
+      Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 0, 1, 0, 0),
+      Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 1, 0) 
+    }, 5, 21);
 
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 1 }, 5);
 
@@ -67,14 +69,10 @@ TEST(cbmc_interactions, framework_molecule_1)
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
 
-  //std::optional<RunningEnergy> frameworkMoleculeEnergy = 
-  //  CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
+  std::optional<RunningEnergy> frameworkMoleculeEnergy = 
+    CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
 
-  //std::optional<RunningEnergy> interMoleculeEnergy = 
-  //  CBMC::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, 12.0, 12.0, {atomPositions.begin(), 1}, -1);
-
-  //EXPECT_NEAR(frameworkMoleculeEnergy->frameworkMoleculeVDW * 1.2027242847, -1599.10391143, 1e-6);
-  //EXPECT_NEAR(interMoleculeEnergy->moleculeMoleculeVDW * 1.2027242847, 2352.39507749, 1e-6);
+  EXPECT_NEAR(frameworkMoleculeEnergy->frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
 }
 
 TEST(cbmc_interactions, framework_molecule_2)
@@ -93,18 +91,20 @@ TEST(cbmc_interactions, framework_molecule_2)
     false);
   Framework f = Framework(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
     517,
-    {
-      Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0),
-      Atom(double3(0.5,    0.2179, 0),      -1.025, 1.0, 1, 0, 0),
-      Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 1, 0, 0),
-      Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 1, 0, 0)
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0),
+      Atom(double3(0.5,    0.2179, 0),      -1.025, 1.0, 0, 1, 0, 0),
+      Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 0, 1, 0, 0),
+      Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
   Component c = Component(1,
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 1, 0) }, 5, 21);
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 1, 0) 
+    }, 5, 21);
 
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 

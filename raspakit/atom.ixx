@@ -50,13 +50,13 @@ export struct Atom
 
   bool operator==(Atom const&) const = default;
 
-  Atom(double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId) :
-      position(position), charge(charge), moleculeId(moleculeId), 
-              type(type), componentId(componentId)
-  {
-    scalingVDW = Scaling::scalingVDW(lambda);
-    scalingCoulomb = Scaling::scalingCoulomb(lambda);
-  };
+  //Atom(double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId) :
+  //    position(position), charge(charge), moleculeId(moleculeId), 
+  //            type(type), componentId(componentId)
+  //{
+  //  scalingVDW = Scaling::scalingVDW(lambda);
+  //  scalingCoulomb = Scaling::scalingCoulomb(lambda);
+  //};
 
   Atom(double3 position, double charge, double lambda, uint32_t moleculeId, 
        uint16_t type, uint8_t componentId, uint8_t groupId) :
@@ -65,14 +65,6 @@ export struct Atom
   {
     scalingVDW = Scaling::scalingVDW(lambda);
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
-  };
-
-  Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, 
-       uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) :
-    position(position), charge(charge), scalingVDW(scalingVDW), scalingCoulomb(scalingCoulomb), moleculeId(moleculeId),
-    type(type), componentId(componentId), groupId(groupId)
-  {
-   
   };
 
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0

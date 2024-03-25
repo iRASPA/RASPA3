@@ -39,7 +39,10 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0) }, 5, 21);
+    { 
+      // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0, 0) 
+    }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { c }, { 20 }, 5);
 
@@ -73,14 +76,14 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     SimulationBox strainBox_forward2 = SimulationBox((identity + strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward2),
-      [&strainBox_forward2, &inv](const Atom &m) { return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_forward2, &inv](const Atom &m) { return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyForward2;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward2, moleculeAtomPositions_forward2, EnergyForward2);
 
     SimulationBox strainBox_forward1 = SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward1),
-      [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyForward1;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward1, moleculeAtomPositions_forward1, EnergyForward1);
     
@@ -88,14 +91,14 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     SimulationBox strainBox_backward1 = SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward1),
-      [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyBackward1;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
 
     SimulationBox strainBox_backward2 = SimulationBox((identity - strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward2),
-      [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyBackward2;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
     
@@ -132,6 +135,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
     43.9988,
     304.1282, 7377300.0, 0.22394,
     {
+      // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
   Component cl = Component(1,
@@ -139,7 +143,8 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
     43.9988,
     304.1282, 7377300.0, 0.22394,
     {
-      Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 1, 4, 1, 0),
+      // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 0, 4, 1, 0),
     }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { na, cl }, { 1, 1 }, 5);
@@ -178,14 +183,14 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
     SimulationBox strainBox_forward2 = SimulationBox((identity + strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward2),
-      [&strainBox_forward2, &inv](const Atom &m) { return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_forward2, &inv](const Atom &m) { return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyForward2;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward2, moleculeAtomPositions_forward2, EnergyForward2);
 
     SimulationBox strainBox_forward1 = SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_forward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward1),
-      [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyForward1;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward1, moleculeAtomPositions_forward1, EnergyForward1);
     
@@ -193,14 +198,14 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
     SimulationBox strainBox_backward1 = SimulationBox((identity - 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward1),
-      [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyBackward1;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward1, moleculeAtomPositions_backward1, EnergyBackward1);
 
     SimulationBox strainBox_backward2 = SimulationBox((identity - strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
     std::vector<Atom> moleculeAtomPositions_backward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward2),
-      [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.type, m.componentId, m.moleculeId); });
+      [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
     RunningEnergy EnergyBackward2;
     Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward2, moleculeAtomPositions_backward2, EnergyBackward2);
     

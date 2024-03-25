@@ -29,7 +29,9 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0) }, 5, 21);
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0, 0) 
+    }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { c }, { 20 }, 5);
 
@@ -74,10 +76,10 @@ TEST(insertion_deletion, CO2_number_of_molecules_per_component)
     "CO2",
     43.9988,
     304.1282, 7377300.0, 0.22394,
-    {
-       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+      Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+      Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
     }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, { }, { c }, { 3 }, 5);
@@ -137,16 +139,18 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 0, 0) }, 5, 21);
+    { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) 
+    }, 5, 21);
 
   Component co2 = Component(1,
     "CO2",
     43.9988,
     304.1282, 7377300.0, 0.22394,
     {  // double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
-       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
+       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
     }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { methane, co2 }, { 5, 3 }, 5);
@@ -246,71 +250,549 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
     "methane",
     16.04246,
     190.564, 45599200, 0.01142,
-    { Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 0, 0) }, 5, 21);
+    { 
+      Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) 
+    }, 5, 21);
 
   Component co2 = Component(1,
     "CO2",
     43.9988,
     304.1282, 7377300.0, 0.22394,
-    {  // double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
-       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)
+    { // double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
+      Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+      Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+      Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
     }, 5, 21);
 
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { methane, co2 }, { 5, 3 }, 5);
 
-  //insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)});
+  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+
+  // insert new CO2
+  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 4);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 1);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 2);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+  EXPECT_EQ(atomPositions[16].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 0);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
+  EXPECT_EQ(atomPositions[16].componentId, 1);
+
   //delete Methane 2
   std::vector<Atom>::iterator iterator_methane1 = system.iteratorForMolecule(0, 2);
   system.deleteMolecule(0, 2, {iterator_methane1, 1});
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
 
   //delete Methane 2
   std::vector<Atom>::iterator iterator_methane2 = system.iteratorForMolecule(0, 2);
   system.deleteMolecule(0, 2, {iterator_methane2, 1});
 
-  //insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)});
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
 
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 2);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 3);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 1);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+
+
+  //insert new CO2
+  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 5);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 2);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 3);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 4);
+  EXPECT_EQ(atomPositions[16].moleculeId, 4);
+  EXPECT_EQ(atomPositions[17].moleculeId, 4);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 1);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
+  EXPECT_EQ(atomPositions[16].componentId, 1);
+  EXPECT_EQ(atomPositions[17].componentId, 1);
 
   //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 0, 0) });
+  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 5);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+  EXPECT_EQ(atomPositions[16].moleculeId, 4);
+  EXPECT_EQ(atomPositions[17].moleculeId, 4);
+  EXPECT_EQ(atomPositions[18].moleculeId, 4);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
+  EXPECT_EQ(atomPositions[16].componentId, 1);
+  EXPECT_EQ(atomPositions[17].componentId, 1);
+  EXPECT_EQ(atomPositions[18].componentId, 1);
 
   //delete CO2 1
   std::vector<Atom>::iterator iterator_CO2 = system.iteratorForMolecule(1, 1);
   system.deleteMolecule(1, 1, {iterator_CO2, 3});
 
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
+
+
   //delete CO2 1
   std::vector<Atom>::iterator iterator_CO2_2 = system.iteratorForMolecule(1, 1);
   system.deleteMolecule(1, 1, {iterator_CO2_2, 3});
 
-  //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 0, 0) });
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
 
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+
+  //insert new Methane
+  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 4);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 1);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 2);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 0);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
 
 
   //delete Methane 2
   std::vector<Atom>::iterator iterator_methane3 = system.iteratorForMolecule(0, 2);
   system.deleteMolecule(0, 2, {iterator_methane3, 1});
 
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+
   //insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 4, 1, 0),
-                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 3, 1, 0),
-                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 4, 1, 0)});
+  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+                            Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
+                            Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 2);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 3);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 1);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
 
   //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 2, 0, 0) });
+  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 4);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 1);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 2);
+  EXPECT_EQ(atomPositions[14].moleculeId, 3);
+  EXPECT_EQ(atomPositions[15].moleculeId, 3);
+  EXPECT_EQ(atomPositions[16].moleculeId, 3);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 0);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
+  EXPECT_EQ(atomPositions[14].componentId, 1);
+  EXPECT_EQ(atomPositions[15].componentId, 1);
+  EXPECT_EQ(atomPositions[16].componentId, 1);
 
   //delete CO2 0
   std::vector<Atom>::iterator iterator_CO2_3 = system.iteratorForMolecule(1, 1);
   system.deleteMolecule(1, 0, {iterator_CO2_3, 3});
 
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+
+  // refresh span
+  atomPositions = system.spanOfMoleculeAtoms();
+
+  EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 2].moleculeId, 2);
+  EXPECT_EQ(atomPositions[ 3].moleculeId, 3);
+  EXPECT_EQ(atomPositions[ 4].moleculeId, 4);
+  EXPECT_EQ(atomPositions[ 5].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 6].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 7].moleculeId, 0);
+  EXPECT_EQ(atomPositions[ 8].moleculeId, 1);
+  EXPECT_EQ(atomPositions[ 9].moleculeId, 1);
+  EXPECT_EQ(atomPositions[10].moleculeId, 1);
+  EXPECT_EQ(atomPositions[11].moleculeId, 2);
+  EXPECT_EQ(atomPositions[12].moleculeId, 2);
+  EXPECT_EQ(atomPositions[13].moleculeId, 2);
+
+  EXPECT_EQ(atomPositions[ 0].componentId, 0);
+  EXPECT_EQ(atomPositions[ 1].componentId, 0);
+  EXPECT_EQ(atomPositions[ 2].componentId, 0);
+  EXPECT_EQ(atomPositions[ 3].componentId, 0);
+  EXPECT_EQ(atomPositions[ 4].componentId, 0);
+  EXPECT_EQ(atomPositions[ 5].componentId, 1);
+  EXPECT_EQ(atomPositions[ 6].componentId, 1);
+  EXPECT_EQ(atomPositions[ 7].componentId, 1);
+  EXPECT_EQ(atomPositions[ 8].componentId, 1);
+  EXPECT_EQ(atomPositions[ 9].componentId, 1);
+  EXPECT_EQ(atomPositions[10].componentId, 1);
+  EXPECT_EQ(atomPositions[11].componentId, 1);
+  EXPECT_EQ(atomPositions[12].componentId, 1);
+  EXPECT_EQ(atomPositions[13].componentId, 1);
 
   // component 0: Methane
   EXPECT_EQ(atomPositions[ 0].componentId, 0);
