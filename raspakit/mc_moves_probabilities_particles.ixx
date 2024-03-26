@@ -20,6 +20,7 @@ export struct MCMoveProbabilitiesParticles
   double probabilityVolumeMove{ 0.0 };
   double probabilityReinsertionMove_CBMC{ 0.0 };
   double probabilityIdentityChangeMove_CBMC{ 0.0 };
+  double probabilitySwapMove{ 0.0 };
   double probabilitySwapMove_CBMC{ 0.0 };
   double probabilitySwapMove_CFCMC{ 0.0 };
   double probabilitySwapMove_CFCMC_CBMC{ 0.0 };
@@ -38,6 +39,7 @@ export struct MCMoveProbabilitiesParticles
   double accumulatedProbabilityVolumeMove{ 0.0 };
   double accumulatedProbabilityReinsertionMove_CBMC{ 0.0 };
   double accumulatedProbabilityIdentityChangeMove_CBMC{ 0.0 };
+  double accumulatedProbabilitySwapMove{ 0.0 };
   double accumulatedProbabilitySwapMove_CBMC{ 0.0 };
   double accumulatedProbabilitySwapMove_CFCMC{ 0.0 };
   double accumulatedProbabilitySwapMove_CFCMC_CBMC{ 0.0 };

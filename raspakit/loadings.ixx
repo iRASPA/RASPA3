@@ -94,7 +94,7 @@ export inline Loadings operator+(const Loadings& a, const Loadings& b)
   
   m.totalNumberOfMolecules = a.totalNumberOfMolecules + b.totalNumberOfMolecules;
   m.totalDensity = a.totalDensity + b.totalDensity;
-  for (size_t i = 0; i < a.numberOfMolecules.size(); ++i)
+  for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] + b.numberOfMolecules[i];
     m.numberDensities[i] = a.numberDensities[i] + b.numberDensities[i];
@@ -109,7 +109,7 @@ export inline Loadings operator-(const Loadings& a, const Loadings& b)
 
   m.totalNumberOfMolecules = a.totalNumberOfMolecules - b.totalNumberOfMolecules;
   m.totalDensity = a.totalDensity - b.totalDensity;
-  for (size_t i = 0; i < a.numberOfMolecules.size(); ++i)
+  for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] - b.numberOfMolecules[i];
     m.numberDensities[i] = a.numberDensities[i] - b.numberDensities[i];
@@ -124,7 +124,7 @@ export inline Loadings operator*(const Loadings& a, const Loadings& b)
   
   m.totalNumberOfMolecules = a.totalNumberOfMolecules * b.totalNumberOfMolecules;
   m.totalDensity = a.totalDensity * b.totalDensity;
-  for (size_t i = 0; i < a.numberOfMolecules.size(); ++i)
+  for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] * b.numberOfMolecules[i];
     m.numberDensities[i] = a.numberDensities[i] * b.numberDensities[i];
@@ -139,7 +139,7 @@ export inline Loadings operator*(const double& a, const Loadings& b)
   
   m.totalNumberOfMolecules = a * b.totalNumberOfMolecules;
   m.totalDensity = a * b.totalDensity;
-  for (size_t i = 0; i < b.numberOfMolecules.size(); ++i)
+  for (size_t i = 0; i != b.numberOfMolecules.size(); ++i)
   {
     m.numberOfMolecules[i] = a * b.numberOfMolecules[i];
     m.numberDensities[i] = a * b.numberDensities[i];
@@ -156,7 +156,7 @@ export inline Loadings operator/(const Loadings& a, const double& b)
   double temp = 1.0 / b;
   m.totalNumberOfMolecules = a.totalNumberOfMolecules * temp;
   m.totalDensity = a.totalDensity * temp;
-  for (size_t i = 0; i < a.numberOfMolecules.size(); ++i)
+  for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] * temp;
     m.numberDensities[i] = a.numberDensities[i] * temp;
@@ -171,12 +171,12 @@ export inline Loadings sqrt(const Loadings& a)
   Loadings m(a.numberOfMolecules.size());
   
   m.totalNumberOfMolecules = sqrt(a.totalNumberOfMolecules);
-  m.totalDensity = sqrt(a.totalDensity);
-  for (size_t i = 0; i < a.numberOfMolecules.size(); ++i)
+  m.totalDensity = std::sqrt(a.totalDensity);
+  for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
   {
-    m.numberOfMolecules[i] = sqrt(a.numberOfMolecules[i]);
-    m.numberDensities[i] = sqrt(a.numberDensities[i]);
-    m.inverseNumberDensities[i] = sqrt(a.inverseNumberDensities[i]);
+    m.numberOfMolecules[i] = std::sqrt(a.numberOfMolecules[i]);
+    m.numberDensities[i] = std::sqrt(a.numberDensities[i]);
+    m.inverseNumberDensities[i] = std::sqrt(a.inverseNumberDensities[i]);
   }
   return m;
 }

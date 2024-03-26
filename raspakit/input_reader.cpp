@@ -1201,6 +1201,19 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
         continue;
       }
 
+      if (caseInSensStringCompare(keyword, "SwapConventionalProbability"))
+      {
+        requireExistingSystemAndComponent(keyword, lineNumber);
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].components.back().mc_moves_probabilities.probabilitySwapMove = values[i];
+        }
+        continue;
+      }
+
       if (caseInSensStringCompare(keyword, "SwapProbability"))
       {
         requireExistingSystemAndComponent(keyword, lineNumber);

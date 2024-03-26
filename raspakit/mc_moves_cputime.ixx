@@ -46,6 +46,16 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> reinsertionMoveCBMCNonEwald{ 0.0 };
   std::chrono::duration<double> reinsertionMoveCBMCEwald{ 0.0 };
 
+  std::chrono::duration<double> swapInsertionMove{ 0.0 };
+  std::chrono::duration<double> swapInsertionMoveNonEwald{ 0.0 };
+  std::chrono::duration<double> swapInsertionMoveEwald{ 0.0 };
+  std::chrono::duration<double> swapInsertionMoveTail{ 0.0 };
+
+  std::chrono::duration<double> swapDeletionMove{ 0.0 };
+  std::chrono::duration<double> swapDeletionMoveNonEwald{ 0.0 };
+  std::chrono::duration<double> swapDeletionMoveEwald{ 0.0 };
+  std::chrono::duration<double> swapDeletionMoveTail{ 0.0 };
+
   std::chrono::duration<double> swapInsertionMoveCBMC{ 0.0 };
   std::chrono::duration<double> swapInsertionMoveCBMCNonEwald{ 0.0 };
   std::chrono::duration<double> swapInsertionMoveCBMCEwald{ 0.0 };
@@ -145,7 +155,8 @@ export struct MCMoveCpuTime
   inline std::chrono::duration<double> total() const { return propertySampling + energyPressureComputation +
                                                               translationMove + randomTranslationMove +
                                                               rotationMove + randomRotationMove +
-                                                              reinsertionMoveCBMC + swapInsertionMoveCBMC + 
+                                                              reinsertionMoveCBMC + swapInsertionMove +
+                                                              swapDeletionMove + swapInsertionMoveCBMC + 
                                                               swapDeletionMoveCBMC + swapLambdaMoveCFCMC + 
                                                               swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC + 
                                                               GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + 
@@ -189,6 +200,16 @@ export struct MCMoveCpuTime
     reinsertionMoveCBMC += b.reinsertionMoveCBMC;
     reinsertionMoveCBMCNonEwald += b.reinsertionMoveCBMCNonEwald;
     reinsertionMoveCBMCEwald += b.reinsertionMoveCBMCEwald;
+
+    swapInsertionMove += b.swapInsertionMove;
+    swapInsertionMoveNonEwald += b.swapInsertionMoveNonEwald;
+    swapInsertionMoveEwald += b.swapInsertionMoveEwald;
+    swapInsertionMoveTail += b.swapInsertionMoveTail;
+
+    swapDeletionMove += b.swapDeletionMove;
+    swapDeletionMoveNonEwald += b.swapDeletionMoveNonEwald;
+    swapDeletionMoveEwald += b.swapDeletionMoveEwald;
+    swapDeletionMoveTail += b.swapDeletionMoveTail;
 
     swapInsertionMoveCBMC += b.swapInsertionMoveCBMC;
     swapInsertionMoveCBMCNonEwald += b.swapInsertionMoveCBMCNonEwald;
@@ -323,6 +344,16 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.reinsertionMoveCBMC = a.reinsertionMoveCBMC + b.reinsertionMoveCBMC;
   m.reinsertionMoveCBMCNonEwald = a.reinsertionMoveCBMCNonEwald + b.reinsertionMoveCBMCNonEwald;
   m.reinsertionMoveCBMCEwald = a.reinsertionMoveCBMCEwald + b.reinsertionMoveCBMCEwald;
+
+  m.swapInsertionMove = a.swapInsertionMove + b.swapInsertionMove;
+  m.swapInsertionMoveNonEwald = a.swapInsertionMoveNonEwald + b.swapInsertionMoveNonEwald;
+  m.swapInsertionMoveEwald = a.swapInsertionMoveEwald + b.swapInsertionMoveEwald;
+  m.swapInsertionMoveTail = a.swapInsertionMoveEwald + b.swapInsertionMoveTail;
+
+  m.swapDeletionMove = a.swapDeletionMove + b.swapDeletionMove;
+  m.swapDeletionMoveNonEwald = a.swapDeletionMoveNonEwald + b.swapDeletionMoveNonEwald;
+  m.swapDeletionMoveEwald = a.swapDeletionMoveEwald + b.swapDeletionMoveEwald;
+  m.swapDeletionMoveTail = a.swapDeletionMoveEwald + b.swapDeletionMoveTail;
 
   m.swapInsertionMoveCBMC = a.swapInsertionMoveCBMC + b.swapInsertionMoveCBMC;
   m.swapInsertionMoveCBMCNonEwald = a.swapInsertionMoveCBMCNonEwald + b.swapInsertionMoveCBMCNonEwald;

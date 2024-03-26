@@ -20,6 +20,8 @@ export struct MCMoveStatisticsParticles
   MoveStatistics<double3> randomRotationMove{};
   MoveStatistics<double> reinsertionMove_CBMC{};
   MoveStatistics<double> identityChangeMove_CBMC{};
+  MoveStatistics<double> swapInsertionMove{};
+  MoveStatistics<double> swapDeletionMove{};
   MoveStatistics<double> swapInsertionMove_CBMC{};
   MoveStatistics<double> swapDeletionMove_CBMC{};
   MoveStatistics<double3> swapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };

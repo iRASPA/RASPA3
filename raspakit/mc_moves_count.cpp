@@ -26,6 +26,8 @@ void MCMoveCount::clearCountStatistics()
   rotationMove = size_t{0};
   randomRotationMove = size_t{0};
   reinsertionMoveCBMC = size_t{0};
+  swapInsertionMove = size_t{0};
+  swapDeletionMove = size_t{0};
   swapInsertionMoveCBMC = size_t{0};
   swapDeletionMoveCBMC = size_t{0};
   swapLambdaMoveCFCMC = size_t{0};
@@ -72,6 +74,10 @@ const std::string MCMoveCount::writeComponentStatistics(size_t countTotal, size_
              100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
   std::print(stream, "    Reinsertion CBMC:            {:14f} [%]\n", 
              100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
+  std::print(stream, "    Insertion:                   {:14f} [%]\n", 
+             100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
+  std::print(stream, "    Deletion:                    {:14f} [%]\n", 
+             100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
   std::print(stream, "    Insertion CBMC:              {:14f} [%]\n", 
              100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
   std::print(stream, "    Deletion CBMC:               {:14f} [%]\n", 
@@ -110,6 +116,10 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
              100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
   std::print(stream, "Reinsertion CBMC:            {:14f} [%]\n", 
              100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
+  std::print(stream, "Insertion:                   {:14f} [%]\n", 
+             100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
+  std::print(stream, "Deletion:                    {:14f} [%]\n", 
+             100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
   std::print(stream, "Insertion CBMC:              {:14f} [%]\n", 
              100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
   std::print(stream, "Deletion CBMC:               {:14f} [%]\n", 
@@ -152,6 +162,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << c.rotationMove;
   archive << c.randomRotationMove;
   archive << c.reinsertionMoveCBMC;
+  archive << c.swapInsertionMove;
+  archive << c.swapDeletionMove;
   archive << c.swapInsertionMoveCBMC;
   archive << c.swapDeletionMoveCBMC;
   archive << c.swapLambdaDeletionMove;
@@ -184,6 +196,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
   archive >> c.rotationMove;
   archive >> c.randomRotationMove;
   archive >> c.reinsertionMoveCBMC;
+  archive >> c.swapInsertionMove;
+  archive >> c.swapDeletionMove;
   archive >> c.swapInsertionMoveCBMC;
   archive >> c.swapDeletionMoveCBMC;
   archive >> c.swapLambdaDeletionMove;

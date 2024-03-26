@@ -58,6 +58,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
 
   if (!firstBeadData) return std::nullopt;
 
+  // place the molecule at the position of the first bead
   std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {atom.position += firstBeadData->atom.position; });
 
   if(atoms.size() == 1)

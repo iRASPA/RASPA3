@@ -1,6 +1,6 @@
 module;
 
-module mc_moves_deletion;
+module mc_moves_deletion_cbmc;
 
 import <complex>;
 import <vector>;
@@ -44,38 +44,32 @@ import interactions_external_field;
 
 
 std::pair<std::optional<RunningEnergy>, double3> 
-MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
+MC_Moves::deletionMoveCBMC(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalCounts += 1;
   
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.constructed += 1;
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalConstructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.constructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalConstructed += 1;
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
-    // compute external field energy contribution
-    std::optional<RunningEnergy> externalFieldMolecule =
-      Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
-                                                         {}, molecule);
-    if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    double cutOffVDW = system.forceField.cutOffVDW;
+    double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
-    // compute framework-molecule energy contribution
-    std::optional<RunningEnergy> frameworkMolecule =
-      Interactions::computeFrameworkMoleculeEnergyDifference(system.forceField, system.simulationBox,
-                                                             system.spanOfFrameworkAtoms(), {}, molecule);
-    if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
-    // compute molecule-molecule energy contribution
-    std::optional<RunningEnergy> interMolecule =
-      Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
-                                                          system.spanOfMoleculeAtoms(), {}, molecule);
-    if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
-
+    time_begin = std::chrono::system_clock::now();
+    ChainData retraceData = 
+      CBMC::retraceMoleculeSwapDeletion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
+                                        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, 
+                                        cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                        1.0, system.numberOfTrialDirections);
+    time_end = std::chrono::system_clock::now();
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
+    system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = 
@@ -84,8 +78,8 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
                                                  system.forceField, system.simulationBox,
                                                  {}, molecule);
     time_end = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveEwald += (time_end - time_begin);
-    system.mc_moves_cputime.swapDeletionMoveEwald += (time_end - time_begin);
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (time_end - time_begin);
+    system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (time_end - time_begin);
 
 
     time_begin = std::chrono::system_clock::now();
@@ -95,18 +89,17 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
                                          system.spanOfFrameworkAtoms(), {}, molecule);
     time_end = std::chrono::system_clock::now();
-    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveTail += (time_end - time_begin);
-    system.mc_moves_cputime.swapDeletionMoveTail += (time_end - time_begin);
+    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
+    system.mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
 
-    // get the total difference in energy
-    RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() +
-                                     interMolecule.value() + energyFourierDifference + tailEnergyDifference;
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
+                                                            tailEnergyDifference.total()));
 
-
-    double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
+    double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
+    double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * system.components[selectedComponent].molFraction * 
                         system.pressure * system.simulationBox.volume);
-    double Pacc = preFactor * std::exp(-system.beta * energyDifference.total());
+    double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
@@ -122,13 +115,13 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
     // apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.accepted += 1;
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalAccepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.accepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalAccepted += 1;
 
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
-      return {-energyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
+      return {retraceData.energies - energyFourierDifference - tailEnergyDifference, double3(Pacc, 1.0 - Pacc, 0.0)};
     };
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }

@@ -33,12 +33,12 @@ export struct RunningEnergy
   
   inline double total() const
   {
-      return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 
-             externalFieldCharge + frameworkMoleculeCharge + moleculeMoleculeCharge +
-             ewald + 
-             intraVDW + intraCoul + 
-             tail + 
-             polarization;
+    return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 
+           externalFieldCharge + frameworkMoleculeCharge + moleculeMoleculeCharge +
+           ewald + 
+           intraVDW + intraCoul + 
+           tail + 
+           polarization;
   }
 
   inline double dudlambda(double lambda) const

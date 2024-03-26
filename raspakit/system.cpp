@@ -906,7 +906,7 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
   std::print(stream, "\n");
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
-  std::print(stream, "Total potential energy :  {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+  std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
       conv * currentEnergyStatus.totalEnergy.energy, 
       conv * energyData.first.totalEnergy.energy, 
       conv * energyData.second.totalEnergy.energy);
@@ -1224,12 +1224,12 @@ void System::MD_Loop()
 }
 
 std::vector<Atom> 
-System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent, std::span<Atom> molecule, 
+System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent,
                                         double scaling, size_t moleculeId) const
 {
   size_t startingBead = components[selectedComponent].startingBead;
-  double3 center = molecule[startingBead].position;
-  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
+  double3 center = components[selectedComponent].atoms[startingBead].position;
+  std::vector<Atom> copied_atoms(components[selectedComponent].atoms.begin(), components[selectedComponent].atoms.end());
 
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   double3 position = simulationBox.randomPosition(random);
@@ -1237,7 +1237,7 @@ System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedCom
   for (size_t i = 0; i != copied_atoms.size(); ++i)
   {
     copied_atoms[i].setScaling(scaling);
-    copied_atoms[i].position = position + randomRotationMatrix * (molecule[i].position - center);
+    copied_atoms[i].position = position + randomRotationMatrix * (components[selectedComponent].atoms[i].position - center);
     copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
   }
   return copied_atoms;

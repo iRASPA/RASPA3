@@ -28,6 +28,8 @@ void MCMoveStatisticsParticles::clearMoveStatistics()
   randomRotationMove.clear();
   reinsertionMove_CBMC.clear();
   identityChangeMove_CBMC.clear();
+  swapInsertionMove.clear();
+  swapDeletionMove.clear();
   swapInsertionMove_CBMC.clear();
   swapDeletionMove_CBMC.clear();
   swapMove_CFCMC.clear();
@@ -105,6 +107,14 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics() const
   {
     std::print(stream, "{}", formatStatistics("Identity Swap (CBMC)", identityChangeMove_CBMC));
   }
+  if (swapInsertionMove.totalCounts > 0) 
+  {
+    std::print(stream, "{}", formatStatistics("Swap Insertion", swapInsertionMove));
+  }
+  if (swapDeletionMove.totalCounts > 0) 
+  {
+    std::print(stream, "{}", formatStatistics("Swap Deletion", swapDeletionMove));
+  }
   if (swapInsertionMove_CBMC.totalCounts > 0) 
   {
     std::print(stream, "{}", formatStatistics("Swap Insertion (CBMC)", swapInsertionMove_CBMC));
@@ -156,6 +166,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.randomRotationMove;
   archive << p.reinsertionMove_CBMC;
   archive << p.identityChangeMove_CBMC;
+  archive << p.swapInsertionMove;
+  archive << p.swapDeletionMove;
   archive << p.swapInsertionMove_CBMC;
   archive << p.swapDeletionMove_CBMC;
   archive << p.swapMove_CFCMC;
@@ -189,6 +201,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatis
   archive >> p.randomRotationMove;
   archive >> p.reinsertionMove_CBMC;
   archive >> p.identityChangeMove_CBMC;
+  archive >> p.swapInsertionMove;
+  archive >> p.swapDeletionMove;
   archive >> p.swapInsertionMove_CBMC;
   archive >> p.swapDeletionMove_CBMC;
   archive >> p.swapMove_CFCMC;

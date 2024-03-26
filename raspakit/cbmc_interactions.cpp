@@ -50,7 +50,7 @@ CBMC::computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceFi
         CBMC::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox,
                                          cutOffVDW, cutOffCoulomb, {it, 1});
 
-      // skip trial-positions that have an overlap in inter-molecular energy
+      // skip trial-positions that have an overlap in external-field energy
       if(!externalFieldEnergy.has_value()) continue;
 
       std::optional<RunningEnergy> interEnergy = 

@@ -269,7 +269,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // insert new CO2
   system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
@@ -280,7 +282,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   atomPositions = system.spanOfMoleculeAtoms();
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   EXPECT_EQ(atomPositions[ 0].moleculeId, 0);
   EXPECT_EQ(atomPositions[ 1].moleculeId, 1);
@@ -323,7 +327,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(0, 2, {iterator_methane1, 1});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -367,7 +373,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(0, 2, {iterator_methane2, 1});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 3);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -411,7 +419,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
                             Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 3);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 5);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -458,7 +468,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 5);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -508,7 +520,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(1, 1, {iterator_CO2, 3});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -553,7 +567,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(1, 1, {iterator_CO2_2, 3});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -590,7 +606,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -631,7 +649,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(0, 2, {iterator_methane3, 1});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -670,7 +690,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
                             Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -713,7 +735,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 4);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 4);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -759,7 +783,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   system.deleteMolecule(1, 0, {iterator_CO2_3, 3});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfMoleculesPerComponent[1], 3);
+  EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();

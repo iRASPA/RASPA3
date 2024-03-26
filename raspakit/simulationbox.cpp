@@ -90,9 +90,7 @@ SimulationBox::SimulationBox( double3x3 m, Type type): type(type)
 
 double3 SimulationBox::randomPosition(RandomNumber &random) const
 {
-  return double3(cell.ax * random.uniform(),
-                 cell.by * random.uniform(),
-                 cell.cz * random.uniform());
+  return cell * double3(random.uniform(), random.uniform(), random.uniform());
 }
 
 double3 SimulationBox::perpendicularWidths() const

@@ -11,7 +11,8 @@ import archive;
 export struct MCMoveCount
 {
   MCMoveCount(): translationMove(0), randomTranslationMove(0), rotationMove(0), randomRotationMove(0),
-                 reinsertionMoveCBMC(0), swapInsertionMoveCBMC(0), swapDeletionMoveCBMC(0), 
+                 reinsertionMoveCBMC(0), swapInsertionMove(0), swapDeletionMove(0),
+                 swapInsertionMoveCBMC(0), swapDeletionMoveCBMC(0), 
                  swapLambdaMoveCFCMC(0), swapLambdaMoveCBCFCMC(0), 
                  GibbsSwapMoveCBMC(0), GibbsSwapLambdaMoveCFCMC(0),
                  WidomMoveCBMC(0), WidomMoveCFCMC(0), WidomMoveCBCFCMC(0), 
@@ -28,6 +29,8 @@ export struct MCMoveCount
   size_t rotationMove;
   size_t randomRotationMove;
   size_t reinsertionMoveCBMC;
+  size_t swapInsertionMove;
+  size_t swapDeletionMove;
   size_t swapInsertionMoveCBMC;
   size_t swapDeletionMoveCBMC;
   size_t swapLambdaDeletionMove;
@@ -43,7 +46,9 @@ export struct MCMoveCount
 
   inline size_t total() const { return translationMove + randomTranslationMove +
                                        rotationMove + randomRotationMove +
-                                       reinsertionMoveCBMC + swapInsertionMoveCBMC + swapDeletionMoveCBMC +
+                                       reinsertionMoveCBMC + 
+                                       swapInsertionMove + swapDeletionMove +
+                                       swapInsertionMoveCBMC + swapDeletionMoveCBMC +
                                        swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC +
                                        GibbsSwapMoveCBMC + GibbsSwapLambdaMoveCFCMC +
                                        WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC +
@@ -62,6 +67,8 @@ export struct MCMoveCount
     rotationMove += b.rotationMove;
     randomRotationMove += b.randomRotationMove;
     reinsertionMoveCBMC += b.reinsertionMoveCBMC;
+    swapInsertionMove += b.swapInsertionMove;
+    swapDeletionMove += b.swapDeletionMove;
     swapInsertionMoveCBMC += b.swapInsertionMoveCBMC;
     swapDeletionMoveCBMC += b.swapDeletionMoveCBMC;
     swapLambdaMoveCFCMC += b.swapLambdaMoveCFCMC;
@@ -90,6 +97,8 @@ export inline MCMoveCount operator+(const MCMoveCount& a, const MCMoveCount& b)
   m.rotationMove = a.rotationMove + b.rotationMove;
   m.randomRotationMove = a.randomRotationMove + b.randomRotationMove;
   m.reinsertionMoveCBMC = a.reinsertionMoveCBMC + b.reinsertionMoveCBMC;
+  m.swapInsertionMove = a.swapInsertionMove + b.swapInsertionMove;
+  m.swapDeletionMove = a.swapDeletionMove + b.swapDeletionMove;
   m.swapInsertionMoveCBMC = a.swapInsertionMoveCBMC + b.swapInsertionMoveCBMC;
   m.swapDeletionMoveCBMC = a.swapDeletionMoveCBMC + b.swapDeletionMoveCBMC;
   m.swapLambdaMoveCFCMC = a.swapLambdaMoveCFCMC + b.swapLambdaMoveCFCMC;

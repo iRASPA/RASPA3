@@ -299,7 +299,7 @@ export struct System
 
   std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
 
-  std::vector<Atom> equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent, std::span<Atom> molecule, double scaling, size_t moleculeId) const;
+  std::vector<Atom> equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent, double scaling, size_t moleculeId) const;
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 

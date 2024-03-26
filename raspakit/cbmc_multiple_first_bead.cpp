@@ -53,7 +53,7 @@ CBMC::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasE
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [&](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-  //if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
+  if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
   return FirstBeadData(externalEnergies[selected].first, externalEnergies[selected].second, 
                        RosenbluthWeight / double(numberOfTrialDirections), 0.0);

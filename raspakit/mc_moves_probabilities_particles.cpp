@@ -29,6 +29,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
     probabilityVolumeMove +
     probabilityReinsertionMove_CBMC +
     probabilityIdentityChangeMove_CBMC +
+    probabilitySwapMove +
     probabilitySwapMove_CBMC +
     probabilitySwapMove_CFCMC +
     probabilitySwapMove_CFCMC_CBMC +
@@ -49,6 +50,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
     probabilityVolumeMove /= totalProbability;
     probabilityReinsertionMove_CBMC /= totalProbability;
     probabilityIdentityChangeMove_CBMC /= totalProbability;
+    probabilitySwapMove /= totalProbability;
     probabilitySwapMove_CBMC /= totalProbability;
     probabilitySwapMove_CFCMC /= totalProbability;
     probabilitySwapMove_CFCMC_CBMC /= totalProbability;
@@ -67,6 +69,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
   accumulatedProbabilityVolumeMove = probabilityVolumeMove;
   accumulatedProbabilityReinsertionMove_CBMC = probabilityReinsertionMove_CBMC;
   accumulatedProbabilityIdentityChangeMove_CBMC = probabilityIdentityChangeMove_CBMC;
+  accumulatedProbabilitySwapMove = probabilitySwapMove;
   accumulatedProbabilitySwapMove_CBMC = probabilitySwapMove_CBMC;
   accumulatedProbabilitySwapMove_CFCMC = probabilitySwapMove_CFCMC;
   accumulatedProbabilitySwapMove_CFCMC_CBMC = probabilitySwapMove_CFCMC_CBMC;
@@ -83,7 +86,8 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
   accumulatedProbabilityVolumeMove += accumulatedProbabilityRandomRotationMove;
   accumulatedProbabilityReinsertionMove_CBMC += accumulatedProbabilityVolumeMove;
   accumulatedProbabilityIdentityChangeMove_CBMC += accumulatedProbabilityReinsertionMove_CBMC;
-  accumulatedProbabilitySwapMove_CBMC += accumulatedProbabilityIdentityChangeMove_CBMC;
+  accumulatedProbabilitySwapMove += accumulatedProbabilityIdentityChangeMove_CBMC;
+  accumulatedProbabilitySwapMove_CBMC += accumulatedProbabilitySwapMove;
   accumulatedProbabilitySwapMove_CFCMC += accumulatedProbabilitySwapMove_CBMC;
   accumulatedProbabilitySwapMove_CFCMC_CBMC += accumulatedProbabilitySwapMove_CFCMC;
   accumulatedProbabilityGibbsVolumeMove += accumulatedProbabilitySwapMove_CFCMC_CBMC;
@@ -106,6 +110,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.probabilityVolumeMove;
   archive << p.probabilityReinsertionMove_CBMC;
   archive << p.probabilityIdentityChangeMove_CBMC;
+  archive << p.probabilitySwapMove;
   archive << p.probabilitySwapMove_CBMC;
   archive << p.probabilitySwapMove_CFCMC;
   archive << p.probabilitySwapMove_CFCMC_CBMC;
@@ -124,6 +129,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.accumulatedProbabilityVolumeMove;
   archive << p.accumulatedProbabilityReinsertionMove_CBMC;
   archive << p.accumulatedProbabilityIdentityChangeMove_CBMC;
+  archive << p.accumulatedProbabilitySwapMove;
   archive << p.accumulatedProbabilitySwapMove_CBMC;
   archive << p.accumulatedProbabilitySwapMove_CFCMC;
   archive << p.accumulatedProbabilitySwapMove_CFCMC_CBMC;
@@ -157,6 +163,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.probabilityVolumeMove;
   archive >> p.probabilityReinsertionMove_CBMC;
   archive >> p.probabilityIdentityChangeMove_CBMC;
+  archive >> p.probabilitySwapMove;
   archive >> p.probabilitySwapMove_CBMC;
   archive >> p.probabilitySwapMove_CFCMC;
   archive >> p.probabilitySwapMove_CFCMC_CBMC;
@@ -175,6 +182,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.accumulatedProbabilityVolumeMove;
   archive >> p.accumulatedProbabilityReinsertionMove_CBMC;
   archive >> p.accumulatedProbabilityIdentityChangeMove_CBMC;
+  archive >> p.accumulatedProbabilitySwapMove;
   archive >> p.accumulatedProbabilitySwapMove_CBMC;
   archive >> p.accumulatedProbabilitySwapMove_CFCMC;
   archive >> p.accumulatedProbabilitySwapMove_CFCMC_CBMC;

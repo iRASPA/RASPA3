@@ -1,5 +1,6 @@
 export module skboundingbox;
 
+import <cstdint>;
 import <array>;
 import <tuple>;
 import <utility>;
