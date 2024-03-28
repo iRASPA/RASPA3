@@ -102,10 +102,9 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() +
                                      interMolecule.value() + energyFourierDifference + tailEnergyDifference;
 
-
+    double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-                       (system.beta * system.components[selectedComponent].molFraction * 
-                        system.pressure * system.simulationBox.volume);
+                       (system.beta * system.components[selectedComponent].molFraction * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.total());
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);

@@ -77,9 +77,7 @@ export struct Component
   double partialPressure{ 0.0 };
 
   double mass{ 0.0 };
-  bool computeFugacityCoefficient{ true };
-  double partialFugacity{ 0.0 };
-  double fugacityCoefficient{ 1.0 };
+  std::optional<double> fugacityCoefficient{};
   double amountOfExcessMolecules { 0.0 };
   double bulkFluidDensity{ 0.0 };
   double compressibility{ 0.0 };

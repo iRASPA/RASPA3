@@ -4,6 +4,8 @@ module equation_of_states;
 
 import <vector>;
 import <cmath>;
+import <optional>;
+import <iostream>;
 
 import units;
 import cubic;
@@ -24,7 +26,8 @@ EquationOfState::EquationOfState(EquationOfState::Type type,
                                   simulationBox, HeliumVoidFraction, components);
 }
 
-
+// T in Kelvin
+// p in Pascal
 void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type,
                                           EquationOfState::MultiComponentMixingRules rules, 
                                           double temperature,
@@ -58,8 +61,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
         a[i] = 0.42748 * alpha * temp * temp / Pc;
         b[i] = 0.08664 * temp / Pc;
         temp = Units::MolarGasConstant * temperature;
-        A[i] = a[i] * pressure * Units::PressureConversionFactor / (temp * temp);
-        B[i] = b[i] * pressure * Units::PressureConversionFactor / temp;
+        A[i] = a[i] * pressure / (temp * temp);
+        B[i] = b[i] * pressure / temp;
         break;
       case EquationOfState::Type::PengRobinsonGasem:
         kappa = 0.134 + 0.508 * w - 0.0467 * w * w;
@@ -68,8 +71,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
         a[i] = 0.45724 * alpha * temp * temp / Pc;
         b[i] = 0.07780 * temp / Pc;
         temp = Units::MolarGasConstant * temperature;
-        A[i] = a[i] * pressure * Units::PressureConversionFactor / (temp * temp);
-        B[i] = b[i] * pressure * Units::PressureConversionFactor / temp;
+        A[i] = a[i] * pressure / (temp * temp);
+        B[i] = b[i] * pressure  / temp;
         break;
       case EquationOfState::Type::PengRobinson:
         kappa = 0.37464 + 1.54226 * w - 0.26992 * w * w;
@@ -79,8 +82,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
         a[i] = 0.45724 * alpha * temp * temp / Pc;
         b[i] = 0.07780 * temp / Pc;
         temp = Units::MolarGasConstant * temperature;
-        A[i] = a[i] * pressure * Units::PressureConversionFactor / (temp * temp);
-        B[i] = b[i] * pressure * Units::PressureConversionFactor / temp;
+        A[i] = a[i] * pressure / (temp * temp);
+        B[i] = b[i] * pressure / temp;
         break;
       }
     }
@@ -121,8 +124,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
       }
     }
     double temp = Units::MolarGasConstant * temperature;
-    Amix *= pressure * Units::PressureConversionFactor / (temp * temp);
-    Bmix *= pressure * Units::PressureConversionFactor / temp;
+    Amix *= pressure / (temp * temp);
+    Bmix *= pressure / temp;
     break;
   }
 
@@ -242,20 +245,20 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
     {
       if(numberOfSolutions==1)
       {
-        if (components[i].computeFugacityCoefficient)
+        if (!components[i].fugacityCoefficient.has_value())
         {
           components[i].fugacityCoefficient = fugacityCoefficients[i][0];
         }
         components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-           excess_volume * Units::AngstromCubed * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature);
-        components[i].bulkFluidDensity = (components[i].molFraction * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature))*
+           excess_volume * Units::AngstromCubed * pressure / (compressibility[0] * Units::MolarGasConstant * temperature);
+        components[i].bulkFluidDensity = (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature))*
                                                        components[i].mass / 1000.0;
         components[i].compressibility = compressibility[0];
-        if((temperature > components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor > components[i].criticalPressure))
+        if((temperature > components[i].criticalTemperature) && (pressure > components[i].criticalPressure))
           fluidState = FluidState::SuperCriticalFluid;
-        else if((temperature < components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor < components[i].criticalPressure))
+        else if((temperature < components[i].criticalTemperature) && (pressure < components[i].criticalPressure))
           fluidState = FluidState::Vapor;
-        else if((temperature < components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor > components[i].criticalPressure))
+        else if((temperature < components[i].criticalTemperature) && (pressure > components[i].criticalPressure))
           fluidState = FluidState::Liquid;
       }
       else
@@ -266,13 +269,13 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
           {
             // vapour (stable) and liquid (metastable)
             fluidState = FluidState::Vapor;
-            if (components[i].computeFugacityCoefficient)
+            if (!components[i].fugacityCoefficient.has_value())
             {
-                components[i].fugacityCoefficient = fugacityCoefficients[i][0];
+              components[i].fugacityCoefficient = fugacityCoefficients[i][0];
             }
             components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-              excess_volume * Units::AngstromCubed * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity = (components[i].molFraction * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature))*
+              excess_volume * Units::AngstromCubed * pressure / (compressibility[0] * Units::MolarGasConstant * temperature);
+            components[i].bulkFluidDensity = (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature))*
                                                           components[i].mass/1000.0;
             components[i].compressibility = compressibility[0];
           }
@@ -280,13 +283,13 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
           {
             // vapour (metastable) and liquid (stable)
             fluidState = FluidState::Liquid;
-            if (components[i].computeFugacityCoefficient)
+            if (!components[i].fugacityCoefficient.has_value())
             {
-                components[i].fugacityCoefficient = fugacityCoefficients[i][2];
+              components[i].fugacityCoefficient = fugacityCoefficients[i][2];
             }
             components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-              excess_volume * Units::AngstromCubed * pressure * Units::PressureConversionFactor / (compressibility[2] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity = (components[i].molFraction * pressure * Units::PressureConversionFactor / (compressibility[2] * Units::MolarGasConstant * temperature))*
+              excess_volume * Units::AngstromCubed * pressure / (compressibility[2] * Units::MolarGasConstant * temperature);
+            components[i].bulkFluidDensity = (components[i].molFraction * pressure / (compressibility[2] * Units::MolarGasConstant * temperature))*
                                                           components[i].mass / 1000.0;
             components[i].compressibility = compressibility[2];
           }
@@ -294,40 +297,40 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
           {
             // vapour (stable) and liquid (stable)
             fluidState = FluidState::VaporLiquid;
-            if (components[i].computeFugacityCoefficient)
+            if (!components[i].fugacityCoefficient.has_value())
             {
-                components[i].fugacityCoefficient = fugacityCoefficients[i][0];
+              components[i].fugacityCoefficient = fugacityCoefficients[i][0];
             }
             components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant *
-              excess_volume * Units::AngstromCubed * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature);
-            components[i].bulkFluidDensity = (components[i].molFraction * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature))*
+              excess_volume * Units::AngstromCubed * pressure / (compressibility[0] * Units::MolarGasConstant * temperature);
+            components[i].bulkFluidDensity = (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature))*
                                                           components[i].mass / 1000.0;
             components[i].compressibility = compressibility[0];
           }
         }
         else
         {
-          if (components[i].computeFugacityCoefficient)
+          if (!components[i].fugacityCoefficient.has_value())
           {
-              components[i].fugacityCoefficient = fugacityCoefficients[i][0];
+            components[i].fugacityCoefficient = fugacityCoefficients[i][0];
           }
           components[i].amountOfExcessMolecules = components[i].molFraction * Units::AvogadroConstant*
-            excess_volume * Units::AngstromCubed * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature);
-          components[i].bulkFluidDensity = (components[i].molFraction * pressure * Units::PressureConversionFactor / (compressibility[0] * Units::MolarGasConstant * temperature))*
+            excess_volume * Units::AngstromCubed * pressure / (compressibility[0] * Units::MolarGasConstant * temperature);
+          components[i].bulkFluidDensity = (components[i].molFraction * pressure / (compressibility[0] * Units::MolarGasConstant * temperature))*
                                                         components[i].mass/1000.0;
           components[i].compressibility = compressibility[0];
-          if((temperature > components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor > components[i].criticalPressure))
+          if((temperature > components[i].criticalTemperature) && (pressure > components[i].criticalPressure))
             fluidState = FluidState::SuperCriticalFluid;
-          else if((temperature < components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor < components[i].criticalPressure))
+          else if((temperature < components[i].criticalTemperature) && (pressure < components[i].criticalPressure))
             fluidState = FluidState::Vapor;
-          else if((temperature < components[i].criticalTemperature) && (pressure * Units::PressureConversionFactor > components[i].criticalPressure))
+          else if((temperature < components[i].criticalTemperature) && (pressure > components[i].criticalPressure))
             fluidState = FluidState::Liquid;
         }
       }
     }
     else
     {
-      components[i].fugacityCoefficient = -1.0;
+      components[i].fugacityCoefficient = std::nullopt;
       components[i].partialPressure = -1.0;
     }
   }

@@ -11,6 +11,7 @@ import energy_status;
 import simulationbox;
 import force_factor;
 import forcefield;
+import framework;
 import component;
 
 export namespace Interactions
@@ -38,7 +39,9 @@ export namespace Interactions
                                                std::span<Atom> moleculeAtoms) noexcept;
 
   [[nodiscard]] std::pair<EnergyStatus, double3x3>
-  computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &forceField, const std::vector<Component> &components,
+  computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &forceField, 
+                                                 const std::vector<Framework> &frameworkComponents,
+                                                 const std::vector<Component> &components,
                                                  const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
                                                  std::span<Atom> moleculeAtoms) noexcept;
 };

@@ -22,6 +22,7 @@ import units;
 import energy_factor;
 import force_factor;
 import running_energy;
+import framework;
 import component;
 import forcefield;
 
@@ -600,35 +601,34 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
     energy.dUdlambda -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
-  // Subtract exclusion-energy
-  //for (size_t l = 0; l != components.size(); ++l)
+  // Subtract exclusion-energy (zero force for rigid molecule)
+  //size_t index{ 0 };
+  //for(size_t l = 0; l != components.size(); ++l)
   //{
-  //  if (!(components[l].type == Component::Type::Framework && components[l].rigid))
+  //  size_t size = components[l].atoms.size();
+  //  for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
   //  {
-  //    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+  //    std::span<const Atom> span = std::span(&moleculeAtomPositions[index], size);
+  //    for(size_t i = 0; i != span.size() - 1; i++)
   //    {
-  //      std::span<Atom> span = spanOfMolecule(l, m);
-  //      for (size_t i = 0; i != span.size() - 1; i++)
+  //      double chargeA = span[i].charge;
+  //      double scalingA = span[i].scalingCoulomb;
+  //      bool groupIdA = static_cast<bool>(span[i].groupId);
+  //      double3 posA = span[i].position;
+  //      for(size_t j = i + 1; j != span.size(); j++)
   //      {
-  //        double scalingA = span[i].scalingCoulomb;
-  //        bool groupIdA = static_cast<bool>(span[i].groupId);
-  //        double chargeA = span[i].charge;
-  //        double3 posA = span[i].position;
-  //        for (size_t j = i + 1; j != span.size(); j++)
-  //        {
-  //          double scalingB = span[j].scalingCoulomb;
-  //          bool groupIdB = static_cast<bool>(span[j].groupId);
-  //          double chargeB = span[j].charge;
-  //          double3 posB = span[j].position;
+  //        double chargeB = span[j].charge;
+  //        double scalingB = span[j].scalingCoulomb;
+  //        bool groupIdB = static_cast<bool>(span[j].groupId);
+  //        double3 posB = span[j].position;
 
-  //          double3 dr = posA - posB;
-  //          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-  //          double r = std::sqrt(double3::dot(dr, dr));
+  //        double3 dr = posA - posB;
+  //        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+  //        double r = std::sqrt(double3::dot(dr, dr));
 
-  //          double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-  //          energy.energy -= scalingA * scalingB * temp;
-  //          energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
-  //        }
+  //        double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+  //        energy.energy -= scalingA * scalingB * temp;
+  //        energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
   //      }
   //    }
   //  }
@@ -895,8 +895,9 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
                      [[maybe_unused]]std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
                      const ForceField &forceField, const SimulationBox &simulationBox,
+                     const std::vector<Framework> &frameworkComponents,
                      const std::vector<Component> &components,
-                     [[maybe_unused]]const std::vector<size_t> &numberOfMoleculesPerComponent,
+                     const std::vector<size_t> &numberOfMoleculesPerComponent,
                      std::span<Atom> atomPositions) noexcept
 {
   double alpha = forceField.EwaldAlpha;
@@ -906,7 +907,7 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  EnergyStatus energy(components.size());
+  EnergyStatus energy(1, frameworkComponents.size(), components.size());
   double3x3 strainDerivative;
 
   if(forceField.noCharges || forceField.omitEwaldFourier) return std::make_pair(energy, strainDerivative);
@@ -1010,15 +1011,16 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
             test += scaling * charge * (eik_xy[i] * eikz_temp);
           }
 
-          cksum[0] += fixedFrameworkStoredEik[nvec].first;
-          double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
+          test += fixedFrameworkStoredEik[nvec].first;
 
           for(size_t i = 0; i != numberOfComponents; ++i)
           {
+            energy.frameworkComponentEnergy(0,i).CoulombicFourier += EnergyFactor(2.0 * temp * (fixedFrameworkStoredEik[nvec].first.real() * cksum[i].real() +
+                                                                                                fixedFrameworkStoredEik[nvec].first.imag() * cksum[i].imag()), 0.0);
             for(size_t j = 0; j != numberOfComponents; ++j)
             {
-              energy(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + 
-                                                                   cksum[i].imag() * cksum[j].imag()), 0.0);
+              energy.componentEnergy(i,j).CoulombicFourier += EnergyFactor(temp * (cksum[i].real() * cksum[j].real() + 
+                                                                                   cksum[i].imag() * cksum[j].imag()), 0.0);
             }
           }
 
@@ -1034,18 +1036,19 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
                                   (cki.imag() * test.real() - cki.real() * test.imag()) * (kvec_x + kvec_y + kvec_z);
           }
 
+          double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
           double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
-            strainDerivative.ax += fac * rk.x * rk.x - currentEnergy;
-            strainDerivative.bx += fac * rk.x * rk.y;
-            strainDerivative.cx += fac * rk.x * rk.z;
+            strainDerivative.ax += currentEnergy - fac * rk.x * rk.x;
+            strainDerivative.bx += -fac * rk.x * rk.y;
+            strainDerivative.cx += -fac * rk.x * rk.z;
           
-            strainDerivative.ay += fac * rk.y * rk.x;
-            strainDerivative.by += fac * rk.y * rk.y - currentEnergy;
-            strainDerivative.cy += fac * rk.y * rk.z;
+            strainDerivative.ay += -fac * rk.y * rk.x;
+            strainDerivative.by += currentEnergy - fac * rk.y * rk.y;
+            strainDerivative.cy += -fac * rk.y * rk.z;
        
-            strainDerivative.az += fac * rk.z * rk.x;
-            strainDerivative.bz += fac * rk.z * rk.y;
-            strainDerivative.cz += fac * rk.z * rk.z - currentEnergy;
+            strainDerivative.az += -fac * rk.z * rk.x;
+            strainDerivative.bz += -fac * rk.z * rk.y;
+            strainDerivative.cz += currentEnergy - fac * rk.z * rk.z;
           
 
           ++nvec;
@@ -1061,7 +1064,7 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
     size_t comp = static_cast<size_t>(atomPositions[i].componentId);
-    energy(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * charge * scaling * charge, 0.0);
+    energy.componentEnergy(comp,comp).CoulombicFourier -= EnergyFactor(prefactor_self * scaling * charge * scaling * charge, 0.0);
   }
 
   // Subtract exclusion-energy
@@ -1085,7 +1088,7 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);
           double r = std::sqrt(double3::dot(dr, dr));
 
-          energy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
+          energy.componentEnergy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
                                                        factorA * factorB * std::erf(alpha * r) / r, 0.0);
         }
       }
@@ -1100,14 +1103,6 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
     for(size_t j = 0; j != numberOfComponents; ++j)
     {
       //energy(i,j).CoulombicFourier += EnergyFactor(CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j], 0.0);
-    }
-  }
-
-  for (size_t i = 0; i != numberOfComponents; ++i)
-  {
-    if((components[i].type == Component::Type::Framework && components[i].rigid))
-    {
-      energy(i, i).zero();
     }
   }
 

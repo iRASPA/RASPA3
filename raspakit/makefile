@@ -35,7 +35,7 @@ framework.pcm: cif_reader.pcm bond_potential.pcm multi_site_isotherm.pcm atom.pc
 energy_status_inter.pcm: energy_factor.pcm
 energy_status_intra.pcm: energy_factor.pcm
 energy_status.pcm: component.pcm energy_status_inter.pcm energy_status_intra.pcm
-property_energy.pcm: energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm averages.pcm
+property_energy.pcm: framework.pcm component.pcm energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm averages.pcm
 loadings.pcm: simulationbox.pcm component.pcm framework.pcm
 property_loading.pcm: loadings.pcm averages.pcm
 enthalpy_of_adsorption.pcm: units.pcm averages.pcm energy_status.pcm
@@ -52,8 +52,8 @@ property_simulationbox.pcm: averages.pcm simulationbox.pcm
 equation_of_states.pcm: units.pcm component.pcm
 system.pcm: equation_of_states.pcm cbmc.pcm transition_matrix.pcm reaction.pcm reactions.pcm mc_moves_cputime.pcm mc_moves_count.pcm mc_moves_statistics_system.pcm mc_moves_probabilities_system.pcm move_statistics.pcm atom.pcm framework.pcm component.pcm simulationbox.pcm forcefield.pcm units.pcm loadings.pcm averages.pcm sample_movies.pcm enthalpy_of_adsorption.pcm energy_status.pcm energy_status_inter.pcm energy_status_intra.pcm property_density_grid.pcm property_conventional_rdf.pcm property_rdf.pcm property_simulationbox.pcm property_energy.pcm property_pressure.pcm property_loading.pcm property_enthalpy.pcm property_widom.pcm energy_factor.pcm force_factor.pcm running_energy.pcm isotherm.pcm multi_site_isotherm.pcm pressure_range.pcm bond_potential.pcm
 interactions_intermolecular.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
-interactions_framework_molecule.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
-interactions_ewald.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
+interactions_framework_molecule.pcm: framework.pcm component.pcm atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
+interactions_ewald.pcm: atom.pcm force_factor.pcm forcefield.pcm framework.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
 interactions_external_field.pcm: atom.pcm force_factor.pcm forcefield.pcm component.pcm simulationbox.pcm energy_status.pcm running_energy.pcm
 cbmc.pcm: component.pcm running_energy.pcm cbmc_flexible_insertion.pcm cbmc_rigid_insertion.pcm cbmc_rigid_deletion.pcm cbmc_rigid_reinsertion.pcm
 cbmc_chain_data.pcm: atom.pcm component.pcm running_energy.pcm bond_potential.pcm

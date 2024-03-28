@@ -65,9 +65,9 @@ Framework::Framework()
 }
 
 // create Component in 'inputreader.cpp'
-Framework::Framework(size_t currentComponent, const ForceField& forceField, const std::string &componentName,
+Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string &componentName,
                      std::optional<const std::string> fileName) noexcept(false) :
-                     frameworkId(currentComponent),
+                     frameworkId(currentFramework),
                      name(componentName),
                      filenameData(fileName)
 {
@@ -77,19 +77,19 @@ Framework::Framework(size_t currentComponent, const ForceField& forceField, cons
 
     for (size_t i = 0; i < unitCellAtoms.size(); ++i)
     {
-      unitCellAtoms[i].componentId = static_cast<uint8_t>(currentComponent);
+      unitCellAtoms[i].componentId = static_cast<uint8_t>(currentFramework);
       unitCellAtoms[i].moleculeId = 0;
     }
   }
 }
 
 // create programmatically an 'framework' component
-Framework::Framework(size_t componentId, std::string fileName, double mass, SimulationBox simulationBox, 
+Framework::Framework(size_t frameworkId, std::string fileName, double mass, SimulationBox simulationBox, 
                      size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false) :
     simulationBox(simulationBox),
     spaceGroupHallNumber(spaceGroupHallNumber),
     numberOfUnitCells(numberOfUnitCells),
-    frameworkId(componentId),
+    frameworkId(frameworkId),
     name(fileName),
     filenameData(fileName),
     mass(mass),
@@ -99,10 +99,11 @@ Framework::Framework(size_t componentId, std::string fileName, double mass, Simu
   SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
   std::vector<Atom> expandedAtoms;
   expandedAtoms.reserve(definedAtoms.size() * 256uz);
+
+
   for (const Atom& atom : definedAtoms)
   {
     Atom atomCopy = atom;
-
     std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
     for (const double3& pos : listOfPositions)
     {
@@ -153,7 +154,7 @@ Framework::Framework(size_t componentId, std::string fileName, double mass, Simu
 
   for (size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
-    unitCellAtoms[i].componentId = static_cast<uint8_t>(componentId);
+    unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
   }
 }

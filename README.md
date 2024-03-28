@@ -25,6 +25,16 @@ Windows
 Visual studio 2022 project file included.
 Showstopper: msvc does not support the multidimensional subscript operator
 
+Linux
+=====
+Edit 'makefile'
+  CXX=clang++
+  LINK_FLAGS=-undefined dynamic_lookup
+
+Set your compiler, and comment the 'LINK_FLAGS', e.g.
+  CXX=clang++-16
+  #LINK_FLAGS=-undefined dynamic_lookup
+
 Ubuntu
 ======
 sudo apt install build-essential git cmake
@@ -75,7 +85,7 @@ to clean: make clean
 
 Running
 =======
-cd "raspa3-tests/1"
+cd examples/basic/1_mc_methane_in_box
 ./run
 
 

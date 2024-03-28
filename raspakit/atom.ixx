@@ -48,20 +48,8 @@ export struct Atom
   Atom& operator=(Atom&& a) noexcept = default;
   ~Atom() noexcept = default;
 
-  bool operator==(Atom const&) const = default;
-
-  //Atom(double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId) :
-  //    position(position), charge(charge), moleculeId(moleculeId), 
-  //            type(type), componentId(componentId)
-  //{
-  //  scalingVDW = Scaling::scalingVDW(lambda);
-  //  scalingCoulomb = Scaling::scalingCoulomb(lambda);
-  //};
-
-  Atom(double3 position, double charge, double lambda, uint32_t moleculeId, 
-       uint16_t type, uint8_t componentId, uint8_t groupId) :
-    position(position), charge(charge), moleculeId(moleculeId),
-    type(type), componentId(componentId), groupId(groupId)
+  Atom(double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) :
+    position(position), charge(charge), moleculeId(moleculeId), type(type), componentId(componentId), groupId(groupId)
   {
     scalingVDW = Scaling::scalingVDW(lambda);
     scalingCoulomb = Scaling::scalingCoulomb(lambda);

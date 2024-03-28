@@ -97,9 +97,10 @@ MC_Moves::insertionMoveCBMC(RandomNumber &random, System& system, size_t selecte
   double correctionFactorEwald = 
     std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
 
+  double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
   double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * 
-                     system.pressure * system.simulationBox.volume /
+                     fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];

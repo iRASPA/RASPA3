@@ -63,7 +63,7 @@ export struct System
   System(size_t id, std::optional<SimulationBox> box, double T, double P, ForceField forcefield, 
          std::vector<Framework> frameworkComponents, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
-  System(size_t s, ForceField forcefield, std::vector<Component> components, 
+  System(size_t s, ForceField forcefield, std::vector<Component> frameworkComponents, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
 
   System(const System &s) = delete;

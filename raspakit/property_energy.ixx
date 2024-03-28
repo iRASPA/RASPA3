@@ -17,6 +17,7 @@ import averages;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
+import framework;
 import component;
 
 
@@ -30,26 +31,27 @@ export struct PropertyEnergy
 {
   PropertyEnergy() {};
 
-  PropertyEnergy(size_t numberOfBlocks, size_t numberOfComponents) :
+  PropertyEnergy(size_t numberOfBlocks, size_t numberOfExternalFields, size_t numberOfFrameworks, size_t numberOfComponents) :
       numberOfBlocks(numberOfBlocks),
       numberOfComponents(numberOfComponents),
       bookKeepingEnergyStatus(std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, 
-                              std::make_pair(EnergyStatus(numberOfComponents), 0.0)))
+                              std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0)))
   {
   }
 
-  bool operator==(PropertyEnergy const&) const = default;
-
   uint64_t versionNumber{ 1 };
-  size_t numberOfBlocks;
-  size_t numberOfComponents;
+  size_t numberOfBlocks{ 5 };
+  size_t numberOfExternalFields{ 1 };
+  size_t numberOfFrameworks{ 1 };
+  size_t numberOfComponents { 1 };
   std::vector<std::pair<EnergyStatus, double>> bookKeepingEnergyStatus;
 
-  void resize(size_t newNumberOfComponents)
+  void resize(size_t newNumberOfFrameworks, size_t newNumberOfComponents)
   {
       numberOfComponents = newNumberOfComponents;
+      numberOfFrameworks = newNumberOfFrameworks;
       bookKeepingEnergyStatus = std::vector<std::pair<EnergyStatus, double>>(numberOfBlocks, 
-                                std::make_pair(EnergyStatus(numberOfComponents), 0.0));
+                                std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0));
   }
 
   inline void addSample(size_t blockIndex, const EnergyStatus &energyStatus, const double &weight)
@@ -69,7 +71,7 @@ export struct PropertyEnergy
   {
     std::pair<EnergyStatus,double> summedBlocks = 
       std::accumulate(bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(), 
-                      std::make_pair(EnergyStatus(numberOfComponents), 0.0), pair_sum);
+                      std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0), pair_sum);
     return summedBlocks.first / summedBlocks.second;
   }
 
@@ -78,7 +80,7 @@ export struct PropertyEnergy
     EnergyStatus average = averagedEnergy();
 
     // Use bins that are at least 90% filled for the computation of the error
-    EnergyStatus sumOfSquares(numberOfComponents);
+    EnergyStatus sumOfSquares(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
     size_t numberOfSamples = 0;
     for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
@@ -89,7 +91,7 @@ export struct PropertyEnergy
         ++numberOfSamples;
       }
     }
-    EnergyStatus confidenceIntervalError(numberOfComponents);
+    EnergyStatus confidenceIntervalError(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
     if(numberOfSamples >= 3)
     {
       size_t degreesOfFreedom = numberOfSamples - 1;
@@ -101,7 +103,7 @@ export struct PropertyEnergy
     return std::make_pair(average, confidenceIntervalError);
   }
 
-  std::string writeAveragesStatistics(std::vector<Component>& components) const;
+  std::string writeAveragesStatistics(bool externalField, std::vector<Framework>& frameworkComponents, std::vector<Component>& components) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergy &e);

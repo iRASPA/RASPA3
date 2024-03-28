@@ -50,6 +50,7 @@ import skasymmetricatom;
 import skcell;
 import sample_movies;
 import enthalpy_of_adsorption;
+import energy_factor;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
@@ -112,8 +113,8 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, double P, 
     averageSimulationBox(numberOfBlocks),
     atomPositions({}),
     runningEnergies(),
-    averageEnergies(numberOfBlocks, c.size()),
-    currentEnergyStatus(c.size()),
+    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
+    currentEnergyStatus(1, f.size(), c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
     mc_moves_probabilities(),
@@ -156,7 +157,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, double P, 
 
 
 // used in 'input_reader.cpp' for Box and Framework
-System::System(size_t s, ForceField forcefield, std::vector<Component> c, 
+System::System(size_t s, ForceField forcefield, std::vector<Component> f, std::vector<Component> c, 
                [[maybe_unused]] std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(s),
     frameworkComponents(),
@@ -183,8 +184,8 @@ System::System(size_t s, ForceField forcefield, std::vector<Component> c,
     averageSimulationBox(numberOfBlocks),
     atomPositions({}),
     runningEnergies(),
-    averageEnergies(numberOfBlocks, c.size()),
-    currentEnergyStatus(c.size()),
+    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
+    currentEnergyStatus(1, f.size(), c.size()),
     averagePressure(numberOfBlocks),
     //sampleMovie(systemId, forceField, simulationBox, atomPositions),
     netCharge(c.size()),
@@ -217,7 +218,7 @@ void System::addComponent(const Component&& component) noexcept(false)
   numberOfPseudoAtoms.resize(components.size(), std::vector<size_t>(forceField.pseudoAtoms.size()));
   totalNumberOfPseudoAtoms.resize(forceField.pseudoAtoms.size());
 
-  averageEnergies.resize(components.size());
+  averageEnergies.resize(frameworkComponents.size(), components.size());
 
   loadings.resize(components.size());
   averageLoadings.resize(components.size());
@@ -287,7 +288,7 @@ void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
     totalNumberOfPseudoAtoms[static_cast<size_t>(atom.type)] += 1;
   }
  
-  size_t index = 0; // indexOfFirstMolecule(selectedComponent);
+  size_t index = numberOfFrameworkAtoms; // indexOfFirstMolecule(selectedComponent);
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
     for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
@@ -317,7 +318,7 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
   numberOfMoleculesPerComponent[selectedComponent] -= 1;
   numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
 
-  size_t index = 0; // indexOfFirstMolecule(selectedComponent);
+  size_t index = numberOfFrameworkAtoms; // indexOfFirstMolecule(selectedComponent);
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
     for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
@@ -504,7 +505,8 @@ void System::determineSwapableComponents()
 {
   for (Component& component : components)
   {
-    if (component.mc_moves_probabilities.probabilitySwapMove_CBMC > 0.0 || 
+    if (component.mc_moves_probabilities.probabilitySwapMove > 0.0 || 
+        component.mc_moves_probabilities.probabilitySwapMove_CBMC > 0.0 || 
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0 ||
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
     {
@@ -910,6 +912,30 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
       conv * currentEnergyStatus.totalEnergy.energy, 
       conv * energyData.first.totalEnergy.energy, 
       conv * energyData.second.totalEnergy.energy);
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "ExternalField-molecule\n");
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "Framework-molecule\n");
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
+  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy, 
+      conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy, 
+      conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
+  std::print(stream, "Molecule-molecule\n");
   std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
       conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
       conv * energyData.first.interEnergy.VanDerWaals.energy,
@@ -1165,17 +1191,21 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, components,
+  std::pair<EnergyStatus, double3x3> pressureInfo = 
+      Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, frameworkComponents, components,
                                                       simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
-
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(forceField, components, simulationBox,
                                                       spanOfMoleculeAtoms()));
-  pressureInfo = pair_acc(pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(eik_x, eik_y, eik_z, eik_xy,
-                                                                    fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                                                                    components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms()));
 
+  pressureInfo = pair_acc(pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(eik_x, eik_y, eik_z, eik_xy,
+                                                            fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
+                                                            frameworkComponents, components, numberOfMoleculesPerComponent, 
+                                                            spanOfMoleculeAtoms()));
+
+  //pressureInfo.first.interComponentEnergies[0].CoulombicFourier -= EnergyFactor(rigidEnergies.ewald, 0.0);
   pressureInfo.first.sumTotal();
+
 
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm;
@@ -1215,6 +1245,8 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     }
   }
   pressureInfo.second = -(pressureInfo.second - correctionTerm);
+
+
 
   return pressureInfo;
 }

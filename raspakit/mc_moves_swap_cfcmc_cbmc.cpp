@@ -218,9 +218,10 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     double correctionFactorEwald = 
       std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifferenceGrow.total()));
 
+    double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * 
-                       system.pressure * system.simulationBox.volume /
+                       fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * 
@@ -426,12 +427,13 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
       
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC_CBMC.constructed[1] += 1;
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC_CBMC.totalConstructed[1] += 1;
-      
+     
+      double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
       double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
       double preFactor = 
                correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                (system.beta * system.components[selectedComponent].molFraction * 
-                system.pressure * system.simulationBox.volume);
+                fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double Pacc = preFactor * (idealGasRosenbluthWeight / 
                             retraceData.RosenbluthWeight) * exp(-system.beta * energyDifference.total() + biasTerm);

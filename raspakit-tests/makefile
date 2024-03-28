@@ -42,26 +42,32 @@ gtest_main.a : gtest-all.o gtest_main.o
 test_raspakit.o : main.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c main.cpp
 
-static_energy.o: $(GTEST_HEADERS)
+static_energy.o: static_energy.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c static_energy.cpp
 
-gradients.o: $(GTEST_HEADERS)
+gradients.o: gradients.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c gradients.cpp
 
-pbc.o: $(GTEST_HEADERS)
+pbc.o: pbc.c $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c pbc.cpp
 
-pressure.o: $(GTEST_HEADERS)
+pressure.o: pressure.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c pressure.cpp
 
-ewald.o: $(GTEST_HEADERS)
+ewald.o: ewald.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c ewald.cpp
 
-dudlambda.o: $(GTEST_HEADERS)
+dudlambda.o: dudlambda.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c dudlambda.cpp
 
-spacegroup.o: $(GTEST_HEADERS)
+spacegroup.o: spacegroup.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c spacegroup.cpp
 
-test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o cbmc_interactions.o insertion_deletion.o main.o gtest_main.a
+insertion_deletion.o: insertion_deletion.cpp $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c insertion_deletion.cpp
+
+energy_decomposition.o: energy_decomposition.cpp $(GTEST_HEADERS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c energy_decomposition.cpp
+
+test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o cbmc_interactions.o insertion_deletion.o energy_decomposition.o main.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -L../mathkit -L../foundationkit -L../symmetrykit -L../raspakit  -lraspakit -lsymmetrykit -lfoundationkit -lmathkit -llapack -lpthread $^ -o $@

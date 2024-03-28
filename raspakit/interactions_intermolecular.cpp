@@ -443,12 +443,12 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
 
-  EnergyStatus energy(components.size());
+  EnergyStatus energy(1,1, components.size());
   double3x3 strainDerivativeTensor{};
 
   if (moleculeAtoms.empty()) return {energy, strainDerivativeTensor};
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
+  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
     posA = it1->position;
     size_t molA = static_cast<size_t>(it1->moleculeId);
@@ -458,7 +458,7 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
-    energy(compA, compA).VanDerWaalsTailCorrection += 
+    energy.componentEnergy(compA, compA).VanDerWaalsTailCorrection += 
       EnergyFactor(preFactor * scalingVDWA * scalingVDWA * forceField(typeA, typeA).tailCorrectionEnergy, 0.0);
 
     for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
@@ -469,8 +469,7 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
       double scalingVDWB = it2->scalingVDW;
 
       EnergyFactor temp(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
-      energy(compA, compB).VanDerWaalsTailCorrection += temp;
-      energy(compB, compA).VanDerWaalsTailCorrection += temp;
+      energy.componentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
 
       // skip interactions within the same molecule
       if (!((compA == compB) && (molA == molB)))
@@ -480,7 +479,6 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
         double scalingCoulombB = it2->scalingCoulomb;
         double chargeB = it2->charge;
         
-
         dr = posA - posB;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
         rr = double3::dot(dr, dr);
@@ -490,8 +488,8 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
           ForceFactor forceFactor = 
             potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           
-          energy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
-          energy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
+          energy.componentEnergy(compA, compB).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
+          energy.componentEnergy(compB, compA).VanDerWaals += 0.5 * EnergyFactor(forceFactor.energy, 0.0);
 
           const double3 g = forceFactor.forceFactor * dr;
 
@@ -518,8 +516,8 @@ Interactions::computeInterMolecularEnergyStrainDerivative(const ForceField &forc
             potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, 
                                      chargeA, chargeB);
 
-          energy(compA, compB).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
-          energy(compB, compA).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
+          energy.componentEnergy(compA, compB).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
+          energy.componentEnergy(compB, compA).CoulombicReal += 0.5 * EnergyFactor(energyFactor.energy, 0);
 
           const double3 g = energyFactor.forceFactor * dr;
 

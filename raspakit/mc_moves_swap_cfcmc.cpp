@@ -238,8 +238,9 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
     RunningEnergy energyDifferenceStep2 = externalFieldDifferenceStep2.value() + frameworkDifferenceStep2.value() + 
                                           moleculeDifferenceStep2.value() + EwaldEnergyDifferenceStep2 + tailEnergyDifference2;
 
+    double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = system.beta * system.components[selectedComponent].molFraction * 
-                       system.pressure * system.simulationBox.volume /
+                       fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * exp(-system.beta * 
@@ -474,9 +475,10 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.constructed[1] += 1;
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.totalConstructed[1] += 1;
 
+      double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
       double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * system.components[selectedComponent].molFraction * 
-                          system.pressure * system.simulationBox.volume);
+                          fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double Pacc = preFactor *exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + 
                                    biasTerm);

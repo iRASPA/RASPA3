@@ -635,8 +635,8 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
       if (caseInSensStringCompare(keyword, std::string("Box")))
       {
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{}, 
-                             std::vector<size_t>{}, numberOfBlocks);
+        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{},
+                             std::vector<Component>{}, std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
 
@@ -659,7 +659,7 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
       if (caseInSensStringCompare(keyword, std::string("Framework")))
       {
         numberOfSystems += 1;
-        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{}, 
+        systems.emplace_back(numberOfSystems - 1, forceFields[numberOfSystems - 1], std::vector<Component>{}, std::vector<Component>{}, 
                              std::vector<size_t>{}, numberOfBlocks);
         continue;
       }
@@ -678,7 +678,7 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
           case SimulationType::Minimization:
           case SimulationType::Test:
           {
-            systems.back().frameworkComponents.emplace_back(Framework(systems.back().frameworkComponents.size(), 
+            systems.back().frameworkComponents.emplace_back(Framework(0,
                                         forceFields[numberOfSystems - 1], frameworkName, frameworkName));
             continue;
             break;
@@ -687,7 +687,7 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
           case SimulationType::MixturePrediction:
           case SimulationType::Fitting:
           {
-            systems.back().frameworkComponents.emplace_back(Framework(systems.back().frameworkComponents.size(), 
+            systems.back().frameworkComponents.emplace_back(Framework(0,
                                         forceFields[numberOfSystems - 1], frameworkName, std::nullopt));
             continue;
             break;
@@ -1050,6 +1050,20 @@ InputReader::InputReader([[maybe_unused]]size_t totalNumberOfSystems, [[maybe_un
         for (size_t i = 0uz; i < systems.size(); ++i)
         {
           systems[i].components.back().molFraction = values[i];
+        }
+        continue;
+      }
+
+      if (caseInSensStringCompare(keyword, "FugacityCoefficient"))
+      {
+        requireExistingSystem(keyword, lineNumber);
+
+        std::vector<double> values = parseListOfSystemValues<double>(arguments, keyword, lineNumber);
+    
+        values.resize(systems.size(), values.back());
+        for (size_t i = 0uz; i < systems.size(); ++i)
+        {
+          systems[i].components.back().fugacityCoefficient = values[i];
         }
         continue;
       }

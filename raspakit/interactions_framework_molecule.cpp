@@ -33,6 +33,7 @@ import threadpool;
 import threading;
 import energy_factor;
 import force_factor;
+import framework;
 import component;
 
 
@@ -333,6 +334,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> 
 Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &forceField,
+                                                             const std::vector<Framework> &frameworkComponents,
                                                              const std::vector<Component> &components,
                                                              const SimulationBox &simulationBox,
                                                              std::span<Atom> frameworkAtoms,
@@ -342,7 +344,7 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
 	double rr;
 
   double3x3 strainDerivative;
-  EnergyStatus energy(components.size());
+  EnergyStatus energy(1, frameworkComponents.size(), components.size());
 
   bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
@@ -376,16 +378,14 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
 			rr = double3::dot(dr, dr);
 
       EnergyFactor temp(preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
-      energy(compA, compB).VanDerWaalsTailCorrection += temp;
-      energy(compB, compA).VanDerWaalsTailCorrection += temp;
+      energy.frameworkComponentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
 
 			if (rr < cutOffVDWSquared)
 			{
 				EnergyFactor energyFactor = 
           potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-				energy(compA, compB).VanDerWaals += 0.5 * energyFactor;
-				energy(compB, compA).VanDerWaals += 0.5 * energyFactor;
+				energy.frameworkComponentEnergy(compA, compB).VanDerWaals += energyFactor;
 			}
       if (!noCharges && rr < cutOffChargeSquared)
       {
@@ -393,8 +393,7 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
         EnergyFactor energyFactor = 
           potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-        energy(compA, compB).CoulombicReal += 0.5 * energyFactor;
-        energy(compB, compA).CoulombicReal += 0.5 * energyFactor;
+        energy.frameworkComponentEnergy(compA, compB).CoulombicReal += energyFactor;
       }
 		}
 	}

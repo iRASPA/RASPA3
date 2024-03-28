@@ -14,6 +14,7 @@ import energy_status;
 import simulationbox;                                                                                                   
 import force_factor;                                                                                                    
 import forcefield;                                                                                                      
+import framework;
 import component;
 
 export namespace Interactions
@@ -73,6 +74,7 @@ export namespace Interactions
                                              std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
                                              std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
                                              const ForceField &forceField, const SimulationBox &simulationBox,
+                                             const std::vector<Framework> &frameworkComponents,
                                              const std::vector<Component> &components,
                                              const std::vector<size_t> &numberOfMoleculesPerComponent,
                                              std::span<Atom> atomPositions) noexcept;

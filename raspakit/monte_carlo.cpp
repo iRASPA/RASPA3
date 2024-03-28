@@ -60,6 +60,7 @@ import mc_moves_count;
 import property_pressure;
 import transition_matrix;
 import interactions_ewald;
+import equation_of_states;
 
 
 MonteCarlo::MonteCarlo(): random(std::nullopt) 
@@ -151,6 +152,10 @@ void MonteCarlo::initialize()
     system.createInitialMolecules(random);
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
+
+    system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
+                                    EquationOfState::MultiComponentMixingRules::VanDerWaals,
+                                    system.temperature, system.input_pressure, system.simulationBox, system.HeliumVoidFraction, system.components);
   }
 
   createOutputFiles();
@@ -588,7 +593,7 @@ void MonteCarlo::output()
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
     std::print(stream, "\n\n");
 
-    std::print(stream, "{}", system.averageEnergies.writeAveragesStatistics(system.components));
+    std::print(stream, "{}", system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents, system.components));
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     std::print(stream, "{}", system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, 
                                                                                           system.components));

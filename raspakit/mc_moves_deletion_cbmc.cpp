@@ -95,10 +95,11 @@ MC_Moves::deletionMoveCBMC(RandomNumber &random, System& system, size_t selected
     double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
                                                             tailEnergyDifference.total()));
 
+    double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor = correctionFactorEwald * double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * system.components[selectedComponent].molFraction * 
-                        system.pressure * system.simulationBox.volume);
+                        fugacity * system.simulationBox.volume);
     double Pacc = preFactor * idealGasRosenbluthWeight / retraceData.RosenbluthWeight;
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);

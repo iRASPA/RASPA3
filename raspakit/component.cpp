@@ -307,8 +307,10 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
   std::print(stream << std::boolalpha, "    Swapable:                     {}\n\n", swapable);
   std::print(stream, "    Mass:                         {} [-]\n", mass);
-  std::print(stream << std::boolalpha, "    Compute fugacity-coefficient: {}\n", computeFugacityCoefficient);
-  std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient);
+  if(fugacityCoefficient.has_value())
+  {
+    std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());
+  }
   std::print(stream, "    Bulk fluid density:           {} [-]\n", bulkFluidDensity);
   std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
   std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
@@ -463,8 +465,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.partialPressure;
 
   archive << c.mass;
-  archive << c.computeFugacityCoefficient;
-  archive << c.partialFugacity;
   archive << c.fugacityCoefficient;
   archive << c.amountOfExcessMolecules;
   archive << c.bulkFluidDensity;
@@ -555,8 +555,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.partialPressure;
 
   archive >> c.mass;
-  archive >> c.computeFugacityCoefficient;
-  archive >> c.partialFugacity;
   archive >> c.fugacityCoefficient;
   archive >> c.amountOfExcessMolecules;
   archive >> c.bulkFluidDensity;
