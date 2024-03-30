@@ -41,7 +41,7 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
     12.0,
     true,
     false);
-  Framework f = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0),
@@ -50,10 +50,7 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
-  Component c = Component(1,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component c = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
@@ -100,7 +97,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
     12.0,
     true,
     false);
-  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383),
     292,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0, 0),
@@ -143,10 +140,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(2, 2, 2));
-  Component c = Component(1,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component c = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     {  // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
        Atom(double3(0.0, 0.0,  0.0),    0.6512, 1.0, 0, 3, 1, 0),
@@ -193,7 +187,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
     12.0,
     false,
     true);
-  Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+  Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383),
     292,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0, 0),
@@ -236,10 +230,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
       Atom(double3(0.1085,  -0.25,     0.0611), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(2, 2, 2));
-  Component c = Component(1,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component c = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     {  // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
        Atom(double3(0.0, 0.0,  0.0),    0.6512, 1.0, 0, 3, 1, 0),

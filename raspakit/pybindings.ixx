@@ -91,13 +91,13 @@ PYBIND11_MODULE(RaspaKit, m)
 
 
   pybind11::class_<Framework>(m, "Framework")
-        .def(pybind11::init<size_t, std::string, double,
+        .def(pybind11::init<size_t, const ForceField &, std::string, 
                             SimulationBox, size_t, std::vector<Atom>, int3>())
         .def_readonly("name", &Framework::name)
         .def("__repr__", &Framework::repr);
 
   pybind11::class_<Component>(m, "Component")
-        .def(pybind11::init<size_t, std::string, double,
+        .def(pybind11::init<size_t, const ForceField &, std::string,
                             double, double, double, std::vector<Atom>, size_t, size_t>())
         .def_readonly("name", &Component::name)
         .def("__repr__", &Component::repr);

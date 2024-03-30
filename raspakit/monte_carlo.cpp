@@ -131,31 +131,31 @@ void MonteCarlo::initialize()
 
   for (System &system: systems)
   {
-    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     system.forceField, system.simulationBox,
-                                                     double3(0.0, 0.0, 0.0), 1.0);
+    //Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+    //                                                 system.forceField, system.simulationBox,
+    //                                                 double3(0.0, 0.0, 0.0), 1.0);
 
     system.removeRedundantMoves();
     system.determineSwapableComponents();
     system.determineFractionalComponents();
     system.rescaleMoveProbabilities();
     system.rescaleMolarFractions();
-    system.computeFrameworkDensity();
-    system.computeNumberOfPseudoAtoms();
+    //system.computeFrameworkDensity();
+    //system.computeNumberOfPseudoAtoms();
 
-    system.createFrameworks();
-    system.determineSimulationBox();
+    //system.createFrameworks();
+    //system.determineSimulationBox();
 
-    double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
-    system.forceField.initializeEwaldParameters(perpendicularWidths);
+    //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
+    //system.forceField.initializeEwaldParameters(perpendicularWidths);
 
-    system.createInitialMolecules(random);
+    //system.createInitialMolecules(random);
 
     system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
 
-    system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
-                                    EquationOfState::MultiComponentMixingRules::VanDerWaals,
-                                    system.temperature, system.input_pressure, system.simulationBox, system.HeliumVoidFraction, system.components);
+    //system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
+    //                                EquationOfState::MultiComponentMixingRules::VanDerWaals,
+    //                                system.temperature, system.input_pressure, system.simulationBox, system.HeliumVoidFraction, system.components);
   }
 
   createOutputFiles();
@@ -173,7 +173,10 @@ void MonteCarlo::initialize()
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
-    std::print(stream, "{}", HardwareInfo::writeInfo());
+    std::print(stream, "{}\n", HardwareInfo::writeInfo());
+    std::print(stream, "Temperature: {}\n", system.temperature);
+    std::print(stream, "Beta: {}\n", system.beta);
+    std::print(stream, "Pressure: {}\n", system.pressure * Units::PressureConversionFactor);
     std::print(stream, "{}", Units::printStatus());
     std::print(stream, "{}", system.simulationBox.printParameters());
     std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
@@ -184,7 +187,6 @@ void MonteCarlo::initialize()
 
   for (System& system : systems)
   {
-
     system.precomputeTotalRigidEnergy();
     system.recomputeTotalEnergies();
 

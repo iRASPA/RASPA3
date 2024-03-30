@@ -26,8 +26,7 @@ int main()
 {  
   try
   {
-    auto [numberOfSystems, numberOfComponents, numberOfBlocks] = InputReader::readNumberOfSystemsComponentsAndBlocks();
-    InputReader inputReader(numberOfSystems, numberOfComponents, numberOfBlocks);
+    InputReader inputReader("simulation.input");
 
     ThreadPool::createPool(inputReader.numberOfThreads, inputReader.threadingType);
 

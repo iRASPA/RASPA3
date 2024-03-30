@@ -21,6 +21,7 @@ import threadpool;
 
 
 import atom;
+import framework;
 import component;
 import framework;
 import simulationbox;
@@ -60,14 +61,9 @@ import equation_of_states;
 export struct System
 {
   System() = default;
-  System(size_t id, std::optional<SimulationBox> box, double T, double P, ForceField forcefield, 
+  System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
          std::vector<Framework> frameworkComponents, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
-  System(size_t s, ForceField forcefield, std::vector<Component> frameworkComponents, std::vector<Component> components, 
-         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
-
-  System(const System &s) = delete;
-  System(System&& s) = default;
 
   uint64_t versionNumber{ 1 };
 
@@ -126,7 +122,7 @@ export struct System
   std::vector<std::vector<size_t>> numberOfPseudoAtoms;
   std::vector<size_t> totalNumberOfPseudoAtoms;
 
-  std::optional<double> frameworkMass{ std::nullopt };
+  std::optional<double> frameworkMass{};
 
   double timeStep{ 0.0005 };
 

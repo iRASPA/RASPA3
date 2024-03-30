@@ -35,10 +35,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
     12.0,
     true,
     false);
-  Component c = Component(0,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { 
       // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0, 0) 
@@ -130,18 +127,12 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
     12.0,
     true,
     false);
-  Component na = Component(0,
-    "Na",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
     {
       // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
-  Component cl = Component(1,
-    "Cl",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
     {
       // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 0, 4, 1, 0),

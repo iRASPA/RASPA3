@@ -71,7 +71,7 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
                 components[i].name, systemId));
     const double3x3 cell = simulationBox.cell;
 
-    std::vector<Atom> frameworkAtoms = frameworkComponents.front().frameworkAtoms();
+    std::vector<Atom> frameworkAtoms = frameworkComponents.front().atoms;
 
     std::print(ostream, "Cube density file\n");
     std::print(ostream, "Written by RASPA-3\n");

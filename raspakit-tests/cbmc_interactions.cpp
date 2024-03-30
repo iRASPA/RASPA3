@@ -40,7 +40,7 @@ TEST(cbmc_interactions, framework_molecule_1)
     12.0,
     true,
     false);
-  Framework f = Framework(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0),
@@ -49,10 +49,7 @@ TEST(cbmc_interactions, framework_molecule_1)
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
-  Component c = Component(1,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 1, 0) 
     }, 5, 21);
@@ -89,7 +86,7 @@ TEST(cbmc_interactions, framework_molecule_2)
     12.0,
     true,
     false);
-  Framework f = Framework(0, "ITQ-29", 1442.023405456315, SimulationBox(11.8671, 11.8671, 11.8671),
+  Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0),
@@ -98,10 +95,7 @@ TEST(cbmc_interactions, framework_molecule_2)
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
-  Component c = Component(1,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 1, 0) 
     }, 5, 21);

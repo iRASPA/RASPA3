@@ -26,10 +26,7 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
     12.0,
     true,
     false);
-  Component c = Component(0,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 0, 0, 0) 
     }, 5, 21);
@@ -73,10 +70,7 @@ TEST(insertion_deletion, CO2_number_of_molecules_per_component)
   true,
   false);
 
-  Component c = Component(0,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component c = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
@@ -136,7 +130,7 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
   true,
   false);
 
-   Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383),
     292,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0, 0),
@@ -181,18 +175,12 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
     int3(2, 2, 2));
 
 
-  Component methane = Component(0,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component methane = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) 
     }, 5, 21);
 
-  Component co2 = Component(1,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component co2 = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     {  // double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
        Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
        Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
@@ -292,7 +280,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   true,
   false);
 
-   Framework f = Framework(0, "MFI_SI", 46144.748974602669, SimulationBox(20.022, 19.899, 13.383),
+   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383),
     292,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.42238,  0.0565,  -0.33598), 2.05,  1.0, 0, 0, 0, 0),
@@ -337,18 +325,12 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
     int3(2, 2, 2));
 
 
-  Component methane = Component(0,
-    "methane",
-    16.04246,
-    190.564, 45599200, 0.01142,
+  Component methane = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
     { 
       Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) 
     }, 5, 21);
 
-  Component co2 = Component(1,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component co2 = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
       Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),

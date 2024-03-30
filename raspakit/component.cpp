@@ -90,7 +90,7 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 }
 
 // create programmatically an 'adsorbate' component
-Component::Component(size_t componentId, std::string componentName, double mass,
+Component::Component(size_t componentId, const ForceField &forceField, std::string componentName,
                      double T_c, double P_c, double w, std::vector<Atom> definedAtoms,
                      size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
     type(Type::Adsorbate),
@@ -99,55 +99,23 @@ Component::Component(size_t componentId, std::string componentName, double mass,
     criticalTemperature(T_c),
     criticalPressure(P_c),
     acentricFactor(w),
-    mass(mass),
     definedAtoms(definedAtoms),
+    atoms(definedAtoms),
     lambdaGC(numberOfBlocks, numberOfLambdaBins),
     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(),
     mc_moves_statistics(),
     averageRosenbluthWeights(numberOfBlocks)
 {
-  atoms = definedAtoms;
-}
-
-
-
-template<typename T>
-std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
-{
-  std::vector<T> list{};
-
-  std::string str;
-  std::istringstream ss(arguments);
-
-  while (ss >> str)
+  mass = 0.0;
+  for (const Atom& atom : atoms)
   {
-    if (trim(str).rfind("//", 0) == 0)
-    {
-      if (list.empty())
-      {
-        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
-      }
-      return list;
-    }
-    T value;
-    std::istringstream s(str);
-    if (s >> value)
-    {
-      list.push_back(value);
-    }
-    else
-    {
-      if (list.empty())
-      {
-        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
-      }
-      return list;
-    }
-  };
-
-  return list;
+    size_t atomType = static_cast<size_t>(atom.type);
+    mass += forceField.pseudoAtoms[atomType].mass;
+  }
 }
+
+
 
 // read the component from the molecule-file
 void Component::readComponent(const ForceField& forceField, const std::string& fileName)

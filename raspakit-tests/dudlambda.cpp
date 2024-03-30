@@ -42,17 +42,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
     12.0,
     true,
     false);
-  Component na = Component(0,
-    "Na",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
-  Component cl = Component(1,
-    "Cl",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 4, 1, 0),
     }, 5, 21);
@@ -132,17 +126,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
     12.0,
     true,
     false);
-  Component na = Component(0,
-    "Na",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
-  Component cl = Component(1,
-    "Cl",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 4, 1, 0),
     }, 5, 21);
@@ -224,17 +212,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
     12.0,
     true,
     false);
-  Component na = Component(0,
-    "Na",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
-  Component cl = Component(1,
-    "Cl",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 4, 1, 0),
     }, 5, 21);
@@ -319,10 +301,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
     true,
     false);
 
-  Component c = Component(0,
-    "CO2",
-    43.9988,
-    304.1282, 7377300.0, 0.22394,
+  Component c = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
       Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
       Atom(double3(0.0, 0.0,  0.0),    0.6512, 1.0, 0, 3, 1, 0),

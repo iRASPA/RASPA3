@@ -7,6 +7,7 @@ import <string>;
 import <chrono>;
 import <cstdint>;
 import <fstream>;
+import <sstream>;
 import <ostream>;
 import <vector>;
 import <array>;
@@ -14,6 +15,7 @@ import <map>;
 import <optional>;
 import <span>;
 
+import stringutils;
 import archive;
 import randomnumbers;
 import int3;
@@ -31,8 +33,8 @@ export struct Framework
 {
   Framework();
   Framework(size_t currentComponent, const ForceField& forceField, const std::string &componentName, 
-            std::optional<const std::string> fileName) noexcept(false);
-  Framework(size_t componentId, std::string componentName, double mass, SimulationBox simulationBox, 
+            std::optional<const std::string> fileName, int3 numberOfUnitCells) noexcept(false);
+  Framework(size_t componentId, const ForceField &forceField, std::string componentName, SimulationBox simulationBox, 
             size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
   uint64_t versionNumber{ 1 };
@@ -49,6 +51,7 @@ export struct Framework
   bool rigid { true };
 
   double mass{ 0.0 };
+  double unitCellMass{ 0.0 };
   double netCharge{ 0.0 };
   std::vector<Atom> definedAtoms{};
   std::vector<Atom> atoms{};
@@ -71,8 +74,10 @@ export struct Framework
   std::vector<std::pair<size_t, size_t>> intraCoulomb{};
   std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
 
-  std::vector<Atom> frameworkAtoms() const;
   void readFramework(const ForceField& forceField, const std::string& fileName);
+
+  void expandDefinedAtomsToUnitCell();
+  void makeSuperCell();
 
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;
@@ -82,3 +87,42 @@ export struct Framework
 
   std::string repr() const;
 };
+
+
+template<typename T>
+std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
+{
+  std::vector<T> list{};
+
+  std::string str;
+  std::istringstream ss(arguments);
+
+  while (ss >> str)
+  {
+    if (trim(str).rfind("//", 0) == 0)
+    {
+      if (list.empty())
+      {
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
+      }
+      return list;
+    }
+    T value;
+    std::istringstream s(str);
+    if (s >> value)
+    {
+      list.push_back(value);
+    }
+    else
+    {
+      if (list.empty())
+      {
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
+      }
+      return list;
+    }
+  };
+
+  return list;
+}
+

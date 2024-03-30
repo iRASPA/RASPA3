@@ -7,6 +7,7 @@ import <string>;
 import <chrono>;
 import <cstdint>;
 import <fstream>;
+import <sstream>;
 import <ostream>;
 import <vector>;
 import <array>;
@@ -14,6 +15,7 @@ import <map>;
 import <optional>;
 import <span>;
 
+import stringutils;
 import archive;
 import randomnumbers;
 import int3;
@@ -50,10 +52,14 @@ export struct Component
   };
 
   Component();
+
+  // Construct from file
   Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName, 
             std::optional<const std::string> fileName, size_t numberOfBlocks, size_t numberOfLambdaBins) 
             noexcept(false);
-  Component(size_t componentId, std::string componentName, double mass,
+
+  // Construct programmatically
+  Component(size_t componentId, const ForceField &forceField, std::string componentName,
             double T_c, double P_c, double w, std::vector<Atom> definedAtoms, 
             size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false);
 
@@ -159,3 +165,42 @@ export struct Component
 
   std::string repr() const;
 };
+
+
+template<typename T>
+std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
+{
+  std::vector<T> list{};
+
+  std::string str;
+  std::istringstream ss(arguments);
+
+  while (ss >> str)
+  {
+    if (trim(str).rfind("//", 0) == 0)
+    {
+      if (list.empty())
+      {
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
+      }
+      return list;
+    }
+    T value;
+    std::istringstream s(str);
+    if (s >> value)
+    {
+      list.push_back(value);
+    }
+    else
+    {
+      if (list.empty())
+      {
+        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
+      }
+      return list;
+    }
+  };
+
+  return list;
+}
+

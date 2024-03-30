@@ -83,13 +83,13 @@ import equation_of_states;
 
 
 // construct System programmatically
-System::System(size_t id, std::optional<SimulationBox> box, double T, double P, ForceField forcefield, 
+System::System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
                std::vector<Framework> f, std::vector<Component> c, 
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
     systemId(id), 
     temperature(T),
-    pressure(P / Units::PressureConversionFactor),
-    input_pressure(P),
+    pressure(P.value_or(0.0) / Units::PressureConversionFactor),
+    input_pressure(P.value_or(0.0)),
     beta(1.0 / (Units::KB * T)),
     frameworkComponents(f),
     components(c),
@@ -150,97 +150,22 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, double P, 
 
   equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, 
                                     EquationOfState::MultiComponentMixingRules::VanDerWaals, 
-                                    T, P, simulationBox, HeliumVoidFraction, components);
+                                    T, P.value_or(0.0), simulationBox, HeliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swapableComponents.size());
-}
-
-
-// used in 'input_reader.cpp' for Box and Framework
-System::System(size_t s, ForceField forcefield, std::vector<Component> f, std::vector<Component> c, 
-               [[maybe_unused]] std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
-    systemId(s),
-    frameworkComponents(),
-    components(c),
-    loadings(c.size()),
-    averageLoadings(numberOfBlocks, c.size()),
-    averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
-    swapableComponents(),
-    initialNumberOfMolecules(c.size()),
-    numberOfMoleculesPerComponent(c.size()),
-    numberOfIntegerMoleculesPerComponent(c.size()),
-    numberOfFractionalMoleculesPerComponent(c.size()),
-    numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
-    idealGasEnergiesPerComponent(c.size()),
-    forceField(forcefield),
-    hasExternalField(false),
-    numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
-    totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
-    simulationBox(0.0, 0.0, 0.0, 90.0 * std::numbers::pi / 180.0, 
-                  90.0 * std::numbers::pi / 180.0, 90.0 * std::numbers::pi / 180.0),
-    averageSimulationBox(numberOfBlocks),
-    atomPositions({}),
-    runningEnergies(),
-    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
-    currentEnergyStatus(1, f.size(), c.size()),
-    averagePressure(numberOfBlocks),
-    //sampleMovie(systemId, forceField, simulationBox, atomPositions),
-    netCharge(c.size()),
-    mc_moves_probabilities(),
-    mc_moves_statistics(),
-    reactions(),
-    tmmc()
-{
-    
-}
-
-void System::addComponent(const Component&& component) noexcept(false)
-{
-  // Move the component to the system
-  components.push_back(std::move(component));
-
-  initialNumberOfMolecules.resize(components.size());
-  numberOfMoleculesPerComponent.resize(components.size());
-  numberOfIntegerMoleculesPerComponent.resize(components.size());
-  numberOfFractionalMoleculesPerComponent.resize(components.size());
-
-  numberOfGCFractionalMoleculesPerComponent_CFCMC.resize(components.size());
-  numberOfPairGCFractionalMoleculesPerComponent_CFCMC.resize(components.size());
-  numberOfGibbsFractionalMoleculesPerComponent_CFCMC.resize(components.size());
-  
-  // FIX: add reactions
-
-  idealGasEnergiesPerComponent.resize(components.size());
-
-  numberOfPseudoAtoms.resize(components.size(), std::vector<size_t>(forceField.pseudoAtoms.size()));
-  totalNumberOfPseudoAtoms.resize(forceField.pseudoAtoms.size());
-
-  averageEnergies.resize(frameworkComponents.size(), components.size());
-
-  loadings.resize(components.size());
-  averageLoadings.resize(components.size());
-
-  netCharge.resize(components.size());
-
 }
 
 void System::createFrameworks()
 {
   for (Framework& framework : frameworkComponents)
   {
-    std::vector<Atom> atoms = framework.frameworkAtoms();
+    const std::vector<Atom> &atoms = framework.atoms;
     for (const Atom& atom : atoms)
     {
       atomPositions.push_back(atom);
     }
     numberOfFrameworkAtoms += atoms.size();
     numberOfRigidFrameworkAtoms += atoms.size();
-    
-    // For multiple framework, the simulation box is the union of the boxes
-    simulationBox = max(simulationBox, framework.simulationBox.scaled(framework.numberOfUnitCells));
   }
 }
 
@@ -656,9 +581,9 @@ void System::rescaleMolarFractions()
 
 void System::computeFrameworkDensity()
 {
-  for (Framework& component : frameworkComponents)
+  for (Framework& frameworkComponent : frameworkComponents)
   {
-    frameworkMass = frameworkMass.value_or(0.0) + component.mass * component.numberOfUnitCells.x * component.numberOfUnitCells.y * component.numberOfUnitCells.z;;
+    frameworkMass = frameworkMass.value_or(0.0) + frameworkComponent.mass;
   }
 }
 

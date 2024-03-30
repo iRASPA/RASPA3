@@ -66,7 +66,8 @@ Framework::Framework()
 
 // create Component in 'inputreader.cpp'
 Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string &componentName,
-                     std::optional<const std::string> fileName) noexcept(false) :
+                     std::optional<const std::string> fileName, int3 numberOfUnitCells) noexcept(false) :
+                     numberOfUnitCells(numberOfUnitCells),
                      frameworkId(currentFramework),
                      name(componentName),
                      filenameData(fileName)
@@ -84,7 +85,7 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
 }
 
 // create programmatically an 'framework' component
-Framework::Framework(size_t frameworkId, std::string fileName, double mass, SimulationBox simulationBox, 
+Framework::Framework(size_t frameworkId, const ForceField &forceField, std::string fileName, SimulationBox simulationBox, 
                      size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false) :
     simulationBox(simulationBox),
     spaceGroupHallNumber(spaceGroupHallNumber),
@@ -92,132 +93,31 @@ Framework::Framework(size_t frameworkId, std::string fileName, double mass, Simu
     frameworkId(frameworkId),
     name(fileName),
     filenameData(fileName),
-    mass(mass),
     definedAtoms(definedAtoms)
 {
-  // expand the fractional atoms based on the space-group
-  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
-  std::vector<Atom> expandedAtoms;
-  expandedAtoms.reserve(definedAtoms.size() * 256uz);
+  expandDefinedAtomsToUnitCell();
+  makeSuperCell();
 
-
-  for (const Atom& atom : definedAtoms)
+  unitCellMass = 0.0;
+  for (const Atom& atom : unitCellAtoms)
   {
-    Atom atomCopy = atom;
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
-    for (const double3& pos : listOfPositions)
-    {
-      atomCopy.position = simulationBox.cell * pos.fract();
-      expandedAtoms.push_back(atomCopy);
-    }
+    size_t atomType = static_cast<size_t>(atom.type);
+    unitCellMass += forceField.pseudoAtoms[atomType].mass;
   }
 
-  // eliminate duplicates
-  unitCellAtoms.clear();
-  for (size_t i = 0; i < expandedAtoms.size(); ++i)
+  mass = 0.0;
+  for (const Atom& atom : atoms)
   {
-    bool overLap = false;
-    for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
-    {
-      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
-      {
-        overLap = true;
-        break;
-      }
-    }
-    if (!overLap)
-    {
-      unitCellAtoms.push_back(expandedAtoms[i]);
-    }
+    size_t atomType = static_cast<size_t>(atom.type);
+    mass += forceField.pseudoAtoms[atomType].mass;
   }
-
-  //for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
-  //{
-  //  for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
-  //  {
-  //    for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-  //    {
-  //      for (const Atom& atom : unitCellAtoms)
-  //      {
-  //        Atom atomCopy = atom;
-  //        atomCopy.position += simulationBox.unitCell * 
-  //                             double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-  //        atoms.push_back(atomCopy);
-  //      }
-  //    }
-  //  }
-  //}
-
 
   for (size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
     unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
   }
-}
 
-std::vector<Atom> Framework::frameworkAtoms() const
-{
-  std::vector<Atom> atoms1{};
-
-  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
-  {
-    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
-    {
-      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-      {
-        for (const Atom& atom : unitCellAtoms)
-        {
-          Atom atomCopy = atom;
-          atomCopy.position += simulationBox.cell *
-                               double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-          atoms1.push_back(atomCopy);
-        }
-      }
-    }
-  }
-  return atoms1;
-}
-
-
-template<typename T>
-std::vector<T> parseListOfParameters(const std::string& arguments, size_t lineNumber)
-{
-  std::vector<T> list{};
-
-  std::string str;
-  std::istringstream ss(arguments);
-
-  while (ss >> str)
-  {
-    if (trim(str).rfind("//", 0) == 0)
-    {
-      if (list.empty())
-      {
-        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
-      }
-      return list;
-    }
-    T value;
-    std::istringstream s(str);
-    if (s >> value)
-    {
-      list.push_back(value);
-    }
-    else
-    {
-      if (list.empty())
-      {
-        throw std::runtime_error(std::format("No values could be read at line: {}\n", lineNumber));
-      }
-      return list;
-    }
-  };
-
-  return list;
 }
 
 
@@ -240,64 +140,22 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   CIFReader parser = CIFReader(fileContent, forceField);
   simulationBox = parser.simulationBox;
   definedAtoms = parser.fractionalAtoms;
+  spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
 
   // expand the fractional atoms based on the space-group
-  size_t number = parser._spaceGroupHallNumber.value_or(1);
-  SKSpaceGroup spaceGroup = SKSpaceGroup(number);
-  std::vector<Atom> expandedAtoms;
-  expandedAtoms.reserve(parser.fractionalAtoms.size() * 256);
-  for (const Atom &atom : definedAtoms)
-  {
-    Atom atomCopy = atom;
-    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atom.position);
-    for (const double3& pos : listOfPositions)
-    {
-      atomCopy.position = parser.simulationBox.cell * pos.fract();
-      expandedAtoms.push_back(atomCopy);
-    }
-  }
+  expandDefinedAtomsToUnitCell();
 
-  // eliminate duplicates
-  unitCellAtoms.clear();
-  for (size_t i = 0; i < expandedAtoms.size(); ++i)
-  {
-    bool overLap = false;
-    for (size_t j = i + 1; j < expandedAtoms.size(); ++j)
-    {
-      double3 dr = expandedAtoms[i].position - expandedAtoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      double rr = double3::dot(dr, dr);
-      if (rr < 0.1)
-      {
-        overLap = true;
-        break;
-      }
-    }
-    if (!overLap)
-    {
-      unitCellAtoms.push_back(expandedAtoms[i]);
-    }
-  }
+  makeSuperCell();
 
-  //for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
-  //{
-  //  for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
-  //  {
-  //    for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
-  //    {
-  //      for (const Atom& atom : unitCellAtoms)
-  //      {
-  //        Atom atomCopy = atom;
-  //        atomCopy.position += simulationBox.unitCell * 
-  //          double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
-  //        atoms.push_back(atomCopy);
-  //      }
-  //    }
-  //  }
-  //}
+  unitCellMass = 0.0;
+  for (const Atom& atom : unitCellAtoms)
+  {
+    size_t atomType = static_cast<size_t>(atom.type);
+    unitCellMass += forceField.pseudoAtoms[atomType].mass;
+  }
 
   mass = 0.0;
-  for (const Atom& atom : unitCellAtoms)
+  for (const Atom& atom : atoms)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     mass += forceField.pseudoAtoms[atomType].mass;
@@ -309,6 +167,68 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
     unitCellAtoms[i].moleculeId = static_cast<uint8_t>(frameworkId);
   }  
 }
+
+void Framework::expandDefinedAtomsToUnitCell()
+{
+  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+
+  // expand the fractional atoms based on the space-group
+  std::vector<Atom> expandAtoms{};
+  expandAtoms.reserve(definedAtoms.size() * 256);
+
+  for (Atom atomCopy : definedAtoms)
+  {
+    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
+    for (const double3& pos : listOfPositions)
+    {
+      atomCopy.position = simulationBox.cell * pos.fract();
+      expandAtoms.push_back(atomCopy);
+    }
+  }
+
+  // eliminate duplicates
+  unitCellAtoms.clear();
+  for (size_t i = 0; i < expandAtoms.size(); ++i)
+  {
+    bool overLap = false;
+    for (size_t j = i + 1; j < expandAtoms.size(); ++j)
+    {
+      double3 dr = expandAtoms[i].position - expandAtoms[j].position;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+      if (rr < 0.1)
+      {
+        overLap = true;
+        break;
+      }
+    }
+    if (!overLap)
+    {
+      unitCellAtoms.push_back(expandAtoms[i]);
+    }
+  }
+}
+
+void Framework::makeSuperCell()
+{
+  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
+  {
+    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
+    {
+      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
+      {
+        for (const Atom& atom : unitCellAtoms)
+        {
+          Atom atomCopy = atom;
+          atomCopy.position += simulationBox.cell * 
+                               double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atoms.push_back(atomCopy);
+        }
+      }
+    }
+  }
+}
+
 
 std::string Framework::printStatus(const ForceField& forceField) const
 {

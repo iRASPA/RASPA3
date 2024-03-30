@@ -129,8 +129,6 @@ export struct ForceField
   ForceField& operator=(ForceField&& a) noexcept = default;
   ~ForceField() noexcept = default;
 
-  bool operator==(ForceField const&) const = default;
-
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
 
