@@ -1,4 +1,4 @@
-from RaspaKit import *
+from raspakit import *
 
 atomTypes = [PseudoAtom("Si",    28.0855,   2.05,  14, False), \
              PseudoAtom("O",     15.999,   -1.025,  8, False), \
@@ -15,7 +15,7 @@ force_field = ForceField(atomTypes, parameters, ForceField.MixingRule.Lorentz_Be
 
 print(force_field)
 
-framework = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11.8671, 11.8671), \
+framework = Framework(0, force_field, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), \
                       517, \
                       [ \
                         Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0), \
@@ -25,9 +25,9 @@ framework = Framework(0, "ITQ-29", 46144.748974602669, SimulationBox(11.8671, 11
                       ], \
                       int3(1, 1, 1))
 
-component = Component(1, \
+component = Component(0, \
+                      force_field, \
                       "CO2", \
-                      43.9988, \
                       304.1282, 7377300.0, 0.22394, \
                       [ \
                          Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0), \
@@ -37,12 +37,12 @@ component = Component(1, \
 
 system = System(0, None, 300.0, 1e4, force_field, [ framework ] , [ component ], [ 2 ], 5)
 
-system.atomPositions[72].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
-system.atomPositions[73].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
-system.atomPositions[74].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
-system.atomPositions[75].position = double3(5.93355, 3.93355, 5.93355 + 1.149);
-system.atomPositions[76].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
-system.atomPositions[77].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
+system.atomPositions[72].position = double3(5.93355, 7.93355, 5.93355 + 1.149)
+system.atomPositions[73].position = double3(5.93355, 7.93355, 5.93355 + 0.0)
+system.atomPositions[74].position = double3(5.93355, 7.93355, 5.93355 - 1.149)
+system.atomPositions[75].position = double3(5.93355, 3.93355, 5.93355 + 1.149)
+system.atomPositions[76].position = double3(5.93355, 3.93355, 5.93355 + 0.0)
+system.atomPositions[77].position = double3(5.93355, 3.93355, 5.93355 - 1.149)
 
 energy = system.computeTotalEnergies()
 print(1.2027242847 * energy.moleculeMoleculeVDW)

@@ -1,25 +1,26 @@
 SimulationType                MonteCarlo
-NumberOfCycles                500000
-NumberOfInitializationCycles  50000
+NumberOfCycles                100000
+NumberOfInitializationCycles  20000
 PrintEvery                    5000
 
 Framework 0
-    FrameworkName MFI_SI
-    NumberOfUnitCells 2 2 2
-    ExternalTemperature 300.0
-    ExternalPressure 1e5
-    ChargeMethod None
-    ComputeDensityGrid yes
-    SampleDensityGridEvery 10
-    WriteDensityGridEvery 5000
-    DensityGridSize 128 128 128
+    FrameworkName        MFI_SI
+    NumberOfUnitCells    2 2 2
+    ExternalTemperature  300.0
+    ExternalPressure     1.0e5
+    ChargeMethod         None
+
+    //ComputeDensityGrid yes
+    //SampleDensityGridEvery 10
+    //WriteDensityGridEvery 5000
+    //DensityGridSize 128 128 128
     
 Component 0 
-    MoleculeName methane
-    MoleculeDefinition ExampleDefinitions
-    TranslationProbability 0.0
-    ReinsertionProbability 0.0
-    SwapProbability 1.0
-    CFCMC_SwapProbability 0.0
+    MoleculeName             methane
+    MoleculeDefinition       ExampleDefinitions
+    FugacityCoefficient      1.0
+    TranslationProbability   0.5
+    ReinsertionProbability   0.5
+    SwapProbability          1.0
     CreateNumberOfMolecules  0
 

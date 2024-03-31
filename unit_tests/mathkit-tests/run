@@ -1,0 +1,4 @@
+#!/bin/bash
+export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:../../python
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:../../python
+./test_mathkit

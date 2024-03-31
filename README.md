@@ -20,6 +20,10 @@ Contributors
 ============
 Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation
 
+Mac
+=======
+export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+
 Windows
 =======
 Visual studio 2022 project file included.
@@ -27,65 +31,70 @@ Showstopper: msvc does not support the multidimensional subscript operator
 
 Linux
 =====
-Edit 'makefile'
-  CXX=clang++
-  LINK_FLAGS=-undefined dynamic_lookup
-
-Set your compiler, and comment the 'LINK_FLAGS', e.g.
-  CXX=clang++-16
-  #LINK_FLAGS=-undefined dynamic_lookup
+Edit 'makefile'<br>
+  CXX=clang++<br>
+<br>
+Set your compiler, e.g.<br>
+  CXX=clang++-16<br>
+or<br>
+  CXX=clang++-17<br>
 
 Ubuntu
 ======
-sudo apt install build-essential git cmake
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 liblapack-dev
+sudo apt install build-essential git cmake<br>
+wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -<br>
+wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc<br>
+sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 liblapack-dev<br>
 
 Redhat/Centos 8
 ===============
-sudo dnf group install "Development Tools"
-sudo dnf install llvm-toolset
-sudo dnf install llvm-devel clang-devel
-sudo dnf install lldb python3-lit
-sudo dnf install cmake
-#sudo dnf install fmt-devel
-sudo dnf --enablerepo=devel install python3-devel python3.11-pybind11-devel
-sudo dnf --enablerepo=devel install pybind11-devel
-sudo dnf --enablerepo=devel install lapack-devel
-Note: no libc++-devel for Redhat-8
+sudo dnf group install "Development Tools"<br>
+sudo dnf install llvm-toolset<br>
+sudo dnf install llvm-devel clang-devel<br>
+sudo dnf install lldb python3-lit<br>
+sudo dnf install cmake<br>
+#sudo dnf install fmt-devel<br>
+sudo dnf --enablerepo=devel install python3-devel python3.11-pybind11-devel<br>
+sudo dnf --enablerepo=devel install pybind11-devel<br>
+sudo dnf --enablerepo=devel install lapack-devel<br>
+Note: no libc++-devel for Redhat-8<br>
 
 Redhat 9
 ===============
-sudo dnf group install "Development Tools"
-sudo dnf install llvm-toolset
-sudo dnf install llvm-devel clang-devel
-sudo dnf install lldb python3-lit
-sudo dnf install cmake
-sudo dnf install fmt-devel
-sudo dnf --enablerepo=devel install python3-devel python3-pybind11
-sudo dnf --enablerepo=devel install pybind11-devel
-sudo dnf --enablerepo=devel install lapack-devel
-Note: no libc++-devel for Redhat-9, the one of Fedora 38 works
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-16.0.6-1.fc38.x86_64.rpm
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-devel-16.0.6-1.fc38.x86_64.rpm
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-static-16.0.6-1.fc38.x86_64.rpm
+sudo dnf group install "Development Tools"<br>
+sudo dnf install llvm-toolset<br>
+sudo dnf install llvm-devel clang-devel<br>
+sudo dnf install lldb python3-lit<br>
+sudo dnf install cmake<br>
+sudo dnf install fmt-devel<br>
+sudo dnf --enablerepo=devel install python3-devel python3-pybind11<br>
+sudo dnf --enablerepo=devel install pybind11-devel<br>
+sudo dnf --enablerepo=devel install lapack-devel<br>
+Note: no libc++-devel for Redhat-9, the one of Fedora 38 works<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-16.0.6-1.fc38.x86_64.rpm<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-devel-16.0.6-1.fc38.x86_64.rpm<br>
+wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-static-16.0.6-1.fc38.x86_64.rpm<br>
 sudo dnf install libcxx*.rpm
 
 Compilation
 ===========
-make -j 32
-or
-make -j 32 debug
-
-to clean: make clean
+for a parallel build using 16 cores use:<br>
+make -j 16 release<br>
+make -j 16 debug<br>
+make -j 16 shared<br>
+<br>
+make<br>
+defaults to<br>
+make release<br>
+<br>
+to clean: make clean<br>
 
 Running
 =======
-cd examples/basic/1_mc_methane_in_box
+cd examples/basic/1_mc_methane_in_box<br>
 ./run
 
 

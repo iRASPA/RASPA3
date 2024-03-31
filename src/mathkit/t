@@ -1,0 +1,4 @@
+%s/interactions_ewald\.pcm/interactions\/interactions_ewald\.pcm/g
+%s/interactions_external_field\.pcm/interactions\/interactions_external_field\.pcm/g
+%s/interactions_framework_molecule\.pcm/interactions\/interactions_framework_molecule\.pcm/g
+%s/interactions_intermolecular\.pcm/interactions\/interactions_intermolecular\.pcm/g

@@ -1,0 +1,19 @@
+# critical constants: Temperature [T], Pressure [Pa], and Acentric factor [-]
+304.1282
+7377300.0
+0.22394
+#Number Of Atoms
+3
+# CO2-group
+rigid
+# atomic positions
+0 O_co2     0.0           0.0           1.149
+1 C_co2     0.0           0.0           0.0
+2 O_co2     0.0           0.0          -1.149
+# CC BO BD BE UB IB T ImpT S/S S/B B/B S/T B/T VDW Coulomb
+   0  2  0  0  0  0 0    0   0   0   0   0   0   0       0
+# Bond stretch: atom n1-n2, type, parameters
+0 1 RIGID_BOND
+1 2 RIGID_BOND
+# Number of config moves
+0

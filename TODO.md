@@ -10,6 +10,7 @@
 10) grids for rigid frameworks
 11) cell-lists for rigid frameworks
 12) partial molar volumes
+13) json https://github.com/nlohmann/json
 
 tests
 =====
