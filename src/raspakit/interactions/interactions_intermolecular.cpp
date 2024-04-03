@@ -245,7 +245,7 @@ Interactions::computeInterMolecularEnergyDifference(const ForceField &forceField
     }
   }
 
-  return energySum;
+  return std::optional{energySum};
 }
 
 

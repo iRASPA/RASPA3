@@ -133,7 +133,7 @@ void MonteCarloTransitionMatrix::initialize()
     std::print(stream, "Random seed: {}\n\n", random.seed);
     std::print(stream, "{}", HardwareInfo::writeInfo());
     std::print(stream, "{}", Units::printStatus());
-    std::print(stream, "{}", system.simulationBox.printParameters());
+    std::print(stream, "{}", system.writeSystemStatus());
     std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
     std::print(stream, "{}", system.forceField.printForceFieldStatus());
     std::print(stream, "{}", system.writeComponentStatus());

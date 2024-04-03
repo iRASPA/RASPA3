@@ -1,0 +1,37 @@
+{
+  "PseudoAtoms" :
+  [
+    {"name" : "O",     "print_to_output" : true,  "element" : "O",  "print_as" : "O",  "mass" : 28.0855,  "charge" :  2.05,
+              "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"},
+    {"name" : "Al",    "print_to_output" : true,  "element" : "Al", "print_as" : "Al", "mass" : 26.98154 ,"charge" :  1.75,
+              "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"},
+    {"name" : "Si",    "print_to_output" : true,  "element" : "Al", "print_as" : "Si;", "mass" : 28.0855, "charge" :  2.05,
+              "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"},
+    {"name" : "He",    "print_to_output" : true,  "element" : "He", "print_as" : "He", "mass" : 4.002602, "charge" :  0.0,
+              "source" : "J.O. Hirschfelder et al., Molecular Theory of Gases and Liquids, Wiley, New York, 1954, p. 1114"},
+    {"name" : "C_co2", "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 12.0,     "charge" :  0.6512,
+              "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"},
+    {"name" : "O_co2", "print_to_output" : true,  "element" : "O",  "print_as" : "O",  "mass" : 15.9994,  "charge" : -0.3256,
+              "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"},
+    {"name" : "O_o2",  "print_to_output" : true,  "element" : "O",  "print_as" : "O",  "mass" : 15.9994,  "charge" : -0.112,
+              "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"},
+    {"name" : "O_com", "print_to_output" : false, "element" : "O",  "print_as" : "O",  "mass" : 0.0,      "charge" :  0.224,
+              "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"},
+    {"name" : "N_n2",  "print_to_output" : true,  "element" : "N",  "print_as" : "N",  "mass" : 14.00674, "charge" : -0.405,
+              "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"},
+    {"name" : "N_com", "print_to_output" : false, "element" : "N",  "print_as" : "-",  "mass" : 0.0,      "charge" :  0.810,
+              "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"},
+    {"name" : "Ar",    "print_to_output" : true,  "element" : "Ar", "print_as" : "Ar", "mass" : 39.948,   "charge" :  0.0,
+              "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"},
+    {"name" : "CH4",   "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 16.04246, "charge" :  0.0,
+              "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"},
+    {"name" : "CH3",   "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 15.03452, "charge" :  0.0,
+              "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"},
+    {"name" : "CH2",   "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 14.02658, "charge" :  0.0,
+              "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"},
+    {"name" : "CH",    "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 13.01864, "charge" :  0.0,
+              "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"},
+    {"name" : "C",     "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 12.0,     "charge" :  0.0,
+              "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"}
+  ]
+} 

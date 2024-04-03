@@ -219,7 +219,7 @@ Interactions::computeFrameworkMoleculeEnergyDifference(const ForceField &forceFi
     }
   }
 
-  return energySum;
+  return std::optional{energySum};
 }
 
 [[nodiscard]] RunningEnergy 

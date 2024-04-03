@@ -41,6 +41,7 @@ import double3;
 import double3x3;
 import randomnumbers;
 import archive;
+import json;
 import skposcarparser;
 import characterset;
 import stringutils;
@@ -74,13 +75,15 @@ Component::Component()
 // create Component in 'inputreader.cpp'
 Component::Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName,
                      std::optional<const std::string> fileName,
-                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
+                     size_t numberOfBlocks, size_t numberOfLambdaBins,
+                     const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false) :
                      type(type), 
                      componentId(currentComponent), 
                      name(componentName),
                      filenameData(fileName),
                      lambdaGC(numberOfBlocks, numberOfLambdaBins),
                      lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+                     mc_moves_probabilities(particleProbalities),
                      averageRosenbluthWeights(numberOfBlocks)
 {
   if (filenameData.has_value())
@@ -92,7 +95,8 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 // create programmatically an 'adsorbate' component
 Component::Component(size_t componentId, const ForceField &forceField, std::string componentName,
                      double T_c, double P_c, double w, std::vector<Atom> definedAtoms,
-                     size_t numberOfBlocks, size_t numberOfLambdaBins) noexcept(false) :
+                     size_t numberOfBlocks, size_t numberOfLambdaBins,
+                     const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false) :
     type(Type::Adsorbate),
     componentId(componentId),
     name(componentName),
@@ -103,8 +107,7 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
     atoms(definedAtoms),
     lambdaGC(numberOfBlocks, numberOfLambdaBins),
     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
-    mc_moves_probabilities(),
-    mc_moves_statistics(),
+    mc_moves_probabilities(particleProbalities),
     averageRosenbluthWeights(numberOfBlocks)
 {
   mass = 0.0;
@@ -120,7 +123,7 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
 // read the component from the molecule-file
 void Component::readComponent(const ForceField& forceField, const std::string& fileName)
 {
-  const std::string defaultMoleculeFileName = fileName + ".def";
+  const std::string defaultMoleculeFileName = fileName + ".json";
 
   std::string moleculeFileName = defaultMoleculeFileName;
   if(!std::filesystem::exists(std::filesystem::path{moleculeFileName}))
@@ -138,127 +141,129 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   }
 
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
-  std::ifstream moleculeFile{ moleculePathfile };
-  if (!moleculeFile) 
+  std::ifstream moleculeStream{ moleculePathfile };
+  if (!moleculeStream) 
   {
     throw std::runtime_error(std::format("[Component reader] File '{}' exists, but error opening file\n", moleculeFileName));
   }
 
-  std::string str{};
-  //size_t lineNumber{ 0 };
+  nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
-  // skip comment line
-  std::getline(moleculeFile, str);
-  
-  // read critical temperature
-  std::getline(moleculeFile, str);
-  std::istringstream critical_temperature_stream(str);
-  critical_temperature_stream >> criticalTemperature;
-  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical temperature\n");
-
-  // read critical pressure
-  std::getline(moleculeFile, str);
-  std::istringstream critical_pressure_stream(str);
-  critical_pressure_stream >> criticalPressure;
-  if (criticalTemperature < 0.0) throw std::runtime_error("Incorrect critical pressure\n");
-
-  // read acentric factor
-  std::getline(moleculeFile, str);
-  std::istringstream acentric_factor_stream(str);
-  acentric_factor_stream >> acentricFactor;
-  
-
-  // skip comment line
-  std::getline(moleculeFile, str);
-  
-  // read number of pseudo-atoms
-  size_t n;
-  std::getline(moleculeFile, str);
-  std::istringstream my_stream(str);
-  my_stream >> n;
-  if (n < 0 || n > 10000) throw std::runtime_error("Incorrect amount of pseudo=atoms\n");
-
-  definedAtoms.resize(n);
-
-  // skip comment line
-  std::getline(moleculeFile, str);
-  
-  // read Rigid or Flexible
-  std::getline(moleculeFile, str);
-  std::istringstream rigidStream(str);
-  std::string rigidString;
-  rigidStream >> rigidString;
-  if (caseInSensStringCompare(str, "flexible"))
+  try
   {
-    rigid = false;
+    parsed_data = nlohmann::json::parse(moleculeStream);
   }
-  
-  // skip comment line
-  std::getline(moleculeFile, str);
-
-  // read atomic positions
-  this->mass = 0.0;
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  catch (nlohmann::json::parse_error& ex)
   {
-    int id;
-    std::string atomTypeString;
-    double3 pos;
-    std::getline(moleculeFile, str);
-    std::istringstream atomStream(str);
-    atomStream >> id >> atomTypeString >> pos.x >> pos.y >> pos.z;
+    throw std::runtime_error(std::format("[Component reader]: Parse error of file {} at byte {}\n{}\n",
+                                         std::format("{}.json", fileName), ex.byte, ex.what()));
+  }
+
+  try
+  {
+    criticalTemperature = parsed_data.value("CriticalTemperature", 0.0);
+  }
+  catch (nlohmann::json::exception& ex)
+  {
+    throw std::runtime_error(std::format("[Component reader]: item 'CriticalTemperature' listed as {} must be floating point number\n{}\n",
+           parsed_data["CriticalTemperature"].dump(), ex.what()));
+  }
+
+  try
+  {
+    criticalPressure = parsed_data.value("CriticalPressure", 0.0);
+  }
+  catch (nlohmann::json::exception& ex)
+  {
+    throw std::runtime_error(std::format("[Component reader]: item 'CriticalPressure' listed as {} must be floating point number\n{}\n",
+           parsed_data["CriticalPressure"].dump(), ex.what()));
+  }
+
+  try
+  {
+    acentricFactor = parsed_data.value("AcentricFactor", 0.0);
+  }
+  catch (nlohmann::json::exception& ex)
+  {
+    throw std::runtime_error(std::format("[Component reader]: item 'AcentricFactor' listed as {} must be floating point number\n{}\n",
+           parsed_data["AcentricFactor"].dump(), ex.what()));
+  }
+
+  size_t numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
+
+  definedAtoms.clear();
+  definedAtoms.reserve(numberOfPseudoAtoms);
+
+  if(numberOfPseudoAtoms == 0)
+  {
+    throw std::runtime_error(std::format("[Component reader]: key 'PseudoAtoms' empty]\n"));
+  }
+
+  if(!parsed_data.contains("PseudoAtoms"))
+  {
+    throw std::runtime_error(std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
+  }
+
+  mass = 0.0;
+  for (auto& [_, item ] : parsed_data["PseudoAtoms"].items())
+  {
+    if(!item.is_array())
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+    }
+
+
+    if(item.size() != 2)
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array with two elements, "
+                "the pseudo-atom-name and an array with the x,y,z positions\n", item.dump()));
+    }
+
+    if(!item[0].is_string())
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an string (the name of the pseudo-atom)\n", item[0].dump()));
+    }
+    std::string pseudoAtomName = item[0].get<std::string>();
 
     // find atom-type based on read 'atomTypeString'
-    std::optional<size_t> index = forceField.findPseudoAtom(atomTypeString);
+    std::optional<size_t> index = forceField.findPseudoAtom(pseudoAtomName);
+    if(!index.has_value())
+    {
+      throw std::runtime_error(std::format("[Component reader]: unknown pseudo-atom '{}', please lookup type in in 'pseudo_atoms.json'\n", pseudoAtomName));
+    }
     size_t pseudoAtomType = index.value();
 
-    this->mass += forceField.pseudoAtoms[pseudoAtomType].mass;
+    if(!item[1].is_array())
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array (with the positions)\n", item[1].dump()));
+    }
+
+    if(item[1].size() != 3)
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be an array with three elements, "
+                "the x,y,z positions\n", item[1].dump()));
+    }
+
+    std::vector<double> position{};
+    try
+    {
+      position = item[1].is_array() ? item[1].get<std::vector<double>>() : std::vector<double>{};
+    }
+    catch (nlohmann::json::exception& ex)
+    {
+      throw std::runtime_error(std::format("[Component reader]: item {} must be array of three floating point numbers \n{}\n",
+             item[1].dump(), ex.what()));
+    }
+
+    mass += forceField.pseudoAtoms[pseudoAtomType].mass;
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;
 
-    definedAtoms[i] = Atom(pos, charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType), 
+    definedAtoms.emplace_back(double3(position[0], position[1], position[2]) , charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType),
                            static_cast<uint8_t>(componentId), 0);
   }
 
   atoms = definedAtoms;
-
-  // skip comment line
-  std::getline(moleculeFile, str);
-
-  // read number of intra-molecular interactions
-  std::getline(moleculeFile, str);
-  std::istringstream numberOfInteractionsString(str);
-  size_t numberOfChiralCenters, numberOfBonds, numberOfBondDipoles, numberOfBends, numberOfUreyBradleys;
-  numberOfInteractionsString >> numberOfChiralCenters >> numberOfBonds >> numberOfBondDipoles >> 
-  numberOfBends >> numberOfUreyBradleys;
-
-  if(numberOfBonds > 0)
-  {
-    // skip comment line
-    std::getline(moleculeFile, str);
-
-    bonds.resize(numberOfBonds);
-    connectivityTable.resize(numberOfBonds * numberOfBonds);
-    std::fill(connectivityTable.begin(), connectivityTable.end(), false);
-    for (size_t i = 0; i < numberOfBonds; ++i)
-    {
-      size_t idA, idB;
-      std::string bondTypeString, parameterString;
-      std::getline(moleculeFile, str);
-      std::istringstream bondTypeStream(str);
-
-      bondTypeStream >> idA >> idB >> bondTypeString;
-      std::getline(bondTypeStream, parameterString);
-
-      // set connection in connection table
-      connectivityTable[idA + idB * numberOfBonds] = true;
-      connectivityTable[idB + idA * numberOfBonds] = true;
-
-      std::vector<double> parameters = parseListOfParameters<double>(parameterString, 0);
-
-      bonds[i] = BondPotential(BondPotential::bondDefinitionForString[bondTypeString], std::make_pair(idA, idB));
-      std::copy(parameters.begin(), parameters.end(), bonds[i].parameters.begin());
-    }
-  }
 }
 
 

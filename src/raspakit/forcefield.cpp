@@ -9,6 +9,7 @@ import <cstdlib>;
 import <iostream>;
 import <sstream>;
 import <vector>;
+import <array>;
 import <map>;
 import <cmath>;
 import <string>;
@@ -21,6 +22,7 @@ import <exception>;
 import <source_location>;
 import <complex>;
 import <type_traits>;
+import <iterator>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #else
@@ -29,6 +31,7 @@ import <type_traits>;
 
 
 import archive;
+import json;
 import skelement;
 import units;
 import int3;
@@ -113,7 +116,7 @@ void ForceField::preComputeTailCorrection()
 ForceField::ForceField(size_t systemId) noexcept(false)
 {
   const char* env_p = std::getenv("RASPA_DIR");
-  const std::string ext{".def"};
+  const std::string ext{".json"};
 
   const std::string defaultPseudoAtomsFileName{"pseudo_atoms" + ext};
   const std::string defaultForceFieldMixingRulesFileName{"force_field_mixing_rules" + ext};
@@ -152,7 +155,6 @@ ForceField::ForceField(size_t systemId) noexcept(false)
     }
   }
 
-  //std::cout << "Reading force field: " << pseudoAtomsFileName << " " << forceFieldMixingRulesFileName << std::endl;
   ReadPseudoAtoms(pseudoAtomsFileName);
   ReadForceFieldMixing(forceFieldMixingRulesFileName);
   preComputeTailCorrection();
@@ -166,73 +168,54 @@ void ForceField::ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false
     throw std::runtime_error(std::format("[Pseudo-atoms reader]: File '{}' not found", pseudoAtomsFileName));
   }
 
-  std::ifstream pseudoAtomsFile{ pseudoAtomsPathfile };
-  if (!pseudoAtomsFile) 
+  std::ifstream pseudoAtomsStream{ pseudoAtomsPathfile };
+  if (!pseudoAtomsStream) 
   {
     throw std::runtime_error(std::format("[Pseudo-atoms reader]: File '{}' exists, but error opening file", pseudoAtomsFileName));
   }
 
-  std::string str{};
+  nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
-  //skip comment line
-  std::getline(pseudoAtomsFile, str);
-
-  // read number of pseudo-atoms
-  size_t n;
-  std::getline(pseudoAtomsFile, str);
-  std::istringstream nuberOfAtomsstream(str);
-  nuberOfAtomsstream >> n;
-  if (n < 0 || n>10000) throw std::runtime_error("Incorrect amount of pseudo=atoms");
-  numberOfPseudoAtoms = n;
-  pseudoAtoms = std::vector< PseudoAtom>{};
-
-  //skip comment line
-  std::getline(pseudoAtomsFile, str);
-
-  for (size_t i = 0; i < numberOfPseudoAtoms; i++)
+  try
   {
-    std::string nameString, printString, asString, chemString, oxidationString, massString, chargeString;
+    parsed_data = nlohmann::json::parse(pseudoAtomsStream);
+  }
+  catch (nlohmann::json::parse_error& ex)
+  {
+    throw std::runtime_error(std::format("[ReadPseudoAtoms]: Parse error of file {} at byte {}\n{}\n", pseudoAtomsFileName, ex.byte, ex.what()));
+  }
 
-    std::getline(pseudoAtomsFile, str);
-    std::istringstream atomStream(str);
+  if(!parsed_data.contains("PseudoAtoms"))
+  {
+    throw std::runtime_error(std::format("[ReadPseudoAtoms]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
+  }
+  numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();\
 
-    atomStream >> nameString;       // read name
-    atomStream >> printString;      // read print
-    atomStream >> asString;         // read as
-    atomStream >> chemString;       // read name
-    atomStream >> oxidationString;  // read name
-    atomStream >> massString;       // read name
-    atomStream >> chargeString;     // read charge
+  if(numberOfPseudoAtoms == 0)
+  {
+    throw std::runtime_error(std::format("[ReadPseudoAtoms]: key 'PseudoAtoms' empty]\n"));
+  }
+
+  pseudoAtoms.clear();
+  pseudoAtoms.reserve(numberOfPseudoAtoms);
+
+  for (auto& [_, item] : parsed_data["PseudoAtoms"].items())
+  {
+    std::string jsonName = item["name"].is_string() ? item["name"].get<std::string>() : std::string{};
+    double jsonMass = item["mass"].is_number() ? item["mass"].get<double>() : 0.0;
+    std::string jsonElement = item["element"].is_string() ? item["element"].get<std::string>() : "C";
+    double jsonCharge = item["charge"].is_number() ? item["charge"].get<double>() : 0.0;
+    size_t jsonPrintToOutput = item["print_to_output"].is_boolean() ? item["print_to_output"].get<bool>() : true;
+    std::string jsonSource = item["source"].is_string() ? item["source"].get<std::string>() : std::string{};
 
     size_t atomicNumber{ 1 };
-    auto it = PredefinedElements::atomicNumberData.find(chemString);
-
-    if (it != PredefinedElements::atomicNumberData.end()) 
+    auto it = PredefinedElements::atomicNumberData.find(jsonElement);
+    if (it != PredefinedElements::atomicNumberData.end())
     {
       atomicNumber = static_cast<size_t>(it->second);
     }
 
-    double mass{};
-    try
-    {
-      mass = std::stod(massString);
-    }
-    catch (std::exception const& e)
-    {
-      throw std::runtime_error(std::format("[Pseudo-atom reader]: could not convert '{}' to double [{}]\n", massString, e.what()));
-    }
-
-    double charge{};
-    try
-    {
-      charge = std::stod(chargeString);
-    }
-    catch (std::exception const& e)
-    {
-      throw std::runtime_error(std::format("[Pseudo-atom reader]: could not convert '{}' to double [{}]\n", chargeString, e.what()));
-    }
-
-    pseudoAtoms.emplace_back(PseudoAtom(nameString, mass, charge, atomicNumber, true));
+    pseudoAtoms.emplace_back(jsonName, jsonMass, jsonCharge, atomicNumber, jsonPrintToOutput, jsonSource);
   }
 
   data = std::vector<VDWParameters>(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters(0.0, 0.0));
@@ -248,112 +231,99 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
     throw std::runtime_error(std::format("[Forcefield reader]: File '{}' not found", forceFieldMixingFileName));
   }
 
-  std::ifstream forceFieldFile{ forceFieldPathfile };
-  if (!forceFieldFile) 
+  std::ifstream forceFieldStream{ forceFieldPathfile };
+  if (!forceFieldStream) 
   {
     throw std::runtime_error(std::format("[Forcefield reader]: File '{}' exists, but error opening file", forceFieldMixingFileName));
   }
 
-  std::string str{};
+  nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
-  //skip comment line
-  std::getline(forceFieldFile, str);
-
-  // read shifted or trunacted
-  std::getline(forceFieldFile, str);
-  
-  if (caseInSensStringCompare(str, "truncated"))
+  try
   {
-    std::fill(shiftPotentials.begin(), shiftPotentials.end(), false);
+    parsed_data = nlohmann::json::parse(forceFieldStream);
+
   }
-  if (caseInSensStringCompare(str, "shifted"))
+  catch (nlohmann::json::parse_error& ex)
   {
-    std::fill(shiftPotentials.begin(), shiftPotentials.end(), true);
+    throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: Parse error of file {} at byte {}\n{}\n", 
+                                         forceFieldMixingFileName, ex.byte, ex.what()));
   }
 
-  //skip comment line
-  std::getline(forceFieldFile, str);
-
-  // read tail-corrections yes/no
-  std::getline(forceFieldFile, str);
-  if (caseInSensStringCompare(str, "yes"))
+  if(!parsed_data.contains("SelfInteractions"))
   {
-    std::fill(tailCorrections.begin(), tailCorrections.end(), true);
+    throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: No pseudo-atoms found [keyword 'SelfInteractions' missing]\n"));
   }
-  if (caseInSensStringCompare(str, "no"))
+  size_t jsonNumberOfPseudoAtoms = parsed_data["SelfInteractions"].size();
+
+  if(jsonNumberOfPseudoAtoms == 0)
   {
-    std::fill(tailCorrections.begin(), tailCorrections.end(), false);
+    throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: key 'SelfInteractions' empty]\n"));
   }
 
-  //skip comment line
-  std::getline(forceFieldFile, str);
-
-  // read number of self-interactions
-  size_t numberOfSelfInteractions{ 0 };
-  std::getline(forceFieldFile, str);
-  std::istringstream numberOfSelfInteractionStream(str);
-  numberOfSelfInteractionStream >> numberOfSelfInteractions;
-  if (numberOfSelfInteractions < 0 || numberOfSelfInteractions>10000) 
-    throw std::runtime_error("Incorrect amount of self-interactions");
-
-
-  //skip comment line
-  std::getline(forceFieldFile, str);
-
-  for (size_t i = 0; i < numberOfSelfInteractions; i++)
+  for (auto& [_, item] : parsed_data["SelfInteractions"].items())
   {
-    std::string name, ffType, param[10];
+    std::string jsonName = item["name"].is_string() ? item["name"].get<std::string>() : std::string{};
+    std::string jsonType = item["type"].is_string() ? item["type"].get<std::string>() : "lennard-jones";
+    std::string jsonSource = item["source"].is_string() ? item["source"].get<std::string>() : std::string{};
+    std::vector<double> jsonParameters{};
+    try
+    {
+      jsonParameters = item["parameters"].is_array() ? item["parameters"].get<std::vector<double>>() : std::vector<double>{};
+    }
+    catch (nlohmann::json::exception& ex)
+    {
+      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: parameters {} must be array of numbers \n{}\n", 
+             item["parameters"].dump(), ex.what()));
+    }
 
-    std::getline(forceFieldFile, str);
-    std::istringstream my_stream(str);
-
-    my_stream >> name;        // read name
-    my_stream >> ffType;      // read VDW-type
-  
-    std::optional<size_t> index = findPseudoAtom(name);
+    std::optional<size_t> index = findPseudoAtom(jsonName);
     if(!index.has_value())
     {
-      throw std::runtime_error(std::format("[Forcefield reader]: unknown pseudo-atom '{}'\n", name));
+      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define in 'pseudo_atoms.json'\n", jsonName));
     }
 
-    if(caseInSensStringCompare(ffType,"none"))
+    if(jsonParameters.size() < 2)
     {
-      double param0{};
-      double param1{};
-      data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
-    }
-    else if(caseInSensStringCompare(ffType,"lennard-jones"))
-    {
-      my_stream >> param[0];    // read epsilon
-      my_stream >> param[1];    // read sigma
-
-      double param0{};
-      try
-      {
-        param0 = std::stod(param[0]);
-      }
-      catch (std::exception const& e)
-      {
-        throw std::runtime_error(std::format("[Forcefield reader]: could not convert '{}' to double [{}]\n", param[0], str));
-      }
-      double param1{};
-      try
-      {
-        param1 = std::stod(param[1]);
-      }
-      catch (std::exception const& e)
-      {
-        throw std::runtime_error(std::format("[Forcefield reader]: could not convert '{}' to double [{}]\n", param[1], str));
-      }
-      data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
-    }
-    else
-    {
-      throw std::runtime_error(std::format("[Forcefield reader]: unrecognized potential form[{}]\n", ffType));
+      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n", item["parameters"].dump()));
     }
 
+    double param0 = jsonParameters[0];
+    double param1 = jsonParameters[1];
+
+    data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
   }
 
+  if(parsed_data["MixingRule"].is_string())
+  {
+    if(caseInSensStringCompare(parsed_data["MixingRule"].get<std::string>(), "Lorentz-Berthelot"))
+    {
+    }
+  }
+
+  std::fill(shiftPotentials.begin(), shiftPotentials.end(), true);
+  if(parsed_data["TruncationMethod"].is_string())
+  {
+    if(caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "shifted"))
+    {
+      std::fill(shiftPotentials.begin(), shiftPotentials.end(), true);
+    }
+    else if(caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "truncated"))
+    {
+      std::fill(shiftPotentials.begin(), shiftPotentials.end(), false);
+    }
+  }
+
+  std::fill(tailCorrections.begin(), tailCorrections.end(), false);
+  if(parsed_data["TailCorrections"].is_boolean())
+  {
+    if(parsed_data["TailCorrections"].get<bool>())
+    {
+      std::fill(tailCorrections.begin(), tailCorrections.end(), true);
+    }
+  }
+
+  // Apply mixing rule
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
@@ -368,6 +338,7 @@ void ForceField::ReadForceFieldMixing(std::string forceFieldMixingFileName) noex
     }
   }
 
+  // Compute the potential shift
   for (size_t i = 0; i < data.size(); ++i)
   {
     if (shiftPotentials[i])
@@ -389,6 +360,15 @@ std::string ForceField::printPseudoAtomStatus() const
   {
       std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", 
                          i, pseudoAtoms[i].name, pseudoAtoms[i].mass, pseudoAtoms[i].charge);
+  }
+  std::print(stream, "\n");
+
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    if(!pseudoAtoms[i].source.empty())
+    {
+      std::print(stream, "{:3d} - {:8} {}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].source);
+    }
   }
   std::print(stream, "\n");
 

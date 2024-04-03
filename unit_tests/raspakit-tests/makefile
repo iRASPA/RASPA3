@@ -1,8 +1,8 @@
 CXX=clang++
-GTEST_DIR=/usr/local/include/googletest/googletest/
-GTEST_INCLUDE=/usr/local
-#GTEST_DIR=/opt/homebrew/include/googletest/googletest/
-#GTEST_INCLUDE=/opt/homebrew
+#GTEST_DIR=/usr/local/include/googletest/googletest/
+#GTEST_INCLUDE=/usr/local
+GTEST_DIR=/opt/homebrew/include/googletest/googletest/
+GTEST_INCLUDE=/opt/homebrew
 
 PYTHONLDFLAGS = $(shell python3-config --ldflags)
 
@@ -71,5 +71,5 @@ insertion_deletion.o: insertion_deletion.cpp $(GTEST_HEADERS)
 energy_decomposition.o: energy_decomposition.cpp $(GTEST_HEADERS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c energy_decomposition.cpp
 
-test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o cbmc_interactions.o insertion_deletion.o energy_decomposition.o main.o gtest_main.a
+test_raspakit : static_energy.o gradients.o pressure.o ewald.o dudlambda.o spacegroup.o cbmc_interactions.o insertion_deletion.o energy_decomposition.o mc.o main.o gtest_main.a
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(PYTHONLDFLAGS) ../../python/raspakit.so  -llapack -lpthread -lpython3.12 $^ -o $@

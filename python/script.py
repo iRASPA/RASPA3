@@ -33,9 +33,16 @@ component = Component(0, \
                          Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0), \
                          Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0), \
                          Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0) \
-                      ], 5, 21)
+                      ], 5, 21,
+                      MCMoveProbabilitiesParticles(probabilityTranslationMove = 1.0,
+                                                   probabilityRotationMove = 1.0))
 
 system = System(0, None, 300.0, 1e4, force_field, [ framework ] , [ component ], [ 2 ], 5)
+mc = MonteCarlo(system,....)
+
+mc.run(numberOfStep = 1000, )
+
+print(mc)
 
 system.atomPositions[72].position = double3(5.93355, 7.93355, 5.93355 + 1.149)
 system.atomPositions[73].position = double3(5.93355, 7.93355, 5.93355 + 0.0)

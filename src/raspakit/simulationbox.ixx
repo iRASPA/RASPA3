@@ -87,7 +87,6 @@ export struct SimulationBox
   double3 randomPosition(RandomNumber &random) const;
   double3 perpendicularWidths() const;
 
-  std::string printParameters() const;
   std::string printStatus() const;
   std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
 

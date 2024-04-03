@@ -63,7 +63,8 @@ export struct System
   System() = default;
   System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
          std::vector<Framework> frameworkComponents, std::vector<Component> components, 
-         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks);
+         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks, 
+         const MCMoveProbabilitiesSystem &systemProbabilities = MCMoveProbabilitiesSystem());
 
   uint64_t versionNumber{ 1 };
 
@@ -266,6 +267,7 @@ export struct System
   std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
 
   std::string writeMCMoveStatistics() const;

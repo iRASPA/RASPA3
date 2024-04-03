@@ -239,9 +239,10 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::print(stream, "    number Of Atoms:  {}\n", unitCellAtoms.size());
   std::print(stream, "    Mass:             {} [amu]\n", mass);
   
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  for (size_t i = 0; i != definedAtoms.size(); ++i)
   {
     size_t atomType = static_cast<size_t>(definedAtoms[i].type);
+
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
     std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
                    i, atomTypeString, definedAtoms[i].position.x, definedAtoms[i].position.y, 

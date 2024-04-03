@@ -27,6 +27,9 @@ import forcefield;
 
 import running_energy;
 
+import mc_moves_probabilities_particles;
+import mc_moves_probabilities_system;
+
 import framework;
 import component;
 import system;
@@ -96,9 +99,16 @@ PYBIND11_MODULE(raspakit, m)
         .def_readonly("name", &Framework::name)
         .def("__repr__", &Framework::repr);
 
+  pybind11::class_<MCMoveProbabilitiesParticles>(m, "MCMoveProbabilitiesParticles")
+    .def(pybind11::init<double, double>(),
+                      pybind11::arg("probabilityTranslationMove") = 0.0, 
+                      pybind11::arg("probabilityRotationMove") = 0.0)
+    .def_readwrite("probabilityTranslationMove", &MCMoveProbabilitiesParticles::probabilityTranslationMove)
+    .def_readwrite("probabilityRotationMove", &MCMoveProbabilitiesParticles::probabilityRotationMove);
+
   pybind11::class_<Component>(m, "Component")
         .def(pybind11::init<size_t, const ForceField &, std::string,
-                            double, double, double, std::vector<Atom>, size_t, size_t>())
+                            double, double, double, std::vector<Atom>, size_t, size_t, const MCMoveProbabilitiesParticles &>())
         .def_readonly("name", &Component::name)
         .def("__repr__", &Component::repr);
 

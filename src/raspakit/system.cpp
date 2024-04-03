@@ -85,7 +85,8 @@ import equation_of_states;
 // construct System programmatically
 System::System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
                std::vector<Framework> f, std::vector<Component> c, 
-               std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks) :
+               std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
+               const MCMoveProbabilitiesSystem &systemProbabilities) :
     systemId(id), 
     temperature(T),
     pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -117,7 +118,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
     currentEnergyStatus(1, f.size(), c.size()),
     averagePressure(numberOfBlocks),
     netCharge(c.size()),
-    mc_moves_probabilities(),
+    mc_moves_probabilities(systemProbabilities),
     mc_moves_statistics(),
     reactions(),
     tmmc()
@@ -900,6 +901,23 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
       conv * energyData.first.intraEnergy.total().energy,
       conv * energyData.second.intraEnergy.total().energy);
   
+  std::print(stream, "\n\n\n");
+
+  return stream.str();
+}
+
+std::string System::writeSystemStatus() const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "System definitions\n");
+  std::print(stream, "===============================================================================\n\n");
+
+  std::print(stream, "Temperature: {} [K]\n", temperature);
+  std::print(stream, "Beta:        {} [-]\n", beta);
+  std::print(stream, "Pressure:    {} [Pa]\n\n", pressure * Units::PressureConversionFactor);
+
+  std::print(stream, simulationBox.printStatus());
   std::print(stream, "\n\n\n");
 
   return stream.str();

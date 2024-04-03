@@ -161,17 +161,6 @@ double3 SimulationBox::angles()
                  acos(double3::dot(column1, column2) / (length1 * length2)));
 }
 
-std::string SimulationBox::printParameters() const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Simulation parameters:\n");
-  std::print(stream, "===============================================================================\n\n");
-
-
-  return stream.str();
-}
-
 std::string SimulationBox::printStatus() const
 {
   std::ostringstream stream;

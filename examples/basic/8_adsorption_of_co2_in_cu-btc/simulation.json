@@ -1,0 +1,31 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 20000,
+  "PrintEvery" : 5000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "Cu-BTC",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature" : 323.0,
+      "ExternalPressure" : 1.0e4
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "WidomProbability" : 1.0,
+      "CreateNuMberofmolecules" : 0
+    }
+  ]
+}

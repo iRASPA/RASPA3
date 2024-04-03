@@ -174,11 +174,8 @@ void MonteCarlo::initialize()
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
     std::print(stream, "{}\n", HardwareInfo::writeInfo());
-    std::print(stream, "Temperature: {}\n", system.temperature);
-    std::print(stream, "Beta: {}\n", system.beta);
-    std::print(stream, "Pressure: {}\n", system.pressure * Units::PressureConversionFactor);
     std::print(stream, "{}", Units::printStatus());
-    std::print(stream, "{}", system.simulationBox.printParameters());
+    std::print(stream, "{}", system.writeSystemStatus());
     std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
     std::print(stream, "{}", system.forceField.printForceFieldStatus());
     std::print(stream, "{}", system.writeComponentStatus());

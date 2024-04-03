@@ -1,0 +1,37 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 25000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 1000,
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 240.0,
+      "ChargeMethod" : "Ewald",
+      "GibbsVolumeMoveProbability" : 0.01
+    },
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 240.0,
+      "ChargeMethod" : "Ewald",
+      "GibbsVolumeMoveProbability" : 0.01
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "GibbsCFCMCSwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : [256, 256]
+    }
+  ]
+}

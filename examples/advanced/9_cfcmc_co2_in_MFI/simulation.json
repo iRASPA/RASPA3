@@ -1,0 +1,35 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 25000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 1000,
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 353.0,
+      "ExternalPressure" : 1.0e7,
+      "ChargeMethod" : "Ewald",
+      "ComputeDensityGrid" : true,
+      "SampleDensityGridEvery" : 10,
+      "WriteDensityGridEvery" : 5000,
+      "DensityGridSize" : [128, 128, 128]
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CFCMC_CBMC_SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
