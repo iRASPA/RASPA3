@@ -129,35 +129,6 @@ void MonteCarlo::initialize()
   if(simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
 
-  for (System &system: systems)
-  {
-    //Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-    //                                                 system.forceField, system.simulationBox,
-    //                                                 double3(0.0, 0.0, 0.0), 1.0);
-
-    system.removeRedundantMoves();
-    system.determineSwapableComponents();
-    system.determineFractionalComponents();
-    system.rescaleMoveProbabilities();
-    system.rescaleMolarFractions();
-    //system.computeFrameworkDensity();
-    //system.computeNumberOfPseudoAtoms();
-
-    //system.createFrameworks();
-    //system.determineSimulationBox();
-
-    //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
-    //system.forceField.initializeEwaldParameters(perpendicularWidths);
-
-    system.createInitialFractionalMolecules(random);
-
-    system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
-
-    //system.equationOfState = EquationOfState(EquationOfState::Type::PengRobinson,
-    //                                EquationOfState::MultiComponentMixingRules::VanDerWaals,
-    //                                system.temperature, system.input_pressure, system.simulationBox, system.HeliumVoidFraction, system.components);
-  }
-
   createOutputFiles();
 
   for(System & system : systems)

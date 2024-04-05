@@ -203,7 +203,6 @@ export struct System
 
   void createFrameworks();
   void createInitialMolecules(RandomNumber &random);
-  void createInitialFractionalMolecules(RandomNumber &random);
   void determineSimulationBox();
 
   void MD_Loop();

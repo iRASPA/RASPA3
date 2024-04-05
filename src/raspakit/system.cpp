@@ -290,58 +290,52 @@ bool System::checkMoleculeIds()
   return true;
 }
 
-void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
-{
-  for (size_t componentId = 0; componentId != components.size(); ++componentId)
-  {
-    for (size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
-    {
-      std::optional<ChainData> growData = std::nullopt;
-      do
-      {
-        std::vector<Atom> atoms = 
-          components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);
-        Component::GrowType growType  = components[componentId].growType;
-        growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox, 
-                                 this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta, 
-                                 growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,
-                                 numberOfMoleculesPerComponent[componentId], 1.0, atoms, numberOfTrialDirections);
-
-      } while(!growData || growData->energies.total() > forceField.overlapCriteria);
-
-      insertMolecule(componentId, growData->atom);
-    }
-  }
+void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)                                              
+{                                                                                                                       
+  for (size_t componentId = 0; const Component & component : components)                                                
+  {                                                                                                                     
+    if (component.swapable)                                                                                             
+    {                                                                                                                   
+      numberOfMoleculesPerComponent[componentId] = 0;                                                                   
+      for (size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)                                 
+      {                                                                                                                 
+        std::optional<ChainData> growData = std::nullopt;                                                               
+        do                                                                                                              
+        {                                                                                                               
+          std::vector<Atom> atoms =                                                                                     
+            components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);                    
+          Component::GrowType growType  = components[componentId].growType;                                             
+          growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
+                                   this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,               
+                                   growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,               
+                                   numberOfMoleculesPerComponent[componentId], 0.0, atoms, numberOfTrialDirections);    
+                                                                                                                        
+        } while (!growData || growData->energies.total() > forceField.overlapCriteria);                                 
+                                                                                                                        
+        insertFractionalMolecule(componentId, growData->atom, i);                                                       
+      }                                                                                                                 
+    }                                                                                                                   
+                                                                                                                        
+    for (size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)                                                  
+    {                                                                                                                   
+      std::optional<ChainData> growData = std::nullopt;                                                                 
+      do                                                                                                                
+      {                                                                                                                 
+        std::vector<Atom> atoms =                                                                                       
+          components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);                      
+        Component::GrowType growType  = components[componentId].growType;                                               
+        growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
+                                 this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,                 
+                                 growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,                 
+                                 numberOfMoleculesPerComponent[componentId], 1.0, atoms, numberOfTrialDirections);      
+                                                                                                                        
+      } while(!growData || growData->energies.total() > forceField.overlapCriteria);                                    
+                                                                                                                        
+      insertMolecule(componentId, growData->atom);                                                                      
+    }                                                                                                                   
+    componentId++;                                                                                                      
+  }                                                                                                                     
 }
-
-void System::createInitialFractionalMolecules([[maybe_unused]] RandomNumber &random)
-{
-  for (size_t componentId = 0; const Component & component : components)
-  {
-    if (component.swapable)
-    {
-      for (size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
-      {
-        std::optional<ChainData> growData = std::nullopt;
-        do
-        {
-          std::vector<Atom> atoms = 
-            components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);
-          Component::GrowType growType  = components[componentId].growType;
-          growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox, 
-                                   this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,
-                                   growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,
-                                   numberOfMoleculesPerComponent[componentId], 0.0, atoms, numberOfTrialDirections);
-
-        } while (!growData || growData->energies.total() > forceField.overlapCriteria);
-
-        insertFractionalMolecule(componentId, growData->atom, i);
-      }
-    }
-    componentId++;
-  }
-}
-
 size_t System::randomMoleculeOfComponent(RandomNumber &random, size_t selectedComponent)
 {
   return size_t(random.uniform() * static_cast<double>(numberOfMoleculesPerComponent[selectedComponent]));

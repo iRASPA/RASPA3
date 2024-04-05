@@ -53,10 +53,6 @@ double Interactions::computeEwaldFourierEnergySingleIon(std::vector<std::complex
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  std::cout << forceField.numberOfWaveVectors.x << std::endl;
-  std::cout << forceField.numberOfWaveVectors.y << std::endl;
-  std::cout << forceField.numberOfWaveVectors.z << std::endl;
-
   size_t kx_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.x);
   size_t ky_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.y);
   size_t kz_max_unsigned = static_cast<size_t>(forceField.numberOfWaveVectors.z);
