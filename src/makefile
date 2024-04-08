@@ -1,4 +1,5 @@
-CXX=clang++
+#CXX=clang++
+CXX=~/software/bin/clang++
 
 DBGCXXFLAGS = -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined
 RELCXXFLAGS = -g -O3 -march=native -ffast-math
@@ -8,7 +9,8 @@ MODULEPATHS = -fprebuilt-module-path=. -fprebuilt-module-path=./foundationkit -f
 
 PYTHONFLAGS = $(shell python3 -m pybind11 --includes)
 # option --embed needed to link with the python library
-PYTHONLDFLAGS = $(shell python3-config --ldflags --embed)
+#PYTHONLDFLAGS = $(shell python3-config --ldflags --embed)
+PYTHONLDFLAGS = $(shell python3-config --ldflags)
 
 IXX    := $(wildcard *.ixx foundationkit/*.ixx mathkit/*.ixx symmetrykit/*.ixx raspakit/*.ixx raspakit/interactions/*.ixx \
 					  raspakit/mc_moves/*.ixx raspakit/potentials/*.ixx raspakit/properties/*.ixx raspakit/cbmc/*.ixx)

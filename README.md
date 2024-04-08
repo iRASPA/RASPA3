@@ -112,15 +112,41 @@ cmake --build build --target docs
 
 From Source
 ===========
-mkdir software
-mkdir source
-cd source
+mkdir ~/software
+mkdir ~/source
+cd ~/source
 wget https://github.com/Kitware/CMake/releases/download/v3.29.1/cmake-3.29.1.tar.gz
 tar -zxvf cmake-3.29.1.tar.gz
 cd cmake-3.29.1
 ./bootstrap --prefix=${HOME}/software
 make
 make install
+cd ~/source
 
-wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-18.1.3.tar.gz
+wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-17.0.6.tar.gz
+tar -zxvf llvmorg-17.0.6.tar.gz
+cd llvm-project-llvmorg-17.0.6 
+mkdir build
+~/software/bin/cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=${HOME}/software -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="clang;openmp;lld" -DLLVM_ENABLE_RUNTIMES="compiler-rt;libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include
+ninja -C build
+ninja -C build install
+~/software/bin/cmake -G Ninja -S runtimes -B build -DCMAKE_INSTALL_PREFIX=${HOME}/software -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=${HOME}/software/bin/clang -DCMAKE_CXX_COMPILER=${HOME}/software/bin/clang++ -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"
+rm -rf build
+mkdir build
+ninja -C build 
+ninja -C build install
 
+wget https://github.com/pybind/pybind11/archive/refs/tags/v2.12.0.tar.gz
+tar -zxvf v2.12.0.tar.gz
+cd pybind11-2.12.0
+mkdir build
+cmake3 -B build -DCMAKE_INSTALL_PREFIX=${HOME}/software .
+make -j 16
+make install
+
+use run file:
+
+#! /bin/sh -f
+export RASPA_DIR=`pwd`
+export LD_LIBRARY_PATH=${HOME}/software/lib
+../../../src/raspa3.exe
