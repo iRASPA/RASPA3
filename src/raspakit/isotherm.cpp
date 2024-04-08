@@ -1,7 +1,19 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+#include <cmath>
+#include <vector>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module isotherm;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstdlib>;
 import <iostream>;
 import <sstream>;
@@ -9,7 +21,10 @@ import <cmath>;
 import <vector>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

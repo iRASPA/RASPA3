@@ -1,5 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <cmath>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 export module energy_status_inter;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <iostream>;
 import <sstream>;
@@ -7,7 +21,10 @@ import <fstream>;
 import <cmath>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

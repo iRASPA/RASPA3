@@ -1,17 +1,28 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <array>
+#include <cstdlib>
+#include <algorithm>
+#include <tuple>
+#include <utility>
+#endif
+
 module skboundingbox;
+
+#ifndef USE_LEGACY_HEADERS
+import <array>;
+import <cstdlib>;
+import <algorithm>;
+import <tuple>;
+import <utility>;
+#endif
 
 import double3;
 import double4;
 import double3x3;
 import double4x4;
 
-import <array>;
-import <cstdlib>;
-import <algorithm>;
-import <tuple>;
-import <utility>;
 
 SKBoundingBox::SKBoundingBox(double3 minimum, double3 maximum) : _minimum(minimum), _maximum(maximum)
 {

@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#endif
+
 export module skonethirdseitzmatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
+#endif
 
 export class SKOneThirdSeitzMatrix
 {

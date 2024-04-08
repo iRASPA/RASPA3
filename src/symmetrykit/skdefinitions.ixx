@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <type_traits>
+#include <cstdint>
+#endif
+
 export module skdefinitions;
 
+#ifndef USE_LEGACY_HEADERS
 import <type_traits>;
 import <cstdint>;
+#endif
 
 export enum class Symmorphicity : size_t
 {

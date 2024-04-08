@@ -1,14 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstdlib>
+#include <vector>
+#include <tuple>
+#include <memory>
+#include <numbers>
+#endif
+
 module skparser;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstdlib>;
 import <vector>;
 import <tuple>;
 import <memory>;
 import <numbers>;
-import double3;
+#endif
 
+import double3;
 import skstructure;
 import skasymmetricatom;
 

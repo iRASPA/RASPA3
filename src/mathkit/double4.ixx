@@ -1,14 +1,23 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <fstream>
+#endif
+
 export module double4;
-
-import <fstream>;
-
-import archive;
 
 #if defined(WIN32)
     import <intrin.h>;
 #elif defined(__AVX__)
     import <immintrin.h>;
 #endif
+
+#ifndef USE_LEGACY_HEADERS
+import <fstream>;
+#endif
+
+import archive;
+
 
 export union double4
 {

@@ -1,5 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <format>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <numbers>
+#include <optional>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 #if defined(_WIN32)
   import <cassert>;
 #else
@@ -8,6 +27,7 @@ module;
 
 module property_lambda_probability_histogram;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <iostream>;
 import <cmath>;
@@ -23,10 +43,12 @@ import <optional>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import double3;
 import archive;

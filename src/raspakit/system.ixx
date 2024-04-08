@@ -1,5 +1,23 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <vector>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <fstream>
+#include <ostream>
+#include <iostream>
+#include <numeric>
+#include <chrono>
+#include <algorithm>
+#include <type_traits>
+#endif
+
 export module system;
 
+#ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <vector>;
 import <tuple>;
@@ -12,6 +30,7 @@ import <numeric>;
 import <chrono>;
 import <algorithm>;
 import <type_traits>;
+#endif
 
 import archive;
 import double3;

@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <optional>
+#include <span>
+#endif
+
 export module cbmc_multiple_first_bead;
 
+#ifndef USE_LEGACY_HEADERS
 import <optional>;
 import <span>;
+#endif
 
 import atom;
 import randomnumbers;

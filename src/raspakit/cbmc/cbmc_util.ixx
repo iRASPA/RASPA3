@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#endif
+
 export module cbmc_util;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <cmath>;
 import <algorithm>;
+#endif
 
 import atom;
 import double3x3;

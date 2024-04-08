@@ -1,5 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <span>
+#include <tuple>
+#include <string>
+#include <fstream>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
+#endif
+
 export module breakthrough;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <span>;
 import <tuple>;
@@ -7,7 +21,10 @@ import <string>;
 import <fstream>;
 #if defined(__has_include) && __has_include(<mdspan>)
   import <mdspan>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<mdspan>))
   import mdspan;
 #endif
 

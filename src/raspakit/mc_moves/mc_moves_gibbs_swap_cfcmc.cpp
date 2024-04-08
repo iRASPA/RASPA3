@@ -1,5 +1,17 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <optional>
+#include <span>
+#include <chrono>
+#include <vector>
+#include <cmath>
+#include <tuple>
+#include <algorithm>
+#include <utility>
+#include <type_traits>
+#endif
+
 #if defined(_WIN32)
   import <cassert>;
 #else
@@ -8,6 +20,7 @@ module;
 
 module mc_moves_gibbs_swap_cfcmc;
 
+#ifndef USE_LEGACY_HEADERS
 import <optional>;
 import <span>;
 import <chrono>;
@@ -17,6 +30,7 @@ import <tuple>;
 import <algorithm>;
 import <utility>;
 import <type_traits>;
+#endif
 
 import randomnumbers;
 import running_energy;

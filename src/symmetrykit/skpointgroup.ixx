@@ -1,10 +1,28 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <map>
+#include <cstdint>
+#include <optional>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module skpointgroup;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <map>;
 import <cstdint>;
 import <optional>;
+#endif
 
 import skdefinitions;
 import skrotationaloccurancetable;

@@ -1,10 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <fstream>
+#endif
+
 export module mc_moves;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
 import <optional>;
 import <span>;
 import <fstream>;
+#endif
 
 import archive;
 import component;

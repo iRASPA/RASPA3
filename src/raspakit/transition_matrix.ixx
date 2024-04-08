@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <cstddef>
+#include <vector>
+#include <fstream>
+#endif
+
 export module transition_matrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <cstddef>;
 import <vector>;
 import <fstream>;
+#endif
 
 import archive;
 import double3;

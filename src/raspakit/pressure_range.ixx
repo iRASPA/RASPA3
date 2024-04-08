@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <cmath>
+#include <fstream>
+#include <complex>
+#endif
+
 export module pressure_range;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <cmath>;
 import <fstream>;
 import <complex>;
+#endif
 
 import archive;
 

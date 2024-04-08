@@ -1,8 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <optional>
+#include <memory>
+#endif
+
 export module skposcarlegacyparser;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <optional>;
 import <memory>;
+#endif
+
 import scanner;
 import characterset;
 import skparser;

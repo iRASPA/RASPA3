@@ -1,5 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <array>
+#include <vector>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <exception>
+#include <numbers>
+#endif
+
 export module isotherm;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <array>;
 import <vector>;
@@ -8,6 +22,7 @@ import <iostream>;
 import <string>;
 import <exception>;
 import <numbers>;
+#endif
 
 import special_functions;
 import randomnumbers;

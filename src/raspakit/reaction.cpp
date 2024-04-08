@@ -1,7 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <sstream>
+#include <vector>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <fstream>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module reaction;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <sstream>;
 import <vector>;
@@ -12,7 +27,10 @@ import <fstream>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

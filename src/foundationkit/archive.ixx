@@ -1,5 +1,23 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <tuple>
+#include <vector>
+#include <array>
+#include <map>
+#include <istream>
+#include <ostream>
+#include <iostream>
+#include <algorithm>
+#include <bit>
+#include <chrono>
+#include <complex>
+#endif
+
 export module archive;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <tuple>;
 import <vector>;
@@ -12,6 +30,7 @@ import <algorithm>;
 import <bit>;
 import <chrono>;
 import <complex>;
+#endif
 
 
 // on linux uint64_t is unsigned long        8

@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <fstream>
+#include <complex>
+#endif
+
 module int3;
 
+#ifndef USE_LEGACY_HEADERS
 import <fstream>;
 import <complex>;
+#endif
 
 import ring;
 import archive;

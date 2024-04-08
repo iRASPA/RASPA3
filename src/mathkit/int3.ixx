@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <cstdint>
+#include <functional>
+#include <tuple>
+#include <cctype>
+#include <fstream>
+#endif
 
 export module int3;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
+import <cstdint>;
 import <functional>;
 import <tuple>;
 import <cctype>;
 import <fstream>;
+#endif
 
 import hashcombine;
 import archive;

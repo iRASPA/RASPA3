@@ -1,8 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <ostream>
+#include <vector>
+#include <type_traits>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module skrotationmatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <ostream>;
 import <vector>;
 import <type_traits>;
+#endif
 
 import int3;
 import double3;

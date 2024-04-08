@@ -1,7 +1,30 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <span>
+#include <cmath>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <limits>
+#include <filesystem>
+#include <algorithm>
+#include <numeric>
+#include <sstream>
+#include <chrono>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
+#endif
+
 module breakthrough;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <span>;
 import <cmath>;
@@ -17,15 +40,18 @@ import <chrono>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
   import <mdspan>;
-#else
-  import mdspan;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 import stringutils;
 import input_reader;

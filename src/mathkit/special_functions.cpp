@@ -1,12 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <iostream>
+#include <cstring>
+#include <bitset>
+#include <limits>
+#endif
+
 module special_functions;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <iostream>;
 import <cstring>;
 import <bitset>;
 import <limits>;
+#endif
 
 // routine by Alexander Voigt
 // https://arxiv.org/abs/2201.01678

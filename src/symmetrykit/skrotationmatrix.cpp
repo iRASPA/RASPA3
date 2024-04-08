@@ -1,16 +1,29 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <assert.h>
+#include <vector>
+#include <iostream>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module skrotationmatrix;
+
+#ifndef USE_LEGACY_HEADERS
+import <vector>;
+import <iostream>;
+#endif
 
 import int3;
 import int3x3;
 import double3;
 import double3x3;
 
-import <vector>;
-import <iostream>;
 
 SKRotationMatrix::SKRotationMatrix()
 {

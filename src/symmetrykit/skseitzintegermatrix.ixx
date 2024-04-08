@@ -1,6 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module skseitzintegermatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
 
 import skrotationmatrix;
 import int3;

@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <optional>
+#include <span>
+#endif
+
 export module cbmc;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <optional>;
 import <span>;
+#endif
 
 import atom;
 import double3x3;

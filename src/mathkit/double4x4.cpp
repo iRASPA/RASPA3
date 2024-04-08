@@ -1,10 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <iostream>
 #include <ostream>
 #include <cmath>
+#endif
 
 module double4x4;
+
+#ifndef USE_LEGACY_HEADERS
+import <iostream>;
+import <ostream>;
+import <cmath>;
+#endif
 
 import double3;
 import double4;

@@ -1,4 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#endif
+
 export module monte_carlo_transition_matrix;
+
+#ifndef USE_LEGACY_HEADERS
+import <vector>;
+import <iostream>;
+import <fstream>;
+import <chrono>;
+#endif
 
 import randomnumbers;
 import threadpool;
@@ -9,10 +25,6 @@ import mc_moves;
 import input_reader;
 import energy_status;
 
-import <vector>;
-import <iostream>;
-import <fstream>;
-import <chrono>;
 
 export struct MonteCarloTransitionMatrix
 {

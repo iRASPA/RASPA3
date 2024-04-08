@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <iostream>
+#endif
+
 module float3;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <iostream>;
+#endif
 
 float3 float3::normalise()
 {

@@ -1,17 +1,35 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <type_traits>
 #include <assert.h>
 #include <algorithm>
 #include <iterator>
+#include <map>
+#include <string>
+#include <unordered_set>
+#include <vector>
+#include <iterator>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module skpointgroup;
 
+#ifndef USE_LEGACY_HEADERS
+import <type_traits>;
+import <algorithm>;
+import <iterator>;
 import <map>;
 import <string>;
 import <unordered_set>;
 import <vector>;
 import <iterator>;
+#endif
 
 import int3;
 import int3x3;

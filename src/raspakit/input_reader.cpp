@@ -1,7 +1,30 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <filesystem>
+#include <fstream>
+#include <streambuf>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+#include <exception>
+#include <numbers>
+#include <vector>
+#include <array>
+#include <complex>
+#include <ios>
+#include <optional>
+#include <algorithm>
+#include <map>
+#include <iterator>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module input_reader;
 
+#ifndef USE_LEGACY_HEADERS
 import <filesystem>;
 import <fstream>;
 import <streambuf>;
@@ -20,10 +43,12 @@ import <map>;
 import <iterator>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import int3;
 import stringutils;
@@ -411,12 +436,27 @@ InputReader::InputReader(const std::string inputFile):
 
   for (size_t systemId = 0; auto& [key, value] : parsed_data["Systems"].items()) 
   {
+    MCMoveProbabilitiesSystem mc_moves_probabilities{};
 
-    if(!value.contains("Type"))
+    if(value["VolumeMoveProbability"].is_number_float())
     {
-      throw std::runtime_error(std::format("[Input reader]: system must have a key 'Type' with value 'Box' or 'Framework'\n"));
+      mc_moves_probabilities.probabilityVolumeMove = value["VolumeMoveProbability"].get<double>();
     }
-    std::string typeString= value["Type"].get<std::string>();
+
+    if(value["GibbsVolumeMoveProbability"].is_number_float())
+    {
+      mc_moves_probabilities.probabilityGibbsVolumeMove = value["GibbsVolumeMoveProbability"].get<double>();
+    }
+
+    if(value["CutOffVDW"].is_number_float())
+    {
+      forceFields[systemId].cutOffVDW = value["CutOffVDW"].get<double>();
+    }
+
+    if(value["CutOffCoulomb"].is_number_float())
+    {
+      forceFields[systemId].cutOffCoulomb = value["CutOffCoulomb"].get<double>();
+    }
 
     if(value["ChargeMethod"].is_string())
     {
@@ -434,10 +474,14 @@ InputReader::InputReader(const std::string inputFile):
       }
     }
 
+    if(!value.contains("Type"))
+    {
+      throw std::runtime_error(std::format("[Input reader]: system must have a key 'Type' with value 'Box' or 'Framework'\n"));
+    }
+    std::string typeString= value["Type"].get<std::string>();
+
     if(caseInSensStringCompare(typeString, "Framework"))
     {
-      MCMoveProbabilitiesSystem mc_moves_probabilities{};
-
       // Parse framework options
       if(!value.contains("Name"))
       {
@@ -455,7 +499,7 @@ InputReader::InputReader(const std::string inputFile):
       {
         throw std::runtime_error(std::format("[Input reader]: framework must have a key 'ExternalTemperature' with a value of floating-point-type'\n"));
       }
-      [[maybe_unused]]double T = value["ExternalTemperature"].get<double>();
+      double T = value["ExternalTemperature"].get<double>();
 
       std::optional<double> P{};
       if(value.contains("ExternalPressure"))
@@ -463,15 +507,6 @@ InputReader::InputReader(const std::string inputFile):
         P = value["ExternalPressure"].get<double>();
       }
 
-      if(value["VolumeMoveProbability"].is_number_float())
-      {
-        mc_moves_probabilities.probabilityVolumeMove = value["VolumeMoveProbability"].get<double>();
-      }
-
-      if(value["GibbsVolumeMoveProbability"].is_number_float())
-      {
-        mc_moves_probabilities.probabilityGibbsVolumeMove = value["GibbsVolumeMoveProbability"].get<double>();
-      }
 
 
       std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId], frameworkNameString, frameworkNameString, jsonNumberOfUnitCells)};
@@ -483,7 +518,6 @@ InputReader::InputReader(const std::string inputFile):
     }
     else if(caseInSensStringCompare(typeString, "Box"))
     {
-      MCMoveProbabilitiesSystem mc_moves_probabilities{};
       // Parse box options
       
       if(!value.contains("ExternalTemperature"))
@@ -510,15 +544,6 @@ InputReader::InputReader(const std::string inputFile):
       }
       boxAngles = boxAngles * (std::numbers::pi / 180.0);
 
-      if(value["VolumeMoveProbability"].is_number_float())
-      {
-        mc_moves_probabilities.probabilityVolumeMove = value["VolumeMoveProbability"].get<double>();
-      }
-
-      if(value["GibbsVolumeMoveProbability"].is_number_float())
-      {
-        mc_moves_probabilities.probabilityGibbsVolumeMove = value["GibbsVolumeMoveProbability"].get<double>();
-      }
 
       // create system
       SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};

@@ -1,7 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <tuple>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <span>
+#endif
+
 module property_rdf;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <string>;
 import <iostream>;
@@ -11,6 +24,7 @@ import <vector>;
 import <algorithm>;
 import <cmath>;
 import <span>;
+#endif
 
 import archive;
 import double3;

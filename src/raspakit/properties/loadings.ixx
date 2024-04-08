@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <optional>
+#include <cmath>
+#include <ostream>
+#include <fstream>
+#endif
+
 export module loadings;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <optional>;
 import <cmath>;
 import <ostream>;
 import <fstream>;
+#endif
 
 import archive;
 import simulationbox;

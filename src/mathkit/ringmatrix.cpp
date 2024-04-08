@@ -1,16 +1,26 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <vector>
+#include <variant>
+#endif
 
 module ringmatrix;
+
+#ifndef USE_LEGACY_HEADERS
+import <algorithm>;
+import <cmath>;
+import <limits>;
+import <vector>;
+import <variant>;
+#endif
 
 import ring;
 import int3x3;
 
-import <vector>;
-import <variant>;
 
 
 template <typename T> int sign(T val)

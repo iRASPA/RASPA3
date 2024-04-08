@@ -1,8 +1,14 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <map>
+#endif
+
 module skrotationaloccurancetable;
 
+#ifndef USE_LEGACY_HEADERS
 import <map>;
+#endif
 
 import skrotationmatrix;
 

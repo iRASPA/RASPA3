@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <span>
+#include <optional>
+#include <tuple>
+#endif
+
 export module interactions_intermolecular;
 
+#ifndef USE_LEGACY_HEADERS
 import <span>;
 import <optional>;
 import <tuple>;
+#endif
 
 import double3x3;
 import atom;

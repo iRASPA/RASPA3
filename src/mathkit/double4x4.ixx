@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#endif
+
 export module double4x4;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
+#endif
 
 import double3;
 import double4;

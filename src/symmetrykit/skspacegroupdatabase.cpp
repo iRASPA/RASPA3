@@ -1,12 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <array>
+#include <string>
+#include <tuple>
+#endif
 
 module skspacegroupdatabase;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <array>;
 import <string>;
 import <tuple>;
+#endif
 
 import int3;
 import double3;

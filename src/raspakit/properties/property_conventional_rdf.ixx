@@ -1,5 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <array>
+#include <optional>
+#include <cmath>
+#include <string>
+#include <span>
+#include <tuple>
+#endif
+
 export module property_conventional_rdf;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <array>;
 import <optional>;
@@ -7,6 +20,7 @@ import <cmath>;
 import <string>;
 import <span>;
 import <tuple>;
+#endif
 
 import atom;
 import simulationbox;

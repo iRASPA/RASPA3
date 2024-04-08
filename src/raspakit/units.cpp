@@ -1,16 +1,28 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <sstream>
+#include <ostream>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module units;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <sstream>;
 import <ostream>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 

@@ -1,10 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <string>
+#include <memory>
+#endif
+
 module skasymmetricatom;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <string>;
 import <memory>;
+#endif
 
 import bool3;
 import double3;

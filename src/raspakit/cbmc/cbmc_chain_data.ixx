@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module cbmc_chain_data;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
 
 import atom;
 import double3x3;

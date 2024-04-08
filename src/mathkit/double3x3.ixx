@@ -1,3 +1,12 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <istream>
+#include <ostream>
+#include <fstream>
+#include <cmath>
+#endif
+
 export module double3x3;
 
 #if defined(WIN32)
@@ -6,10 +15,12 @@ export module double3x3;
     import <immintrin.h>;
 #endif
 
+#ifndef USE_LEGACY_HEADERS
 import <istream>;
 import <ostream>;
 import <fstream>;
 import <cmath>;
+#endif
 
 import archive;
 import double3;

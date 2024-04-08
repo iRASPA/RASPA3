@@ -1,12 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <fstream>
+#include <iostream>
+#include <complex>
+#include <numbers>
+#include <random>
+#endif
+
 module randomnumbers;
 
+#ifndef USE_LEGACY_HEADERS
 import <fstream>;
 import <iostream>;
 import <complex>;
 import <numbers>;
 import <random>;
+#endif
 
 import double3;
 import double3x3;

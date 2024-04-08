@@ -1,9 +1,17 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#endif
+
 export module potential_correction_vdw;
 
-import forcefield;
-
-import double4;
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
+#endif
+
+import forcefield;
+import double4;
 
 export inline double potentialCorrectionVDW(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
 {

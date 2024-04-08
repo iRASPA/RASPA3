@@ -1,11 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <numbers>
+#include <vector>
+#include <cmath>
+#endif
 
 module float3x3;
 
+#ifndef USE_LEGACY_HEADERS
+import <numbers>;
 import <vector>;
 import <cmath>;
+#endif
 
 import simd_quatd;
 import float3;

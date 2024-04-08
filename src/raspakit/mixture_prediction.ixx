@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <functional>
+#include <vector>
+#include <span>
+#include <tuple>
+#include <string>
+#include <ostream>
+#endif
+
 export module mixture_prediction;
 
+#ifndef USE_LEGACY_HEADERS
 import <functional>;
 import <vector>;
 import <span>;
 import <tuple>;
 import <string>;
 import <ostream>;
+#endif
 
 import atom;
 import isotherm;

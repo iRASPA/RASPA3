@@ -1,5 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <tuple>
+#include <random>
+#include <cmath>
+#include <utility>
+#include <fstream>
+#include <iostream>
+#include <optional>
+#endif
+
 export module randomnumbers;
 
+#ifndef USE_LEGACY_HEADERS
 import <tuple>;
 import <random>;
 import <cmath>;
@@ -7,6 +20,7 @@ import <utility>;
 import <fstream>;
 import <iostream>;
 import <optional>;
+#endif
 
 import archive;
 import double3;

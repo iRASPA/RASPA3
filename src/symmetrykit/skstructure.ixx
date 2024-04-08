@@ -1,13 +1,27 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cstdlib>
+#include <vector>
+#include <optional>
+#include <string>
+#include <set>
+#include <memory>
+#endif
+
 export module skstructure;
 
-import int3;
-import double3;
+#ifndef USE_LEGACY_HEADERS
 import <cstdlib>;
 import <vector>;
 import <optional>;
 import <string>;
 import <set>;
 import <memory>;
+#endif
+
+import int3;
+import double3;
 import skcell;
 import skasymmetricatom;
 

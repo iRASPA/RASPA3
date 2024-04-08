@@ -1,5 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <array>
+#include <optional>
+#include <cmath>
+#include <string>
+#include <span>
+#include <algorithm>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
+#endif
+
 export module property_density_grid;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <array>;
 import <optional>;
@@ -9,9 +25,13 @@ import <span>;
 import <algorithm>;
 #if defined(__has_include) && __has_include(<mdspan>)
   import <mdspan>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<mdspan>))
   import mdspan;
 #endif
+
 
 import int3;
 import double3;

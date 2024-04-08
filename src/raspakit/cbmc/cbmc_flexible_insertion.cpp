@@ -1,6 +1,26 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#endif
+
 module cbmc_flexible_insertion;
+
+#ifndef USE_LEGACY_HEADERS
+import <vector>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <iostream>;
+import <algorithm>;
+import <numeric>;
+#endif
 
 import randomnumbers;
 import component;
@@ -17,14 +37,6 @@ import forcefield;
 import energy_factor;
 import running_energy;
 
-import <vector>;
-import <tuple>;
-import <optional>;
-import <span>;
-
-import <iostream>;
-import <algorithm>;
-import <numeric>;
 
 /*
 [[nodiscard]] std::optional<ChainData> growFlexibleMoleculeSwapInsertion(const Component &component, RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) noexcept

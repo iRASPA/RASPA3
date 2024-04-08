@@ -1,9 +1,13 @@
-export module double3;
+module;
 
-import <cmath>;
-import <algorithm>;
-import <ostream>;
-import <fstream>;
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <algorithm>
+#include <ostream>
+#include <fstream>
+#endif
+
+export module double3;
 
 #if defined(WIN32)
 import <intrin.h>;
@@ -11,6 +15,12 @@ import <intrin.h>;
 import <immintrin.h>;
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
+import <algorithm>;
+import <ostream>;
+import <fstream>;
+#endif
 
 import int3;
 import bool3;

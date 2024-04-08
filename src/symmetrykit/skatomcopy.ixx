@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <memory>
+#include <vector>
+#endif
+
 export module skatomcopy;
 
-import double3;
+#ifndef USE_LEGACY_HEADERS
 import <memory>;
 import <vector>;
+#endif
+
+import double3;
 
 class SKAsymmetricAtom;
 

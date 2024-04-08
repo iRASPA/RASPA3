@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <vector>
 #include <numeric>
+#endif
 
 module int3x3;
+
+#ifndef USE_LEGACY_HEADERS
+import <vector>;
+import <numeric>;
+#endif
 
 import ring;
 import int3;

@@ -1,13 +1,26 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <optional>
+#endif
+
 export module monte_carlo;
 
-import randomnumbers;
-import threadpool;
-
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <iostream>;
 import <fstream>;
 import <chrono>;
 import <optional>;
+#endif
+
+import randomnumbers;
+import threadpool;
+
 
 import averages;
 import system;

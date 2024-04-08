@@ -1,9 +1,15 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <memory>
+#endif
 
 module skatomcopy;
 
+#ifndef USE_LEGACY_HEADERS
 import <memory>;
+#endif
+
 import double3;
 
 SKAtomCopy::SKAtomCopy(const SKAtomCopy& atomCopy)

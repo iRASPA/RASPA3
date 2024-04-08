@@ -1,7 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <cmath>
+#endif
+
 export module skseitzmatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
+import <cmath>;
+#endif
+
 import int3;
 import int3x3;
 import double3;
@@ -9,7 +21,6 @@ import double3x3;
 import skrotationmatrix;
 import skonethirdseitzmatrix;
 
-import <cmath>;
 
 export struct SKSeitzMatrix
 {

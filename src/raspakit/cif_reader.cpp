@@ -1,5 +1,26 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <map>
+#include <vector>
+#include <string>
+#include <optional>
+#include <algorithm>
+#include <sstream>
+#include <cmath>
+#include <cctype>
+#include <numbers>
+#include <iostream>
+#include <exception>
+#include <format>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module cif_reader;
 
+#ifndef USE_LEGACY_HEADERS
 import <map>;
 import <vector>;
 import <string>;
@@ -14,7 +35,10 @@ import <exception>;
 import <format>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

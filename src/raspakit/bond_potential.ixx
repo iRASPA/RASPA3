@@ -1,5 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <map>
+#include <vector>
+#include <array>
+#include <fstream>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 export module bond_potential;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <map>;
 import <vector>;
@@ -8,10 +23,12 @@ import <fstream>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 import archive;

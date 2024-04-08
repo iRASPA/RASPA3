@@ -1,5 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <chrono>
+#include <string>
+#include <sstream>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <fstream>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module mc_moves_cputime;
 
+#ifndef USE_LEGACY_HEADERS
 import <chrono>;
 import <string>;
 import <sstream>;
@@ -10,7 +27,11 @@ import <fstream>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

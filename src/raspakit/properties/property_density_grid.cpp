@@ -1,7 +1,25 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <tuple>
+#include <vector>
+#include <algorithm>
+#include <format>
+#include <numbers>
+#include <span>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module property_density_grid;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <string>;
 import <iostream>;
@@ -15,10 +33,12 @@ import <numbers>;
 import <span>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import int3;
 import double3;

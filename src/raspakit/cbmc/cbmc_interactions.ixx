@@ -1,10 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <type_traits>
+#include <span>
+#include <optional>
+#endif
+
 export module cbmc_interactions;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
 import <type_traits>;
 import <span>;
 import <optional>;
+#endif
 
 import atom;
 import energy_factor;

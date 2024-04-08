@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <cstdlib>
+#include <memory>
+#include <array>
+#endif
+
 export module skcell;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <cstdlib>;
 import <memory>;
 import <array>;
+#endif
 
 import int3;
 import bool3;

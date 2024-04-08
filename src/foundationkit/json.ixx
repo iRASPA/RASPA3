@@ -1,8 +1,62 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <functional>
+#include <iostream>
+#include <type_traits>
+#endif
+
+#include <algorithm> // all_of, find, for_each
+#include <cstddef> // nullptr_t, ptrdiff_t, size_t
+#include <functional> // hash, less
+#include <initializer_list> // initializer_list
+#ifndef JSON_NO_IO
+    #include <iosfwd> // istream, ostream
+#endif  // JSON_NO_IO
+#include <iterator> // random_access_iterator_tag
+#include <memory> // unique_ptr
+#include <string> // string, stoi, to_string
+#include <utility> // declval, forward, move, pair, swap
+#include <vector> // vector
+#include <optional>
+
+#include <array> // array
+#include <forward_list> // forward_list
+#include <iterator> // inserter, front_inserter, end
+#include <map> // map
+#include <tuple> // tuple, make_tuple
+#include <type_traits> // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
+#include <unordered_map> // unordered_map
+#include <utility> // pair, declval
+#include <valarray> // valarray
+ 
+#include <cstddef> // nullptr_t
+#include <exception> // exception
+#if JSON_DIAGNOSTICS
+    #include <numeric> // accumulate
+#endif
+#include <stdexcept> // runtime_error
+#include <string> // to_string
+#include <vector> // vector
+ 
+#include <cstddef> // size_t
+#include <iterator> // input_iterator_tag
+#include <string> // string, to_string
+#include <tuple> // tuple_size, get, tuple_element
+#include <utility> // move
+#include <filesystem> 
+
+#if JSON_HAS_RANGES
+    #include <ranges> // enable_borrowed_range
+#endif
+
 export module json;
 
+#ifndef USE_LEGACY_HEADERS
 import <functional>;
 import <iostream>;
 import <type_traits>;
+#endif
 
 
 import stringutils;
@@ -27,22 +81,9 @@ import stringutils;
 #ifndef INCLUDE_NLOHMANN_JSON_HPP_
 #define INCLUDE_NLOHMANN_JSON_HPP_
 
-#include <algorithm> // all_of, find, for_each
-#include <cstddef> // nullptr_t, ptrdiff_t, size_t
-#include <functional> // hash, less
-#include <initializer_list> // initializer_list
-#ifndef JSON_NO_IO
-    #include <iosfwd> // istream, ostream
-#endif  // JSON_NO_IO
-#include <iterator> // random_access_iterator_tag
-#include <memory> // unique_ptr
-#include <string> // string, stoi, to_string
-#include <utility> // declval, forward, move, pair, swap
-#include <vector> // vector
 
 
 //// ADDED: David Dubbeldam
-#include <optional>
 struct RASPAComparator {
     bool operator() (const std::string& str1, const std::string& str2) const {
         return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](auto a, auto b) {return std::tolower(a) == std::tolower(b); });
@@ -175,17 +216,6 @@ struct RASPAComparator {
 
 
 
-#include <algorithm> // transform
-#include <array> // array
-#include <forward_list> // forward_list
-#include <iterator> // inserter, front_inserter, end
-#include <map> // map
-#include <string> // string
-#include <tuple> // tuple, make_tuple
-#include <type_traits> // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
-#include <unordered_map> // unordered_map
-#include <utility> // pair, declval
-#include <valarray> // valarray
 
 // #include <nlohmann/detail/exceptions.hpp>
 //     __ _____ _____ _____
@@ -198,14 +228,6 @@ struct RASPAComparator {
 
 
 
-#include <cstddef> // nullptr_t
-#include <exception> // exception
-#if JSON_DIAGNOSTICS
-    #include <numeric> // accumulate
-#endif
-#include <stdexcept> // runtime_error
-#include <string> // to_string
-#include <vector> // vector
 
 // #include <nlohmann/detail/value_t.hpp>
 //     __ _____ _____ _____
@@ -5172,15 +5194,6 @@ NLOHMANN_JSON_NAMESPACE_END
 
 
 
-#include <cstddef> // size_t
-#include <iterator> // input_iterator_tag
-#include <string> // string, to_string
-#include <tuple> // tuple_size, get, tuple_element
-#include <utility> // move
-
-#if JSON_HAS_RANGES
-    #include <ranges> // enable_borrowed_range
-#endif
 
 // #include <nlohmann/detail/abi_macros.hpp>
 

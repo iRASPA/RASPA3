@@ -1,4 +1,4 @@
-export module mdspan;
+module;
 
 #include <stdexcept>
 #include <cstddef> // size_t
@@ -12,6 +12,16 @@ export module mdspan;
 #endif
 #include <algorithm>
 #include <numeric>
+
+#if __has_include(<version>)
+#  include <version>
+#else
+#  include <type_traits>
+#  include <utility>
+#endif
+
+export module mdspan;
+
 
 //@HEADER
 // ************************************************************************
@@ -33,12 +43,6 @@ export module mdspan;
 #  define __has_include(x) 0
 #endif
 
-#if __has_include(<version>)
-#  include <version>
-#else
-#  include <type_traits>
-#  include <utility>
-#endif
 
 #ifdef _MSVC_LANG
 #define _MDSPAN_CPLUSPLUS _MSVC_LANG

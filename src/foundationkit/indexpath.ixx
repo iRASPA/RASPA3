@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module indexpath;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
 
 export class IndexPath
 {

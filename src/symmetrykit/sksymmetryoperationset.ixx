@@ -1,6 +1,15 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module sksymmetryoperationset;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
+
 import skdefinitions;
 import skseitzmatrix;
 import skrotationmatrix;

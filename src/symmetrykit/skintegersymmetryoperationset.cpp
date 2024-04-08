@@ -1,13 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <tuple>
+#include <vector>
+#include <unordered_set>
+#include <iterator>
+#endif
 
 module skintegersymmetryoperationset;
 
+#ifndef USE_LEGACY_HEADERS
+import <algorithm>;
 import <tuple>;
 import <vector>;
 import <unordered_set>;
 import <iterator>;
+#endif
 
 import int3;
 import int3x3;

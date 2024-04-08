@@ -1,11 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <cmath>
+#include <optional>
+#include <iostream>
+#endif
+
 module equation_of_states;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <cmath>;
 import <optional>;
 import <iostream>;
+#endif
 
 import units;
 import cubic;

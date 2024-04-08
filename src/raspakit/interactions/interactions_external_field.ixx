@@ -1,19 +1,31 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <span>
+#include <optional>
+#include <tuple>
+#include <complex>
+#include <vector>
+#endif
+
 export module interactions_external_field;
 
+#ifndef USE_LEGACY_HEADERS
 import <span>;
 import <optional>;
 import <tuple>;
 import <complex>;
 import <vector>;
+#endif
              
 import double3;
-import double3x3;                                                                                                       
-import atom;                                                                                                            
-import running_energy;                                                                                                  
-import energy_status;                                                                                                   
-import simulationbox;                                                                                                   
-import force_factor;                                                                                                    
-import forcefield;                                                                                                      
+import double3x3;
+import atom;
+import running_energy;
+import energy_status;
+import simulationbox;
+import force_factor;
+import forcefield;
 import component;
 
 export namespace Interactions

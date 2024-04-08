@@ -1,10 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cctype>
+#include <vector>
+#include <algorithm>
+#endif
+
 module matrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <cctype>;
 import <vector>;
 import <algorithm>;
+#endif
 
 Matrix::Matrix(size_t rows, size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows* columns)
 {

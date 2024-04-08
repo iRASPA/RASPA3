@@ -1,7 +1,26 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <span>
+#include <cmath>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <limits>
+#include <filesystem>
+#include <algorithm>
+#include <numeric>
+#include <sstream>
+#include <chrono>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module isotherm_fitting_simulation;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <span>;
 import <cmath>;
@@ -16,10 +35,12 @@ import <sstream>;
 import <chrono>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 import hardware_info;

@@ -1,10 +1,22 @@
 module;
+
+#ifdef USE_LEGACY_HEADERS
 #include <iostream>
-#include <cassert>
+#include <vector>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module skspacegroupsetting;
 
+#ifndef USE_LEGACY_HEADERS
+import <iostream>;
 import <vector>;
+#endif
 
 import int3;
 import int3x3;

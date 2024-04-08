@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <optional>
+#include <iostream>
+#endif
+
 export module matrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <optional>;
 import <iostream>;
+#endif
 
 import ringmatrix;
 

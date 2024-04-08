@@ -1,13 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <numbers>
+#include <string>
+#include <iostream>
+#include <cmath>
+#include <algorithm>
+#include <istream>
+#include <ostream>
+#include <sstream>
+#include <fstream>
+#include <type_traits>
+#endif
+
 export module simulationbox;
 
-import archive;
 
-import double3;
-import int3;
-import double3x3;
-import randomnumbers;
-import units;
-
+#ifndef USE_LEGACY_HEADERS
 import <numbers>;
 import <string>;
 import <iostream>;
@@ -18,6 +27,16 @@ import <ostream>;
 import <sstream>;
 import <fstream>;
 import <type_traits>;
+#endif
+
+import archive;
+
+import double3;
+import int3;
+import double3x3;
+import randomnumbers;
+import units;
+
 
 #if defined(__GNUC__)
 #define ALWAYS_INLINE __attribute__((__always_inline__)) 

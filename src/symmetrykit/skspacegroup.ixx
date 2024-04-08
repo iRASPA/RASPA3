@@ -1,12 +1,30 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <array>
+#include <string>
+#include <optional>
+#include <unordered_set>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module skspacegroup;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
 import <array>;
 import <string>;
 import <optional>;
 import <unordered_set>;
-
+#endif
 
 import int3;
 import int3x3;

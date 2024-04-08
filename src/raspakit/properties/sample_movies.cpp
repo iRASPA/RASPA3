@@ -1,7 +1,21 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <streambuf>
+#include <filesystem>
+#include <numbers>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module sample_movies;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <iostream>;
@@ -11,10 +25,12 @@ import <filesystem>;
 import <numbers>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import double3;
 import stringutils;

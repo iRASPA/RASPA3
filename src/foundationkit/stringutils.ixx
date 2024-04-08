@@ -1,5 +1,19 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <locale>
+#include <algorithm>
+#include <cctype>
+#include <format>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
 export module stringutils;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <locale>;
 import <algorithm>;
@@ -8,6 +22,11 @@ import <format>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
 #endif
 
 

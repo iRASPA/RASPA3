@@ -1,7 +1,32 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <sstream>
+#include <iterator>
+#include <map>
+#include <algorithm>
+#include <exception>
+#include <cmath>
+#include <cstdlib>
+#include <bitset>
+#include <cstring>
+#include <climits>
+#include <unordered_set>
+#include <chrono>
+#include <optional>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module isotherm_fitting;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <iostream>;
@@ -22,10 +47,12 @@ import <chrono>;
 import <optional>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import randomnumbers;
 import stringutils;

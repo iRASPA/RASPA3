@@ -1,5 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <iostream>
+#include <ostream>
+#include <fstream>
+#include <optional>
+#endif
+
 export module forcefield;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <string>;
 import <algorithm>;
@@ -7,6 +20,7 @@ import <iostream>;
 import <ostream>;
 import <fstream>;
 import <optional>;
+#endif
 
 import archive;
 import double4;

@@ -1,7 +1,23 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <numbers>
+#include <optional>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <span>
+#include <cmath>
+#include <thread>
+#include <future>
+#include <deque>
+#include <semaphore>
+#include <atomic>
+#endif
+
 module interactions_framework_molecule;
 
+#ifndef USE_LEGACY_HEADERS
 import <numbers>;
 import <optional>;
 import <iostream>;
@@ -14,6 +30,7 @@ import <future>;
 import <deque>;
 import <semaphore>;
 import <atomic>;
+#endif
 
 import energy_status;
 import potential_energy_vdw;

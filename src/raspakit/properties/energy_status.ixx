@@ -1,5 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <iostream>
+#include <numeric>
+#include <string>
+#include <sstream>
+#include <fstream>
+#endif
+
 export module energy_status;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <cmath>;
@@ -9,6 +24,7 @@ import <numeric>;
 import <string>;
 import <sstream>;
 import <fstream>;
+#endif
 
 import archive;
 import energy_factor;

@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <optional>
+#include <vector>
+#endif
+
 export module cif_reader;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <optional>;
 import <vector>;
+#endif
 
 import scanner;
 import characterset;

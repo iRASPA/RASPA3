@@ -1,20 +1,22 @@
 module;
-export module print;
 
-import <iostream>;
-import <fstream>;
-import <string_view>;
-import <string>;
-import <cstdio>;
-import <utility>;
-import <version>;
-import <format>;
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <fstream>
+#include <string_view>
+#include <string>
+#include <cstdio>
+#include <utility>
+#include <version>
+#include <format>
+#endif
 
 #if defined(__has_include) && __has_include(<print>)
     #include <format>
     #define BWP_FMT_LIB "std"
     #define BWP_FMTNS std
 #else
+    #include <utility>
     #define FMT_HEADER_ONLY
     #include "fmt/core.h"
     #include "fmt/format.h"
@@ -25,6 +27,20 @@ import <format>;
     #define BWP_FMT_LIB "libfmt"
     #define BWP_FMTNS fmt
 #endif // __cpp_lib_format
+
+export module print;
+
+#ifndef USE_LEGACY_HEADERS
+import <iostream>;
+import <fstream>;
+import <string_view>;
+import <string>;
+import <cstdio>;
+import <utility>;
+import <version>;
+import <format>;
+#endif
+
 
 export namespace std 
 {

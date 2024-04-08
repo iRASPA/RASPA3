@@ -1,12 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <numbers>
+#endif
+
 export module potential_energy_coulomb;
+
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
+import <numbers>;
+#endif
 
 import forcefield;
 import energy_factor;
 import units;
 
 import double4;
-import <cmath>;
-import <numbers>;
 
 export [[clang::always_inline]] inline EnergyFactor 
 potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, 

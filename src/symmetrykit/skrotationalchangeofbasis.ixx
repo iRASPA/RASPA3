@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module skrotationalchangeofbasis;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
 
 import int3;
 import int3x3;

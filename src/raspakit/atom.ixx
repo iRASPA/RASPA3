@@ -1,11 +1,27 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <cstddef>
+#include <istream>
+#include <ostream>
+#include <fstream>
+#include <sstream>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module atom;
 
-import archive;
-import double3;
-import stringutils;
-
-import scaling;
-
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <cstddef>;
 import <istream>;
@@ -15,16 +31,21 @@ import <sstream>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 
+import archive;
+import double3;
+import stringutils;
 
-#if defined(_WIN32)
-  import <cassert>;
-#else
-  #include <assert.h>
-#endif
+import scaling;
+
+
+
 
 // Size is 2 times a __256d (double3 is padded and of size __256d)
 // C++17 and higher: std::vector<T> is automatically properly aligned based on type T

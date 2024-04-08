@@ -1,7 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <istream>
+#include <ostream>
+#include <sstream>
+#include <fstream>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module atom;
 
+#ifndef USE_LEGACY_HEADERS
 import <istream>;
 import <ostream>;
 import <sstream>;
@@ -12,14 +27,16 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 
 import archive;
 import double3;
 import stringutils;
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom)
 {

@@ -1,7 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#endif
+
 module cbmc;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
 import <optional>;
@@ -9,6 +20,7 @@ import <span>;
 import <iostream>;
 import <algorithm>;
 import <numeric>;
+#endif
 
 import randomnumbers;
 import component;

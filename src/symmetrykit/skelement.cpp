@@ -1,12 +1,22 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <cstdlib>
+#include <vector>
+#include <map>
+#include <set>
+#endif
+
 module skelement;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <cstdlib>;
 import <vector>;
 import <map>;
 import <set>;
+#endif
 
 
 SKElement::SKElement()

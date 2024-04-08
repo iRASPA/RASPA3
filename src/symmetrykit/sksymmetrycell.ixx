@@ -1,10 +1,28 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <optional>
+#include <tuple>
+#include <memory>
+#include <string>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module sksymmetrycell;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <optional>;
 import <tuple>;
 import <memory>;
 import <string>;
+#endif
 
 import int3;
 import int3x3;

@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <ostream>
+#endif
+
 export module float3;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <ostream>;
+#endif
 
 import int3;
 

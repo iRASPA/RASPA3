@@ -1,5 +1,33 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <fstream>
+#include <string_view>
+#include <string>
+#include <cstdio>
+#include <utility>
+#include <version>
+#include <thread>
+
+#if !defined (__cpp_lib_jthread)
+#include <atomic>
+#include <type_traits>
+#include <utility>
+#include <thread>
+#include <future>
+#include <functional>  // for invoke()
+#include <iostream>    // for debugging output
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
+#include <immintrin.h>
+#endif
+#endif
+
 export module threading;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <fstream>;
 import <string_view>;
@@ -10,7 +38,6 @@ import <version>;
 import <thread>;
 
 #if !defined (__cpp_lib_jthread)
-
 import <atomic>;
 import <type_traits>;
 import <utility>;
@@ -18,10 +45,14 @@ import <thread>;
 import <future>;
 import <functional>;  // for invoke()
 import <iostream>;    // for debugging output
+#endif
 
 #if defined(__x86_64__) || defined(_M_X64)
 import <immintrin.h>;
 #endif
+#endif
+
+#if !defined (__cpp_lib_jthread)
 
 export namespace std {
 inline void __spin_yield() noexcept {
@@ -576,8 +607,8 @@ template<typename _Callback>
 } // namespace std
 
 
-export namespace std {
-
+export namespace std 
+{
 //***************************************** 
 //* class jthread
 //* - joining std::thread with signaling stop/end support 

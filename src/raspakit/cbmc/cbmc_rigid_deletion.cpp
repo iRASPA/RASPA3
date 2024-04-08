@@ -1,7 +1,19 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#include <type_traits>
+#endif
+
 module cbmc_rigid_deletion;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
 import <optional>;
@@ -10,6 +22,7 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 import <type_traits>;
+#endif
 
 import randomnumbers;
 import component;

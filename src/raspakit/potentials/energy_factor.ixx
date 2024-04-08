@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <fstream>
+#endif
+
 export module energy_factor;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <fstream>;
+#endif
 
 import archive;
 

@@ -1,5 +1,28 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <format>
+#include <tuple>
+#include <vector>
+#include <string>
+#include <chrono>
+#include <cstdint>
+#include <fstream>
+#include <sstream>
+#include <ostream>
+#include <vector>
+#include <array>
+#include <map>
+#include <optional>
+#include <span>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 export module framework;
 
+#ifndef USE_LEGACY_HEADERS
 import <format>;
 import <tuple>;
 import <vector>;
@@ -14,6 +37,14 @@ import <array>;
 import <map>;
 import <optional>;
 import <span>;
+#if defined(__has_include) && __has_include(<print>)
+  import <print>;
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 import archive;

@@ -1,5 +1,23 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <iostream>
+#include <exception>
+#include <format>
+#if defined(__has_include) && __has_include(<stacktrace>)
+  #include <stacktrace>
+#endif
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module cbmc_util;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <algorithm>;
 import <cmath>;
@@ -11,7 +29,10 @@ import <format>;
 #endif
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

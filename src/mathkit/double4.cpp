@@ -1,11 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cmath>
+#include <fstream>
+#include <complex>
+#endif
 
 module double4;
 
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
 import <fstream>;
 import <complex>;
+#endif
 
 import archive;
 

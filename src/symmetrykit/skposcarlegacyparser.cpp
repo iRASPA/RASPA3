@@ -1,11 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <string>
 #include <vector>
 #include <locale>
 #include <optional>
+#endif
 
 module skposcarlegacyparser;
+
+#ifndef USE_LEGACY_HEADERS
+import <string>;
+import <vector>;
+import <locale>;
+import <optional>;
+#endif
 
 import skstructure;
 import double3;

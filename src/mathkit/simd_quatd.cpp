@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <numbers>
 #include <cmath>
+#endif
 
 module simd_quatd;
+
+#ifndef USE_LEGACY_HEADERS
+import <numbers>;
+import <cmath>;
+#endif
 
 import double3;
 

@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <tuple>
+#endif
+
 export module cbmc_growing_status;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <tuple>;
+#endif
 
 import component;
 import atom;

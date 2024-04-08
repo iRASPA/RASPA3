@@ -1,7 +1,31 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#include <ranges>
+#include <chrono>
+#include <vector>
+#include <span>
+#include <string>
+#include <optional>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
+#include <tuple>
+#include <ios>
+#include <complex>
+#include <exception>
+#include <source_location>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module monte_carlo;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <algorithm>;
 import <numeric>;
@@ -21,10 +45,12 @@ import <exception>;
 import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 import hardware_info;

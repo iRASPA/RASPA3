@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <cstdlib>
+#include <vector>
+#include <map>
+#include <set>
+#include <type_traits>
+#endif
+
 export module skelement;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <cstdlib>;
 import <vector>;
 import <map>;
 import <set>;
 import <type_traits>;
+#endif
 
 export struct SKElement
 {

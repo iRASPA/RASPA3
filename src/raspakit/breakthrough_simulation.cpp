@@ -1,7 +1,27 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <span>
+#include <cmath>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <limits>
+#include <filesystem>
+#include <algorithm>
+#include <numeric>
+#include <sstream>
+#include <chrono>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module breakthrough_simulation;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <span>;
 import <cmath>;
@@ -17,7 +37,10 @@ import <chrono>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

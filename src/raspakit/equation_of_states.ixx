@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module equation_of_states;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
+#endif
 
 import component;
 import simulationbox;

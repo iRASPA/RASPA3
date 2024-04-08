@@ -1,10 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <numbers>
+#include <string>
+#include <sstream>
+#include <fstream>
+#endif
+
 export module reactions;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <numbers>;
 import <string>;
 import <sstream>;
 import <fstream>;
+#endif
 
 import archive;
 import reaction;

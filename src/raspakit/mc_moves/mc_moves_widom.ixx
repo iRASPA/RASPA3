@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <optional>
+#include <span>
+#include <tuple>
+#endif
+
 export module mc_moves_widom;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <optional>;
 import <span>;
 import <tuple>;
+#endif
 
 import double3;
 import randomnumbers;

@@ -1,4 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#endif
+
 export module sktransformationmatrix;
+
+#ifndef USE_LEGACY_HEADERS
+import <vector>;
+#endif
 
 import skrotationmatrix;
 import int3;
@@ -7,7 +17,6 @@ import double3;
 import double3x3;
 import hashcombine;
 
-import <vector>;
 
 export struct SKTransformationMatrix
 {

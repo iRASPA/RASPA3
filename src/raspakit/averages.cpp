@@ -1,13 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <istream>
+#include <ostream>
+#include <fstream>
+#include <vector>
+#include <complex>
+#endif
+
 module averages;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <istream>;
 import <ostream>;
 import <fstream>;
 import <vector>;
 import <complex>;
+#endif
 
 import archive;
 

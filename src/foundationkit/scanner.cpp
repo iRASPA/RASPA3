@@ -1,8 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <iomanip>
+#include <string_view>
+#include <type_traits>
+#endif
 
 module scanner;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <iostream>;
@@ -12,6 +24,7 @@ import <iterator>;
 import <iomanip>;
 import <string_view>;
 import <type_traits>;
+#endif
 
 import characterset;
 

@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <numeric>
+#include <algorithm>
+#include <string>
+#endif
+
 export module special_functions;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <numeric>;
 import <algorithm>;
 import <string>;
+#endif
 
 export extern double li2(double x);
 export extern double hypergeometric2F1(double a, double b, double c, double z);

@@ -1,5 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <iostream>
+#include <numeric>
+#include <string>
+#include <sstream>
+#include <ostream>
+#include <fstream>
+#endif
+
 export module running_energy;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <cmath>;
@@ -10,6 +26,7 @@ import <string>;
 import <sstream>;
 import <ostream>;
 import <fstream>;
+#endif
 
 import archive;
 import scaling;

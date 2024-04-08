@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <vector>
+#endif
+
 module indexpath;
 
+#ifndef USE_LEGACY_HEADERS
 import <algorithm>;
 import <vector>;
+#endif
 
 IndexPath::IndexPath()
 {

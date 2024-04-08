@@ -1,9 +1,27 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <ostream>
+#include <string>
+#include <vector>
+#include <cstdint>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
+
 export module skspacegroupsetting;
 
+#ifndef USE_LEGACY_HEADERS
 import <ostream>;
 import <string>;
 import <vector>;
 import <cstdint>;
+#endif
+
 import int3;
 import int3x3;
 import double3;

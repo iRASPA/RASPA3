@@ -1,9 +1,28 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <atomic>
+#include <chrono>
+#include <exception>
+#include <functional>
+#include <future>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <deque>
+#include <thread>
+#include <type_traits>
+#include <utility>
+#include <optional>
+#include <semaphore>
+#endif
+
 #include <omp.h>
 
 export module threadpool;
 
+#ifndef USE_LEGACY_HEADERS
 import <atomic>;
 import <chrono>;
 import <exception>;
@@ -19,9 +38,9 @@ import <type_traits>;
 import <utility>;
 import <optional>;
 import <semaphore>;
+#endif
 
 import threading;
-
 
 
 // https://github.com/DeveloperPaul123/thread-pool

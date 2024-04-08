@@ -1,17 +1,29 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <set>
+#include <unordered_set>
+#include <vector>
+#include <tuple>
+#include <type_traits>
+#endif
+
 export module skintegersymmetryoperationset;
 
-import skseitzintegermatrix;
+#ifndef USE_LEGACY_HEADERS
 import <set>;
 import <unordered_set>;
 import <vector>;
 import <tuple>;
 import <type_traits>;
+#endif
 
 import int3;
 import int3x3;
 import double3;
 import double3x3;
 import skdefinitions;
+import skseitzintegermatrix;
 
 
 export struct SKIntegerSymmetryOperationSet

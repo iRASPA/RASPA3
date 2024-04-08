@@ -1,11 +1,25 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <optional>
+#if defined(__has_include) && __has_include(<mdspan>)
+#include <mdspan>
+#else
+  import mdspan;
+#endif
+#endif
+
 export module symmetric_matrix_layout;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <optional>;
 #if defined(__has_include) && __has_include(<mdspan>)
   import <mdspan>;
 #else
   import mdspan;
+#endif
 #endif
 
 

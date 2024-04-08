@@ -1,5 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <numbers>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <span>
+#include <cmath>
+#include <optional>
+#include <thread>
+#include <future>
+#include <type_traits>
+#endif
+
 export module cbmc_interactions_external_field;
 
+#ifndef USE_LEGACY_HEADERS
 import <numbers>;
 import <iostream>;
 import <algorithm>;
@@ -10,6 +26,7 @@ import <optional>;
 import <thread>;
 import <future>;
 import <type_traits>;
+#endif
 
 import energy_status;
 import potential_energy_vdw;

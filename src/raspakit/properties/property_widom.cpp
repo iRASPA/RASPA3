@@ -1,7 +1,29 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <sstream>
+#include <format>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <numbers>
+#include <optional>
+#include <fstream>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module property_widom;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <iostream>;
 import <cmath>;
@@ -19,10 +41,12 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import archive;
 import units;

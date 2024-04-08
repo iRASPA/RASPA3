@@ -1,18 +1,36 @@
 module;
 
-#include <assert.h>
+#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <map>
 #include <array>
 #include <vector>
 #include <string>
 #include <iterator>
+#include <unordered_set>
+#include <string>
+#include <vector>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module skspacegroup;
 
+#ifndef USE_LEGACY_HEADERS
+import <algorithm>;
+import <map>;
+import <array>;
+import <vector>;
+import <string>;
+import <iterator>;
 import <unordered_set>;
 import <string>;
 import <vector>;
+#endif
 
 import int3;
 import int3x3;

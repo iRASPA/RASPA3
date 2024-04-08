@@ -1,7 +1,19 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <optional>
+#include <cmath>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <span>
+#include <tuple>
+#endif
+
 module cbmc_multiple_first_bead;
 
+#ifndef USE_LEGACY_HEADERS
 import <optional>;
 import <cmath>;
 import <vector>;
@@ -10,6 +22,7 @@ import <numeric>;
 import <iterator>;
 import <span>;
 import <tuple>;
+#endif
 
 import cbmc_util;
 import atom;

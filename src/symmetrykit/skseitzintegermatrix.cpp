@@ -1,11 +1,22 @@
 module;
 
-#include <assert.h>
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <string>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module skseitzintegermatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <string>;
+#endif
 
 import int3;
 import int3x3;

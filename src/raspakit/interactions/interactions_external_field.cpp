@@ -1,7 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <span>
+#include <numbers>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <type_traits>
+#include <optional>
+#endif
+
 module interactions_external_field;
 
+#ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <span>;
 import <numbers>;
@@ -11,6 +24,7 @@ import <iostream>;
 import <algorithm>;
 import <type_traits>;
 import <optional>;
+#endif
 
 import int3;
 import double3;

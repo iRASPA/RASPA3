@@ -1,14 +1,28 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <numbers>
+#include <string>
+#include <sstream>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 export module units;
 
+#ifndef USE_LEGACY_HEADERS
 import <numbers>;
 import <string>;
 import <sstream>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 export namespace Units
 {

@@ -1,7 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <numbers>
+#include <vector>
+#include <array>
+#include <cstdlib>
+#include <cmath>
+#include <memory>
+#endif
+
 module skcell;
 
+#ifndef USE_LEGACY_HEADERS
 import <algorithm>;
 import <numbers>;
 import <vector>;
@@ -9,6 +20,7 @@ import <array>;
 import <cstdlib>;
 import <cmath>;
 import <memory>;
+#endif
 
 import int3;
 import bool3;

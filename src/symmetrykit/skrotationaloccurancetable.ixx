@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <map>
+#include <type_traits>
+#endif
+
 export module skrotationaloccurancetable;
 
+#ifndef USE_LEGACY_HEADERS
 import <map>;
 import <type_traits>;
+#endif
 
 export struct SKRotationalOccuranceTable
 {

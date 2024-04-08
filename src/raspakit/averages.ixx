@@ -1,5 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <array>
+#include <vector>
+#include <tuple>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <iostream>
+#include <istream>
+#include <ostream>
+#include <fstream>
+#include <string>
+#endif
+
 export module averages;
 
+#ifndef USE_LEGACY_HEADERS
 import <array>;
 import <vector>;
 import <tuple>;
@@ -11,6 +28,7 @@ import <istream>;
 import <ostream>;
 import <fstream>;
 import <string>;
+#endif
 
 import archive;
 

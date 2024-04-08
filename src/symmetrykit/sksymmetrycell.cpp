@@ -1,22 +1,40 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cfloat>
 #include <algorithm>
 #include <utility>
-#include <assert.h>
 #include <numbers>
 #include <tuple>
 #include <iterator>
+#include <array>
+#include <vector>
+#include <string>
+#include <optional>
+#endif
+
+#if defined(_WIN32)
+  import <cassert>;
+#else
+  #include <assert.h>
+#endif
 
 module sksymmetrycell;
 
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
+import <cfloat>;
+import <algorithm>;
+import <utility>;
+import <numbers>;
+import <tuple>;
+import <iterator>;
 import <array>;
 import <vector>;
 import <string>;
 import <optional>;
-import <tuple>;
-import <iterator>;
+#endif
 
 import int3;
 import int3x3;

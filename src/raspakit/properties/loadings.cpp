@@ -1,8 +1,25 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <optional>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <ostream>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module loadings;
 
-
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <optional>;
 import <fstream>;
@@ -16,10 +33,12 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import archive;
 import stringutils;

@@ -1,7 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <numbers>
+#include <string>
+#include <iostream>
+#include <ostream>
+#include <sstream>
+#include <fstream>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module simulationbox;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <numbers>;
 import <string>;
@@ -14,10 +31,12 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import randomnumbers;
 import double3x3;

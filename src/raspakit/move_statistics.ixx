@@ -1,5 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <fstream>
+#include <format>
+#include <exception>
+#include <source_location>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 export module move_statistics;
 
+
+#ifndef USE_LEGACY_HEADERS
 import <algorithm>;
 import <fstream>;
 import <format>;
@@ -7,7 +22,10 @@ import <exception>;
 import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

@@ -1,7 +1,20 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iomanip>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <span>
+#include <optional>
+#include <cmath>
+#include <tuple>
+#include <type_traits>
+#endif
+
 module cbmc_interactions;
 
+#ifndef USE_LEGACY_HEADERS
 import <iomanip>;
 import <iostream>;
 import <algorithm>;
@@ -11,6 +24,7 @@ import <optional>;
 import <cmath>;
 import <tuple>;
 import <type_traits>;
+#endif
 
 import atom;
 import energy_factor;

@@ -1,5 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <map>
+#include <unordered_set>
+#include <vector>
+#include <complex>
+#include <locale>
+#include <algorithm>
+#include <cctype>
+#include <optional>
+#include <fstream>
+#include <istream>
+#include <string>
+#include <format>
+#endif
+
 export module input_reader;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <map>;
 import <unordered_set>;
@@ -13,6 +32,7 @@ import <fstream>;
 import <istream>;
 import <string>;
 import <format>;
+#endif
 
 import stringutils;
 

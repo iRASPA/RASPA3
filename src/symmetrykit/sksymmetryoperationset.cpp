@@ -1,11 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <vector>
+#include <iterator>
+#endif
 
 module sksymmetryoperationset;
 
+#ifndef USE_LEGACY_HEADERS
+import <algorithm>;
 import <vector>;
 import <iterator>;
+#endif
 
 import double3;
 import int3x3;

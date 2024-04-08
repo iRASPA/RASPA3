@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <cstdlib>
+#include <vector>
+#include <memory>
+#include <utility>
+#include <cstdlib>
+#endif
+
 export module skasymmetricatom;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <cstdlib>;
 import <vector>;
 import <memory>;
 import <utility>;
 import <cstdlib>;
+#endif
 
 import bool3;
 import double3;

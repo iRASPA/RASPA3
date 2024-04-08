@@ -1,5 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <chrono>
+#include <string>
+#include <sstream>
+#include <exception>
+#include <source_location>
+#include <fstream>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module mc_moves_count;
 
+#ifndef USE_LEGACY_HEADERS
 import <chrono>;
 import <string>;
 import <sstream>;
@@ -9,10 +25,12 @@ import <fstream>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import double3;
 import stringutils;

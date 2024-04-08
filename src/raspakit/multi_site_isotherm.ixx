@@ -1,9 +1,20 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <array>
+#include <vector>
+#include <iostream>
+#endif
+
 export module multi_site_isotherm;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <array>;
 import <vector>;
 import <iostream>;
+#endif
 
 import hashcombine;
 import randomnumbers;

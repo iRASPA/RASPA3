@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <tuple>
+#endif
+
 module skasymmetricunit;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <tuple>;
+#endif
 
 import int3;
 import int3x3;

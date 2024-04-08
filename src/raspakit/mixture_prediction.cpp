@@ -1,7 +1,28 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <functional>
+#include <vector>
+#include <span>
+#include <cmath>
+#include <string>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+#include <limits>
+#include <algorithm>
+#include <numeric>
+#include <ostream>
+#include <filesystem>
+#if defined(__has_include) && __has_include(<print>)
+#include <print>
+#endif
+#endif
+
 module mixture_prediction;
 
+#ifndef USE_LEGACY_HEADERS
 import <functional>;
 import <vector>;
 import <span>;
@@ -18,7 +39,10 @@ import <ostream>;
 import <filesystem>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

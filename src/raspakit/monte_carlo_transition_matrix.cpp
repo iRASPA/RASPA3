@@ -1,7 +1,26 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <algorithm>
+#include <numeric>
+#include <chrono>
+#include <vector>
+#include <span>
+#include <string>
+#include <optional>
+#include <fstream>
+#include <filesystem>
+#include <tuple>
+#include <ios>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module monte_carlo_transition_matrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <algorithm>;
 import <numeric>;
@@ -16,10 +35,12 @@ import <tuple>;
 import <ios>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 import hardware_info;
@@ -87,26 +108,6 @@ void MonteCarloTransitionMatrix::initialize()
 {
   for (System &system: systems)
   {
-    //system.registerEwaldFourierEnergySingleIon(double3(0.0, 0.0, 0.0), 1.0);
-    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     system.forceField, system.simulationBox,
-                                                     double3(0.0, 0.0, 0.0), 1.0);
-    system.removeRedundantMoves();
-    system.determineSwapableComponents();
-    system.determineFractionalComponents();
-    system.rescaleMoveProbabilities();
-    system.rescaleMolarFractions();
-    //system.computeComponentFluidProperties();
-    system.computeFrameworkDensity();
-    system.computeNumberOfPseudoAtoms();
-
-    double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
-    system.forceField.initializeEwaldParameters(perpendicularWidths);
-
-    system.createInitialMolecules(random);
-
-    system.averageEnthalpiesOfAdsorption.resize(system.swapableComponents.size());
-
     system.tmmc.initialize();
 
     std::string directoryNameString = std::format("output/system_{}/", system.systemId);

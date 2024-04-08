@@ -1,8 +1,34 @@
-
 module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <filesystem>
+#include <fstream>
+#include <cstdlib>
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <array>
+#include <map>
+#include <cmath>
+#include <string>
+#include <string_view>
+#include <optional>
+#include <numbers>
+#include <algorithm>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <complex>
+#include <type_traits>
+#include <iterator>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
 
 module forcefield;
 
+#ifndef USE_LEGACY_HEADERS
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
@@ -25,10 +51,12 @@ import <type_traits>;
 import <iterator>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import archive;
 import json;
@@ -438,25 +466,25 @@ std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
 
 void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
 {
-    if (automaticEwald)
-    {
-        // compute the alpha-parameter and max k-vectors from the relative precision
-        double eps = std::min(fabs(EwaldPrecision), 0.5);
+  if (automaticEwald)
+  {
+    // compute the alpha-parameter and max k-vectors from the relative precision
+    double eps = std::min(fabs(EwaldPrecision), 0.5);
 
-        double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
+    double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
 
-        EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
-        double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
+    EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
+    double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-        numberOfWaveVectors = 
-          int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-               static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-               static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+    numberOfWaveVectors = 
+      int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+           static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+           static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
 
-        //numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
-        //if (ReciprocalCutOffSquared[i] < 0.0)
-        //    ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
-    }
+    //numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
+    //if (ReciprocalCutOffSquared[i] < 0.0)
+    //    ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
+  }
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p)

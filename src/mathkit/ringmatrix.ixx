@@ -1,10 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <optional>
+#include <any>
+#include <variant>
+#include <string>
+#endif
+
 export module ringmatrix;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <optional>;
 import <any>;
 import <variant>;
 import <string>;
+#endif
 
 import int3x3;
 

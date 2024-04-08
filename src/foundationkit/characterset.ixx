@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#endif
+
 export module characterset;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
+#endif
 
 export class CharacterSet
 {

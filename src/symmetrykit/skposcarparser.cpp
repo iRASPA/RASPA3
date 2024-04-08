@@ -1,7 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <vector>
+#include <map>
+#include <locale>
+#include <optional>
+#include <memory>
+#include <iostream>
+#endif
+
 module skposcarparser;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
 import <map>;
@@ -9,6 +20,7 @@ import <locale>;
 import <optional>;
 import <memory>;
 import <iostream>;
+#endif
 
 import skelement;
 import skatomcopy;

@@ -1,11 +1,24 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cstdint>
+#include <array>
+#include <tuple>
+#include <utility>
+#include <memory>
+#include <cstdint>
+#endif
+
 export module skboundingbox;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstdint>;
 import <array>;
 import <tuple>;
 import <utility>;
 import <memory>;
 import <cstdint>;
+#endif
 
 import double4x4;
 import double3;

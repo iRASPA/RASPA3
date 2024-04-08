@@ -1,10 +1,18 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <numeric>
+#include <algorithm>
+#endif
+
 module cubic;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <numeric>;
 import <algorithm>;
+#endif
 
 
 int signR(double Z)

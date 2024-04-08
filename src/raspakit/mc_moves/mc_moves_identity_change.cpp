@@ -1,13 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <optional>
+#include <span>
+#include <chrono>
+#include <vector>
+#include <cmath>
+#include <tuple>
+#endif
+
 module mc_moves_identity_change;
 
+#ifndef USE_LEGACY_HEADERS
 import <optional>;
 import <span>;
 import <chrono>;
 import <vector>;
 import <cmath>;
 import <tuple>;
+#endif
 
 import randomnumbers;
 import running_energy;

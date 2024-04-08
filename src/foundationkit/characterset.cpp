@@ -1,8 +1,14 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#endif
+
 module characterset;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
+#endif
 
 CharacterSet::CharacterSet()
 {

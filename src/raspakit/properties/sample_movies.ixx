@@ -1,15 +1,26 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <numeric>
+#include <fstream>
+#include <utility>
+#include <string>
+#endif
+
 export module sample_movies;
 
-import atom;
-import simulationbox;
-import forcefield;
-
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <numeric>;
 import <fstream>;
 import <utility>;
 import <string>;
+#endif
 
+import atom;
+import simulationbox;
+import forcefield;
 
 export struct SampleMovie
 {

@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <array>
+#include <vector>
+#endif
+
 export module skspacegroupdatabase;
 
+#ifndef USE_LEGACY_HEADERS
 import <array>;
 import <vector>;
+#endif
 
 import skspacegroupsetting;
 

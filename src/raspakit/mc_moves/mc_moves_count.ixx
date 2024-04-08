@@ -1,8 +1,18 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <chrono>
+#include <fstream>
+#endif
+
 export module mc_moves_count;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <chrono>;
 import <fstream>;
+#endif
 
 import double3;
 import archive;

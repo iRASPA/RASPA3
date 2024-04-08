@@ -1,7 +1,25 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <vector>
+#include <array>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <optional>
+#include <tuple>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#include <type_traits>
+#endif
+
 module mc_moves_swap_cfcmc_cbmc;
 
+#ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <vector>;
 import <array>;
@@ -16,6 +34,7 @@ import <cmath>;
 import <iostream>;
 import <iomanip>;
 import <type_traits>;
+#endif
 
 import component;
 import atom;

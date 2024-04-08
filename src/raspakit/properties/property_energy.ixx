@@ -1,5 +1,22 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <array>
+#include <optional>
+#include <cmath>
+#include <string>
+#include <algorithm>
+#include <numeric>
+#include <numbers>
+#include <tuple>
+#include <iostream>
+#include <fstream>
+#endif
+
 export module property_energy;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <array>;
 import <optional>;
@@ -11,6 +28,7 @@ import <numbers>;
 import <tuple>;
 import <iostream>;
 import <fstream>;
+#endif
 
 import archive;
 import averages;

@@ -1,6 +1,30 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <numbers>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <span>
+#include <cmath>
+#include <optional>
+#include <thread>
+#include <future>
+#endif
+
 module interactions_intermolecular;
+
+#ifndef USE_LEGACY_HEADERS
+import <numbers>;
+import <iostream>;
+import <algorithm>;
+import <vector>;
+import <span>;
+import <cmath>;
+import <optional>;
+import <thread>;
+import <future>;
+#endif
 
 import energy_status;
 import potential_energy_vdw;
@@ -21,15 +45,6 @@ import component;
 import units;
 import threadpool;
 
-import <numbers>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <optional>;
-import <thread>;
-import <future>;
 
 
 // used in volume moves for computing the state at a new box and new, scaled atom positions

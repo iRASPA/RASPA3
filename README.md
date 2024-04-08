@@ -97,4 +97,16 @@ Running
 cd examples/basic/1_mc_methane_in_box<br>
 ./run
 
+CMake (TODO)
+============
+export CXX=/usr/local/opt/llvm@17/bin/clang++
+export CC=/usr/local/opt/llvm@17/bin/clang
+export CXX=g++-13 
+export CC=gcc-13 
+mkdir build
+cd build
+cmake .. -GNinja
+cmake --build . -v
+cmake --build build --target test
+cmake --build build --target docs
 

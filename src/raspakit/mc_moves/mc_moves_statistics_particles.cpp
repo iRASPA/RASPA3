@@ -1,5 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module mc_moves_statistics_particles;
 
+#ifndef USE_LEGACY_HEADERS
 import <string>;
 import <sstream>;
 import <fstream>;
@@ -9,7 +25,10 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

@@ -1,6 +1,14 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <tuple>
+#endif
+
 export module ring;
 
+#ifndef USE_LEGACY_HEADERS
 import <tuple>;
+#endif
 
 export struct Ring
 {

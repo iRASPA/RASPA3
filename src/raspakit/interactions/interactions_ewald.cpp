@@ -1,7 +1,19 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <span>
+#include <numbers>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <type_traits>
+#endif
+
 module interactions_ewald;
 
+#ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <span>;
 import <numbers>;
@@ -10,6 +22,7 @@ import <vector>;
 import <iostream>;
 import <algorithm>;
 import <type_traits>;
+#endif
 
 import int3;
 import double3;

@@ -1,6 +1,38 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <vector>
+#include <array>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <optional>
+#include <tuple>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#endif
+
 module mc_moves_rotation;
+
+#ifndef USE_LEGACY_HEADERS
+import <complex>;
+import <vector>;
+import <array>;
+import <tuple>;
+import <optional>;
+import <span>;
+import <optional>;
+import <tuple>;
+import <algorithm>;
+import <chrono>;
+import <cmath>;
+import <iostream>;
+import <iomanip>;
+#endif
 
 import component;
 import atom;
@@ -25,19 +57,6 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
 
 
 std::optional<RunningEnergy> 

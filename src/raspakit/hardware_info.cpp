@@ -1,5 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <random>
+#include <chrono>
+#include <sstream>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -22,6 +33,7 @@ module;
 
 module hardware_info;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <random>;
 import <chrono>;
@@ -29,10 +41,12 @@ import <sstream>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import stringutils;
 

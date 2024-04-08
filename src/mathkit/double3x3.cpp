@@ -1,5 +1,14 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <numbers>
+#include <ostream>
+#include <fstream>
+#include <vector>
+#include <complex>
+#endif
+
 #include <numbers>
 #define sqr( x ) (( x )*( x ))
 #define SIGN(a,b) ((b)>=0.0?fabs(a):-fabs(a))
@@ -13,12 +22,14 @@ extern "C"
 
 module double3x3;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <numbers>;
 import <ostream>;
 import <fstream>;
 import <vector>;
 import <complex>;
+#endif
 
 import int3x3;
 import simd_quatd;

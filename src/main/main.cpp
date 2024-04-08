@@ -1,3 +1,17 @@
+#ifdef USE_LEGACY_HEADERS
+#include <exception>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <span>
+#include <deque>
+#include <optional>
+#include <semaphore>
+#include <mutex>
+#include <complex>
+#endif
+
+#ifndef USE_LEGACY_HEADERS
 import <exception>;
 import <iostream>;
 import <fstream>;
@@ -8,6 +22,7 @@ import <optional>;
 import <semaphore>;
 import <mutex>;
 import <complex>;
+#endif
 
 import archive;
 import threadpool;

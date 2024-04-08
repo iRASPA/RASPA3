@@ -1,7 +1,19 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <sstream>
+#include <cmath>
+#include <vector>
+#include <iostream>
+#include <ostream>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module multi_site_isotherm;
 
+#ifndef USE_LEGACY_HEADERS
 import <sstream>;
 import <cmath>;
 import <vector>;
@@ -9,7 +21,10 @@ import <iostream>;
 import <ostream>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

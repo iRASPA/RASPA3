@@ -1,9 +1,16 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <iostream>
+#endif
 
 module float4x4;
+
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
+import <iostream>;
+#endif
 
 import float3;
 import float4;

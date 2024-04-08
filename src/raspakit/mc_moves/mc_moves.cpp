@@ -1,7 +1,31 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <vector>
+#include <array>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <optional>
+#include <tuple>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <format>
+#include <exception>
+#include <source_location>
+#include <complex>
+#if defined(__has_include) && __has_include(<print>)
+#include <print>
+#endif
+#endif
+
 module mc_moves;
 
+#ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <array>;
 import <tuple>;
@@ -21,10 +45,12 @@ import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import archive;
 import double3;

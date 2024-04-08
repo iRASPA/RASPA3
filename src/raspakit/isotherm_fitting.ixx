@@ -1,11 +1,25 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <tuple>
+#include <array>
+#include <vector>
+#include <string>
+#include <unordered_map>
+#include <iostream>
+#endif
+
 export module isotherm_fitting;
 
+
+#ifndef USE_LEGACY_HEADERS
 import <tuple>;
 import <array>;
 import <vector>;
 import <string>;
 import <unordered_map>;
 import <iostream>;
+#endif
 
 import randomnumbers;
 import input_reader;

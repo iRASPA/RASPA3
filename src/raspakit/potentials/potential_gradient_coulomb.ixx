@@ -1,7 +1,16 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <numbers>
+#endif
+
 export module potential_gradient_coulomb;
 
+#ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <numbers>;
+#endif
 
 import double4;
 

@@ -1,7 +1,24 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <vector>
+#include <array>
+#include <tuple>
+#include <optional>
+#include <span>
+#include <optional>
+#include <tuple>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <iomanip>
+#endif
+
 module mc_moves_reinsertion;
 
+#ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <vector>;
 import <array>;
@@ -15,6 +32,7 @@ import <chrono>;
 import <cmath>;
 import <iostream>;
 import <iomanip>;
+#endif
 
 import component;
 import atom;

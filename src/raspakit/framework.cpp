@@ -1,11 +1,39 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <iostream>
+#include <ostream>
+#include <sstream>
+#include <algorithm>
+#include <vector>
+#include <array>
+#include <map>
+#include <string>
+#include <span>
+#include <optional>
+#include <filesystem>
+#include <fstream>
+#include <cstdlib>
+#include <exception>
+#include <iterator>
+#include <chrono>
+#include <cstddef>
+#include <exception>
+#include <source_location>
+#include <complex>
+#include <type_traits>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 #if !defined(_WIN32)
 #include <assert.h>
 #endif
 
 module framework;
 
+#ifndef USE_LEGACY_HEADERS
 import <iostream>;
 import <ostream>;
 import <sstream>;
@@ -32,10 +60,12 @@ import <complex>;
 import <type_traits>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
-  import print;
+#endif
 #endif
 
+#if !(defined(__has_include) && __has_include(<print>))
+  import print;
+#endif
 
 import archive;
 import int3;

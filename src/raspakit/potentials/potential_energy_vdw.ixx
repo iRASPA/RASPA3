@@ -1,11 +1,21 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <iostream>
+#endif
+
 export module potential_energy_vdw;
+
+#ifndef USE_LEGACY_HEADERS
+import <cmath>;
+import <iostream>;
+#endif
 
 import forcefield;
 import energy_factor;
 
 import double4;
-import <cmath>;
-import <iostream>;
 
 export [[clang::always_inline]] inline EnergyFactor 
 potentialVDWEnergy(const ForceField& forcefield, const bool &groupIdA, const bool &groupIdB, const double &scalingA, const double &scalingB, const double& rr, const size_t& typeA, const size_t& typeB)

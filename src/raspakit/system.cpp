@@ -1,7 +1,34 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <numbers>
+#include <complex>
+#include <vector>
+#include <random>
+#include <span>
+#include <tuple>
+#include <iostream>
+#include <ostream>
+#include <fstream>
+#include <streambuf>
+#include <filesystem>
+#include <optional>
+#include <cmath>
+#include <chrono>
+#include <algorithm>
+#include <numeric>
+#include <format>
+#include <exception>
+#include <source_location>
+#if defined(__has_include) && __has_include(<print>)
+  #include <print>
+#endif
+#endif
+
 module system;
 
+#ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <numbers>;
 import <complex>;
@@ -24,7 +51,10 @@ import <exception>;
 import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
-#else
+#endif
+#endif
+
+#if !(defined(__has_include) && __has_include(<print>))
   import print;
 #endif
 

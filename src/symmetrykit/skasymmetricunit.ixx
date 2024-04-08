@@ -1,7 +1,17 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <tuple>
+#include <utility>
+#endif
+
 export module skasymmetricunit;
 
+#ifndef USE_LEGACY_HEADERS
 import <tuple>;
 import <utility>;
+#endif
+
 import int3;
 import int3x3;
 import double3;
