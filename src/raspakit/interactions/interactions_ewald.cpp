@@ -1051,17 +1051,17 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
 
           double currentEnergy = temp * (test.real() * test.real() + test.imag() * test.imag());
           double fac = 2.0 * (1.0 / rksq + 0.25 / (alpha * alpha)) * currentEnergy;
-            strainDerivative.ax += currentEnergy - fac * rk.x * rk.x;
-            strainDerivative.bx += -fac * rk.x * rk.y;
-            strainDerivative.cx += -fac * rk.x * rk.z;
+            strainDerivative.ax -= currentEnergy - fac * rk.x * rk.x;
+            strainDerivative.bx -= -fac * rk.x * rk.y;
+            strainDerivative.cx -= -fac * rk.x * rk.z;
           
-            strainDerivative.ay += -fac * rk.y * rk.x;
-            strainDerivative.by += currentEnergy - fac * rk.y * rk.y;
-            strainDerivative.cy += -fac * rk.y * rk.z;
+            strainDerivative.ay -= -fac * rk.y * rk.x;
+            strainDerivative.by -= currentEnergy - fac * rk.y * rk.y;
+            strainDerivative.cy -= -fac * rk.y * rk.z;
        
-            strainDerivative.az += -fac * rk.z * rk.x;
-            strainDerivative.bz += -fac * rk.z * rk.y;
-            strainDerivative.cz += currentEnergy - fac * rk.z * rk.z;
+            strainDerivative.az -= -fac * rk.z * rk.x;
+            strainDerivative.bz -= -fac * rk.z * rk.y;
+            strainDerivative.cz -= currentEnergy - fac * rk.z * rk.z;
           
 
           ++nvec;

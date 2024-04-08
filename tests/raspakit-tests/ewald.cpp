@@ -711,10 +711,9 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   }
 }
 
-/*
 TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
 {
-  double delta = 1e-7;
+  double delta = 1e-4;
   double tolerance = 1e-3;
 
   ForceField forceField = ForceField(
@@ -734,16 +733,19 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
     12.0,
     true,
     false);
+  forceField.EwaldAlpha = 0.25;
+  forceField.numberOfWaveVectors = int3(8, 8, 8);
+
   Component na = Component(0,
+    forceField,
     "Na",
-    43.9988,
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 3, 0, 0),
     }, 5, 21);
   Component cl = Component(1,
+    forceField,
     "Cl",
-    43.9988,
     304.1282, 7377300.0, 0.22394,
     {
        Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 1, 4, 1, 0),
@@ -775,11 +777,6 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   }
 
   RunningEnergy energy, rigidenergy;
-  //double3 perpendicularWidths = system.simulationBox.perpendicularWidths();
-  //system.forceField.initializeEwaldParameters(perpendicularWidths);
-  
-  system.forceField.EwaldAlpha = 0.25;
-  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
 
   system.CoulombicFourierEnergySingleIon =
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -789,7 +786,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                         system.fixedFrameworkStoredEik,
                                         system.forceField, system.simulationBox,
-                                        {}, rigidenergy);
+                                        system.spanOfFrameworkAtoms(), rigidenergy);
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
                                             system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -800,15 +797,15 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   pressureInfo.first.sumTotal();
 
   std::vector<std::pair<double3x3, double>> strains{
-     std::pair{double3x3{double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.ax},
-     std::pair{double3x3{double3{0.0, delta, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.bx},
-     std::pair{double3x3{double3{0.0, 0.0, delta}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.cx},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{delta, 0.0, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.ay},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, delta, 0.0}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.by},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, delta}, double3{0.0, 0.0, 0.0} }, pressureInfo.second.cy},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{delta, 0.0, 0.0} }, pressureInfo.second.az},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, delta, 0.0} }, pressureInfo.second.bz},
-     std::pair{double3x3{double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, 0.0}, double3{0.0, 0.0, delta} }, pressureInfo.second.cz}
+     std::pair{double3x3{double3{delta, 0.0,   0.0}, double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.ax},
+     std::pair{double3x3{double3{0.0, delta,   0.0}, double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.bx},
+     std::pair{double3x3{double3{0.0,   0.0, delta}, double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.cx},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{delta, 0.0,   0.0}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.ay},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{0.0, delta,   0.0}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.by},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{0.0,   0.0, delta}, double3{0.0,   0.0,   0.0} }, pressureInfo.second.cy},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0}, double3{delta, 0.0,   0.0} }, pressureInfo.second.az},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0}, double3{0.0, delta,   0.0} }, pressureInfo.second.bz},
+     std::pair{double3x3{double3{0.0,   0.0,   0.0}, double3{0.0,   0.0,   0.0}, double3{0.0,   0.0, delta} }, pressureInfo.second.cz}
   };
 
   double3x3 inv = system.simulationBox.inverseCell;
@@ -832,10 +829,11 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
     std::vector<Atom> moleculeAtomPositions_forward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_forward1),
       [&strainBox_forward1, &inv](const Atom& m) { return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
+
     RunningEnergy EnergyForward1;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
-                                            system.forceField, strainBox_forward2,
+                                            system.forceField, strainBox_forward1,
                                             system.components, system.numberOfMoleculesPerComponent,
                                             moleculeAtomPositions_forward1, EnergyForward1);
 
@@ -844,10 +842,11 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
     std::vector<Atom> moleculeAtomPositions_backward1{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward1),
       [&strainBox_backward1, &inv](const Atom& m) { return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
+
     RunningEnergy EnergyBackward1;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
-                                            system.forceField, strainBox_forward2,
+                                            system.forceField, strainBox_backward1,
                                             system.components, system.numberOfMoleculesPerComponent,
                                             moleculeAtomPositions_backward1, EnergyBackward1);
 
@@ -855,16 +854,17 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
     std::vector<Atom> moleculeAtomPositions_backward2{};
     std::transform(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), std::back_inserter(moleculeAtomPositions_backward2),
       [&strainBox_backward2, &inv](const Atom& m) { return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type, m.componentId, m.groupId); });
+
     RunningEnergy EnergyBackward2;
     Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
-                                            system.forceField, strainBox_forward2,
+                                            system.forceField, strainBox_backward2,
                                             system.components, system.numberOfMoleculesPerComponent,
                                             moleculeAtomPositions_backward2, EnergyBackward2);
+
 
     double strainDerivativeApproximation = (-EnergyForward2.total() + 8.0 * EnergyForward1.total() - 8.0 * EnergyBackward1.total() + EnergyBackward2.total()) / (6.0 * delta);
 
     EXPECT_NEAR(strainDerivativeApproximation, strain.second, tolerance) << "Wrong strainDerivative";
   }
 }
-*/

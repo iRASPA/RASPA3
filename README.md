@@ -110,3 +110,17 @@ cmake --build . -v
 cmake --build build --target test
 cmake --build build --target docs
 
+From Source
+===========
+mkdir software
+mkdir source
+cd source
+wget https://github.com/Kitware/CMake/releases/download/v3.29.1/cmake-3.29.1.tar.gz
+tar -zxvf cmake-3.29.1.tar.gz
+cd cmake-3.29.1
+./bootstrap --prefix=${HOME}/software
+make
+make install
+
+wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-18.1.3.tar.gz
+

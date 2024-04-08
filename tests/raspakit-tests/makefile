@@ -1,8 +1,8 @@
 CXX=clang++
-#GTEST_DIR=/usr/local/include/googletest/googletest/
-#GTEST_INCLUDE=/usr/local
-GTEST_DIR=/opt/homebrew/include/googletest/googletest/
-GTEST_INCLUDE=/opt/homebrew
+GTEST_DIR=/usr/local/include/googletest/googletest/
+GTEST_INCLUDE=/usr/local
+#GTEST_DIR=/opt/homebrew/include/googletest/googletest/
+#GTEST_INCLUDE=/opt/homebrew
 
 PYTHONLDFLAGS = $(shell python3-config --ldflags)
 
