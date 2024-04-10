@@ -6,7 +6,9 @@ module;
 #include <sstream>
 #include <fstream>
 #include <vector>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <exception>
 #include <source_location>
 #include <complex>

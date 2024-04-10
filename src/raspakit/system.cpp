@@ -18,7 +18,9 @@ module;
 #include <chrono>
 #include <algorithm>
 #include <numeric>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <exception>
 #include <source_location>
 #if defined(__has_include) && __has_include(<print>)

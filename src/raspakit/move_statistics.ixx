@@ -3,7 +3,9 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <fstream>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <exception>
 #include <source_location>
 #if defined(__has_include) && __has_include(<print>)

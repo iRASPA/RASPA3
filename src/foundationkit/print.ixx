@@ -8,10 +8,12 @@ module;
 #include <cstdio>
 #include <utility>
 #include <version>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
+#endif
 
-#if defined(__has_include) && __has_include(<print>)
+#if defined(__has_include) && __has_include(<print>) && __has_include(<format>)
     #include <format>
     #define BWP_FMT_LIB "std"
     #define BWP_FMTNS std

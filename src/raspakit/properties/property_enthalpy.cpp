@@ -9,7 +9,9 @@ module;
 #include <cmath>
 #include <optional>
 #include <array>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <exception>
 #include <source_location>
 #include <complex>

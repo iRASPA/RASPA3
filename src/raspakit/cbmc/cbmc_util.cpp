@@ -6,7 +6,9 @@ module;
 #include <cmath>
 #include <iostream>
 #include <exception>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #if defined(__has_include) && __has_include(<stacktrace>)
   #include <stacktrace>
 #endif

@@ -5,7 +5,9 @@ module;
 #include <locale>
 #include <algorithm>
 #include <cctype>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <type_traits>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>

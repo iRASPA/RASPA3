@@ -1,7 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <tuple>
 #include <vector>
 #include <string>

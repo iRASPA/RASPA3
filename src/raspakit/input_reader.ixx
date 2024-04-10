@@ -13,7 +13,9 @@ module;
 #include <fstream>
 #include <istream>
 #include <string>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #endif
 
 export module input_reader;

@@ -9,7 +9,9 @@ module;
 #include <tuple>
 #include <vector>
 #include <algorithm>
+#if defined(__has_include) && __has_include(<format>)
 #include <format>
+#endif
 #include <numbers>
 #include <span>
 #if defined(__has_include) && __has_include(<print>)
