@@ -144,9 +144,24 @@ cmake3 -B build -DCMAKE_INSTALL_PREFIX=${HOME}/software .
 make -j 16
 make install
 
+wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.11.1.tar.gz
+tar -zxvf v1.11.1.tar.gz 
+cd ninja-1.11.1/
+
 use run file:
 
 #! /bin/sh -f
-export RASPA_DIR=`pwd`
+export RASPA_DIR=${HOME}/raspa3
 export LD_LIBRARY_PATH=${HOME}/software/lib
 ../../../src/raspa3.exe
+
+
+Compiling RASPA3
+================
+mkdir build
+cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm@17/bin/clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release .
+ninja -C build -v
+ctest --test-dir build/tests --verbose
+ctest --test-dir build/tests/raspakit-tests --verbose
+cd build
+cmake --install . --config Release

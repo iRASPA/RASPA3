@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-import <fstream>;
-import <print>;
-import <iostream>;
-import <bit>;
-import <complex>;
+#include <fstream>
+#include <print>
+#include <iostream>
+#include <bit>
+#include <complex>
 
 import archive;
 

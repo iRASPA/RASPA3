@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-import <vector>;
-import <tuple>;
-import <algorithm>;
-import <span>;
-import <ranges>;
+#include <vector>
+#include <tuple>
+#include <algorithm>
+#include <span>
+#include <ranges>
       
 import int3;
 import double3;

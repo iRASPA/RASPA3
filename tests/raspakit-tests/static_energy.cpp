@@ -2,10 +2,9 @@
 
 #include <algorithm>
 #include <vector>
-
-import <cstddef>;
-import <vector>;
-import <span>;
+#include <cstddef>
+#include <vector>
+#include <span>
 
 import int3;
 import double3;

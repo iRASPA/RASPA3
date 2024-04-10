@@ -12,6 +12,19 @@ Package.StoreAssociation.xml
 *.appxbundle
 *.appxupload
 
+#cmake 
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
 # raspa test-executables
 test_*
 restart_data.bin

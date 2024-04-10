@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
-import <cstddef>;
-import <vector>;
-import <span>;
-import <algorithm>;
+#include <cstddef>
+#include <vector>
+#include <span>
+#include <algorithm>
 
 import int3;
 import double3;

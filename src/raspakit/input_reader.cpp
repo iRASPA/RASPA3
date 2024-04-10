@@ -556,6 +556,14 @@ InputReader::InputReader(const std::string inputFile):
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
     }
 
+    if(value["ThermodynamicIntegration"].is_boolean())
+    {
+      for(size_t i = 0; i != jsonNumberOfComponents; ++i)
+      {
+        systems[systemId].components[i].lambdaGC.computeDUdlambda = value["ThermodynamicIntegration"].get<bool>();
+      }
+    }
+
 
     systemId++;
   }

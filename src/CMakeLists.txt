@@ -1,67 +1,23 @@
-# CMakeLists.txt
-cmake_minimum_required(VERSION 3.28)
-
-project(raspa3 
-        VERSION 3.0.0
-        DESCRIPTION ""
-        HOMEPAGE_URL "https://github.com/iraspa/raspa3"
-        LANGUAGES CXX)
-
-find_package(BLAS)
-find_package(LAPACK)
-
-if(LAPACK_FOUND AND BLAS_FOUND)
-   set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-endif()
-
-#FIND_PACKAGE(pybind11 REQUIRED )
-Find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-find_package(pybind11 CONFIG REQUIRED)
-#find_package(pybind11 REQUIRED HINTS "${Python3_SITELIB}")
-find_package(OpenMP REQUIRED)
-
-# Turning off extensions avoids an issue with the clang 16 compiler
-# clang 17 and greater can avoid this setting
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-# Set the version of C++ for the project
-set(CMAKE_CXX_STANDARD 23)
-
-add_compile_options(-Wall -Wextra)
-
-set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
-
-set(CLANG_WARNINGS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough)
-
-set(GCC_WARNINGS ${CLANG_WARNINGS} -Wmisleading-indentation -Wduplicated-cond -Wduplicated-branches -Wlogical-op -Wuseless-cast -Wsuggest-override)
-
-if(MSVC)
-  set(PROJECT_WARNINGS_CXX ${MSVC_WARNINGS})
-elseif(CMAKE_CXX_COMPILER_ID MATCHES ".*Clang")
-  set(PROJECT_WARNINGS_CXX ${CLANG_WARNINGS})
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
-endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
-set(CMAKE_CXX_FLAGS_RELASE "-O3 -DDEBUG")
-
 set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
-
-add_definitions(-DUSE_LEGACY_HEADERS)
 
 # Create an executable
 add_executable(raspa3 main/main.cpp)
 target_include_directories(raspa3 PRIVATE ${pybind11_INCLUDE_DIRS} pybind11::pybind11)
-target_link_libraries(raspa3 ${lapackblas_libraries} pybind11::module OpenMP::OpenMP_CXX)
+target_link_libraries(raspa3 ${lapackblas_libraries} pybind11::module)
+#target_link_libraries(raspa3 ${lapackblas_libraries} pybind11::module OpenMP::OpenMP_CXX)
+target_compile_options(raspa3 PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 
-
-project(my_lib VERSION 1.0.1 DESCRIPTION "mylib description")
+install(TARGETS raspa3 DESTINATION bin)
 
 # Create an extension module
 add_library(raspakit SHARED raspakit/pybindings.cpp)
-target_link_libraries(raspakit PUBLIC pybind11::module OpenMP::OpenMP_CXX)
+target_link_libraries(raspakit PUBLIC pybind11::module ${Python_LIBRARIES})
+target_compile_options(raspakit PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+#if(APPLE)
+#  set_target_properties(raspakit PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+#endif(APPLE)
+#target_link_libraries(raspakit PUBLIC pybind11::module OpenMP::OpenMP_CXX)
 
 target_sources(raspa3
     PUBLIC
