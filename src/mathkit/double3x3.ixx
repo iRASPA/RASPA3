@@ -9,11 +9,11 @@ module;
 
 export module double3x3;
 
-#if defined(WIN32)
-    import <intrin.h>;
-#elif defined(__AVX__)
-    import <immintrin.h>;
-#endif
+//#if defined(WIN32)
+//    import <intrin.h>;
+//#elif defined(__AVX__)
+//    import <immintrin.h>;
+//#endif
 
 #ifndef USE_LEGACY_HEADERS
 import <istream>;
@@ -29,9 +29,9 @@ import int3x3;
 
 export union double3x3
 {
-    #ifdef __AVX__
-      __m256d columns[4];
-    #endif
+//    #ifdef __AVX__
+//      __m256d columns[4];
+//    #endif
     double m[16];
     double mm[4][4];
     double3 v[4];

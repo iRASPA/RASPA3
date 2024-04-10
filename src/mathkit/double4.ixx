@@ -6,11 +6,11 @@ module;
 
 export module double4;
 
-#if defined(WIN32)
-    import <intrin.h>;
-#elif defined(__AVX__)
-    import <immintrin.h>;
-#endif
+//#if defined(WIN32)
+//    import <intrin.h>;
+//#elif defined(__AVX__)
+//    import <immintrin.h>;
+//#endif
 
 #ifndef USE_LEGACY_HEADERS
 import <fstream>;
@@ -21,9 +21,9 @@ import archive;
 
 export union double4
 {
-    #ifdef __AVX__
-      __m256d value;
-    #endif
+//    #ifdef __AVX__
+//      __m256d value;
+//    #endif
     double v[4];
     struct { double x, y, z, w; };
 

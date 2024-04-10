@@ -11,7 +11,7 @@ add_executable(unit_tests_symmetrykit
                find_spacegroup_no_partial_occupancies.cpp
                main.cpp)
 
-target_link_libraries(unit_tests_symmetrykit PRIVATE raspakit pybind11::module ${GTEST_LIBRARIES})
+target_link_libraries(unit_tests_symmetrykit PRIVATE libs::raspakit pybind11::module ${GTEST_LIBRARIES})
 
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

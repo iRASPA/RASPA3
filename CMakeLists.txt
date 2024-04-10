@@ -49,7 +49,8 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL "-g -O3 -march=native -ffast-math")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O3 -march=native -ffast-math")
 
 add_subdirectory(src)
+add_subdirectory(app)
+add_subdirectory(data)
+if(BUILD_TESTING)
 add_subdirectory(tests)
-
-install(DIRECTORY data/molecules DESTINATION share/raspa3)
-install(DIRECTORY data/forcefields DESTINATION share/raspa3)
+endif()

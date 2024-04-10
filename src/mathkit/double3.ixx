@@ -9,11 +9,11 @@ module;
 
 export module double3;
 
-#if defined(WIN32)
-import <intrin.h>;
-#elif defined(__AVX__)
-import <immintrin.h>;
-#endif
+//#if defined(WIN32)
+//import <intrin.h>;
+//#elif defined(__AVX__)
+//import <immintrin.h>;
+//#endif
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
@@ -29,16 +29,16 @@ import archive;
 
 export union double3
 {
-    #ifdef __AVX__
-      __m256d vec;
-    #endif
+//    #ifdef __AVX__
+//      __m256d vec;
+//    #endif
     double v[4];
     struct { double x, y, z, w; };
 
-    #ifdef __AVX__
-      double3(__m256d const& v): vec(v) {}
-      double3& operator = (__m256d const& x) { vec = x; return *this; }
-    #endif
+//    #ifdef __AVX__
+//      double3(__m256d const& v): vec(v) {}
+//      double3& operator = (__m256d const& x) { vec = x; return *this; }
+//    #endif
     double3() : x(0.0), y(0.0), z(0.0), w(0.0) {}
     double3(double v) : x(v), y(v), z(v), w(0.0) {}
     double3(double x, double y, double z): x(x), y(y), z(z), w(0.0) {}

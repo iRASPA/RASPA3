@@ -160,8 +160,7 @@ Compiling RASPA3
 ================
 mkdir build
 cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=/usr/local/opt/llvm@17/bin/clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release .
-ninja -C build -v
+cmake --build build  (or: ninja -C build -v)
+cmake --install build --config Release
 ctest --test-dir build/tests --verbose
 ctest --test-dir build/tests/raspakit-tests --verbose
-cd build
-cmake --install . --config Release
