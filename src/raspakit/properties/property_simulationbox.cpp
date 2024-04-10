@@ -5,6 +5,11 @@ module;
 #include <exception>
 #include <source_location>
 #include <complex>
+#include <map>
+#include <array>
+#include <vector>
+#include <ranges>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -17,6 +22,10 @@ import <fstream>;
 import <exception>;
 import <source_location>;
 import <complex>;
+import <map>;
+import <array>;
+import <vector>;
+import <algorithm>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

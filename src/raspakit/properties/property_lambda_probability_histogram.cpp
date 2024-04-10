@@ -2,6 +2,8 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <vector>
+#include <map>
+#include <array>
 #include <iostream>
 #include <cmath>
 #include <string>
@@ -31,6 +33,8 @@ module property_lambda_probability_histogram;
 
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
+import <map>;
+import <array>;
 import <iostream>;
 import <cmath>;
 import <string>;

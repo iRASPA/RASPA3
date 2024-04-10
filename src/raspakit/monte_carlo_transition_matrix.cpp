@@ -13,6 +13,7 @@ module;
 #include <filesystem>
 #include <tuple>
 #include <ios>
+#include <complex>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -33,6 +34,7 @@ import <fstream>;
 import <filesystem>;
 import <tuple>;
 import <ios>;
+import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

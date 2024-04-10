@@ -17,6 +17,9 @@ module;
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module property_density_grid;
@@ -36,10 +39,16 @@ import <span>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  import <mdspan>;
+#endif
 #endif
 
 #if !(defined(__has_include) && __has_include(<print>))
   import print;
+#endif
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
 #endif
 
 import int3;
@@ -59,6 +68,17 @@ import component;
 void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms, size_t currentCycle)
 {
   if(currentCycle % sampleEvery != 0uz) return;
+
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #endif
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #endif
 
   for (std::span<const Atom>::iterator it = moleculeAtoms.begin(); it != moleculeAtoms.end(); ++it)
   {
@@ -86,6 +106,17 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
   if(currentCycle % writeEvery != 0uz) return;
 
   std::filesystem::create_directory("density_grids");
+
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #endif
+  #if defined(__has_include) && __has_include(<mdspan>)
+    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #else
+    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  #endif
 
   for(size_t i = 0; i < components.size(); ++i)
   {

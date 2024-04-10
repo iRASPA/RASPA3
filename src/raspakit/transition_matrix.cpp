@@ -4,6 +4,9 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <vector>
+#include <array>
+#include <map>
+#include <functional>
 #include <algorithm>
 #include <utility>
 #include <numeric>
@@ -27,6 +30,9 @@ module transition_matrix;
 import <cmath>;
 import <cstddef>;
 import <vector>;
+import <array>;
+import <map>;
+import <functional>;
 import <algorithm>;
 import <utility>;
 import <numeric>;

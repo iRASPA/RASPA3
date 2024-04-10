@@ -216,7 +216,7 @@ raspakit/transition_matrix.pcm: foundationkit/archive.pcm mathkit/double3.pcm fo
 raspakit/units.pcm: foundationkit/print.pcm foundationkit/stringutils.pcm
 
 raspa3: $(OBJ)
-	$(CXX) $(CXXFLAGS) $(MODULEPATHS) main/main.cpp -c -o main/main.o
+	$(CXX) $(CXXFLAGS) $(MODULEPATHS) ../app/main.cpp -c -o main/main.o
 	$(CXX) $(CXXFLAGS) -flto -stdlib=libc++ -o raspa3.exe main/main.o foundationkit/*.o mathkit/*.o symmetrykit/*.o raspakit/*.o raspakit/interactions/*.o raspakit/mc_moves/*.o raspakit/potentials/*.o raspakit/properties/*.o raspakit/cbmc/*.o -llapack -lblas -fopenmp $(PYTHONLDFLAGS)
 
 raspa3lib: $(OBJ)

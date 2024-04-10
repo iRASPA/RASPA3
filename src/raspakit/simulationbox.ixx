@@ -11,6 +11,8 @@ module;
 #include <sstream>
 #include <fstream>
 #include <type_traits>
+#include <map>
+#include <functional>
 #endif
 
 export module simulationbox;
@@ -27,6 +29,8 @@ import <ostream>;
 import <sstream>;
 import <fstream>;
 import <type_traits>;
+import <map>;
+import <functional>;
 #endif
 
 import archive;

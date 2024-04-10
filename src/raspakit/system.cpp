@@ -18,6 +18,9 @@ module;
 #include <chrono>
 #include <algorithm>
 #include <numeric>
+#include <map>
+#include <vector>
+#include <array>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -51,6 +54,9 @@ import <numeric>;
 import <format>;
 import <exception>;
 import <source_location>;
+import <map>;
+import <vector>;
+import <array>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

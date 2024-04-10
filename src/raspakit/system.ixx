@@ -3,6 +3,9 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <complex>
 #include <vector>
+#include <array>
+#include <map>
+#include <utility>
 #include <tuple>
 #include <optional>
 #include <span>
@@ -20,6 +23,9 @@ export module system;
 #ifndef USE_LEGACY_HEADERS
 import <complex>;
 import <vector>;
+import <array>;
+import <map>;
+import <utility>;
 import <tuple>;
 import <optional>;
 import <span>;

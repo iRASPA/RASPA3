@@ -6,6 +6,10 @@ module;
 #include <complex>
 #include <numbers>
 #include <random>
+#include <vector>
+#include <array>
+#include <map>
+#include <utility>
 #endif
 
 module randomnumbers;
@@ -16,6 +20,10 @@ import <iostream>;
 import <complex>;
 import <numbers>;
 import <random>;
+import <vector>;
+import <array>;
+import <map>;
+import <utility>;
 #endif
 
 import double3;

@@ -26,10 +26,10 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.ixx)
 
 
-add_library(${PROJECT_NAME} STATIC raspakit/pybindings.cpp)
+add_library(${PROJECT_NAME} STATIC "")
 target_sources(${PROJECT_NAME} PUBLIC ${SRC_CPP_FILES})
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${SRC_IXX_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC pybind11::module ${Python_LIBRARIES})
-target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
+target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)

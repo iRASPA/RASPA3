@@ -6,10 +6,13 @@ module;
 #include <ostream>
 #include <fstream>
 #include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #include <complex>
+#include <numbers>
 #endif
 
-#include <numbers>
 #define sqr( x ) (( x )*( x ))
 #define SIGN(a,b) ((b)>=0.0?fabs(a):-fabs(a))
 
@@ -28,6 +31,9 @@ import <numbers>;
 import <ostream>;
 import <fstream>;
 import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 import <complex>;
 #endif
 

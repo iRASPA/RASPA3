@@ -5,6 +5,10 @@ module;
 #include <fstream>
 #include <cmath>
 #include <complex>
+#include <map>
+#include <array>
+#include <utility>
+#include <algorithm>
 #endif
 
 module double3;
@@ -14,6 +18,10 @@ import <iostream>;
 import <fstream>;
 import <cmath>;
 import <complex>;
+import <map>;
+import <array>;
+import <utility>;
+import <algorithm>;
 #endif
 
 import archive;

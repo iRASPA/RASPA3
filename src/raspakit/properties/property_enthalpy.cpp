@@ -9,6 +9,8 @@ module;
 #include <cmath>
 #include <optional>
 #include <array>
+#include <map>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -31,6 +33,8 @@ import <vector>;
 import <cmath>;
 import <optional>;
 import <array>;
+import <map>;
+import <algorithm>;
 import <format>;
 import <exception>;
 import <source_location>;

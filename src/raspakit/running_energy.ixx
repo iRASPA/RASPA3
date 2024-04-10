@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <string>
 #include <vector>
+#include <map>
 #include <cmath>
 #include <algorithm>
 #include <iostream>
@@ -11,6 +12,7 @@ module;
 #include <sstream>
 #include <ostream>
 #include <fstream>
+#include <functional>
 #endif
 
 export module running_energy;
@@ -18,6 +20,7 @@ export module running_energy;
 #ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
+import <map>;
 import <cmath>;
 import <algorithm>;
 import <iostream>;
@@ -26,6 +29,7 @@ import <string>;
 import <sstream>;
 import <ostream>;
 import <fstream>;
+import <functional>;
 #endif
 
 import archive;

@@ -6,6 +6,7 @@ module;
 #include <vector>
 #include <unordered_set>
 #include <iterator>
+#include <type_traits>
 #endif
 
 module skintegersymmetryoperationset;
@@ -16,6 +17,7 @@ import <tuple>;
 import <vector>;
 import <unordered_set>;
 import <iterator>;
+import <type_traits>;
 #endif
 
 import int3;

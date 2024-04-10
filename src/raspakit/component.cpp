@@ -19,6 +19,8 @@ module;
 #include <chrono>
 #include <cstddef>
 #include <type_traits>
+#include <utility>
+#include <functional>
 #if defined(_WIN32)
 #include <cassert.h>
 #endif
@@ -55,6 +57,8 @@ import <iterator>;
 import <chrono>;
 import <cstddef>;
 import <type_traits>;
+import <utility>;
+import <functional>;
 #if defined(_WIN32)
 import <cassert>;
 #endif

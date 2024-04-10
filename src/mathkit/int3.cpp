@@ -3,6 +3,10 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <fstream>
 #include <complex>
+#include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #endif
 
 module int3;
@@ -10,6 +14,10 @@ module int3;
 #ifndef USE_LEGACY_HEADERS
 import <fstream>;
 import <complex>;
+import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 #endif
 
 import ring;

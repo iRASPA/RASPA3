@@ -4,6 +4,7 @@ module;
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -22,6 +23,7 @@ module reaction;
 import <string>;
 import <sstream>;
 import <vector>;
+import <map>;
 import <format>;
 import <exception>;
 import <source_location>;

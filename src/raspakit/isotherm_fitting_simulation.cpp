@@ -13,6 +13,7 @@ module;
 #include <numeric>
 #include <sstream>
 #include <chrono>
+#include <complex>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -33,6 +34,7 @@ import <algorithm>;
 import <numeric>;
 import <sstream>;
 import <chrono>;
+import <complex>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

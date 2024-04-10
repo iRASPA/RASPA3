@@ -167,9 +167,10 @@ ctest --test-dir build/tests/raspakit-tests --verbose
 
 Carbon
 ======
+export PATH=${HOME}/software/bin/:${PATH}
 mkdir build
-~/software/bin/cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CC_COMPILER=${HOME}/software/bin/clang  -DCMAKE_CXX_COMPILER=${HOME}/software/bin/clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_MAKE_PROGRAM=${HOME}/software/bin/ninja -DCMAKE_BUILD_TYPE=Release .
-~/software/bin/cmake --build build  (or: ninja -C build -v)
-~/software/bin/cmake --install build --config Release
-~/software/bin/ctest --test-dir build/tests --verbose
-~/software/bin/ctest --test-dir build/tests/raspakit-tests --verbose
+${HOME}/software/bin/cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CC_COMPILER=${HOME}/software/bin/clang  -DCMAKE_CXX_COMPILER=${HOME}/software/bin/clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_MAKE_PROGRAM=${HOME}/software/bin/ninja -DCMAKE_BUILD_TYPE=Release .
+${HOME}/software/bin/cmake --build build  (or: ninja -C build -v)
+${HOME}/software/bin/cmake --install build --config Release
+${HOME}/software/bin/ctest --test-dir build/tests --verbose
+${HOME}/software/bin/ctest --test-dir build/tests/raspakit-tests --verbose

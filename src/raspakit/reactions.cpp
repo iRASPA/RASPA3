@@ -5,6 +5,7 @@ module;
 #include <sstream>
 #include <ostream>
 #include <vector>
+#include <map>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -24,6 +25,7 @@ import <string>;
 import <sstream>;
 import <ostream>;
 import <vector>;
+import <map>;
 import <format>;
 import <exception>;
 import <source_location>;

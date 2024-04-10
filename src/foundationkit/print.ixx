@@ -22,7 +22,7 @@ module;
     #define FMT_HEADER_ONLY
     #include "fmt/core.h"
     #include "fmt/format.h"
-    #include "fmt/xchar.h"
+    //#include "fmt/xchar.h"
     #include "fmt/ostream.h"
     #include "fmt/printf.h"
     #include "fmt/chrono.h"

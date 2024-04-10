@@ -7,6 +7,9 @@ module;
 #include <ranges>
 #include <chrono>
 #include <vector>
+#include <array>
+#include <map>
+#include <utility>
 #include <span>
 #include <string>
 #include <optional>
@@ -21,6 +24,9 @@ module;
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module monte_carlo;
@@ -32,6 +38,9 @@ import <numeric>;
 import <ranges>;
 import <chrono>;
 import <vector>;
+import <array>;
+import <map>;
+import <utility>;
 import <span>;
 import <string>;
 import <optional>;
@@ -46,10 +55,16 @@ import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif
+#if defined(__has_include) && __has_include(<mdspan>)
+  import <mdspan>;
+#endif
 #endif
 
 #if !(defined(__has_include) && __has_include(<print>))
   import print;
+#endif
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
 #endif
 
 import stringutils;

@@ -11,6 +11,10 @@ module;
 #include <source_location>
 #include <fstream>
 #include <complex>
+#include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -27,6 +31,10 @@ import <exception>;
 import <source_location>;
 import <fstream>;
 import <complex>;
+import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

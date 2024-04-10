@@ -5,8 +5,12 @@ module;
 #include <istream>
 #include <ostream>
 #include <fstream>
-#include <vector>
 #include <complex>
+#include <vector>
+#include <map>
+#include <array>
+#include <utility>
+#include <algorithm>
 #endif
 
 module averages;
@@ -16,8 +20,12 @@ import <iostream>;
 import <istream>;
 import <ostream>;
 import <fstream>;
-import <vector>;
 import <complex>;
+import <vector>;
+import <map>;
+import <array>;
+import <utility>;
+import <algorithm>;
 #endif
 
 import archive;

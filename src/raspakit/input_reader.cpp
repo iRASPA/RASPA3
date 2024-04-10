@@ -17,6 +17,7 @@ module;
 #include <algorithm>
 #include <map>
 #include <iterator>
+#include <functional>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -41,6 +42,7 @@ import <optional>;
 import <algorithm>;
 import <map>;
 import <iterator>;
+import <functional>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

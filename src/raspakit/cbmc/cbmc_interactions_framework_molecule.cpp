@@ -14,6 +14,7 @@ module;
 #include <deque>
 #include <semaphore>
 #include <atomic>
+#include <functional>
 #endif
 
 module cbmc_interactions_framework_molecule;
@@ -32,6 +33,7 @@ import <future>;
 import <deque>;
 import <semaphore>;
 import <atomic>;
+import <functional>;
 #endif
 
 import energy_status;

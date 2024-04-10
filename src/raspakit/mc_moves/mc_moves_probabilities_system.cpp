@@ -10,6 +10,11 @@ module;
 #include <exception>
 #include <source_location>
 #include <complex>
+#include <vector>
+#include <array>
+#include <map>
+#include <utility>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<print>)
 #include <print>
 #endif
@@ -25,6 +30,11 @@ import <format>;
 import <exception>;
 import <source_location>;
 import <complex>;
+import <vector>;
+import <array>;
+import <map>;
+import <utility>;
+import <algorithm>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

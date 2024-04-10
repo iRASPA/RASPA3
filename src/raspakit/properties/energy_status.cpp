@@ -6,6 +6,9 @@ module;
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -26,6 +29,9 @@ import <iostream>;
 import <sstream>;
 import <fstream>;
 import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 import <format>;
 import <exception>;
 import <source_location>;

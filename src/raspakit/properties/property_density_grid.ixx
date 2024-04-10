@@ -47,10 +47,10 @@ export struct PropertyDensityGrid
   PropertyDensityGrid() {}
 
   PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery, size_t writeEvery) :
+    numberOfFrameworks(numberOfFrameworks),
+    numberOfComponents(numberOfComponents),
     grid_cell(numberOfComponents * static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-    data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z),
     grid_unitcell(std::min(1uz, numberOfFrameworks) * numberOfComponents * static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-    data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z),
     totalGridSize(static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
     numberOfGridPoints(numberOfGridPoints),
     gridSize(static_cast<double>(numberOfGridPoints.x), static_cast<double>(numberOfGridPoints.y), static_cast<double>(numberOfGridPoints.z)),
@@ -59,18 +59,10 @@ export struct PropertyDensityGrid
   {
   }
 
+  size_t numberOfFrameworks;
+  size_t numberOfComponents;
   std::vector<double> grid_cell;
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 4>> data_cell;
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell;
-  #endif
   std::vector<double> grid_unitcell;
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell;
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell;
-  #endif
   size_t totalGridSize;
   int3 numberOfGridPoints;
   double3 gridSize;

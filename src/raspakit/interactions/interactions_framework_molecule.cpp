@@ -13,6 +13,7 @@ module;
 #include <deque>
 #include <semaphore>
 #include <atomic>
+#include <utility>
 #endif
 
 module interactions_framework_molecule;
@@ -30,6 +31,7 @@ import <future>;
 import <deque>;
 import <semaphore>;
 import <atomic>;
+import <utility>;
 #endif
 
 import energy_status;

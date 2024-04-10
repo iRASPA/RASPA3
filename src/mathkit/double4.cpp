@@ -4,6 +4,10 @@ module;
 #include <cmath>
 #include <fstream>
 #include <complex>
+#include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #endif
 
 module double4;
@@ -12,6 +16,10 @@ module double4;
 import <cmath>;
 import <fstream>;
 import <complex>;
+import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 #endif
 
 import archive;

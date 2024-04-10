@@ -2,10 +2,15 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <string>
+#include <map>
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <array>
+#include <ranges>
+#include <algorithm>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -21,10 +26,15 @@ module running_energy;
 
 #ifndef USE_LEGACY_HEADERS
 import <string>;
+import <map>;
+import <functional>;
 import <iostream>;
 import <sstream>;
 import <fstream>;
 import <vector>;
+import <array>;
+import <ranges>;
+import <algorithm>;
 import <format>;
 import <exception>;
 import <source_location>;

@@ -16,9 +16,9 @@ if(LAPACK_FOUND AND BLAS_FOUND)
    set(lapackblas_libraries ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 endif()
 
-#find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
 find_package(pybind11 CONFIG REQUIRED)
-#find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
 
 # Set the version of C++ for the project
 set(CMAKE_CXX_STANDARD 23)
@@ -43,10 +43,11 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O3 -march=native -ffast-math")
+# -stdlib=libc++
+set(CMAKE_CXX_FLAGS_DEBUG "-fopenmp -fmodules -fbuiltin-module-map -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "-fopenmp -fmodules -fbuiltin-module-map -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-fopenmp -fmodules -fbuiltin-module-map -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-fopenmp -fmodules -fbuiltin-module-map -stdlib=libc++ -g -O3 -march=native -ffast-math")
 
 add_subdirectory(src)
 add_subdirectory(app)

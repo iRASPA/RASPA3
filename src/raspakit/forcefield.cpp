@@ -23,6 +23,7 @@ module;
 #include <complex>
 #include <type_traits>
 #include <iterator>
+#include <functional>
 #if defined(__has_include) && __has_include(<print>)
   #include <print>
 #endif
@@ -51,6 +52,7 @@ import <source_location>;
 import <complex>;
 import <type_traits>;
 import <iterator>;
+import <functional>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif

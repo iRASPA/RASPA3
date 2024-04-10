@@ -7,6 +7,9 @@ module;
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <array>
+#include <map>
+#include <algorithm>
 #include <ostream>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
@@ -28,6 +31,9 @@ import <fstream>;
 import <iostream>;
 import <sstream>;
 import <vector>;
+import <array>;
+import <map>;
+import <algorithm>;
 import <ostream>;
 import <format>;
 import <exception>;

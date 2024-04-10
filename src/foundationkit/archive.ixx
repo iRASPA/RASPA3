@@ -6,6 +6,7 @@ module;
 #include <vector>
 #include <array>
 #include <map>
+#include <ranges>
 #include <istream>
 #include <ostream>
 #include <iostream>
@@ -13,6 +14,7 @@ module;
 #include <bit>
 #include <chrono>
 #include <complex>
+#include <functional>
 #endif
 
 export module archive;
@@ -23,6 +25,7 @@ import <tuple>;
 import <vector>;
 import <array>;
 import <map>;
+import <ranges>;
 import <istream>;
 import <ostream>;
 import <iostream>;
@@ -30,6 +33,7 @@ import <algorithm>;
 import <bit>;
 import <chrono>;
 import <complex>;
+import <functional>;
 #endif
 
 
