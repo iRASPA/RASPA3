@@ -10,6 +10,7 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/interactions/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/forcefield/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/mc_moves/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.cpp)
@@ -21,6 +22,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/cbmc/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/interactions/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/forcefield/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/mc_moves/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.ixx)

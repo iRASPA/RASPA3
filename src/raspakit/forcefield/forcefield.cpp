@@ -70,6 +70,8 @@ import int3;
 import double3;
 import double4;
 import stringutils;
+import pseudo_atom;
+import vdwparameters;
 
 
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, 
@@ -491,57 +493,6 @@ void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
   }
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p)
-{
-  archive << p.parameters;
-  archive << p.shift;
-  archive << p.tailCorrectionEnergy;
-  archive << p.type;
-
-  return archive;
-}
-
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameters &p)
-{
-  archive >> p.parameters;
-  archive >> p.shift;
-  archive >> p.tailCorrectionEnergy;
-  archive >> p.type;
-
-  return archive;
-}
-
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a)
-{
-  archive << a.versionNumber;
-  archive << a.name;
-  archive << a.mass;
-  archive << a.charge;
-  archive << a.atomicNumber;
-  archive << a.printToPDB;
-
-  return archive;
-}
-
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &a)
-{
-  uint64_t versionNumber;
-  archive >> versionNumber;
-  if(versionNumber > a.versionNumber)
-  {
-    const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PseudoAtom' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
-  }
-
-  archive >> a.name;
-  archive >> a.mass;
-  archive >> a.charge;
-  archive >> a.atomicNumber;
-  archive >> a.printToPDB;
-
-  return archive;
-}
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f)
 {

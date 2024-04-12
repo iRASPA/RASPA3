@@ -26,6 +26,8 @@ import double3;
 import double3x3;
 import atom;
 import simulationbox;
+import pseudo_atom;
+import vdwparameters;
 import forcefield;
 import running_energy;
 import mc_moves_probabilities_particles;

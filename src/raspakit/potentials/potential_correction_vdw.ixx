@@ -10,6 +10,7 @@ export module potential_correction_vdw;
 import <cmath>;
 #endif
 
+import vdwparameters;
 import forcefield;
 import double4;
 

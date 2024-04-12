@@ -28,7 +28,6 @@ potentialCoulombGradient(const ForceField& forcefield, const bool &groupIdA, con
   double scaling = scalingA * scalingB;
   switch(forcefield.chargeMethod)
   {
-    default:
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
       double alpha = forcefield.EwaldAlpha;
@@ -52,5 +51,7 @@ potentialCoulombGradient(const ForceField& forcefield, const bool &groupIdA, con
     {
       return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0, 0.0);
     }
+    default:
+      break;
   }
 };
