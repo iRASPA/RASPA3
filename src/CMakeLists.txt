@@ -34,4 +34,4 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES ${SRC_IXX_FILES
 target_link_libraries(${PROJECT_NAME} PUBLIC pybind11::module ${Python_LIBRARIES})
 target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 add_library(libs::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-install(TARGETS ${PROJECT_NAME} DESTINATION lib)
+#install(TARGETS ${PROJECT_NAME} DESTINATION lib)

@@ -86,6 +86,13 @@ import equation_of_states;
 export struct System
 {
   System() = default;
+
+  // construct System programmatically
+/*! \brief Brief description.
+ *         Brief description continued.
+ *
+ *  Detailed description starts here.
+ */
   System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
          std::vector<Framework> frameworkComponents, std::vector<Component> components, 
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks, 

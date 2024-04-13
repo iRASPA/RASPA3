@@ -121,6 +121,11 @@ import equation_of_states;
 
 
 // construct System programmatically
+/*! \brief Brief description.
+ *         Brief description continued.
+ *
+ *  Detailed description starts here.
+ */
 System::System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
                std::vector<Framework> f, std::vector<Component> c, 
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
@@ -249,6 +254,14 @@ void System::insertFractionalMolecule(size_t selectedComponent, std::vector<Atom
   }
 }
 
+/// Inserts a molecule into the vector of atoms.
+///
+/// Note: updates the numberOfMoleculesPerComponent, numberOfIntegerMoleculesPerComponent,
+///       numberOfPseudoAtoms, totalNumberOfPseudoAtoms.
+/// - Parameters:
+///   - selectedComponent: the index of the component
+///   - atoms: vector of atoms to be inserted
+/// - returns: 
 void System::insertMolecule(size_t selectedComponent, std::vector<Atom> atoms)
 {
   std::vector<Atom>::const_iterator iterator = 
