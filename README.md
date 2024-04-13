@@ -174,3 +174,9 @@ ${HOME}/software/bin/cmake --build build  (or: ninja -C build -v)
 ${HOME}/software/bin/cmake --install build --config Release
 ${HOME}/software/bin/ctest --test-dir build/tests --verbose
 ${HOME}/software/bin/ctest --test-dir build/tests/raspakit-tests --verbose
+
+Make rpm
+========
+cb build
+ninja package
+rpm -qlp /home/dubbelda/source/raspa3/build/raspa3-3.0.0-1.el7.centos.x86_64.rpm
