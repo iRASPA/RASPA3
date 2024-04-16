@@ -52,12 +52,14 @@ void MCMoveStatisticsSystem::clear()
 {
   volumeMove.clear();
   GibbsVolumeMove.clear();
+  ParallelTemperingSwap.clear();
 }
 
 void MCMoveStatisticsSystem::optimizeAcceptance()
 {
   volumeMove.optimizeAcceptance(0.01, 1.5);
   GibbsVolumeMove.optimizeAcceptance(0.01, 1.5);
+  ParallelTemperingSwap.optimizeAcceptance(0.01, 1.5);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsSystem &p)
@@ -66,6 +68,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
 
   archive << p.volumeMove;
   archive << p.GibbsVolumeMove;
+  archive << p.ParallelTemperingSwap;
 
   return archive;
 }
@@ -83,6 +86,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatis
 
   archive >> p.volumeMove;
   archive >> p.GibbsVolumeMove;
+  archive >> p.ParallelTemperingSwap;
 
   return archive;
 }

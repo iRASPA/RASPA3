@@ -149,8 +149,7 @@ std::vector<T> parseList(size_t size, const std::string &item, auto json)
   throw std::runtime_error(std::format("[Input reader (parseList)]: key '{}', value {} should be array of numbers\n", item, json.dump()));
 }
 
-InputReader::InputReader(const std::string inputFile):
-  inputStream(inputFile)
+InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 {
   std::ifstream input("simulation.json");
 
@@ -165,16 +164,17 @@ InputReader::InputReader(const std::string inputFile):
   }
   catch (nlohmann::json::parse_error& ex)
   {
-   std::cerr << "parse error at byte " << ex.byte << std::endl;
+    std::cerr << "parse error at byte " << ex.byte << std::endl;
   }
 
   // count number of systems
-  if(!parsed_data.contains("Systems"))
+  if (!parsed_data.contains("Systems"))
   {
-     throw std::runtime_error(std::format("[Input reader]: no system defined with keyword 'Systems' and value of array-type\n"));
+    throw std::runtime_error(
+        std::format("[Input reader]: no system defined with keyword 'Systems' and value of array-type\n"));
   }
   size_t jsonNumberOfSystems = parsed_data["Systems"].size();
-  if(jsonNumberOfSystems == 0)
+  if (jsonNumberOfSystems == 0)
   {
     throw std::runtime_error(std::format("[Input reader]: keyword 'Systems' has empty value of array-type\n"));
   }
@@ -183,50 +183,95 @@ InputReader::InputReader(const std::string inputFile):
 
   std::vector<ForceField> forceFields = std::vector<ForceField>(jsonNumberOfSystems);
   const ForceField standard = ForceField(0);
-  for(size_t i = 0; i != jsonNumberOfSystems; ++i)
+  for (size_t i = 0; i != jsonNumberOfSystems; ++i)
   {
     forceFields[i] = standard;
   }
 
-
-  if(parsed_data["NumberOfCycles"].is_number_unsigned())
+  if (parsed_data["NumberOfCycles"].is_number_unsigned())
   {
     numberOfCycles = parsed_data["NumberOfCycles"].get<size_t>();
   }
 
-  if(parsed_data["NumberOfInitializationCycles"].is_number_unsigned())
+  if (parsed_data["NumberOfInitializationCycles"].is_number_unsigned())
   {
     numberOfInitializationCycles = parsed_data["NumberOfInitializationCycles"].get<size_t>();
   }
 
-  if(parsed_data["NumberOfEquilibrationCycles"].is_number_unsigned())
+  if (parsed_data["NumberOfEquilibrationCycles"].is_number_unsigned())
   {
     numberOfEquilibrationCycles = parsed_data["NumberOfEquilibrationCycles"].get<size_t>();
   }
 
-  if(parsed_data["PrintEvery"].is_number_unsigned())
+  if (parsed_data["PrintEvery"].is_number_unsigned())
   {
     printEvery = parsed_data["PrintEvery"].get<size_t>();
   }
 
-  if(parsed_data["WriteBinaryRestartEvery"].is_number_unsigned())
+  if (parsed_data["WriteBinaryRestartEvery"].is_number_unsigned())
   {
     writeBinaryRestartEvery = parsed_data["WriteBinaryRestartEvery"].get<size_t>();
   }
 
-  if(parsed_data["RescaleWangLandauEvery"].is_number_unsigned())
+  if (parsed_data["RescaleWangLandauEvery"].is_number_unsigned())
   {
     rescaleWangLandauEvery = parsed_data["RescaleWangLandauEvery"].get<size_t>();
   }
 
-  if(parsed_data["OptimizeMCMovesEvery"].is_number_unsigned())
+  if (parsed_data["OptimizeMCMovesEvery"].is_number_unsigned())
   {
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-  if(parsed_data["NumberOfLambdaBins"].is_number_unsigned())
+  if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
   {
     // = parsed_data["NumberOfLambdaBins"].get<size_t>();
+  }
+
+  if (parsed_data["SimulationType"].is_string())
+  {
+    std::string simulationTypeString = parsed_data["SimulationType"].get<std::string>();
+    if (caseInSensStringCompare(simulationTypeString, "MonteCarlo"))
+    {
+      simulationType = SimulationType::MonteCarlo;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "MonteCarloTransitionMatrix"))
+    {
+      simulationType = SimulationType::MonteCarloTransitionMatrix;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "MolecularDynamics"))
+    {
+      simulationType = SimulationType::MolecularDynamics;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "Minimization"))
+    {
+      simulationType = SimulationType::Minimization;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "Test"))
+    {
+      simulationType = SimulationType::Test;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "Breakthrough"))
+    {
+      simulationType = SimulationType::Breakthrough;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "MixturePrediction"))
+    {
+      simulationType = SimulationType::MixturePrediction;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "Fitting"))
+    {
+      simulationType = SimulationType::Fitting;
+    }
+    else if (caseInSensStringCompare(simulationTypeString, "ParallelTempering"))
+    {
+      simulationType = SimulationType::ParallelTempering;
+    }
+    else
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: {} not a valid simulation type", simulationTypeString, parsed_data.dump()));
+    }
   }
 
   if(parsed_data["ThreadingType"].is_string())
@@ -717,4 +762,3 @@ InputReader::InputReader(const std::string inputFile):
     }
   }
 }
-
