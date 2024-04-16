@@ -9,6 +9,7 @@ module;
 #include <algorithm>
 #include <numeric>
 #include <type_traits>
+#include <cmath>
 #endif
 
 module cbmc_rigid_deletion;
@@ -22,6 +23,7 @@ import <iostream>;
 import <algorithm>;
 import <numeric>;
 import <type_traits>;
+import <cmath>;
 #endif
 
 import randomnumbers;

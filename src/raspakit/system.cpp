@@ -21,6 +21,8 @@ module;
 #include <map>
 #include <vector>
 #include <array>
+#include <string>
+#include <string_view>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -57,6 +59,8 @@ import <source_location>;
 import <map>;
 import <vector>;
 import <array>;
+import <string>;
+import <string_view>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif
@@ -962,7 +966,7 @@ std::string System::writeSystemStatus() const
   std::print(stream, "Beta:        {} [-]\n", beta);
   std::print(stream, "Pressure:    {} [Pa]\n\n", pressure * Units::PressureConversionFactor);
 
-  std::print(stream, simulationBox.printStatus());
+  stream << simulationBox.printStatus();
   std::print(stream, "\n\n\n");
 
   return stream.str();

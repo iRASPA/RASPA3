@@ -129,7 +129,7 @@ std::string HardwareInfo::writeInfo()
     std::print(stream, "OS type:     {} on {}\n", std::string(uts.sysname, strlen(uts.sysname)), 
                                                   std::string(uts.machine, strlen(uts.machine)));
     std::print(stream, "OS release:  {}\n", std::string(uts.release, strlen(uts.release)));
-    std::print(stream, "OS version:  {}\n\n", uts.version, strlen(uts.version));
+    std::print(stream, "OS version:  {}\n\n", std::string(uts.version, strlen(uts.version)));
 #endif
 
 #if defined(__CYGWIN__)

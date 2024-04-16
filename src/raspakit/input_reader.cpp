@@ -555,7 +555,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
 
 
-
       std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId], frameworkNameString, frameworkNameString, jsonNumberOfUnitCells)};
 
       // create system

@@ -3,7 +3,7 @@ CXX=clang++
 
 DBGCXXFLAGS = -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined
 RELCXXFLAGS = -g -O3 -march=native -ffast-math
-COMMONFLAGS= -I/usr/local/include -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fopenmp -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct -Werror -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops
+COMMONFLAGS= -I/usr/local/include -fexperimental-library -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fopenmp -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct  -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops
 
 MODULEPATHS = -fprebuilt-module-path=. -fprebuilt-module-path=./foundationkit -fprebuilt-module-path=./mathkit -fprebuilt-module-path=./symmetrykit -fprebuilt-module-path=./raspakit -fprebuilt-module-path=./raspakit/interactions -fprebuilt-module-path=./raspakit/mc_moves -fprebuilt-module-path=./raspakit/potentials -fprebuilt-module-path=./raspakit/properties -fprebuilt-module-path=./raspakit/cbmc -fprebuilt-module-path=./raspakit/forcefield
 

@@ -4,6 +4,7 @@ module;
 #include <span>
 #include <optional>
 #include <tuple>
+#include <vector>
 #endif
 
 export module interactions_framework_molecule;
@@ -12,6 +13,7 @@ export module interactions_framework_molecule;
 import <span>;
 import <optional>;
 import <tuple>;
+import <vector>;
 #endif
 
 import double3x3;

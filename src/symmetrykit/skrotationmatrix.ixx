@@ -4,6 +4,7 @@ module;
 #include <ostream>
 #include <vector>
 #include <type_traits>
+#include <tuple>
 #endif
 
 #if defined(_WIN32)
@@ -18,6 +19,7 @@ export module skrotationmatrix;
 import <ostream>;
 import <vector>;
 import <type_traits>;
+import <tuple>;
 #endif
 
 import int3;

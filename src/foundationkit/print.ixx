@@ -43,7 +43,6 @@ import <version>;
 import <format>;
 #endif
 
-
 export namespace std 
 {
   template<typename... Args> std::string format(const char* str_fmt, Args&&... args) {
