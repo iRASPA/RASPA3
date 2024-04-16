@@ -1,0 +1,38 @@
+{
+  "SimulationType": "ParallelTempering",
+  "NumberOfCycles": 10000,
+  "NumberOfInitializationCycles": 1000,
+  "PrintEvery": 1000,
+  "Systems": [
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 300.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.05
+    },
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 400.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.05
+    }
+  ],
+  "Components": [
+    {
+      "Name": "methane",
+      "MoleculeDefinition": "ExampleDefinitions",
+      "TranslationProbability": 0.95,
+      "CreateNumberOfMolecules": 100
+    }
+  ]
+}

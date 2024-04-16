@@ -88,7 +88,8 @@ export struct InputReader
     Test = 4,
     Breakthrough = 5,
     MixturePrediction = 6,
-    Fitting = 7
+    Fitting = 7,
+    ParallelTempering = 8
   };
 
   InputReader(const std::string inputFile);

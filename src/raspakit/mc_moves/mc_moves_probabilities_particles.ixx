@@ -41,6 +41,7 @@ export struct MCMoveProbabilitiesParticles
   double probabilityWidomMove{ 0.0 };
   double probabilityWidomMove_CFCMC{ 0.0 };
   double probabilityWidomMove_CFCMC_CBMC{ 0.0 };
+  double probabilityParallelTemperingSwap{0.0};
 
   double accumulatedProbabilityTranslationMove{ 0.0 };
   double accumulatedProbabilityRandomTranslationMove{ 0.0 };
@@ -60,6 +61,7 @@ export struct MCMoveProbabilitiesParticles
   double accumulatedProbabilityWidomMove{ 0.0 };
   double accumulatedProbabilityWidomMove_CFCMC{ 0.0 };
   double accumulatedProbabilityWidomMove_CFCMC_CBMC{ 0.0 };
+  double accumulatedProbabilityParallelTemperingSwap{0.0};
 
   void normalizeMoveProbabilties();
 

@@ -181,6 +181,9 @@ void MCMoveCpuTime::clearTimingStatistics()
   GibbsVolumeMoveNonEwald = std::chrono::duration<double>::zero();
   GibbsVolumeMoveEwald = std::chrono::duration<double>::zero();
   GibbsVolumeMoveTail = std::chrono::duration<double>::zero();
+
+  ParallelTemperingSwap = std::chrono::duration<double>::zero();
+  ParallelTemperingSwapEnergy = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -743,6 +746,15 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
                  GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count() - GibbsVolumeMoveTail.count());
   }
 
+  if (ParallelTemperingSwap > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "\n");
+    std::print(stream, "Parallel Tempering Swap:     {:14f} [s]\n", ParallelTemperingSwap.count());
+    std::print(stream, "    Energy recalculation:    {:14f} [s]\n", ParallelTemperingSwapEnergy.count());
+    std::print(stream, "    Overhead:                {:14f} [s]\n",
+               ParallelTemperingSwap.count() - ParallelTemperingSwapEnergy.count());
+  }
+
   std::print(stream, "\n");
   std::print(stream, "Property sampling:           {:14f} [s]\n", propertySampling.count());
   std::print(stream, "Energy/pressure sampling:    {:14f} [s]\n\n", energyPressureComputation.count());
@@ -897,6 +909,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << t.GibbsVolumeMoveEwald;
   archive << t.GibbsVolumeMoveTail;
 
+  archive << t.ParallelTemperingSwap;
+  archive << t.ParallelTemperingSwapEnergy;
+
   return archive;
 }
 
@@ -1047,6 +1062,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
   archive >> t.GibbsVolumeMoveNonEwald;
   archive >> t.GibbsVolumeMoveEwald;
   archive >> t.GibbsVolumeMoveTail;
+
+  archive >> t.ParallelTemperingSwap;
+  archive >> t.ParallelTemperingSwapEnergy;
 
   return archive;
 }
