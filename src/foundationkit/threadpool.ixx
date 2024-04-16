@@ -16,9 +16,12 @@ module;
 #include <utility>
 #include <optional>
 #include <semaphore>
-//#if defined (__cpp_lib_jthread)
-#include <thread>
-//#endif
+#if defined (__cpp_lib_jthread)
+#include <jthread>
+#endif
+#if defined(__has_include) && __has_include(<stop_token>)
+#include <stop_token>
+#endif
 #endif
 
 #include <omp.h>
@@ -39,14 +42,18 @@ import <type_traits>;
 import <utility>;
 import <optional>;
 import <semaphore>;
-
 #if defined (__cpp_lib_jthread)
 import <jthread>;
-#else
+#endif
+#if defined(__has_include) && __has_include(<stop_token>)
+import <stop_token>;
+#endif
+#endif
+
+#if !defined (__cpp_lib_jthread)
 import threading;
 #endif
  
-#endif
 
 
 // https://github.com/DeveloperPaul123/thread-pool
