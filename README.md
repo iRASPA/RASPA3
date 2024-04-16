@@ -97,6 +97,19 @@ Running
 cd examples/basic/1_mc_methane_in_box<br>
 ./run
 
+Ubuntu 24 (fully supported)
+===========================
+sudo apt install build-essential git cmake ninja-build<br>
+sudo apt install llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev<br>
+sudo apt pybind11-dev python3-pybind11
+sudo apt liblapack-dev
+sudo apt doxygen graphviz
+cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release .
+cmake --build build  (or: ninja -C build -v)
+cmake --install build --config Release
+ctest --test-dir build/tests --verbose
+ctest --test-dir build/tests/raspakit-tests --verbose
+
 CMake (TODO)
 ============
 export CXX=/usr/local/opt/llvm@17/bin/clang++

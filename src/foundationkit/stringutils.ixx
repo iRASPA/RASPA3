@@ -31,7 +31,7 @@ import <type_traits>;
   import print;
 #endif
 
-
+/*
 #if defined(__has_include) && __has_include(<print>)
   export namespace std
   {
@@ -46,6 +46,7 @@ import <type_traits>;
     }
   }
 #endif
+*/
 
 export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {

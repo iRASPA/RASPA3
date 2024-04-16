@@ -4,6 +4,7 @@ module;
 #include <assert.h>
 #include <vector>
 #include <iostream>
+#include <tuple>
 #endif
 
 #if defined(_WIN32)
@@ -17,6 +18,7 @@ module skrotationmatrix;
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
 import <iostream>;
+import <tuple>;
 #endif
 
 import int3;

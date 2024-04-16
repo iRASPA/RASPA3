@@ -257,7 +257,7 @@ std::string Breakthrough::writeHeader()
   std::print(stream, "=======================================================\n");
   for(size_t i = 0; i < Ncomp; ++i)
   {
-    std::print(stream, components[i].printBreakthroughStatus());
+    //std::print(stream, components[i].printBreakthroughStatus());
     std::print(stream, "\n");
   }
 
@@ -613,8 +613,7 @@ void Breakthrough::print() const
   std::cout << "maximum isotherm terms:        " << system.maxIsothermTerms << "\n";
   for(size_t i = 0; i < Ncomp; ++i)
   {
-    // FIX
-    //components[i].print(i);
+    //std::cout << components[i].print(i);
     std::cout << "\n";
   }
 }

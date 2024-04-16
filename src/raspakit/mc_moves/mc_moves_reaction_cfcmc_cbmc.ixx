@@ -5,6 +5,7 @@ module;
 #include <optional>
 #include <span>
 #include <tuple>
+#include <vector>
 #endif
 
 export module mc_moves_reaction_cfcmc_cbmc;
@@ -14,6 +15,7 @@ import <cstddef>;
 import <optional>;
 import <span>;
 import <tuple>;
+import <vector>;
 #endif
 
 import double3;

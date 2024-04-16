@@ -178,6 +178,146 @@ export struct MCMoveCpuTime
   const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string &componentName) const;
   const std::string writeMCMoveCPUTimeStatistics(std::chrono::duration<double> total) const;
 
+  MCMoveCpuTime(const MCMoveCpuTime& ) = default;
+
+  inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
+  {
+    propertySampling = b.propertySampling;
+    energyPressureComputation = b.energyPressureComputation;
+
+    translationMove = b.translationMove;
+    translationMoveExternalFieldMolecule = b.translationMoveExternalFieldMolecule;
+    translationMoveFrameworkMolecule = b.translationMoveFrameworkMolecule;
+    translationMoveMoleculeMolecule = b.translationMoveMoleculeMolecule;
+    translationMoveEwald = b.translationMoveEwald;
+
+    randomTranslationMove = b.randomTranslationMove;
+    randomTranslationMoveExternalFieldMolecule = b.randomTranslationMoveExternalFieldMolecule;
+    randomTranslationMoveFrameworkMolecule = b.randomTranslationMoveFrameworkMolecule;
+    randomTranslationMoveMoleculeMolecule = b.randomTranslationMoveMoleculeMolecule;
+    randomTranslationMoveEwald = b.randomTranslationMoveEwald;
+
+    rotationMove = b.rotationMove;
+    rotationMoveExternalFieldMolecule = b.rotationMoveExternalFieldMolecule;
+    rotationMoveFrameworkMolecule = b.rotationMoveFrameworkMolecule;
+    rotationMoveMoleculeMolecule = b.rotationMoveMoleculeMolecule;
+    rotationMoveEwald = b.rotationMoveEwald;
+
+    randomRotationMove = b.randomRotationMove;
+    randomRotationMoveExternalFieldMolecule = b.randomRotationMoveExternalFieldMolecule;
+    randomRotationMoveFrameworkMolecule = b.randomRotationMoveFrameworkMolecule;
+    randomRotationMoveMoleculeMolecule = b.randomRotationMoveMoleculeMolecule;
+    randomRotationMoveEwald = b.randomRotationMoveEwald;
+
+    reinsertionMoveCBMC = b.reinsertionMoveCBMC;
+    reinsertionMoveCBMCNonEwald = b.reinsertionMoveCBMCNonEwald;
+    reinsertionMoveCBMCEwald = b.reinsertionMoveCBMCEwald;
+
+    swapInsertionMove = b.swapInsertionMove;
+    swapInsertionMoveNonEwald = b.swapInsertionMoveNonEwald;
+    swapInsertionMoveEwald = b.swapInsertionMoveEwald;
+    swapInsertionMoveTail = b.swapInsertionMoveTail;
+
+    swapDeletionMove = b.swapDeletionMove;
+    swapDeletionMoveNonEwald = b.swapDeletionMoveNonEwald;
+    swapDeletionMoveEwald = b.swapDeletionMoveEwald;
+    swapDeletionMoveTail = b.swapDeletionMoveTail;
+
+    swapInsertionMoveCBMC = b.swapInsertionMoveCBMC;
+    swapInsertionMoveCBMCNonEwald = b.swapInsertionMoveCBMCNonEwald;
+    swapInsertionMoveCBMCEwald = b.swapInsertionMoveCBMCEwald;
+    swapInsertionMoveCBMCTail = b.swapInsertionMoveCBMCTail;
+
+    swapDeletionMoveCBMC = b.swapDeletionMoveCBMC;
+    swapDeletionMoveCBMCNonEwald = b.swapDeletionMoveCBMCNonEwald;
+    swapDeletionMoveCBMCEwald = b.swapDeletionMoveCBMCEwald;
+    swapDeletionMoveCBMCTail = b.swapDeletionMoveCBMCTail;
+
+    swapLambdaMoveCFCMC = b.swapLambdaMoveCFCMC;
+    swapLambdaInsertionMoveCFCMCExternalField = b.swapLambdaInsertionMoveCFCMCExternalField;
+    swapLambdaInsertionMoveCFCMCFramework = b.swapLambdaInsertionMoveCFCMCFramework;
+    swapLambdaInsertionMoveCFCMCMolecule = b.swapLambdaInsertionMoveCFCMCMolecule;
+    swapLambdaInsertionMoveCFCMCEwald = b.swapLambdaInsertionMoveCFCMCEwald;
+    swapLambdaInsertionMoveCFCMCTail = b.swapLambdaInsertionMoveCFCMCTail;
+    swapLambdaChangeMoveCFCMCExternalField = b.swapLambdaChangeMoveCFCMCExternalField;
+    swapLambdaChangeMoveCFCMCFramework = b.swapLambdaChangeMoveCFCMCFramework;
+    swapLambdaChangeMoveCFCMCMolecule = b.swapLambdaChangeMoveCFCMCMolecule;
+    swapLambdaChangeMoveCFCMCEwald = b.swapLambdaChangeMoveCFCMCEwald;
+    swapLambdaChangeMoveCFCMCTail = b.swapLambdaChangeMoveCFCMCTail;
+    swapLambdaDeletionMoveCFCMCExternalField = b.swapLambdaDeletionMoveCFCMCExternalField;
+    swapLambdaDeletionMoveCFCMCFramework = b.swapLambdaDeletionMoveCFCMCFramework;
+    swapLambdaDeletionMoveCFCMCMolecule = b.swapLambdaDeletionMoveCFCMCMolecule;
+    swapLambdaDeletionMoveCFCMCEwald = b.swapLambdaDeletionMoveCFCMCEwald;
+    swapLambdaDeletionMoveCFCMCTail = b.swapLambdaDeletionMoveCFCMCTail;
+
+    swapLambdaMoveCBCFCMC = b.swapLambdaMoveCBCFCMC;
+    swapLambdaInsertionMoveCBCFCMCExternalField = b.swapLambdaInsertionMoveCBCFCMCExternalField;
+    swapLambdaInsertionMoveCBCFCMCFramework = b.swapLambdaInsertionMoveCBCFCMCFramework;
+    swapLambdaInsertionMoveCBCFCMCMolecule = b.swapLambdaInsertionMoveCBCFCMCMolecule;
+    swapLambdaInsertionMoveCBCFCMCNonEwald = b.swapLambdaInsertionMoveCBCFCMCNonEwald;
+    swapLambdaInsertionMoveCBCFCMCEwald = b.swapLambdaInsertionMoveCBCFCMCEwald;
+    swapLambdaInsertionMoveCBCFCMCTail = b.swapLambdaInsertionMoveCBCFCMCTail;
+    swapLambdaChangeMoveCBCFCMCExternalField = b.swapLambdaChangeMoveCBCFCMCExternalField;
+    swapLambdaChangeMoveCBCFCMCFramework = b.swapLambdaChangeMoveCBCFCMCFramework;
+    swapLambdaChangeMoveCBCFCMCMolecule = b.swapLambdaChangeMoveCBCFCMCMolecule;
+    swapLambdaChangeMoveCBCFCMCEwald = b.swapLambdaChangeMoveCBCFCMCEwald;
+    swapLambdaChangeMoveCBCFCMCTail = b.swapLambdaChangeMoveCBCFCMCTail;
+    swapLambdaDeletionMoveCBCFCMCExternalField = b.swapLambdaDeletionMoveCBCFCMCExternalField;
+    swapLambdaDeletionMoveCBCFCMCFramework = b.swapLambdaDeletionMoveCBCFCMCFramework;
+    swapLambdaDeletionMoveCBCFCMCMolecule = b.swapLambdaDeletionMoveCBCFCMCMolecule;
+    swapLambdaDeletionMoveCBCFCMCNonEwald = b.swapLambdaDeletionMoveCBCFCMCNonEwald;
+    swapLambdaDeletionMoveCBCFCMCEwald = b.swapLambdaDeletionMoveCBCFCMCEwald;
+    swapLambdaDeletionMoveCBCFCMCTail = b.swapLambdaDeletionMoveCBCFCMCTail;
+
+    GibbsSwapMoveCBMC = b.GibbsSwapMoveCBMC;
+    GibbsSwapMoveCBMCNonEwald = b.GibbsSwapMoveCBMCNonEwald;
+    GibbsSwapMoveCBMCEwald = b.GibbsSwapMoveCBMCEwald;
+    GibbsSwapMoveCBMCTail = b.GibbsSwapMoveCBMCTail;
+
+    GibbsSwapLambdaMoveCFCMC = b.GibbsSwapLambdaMoveCFCMC;
+    GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
+    GibbsSwapLambdaInterChangeMoveCFCMCEwald = b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
+    GibbsSwapLambdaInterChangeMoveCFCMCTail = b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
+    GibbsSwapLambdaChangeMoveCFCMCNonEwald = b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
+    GibbsSwapLambdaChangeMoveCFCMCEwald = b.GibbsSwapLambdaChangeMoveCFCMCEwald;
+    GibbsSwapLambdaChangeMoveCFCMCTail = b.GibbsSwapLambdaChangeMoveCFCMCTail;
+    GibbsSwapLambdaShuffleMoveCFCMCNonEwald = b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
+    GibbsSwapLambdaShuffleMoveCFCMCEwald = b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
+    GibbsSwapLambdaShuffleMoveCFCMCTail = b.GibbsSwapLambdaShuffleMoveCFCMCTail;
+
+    WidomMoveCBMC = b.WidomMoveCBMC;
+    WidomMoveCBMCNonEwald = b.WidomMoveCBMCNonEwald;
+    WidomMoveCBMCEwald = b.WidomMoveCBMCEwald;
+    WidomMoveCBMCTail = b.WidomMoveCBMCTail;
+
+    WidomMoveCFCMC = b.WidomMoveCFCMC;
+    WidomMoveCFCMCExternalField = b.WidomMoveCFCMCExternalField;
+    WidomMoveCFCMCFramework = b.WidomMoveCFCMCFramework;
+    WidomMoveCFCMCMolecule = b.WidomMoveCFCMCMolecule;
+    WidomMoveCFCMCEwald = b.WidomMoveCFCMCEwald;
+    WidomMoveCFCMCTail = b.WidomMoveCFCMCTail;
+
+    WidomMoveCBCFCMC = b.WidomMoveCBCFCMC;
+    WidomMoveCBCFCMCExternalField = b.WidomMoveCBCFCMCExternalField;
+    WidomMoveCBCFCMCFramework = b.WidomMoveCBCFCMCFramework;
+    WidomMoveCBCFCMCMolecule = b.WidomMoveCBCFCMCMolecule;
+    WidomMoveCBCFCMCNonEwald = b.WidomMoveCBCFCMCNonEwald;
+    WidomMoveCBCFCMCEwald = b.WidomMoveCBCFCMCEwald;
+    WidomMoveCBCFCMCTail = b.WidomMoveCBCFCMCTail;
+
+    volumeMove = b.volumeMove;
+    volumeMoveNonEwald = b.volumeMoveNonEwald;
+    volumeMoveEwald = b.volumeMoveEwald;
+    volumeMoveTail = b.volumeMoveTail;
+
+    GibbsVolumeMove = b.GibbsVolumeMove;
+    GibbsVolumeMoveNonEwald = b.GibbsVolumeMoveNonEwald;
+    GibbsVolumeMoveEwald = b.GibbsVolumeMoveEwald;
+    GibbsVolumeMoveTail = b.GibbsVolumeMoveTail;
+
+    return *this;
+  }
+
   inline MCMoveCpuTime& operator+=(const MCMoveCpuTime& b)
   {
     propertySampling += b.propertySampling;

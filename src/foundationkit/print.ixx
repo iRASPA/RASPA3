@@ -43,7 +43,7 @@ import <version>;
 import <format>;
 #endif
 
-
+/*
 export namespace std 
 {
   template<typename... Args> std::string format(const char* str_fmt, Args&&... args) {
@@ -72,3 +72,4 @@ export namespace std
       ofstream_dest << BWP_FMTNS::vformat(str_fmt, BWP_FMTNS::make_format_args(args...));
   }
 }
+*/

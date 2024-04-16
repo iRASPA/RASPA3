@@ -19,6 +19,9 @@ module;
 #include <functional>  // for invoke()
 #include <iostream>    // for debugging output
 #endif
+#if defined(__has_include) && __has_include(<stop_token>)
+#include <stop_token>
+#endif
 
 #if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
@@ -46,6 +49,9 @@ import <future>;
 import <functional>;  // for invoke()
 import <iostream>;    // for debugging output
 #endif
+#if defined(__has_include) && __has_include(<stop_token>)
+import <stop_token>;
+#endif
 
 #if defined(__x86_64__) || defined(_M_X64)
 import <immintrin.h>;
@@ -55,6 +61,9 @@ import <immintrin.h>;
 #if !defined (__cpp_lib_jthread)
 
 export namespace std {
+
+#if !(defined(__has_include) && __has_include(<stop_token>))
+
 inline void __spin_yield() noexcept {
   // TODO: Platform-specific code here
 #if defined(__x86_64__) || defined(_M_X64)
@@ -604,6 +613,7 @@ class [[nodiscard]] stop_callback : private __stop_callback_base {
 template<typename _Callback>
   stop_callback(stop_token, _Callback) -> stop_callback<_Callback>;
 
+#endif
 } // namespace std
 
 

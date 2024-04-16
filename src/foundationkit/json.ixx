@@ -6,6 +6,7 @@ module;
 #include <type_traits>
 #endif
 
+#include <cassert> // assert
 #include <algorithm> // all_of, find, for_each
 #include <cstddef> // nullptr_t, ptrdiff_t, size_t
 #include <functional> // hash, less
@@ -2588,7 +2589,6 @@ JSON_HEDLEY_DIAGNOSTIC_POP
 
 // allow overriding assert
 #if !defined(JSON_ASSERT)
-    #include <cassert> // assert
     #define JSON_ASSERT(x) assert(x)
 #endif
 

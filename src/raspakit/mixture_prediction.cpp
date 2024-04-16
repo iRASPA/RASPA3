@@ -154,6 +154,8 @@ std::string MixturePrediction::writeHeader() const
 {
   std::ostringstream stream;
 
+  /*
+
   switch(predictionMethod)
   {
     case MultiSiteIsotherm::PredictionMethod::IAST:
@@ -176,6 +178,7 @@ std::string MixturePrediction::writeHeader() const
       }
       break;
   }
+  */
 
   return stream.str();
 }
@@ -1162,8 +1165,7 @@ void MixturePrediction::print() const
   std::cout << "maximum isotherm terms:        " << maxIsothermTerms << "\n";
   for(size_t i = 0; i < Ncomp; ++i)
   {
-    //sortedComponents[i].get().print(i);
-    // FIX!!!
+    //std::cout << sortedComponents[i].get().print(i);
     std::cout << "\n";
   }
 }
@@ -1189,7 +1191,8 @@ void MixturePrediction::run(std::ostream &stream)
   {
     std::string fileName = std::format("MixturePrediction/System_{}/component_{}_{}.data", 
                                        system.systemId, std::to_string(i),components[i].name);
-    streams.emplace_back(std::ofstream{ fileName });
+    // FIX TODO
+    //streams.emplace_back(std::ofstream{ fileName });
   }
 
   for (size_t i = 0; i < Ncomp; i++)
