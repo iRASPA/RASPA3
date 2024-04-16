@@ -4,12 +4,15 @@
 #include <vector>
 #include <span>
 #include <cmath>
+#include <complex>
 
 import int3;
 import double3;
 import double3x3;
 
 import atom;
+import pseudo_atom;
+import vdwparameters;
 import forcefield;
 import framework;
 import component;
