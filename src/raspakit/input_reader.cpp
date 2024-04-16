@@ -509,6 +509,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
         throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
       }
       forceFields[systemId]->cutOffVDW = value["CutOffVDW"].get<double>();
+      forceFields[systemId]->preComputePotentialShift();
     }
 
     if(value["CutOffCoulomb"].is_number_float())
