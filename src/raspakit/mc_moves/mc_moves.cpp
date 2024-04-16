@@ -97,7 +97,7 @@ import mc_moves_gibbs_swap_cfcmc;
 import mc_moves_reaction;
 import mc_moves_reaction_cfcmc_cbmc;
 import mc_moves_widom;
-
+import mc_moves_parallel_tempering_swap;
 
 void MC_Moves::performRandomMove(RandomNumber &random, System& selectedSystem, System& selectedSecondSystem, 
                                  size_t selectedComponent, size_t &fractionalMoleculeSystem)
@@ -343,6 +343,16 @@ void MC_Moves::performRandomMove(RandomNumber &random, System& selectedSystem, S
     if (energyDifference)
     {
       selectedSystem.runningEnergies += energyDifference.value();
+    }
+  }
+  else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityParallelTemperingSwap)
+  {
+    std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+        MC_Moves::ParallelTemperingSwap(random, selectedSystem, selectedSecondSystem);
+    if (energy)
+    {
+      selectedSystem.runningEnergies = energy.value().first;
+      selectedSecondSystem.runningEnergies = energy.value().second;
     }
   }
 }

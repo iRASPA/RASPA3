@@ -65,6 +65,7 @@ void MCMoveCount::clearCountStatistics()
   WidomMoveCBCFCMC = size_t{0};
   volumeMove = size_t{0};
   GibbsVolumeMove = size_t{0};
+  ParallelTemperingSwap = size_t{0};
 }
 
 const std::string MCMoveCount::writeSystemStatistics(size_t countTotal) const
@@ -76,6 +77,8 @@ const std::string MCMoveCount::writeSystemStatistics(size_t countTotal) const
              100.0 * static_cast<double>(volumeMove) / static_cast<double>(countTotal));
   std::print(stream, "Gibbs Volume:                    {:14f} [-]\n", 
              100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
+  std::print(stream, "Parallel Tempering Swap:         {:14f} [-]\n",
+             100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
 
   std::print(stream, "\n\n");
 
@@ -168,6 +171,8 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
              100.0 * static_cast<double>(WidomMoveCBCFCMC) / static_cast<double>(countTotal));
   std::print(stream, "Gibbs Volume:                {:14f} [%]\n", 
              100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
+  std::print(stream, "Parallel Tempering Swap:     {:14f} [%]\n",
+             100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
 
   std::print(stream, "\n");
   std::print(stream, "Production mc-move count:    {:14d} [-]\n", countTotal);
@@ -202,6 +207,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << c.WidomMoveCBCFCMC;
   archive << c.volumeMove;
   archive << c.GibbsVolumeMove;
+  archive << c.ParallelTemperingSwap;
 
   return archive;
 }
@@ -236,6 +242,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
   archive >> c.WidomMoveCBCFCMC;
   archive >> c.volumeMove;
   archive >> c.GibbsVolumeMove;
+  archive >> c.ParallelTemperingSwap;
 
   return archive;
 }

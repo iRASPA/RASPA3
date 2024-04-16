@@ -578,7 +578,9 @@ void System::rescaleMoveProbabilities()
   {
     component.mc_moves_probabilities.probabilityVolumeMove = mc_moves_probabilities.probabilityVolumeMove;
     component.mc_moves_probabilities.probabilityGibbsVolumeMove = mc_moves_probabilities.probabilityGibbsVolumeMove;
-  
+    component.mc_moves_probabilities.probabilityParallelTemperingSwap =
+        mc_moves_probabilities.probabilityParallelTemperingSwap;
+
     component.mc_moves_probabilities.normalizeMoveProbabilties();
   }
 }

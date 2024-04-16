@@ -58,106 +58,66 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingMove(RandomNumber &random,
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwap(RandomNumber &random,
                                                                                        System &systemA, System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  systemA.mc_moves_statistics.GibbsVolumeMove.counts += 1;
-  systemA.mc_moves_statistics.GibbsVolumeMove.totalCounts += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.counts += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.totalCounts += 1;
+  systemA.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
+  systemA.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
+  systemB.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
+  systemB.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
 
-  // determine New box-volumes leaving the total volume constant
-  double oldVolumeA = systemA.simulationBox.volume;
-  double maxVolumeChangeA = systemA.mc_moves_statistics.GibbsVolumeMove.maxChange;
-  double oldVolumeB = systemB.simulationBox.volume;
-  double totalVolume = oldVolumeA + oldVolumeB;
-  double expdv = std::exp(std::log(oldVolumeA / oldVolumeB) + maxVolumeChangeA * (2.0 * random.uniform() - 1.0));
-  double newVolumeA = expdv * totalVolume / (1.0 + expdv);
-  double newVolumeB = totalVolume - newVolumeA;
+  // compute energy of boxA, positionsA in Hamiltonian of B
+  // vice versa
+  // add constructed to stats
+  //
 
-  RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
-  double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(),
-                                                              systemA.numberOfIntegerMoleculesPerComponent.end()));
-  double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
-  SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
-  std::vector<Atom> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
-
-  RunningEnergy newTotalEnergyA;
+  std::cout << "swapping this bitch\n";
+  RunningEnergy systemAHamiltonianB;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
+  Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions,
+                                            systemAHamiltonianB);
   time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
+  systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
+  systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+  systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
+  RunningEnergy systemBHamiltonianA;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
+  Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions,
+                                            systemBHamiltonianA);
   time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
+  systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
+  systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+  systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
-                                          systemA.fixedFrameworkStoredEik, systemA.totalEik, systemA.forceField,
-                                          newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent,
-                                          newPositionsA, newTotalEnergyA);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
-
-  systemA.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
-  systemA.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
-
-  RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
-  double numberOfMoleculesB = static_cast<double>(std::reduce(systemB.numberOfIntegerMoleculesPerComponent.begin(),
-                                                              systemB.numberOfIntegerMoleculesPerComponent.end()));
-  double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
-  SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
-  std::vector<Atom> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
-
-  RunningEnergy newTotalEnergyB;
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
-
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
-
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
-                                          systemB.fixedFrameworkStoredEik, systemB.totalEik, systemB.forceField,
-                                          newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent,
-                                          newPositionsB, newTotalEnergyB);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
-
-  systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
-
-  double deltaU =
-      (newTotalEnergyA.total() - oldTotalEnergyA.total()) + (newTotalEnergyB.total() - oldTotalEnergyB.total());
+  double deltaU = -systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
+                  systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total());
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-systemA.beta * deltaU +
-                                  (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
-                                  (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
+  if (random.uniform() < std::exp(deltaU))
   {
-    systemA.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
-    systemA.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
+    std::cout << "swapped this bitch\n";
+    systemA.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
+    systemA.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
 
-    systemA.simulationBox = newBoxA;
-    std::copy(newPositionsA.begin(), newPositionsA.end(), systemA.atomPositions.begin());
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    systemB.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
+    systemB.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
 
-    systemB.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
-    systemB.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
+    System tmp = systemA;
+    double tmp_temp = systemB.temperature;
+    double tmp_beta = systemB.beta;
 
-    systemB.simulationBox = newBoxB;
-    std::copy(newPositionsB.begin(), newPositionsB.end(), systemB.atomPositions.begin());
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+    systemA = systemB;
+    systemA.temperature = tmp.temperature;
+    systemA.beta = tmp.beta;
 
-    return std::make_pair(newTotalEnergyA, newTotalEnergyB);
+    systemB = tmp;
+    systemB.temperature = tmp_temp;
+    systemB.beta = tmp_beta;
+
+    return std::make_pair(systemAHamiltonianB, systemBHamiltonianA);
   }
 
   return std::nullopt;

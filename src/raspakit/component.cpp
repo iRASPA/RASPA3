@@ -357,6 +357,7 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    Widom probability:                        {} [-]\n", mc.probabilityWidomMove);
   std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", mc.probabilityWidomMove_CFCMC);
   std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", mc.probabilityWidomMove_CFCMC_CBMC);
+  std::print(stream, "    ParallelTemperingSwap:                    {} [-]\n", mc.probabilityParallelTemperingSwap);
   std::print(stream, "\n");
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());

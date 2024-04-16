@@ -1,0 +1,1306 @@
+Compiler and run-time data
+===============================================================================
+RASPA 3.0.0
+
+Parallization: ThreadPool, 1 threads
+
+Random seed: 2186390987
+
+Compiled as a 64-bits application
+Compiler: gcc Homebrew Clang 17.0.6
+Compile Date = Apr 16 2024, Compile Time = 15:39:36
+
+2024-04-16 15:02:03.381408
+Simulation started on Tue, Apr 16
+The start time was 15:02:00
+
+Cpu data:    arm64
+Cpu Model:   Mac13,1
+Host name:  dta230328.science.uva.nls
+OS release:  23.3.0
+OS type:     Darwin
+OS version:  23D60
+
+
+
+Mutual consistent basic set of units:
+===============================================================================
+
+Unit of temperature: Kelvin
+Unit of length:      1e-10 [m]
+Unit of time:        1e-12 [s]
+Unit of mass:        1.6605402e-27 [kg]
+Unit of charge:      1.60217733e-19 [C/particle]
+
+
+Derived units and their conversion factors:
+===============================================================================
+
+Boltzmann constant:          0.8314464919307584 [-]
+Unit of energy:              1.6605402000000002e-23 [J]
+Unit of force:               1.6605402000000002e-13 [N]
+Unit of pressure:            16605402 [Pa]
+Unit of velocity:            100 [m/s]
+Unit of acceleration:        1.0000000000000002e-08 [m²/s]
+Unit of diffusion:           1.0000000000000002e-08 [m²/s]
+Unit of dipole moment:       1.60217733e-29 [C.m]
+Unit of electric potential:  0.00010364272224473431 [V]
+Unit of electric field:      1036427.222447343 [V]
+Unit of polarizability:      1.5458657349975198e-35 [-]
+Unit of Coulomb potential:   167101.08000665612 [K]
+Unit of dielectric constant: 1.5458657349975197e-05 [s² C²/(kg m³)]
+
+
+Derived units and their conversion factors:
+===============================================================================
+
+Boltzmann constant:          0.8314464919307584 [-]
+Unit of energy:              1.6605402000000002e-23 [J]
+Unit of force:               1.6605402000000002e-13 [N]
+Unit of pressure:            16605402 [Pa]
+Unit of velocity:            100 [m/s]
+Unit of acceleration:        1.0000000000000002e-08 [m²/s]
+Unit of diffusion:           1.0000000000000002e-08 [m²/s]
+Unit of dipole moment:       1.60217733e-29 [C.m]
+Unit of electric potential:  0.00010364272224473431 [V]
+Unit of electric field:      1036427.222447343 [V]
+Unit of polarizability:      1.5458657349975198e-35 [-]
+Unit of Coulomb potential:   167101.08000665612 [K]
+Unit of dielectric constant: 1.5458657349975197e-05 [s² C²/(kg m³)]
+
+
+Internal conversion factors:
+===============================================================================
+
+Energy to Kelvin:      1.202724284692786 [-]
+Kelvin to energy:      0.8314457542157568 [-]
+
+
+System definitions
+===============================================================================
+
+Temperature: 300 [K]
+Beta:        0.004009077391850886 [-]
+Pressure:    0 [Pa]
+
+Box:      30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000
+
+
+
+Pseudo-atoms
+===============================================================================
+
+  0 - O        mass: 28.08550, charge:  2.05000
+  1 - Al       mass: 26.98154, charge:  1.75000
+  2 - Si       mass: 28.08550, charge:  2.05000
+  3 - He       mass:  4.00260, charge:  0.00000
+  4 - C_co2    mass: 12.00000, charge:  0.65120
+  5 - O_co2    mass: 15.99940, charge: -0.32560
+  6 - O_o2     mass: 15.99940, charge: -0.11200
+  7 - O_com    mass:  0.00000, charge:  0.22400
+  8 - N_n2     mass: 14.00674, charge: -0.40500
+  9 - N_com    mass:  0.00000, charge:  0.81000
+ 10 - Ar       mass: 39.94800, charge:  0.00000
+ 11 - CH4      mass: 16.04246, charge:  0.00000
+ 12 - CH3      mass: 15.03452, charge:  0.00000
+ 13 - CH2      mass: 14.02658, charge:  0.00000
+ 14 - CH       mass: 13.01864, charge:  0.00000
+ 15 - C        mass: 12.00000, charge:  0.00000
+
+  0 - O        P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387
+  1 - Al       P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387
+  2 - Si       P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387
+  3 - He       J.O. Hirschfelder et al., Molecular Theory of Gases and Liquids, Wiley, New York, 1954, p. 1114
+  4 - C_co2    A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820
+  5 - O_co2    A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820
+  6 - O_o2     A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174
+  7 - O_com    A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174
+  8 - N_n2     A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174
+  9 - N_com    A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174
+ 10 - Ar       A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174
+ 11 - CH4      M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181
+ 12 - CH3      D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313
+ 13 - CH2      D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313
+ 14 - CH       D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313
+ 15 - C        D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313
+
+Force field status
+===============================================================================
+
+O        - O        Lennard-Jones p₀/kʙ:  53.00000 [K], p₁:  3.30000 [Å]
+                                  shift:  -0.09165 [K], tailcorrections: false
+O        - Al       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - Si       Lennard-Jones p₀/kʙ:  34.14674 [K], p₁:  2.80000 [Å]
+                                  shift:  -0.02204 [K], tailcorrections: false
+O        - He       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - C_co2    Lennard-Jones p₀/kʙ:  39.83025 [K], p₁:  3.02250 [Å]
+                                  shift:  -0.04067 [K], tailcorrections: false
+O        - O_co2    Lennard-Jones p₀/kʙ:  67.38370 [K], p₁:  3.15850 [Å]
+                                  shift:  -0.08959 [K], tailcorrections: false
+O        - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - CH4      Lennard-Jones p₀/kʙ:  91.65424 [K], p₁:  3.51000 [Å]
+                                  shift:  -0.22945 [K], tailcorrections: false
+O        - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O        - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.65000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - Al       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - Si       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - He       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - C_co2    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - O_co2    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Al       - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - Si       Lennard-Jones p₀/kʙ:  22.00000 [K], p₁:  2.30000 [Å]
+                                  shift:  -0.00436 [K], tailcorrections: false
+Si       - He       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - C_co2    Lennard-Jones p₀/kʙ:  25.66176 [K], p₁:  2.52250 [Å]
+                                  shift:  -0.00886 [K], tailcorrections: false
+Si       - O_co2    Lennard-Jones p₀/kʙ:  43.41385 [K], p₁:  2.65850 [Å]
+                                  shift:  -0.02053 [K], tailcorrections: false
+Si       - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - CH4      Lennard-Jones p₀/kʙ:  59.05083 [K], p₁:  3.01000 [Å]
+                                  shift:  -0.05882 [K], tailcorrections: false
+Si       - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Si       - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.15000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - He       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - C_co2    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - O_co2    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+He       - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - C_co2    Lennard-Jones p₀/kʙ:  29.93300 [K], p₁:  2.74500 [Å]
+                                  shift:  -0.01715 [K], tailcorrections: false
+C_co2    - O_co2    Lennard-Jones p₀/kʙ:  50.63981 [K], p₁:  2.88100 [Å]
+                                  shift:  -0.03878 [K], tailcorrections: false
+C_co2    - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - CH4      Lennard-Jones p₀/kʙ:  68.87946 [K], p₁:  3.23250 [Å]
+                                  shift:  -0.10523 [K], tailcorrections: false
+C_co2    - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C_co2    - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.37250 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - O_co2    Lennard-Jones p₀/kʙ:  85.67100 [K], p₁:  3.01700 [Å]
+                                  shift:  -0.08653 [K], tailcorrections: false
+O_co2    - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - CH4      Lennard-Jones p₀/kʙ: 116.52834 [K], p₁:  3.36850 [Å]
+                                  shift:  -0.22793 [K], tailcorrections: false
+O_co2    - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_co2    - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.50850 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - O_o2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_o2     - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - O_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+O_com    - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - N_n2     Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_n2     - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - N_com    Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+N_com    - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - Ar       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - CH4      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+Ar       - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH4      - CH4      Lennard-Jones p₀/kʙ: 158.50000 [K], p₁:  3.72000 [Å]
+                                  shift:  -0.56218 [K], tailcorrections: false
+CH4      - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH4      - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH4      - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH4      - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  1.86000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH3      - CH3      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH3      - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH3      - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH3      - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH2      - CH2      Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH2      - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH2      - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH       - CH       Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+CH       - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+C        - C        Lennard-Jones p₀/kʙ:   0.00000 [K], p₁:  0.00000 [Å]
+                                  shift:  -0.00000 [K], tailcorrections: false
+
+Ewald precision: 1e-06
+Ewald alpha: 0.26505830360350674
+Ewald k-vectors: 8 8 8
+
+
+Component definitions
+===============================================================================
+
+Component 0 [methane]
+
+    Critical temperature:  190.564 [K]
+    Critical pressure:     4599200 [Pa]
+    Acentric factor:       0.01142 [-]
+
+    Mol-fraction:                 1 [-]
+    Swapable:                     false
+
+    Mass:                         16.04246 [-]
+    Bulk fluid density:           0 [-]
+    Compressibility:              0 [-]
+    Excess molecules:             0 [-]
+
+    number Of Atoms:  1
+      0: CH4    position  0.00000  0.00000  1.00000, charge  0.00000
+    net-charge:  0
+
+    Translation-move probability:             0.95 [-]
+    Random translation-move probability:      0 [-]
+    Rotation-move probability:                0 [-]
+    Random rotation-move probability:         0 [-]
+    Volume-move probability:                  0 [-]
+    Reinsertion (CBMC) probability:           0 [-]
+    Identity-change (CBMC) probability:       0 [-]
+    Swap-move (CBMC) probability:             0 [-]
+    Swap-move (CFCMC) probability:            0 [-]
+    Swap-move (CFCMC/CBMC) probability:       0 [-]
+    Gibbs Volume-move probability:            0 [-]
+    Gibbs Swap-move (CBMC) probability:       0 [-]
+    Gibbs Swap-move (CFCMC) probability:      0 [-]
+    Gibbs Swap-move (CFCMC/CBMC) probability: 0 [-]
+    Widom probability:                        0 [-]
+    Widom (CFCMC) probability:                0 [-]
+    Widom (CFCMC/CBMC) probability:           0 [-]
+    ParallelTemperingSwap:                    0.05 [-]
+
+    number of bonds: 0
+
+
+
+
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy:      -1.818244e+04
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -1.818244e+04
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+Initialization: Current cycle: 0 out of 1000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:         1.000000e+02 molecules
+    number density:    3.703704e-03 molec/A^3
+    density:           9.866343e+01 kg/m^3
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:      -1.607954e+04 [K]
+    framework-molecule VDW:   0.000000e+00 [K]
+    framework-molecule Real:  0.000000e+00 [K]
+    molecule-molecule VDW:   -1.607954e+04 [K]
+    molecule-molecule Real:   0.000000e+00 [K]
+    Van der Waals (Tail):     0.000000e+00 [K]
+    Coulombic Fourier:        0.000000e+00 [K]
+    Intra VDW:                0.000000e+00 [K]
+    Intra Charge:             0.000000e+00 [K]
+    Polarization:             0.000000e+00 [K]
+
+
+
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy:      -1.584388e+04
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -1.584388e+04
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy:      -1.584388e+04
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -1.584388e+04
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+Current cycle: 0 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0454e+02  0.0000e+00  0.0000e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 0.0000e+00  2.0454e+02  0.0000e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 0.0000e+00  0.0000e+00  2.0454e+02 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:      0.000000e+00 +/ 0.000000e+00 [bar]
+Pressure:             2.045408e+02 +/ 0.000000e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.904289e+04 (-1.904289e+04 +/- 0.000000e+00) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.904289e+04 (-1.904289e+04 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 1000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0012e+02 -6.2370e-01 -3.8821e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+-6.2370e-01  2.0383e+02  2.2822e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+-3.8821e+00  2.2822e+00  2.0771e+02 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:     -6.534441e-01 +/ 0.000000e+00 [bar]
+Pressure:             2.038873e+02 +/ 0.000000e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.459587e+04 (-1.678930e+04 +/- 0.000000e+00) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.459587e+04 (-1.678930e+04 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 2000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9875e+02  2.2405e+00 -8.8202e-01 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 2.2405e+00  2.0283e+02 -6.1984e-01 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+-8.8202e-01 -6.1984e-01  2.0322e+02 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:     -2.939122e+00 +/ 0.000000e+00 [bar]
+Pressure:             2.016017e+02 +/ 0.000000e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.775672e+04 (-1.664780e+04 +/- 0.000000e+00) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.775672e+04 (-1.664780e+04 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 3000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0117e+02  1.9337e+00 -1.4246e-01 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 1.9337e+00  1.9958e+02 -7.9446e-01 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+-1.4246e-01 -7.9446e-01  2.0007e+02 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:     -4.267459e+00 +/ 0.000000e+00 [bar]
+Pressure:             2.002733e+02 +/ 0.000000e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.733467e+04 (-1.666530e+04 +/- 0.000000e+00) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.733467e+04 (-1.666530e+04 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 4000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0236e+02  1.7302e+00  1.0239e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 1.7302e+00  2.0053e+02 -1.0096e+00 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+ 1.0239e+00 -1.0096e+00  2.0042e+02 +/- 0.0000e+00 0.0000e+00 0.0000e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:     -3.438178e+00 +/ 0.000000e+00 [bar]
+Pressure:             2.011026e+02 +/ 0.000000e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.775035e+04 (-1.664508e+04 +/- 0.000000e+00) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.775035e+04 (-1.664508e+04 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 5000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 2.320024e-16)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 6.180342e-12)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0120e+02  1.3776e+00  9.1615e-01 +/- 1.2665e+01 2.9046e+00 4.8065e+00 [bar]
+ 1.3776e+00  1.9947e+02 -1.6242e+00 +/- 2.9046e+00 9.6888e+00 4.7354e+00 [bar]
+ 9.1615e-01 -1.6242e+00  2.0147e+02 +/- 4.8065e+00 4.7354e+00 1.0569e+01 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 6.595274e-12 [bar]
+Excess pressure:     -3.829647e+00 +/ 3.122147e+00 [bar]
+Pressure:             2.007111e+02 +/ 3.122147e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.624751e+04 (-1.673819e+04 +/- 7.082282e+02) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.624751e+04 (-1.673819e+04 +/- 7.082282e+02) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 6000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 4.323909e-14)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 0.000000e+00)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 0.000000e+00)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9939e+02  5.8098e-01  7.3896e-01 +/- 1.5739e+01 5.0885e+00 4.8919e+00 [bar]
+ 5.8098e-01  1.9945e+02 -1.1576e+00 +/- 5.0885e+00 7.2303e+00 1.1772e+00 [bar]
+ 7.3896e-01 -1.1576e+00  1.9967e+02 +/- 4.8919e+00 1.1772e+00 7.6723e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 0.000000e+00 [bar]
+Excess pressure:     -5.037805e+00 +/ 6.915611e+00 [bar]
+Pressure:             1.995030e+02 +/ 6.915611e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.718984e+04 (-1.676685e+04 +/- 5.328160e+02) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.718984e+04 (-1.676685e+04 +/- 5.328160e+02) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 7000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 1.276425e-16)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 3.400284e-12)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9975e+02  6.7874e-01  7.0377e-02 +/- 8.4652e+00 2.7168e+00 4.6262e+00 [bar]
+ 6.7874e-01  1.9836e+02 -3.8406e-01 +/- 2.7168e+00 7.3763e+00 4.4859e+00 [bar]
+ 7.0377e-02 -3.8406e-01  2.0104e+02 +/- 4.6262e+00 4.4859e+00 8.7344e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 3.628227e-12 [bar]
+Excess pressure:     -4.826373e+00 +/ 3.790141e+00 [bar]
+Pressure:             1.997144e+02 +/ 3.790141e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.488967e+04 (-1.684320e+04 +/- 5.190810e+02) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.488967e+04 (-1.684320e+04 +/- 5.190810e+02) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 8000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 2.610717e-14)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 7.967275e-19)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 2.122412e-14)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 2.0076e+02  8.3591e-01 -1.3652e-01 +/- 9.3114e+00 2.7811e+00 3.7921e+00 [bar]
+ 8.3591e-01  1.9935e+02  1.2160e-02 +/- 2.7811e+00 3.7980e+00 3.7765e+00 [bar]
+-1.3652e-01  1.2160e-02  2.0097e+02 +/- 3.7921e+00 3.7765e+00 5.7425e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 6.773750e-14 [bar]
+Excess pressure:     -4.180581e+00 +/ 4.513035e+00 [bar]
+Pressure:             2.003602e+02 +/ 4.513035e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.770577e+04 (-1.683385e+04 +/- 3.500739e+02) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.770577e+04 (-1.683385e+04 +/- 3.500739e+02) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Current cycle: 9000 out of 10000
+===============================================================================
+
+Box:      30.00000   0.00000   0.00000  Average:  30.00000   0.00000   0.00000
+           0.00000  30.00000   0.00000             0.00000  30.00000   0.00000
+           0.00000   0.00000  30.00000             0.00000   0.00000  30.00000
+Lengths:  30.00000  30.00000  30.00000  Average:  30.00000  30.00000  30.00000
+Angles:   90.00000  90.00000  90.00000  Average:  90.00000  90.00000  90.00000
+
+Amount of molecules per component :
+-------------------------------------------------------------------------------
+Component 0 (methane)
+    molecules:      1.000000e+02 molecules  (1.000000e+02 +/- 0.000000e+00)
+    number density: 3.703704e-03 molec./A^3 (3.703704e-03 +/- 8.853400e-17)
+    density:        9.866343e+01 kg/m^3     (9.866343e+01 +/- 2.358468e-12)
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9988e+02  9.2324e-01 -3.9724e-02 +/- 7.7653e+00 1.9301e+00 2.6102e+00 [bar]
+ 9.2324e-01  1.9854e+02 -5.3135e-01 +/- 1.9301e+00 4.8765e+00 3.7711e+00 [bar]
+-3.9724e-02 -5.3135e-01  2.0021e+02 +/- 2.6102e+00 3.7711e+00 5.5211e+00 [bar]
+Ideal-gas pressure:   2.045408e+02 +/ 2.520200e-12 [bar]
+Excess pressure:     -4.998762e+00 +/ 5.197028e+00 [bar]
+Pressure:             1.995420e+02 +/ 5.197028e+00 [bar]
+
+component 0 (methane) lambda:  0 occupancy:  1 (1.000000)
+
+Total potential energy:   -1.581551e+04 (-1.687412e+04 +/- 3.161664e+02) [K]
+-------------------------------------------------------------------------------
+ExternalField-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Framework-molecule
+    Van der Waals:         0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+Molecule-molecule
+    Van der Waals:        -1.581551e+04 (-1.687412e+04 +/- 3.161664e+02) [K]
+    Van der Waals (Tail):  0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Real:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Coulombic Fourier:     0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+    Molecule Intra:        0.000000e+00 ( 0.000000e+00 +/- 0.000000e+00) [K]
+
+
+
+Energy status Running energies
+===============================================================================
+
+Total potential energy:      -1.470045e+04
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -1.470045e+04
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+Energy status Recomputed from scratch
+===============================================================================
+
+Total potential energy:      -1.470045e+04
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -1.470045e+04
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+Energy status Monte-Carlo energy drift
+===============================================================================
+
+Total potential energy:      -3.500388e-10
+    external field VDW:       0.000000e+00
+    external field Real:      0.000000e+00
+    framework-molecule VDW:   0.000000e+00
+    framework-molecule Real:  0.000000e+00
+    molecule-molecule VDW:   -3.500388e-10
+    molecule-molecule Real:   0.000000e+00
+    Van der Waals (Tail):     0.000000e+00
+    Coulombic Ewald:          0.000000e+00
+    intra VDW:                0.000000e+00
+    intra Coulombic:          0.000000e+00
+    polarization:             0.000000e+00
+    dU/dlambda VDW:           0.000000e+00
+    dU/dlambda Real:          0.000000e+00
+    dU/dlambda Ewald:         0.000000e+00
+
+
+
+Monte-Carlo moves statistics
+===============================================================================
+
+Component 0 [methane]
+    Translation total:            347670     348197     349678
+    Translation constructed:      347356     347838     349334
+    Translation accepted:         284927     285458     286705
+    Translation fraction:       0.819533   0.819818   0.819911
+    Translation max-change:     1.500000   1.500000   1.500000
+
+
+
+Production run counting of the MC moves
+===============================================================================
+
+Component 0 methane
+
+    Translation:                      47.524550 [%]
+    Random Translation:                0.000000 [%]
+    Rotation:                          0.000000 [%]
+    Random Rotation:                   0.000000 [%]
+    Reinsertion CBMC:                  0.000000 [%]
+    Insertion:                         0.000000 [%]
+    Deletion:                          0.000000 [%]
+    Insertion CBMC:                    0.000000 [%]
+    Deletion CBMC:                     0.000000 [%]
+    Insertion/deletion CFCMC:          0.000000 [%]
+    Insertion/deletion CB/CFCMC:       0.000000 [%]
+    Gibbs-swap CBMC:                   0.000000 [%]
+    Gibbs-swap CFCMC:                  0.000000 [%]
+    Widom CBMC:                        0.000000 [%]
+    Widom CFCMC:                       0.000000 [%]
+    Widom CB/CFCMC:                    0.000000 [%]
+
+
+
+Volume:                                0.000000 [-]
+Gibbs Volume:                          0.000000 [-]
+Parallel Tempering Swap:               0.000000 [-]
+
+
+Production run counting of the MC moves summed over systems and components
+===============================================================================
+
+Translation:                      95.003100 [%]
+Random Translation:                0.000000 [%]
+Rotation:                          0.000000 [%]
+Random rotation:                   0.000000 [%]
+Reinsertion CBMC:                  0.000000 [%]
+Insertion:                         0.000000 [%]
+Deletion:                          0.000000 [%]
+Insertion CBMC:                    0.000000 [%]
+Deletion CBMC:                     0.000000 [%]
+Insertion/deletion CFCMC:          0.000000 [%]
+Insertion/deletion CB/CFCMC:       0.000000 [%]
+Gibbs-swap CBMC:                   0.000000 [%]
+Gibbs-swap CFCMC:                  0.000000 [%]
+Volume:                            0.000000 [%]
+Widom CBMC:                        0.000000 [%]
+Widom CFCMC:                       0.000000 [%]
+Widom CB/CFCMC:                    0.000000 [%]
+Gibbs Volume:                      0.000000 [%]
+Parallel Tempering Swap:           0.000000 [%]
+
+Production mc-move count:           2000000 [-]
+                All summed:         1900062 [-]
+                difference:           99938 [-]
+
+
+
+
+Production run CPU timings of the MC moves
+===============================================================================
+
+Component 0 methane
+
+    Translation:                      56.175095 [s]
+        ExternalField-Molecule:        0.163534 [s]
+        Framework-Molecule:            0.337116 [s]
+        Molecule-Molecule:            51.488118 [s]
+        Ewald:                         0.118654 [s]
+        Overhead:                      4.067673 [s]
+
+
+
+Property sampling                      0.092990 [s]
+Energy/pressure sampling:              1.765013 [s]
+
+
+Production run CPU timings of the MC moves summed over systems and components
+===============================================================================
+
+
+Translation:                       112.324074 [s]
+    ExternalField-Molecule:          0.325593 [s]
+    Framework-Molecule:              0.674130 [s]
+    Molecule-Molecule:             102.968669 [s]
+    Ewald:                           0.237484 [s]
+    Overhead:                        8.118198 [s]
+
+Property sampling:                 0.225665 [s]
+Energy/pressure sampling:          3.567762 [s]
+
+Production simulation time:      118.182004 [s]
+                All summed:      116.117501 [s]
+                  Overhead:        2.064503 [s]
+
+
+
+
+Energy averages and statistics:
+===============================================================================
+
+Framework-molecule energy:
+-------------------------------------------------------------------------------
+
+
+
+Framework-molecule energy contributions per energy type:
+-------------------------------------------------------------------------------
+
+
+
+Inter-molecular energy:
+-------------------------------------------------------------------------------
+
+    Inter-molecular energy 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] -1.664225e+04
+        Block[  1] -1.664239e+04
+        Block[  2] -1.701379e+04
+        Block[  3] -1.703259e+04
+        Block[  4] -1.714750e+04
+        -----------------------------------------------------------------------
+        Average  -1.689570e+04 +/-  2.941066e+02 [K]
+
+
+
+Inter-molecular energy contributions per energy type:
+-------------------------------------------------------------------------------
+
+    Van der Waals energy 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0] -1.664225e+04
+        Block[  1] -1.664239e+04
+        Block[  2] -1.701379e+04
+        Block[  3] -1.703259e+04
+        Block[  4] -1.714750e+04
+        -----------------------------------------------------------------------
+        Average  -1.689570e+04 +/-  2.941066e+02 [K]
+
+    VDW Tail-Correction energy 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0]  0.000000e+00
+        Block[  1]  0.000000e+00
+        Block[  2]  0.000000e+00
+        Block[  3]  0.000000e+00
+        Block[  4]  0.000000e+00
+        -----------------------------------------------------------------------
+        Average   0.000000e+00 +/-  0.000000e+00 [K]
+
+    Coulomb Real energy 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0]  0.000000e+00
+        Block[  1]  0.000000e+00
+        Block[  2]  0.000000e+00
+        Block[  3]  0.000000e+00
+        Block[  4]  0.000000e+00
+        -----------------------------------------------------------------------
+        Average   0.000000e+00 +/-  0.000000e+00 [K]
+
+    Coulomb Fourier energy 0-0 [methane-methane]:
+    ---------------------------------------------------------------------------
+        Block[  0]  0.000000e+00
+        Block[  1]  0.000000e+00
+        Block[  2]  0.000000e+00
+        Block[  3]  0.000000e+00
+        Block[  4]  0.000000e+00
+        -----------------------------------------------------------------------
+        Average   0.000000e+00 +/-  0.000000e+00 [K]
+
+
+Total energy:
+-------------------------------------------------------------------------------
+    Block[  0] -1.664225e+04
+    Block[  1] -1.664239e+04
+    Block[  2] -1.701379e+04
+    Block[  3] -1.703259e+04
+    Block[  4] -1.714750e+04
+    ---------------------------------------------------------------------------
+    Average  -1.689570e+04 +/-  2.941066e+02 [K]
+
+Pressure averages and statistics:
+===============================================================================
+
+Average pressure tensor: 
+-------------------------------------------------------------------------------
+ 1.9932e+02  9.6848e-01 -1.8053e-01 +/- 7.4629e+00 1.9143e+00 2.5654e+00 [bar]
+ 9.6848e-01  1.9854e+02 -1.0416e+00 +/- 1.9143e+00 3.4205e+00 3.8807e+00 [bar]
+-1.8053e-01 -1.0416e+00  2.0006e+02 +/- 2.5654e+00 3.8807e+00 4.6319e+00 [bar]
+
+    Block[  0]  2.045408e+07
+    Block[  1]  2.045408e+07
+    Block[  2]  2.045408e+07
+    Block[  3]  2.045408e+07
+    Block[  4]  2.045408e+07
+    ---------------------------------------------------------------------------
+    Ideal gas pressure   2.045408e+07 +/-  0.000000e+00 [Pa]
+                         2.045408e+02 +/-  0.000000e+00 [bar]
+
+
+    Block[  0] -2.979710e+05
+    Block[  1] -3.899137e+05
+    Block[  2] -8.194618e+05
+    Block[  3] -1.630061e+05
+    Block[  4] -9.460846e+05
+    ---------------------------------------------------------------------------
+    Excess pressure  -5.232874e+05 +/-  4.232082e+05 [Pa]
+                     -5.232874e+00 +/-  4.232082e+00 [bar]
+
+
+    Block[  0]  2.015611e+07
+    Block[  1]  2.006417e+07
+    Block[  2]  1.963462e+07
+    Block[  3]  2.029107e+07
+    Block[  4]  1.950799e+07
+    ---------------------------------------------------------------------------
+    Pressure average   1.993079e+07 +/-  4.232082e+05 [Pa]
+                       1.993079e+02 +/-  4.232082e+00 [bar]
+
+
+Enthalpy of adsorption
+===============================================================================
+
+No fluctuating components present.
+
+
+Densities
+===============================================================================
+
+Component 0 (methane)
+    Block[  0] 100
+    Block[  1] 100
+    Block[  2] 100
+    Block[  3] 100
+    Block[  4] 100
+    -----------------------------------------------------------------------
+    Density average   1.000000e+02 +/-  0.000000e+00 [molecules]
+    Density average   3.703704e-03 +/-  6.019490e-19 [molec/A^3]
+    Density average   9.866343e+01 +/-  1.603540e-14 [kg/m^3]
+

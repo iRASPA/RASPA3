@@ -495,6 +495,11 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       mc_moves_probabilities.probabilityGibbsVolumeMove = value["GibbsVolumeMoveProbability"].get<double>();
     }
 
+    if (value["ParallelTemperingSwapProbability"].is_number_float())
+    {
+      mc_moves_probabilities.probabilityParallelTemperingSwap = value["ParallelTemperingSwapProbability"].get<double>();
+    }
+
     if(value["CutOffVDW"].is_number_float())
     {
       forceFields[systemId].cutOffVDW = value["CutOffVDW"].get<double>();

@@ -162,17 +162,18 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> GibbsVolumeMoveEwald{ 0.0 };
   std::chrono::duration<double> GibbsVolumeMoveTail{ 0.0 };
 
-  inline std::chrono::duration<double> total() const { return propertySampling + energyPressureComputation +
-                                                              translationMove + randomTranslationMove +
-                                                              rotationMove + randomRotationMove +
-                                                              reinsertionMoveCBMC + swapInsertionMove +
-                                                              swapDeletionMove + swapInsertionMoveCBMC + 
-                                                              swapDeletionMoveCBMC + swapLambdaMoveCFCMC + 
-                                                              swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC + 
-                                                              GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + 
-                                                              WidomMoveCFCMC + WidomMoveCBCFCMC +
-                                                              volumeMove + GibbsVolumeMove;}
- 
+  std::chrono::duration<double> ParallelTemperingSwap{0.0};
+  std::chrono::duration<double> ParallelTemperingSwapEnergy{0.0};
+
+  inline std::chrono::duration<double> total() const
+  {
+    return propertySampling + energyPressureComputation + translationMove + randomTranslationMove + rotationMove +
+           randomRotationMove + reinsertionMoveCBMC + swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC +
+           swapDeletionMoveCBMC + swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC +
+           GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove +
+           ParallelTemperingSwap;
+  }
+
   void clearTimingStatistics();
   const std::string writeMCMoveCPUTimeStatistics() const;
   const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string &componentName) const;
@@ -315,6 +316,9 @@ export struct MCMoveCpuTime
     GibbsVolumeMoveEwald = b.GibbsVolumeMoveEwald;
     GibbsVolumeMoveTail = b.GibbsVolumeMoveTail;
 
+    ParallelTemperingSwap = b.ParallelTemperingSwap;
+    ParallelTemperingSwapEnergy = b.ParallelTemperingSwapEnergy;
+
     return *this;
   }
 
@@ -452,6 +456,9 @@ export struct MCMoveCpuTime
     GibbsVolumeMoveNonEwald += b.GibbsVolumeMoveNonEwald;
     GibbsVolumeMoveEwald += b.GibbsVolumeMoveEwald;
     GibbsVolumeMoveTail += b.GibbsVolumeMoveTail;
+
+    ParallelTemperingSwap += b.ParallelTemperingSwap;
+    ParallelTemperingSwapEnergy += b.ParallelTemperingSwapEnergy;
 
     return *this;
   }
@@ -605,6 +612,9 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.GibbsVolumeMoveNonEwald = a.GibbsVolumeMoveNonEwald + b.GibbsVolumeMoveNonEwald;
   m.GibbsVolumeMoveEwald = a.GibbsVolumeMoveEwald + b.GibbsVolumeMoveEwald;
   m.GibbsVolumeMoveTail = a.GibbsVolumeMoveTail + b.GibbsVolumeMoveTail;
+
+  m.ParallelTemperingSwap = a.ParallelTemperingSwap + b.ParallelTemperingSwap;
+  m.ParallelTemperingSwapEnergy = a.ParallelTemperingSwapEnergy + b.ParallelTemperingSwapEnergy;
 
   return m;
 }
