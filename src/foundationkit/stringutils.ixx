@@ -31,7 +31,7 @@ import <type_traits>;
   import print;
 #endif
 
-#if defined(__has_include) && __has_include(<print>)
+#if !defined (__cpp_lib_jthread)
   export namespace std
   {
     template<typename... Args> constexpr void print(std::ostream & os, const std::string_view str_fmt, Args&&... args)

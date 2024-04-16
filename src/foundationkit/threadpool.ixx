@@ -17,7 +17,7 @@ module;
 #include <optional>
 #include <semaphore>
 #if defined (__cpp_lib_jthread)
-#include <jthread>
+#include <thread>
 #endif
 #if defined(__has_include) && __has_include(<stop_token>)
 #include <stop_token>
@@ -43,7 +43,7 @@ import <utility>;
 import <optional>;
 import <semaphore>;
 #if defined (__cpp_lib_jthread)
-import <jthread>;
+import <thread>;
 #endif
 #if defined(__has_include) && __has_include(<stop_token>)
 import <stop_token>;
