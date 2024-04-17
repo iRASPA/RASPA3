@@ -12,6 +12,6 @@ add_executable(unit_tests_raspakit
                static_energy.cpp
                main.cpp)
 
-target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit pybind11::module ${GTEST_LIBRARIES})
+target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit ${GTEST_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
 
 add_test(NAME RaspaKit COMMAND unit_tests_raspakit)

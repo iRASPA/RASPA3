@@ -5,11 +5,14 @@
 #include <cstddef>
 #include <vector>
 #include <span>
+#include <complex>
 
 import int3;
 import double3;
 
 import atom;
+import pseudo_atom;
+import vdwparameters;
 import forcefield;
 import framework;
 import component;

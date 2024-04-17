@@ -181,9 +181,15 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
   systems = std::vector<System>(jsonNumberOfSystems);
 
-  std::vector<ForceField> forceFields = std::vector<ForceField>(jsonNumberOfSystems);
-  const ForceField standard = ForceField(0);
-  for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+  // Read the local 'force_field.json' if present. This file will be used if no 'ForceField' keyword is specified per system
+  std::optional<std::string> directoryName{};
+  if(parsed_data["ForceField"].is_string())
+  {
+    directoryName = parsed_data["ForceField"].get<std::string>();
+  }
+  std::vector<std::optional<ForceField>> forceFields = std::vector<std::optional<ForceField>>(jsonNumberOfSystems);
+  const std::optional<ForceField> standard = ForceField::readForceField(directoryName, "force_field.json");
+  for(size_t i = 0; i != jsonNumberOfSystems; ++i)
   {
     forceFields[i] = standard;
   }
@@ -473,7 +479,12 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     // construct Component
     for(size_t i = 0; i != jsonNumberOfSystems; ++i)
     {
-      jsonComponents[i][componentId] = Component(Component::Type::Adsorbate, componentId, forceFields[i],
+      if(!forceFields[i].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+
+      jsonComponents[i][componentId] = Component(Component::Type::Adsorbate, componentId, forceFields[i].value(),
                         jsonComponentName, jsonComponentName, jsonNumberOfBlocks, jsonNumberOfLambdaBins,
                         move_probabilities[i]);
     }
@@ -484,6 +495,53 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
   for (size_t systemId = 0; auto& [key, value] : parsed_data["Systems"].items()) 
   {
     MCMoveProbabilitiesSystem mc_moves_probabilities{};
+
+    if(value["ForceField"].is_string())
+    {
+      std::string name = parsed_data["ForceField"].get<std::string>();
+      forceFields[systemId] = ForceField::readForceField(name, "force_field.json");
+    }
+
+    if(value["CutOffVDW"].is_number_float())
+    {
+      if(!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+      forceFields[systemId]->cutOffVDW = value["CutOffVDW"].get<double>();
+      forceFields[systemId]->preComputePotentialShift();
+    }
+
+    if(value["CutOffCoulomb"].is_number_float())
+    {
+      if(!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+      forceFields[systemId]->cutOffCoulomb = value["CutOffCoulomb"].get<double>();
+    }
+
+    if(value["ChargeMethod"].is_string())
+    {
+      if(!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+
+      std::string chargeMethodString = value["ChargeMethod"].get<std::string>();
+
+      if (caseInSensStringCompare(chargeMethodString, "Ewald"))
+      {
+        forceFields[systemId]->chargeMethod = ForceField::ChargeMethod::Ewald;
+        forceFields[systemId]->noCharges = false;
+      }
+      if (caseInSensStringCompare(chargeMethodString, "None"))
+      {
+        forceFields[systemId]->chargeMethod = ForceField::ChargeMethod::Ewald;
+        forceFields[systemId]->noCharges = true;
+      }
+    }
+
 
     if(value["VolumeMoveProbability"].is_number_float())
     {
@@ -498,32 +556,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     if (value["ParallelTemperingSwapProbability"].is_number_float())
     {
       mc_moves_probabilities.probabilityParallelTemperingSwap = value["ParallelTemperingSwapProbability"].get<double>();
-    }
-
-    if(value["CutOffVDW"].is_number_float())
-    {
-      forceFields[systemId].cutOffVDW = value["CutOffVDW"].get<double>();
-    }
-
-    if(value["CutOffCoulomb"].is_number_float())
-    {
-      forceFields[systemId].cutOffCoulomb = value["CutOffCoulomb"].get<double>();
-    }
-
-    if(value["ChargeMethod"].is_string())
-    {
-      std::string chargeMethodString = value["ChargeMethod"].get<std::string>();
-
-      if (caseInSensStringCompare(chargeMethodString, "Ewald"))
-      {
-        forceFields[systemId].chargeMethod = ForceField::ChargeMethod::Ewald;
-        forceFields[systemId].noCharges = false;
-      }
-      if (caseInSensStringCompare(chargeMethodString, "None"))
-      {
-        forceFields[systemId].chargeMethod = ForceField::ChargeMethod::Ewald;
-        forceFields[systemId].noCharges = true;
-      }
     }
 
     if(!value.contains("Type"))
@@ -560,10 +592,15 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
 
 
-      std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId], frameworkNameString, frameworkNameString, jsonNumberOfUnitCells)};
+      if(!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+
+      std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(), frameworkNameString, frameworkNameString, jsonNumberOfUnitCells)};
 
       // create system
-      systems[systemId] = System(systemId, std::nullopt, T, P, forceFields[systemId], 
+      systems[systemId] = System(systemId, std::nullopt, T, P, forceFields[systemId].value(), 
                                  jsonFrameworkComponents, jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], 5,
                                  mc_moves_probabilities);
     }
@@ -597,8 +634,12 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
 
       // create system
+      if(!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
       SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
-      systems[systemId] = System(systemId, simulationBox, T, P, forceFields[systemId], 
+      systems[systemId] = System(systemId, simulationBox, T, P, forceFields[systemId].value(), 
                                  {}, jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], 5,
                                  mc_moves_probabilities);
     } 

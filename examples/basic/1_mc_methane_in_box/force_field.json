@@ -33,5 +33,41 @@
               "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"},
     {"name" : "C",     "print_to_output" : true,  "element" : "C",  "print_as" : "C",  "mass" : 12.0,     "charge" :  0.0,
               "source" : "D. Dubbeldam et al., J. Phys. Chem. B, 108(33), 12301-12313"}
-  ]
-} 
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "O",
+      "type" : "lennard-jones",    
+      "parameters" : [53.0, 3.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "type" : "lennard-jones",    
+      "parameters" : [22.0, 2.30],
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",    
+      "parameters" : [158.5, 3.72],
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
+    },
+    {
+      "name" : "O_co2",
+      "type" : "lennard-jones",    
+      "parameters" : [85.671, 3.017],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "C_co2",
+      "type" : "lennard-jones",    
+      "parameters" : [29.933, 2.745],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

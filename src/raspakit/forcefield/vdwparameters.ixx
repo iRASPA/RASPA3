@@ -42,7 +42,7 @@ export struct VDWParameters
   double tailCorrectionEnergy;
   Type type{ 0 };
 
-  VDWParameters(): parameters(double4(158.5/ 1.2027242847,3.72,0.0,0.0)), shift(-0.56217796) {}
+  VDWParameters(): parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
 
   VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), 
                                                 tailCorrectionEnergy(0.0), type(Type::LennardJones)

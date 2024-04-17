@@ -1,8 +1,10 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
-  "NumberOfInitializationCycles" : 20000,
-  "PrintEvery" : 5000,
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 2000,
+  "PrintEvery" : 1000,
+
+  "ForceField" : ".",
   
   "Systems" : [
     {

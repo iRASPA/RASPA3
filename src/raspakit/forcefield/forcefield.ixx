@@ -74,29 +74,24 @@ export struct ForceField
   double energyOverlapCriteria = 1e6;
   bool useDualCutOff{ false };
 
-  ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, 
-             double cutOff, bool shifted, bool tailCorrecions) noexcept(false);
-  ForceField(size_t systemId) noexcept(false);
-
   ForceField() noexcept = default;
-  ForceField(const ForceField &a) noexcept = default;
-  ForceField& operator=(const ForceField& a) noexcept = default;
-  ForceField(ForceField&& a) noexcept = default;
-  ForceField& operator=(ForceField&& a) noexcept = default;
-  ~ForceField() noexcept = default;
+  ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> parameters, MixingRule mixingRule, 
+             double cutOff, bool shifted, bool tailCorrections) noexcept(false);
 
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
 
+  void applyMixingRule();
+  void preComputePotentialShift();
   void preComputeTailCorrection();
 
-  void ReadPseudoAtoms(std::string pseudoAtomsFileName) noexcept(false);
-  void ReadForceFieldMixing(std::string pseudoAtomsFileName) noexcept(false);
+  static std::optional<ForceField> readForceField(std::optional<std::string> directoryName, std::string pseudoAtomsFileName) noexcept(false);
 
   std::string printPseudoAtomStatus() const;
   std::string printForceFieldStatus() const;
 
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
+  static std::optional<size_t> findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name);
 
   void initializeEwaldParameters(double3 perpendicularWidths);
 
