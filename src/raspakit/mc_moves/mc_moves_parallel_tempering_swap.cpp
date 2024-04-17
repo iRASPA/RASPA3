@@ -89,8 +89,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   double acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
                         systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
 
-  if (systemA.pressure != systemB.pressure)
+  if (systemA.init_pressure != systemB.init_pressure)
   {
+    /// Ref: "Hyper-parallel tempering Monte Carlo: Appliation to the Lennard-Jones fluid and the
+    /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
     acc *= std::pow(systemB.pressure / systemA.pressure,
                     systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
   }
@@ -106,6 +108,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
 
     std::swap(systemA.atomPositions, systemB.atomPositions);
     std::swap(systemA.simulationBox, systemB.simulationBox);
+    std::swap(systemA.numberOfMoleculesPerComponent, systemB.numberOfMoleculesPerComponent);
+    std::swap(systemA.numberOfIntegerMoleculesPerComponent, systemB.numberOfIntegerMoleculesPerComponent);
+    std::swap(systemA.numberOfPseudoAtoms, systemB.numberOfPseudoAtoms);
+    std::swap(systemA.totalNumberOfPseudoAtoms, systemB.totalNumberOfPseudoAtoms);
 
     return std::make_pair(systemAHamiltonianB, systemBHamiltonianA);
   }
