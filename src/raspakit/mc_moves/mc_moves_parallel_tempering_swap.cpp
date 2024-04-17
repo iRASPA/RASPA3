@@ -68,12 +68,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   systemB.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
   systemB.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
 
-  // compute energy of boxA, positionsA in Hamiltonian of B
-  // vice versa
-  // add constructed to stats
-  //
-
-  std::cout << "swapping this bitch\n";
   RunningEnergy systemAHamiltonianB;
   time_begin = std::chrono::system_clock::now();
   Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions,
@@ -92,30 +86,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
   systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
-  double deltaU = -systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
-                  systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total());
+  double acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
+                        systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
+
+  if (systemA.pressure != systemB.pressure)
+  {
+    acc *= std::pow(systemB.pressure / systemA.pressure,
+                    systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
+  }
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(deltaU))
+  if (random.uniform() < acc)
   {
-    std::cout << "swapped this bitch\n";
     systemA.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
     systemA.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
 
     systemB.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
     systemB.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
 
-    System tmp = systemA;
-    double tmp_temp = systemB.temperature;
-    double tmp_beta = systemB.beta;
-
-    systemA = systemB;
-    systemA.temperature = tmp.temperature;
-    systemA.beta = tmp.beta;
-
-    systemB = tmp;
-    systemB.temperature = tmp_temp;
-    systemB.beta = tmp_beta;
+    std::swap(systemA.atomPositions, systemB.atomPositions);
+    std::swap(systemA.simulationBox, systemB.simulationBox);
 
     return std::make_pair(systemAHamiltonianB, systemBHamiltonianA);
   }

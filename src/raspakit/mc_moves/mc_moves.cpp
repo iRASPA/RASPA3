@@ -778,4 +778,19 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System& selecte
     selectedSystem.components[selectedComponent].mc_moves_count.WidomMoveCBCFCMC++;
     selectedSystem.mc_moves_count.WidomMoveCBCFCMC++;
   }
+  else if (randomNumber < mc_moves_probabilities.accumulatedProbabilityParallelTemperingSwap)
+  {
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+    std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
+        MC_Moves::ParallelTemperingSwap(random, selectedSystem, selectedSecondSystem);
+    if (energy)
+    {
+      selectedSystem.runningEnergies = energy.value().first;
+      selectedSecondSystem.runningEnergies = energy.value().second;
+    }
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+
+    selectedSystem.mc_moves_cputime.ParallelTemperingSwap += (t2 - t1);
+    selectedSystem.mc_moves_count.ParallelTemperingSwap++;
+  }
 }
