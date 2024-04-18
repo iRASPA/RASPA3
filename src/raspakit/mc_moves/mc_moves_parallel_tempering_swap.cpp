@@ -68,28 +68,37 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   systemB.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
   systemB.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
 
-  RunningEnergy systemAHamiltonianB;
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions,
-                                            systemAHamiltonianB);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
-  systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-  systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
+  double acc = 0.0;
 
-  RunningEnergy systemBHamiltonianA;
-  time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions,
-                                            systemBHamiltonianA);
-  time_end = std::chrono::system_clock::now();
-  systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
-  systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-  systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
+  if (systemA.forceField != systemB.forceField)
+  {
+    RunningEnergy systemAHamiltonianB;
+    time_begin = std::chrono::system_clock::now();
+    Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions,
+                                              systemAHamiltonianB);
+    time_end = std::chrono::system_clock::now();
+    systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
+    systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+    systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
-  double acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
-                        systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
+    RunningEnergy systemBHamiltonianA;
+    time_begin = std::chrono::system_clock::now();
+    Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions,
+                                              systemBHamiltonianA);
+    time_end = std::chrono::system_clock::now();
+    systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
+    systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+    systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
-  if (systemA.init_pressure != systemB.init_pressure)
+    acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
+                   systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
+  }
+  else
+  {
+    acc = std::exp((systemB.beta - systemA.beta) * (systemB.runningEnergies.total() - systemA.runningEnergies.total()));
+  }
+
+  if (systemA.pressure != systemB.pressure)
   {
     /// Ref: "Hyper-parallel tempering Monte Carlo: Appliation to the Lennard-Jones fluid and the
     /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
@@ -113,7 +122,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.numberOfPseudoAtoms, systemB.numberOfPseudoAtoms);
     std::swap(systemA.totalNumberOfPseudoAtoms, systemB.totalNumberOfPseudoAtoms);
 
-    return std::make_pair(systemAHamiltonianB, systemBHamiltonianA);
+    return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
   }
 
   return std::nullopt;

@@ -80,6 +80,7 @@ export struct ForceField
 
   VDWParameters& operator() (size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters&  operator() (size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
+  bool operator==(const ForceField &other) const;
 
   void applyMixingRule();
   void preComputePotentialShift();

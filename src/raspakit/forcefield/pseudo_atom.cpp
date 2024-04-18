@@ -86,3 +86,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &
   return archive;
 }
 
+bool PseudoAtom::operator==(const PseudoAtom &other) const
+{
+  return (versionNumber == other.versionNumber && name == other.name && mass == other.mass && charge == other.charge &&
+          atomicNumber == other.atomicNumber && printToPDB == other.printToPDB && source == other.source);
+}

@@ -191,7 +191,7 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
   {
     throw std::runtime_error(std::format("[Forcefield reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
   }
-  size_t numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();\
+  size_t numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
 
   if(numberOfPseudoAtoms == 0)
   {
@@ -493,4 +493,36 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &
   archive >> f.useDualCutOff;
 
   return archive;
+}
+
+bool ForceField::operator==(const ForceField& other) const
+{
+  // first the cheap ones
+  if (cutOffVDW != other.cutOffVDW || cutOffCoulomb != other.cutOffCoulomb || dualCutOff != other.dualCutOff ||
+      numberOfPseudoAtoms != other.numberOfPseudoAtoms || overlapCriteria != other.overlapCriteria ||
+      EwaldPrecision != other.EwaldPrecision || EwaldAlpha != other.EwaldAlpha ||
+      numberOfWaveVectors != other.numberOfWaveVectors || automaticEwald != other.automaticEwald ||
+      noCharges != other.noCharges || omitEwaldFourier != other.omitEwaldFourier ||
+      minimumRosenbluthFactor != other.minimumRosenbluthFactor ||
+      energyOverlapCriteria != other.energyOverlapCriteria || useDualCutOff != other.useDualCutOff ||
+      chargeMethod != other.chargeMethod)
+  {
+    return false;
+  }
+  for (size_t idx = 0; idx < shiftPotentials.size(); idx++)
+  {
+    if (shiftPotentials[idx] != other.shiftPotentials[idx] || tailCorrections[idx] != other.tailCorrections[idx] ||
+        data[idx] != other.data[idx])
+    {
+      return false;
+    }
+  }
+  for (auto it1 = pseudoAtoms.begin(), it2 = pseudoAtoms.begin(); it1 != pseudoAtoms.end(); ++it1, ++it2)
+  {
+    if (it1 != it2)
+    {
+      return false;
+    }
+  }
+  return true;
 }

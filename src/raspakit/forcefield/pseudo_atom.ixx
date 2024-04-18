@@ -37,6 +37,7 @@ export struct PseudoAtom
   bool printToPDB{ true };
   std::string source{};
 
+  bool operator==(const PseudoAtom &other) const;
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &a);
 };

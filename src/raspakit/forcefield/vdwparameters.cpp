@@ -64,6 +64,12 @@ import <functional>;
 
 import archive;
 
+bool VDWParameters::operator==(const VDWParameters &other) const
+{
+  return (parameters == other.parameters && shift == other.shift &&
+          tailCorrectionEnergy == other.tailCorrectionEnergy && type == other.type);
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p)
 {
   archive << p.parameters;

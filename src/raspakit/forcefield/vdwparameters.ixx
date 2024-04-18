@@ -61,6 +61,7 @@ export struct VDWParameters
     shift = scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)));
   }
 
+  bool operator==(const VDWParameters &other) const;
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameters &p);
 };
