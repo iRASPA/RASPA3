@@ -30,6 +30,7 @@ export struct MCMoveStatisticsSystem
 
   void optimizeAcceptance();
   void clear();
+  const std::string writeMCMoveStatistics() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsSystem &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatisticsSystem &p);

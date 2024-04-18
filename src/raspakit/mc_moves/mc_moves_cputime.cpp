@@ -184,6 +184,7 @@ void MCMoveCpuTime::clearTimingStatistics()
 
   ParallelTemperingSwap = std::chrono::duration<double>::zero();
   ParallelTemperingSwapEnergy = std::chrono::duration<double>::zero();
+  ParallelTemperingSwapFugacity = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -751,6 +752,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "\n");
     std::print(stream, "Parallel Tempering Swap:     {:14f} [s]\n", ParallelTemperingSwap.count());
     std::print(stream, "    Energy recalculation:    {:14f} [s]\n", ParallelTemperingSwapEnergy.count());
+    std::print(stream, "    Fugacity swap:           {:14f} [s]\n", ParallelTemperingSwapFugacity.count());
     std::print(stream, "    Overhead:                {:14f} [s]\n",
                ParallelTemperingSwap.count() - ParallelTemperingSwapEnergy.count());
   }
@@ -911,6 +913,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
 
   archive << t.ParallelTemperingSwap;
   archive << t.ParallelTemperingSwapEnergy;
+  archive << t.ParallelTemperingSwapFugacity;
 
   return archive;
 }
@@ -1065,6 +1068,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
 
   archive >> t.ParallelTemperingSwap;
   archive >> t.ParallelTemperingSwapEnergy;
+  archive >> t.ParallelTemperingSwapFugacity;
 
   return archive;
 }

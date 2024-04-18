@@ -78,8 +78,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
                                               systemAHamiltonianB);
     time_end = std::chrono::system_clock::now();
     systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
-    systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-    systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
     RunningEnergy systemBHamiltonianA;
     time_begin = std::chrono::system_clock::now();
@@ -87,8 +85,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
                                               systemBHamiltonianA);
     time_end = std::chrono::system_clock::now();
     systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
-    systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-    systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
     acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
                    systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
@@ -102,9 +98,18 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   {
     /// Ref: "Hyper-parallel tempering Monte Carlo: Appliation to the Lennard-Jones fluid and the
     /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
+    time_begin = std::chrono::system_clock::now();
     acc *= std::pow(systemB.pressure / systemA.pressure,
                     systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
+    time_end = std::chrono::system_clock::now();
+    systemA.mc_moves_cputime.ParallelTemperingSwapFugacity += (time_end - time_begin);
+    systemB.mc_moves_cputime.ParallelTemperingSwapFugacity += (time_end - time_begin);
   }
+
+  systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+  systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
+  systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
+  systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
 
   // apply acceptance/rejection rule
   if (random.uniform() < acc)
@@ -121,6 +126,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.numberOfIntegerMoleculesPerComponent, systemB.numberOfIntegerMoleculesPerComponent);
     std::swap(systemA.numberOfPseudoAtoms, systemB.numberOfPseudoAtoms);
     std::swap(systemA.totalNumberOfPseudoAtoms, systemB.totalNumberOfPseudoAtoms);
+    std::swap(systemA.runningEnergies, systemB.runningEnergies);
+    std::swap(systemA.rigidEnergies, systemB.rigidEnergies);
+    std::swap(systemA.averageEnergies, systemB.averageEnergies);
+    std::swap(systemA.mc_moves_probabilities, systemB.mc_moves_probabilities);
+    std::swap(systemA.mc_moves_statistics, systemB.mc_moves_statistics);
+    std::swap(systemA.mc_moves_cputime, systemB.mc_moves_cputime);
+    std::swap(systemA.mc_moves_count, systemB.mc_moves_count);
 
     return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
   }
