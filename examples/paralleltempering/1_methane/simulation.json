@@ -1,8 +1,8 @@
 {
   "SimulationType": "ParallelTempering",
-  "NumberOfCycles": 10000,
+  "NumberOfCycles": 1000,
   "NumberOfInitializationCycles": 1000,
-  "PrintEvery": 1000,
+  "PrintEvery": 100,
   "Systems": [
     {
       "Type": "Box",
@@ -11,9 +11,10 @@
         30.0,
         30.0
       ],
-      "ExternalTemperature": 300.0,
+      "ExternalTemperature": 200.0,
       "ChargeMethod": "None",
-      "ParallelTemperingSwapProbability": 0.05
+      "ParallelTemperingSwapProbability": 0.001,
+      "Movies": true
     },
     {
       "Type": "Box",
@@ -24,7 +25,7 @@
       ],
       "ExternalTemperature": 400.0,
       "ChargeMethod": "None",
-      "ParallelTemperingSwapProbability": 0.05
+      "ParallelTemperingSwapProbability": 0.001
     }
   ],
   "Components": [
