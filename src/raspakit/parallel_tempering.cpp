@@ -115,7 +115,8 @@ ParallelTempering::ParallelTempering(InputReader& reader) noexcept
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
       random(reader.randomSeed),
-      estimation(reader.numberOfBlocks, reader.numberOfCycles)
+      estimation(reader.numberOfBlocks, reader.numberOfCycles),
+      threadPool(static_cast<const unsigned int>(reader.numberOfThreads), reader.threadingType)
 {
 }
 
@@ -159,12 +160,51 @@ void ParallelTempering::createOutputFiles()
   }
 }
 
-void ParallelTempering::initialize()
+void ParallelTempering::runSystemCycleInitialize(System& system)
 {
   size_t totalNumberOfMolecules{0uz};
   size_t totalNumberOfComponents{0uz};
   size_t numberOfStepsPerCycle{0uz};
 
+  totalNumberOfMolecules = system.numberOfMolecules();
+  totalNumberOfComponents = system.numerOfAdsorbateComponents();
+  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+  for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  {
+    // move to 'slide' when implemented in llvm
+    // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
+    // std::ranges::views::slide(s, 2uz);
+
+    // now using system and system for two selected components
+    // system swaps and gibbs volume are not allowed anyway.
+
+    size_t selectedComponent = system.randomComponent(random);
+
+    MC_Moves::performRandomMove(random, system, system, selectedComponent, fractionalMoleculeSystem);
+
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+    }
+  }
+  if (currentCycle % printEvery == 0uz)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.loadings =
+        Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+    std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+    std::flush(stream);
+  }
+
+  if (currentCycle % optimizeMCMovesEvery == 0uz)
+  {
+    system.optimizeMCMoves();
+  }
+}
+
+void ParallelTempering::initialize()
+{
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
 
@@ -205,55 +245,9 @@ void ParallelTempering::initialize()
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
   {
-    totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
-
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
-
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    for (System& system : systems)
     {
-      // move to 'slide' when implemented in llvm
-      // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
-      // std::ranges::views::slide(s, 2uz);
-
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectSecondSystem = systems[selectedSystemPair.second];
-
-      size_t selectedComponent = selectedSystem.randomComponent(random);
-      MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
-
-      for (System& system : systems)
-      {
-        for (Component& component : system.components)
-        {
-          component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
-        }
-      }
-    }
-
-    if (currentCycle % printEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        std::ostream stream(streams[system.systemId].rdbuf());
-
-        system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-        std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
-        std::flush(stream);
-      }
-    }
-
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
+      threadPool.enqueue_detach([this](System& system) { runSystemCycleInitialize(system); }, system);
     }
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
@@ -273,12 +267,60 @@ void ParallelTempering::initialize()
   }
 }
 
-void ParallelTempering::equilibrate()
+void ParallelTempering::runSystemCycleEquilibrate(System& system)
 {
   size_t totalNumberOfMolecules{0uz};
   size_t totalNumberOfComponents{0uz};
   size_t numberOfStepsPerCycle{0uz};
 
+  totalNumberOfMolecules = system.numberOfMolecules();
+  totalNumberOfComponents = system.numerOfAdsorbateComponents();
+  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+  for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  {
+    // move to 'slide' when implemented in llvm
+    // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
+    // std::ranges::views::slide(s, 2uz);
+
+    // now using system and system for two selected components
+    // system swaps and gibbs volume are not allowed anyway.
+
+    size_t selectedComponent = system.randomComponent(random);
+
+    MC_Moves::performRandomMove(random, system, system, selectedComponent, fractionalMoleculeSystem);
+
+    system.components[selectedComponent].lambdaGC.WangLandauIteration(
+        PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
+
+    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+  }
+  if (currentCycle % printEvery == 0uz)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.loadings =
+        Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+    std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+    std::flush(stream);
+  }
+
+  if (currentCycle % rescaleWangLandauEvery == 0uz)
+  {
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
+                                             system.containsTheFractionalMolecule);
+    }
+  }
+
+  if (currentCycle % optimizeMCMovesEvery == 0uz)
+  {
+    system.optimizeMCMoves();
+  }
+}
+
+void ParallelTempering::equilibrate()
+{
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
 
@@ -299,68 +341,9 @@ void ParallelTempering::equilibrate()
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
-
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
-
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    for (System& system : systems)
     {
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectedSecondSystem = systems[selectedSystemPair.second];
-
-      size_t selectedComponent = selectedSystem.randomComponent(random);
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
-
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-          selectedSecondSystem.containsTheFractionalMolecule);
-
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSecondSystem.containsTheFractionalMolecule);
-    }
-
-    if (currentCycle % printEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        std::ostream stream(streams[system.systemId].rdbuf());
-
-        system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-        std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
-        std::flush(stream);
-      }
-    }
-
-    if (currentCycle % rescaleWangLandauEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        for (Component& component : system.components)
-        {
-          component.lambdaGC.WangLandauIteration(
-              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-              system.containsTheFractionalMolecule);
-        }
-      }
-    }
-
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
+      threadPool.enqueue_detach([this](System& system) { runSystemCycleEquilibrate(system); }, system);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -379,12 +362,74 @@ void ParallelTempering::equilibrate()
   }
 }
 
-void ParallelTempering::production()
+void ParallelTempering::runSystemCycleProduction(System& system)
 {
-  std::chrono::system_clock::time_point t1, t2;
   size_t totalNumberOfMolecules{0uz};
   size_t totalNumberOfComponents{0uz};
   size_t numberOfStepsPerCycle{0uz};
+
+  totalNumberOfMolecules = system.numberOfMolecules();
+  totalNumberOfComponents = system.numerOfAdsorbateComponents();
+  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+  for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  {
+    // move to 'slide' when implemented in llvm
+    // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
+    // std::ranges::views::slide(s, 2uz);
+
+    // now using system and system for two selected components
+    // system swaps and gibbs volume are not allowed anyway.
+
+    size_t selectedComponent = system.randomComponent(random);
+
+    MC_Moves::performRandomMoveProduction(random, system, system, selectedComponent, fractionalMoleculeSystem,
+                                          estimation.currentBin);
+    system.components[selectedComponent].lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+  }
+
+  // add the sample energy to the averages
+  if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+  {
+    std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+    std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+    system.currentEnergyStatus = molecularPressure.first;
+    system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+    std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+    system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+    system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+  }
+  if (currentCycle % printEvery == 0uz)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+    std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+    std::flush(stream);
+  }
+
+  if (currentCycle % optimizeMCMovesEvery == 0uz)
+  {
+    system.optimizeMCMoves();
+  }
+  if (system.propertyConventionalRadialDistributionFunction.has_value())
+  {
+    system.propertyConventionalRadialDistributionFunction->writeOutput(
+        system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
+  }
+
+  if (system.propertyRadialDistributionFunction.has_value())
+  {
+    system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
+  }
+  if (system.propertyDensityGrid.has_value())
+  {
+    system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+                                            system.frameworkComponents, system.components, currentCycle);
+  }
+  numberOfSteps += numberOfStepsPerCycle;
+}
+
+void ParallelTempering::production()
+{
+  std::chrono::system_clock::time_point t1, t2;
   double minBias{0.0};
 
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
@@ -437,91 +482,9 @@ void ParallelTempering::production()
     t1 = std::chrono::system_clock::now();
     estimation.setCurrentSample(currentCycle);
 
-    totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
-
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
-
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
-    {
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectedSecondSystem = systems[selectedSystemPair.second];
-
-      size_t selectedComponent = selectedSystem.randomComponent(random);
-
-      MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                            fractionalMoleculeSystem, estimation.currentBin);
-
-      // sample the occupancy within the innerloop
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-          selectedSecondSystem.containsTheFractionalMolecule);
-
-      ++numberOfSteps;
-    }
-
-    // sample properties
     for (System& system : systems)
     {
-      system.sampleProperties(estimation.currentBin, currentCycle);
-    }
-
-    for (System& system : systems)
-    {
-      // add the sample energy to the averages
-      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
-      {
-        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
-        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        system.currentEnergyStatus = molecularPressure.first;
-        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-      }
-    }
-
-    if (currentCycle % printEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, "{}", system.writeProductionStatusReport(currentCycle, numberOfCycles));
-        std::flush(stream);
-      }
-    }
-
-    if (currentCycle % optimizeMCMovesEvery == 0uz)
-    {
-      for (System& system : systems)
-      {
-        system.optimizeMCMoves();
-      }
-    }
-
-    // output properties to files
-    for (System& system : systems)
-    {
-      if (system.propertyConventionalRadialDistributionFunction.has_value())
-      {
-        system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-            currentCycle);
-      }
-
-      if (system.propertyRadialDistributionFunction.has_value())
-      {
-        system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
-      }
-      if (system.propertyDensityGrid.has_value())
-      {
-        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                system.frameworkComponents, system.components, currentCycle);
-      }
+      threadPool.enqueue_detach([this](System& system) { runSystemCycleProduction(system); }, system);
     }
 
     // write binary-restart file

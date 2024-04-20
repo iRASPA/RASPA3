@@ -30,6 +30,7 @@ test_*
 restart_data.bin
 
 dependencies.sh
+examples/*/*/output/
 
 # C++ objects and libs
 *.slo
