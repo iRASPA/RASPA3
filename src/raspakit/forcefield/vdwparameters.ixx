@@ -24,6 +24,7 @@ import <optional>;
 
 import archive;
 import double4;
+import units;
 
 export struct VDWParameters
 {
@@ -44,10 +45,17 @@ export struct VDWParameters
 
   VDWParameters(): parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
 
-  VDWParameters(double epsilon, double sigma) : parameters(double4(epsilon, sigma, 0.0, 0.0)), shift(0.0), 
-                                                tailCorrectionEnergy(0.0), type(Type::LennardJones)
-  {
-  }
+  /// Creates a Lennard-Jones VDWParameter structure.
+  ///
+  /// - Parameters:
+  ///   - epsilon: the strength parameter of the potential in units of Kelvin.
+  ///   - sigma: the size parameter of the potential in units of Angstrom.
+  VDWParameters(double epsilon, double sigma) : 
+    parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)), 
+    shift(0.0), 
+    tailCorrectionEnergy(0.0), 
+    type(Type::LennardJones)
+  {}
 
   void computeShiftAtCutOff(double cutOff)
   {

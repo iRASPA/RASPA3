@@ -105,8 +105,10 @@ void ForceField::applyMixingRule()
       double mix1 = 
         0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
       
-      data[i * numberOfPseudoAtoms + j] = VDWParameters(mix0, mix1);
-      data[j * numberOfPseudoAtoms + i] = VDWParameters(mix0, mix1);
+      data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+      data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+      data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+      data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
     }
   }
 }
@@ -264,7 +266,7 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
     double param0 = scannedJsonParameters[0];
     double param1 = scannedJsonParameters[1];
 
-    jsonSelfInteractions[index.value()] = VDWParameters(param0 * Units::KelvinToEnergy, param1);
+    jsonSelfInteractions[index.value()] = VDWParameters(param0, param1);
   }
 
   MixingRule jsonMixingRule{MixingRule::Lorentz_Berthelot};

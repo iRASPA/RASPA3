@@ -10,6 +10,7 @@
 import int3;
 import double3;
 
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -33,11 +34,11 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -74,10 +75,10 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
   Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1545.62921755, 1e-6);
-  EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, -592.13188606, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -242.42459776, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeCharge * 1.2027242847, 154.11883595, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1545.62921755, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, -592.13188606, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.42459776, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 154.11883595, 1e-6);
 }
 
 TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
@@ -89,11 +90,11 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -164,10 +165,10 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
   Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);            
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -2525.36580663, 1e-6);
-  EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, 2167.45591472, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -242.42459776, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeCharge * 1.2027242847, 154.11883595, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -2525.36580663, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, 2167.45591472, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.42459776, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 154.11883595, 1e-6);
 }
 
 TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
@@ -179,11 +180,11 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -256,11 +257,11 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
 
   RunningEnergy energy = system.computeTotalEnergies();
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -2657.36121975, 1e-6);
-  EXPECT_NEAR(energy.frameworkMoleculeCharge * 1.2027242847, 1971.00612979, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -242.94298709, 1e-6);
-  EXPECT_NEAR(energy.moleculeMoleculeCharge * 1.2027242847, 162.41877650, 1e-6);
-  //EXPECT_NEAR(energy.tail * 1.2027242847,-127.81601515, 1e-6);
-  EXPECT_NEAR(energy.tail * 1.2027242847,-127.72803736223419, 1e-6);
-  EXPECT_NEAR(energy.ewald * 1.2027242847, -1197.23909965, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -2657.36121975, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, 1971.00612979, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.94298709, 1e-6);
+  EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
+  //EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.81601515, 1e-6);
+  EXPECT_NEAR(energy.tail * Units::EnergyToKelvin,-127.72803736223419, 1e-6);
+  EXPECT_NEAR(energy.ewald * Units::EnergyToKelvin, -1197.23909965, 1e-6);
 }

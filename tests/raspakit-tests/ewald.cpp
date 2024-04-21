@@ -10,6 +10,7 @@ import int3;
 import double3;
 import double3x3;
 
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -36,11 +37,11 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -81,7 +82,7 @@ TEST(Ewald, Test_2_CO2_in_Box_10_10_10)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           system.spanOfMoleculeAtoms(), energy);
 
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, 90.54613836, 1e-6);
+  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, 90.54613836, 1e-6);
 }
 
 TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
@@ -93,11 +94,11 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
       PseudoAtom("Na+", 12.0,      1.0, 6, false),
       PseudoAtom("Cl-", 15.9994,  -1.0, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(75.0 / 1.2027242847, 1.0),
-      VDWParameters(75.0 / 1.2027242847, 1.0)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(75.0, 1.0),
+      VDWParameters(75.0, 1.0)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -213,11 +214,11 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -266,8 +267,8 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           system.spanOfMoleculeAtoms(), energy);
 
-  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 17464.2371790130, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -702.65863478, 1e-6);
+  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 17464.2371790130, 1e-6);
+  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -702.65863478, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
@@ -279,11 +280,11 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -332,8 +333,8 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           system.spanOfMoleculeAtoms(), energy);
 
-  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 9673.9032373025, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -721.64644486, 1e-6);
+  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 9673.9032373025, 1e-6);
+  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -721.64644486, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
@@ -345,11 +346,11 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -432,8 +433,8 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           system.spanOfMoleculeAtoms(), energy);
 
-  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 12028.1731827280, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1191.77790165, 1e-6);
+  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 12028.1731827280, 1e-6);
+  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -1191.77790165, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
@@ -446,11 +447,11 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -533,8 +534,8 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           system.spanOfMoleculeAtoms(), energy);
 
-  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * 1.2027242847, 6309.7866899037, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * 1.2027242847, -1197.23909965, 1e-6);
+  EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 6309.7866899037, 1e-6);
+  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -1197.23909965, 1e-6);
 }
 
 
@@ -547,11 +548,11 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
       PseudoAtom("Na+",  12.0,      0.0,    6, false),
       PseudoAtom("Cl-",  15.9994,   0.0,    8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(15.0966 / 1.2027242847, 2.65755),
-      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(15.0966, 2.65755),
+      VDWParameters(142.562, 3.51932)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -726,11 +727,11 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
       PseudoAtom("Na+",  12.0,      1.0, 6, false),
       PseudoAtom("Cl-",  15.9994,  -1.0, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(15.0966 / 1.2027242847, 2.65755),
-      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(15.0966, 2.65755),
+      VDWParameters(142.562, 3.51932)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,

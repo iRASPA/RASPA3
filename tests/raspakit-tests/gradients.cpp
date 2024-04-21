@@ -8,6 +8,8 @@
 
 import int3;
 import double3;
+
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -27,7 +29,7 @@ TEST(Gradients, Test_CH4_in_Box_25x25x25)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
-    { VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     false,
@@ -113,11 +115,11 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
       PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
       PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(29.933 / 1.2027242847, 2.745),
-      VDWParameters(85.671 / 1.2027242847, 3.017)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(29.933, 2.745),
+      VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
@@ -248,11 +250,11 @@ TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
       PseudoAtom("Na+",  12.0,      0.0, 6, false),
       PseudoAtom("Cl-",  15.9994,   0.0, 8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(15.0966 / 1.2027242847, 2.65755),
-      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(15.0966, 2.65755),
+      VDWParameters(142.562, 3.51932)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,

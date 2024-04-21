@@ -10,6 +10,7 @@ import int3;
 import double3;
 import double3x3;
 
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -28,7 +29,7 @@ TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
-    { VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     false,
@@ -46,7 +47,7 @@ TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
   RunningEnergy energy;
   Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, system.atomPositions, energy);
 
-  EXPECT_NEAR(energy.moleculeMoleculeVDW * 1.2027242847, -158.5, 1e-12);
+  EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -158.5, 1e-12);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
@@ -56,9 +57,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -154,7 +155,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
@@ -164,9 +165,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -262,7 +263,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -602.89568378, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -602.89568378, 1e-6);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
@@ -272,9 +273,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -302,7 +303,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -337.77056357, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
@@ -312,9 +313,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -376,7 +377,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1784.82292180, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1784.82292180, 1e-6);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
@@ -386,9 +387,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -450,7 +451,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1828.89015075, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1828.89015075, 1e-6);
 }
 
 TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
@@ -460,9 +461,9 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
       PseudoAtom("O", 15.999, -1.025, 8, false),
       PseudoAtom("CH4", 16.04246, 0.0, 6, false)
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -774,5 +775,5 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
   RunningEnergy energy;
   Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
 
-  EXPECT_NEAR(energy.frameworkMoleculeVDW * 1.2027242847, -1784.82292180, 1e-6);
+  EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1784.82292180, 1e-6);
 }

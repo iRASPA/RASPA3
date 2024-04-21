@@ -11,6 +11,7 @@ import int3;
 import double3;
 import double3x3;
 
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -24,7 +25,7 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
-    { VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -62,11 +63,11 @@ TEST(insertion_deletion, CO2_number_of_molecules_per_component)
     PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
     PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
   },
-  { VDWParameters(22.0 / 1.2027242847, 2.30),
-    VDWParameters(53.0 / 1.2027242847, 3.3),
-    VDWParameters(158.5 / 1.2027242847, 3.72),
-    VDWParameters(29.933 / 1.2027242847, 2.745),
-    VDWParameters(85.671 / 1.2027242847, 3.017)
+  { VDWParameters(22.0, 2.30),
+    VDWParameters(53.0, 3.3),
+    VDWParameters(158.5, 3.72),
+    VDWParameters(29.933, 2.745),
+    VDWParameters(85.671, 3.017)
   },
   ForceField::MixingRule::Lorentz_Berthelot,
   12.0,
@@ -122,11 +123,11 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
     PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
     PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
   },
-  { VDWParameters(22.0 / 1.2027242847, 2.30),
-    VDWParameters(53.0 / 1.2027242847, 3.3),
-    VDWParameters(158.5 / 1.2027242847, 3.72),
-    VDWParameters(29.933 / 1.2027242847, 2.745),
-    VDWParameters(85.671 / 1.2027242847, 3.017)
+  { VDWParameters(22.0, 2.30),
+    VDWParameters(53.0, 3.3),
+    VDWParameters(158.5, 3.72),
+    VDWParameters(29.933, 2.745),
+    VDWParameters(85.671, 3.017)
   },
   ForceField::MixingRule::Lorentz_Berthelot,
   12.0,
@@ -272,11 +273,11 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
     PseudoAtom("C_co2", 12.0,      0.6512, 6, false),
     PseudoAtom("O_co2", 15.9994,  -0.3256, 8, false),
   },
-  { VDWParameters(22.0 / 1.2027242847, 2.30),
-    VDWParameters(53.0 / 1.2027242847, 3.3),
-    VDWParameters(158.5 / 1.2027242847, 3.72),
-    VDWParameters(29.933 / 1.2027242847, 2.745),
-    VDWParameters(85.671 / 1.2027242847, 3.017)
+  { VDWParameters(22.0, 2.30),
+    VDWParameters(53.0, 3.3),
+    VDWParameters(158.5, 3.72),
+    VDWParameters(29.933, 2.745),
+    VDWParameters(85.671, 3.017)
   },
   ForceField::MixingRule::Lorentz_Berthelot,
   12.0,

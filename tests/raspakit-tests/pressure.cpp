@@ -11,6 +11,7 @@ import int3;
 import double3;
 import double3x3;
 
+import units;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -33,7 +34,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
 
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
-    { VDWParameters(158.5 / 1.2027242847, 3.72) },
+    { VDWParameters(158.5, 3.72) },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
     true,
@@ -120,11 +121,11 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
       PseudoAtom("Na+",   12.0,      1.0,    6, false),
       PseudoAtom("Cl-",   15.9994,  -1.0,    8, false),
     },
-    { VDWParameters(22.0 / 1.2027242847, 2.30),
-      VDWParameters(53.0 / 1.2027242847, 3.3),
-      VDWParameters(158.5 / 1.2027242847, 3.72),
-      VDWParameters(15.0966 / 1.2027242847, 2.65755),
-      VDWParameters(142.562 / 1.2027242847, 3.51932)
+    { VDWParameters(22.0, 2.30),
+      VDWParameters(53.0, 3.3),
+      VDWParameters(158.5, 3.72),
+      VDWParameters(15.0966, 2.65755),
+      VDWParameters(142.562, 3.51932)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
     12.0,
