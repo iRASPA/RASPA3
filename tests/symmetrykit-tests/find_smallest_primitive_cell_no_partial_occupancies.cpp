@@ -53,7 +53,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Triclinic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -137,7 +137,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Monoclinic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -315,7 +315,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Orthorhombic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -516,7 +516,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Tetragonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -623,7 +623,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Trigonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -728,7 +728,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Hexagonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -847,7 +847,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Cubic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });
@@ -1081,7 +1081,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Virtual)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(histogram.begin(), histogram.end(),
       [](const auto& l, const auto& r) { return l.second < r.second; });
-    int leastOccuringAtomType = index->first;
+    size_t leastOccuringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double> > reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms), [leastOccuringAtomType](std::tuple<double3, size_t, double> a) {return std::get<1>(a) == leastOccuringAtomType; });

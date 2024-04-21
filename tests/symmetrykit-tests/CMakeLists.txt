@@ -1,7 +1,5 @@
 add_executable(unit_tests_symmetrykit
                transformation_matrix.cpp 
-               find_conventional_cell.cpp 
-               find_conventional_cell.cpp 
                find_smallest_primitive_cell.cpp 
                find_smallest_primitive_cell_no_partial_occupancies.cpp 
                find_pointgroup.cpp

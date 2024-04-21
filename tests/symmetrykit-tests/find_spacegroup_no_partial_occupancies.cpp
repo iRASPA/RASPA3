@@ -57,7 +57,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Triclinic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -130,7 +130,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Monoclinic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -297,7 +297,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Orthorhombic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -487,7 +487,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Tetragonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -583,7 +583,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Trigonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -677,7 +677,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Hexagonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -785,7 +785,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Cubic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -1145,7 +1145,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Virtual)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);

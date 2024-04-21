@@ -56,7 +56,7 @@ TEST(FindSpacegroup, Triclinic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -129,7 +129,7 @@ TEST(FindSpacegroup, Monoclinic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -296,7 +296,7 @@ TEST(FindSpacegroup, Orthorhombic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -486,7 +486,7 @@ TEST(FindSpacegroup, Tetragonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -582,7 +582,7 @@ TEST(FindSpacegroup, Trigonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -676,7 +676,7 @@ TEST(FindSpacegroup, Hexagonal)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -784,7 +784,7 @@ TEST(FindSpacegroup, Cubic)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
@@ -1144,7 +1144,7 @@ TEST(FindSpacegroup, Virtual)
 
     if (spaceGroup)
     {
-      int foundHallNumber = spaceGroup->HallNumber;
+      size_t foundHallNumber = spaceGroup->HallNumber;
       SKSpaceGroup foundSpaceGroup = SKSpaceGroup(foundHallNumber);
       size_t foundSpaceGroupNumber = foundSpaceGroup.spaceGroupSetting().number();
       EXPECT_EQ(foundSpaceGroupNumber, spaceGroupTargetValue);
