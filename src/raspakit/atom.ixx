@@ -45,9 +45,6 @@ import stringutils;
 import scaling;
 
 
-
-
-// Size is 2 times a __256d (double3 is padded and of size __256d)
 // C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Atom
 {

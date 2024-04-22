@@ -46,6 +46,7 @@ import threadpool;
 
 
 import atom;
+import molecule;
 import framework;
 import component;
 import framework;
@@ -166,6 +167,7 @@ export struct System
   // The atoms-order is defined as increasing per component and molecule.
   // Because the number of atoms is fixed per component it is easy to access the n-th molecule
   std::vector<Atom> atomPositions;
+  std::vector<Molecule> moleculePositions;
 
   RunningEnergy runningEnergies;
   RunningEnergy rigidEnergies;

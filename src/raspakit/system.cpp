@@ -696,7 +696,11 @@ std::string System::writeOutputHeader() const
   std::print(stream, "Compiler and run-time data\n");
   std::print(stream, "===============================================================================\n");
 
-  std::print(stream, "RASPA 3.0.0\n\n");
+  #ifdef VERSION
+    #define QUOTE(str) #str
+    #define EXPAND_AND_QUOTE(str) QUOTE(str)
+    std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
+  #endif
 
   ThreadPool &pool = ThreadPool::instance();
   const size_t numberOfHelperThreads = pool.getThreadCount();
@@ -704,16 +708,16 @@ std::string System::writeOutputHeader() const
   switch(pool.threadingType)
   {
     case ThreadPool::ThreadingType::Serial:
-      std::print(stream, "Parallization: Serial, 1 thread\n");
+      std::print(stream, "Parallelization: Serial, 1 thread\n");
       break;
     case ThreadPool::ThreadingType::OpenMP:
-      std::print(stream, "Parallization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+      std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
       break;
     case ThreadPool::ThreadingType::ThreadPool:
-      std::print(stream, "Parallization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+      std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
       break;
     case ThreadPool::ThreadingType::GPU_Offload:
-      std::print(stream, "Parallization: GPU-Offload\n");
+      std::print(stream, "Parallelization: GPU-Offload\n");
       break;
   } 
   std::print(stream, "\n");

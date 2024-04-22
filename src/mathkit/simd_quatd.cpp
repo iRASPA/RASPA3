@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <numbers>
 #include <cmath>
+#include <fstream>
 #endif
 
 module simd_quatd;
@@ -10,9 +11,11 @@ module simd_quatd;
 #ifndef USE_LEGACY_HEADERS
 import <numbers>;
 import <cmath>;
+import <fstream>;
 #endif
 
 import double3;
+import archive;
 
 simd_quatd::simd_quatd(double ix, double iy, double iz, double r)
 {
@@ -3588,4 +3591,22 @@ const double simd_quatd::weights360[360] =
   1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,1.32870,
   1.32870,1.32870,1.32870
 };
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const simd_quatd &q)
+{
+  archive << q.ix;
+  archive << q.iy;
+  archive << q.iz;
+  archive << q.r;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, simd_quatd &q)
+{
+  archive >> q.ix;
+  archive >> q.iy;
+  archive >> q.iz;
+  archive >> q.r;
+  return archive;
+}
 
