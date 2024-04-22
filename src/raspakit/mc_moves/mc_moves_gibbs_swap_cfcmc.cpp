@@ -35,6 +35,7 @@ import <type_traits>;
 import randomnumbers;
 import running_energy;
 import system;
+import molecule;
 import atom;
 import cbmc;
 import energy_factor;
@@ -422,7 +423,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
        {
          atom.setScalingToInteger();
        }
-       systemA.insertMolecule(selectedComponent, addedMolecule);
+       systemA.insertMolecule(selectedComponent, Molecule(), addedMolecule);
        
        Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 

@@ -35,6 +35,7 @@ import <iomanip>;
 #endif
 
 import component;
+import molecule;
 import atom;
 import double3;
 import double3x3;
@@ -141,7 +142,7 @@ MC_Moves::insertionMoveCBMC(RandomNumber &random, System& system, size_t selecte
     system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalAccepted += 1;
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-    system.insertMolecule(selectedComponent, growData->atom);
+    system.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
     return {growData->energies + energyFourierDifference + tailEnergyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };

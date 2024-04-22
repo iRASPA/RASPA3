@@ -24,16 +24,10 @@ export struct FirstBeadData
   double RosenbluthWeight;
   double storedR;
 
+  FirstBeadData() noexcept = delete;
   FirstBeadData(Atom atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept :
       atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
-
-  FirstBeadData() noexcept = delete;
-  FirstBeadData(const FirstBeadData& a) noexcept = default;
-  FirstBeadData& operator=(const FirstBeadData& a) noexcept = default;
-  FirstBeadData(FirstBeadData&& a) noexcept = default;
-  FirstBeadData& operator=(FirstBeadData&& a) noexcept = default;
-  ~FirstBeadData() noexcept = default;
 };
 

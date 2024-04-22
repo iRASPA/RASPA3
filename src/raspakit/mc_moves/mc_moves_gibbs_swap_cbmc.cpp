@@ -151,7 +151,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
 
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
-    systemA.insertMolecule(selectedComponent, growData->atom);
+    systemA.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
     // Debug
     //assert(system.checkMoleculeIds());

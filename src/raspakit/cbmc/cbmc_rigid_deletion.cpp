@@ -28,8 +28,10 @@ import <cmath>;
 
 import randomnumbers;
 import component;
+import molecule;
 import atom;
 import double3;
+import simd_quatd;
 import double3x3;
 import simulationbox;
 import energy_status;
@@ -69,7 +71,8 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalFie
 
   if(molecule.size() == 1)
   {
-    return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), 
+    return ChainData(Molecule(double3(), simd_quatd()), 
+                     std::vector<Atom>(molecule.begin(), molecule.end()), 
                      firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
   }
 
@@ -77,9 +80,10 @@ CBMC::retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalFie
     retraceRigidChain(random, hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, cutOffCoulomb, 
                       startingBead, scaling, molecule, numberOfTrialDirections);
 
-  return ChainData(std::vector<Atom>(molecule.begin(), molecule.end()), 
-                                     firstBeadData.energies + rigidRotationData.energies,
-                                     firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
+  return ChainData(Molecule(double3(), simd_quatd()),
+                   std::vector<Atom>(molecule.begin(), molecule.end()), 
+                   firstBeadData.energies + rigidRotationData.energies,
+                   firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
 
@@ -110,6 +114,7 @@ retraceRigidChain(RandomNumber &random, bool hasExternalField, const ForceField 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
-  return ChainData(trialPositions[0], externalEnergies[0].second, 
+  return ChainData(Molecule(double3(), simd_quatd()),
+                   trialPositions[0], externalEnergies[0].second, 
                    RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }

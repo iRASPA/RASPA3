@@ -254,6 +254,7 @@ export struct System
 
   size_t indexOfFirstMolecule(size_t selectedComponent);
   std::vector<Atom>::iterator iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule);
+  std::vector<Molecule>::iterator indexForMolecule(size_t selectedComponent, size_t selectedMolecule);
   std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule); 
   const std::span<const Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const; 
   std::span<const Atom> spanOfFrameworkAtoms() const;
@@ -314,9 +315,9 @@ export struct System
     return comps;
   }
 
-  void insertMolecule(size_t selectedComponent, std::vector<Atom> atoms);
-  void insertFractionalMolecule(size_t selectedComponent, std::vector<Atom> atoms, size_t moleculeId);
-  void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> molecule);
+  void insertMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
+  void insertFractionalMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms, size_t moleculeId);
+  void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> atoms);
   bool checkMoleculeIds();
   
   std::vector<Atom> randomConfiguration(RandomNumber &random, size_t selectedComponent, const std::span<const Atom> atoms);

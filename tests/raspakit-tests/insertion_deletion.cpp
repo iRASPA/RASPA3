@@ -12,6 +12,7 @@ import double3;
 import double3x3;
 
 import units;
+import molecule;
 import atom;
 import pseudo_atom;
 import vdwparameters;
@@ -351,7 +352,8 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+  system.insertMolecule(1, Molecule(),
+                           {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
                             Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
                             Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
 
@@ -497,7 +499,8 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
 
 
   //insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+  system.insertMolecule(1, Molecule(),
+                           {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
                             Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
                             Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
 
@@ -550,7 +553,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[17].componentId, 1);
 
   //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
@@ -694,7 +697,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[12].componentId, 1);
 
   //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
@@ -780,7 +783,8 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[12].componentId, 1);
 
   //insert new CO2
-  system.insertMolecule(1, {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
+  system.insertMolecule(1, Molecule(),
+                           {Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
                             Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
                             Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)});
 
@@ -829,7 +833,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[15].componentId, 1);
 
   //insert new Methane
-  system.insertMolecule(0, {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0,  0.0),    0.0, 1.0, 0, 2, 0, 0) });
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);

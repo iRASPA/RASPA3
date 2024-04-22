@@ -28,8 +28,10 @@ import <cmath>;
 
 import randomnumbers;
 import component;
+import molecule;
 import atom;
 import double3;
+import simd_quatd;
 import double3x3;
 import simulationbox;
 import energy_status;
@@ -78,7 +80,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
 
   if(atoms.size() == 1)
   {
-    return ChainData({firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
+    return ChainData(Molecule(double3(), simd_quatd()), {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
   std::optional<ChainData> const rigidRotationData = 
@@ -87,7 +89,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
   
   if (!rigidRotationData) return std::nullopt;
 
-  return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, 
+  return ChainData(rigidRotationData->molecule, rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, 
                    firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, 0.0);
 }
 
@@ -123,6 +125,7 @@ CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const 
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, 
+  return ChainData(Molecule(double3(), simd_quatd()),
+                   externalEnergies[selected].first, externalEnergies[selected].second, 
                    RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }

@@ -45,7 +45,7 @@ import stringutils;
 import scaling;
 
 
-// C++17 and higher: std::vector<T> is automatically properly aligned based on type T
+// Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Atom
 {
   double3 position;
@@ -60,12 +60,6 @@ export struct Atom
   uint8_t groupId{ 0 };   // defaults to false
 
   Atom() noexcept = default;
-  Atom(const Atom &a) noexcept = default;
-  Atom& operator=(const Atom& a) noexcept = default;
-  Atom(Atom&& a) noexcept = default;
-  Atom& operator=(Atom&& a) noexcept = default;
-  ~Atom() noexcept = default;
-
   Atom(double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) :
     position(position), charge(charge), moleculeId(moleculeId), type(type), componentId(componentId), groupId(groupId)
   {

@@ -35,6 +35,7 @@ import <iomanip>;
 #endif
 
 import component;
+import molecule;
 import atom;
 import double3;
 import double3x3;

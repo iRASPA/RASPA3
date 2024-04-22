@@ -37,6 +37,7 @@ import <type_traits>;
 #endif
 
 import component;
+import molecule;
 import atom;
 import double3;
 import double3x3;
@@ -284,7 +285,7 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
       system.components[selectedComponent].lambdaGC.setCurrentBin(newBin);
 
       // Note: inserting invalidates iterators and spans (the vector could reallocate memory)
-      system.insertMolecule(selectedComponent, newatoms);
+      system.insertMolecule(selectedComponent, Molecule(), newatoms);
 
       // swap first and last molecule (selectedMolecule) so that molecule 'indexFractionalMolecule' 
       // is always the fractional molecule 

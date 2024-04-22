@@ -43,12 +43,13 @@ import double3;
 import simd_quatd;
 import stringutils;
 
-// C++17 and higher: std::vector<T> is automatically properly aligned based on type T
+// Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Molecule
 {
   double3 centerOfMassPosition;
   simd_quatd orientation;    
 
+  Molecule() noexcept = default;
   Molecule(double3 centerOfMassPosition, simd_quatd orientation) :
     centerOfMassPosition(centerOfMassPosition), orientation(orientation)
   {
