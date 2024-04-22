@@ -249,6 +249,86 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
   }
 }
 
+// The space-fixed coordinate system is chosen in an inertial reference frame in which Newton's equations of motion are valid.
+// The body-fixed coordinate system is an origin and three orthogonal axes (unit vectors) that are fixed to the body and rotate,
+// tumble, spin and twist along with it.
+
+// The unit quaternion q is introduced in order to generate a minimal, nonsingular, representation of the rotation matrix from a
+// space-fixed denoted ‘s’ to a body-fixed coordinate system denoted ‘b’.
+// The Quaternion Rotation Operator is L_q(v)=q* v q; this operator represents a rotation through an angle alpha about a vector q as its axis.
+// We apply the quaternion rotation operator to a 3D vector v (a pure quaternion defined in the space-fixed frame), and express it as w in the
+// body-fixed frame w_b=R(q) v_s
+double3x3 double3x3::BuildRotationMatrix(const simd_quatd &q)
+{
+  double3x3 R{};
+
+  R.ax = 2.0 * (q.r  * q.r  + q.ix * q.ix) - 1.0; R.bx = 2.0 * (q.ix * q.iy + q.r * q.iz);      R.cx = 2.0 * (q.ix * q.iz - q.r  * q.iy);
+  R.ay = 2.0 * (q.ix * q.iy - q.r  * q.iz);       R.by = 2.0 * (q.iy * q.iy + q.r * q.r) - 1.0; R.cy = 2.0 * (q.iy * q.iz + q.r  * q.ix);
+  R.az = 2.0 * (q.ix * q.iz + q.r  * q.iy);       R.bz = 2.0 * (q.iy * q.iz - q.r * q.ix);      R.cz = 2.0 * (q.r  * q.r  + q.iz * q.iz) - 1.0;
+
+  return R;
+}
+
+// To do the opposite, namely apply the quaternion rotation operator to a 3D vector v (a pure quaternion defined in the body-fixed frame),
+// and express it as w in the space-fixed frame, we have w_s=R(q)^-1 v_b=R(q)^T v_b
+double3x3 double3x3::buildRotationMatrixInverse(const simd_quatd &q)
+{
+  double3x3 R{};
+  R.ax = 2.0 * (q.r  * q.r  + q.ix * q.ix) - 1.0; R.bx = 2.0 * (q.ix * q.iy - q.r * q.iz);      R.cx = 2.0 * (q.ix * q.iz + q.r  * q.iy);
+  R.ay = 2.0 * (q.ix * q.iy + q.r  * q.iz);       R.by = 2.0 * (q.iy * q.iy + q.r * q.r) - 1.0; R.cy = 2.0 * (q.iy * q.iz - q.r  * q.ix);
+  R.az = 2.0 * (q.ix * q.iz - q.r  * q.iy);       R.bz = 2.0 * (q.iy * q.iz + q.r * q.ix);      R.cz = 2.0 * (q.r  * q.r  + q.iz * q.iz) - 1.0;
+
+  return R;
+}
+
+ // Function   | Transform a rotation matrix to a quaternion
+ // Parameters | The 3x3 rotation matrix R
+ // Note       | The algorithm returns a single quaternion q, but -q represents the same rotation
+ // Ref.       | Page 305 "3-D Computer Graphics A Mathematical Introduction with OpenGL", Samuel R. Buss
+
+simd_quatd double3x3::quaternion()
+{
+  simd_quatd q;
+
+  double trace = this->ax + this->by + this->cz;
+
+  size_t Switch{};
+  double max=trace;
+  if(this->ax>max) {max=this->ax; Switch=1;}
+  if(this->by>max) {max=this->by; Switch=2;}
+  if(this->cz>max) {max=this->cz; Switch=3;}
+
+  switch(Switch)
+  {
+    case 0:
+      q.r  = 0.5 * std::sqrt(trace + 1.0);
+      q.ix = (this->cy - this->bz) / (4.0 * q.r);
+      q.iy = (this->az - this->cx) / (4.0 * q.r);
+      q.iz = (this->bx - this->ay) / (4.0 * q.r);
+      break;
+    case 1:
+      q.ix = 0.5 * std::sqrt(2.0 * this->ax - trace + 1.0);
+      q.r  = (this->cy - this->bz) / (4.0 * q.ix);
+      q.iy = (this->bx + this->ay) / (4.0 * q.ix);
+      q.iz = (this->az + this->cx) / (4.0 * q.ix);
+      break;
+    case 2:
+      q.iy = 0.5 * std::sqrt(2.0 * this->by - trace + 1.0);
+      q.r  = (this->az - this->cx) / (4.0 * q.iy);
+      q.ix = (this->bx + this->ay) / (4.0 * q.iy);
+      q.iz = (this->cy + this->bz) / (4.0 * q.iy);
+      break;
+    case 3:
+      q.iz = 0.5 * std::sqrt(2.0 * this->cz - trace + 1.0);
+      q.r  = (this->bx - this->ay) / (4.0 * q.iz);
+      q.ix = (this->az + this->cx) / (4.0 * q.iz);
+      q.iy = (this->cy + this->bz) / (4.0 * q.iz);
+      break;
+  }
+  return q;
+}
+
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3x3 &vec)
 {
   archive << vec.ax << vec.ay << vec.az;

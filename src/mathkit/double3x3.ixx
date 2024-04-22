@@ -29,106 +29,107 @@ import int3x3;
 
 export union double3x3
 {
-//    #ifdef __AVX__
-//      __m256d columns[4];
-//    #endif
-    double m[16];
-    double mm[4][4];
-    double3 v[4];
-    struct {
-        double m11, m21, m31, m41,   // 1st column
-            m12, m22, m32, m42,   // 2nd column
-            m13, m23, m33, m43,   // 3rd column
-            m14, m24, m34, m44;   // 4th column, {tx,ty,tz,1}
-    };
-    struct {
-        double ax, ay, az, aw,    // 1st column
-            bx, by, bz, bw,    // 2nd column
-            cx, cy, cz, cw,    // 3rd column
-            wx, wy, wz, ww;    // 4th column, {tx,ty,tz,1}
-    };
+  double m[16];
+  double mm[4][4];
+  double3 v[4];
+  struct {
+      double m11, m21, m31, m41,   // 1st column
+          m12, m22, m32, m42,   // 2nd column
+          m13, m23, m33, m43,   // 3rd column
+          m14, m24, m34, m44;   // 4th column, {tx,ty,tz,1}
+  };
+  struct {
+      double ax, ay, az, aw,    // 1st column
+          bx, by, bz, bw,    // 2nd column
+          cx, cy, cz, cw,    // 3rd column
+          wx, wy, wz, ww;    // 4th column, {tx,ty,tz,1}
+  };
 
-    double3x3(double m11 = 0.0, double m21 = 0.0, double m31 = 0.0,
-              double m12 = 0.0, double m22 = 0.0, double m32 = 0.0,
-              double m13 = 0.0, double m23 = 0.0, double m33 = 0.0)
-        : m11(m11), m21(m21), m31(m31), m41(0.0),
-          m12(m12), m22(m22), m32(m32), m42(0.0),
-          m13(m13), m23(m23), m33(m33), m43(0.0),
-          m14(0.0), m24(0.0), m34(0.0), m44(0.0)
-    {
-
-    };
-    double3x3(double3 v1, double3 v2, double3 v3) :
-        m11(v1.x), m21(v1.y), m31(v1.z), m41(0.0),
-        m12(v2.x), m22(v2.y), m32(v2.z), m42(0.0),
-        m13(v3.x), m23(v3.y), m33(v3.z), m43(0.0),
+  double3x3(double m11 = 0.0, double m21 = 0.0, double m31 = 0.0,
+            double m12 = 0.0, double m22 = 0.0, double m32 = 0.0,
+            double m13 = 0.0, double m23 = 0.0, double m33 = 0.0)
+      : m11(m11), m21(m21), m31(m31), m41(0.0),
+        m12(m12), m22(m22), m32(m32), m42(0.0),
+        m13(m13), m23(m23), m33(m33), m43(0.0),
         m14(0.0), m24(0.0), m34(0.0), m44(0.0)
-    {
+  {
 
-    };
-    double3x3(simd_quatd q);
+  };
+  double3x3(double3 v1, double3 v2, double3 v3) :
+      m11(v1.x), m21(v1.y), m31(v1.z), m41(0.0),
+      m12(v2.x), m22(v2.y), m32(v2.z), m42(0.0),
+      m13(v3.x), m23(v3.y), m33(v3.z), m43(0.0),
+      m14(0.0), m24(0.0), m34(0.0), m44(0.0)
+  {
 
-    double3x3(const int3x3 &m);
+  };
+  double3x3(simd_quatd q);
 
-    double3x3(double lattice[3][3]);
+  double3x3(const int3x3 &m);
 
-    bool operator==(double3x3 const& rhs)
-    {
-      return (ax == rhs.ax) && (ay == rhs.ay) && (az == rhs.az) &&
-             (bx == rhs.bx) && (by == rhs.by) && (bz == rhs.bz) &&
-             (cx == rhs.cx) && (cy == rhs.cy) && (cz == rhs.cz);
-    }
+  double3x3(double lattice[3][3]);
 
-    inline double3& operator [] (size_t i) { return v[i]; }
-    inline const double3& operator [] (size_t i) const { return v[i]; }
+  bool operator==(double3x3 const& rhs)
+  {
+    return (ax == rhs.ax) && (ay == rhs.ay) && (az == rhs.az) &&
+           (bx == rhs.bx) && (by == rhs.by) && (bz == rhs.bz) &&
+           (cx == rhs.cx) && (cy == rhs.cy) && (cz == rhs.cz);
+  }
 
-    static double3x3 identity();
+  inline double3& operator [] (size_t i) { return v[i]; }
+  inline const double3& operator [] (size_t i) const { return v[i]; }
 
-    double determinant(void);
-    double trace(void) const;
-    double3x3 const inverse();
-    static double3x3 inverse(const double3x3& right);
-    static double3x3 transpose(const double3x3& right);
-    double3x3 const transpose(void) const;
-    double3x3 inversetranpose(void);
-    void EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvectors);
+  static double3x3 identity();
 
-    inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
-    inline bool operator==(const double3x3& b) const
-    {
-        return ((abs(this->m11 - b.m11) < 1e-5) && (abs(this->m12 - b.m12) < 1e-5) && (abs(this->m13 - b.m13) < 1e-5) &&
-                (abs(this->m21 - b.m21) < 1e-5) && (abs(this->m22 - b.m22) < 1e-5) && (abs(this->m23 - b.m23) < 1e-5) &&
-                (abs(this->m31 - b.m31) < 1e-5) && (abs(this->m32 - b.m32) < 1e-5) && (abs(this->m33 - b.m33) < 1e-5));
-    }
+  double determinant(void);
+  double trace(void) const;
+  double3x3 const inverse();
+  static double3x3 inverse(const double3x3& right);
+  static double3x3 transpose(const double3x3& right);
+  double3x3 const transpose(void) const;
+  double3x3 inversetranpose(void);
+  void EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvectors);
 
-    inline 
-        int3x3 toInt3x3()
-    {
-        int3x3 w;
+  static double3x3 BuildRotationMatrix(const simd_quatd &q);
+  static double3x3 buildRotationMatrixInverse(const simd_quatd &q);
+  simd_quatd quaternion();
 
-        w.m11 = int(rint(this->m11)); w.m21 = int(rint(this->m21)); w.m31 = int(rint(this->m31));
-        w.m12 = int(rint(this->m12)); w.m22 = int(rint(this->m22)); w.m32 = int(rint(this->m32));
-        w.m13 = int(rint(this->m13)); w.m23 = int(rint(this->m23)); w.m33 = int(rint(this->m33));
-        return w;
-    }
+  inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
+  inline bool operator==(const double3x3& b) const
+  {
+      return ((abs(this->m11 - b.m11) < 1e-5) && (abs(this->m12 - b.m12) < 1e-5) && (abs(this->m13 - b.m13) < 1e-5) &&
+              (abs(this->m21 - b.m21) < 1e-5) && (abs(this->m22 - b.m22) < 1e-5) && (abs(this->m23 - b.m23) < 1e-5) &&
+              (abs(this->m31 - b.m31) < 1e-5) && (abs(this->m32 - b.m32) < 1e-5) && (abs(this->m33 - b.m33) < 1e-5));
+  }
 
-    inline double3x3& operator+=(const double3x3& b)
-    {
-        this->m11 += b.m11; this->m21 += b.m21; this->m31 += b.m31;
-        this->m12 += b.m12; this->m22 += b.m22; this->m32 += b.m32;
-        this->m13 += b.m13; this->m23 += b.m23; this->m33 += b.m33;
+  inline 
+      int3x3 toInt3x3()
+  {
+    int3x3 w;
 
-        return *this;
-    }
+    w.m11 = int(rint(this->m11)); w.m21 = int(rint(this->m21)); w.m31 = int(rint(this->m31));
+    w.m12 = int(rint(this->m12)); w.m22 = int(rint(this->m22)); w.m32 = int(rint(this->m32));
+    w.m13 = int(rint(this->m13)); w.m23 = int(rint(this->m23)); w.m33 = int(rint(this->m33));
+    return w;
+  }
 
-    inline double3x3& operator-=(const double3x3& b)
-    {
-        this->m11 -= b.m11; this->m21 -= b.m21; this->m31 -= b.m31;
-        this->m12 -= b.m12; this->m22 -= b.m22; this->m32 -= b.m32;
-        this->m13 -= b.m13; this->m23 -= b.m23; this->m33 -= b.m33;
+  inline double3x3& operator+=(const double3x3& b)
+  {
+    this->m11 += b.m11; this->m21 += b.m21; this->m31 += b.m31;
+    this->m12 += b.m12; this->m22 += b.m22; this->m32 += b.m32;
+    this->m13 += b.m13; this->m23 += b.m23; this->m33 += b.m33;
 
-        return *this;
-    }
+    return *this;
+  }
+
+  inline double3x3& operator-=(const double3x3& b)
+  {
+    this->m11 -= b.m11; this->m21 -= b.m21; this->m31 -= b.m31;
+    this->m12 -= b.m12; this->m22 -= b.m22; this->m32 -= b.m32;
+    this->m13 -= b.m13; this->m23 -= b.m23; this->m33 -= b.m33;
+
+    return *this;
+  }
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3x3 &vec);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3x3 &vec);
