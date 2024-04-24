@@ -258,7 +258,7 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
 // The Quaternion Rotation Operator is L_q(v)=q* v q; this operator represents a rotation through an angle alpha about a vector q as its axis.
 // We apply the quaternion rotation operator to a 3D vector v (a pure quaternion defined in the space-fixed frame), and express it as w in the
 // body-fixed frame w_b=R(q) v_s
-double3x3 double3x3::BuildRotationMatrix(const simd_quatd &q)
+double3x3 double3x3::buildRotationMatrix(const simd_quatd &q)
 {
   double3x3 R{};
 

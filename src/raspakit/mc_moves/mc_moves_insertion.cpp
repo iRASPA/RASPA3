@@ -74,8 +74,8 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.counts += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalCounts += 1;
 
-  std::vector trialMolecule = system.equilibratedMoleculeRandomInBox(random, selectedComponent, 1.0, 
-                                system.numberOfMoleculesPerComponent[selectedComponent]);
+  std::vector<Atom> trialMolecule = system.equilibratedMoleculeRandomInBox(random, selectedComponent, 1.0, 
+                                    system.numberOfMoleculesPerComponent[selectedComponent]);
 
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.constructed += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalConstructed += 1;

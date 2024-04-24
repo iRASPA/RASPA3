@@ -90,7 +90,7 @@ export union double3x3
   double3x3 inversetranpose(void);
   void EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvectors);
 
-  static double3x3 BuildRotationMatrix(const simd_quatd &q);
+  static double3x3 buildRotationMatrix(const simd_quatd &q);
   static double3x3 buildRotationMatrixInverse(const simd_quatd &q);
   simd_quatd quaternion();
 

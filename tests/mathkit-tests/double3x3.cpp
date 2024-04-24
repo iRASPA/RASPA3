@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 import double3;
 import double3x3;
+import simd_quatd;
+import randomnumbers;
 
 TEST(double3x3, Test_multiplication)
 {
@@ -36,4 +40,20 @@ TEST(double3x3, Test_inverse)
   EXPECT_NEAR(identity.cx, 0.0, 1e-10) << "wrong cx";
   EXPECT_NEAR(identity.cy, 0.0, 1e-10) << "wrong cy";
   EXPECT_NEAR(identity.cz, 1.0, 1e-10) << "wrong cz";
+}
+
+TEST(double3x3, Test_rotation_matrix_from_quaternion)
+{
+  RandomNumber random(10);
+
+  for(size_t i = 0; i < 10000; ++i)
+  {
+    simd_quatd q = random.randomSimdQuatd();
+    double3x3 rotationMatrix = double3x3::buildRotationMatrix(q);
+    simd_quatd p = rotationMatrix.quaternion();
+    EXPECT_NEAR(std::abs(p.ix), std::abs(q.ix), 1e-6) << "wrong ix";
+    EXPECT_NEAR(std::abs(p.iy), std::abs(q.iy), 1e-6) << "wrong iy";
+    EXPECT_NEAR(std::abs(p.iz), std::abs(q.iz), 1e-6) << "wrong iz";
+    EXPECT_NEAR(std::abs(p.r),  std::abs(q.r),  1e-6) << "wrong r";
+  }
 }
