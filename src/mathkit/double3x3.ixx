@@ -45,9 +45,30 @@ export union double3x3
           wx, wy, wz, ww;    // 4th column, {tx,ty,tz,1}
   };
 
-  double3x3(double m11 = 0.0, double m21 = 0.0, double m31 = 0.0,
-            double m12 = 0.0, double m22 = 0.0, double m32 = 0.0,
-            double m13 = 0.0, double m23 = 0.0, double m33 = 0.0)
+  double3x3()
+      : m11(0.0), m21(0.0), m31(0.0), m41(0.0),
+        m12(0.0), m22(0.0), m32(0.0), m42(0.0),
+        m13(0.0), m23(0.0), m33(0.0), m43(0.0),
+        m14(0.0), m24(0.0), m34(0.0), m44(0.0)
+  {};
+
+  explicit double3x3(double m11, double m22, double m33)
+      : m11(m11), m21(0.0), m31(0.0), m41(0.0),
+        m12(0.0), m22(m22), m32(0.0), m42(0.0),
+        m13(0.0), m23(0.0), m33(m33), m43(0.0),
+        m14(0.0), m24(0.0), m34(0.0), m44(0.0)
+  {};
+
+  explicit double3x3(double3 v)
+      : m11(v.x), m21(0.0), m31(0.0), m41(0.0),
+        m12(0.0), m22(v.y), m32(0.0), m42(0.0),
+        m13(0.0), m23(0.0), m33(v.z), m43(0.0),
+        m14(0.0), m24(0.0), m34(0.0), m44(0.0)
+  {};
+
+  explicit double3x3(double m11, double m21, double m31,
+                     double m12, double m22, double m32,
+                     double m13, double m23, double m33)
       : m11(m11), m21(m21), m31(m31), m41(0.0),
         m12(m12), m22(m22), m32(m32), m42(0.0),
         m13(m13), m23(m23), m33(m33), m43(0.0),
@@ -55,7 +76,8 @@ export union double3x3
   {
 
   };
-  double3x3(double3 v1, double3 v2, double3 v3) :
+
+  explicit double3x3(double3 v1, double3 v2, double3 v3) :
       m11(v1.x), m21(v1.y), m31(v1.z), m41(0.0),
       m12(v2.x), m22(v2.y), m32(v2.z), m42(0.0),
       m13(v3.x), m23(v3.y), m33(v3.z), m43(0.0),
@@ -179,7 +201,7 @@ namespace std
 
 export inline double3x3 operator+(const double3x3& a, const double3x3& b)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a.m11 + b.m11; r.m12 = a.m12 + b.m12; r.m13 = a.m13 + b.m13;
     r.m21 = a.m21 + b.m21; r.m22 = a.m22 + b.m22; r.m23 = a.m23 + b.m23;
@@ -189,7 +211,7 @@ export inline double3x3 operator+(const double3x3& a, const double3x3& b)
 
 export inline double3x3 operator-(const double3x3& a, const double3x3& b)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a.m11 - b.m11; r.m12 = a.m12 - b.m12; r.m13 = a.m13 - b.m13;
     r.m21 = a.m21 - b.m21; r.m22 = a.m22 - b.m22; r.m23 = a.m23 - b.m23;
@@ -199,7 +221,7 @@ export inline double3x3 operator-(const double3x3& a, const double3x3& b)
 
 export inline double3x3 operator*(const double3x3& a, const double3x3& b)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31;
     r.m21 = a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31;
@@ -218,7 +240,7 @@ export inline double3x3 operator*(const double3x3& a, const double3x3& b)
 
 export inline double3 operator*(const double3x3& a, const double3& b)
 {
-    double3 r;
+    double3 r{};
 
     r.x = a.m11 * b.x + a.m12 * b.y + a.m13 * b.z;
     r.y = a.m21 * b.x + a.m22 * b.y + a.m23 * b.z;
@@ -229,7 +251,7 @@ export inline double3 operator*(const double3x3& a, const double3& b)
 
 export inline double3x3 sqr(const double3x3& a)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a.m11 * a.m11; r.m21 = a.m21 * a.m21; r.m31 = a.m31 * a.m31;
     r.m12 = a.m12 * a.m12; r.m22 = a.m22 * a.m22; r.m32 = a.m32 * a.m32;
@@ -240,7 +262,7 @@ export inline double3x3 sqr(const double3x3& a)
 
 export inline double3 transposedMultiply(const double3x3& a, const double3& b)
 {
-    double3 r;
+    double3 r{};
 
     r.x = a.m11 * b.x + a.m21 * b.y + a.m31 * b.z;
     r.y = a.m12 * b.x + a.m22 * b.y + a.m32 * b.z;
@@ -251,7 +273,7 @@ export inline double3 transposedMultiply(const double3x3& a, const double3& b)
 
 export inline double3x3 operator*(const double& a, const double3x3& b)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a * b.m11; r.m12 = a * b.m12; r.m13 = a * b.m13;
     r.m21 = a * b.m21; r.m22 = a * b.m22; r.m23 = a * b.m23;
@@ -262,7 +284,7 @@ export inline double3x3 operator*(const double& a, const double3x3& b)
 
 export inline double3x3 operator*(const double3x3& a, const double& b)
 {
-    double3x3 r;
+    double3x3 r{};
 
     r.m11 = a.m11 * b; r.m12 = a.m12 * b; r.m13 = a.m13 * b;
     r.m21 = a.m21 * b; r.m22 = a.m22 * b; r.m23 = a.m23 * b;
@@ -273,7 +295,7 @@ export inline double3x3 operator*(const double3x3& a, const double& b)
 
 export inline double3x3 operator/(const double3x3& a, const double& b)
 {
-    double3x3 r;
+    double3x3 r{};
     r.m11 = a.m11 / b; r.m12 = a.m12 / b; r.m13 = a.m13 / b;
     r.m21 = a.m21 / b; r.m22 = a.m22 / b; r.m23 = a.m23 / b;
     r.m31 = a.m31 / b; r.m32 = a.m32 / b; r.m33 = a.m33 / b;
@@ -282,7 +304,7 @@ export inline double3x3 operator/(const double3x3& a, const double& b)
 
 export inline double3x3 sqrt(const double3x3& b)
 {
-    double3x3 r;
+    double3x3 r{};
     r.m11 = std::sqrt(b.m11); r.m12 = std::sqrt(b.m12); r.m13 = std::sqrt(b.m13);
     r.m21 = std::sqrt(b.m21); r.m22 = std::sqrt(b.m22); r.m23 = std::sqrt(b.m23);
     r.m31 = std::sqrt(b.m31); r.m32 = std::sqrt(b.m32); r.m33 = std::sqrt(b.m33);

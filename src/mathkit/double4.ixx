@@ -58,6 +58,11 @@ export union double4
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double4 &vec);
 };
 
+export inline double4 operator+(const double4& a, const double4& b)
+{
+    return double4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
+}
+
 export inline double4 operator*(const double4& a, const double4& b)
 {
     return double4(a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w);

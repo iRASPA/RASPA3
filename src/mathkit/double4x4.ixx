@@ -36,10 +36,33 @@ export union double4x4
     inline double4& operator [] (int i) { return v[i]; }
     inline const double4& operator [] (int i) const { return v[i]; }
 
-    double4x4(double m11 = 0.0, double m21 = 0.0, double m31 = 0.0, double m41 = 0.0,
-        double m12 = 0.0, double m22 = 0.0, double m32 = 0.0, double m42 = 0.0,
-        double m13 = 0.0, double m23 = 0.0, double m33 = 0.0, double m43 = 0.0,
-        double m14 = 0.0, double m24 = 0.0, double m34 = 0.0, double m44 = 0.0)
+    double4x4()
+      : m11(0.0), m21(0.0), m31(0.0), m41(0.0),
+        m12(0.0), m22(0.0), m32(0.0), m42(0.0),
+        m13(0.0), m23(0.0), m33(0.0), m43(0.0),
+        m14(0.0), m24(0.0), m34(0.0), m44(0.0)
+    {};
+  
+    explicit double4x4(double m11, double m22, double m33, double m44)
+        : m11(m11), m21(0.0), m31(0.0), m41(0.0),
+          m12(0.0), m22(m22), m32(0.0), m42(0.0),
+          m13(0.0), m23(0.0), m33(m33), m43(0.0),
+          m14(0.0), m24(0.0), m34(0.0), m44(m44)
+    {};
+  
+    explicit double4x4(double4 v)
+        : m11(v.x), m21(0.0), m31(0.0), m41(0.0),
+          m12(0.0), m22(v.y), m32(0.0), m42(0.0),
+          m13(0.0), m23(0.0), m33(v.z), m43(0.0),
+          m14(0.0), m24(0.0), m34(0.0), m44(v.w)
+    {};
+
+
+
+    double4x4(double m11, double m21, double m31, double m41,
+              double m12, double m22, double m32, double m42,
+              double m13, double m23, double m33, double m43,
+              double m14, double m24, double m34, double m44)
         : m11(m11), m21(m21), m31(m31), m41(m41),
         m12(m12), m22(m22), m32(m32), m42(m42),
         m13(m13), m23(m23), m33(m33), m43(m43),
@@ -86,7 +109,7 @@ export union double4x4
 
 export inline double4x4 operator*(const double4x4& a, const double4x4& b)
 {
-    double4x4 r;
+    double4x4 r{};
 
     r.m11 = a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31 + a.m14 * b.m41;
     r.m21 = a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31 + a.m24 * b.m41;
@@ -113,7 +136,7 @@ export inline double4x4 operator*(const double4x4& a, const double4x4& b)
 
 export inline double4 operator*(const double4x4& a, const double4& b)
 {
-    double4 r;
+    double4 r{};
 
     r.x = a.m11 * b.x + a.m12 * b.y + a.m13 * b.z + a.m14 * b.w;
     r.y = a.m21 * b.x + a.m22 * b.y + a.m23 * b.z + a.m24 * b.w;
@@ -125,7 +148,7 @@ export inline double4 operator*(const double4x4& a, const double4& b)
 
 export inline double4 operator*(const double4& a, const double4x4& b)
 {
-    double4 r;
+    double4 r{};
 
     r.x = a.x * b.m11 + a.y * b.m21 + a.z * b.m31 + a.w * b.m41;
     r.y = a.x * b.m12 + a.y * b.m22 + a.z * b.m32 + a.w * b.m42;

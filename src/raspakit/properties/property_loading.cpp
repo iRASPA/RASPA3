@@ -71,7 +71,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     {
       if(components[i].type != Component::Type::Framework)
       {
-        const double toMgPerG = 1000.0 * components[i].mass / frameworkMass.value();
+        const double toMgPerG = 1000.0 * components[i].totalMass / frameworkMass.value();
         
         std::print(stream, "Component {} ({})\n", components[i].componentId, components[i].name);
         
@@ -139,8 +139,8 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
       std::print(stream, "    Density average  {: .6e} +/- {: .6e} [molec/A^3]\n",
         loadingAverage.first.numberDensities[i], loadingAverage.second.numberDensities[i]);
       std::print(stream, "    Density average  {: .6e} +/- {: .6e} [kg/m^3]\n",
-                         densityConversionFactor * components[i].mass * loadingAverage.first.numberDensities[i], 
-                         densityConversionFactor * components[i].mass * loadingAverage.second.numberDensities[i]);
+                         densityConversionFactor * components[i].totalMass * loadingAverage.first.numberDensities[i], 
+                         densityConversionFactor * components[i].totalMass * loadingAverage.second.numberDensities[i]);
     }
   }
 

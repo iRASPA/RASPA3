@@ -77,13 +77,13 @@ MC_Moves::insertionMoveCBMC(RandomNumber &random, System& system, size_t selecte
   Component::GrowType growType = system.components[selectedComponent].growType;
   
   time_begin = std::chrono::system_clock::now();
-  std::vector<Atom> atoms = 
-    system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
+  //std::vector<Atom> atoms = 
+  //  system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = 
     CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                     system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                     growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 
-                                    atoms, system.numberOfTrialDirections);
+                                    system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);

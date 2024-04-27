@@ -75,6 +75,7 @@ import <complex>;
 #endif
 
 import int3;
+import simd_quatd;
 import double3;
 import double3x3;
 import randomnumbers;
@@ -132,7 +133,7 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 
 // create programmatically an 'adsorbate' component
 Component::Component(size_t componentId, const ForceField &forceField, std::string componentName,
-                     double T_c, double P_c, double w, std::vector<Atom> definedAtoms,
+                     double T_c, double P_c, double w, std::vector<Atom> atomList,
                      size_t numberOfBlocks, size_t numberOfLambdaBins,
                      const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false) :
     type(Type::Adsorbate),
@@ -141,19 +142,25 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
     criticalTemperature(T_c),
     criticalPressure(P_c),
     acentricFactor(w),
-    definedAtoms(definedAtoms),
-    atoms(definedAtoms),
     lambdaGC(numberOfBlocks, numberOfLambdaBins),
     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
     mc_moves_probabilities(particleProbalities),
     averageRosenbluthWeights(numberOfBlocks)
 {
-  mass = 0.0;
-  for (const Atom& atom : atoms)
+  totalMass = 0.0;
+  for (const Atom& atom : atomList)
   {
     size_t atomType = static_cast<size_t>(atom.type);
-    mass += forceField.pseudoAtoms[atomType].mass;
+    double mass = forceField.pseudoAtoms[atomType].mass;
+    totalMass += mass;
+    definedAtoms.push_back({atom, mass});
   }
+
+  const auto &[atom_list, inertia_vector, inverse_inertia_vector, shape] = computeRigidProperties(definedAtoms);
+  atoms = atom_list;
+  inertiaVector = inertia_vector;
+  inverseInertiaVector = inverse_inertia_vector;
+  shapeType = shape;
 }
 
 
@@ -227,12 +234,12 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
            parsed_data["AcentricFactor"].dump(), ex.what()));
   }
 
-  size_t numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
+  size_t jsonNumberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
 
   definedAtoms.clear();
-  definedAtoms.reserve(numberOfPseudoAtoms);
+  definedAtoms.reserve(jsonNumberOfPseudoAtoms);
 
-  if(numberOfPseudoAtoms == 0)
+  if(jsonNumberOfPseudoAtoms == 0)
   {
     throw std::runtime_error(std::format("[Component reader]: key 'PseudoAtoms' empty]\n"));
   }
@@ -242,7 +249,6 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     throw std::runtime_error(std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
   }
 
-  mass = 0.0;
   for (auto& [_, item ] : parsed_data["PseudoAtoms"].items())
   {
     if(!item.is_array())
@@ -293,15 +299,161 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
              item[1].dump(), ex.what()));
     }
 
-    mass += forceField.pseudoAtoms[pseudoAtomType].mass;
+    double mass = forceField.pseudoAtoms[pseudoAtomType].mass;
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;
 
-    definedAtoms.emplace_back(double3(position[0], position[1], position[2]) , charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType),
-                           static_cast<uint8_t>(componentId), 0);
+    definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]) , charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType),
+                           static_cast<uint8_t>(componentId), 0), mass});
   }
 
-  atoms = definedAtoms;
+  const auto &[atom_list, inertia_vector, inverse_inertia_vector, shape] = computeRigidProperties(definedAtoms);
+  atoms = atom_list;
+  inertiaVector = inertia_vector;
+  inverseInertiaVector = inverse_inertia_vector;
+  shapeType = shape;
+}
+
+
+std::tuple<std::vector<Atom>, double3, double3, Component::Shape> Component::computeRigidProperties(std::vector<std::pair<Atom, double>> atom_list)
+{
+  double3 com{};
+  double total_mass{};
+  for(auto &[atom, mass]: atom_list)
+  {
+    com += mass * atom.position;
+    total_mass += mass;
+  }
+  com = com / total_mass;
+
+  double3x3 inertiaTensor{};
+  for(auto &[atom, mass]: atom_list)
+  {
+    double3 dr = atom.position - com;
+    inertiaTensor.ax += mass * dr.x * dr.x;
+    inertiaTensor.bx += mass * dr.y * dr.x;
+    inertiaTensor.cx += mass * dr.z * dr.x;
+    inertiaTensor.ay += mass * dr.x * dr.y;
+    inertiaTensor.by += mass * dr.y * dr.y;
+    inertiaTensor.cy += mass * dr.z * dr.y;
+    inertiaTensor.az += mass * dr.x * dr.z;
+    inertiaTensor.bz += mass * dr.y * dr.z;
+    inertiaTensor.cz += mass * dr.z * dr.z;
+  }
+
+  // the local body frame is taken to be that in which the rotational inertia tensor is diagonal
+  double3 eigenvalues{};
+  double3x3 eigenvectors{};
+  inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
+  
+  double3 inertia_vector{};
+  std::vector<Atom> atomsInLocalBodyFrame{};
+  for(auto &[atom, mass]: atom_list)
+  {
+    Atom atom_local = atom;
+    double3 dr = atom_local.position - com;
+    double3 pos = eigenvectors.transpose() * dr;
+    if(std::abs(pos.x)<1e-8) pos.x=0.0;
+    if(std::abs(pos.y)<1e-8) pos.y=0.0;
+    if(std::abs(pos.z)<1e-8) pos.z=0.0;
+
+
+    inertia_vector.x += mass * (pos.y * pos.y + pos.z * pos.z);
+    inertia_vector.y += mass * (pos.x * pos.x + pos.z * pos.z);
+    inertia_vector.z += mass * (pos.x * pos.x + pos.y * pos.y);
+
+    // correct the position
+    atom_local.position = pos;
+    atomsInLocalBodyFrame.push_back(atom_local);
+  }
+
+  // set axis system: Ixx >= Iyy >= Izz
+  double rot_xyz = std::max({inertia_vector.x, inertia_vector.y, inertia_vector.z});
+  if(rot_xyz >= inertia_vector.x)
+  {
+    if(inertia_vector.y >= rot_xyz)
+    {
+      for(auto &atom : atomsInLocalBodyFrame)
+      { 
+        double temp = atom.position.x;
+        atom.position.x = atom.position.y;
+        atom.position.y = -temp;
+      }
+      inertia_vector.y = inertia_vector.x;
+      inertia_vector.x = rot_xyz;
+    }
+    else if(inertia_vector.z >= rot_xyz)
+    {
+      for(auto &atom : atomsInLocalBodyFrame)
+      { 
+        double temp = atom.position.x;
+        atom.position.x = atom.position.z;
+        atom.position.z = -temp;
+      }
+      inertia_vector.z = inertia_vector.x;
+      inertia_vector.x = rot_xyz;
+    }
+  }
+  if(inertia_vector.z > inertia_vector.y)
+  {
+    for(auto &atom : atomsInLocalBodyFrame)
+    { 
+      double temp = atom.position.y;
+      atom.position.y = atom.position.z;
+      atom.position.z = -temp;
+    }
+    double temp = inertia_vector.z;
+    inertia_vector.z = inertia_vector.y;
+    inertia_vector.y = temp;
+  }
+
+  double rotlim = std::max(1.0e-2, inertia_vector.x + inertia_vector.y + inertia_vector.z) * 1.0e-5;
+
+  double3 inverse_inertia_vector;
+  inverse_inertia_vector.x = (inertia_vector.x < rotlim) ? 0.0 : 1.0 / inertia_vector.x;
+  inverse_inertia_vector.y = (inertia_vector.y < rotlim) ? 0.0 : 1.0 / inertia_vector.y;
+  inverse_inertia_vector.z = (inertia_vector.z < rotlim) ? 0.0 : 1.0 / inertia_vector.z;
+
+  double rotall = inertia_vector.x + inertia_vector.y + inertia_vector.z > 1.0e-5 ? inertia_vector.x + inertia_vector.y + inertia_vector.z : 1.0;
+
+  size_t index = 0;
+  if(inertia_vector.x / rotall < 1.0e-5) ++index;
+  if(inertia_vector.y / rotall < 1.0e-5) ++index;
+  if(inertia_vector.z / rotall < 1.0e-5) ++index;
+  Component::Shape shape{index};
+
+  return {atomsInLocalBodyFrame, inertia_vector, inverse_inertia_vector, shape};
+}
+
+std::vector<Atom> Component::rotatePositions(const simd_quatd &q) const
+{
+  double3x3 rotationMatrix = double3x3::buildRotationMatrixInverse(q);
+  std::vector<Atom> rotatedAtoms{};
+  for (size_t i = 0; i < atoms.size(); ++i)
+  {
+    Atom a = atoms[i];
+    a.position = rotationMatrix * atoms[i].position;
+    rotatedAtoms.push_back(a);
+  }
+  return rotatedAtoms;
+}
+
+
+double3 Component::computeCenterOfMass(std::vector<Atom> atom_list) const
+{
+  std::vector<std::pair<Atom, double>> a{definedAtoms};
+  for(size_t i = 0; i != a.size(); ++i)
+  {
+    a[i].first.position = atom_list[i].position;
+  }
+  double3 com{};
+  double total_mass{};
+  for(const auto &[atom, mass]: a)
+  {
+    com += mass * atom.position;
+    total_mass += mass;
+  }
+  return com / total_mass;
 }
 
 
@@ -317,7 +469,7 @@ std::string Component::printStatus(const ForceField& forceField) const
 
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
   std::print(stream << std::boolalpha, "    Swapable:                     {}\n\n", swapable);
-  std::print(stream, "    Mass:                         {} [-]\n", mass);
+  std::print(stream, "    Mass:                         {} [-]\n", totalMass);
   if(fugacityCoefficient.has_value())
   {
     std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());
@@ -326,17 +478,30 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
   std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
 
-  std::print(stream, "    number Of Atoms:  {}\n", atoms.size());
+  std::print(stream, "    Number Of Atoms:  {}\n", atoms.size());
   
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  for(size_t i = 0; i != atoms.size(); ++i)
   {
-    size_t atomType = static_cast<size_t>(definedAtoms[i].type);
+    size_t atomType = static_cast<size_t>(atoms[i].type);
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
     std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
-                   i, atomTypeString, definedAtoms[i].position.x, definedAtoms[i].position.y, 
-                   definedAtoms[i].position.z, definedAtoms[i].charge);
+                   i, atomTypeString, atoms[i].position.x, atoms[i].position.y, 
+                   atoms[i].position.z, atoms[i].charge);
   }
-  std::print(stream, "    net-charge:  {}\n", netCharge);
+  std::print(stream, "    Diagonalized inertia-vector:  {:10.8f} {:10.8f} {:10.8f}\n", inertiaVector.x, inertiaVector.y, inertiaVector.z);
+  switch(shapeType)
+  {
+    case Shape::NonLinear:
+      std::print(stream, "    Shape of the molecule is: 'Non-linear'\n");
+      break;
+    case Shape::Linear:
+      std::print(stream, "    Shape of the molecule is: 'Linear'\n");
+      break;
+    case Shape::Point:
+      std::print(stream, "    Shape of the molecule is: 'Point-particle'\n");
+      break;
+  }
+  std::print(stream, "    Net-charge:      {:10.8f}\n", netCharge);
   std::print(stream, "\n");
  
   const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities; 
@@ -370,6 +535,23 @@ std::string Component::printStatus(const ForceField& forceField) const
   return stream.str();
 }
 
+
+std::vector<Atom> Component::rotateRandomlyAroundCenterOfMass([[maybe_unused]]const simd_quatd &q)
+{
+  double3 com{};
+
+  double total_mass{};
+  for(auto &[atom, mass]: definedAtoms)
+  {
+    com += mass * atom.position;
+    totalMass += mass;
+  }
+  com = com / total_mass;
+
+  // TODO
+  return {};
+}
+
 std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead(RandomNumber &random) const
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
@@ -382,9 +564,9 @@ std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead(Rando
 
 std::vector<Atom> Component::recenteredCopy(double scaling, size_t moleculeId) const
 {
-  std::vector<Atom> new_atoms(atoms);
+  std::vector<Atom> new_atoms(atoms.size());
 
-  for (size_t i = 0; i < atoms.size(); ++i)
+  for (size_t i = 0; i != atoms.size(); ++i)
   {
     new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
                  atoms[i].charge, scaling, static_cast<uint32_t>(moleculeId), static_cast<uint16_t>(atoms[i].type), 
@@ -476,7 +658,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.swapable;
   archive << c.partialPressure;
 
-  archive << c.mass;
+  archive << c.totalMass;
   archive << c.fugacityCoefficient;
   archive << c.amountOfExcessMolecules;
   archive << c.bulkFluidDensity;
@@ -566,7 +748,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.swapable;
   archive >> c.partialPressure;
 
-  archive >> c.mass;
+  archive >> c.totalMass;
   archive >> c.fugacityCoefficient;
   archive >> c.amountOfExcessMolecules;
   archive >> c.bulkFluidDensity;

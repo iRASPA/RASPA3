@@ -53,6 +53,7 @@ import archive;
 import randomnumbers;
 import int3;
 import double3;
+import simd_quatd;
 import averages;
 import atom;
 import forcefield;
@@ -82,6 +83,13 @@ export struct Component
   {
     Rigid =  0,
     Flexible = 1,
+  };
+
+  enum class Shape: size_t
+  {
+    NonLinear =  0,
+    Linear = 1,
+    Point = 2
   };
 
   Component();
@@ -117,7 +125,7 @@ export struct Component
   bool swapable{ false };
   double partialPressure{ 0.0 };
 
-  double mass{ 0.0 };
+  double totalMass{ 0.0 };
   std::optional<double> fugacityCoefficient{};
   double amountOfExcessMolecules { 0.0 };
   double bulkFluidDensity{ 0.0 };
@@ -128,7 +136,11 @@ export struct Component
 
   double netCharge{ 0.0 };
   size_t startingBead{ 0 };
-  std::vector<Atom> definedAtoms{};
+  std::vector<std::pair<Atom, double>> definedAtoms{};
+
+  double3 inertiaVector{};
+  double3 inverseInertiaVector{};
+  Shape shapeType;
   std::vector<Atom> atoms{};
 
   size_t initialNumberOfMolecules{ 0 };
@@ -188,6 +200,11 @@ export struct Component
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;
 
+  std::tuple<std::vector<Atom>, double3, double3, Component::Shape> computeRigidProperties(std::vector<std::pair<Atom, double>> atom_list);
+  double3 computeCenterOfMass(std::vector<Atom> atom_list) const;
+  std::vector<Atom> rotatePositions(const simd_quatd &q) const;
+
+  std::vector<Atom> rotateRandomlyAroundCenterOfMass(const simd_quatd &q);
   std::vector<double3> randomlyRotatedPositionsAroundStartingBead(RandomNumber &random) const;
   std::vector<Atom> recenteredCopy(double scaling, size_t moleculeId) const;
   std::vector<Atom> copyAtoms(std::span<Atom> molecule, double scaling, size_t moleculeId) const;

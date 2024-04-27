@@ -48,10 +48,13 @@ import component;
 
 
 [[nodiscard]] std::optional<ChainData>                                                                                
-growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,  const ForceField &forceField, const SimulationBox &simulationBox,        
+growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,
+                       const ForceField &forceField, const SimulationBox &simulationBox,        
                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,                     
                        double beta, double cutOff, double cutOffCoulomb, size_t startingBead,                         
-                       std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept;   
+                       std::vector<Atom> molecule, size_t numberOfTrialDirections,
+                       size_t selectedMolecule, double scaling,
+                       const std::vector<Component> &components, size_t selectedComponent) noexcept;   
 
 // atoms is a recentered copy of the molecule (recentered around the starting bead)
 [[nodiscard]] std::optional<ChainData> 
@@ -59,33 +62,43 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
                                      const ForceField &forceField, const SimulationBox &simulationBox, 
                                      std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                      double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                                     [[maybe_unused]] size_t selectedMolecule, double scaling, 
-                                     std::vector<Atom> atoms, size_t numberOfTrialDirections) noexcept
+                                     size_t selectedMolecule, double scaling, 
+                                     size_t numberOfTrialDirections) noexcept
 {
-  for (Atom& atom : atoms)
-  {
-    atom.setScaling(scaling);
-  }
   size_t startingBead = components[selectedComponent].startingBead;
+  Atom firstBead = components[selectedComponent].atoms[startingBead];
+  firstBead.moleculeId = static_cast<uint32_t>(selectedMolecule);
+  firstBead.groupId = static_cast<uint8_t>(0);
+  firstBead.setScaling(scaling);
 
   std::optional<FirstBeadData> const firstBeadData = 
     CBMC::growMoleculeMultipleFirstBeadSwapInsertion(random, hasExternalField, forceField, simulationBox,
                                                 frameworkAtoms, moleculeAtoms, beta, cutOff, cutOffCoulomb, 
-                                                atoms[startingBead], numberOfTrialDirections);
+                                                firstBead, numberOfTrialDirections);
 
   if (!firstBeadData) return std::nullopt;
 
-  // place the molecule at the position of the first bead
-  std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {atom.position += firstBeadData->atom.position; });
-
-  if(atoms.size() == 1)
+  if(components[selectedComponent].atoms.size() == 1)
   {
-    return ChainData(Molecule(double3(), simd_quatd()), {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
+    return ChainData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0)), 
+                     {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
+
+  // place the molecule centered around the first bead at 'firstBeadData->atom.position'
+  std::vector<Atom> atoms = components[selectedComponent].atoms;
+  std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {
+      atom.position += firstBeadData->atom.position - components[selectedComponent].atoms[startingBead].position;
+      atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
+      atom.groupId = static_cast<uint8_t>(0);
+      atom.setScaling(scaling);
+    });
+
 
   std::optional<ChainData> const rigidRotationData = 
     CBMC::growRigidMoleculeChain(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
-                           cutOffCoulomb, startingBead, atoms, numberOfTrialDirections);
+                           cutOffCoulomb, startingBead, atoms, numberOfTrialDirections,
+                           selectedMolecule, scaling,
+                           components, selectedComponent);
   
   if (!rigidRotationData) return std::nullopt;
 
@@ -96,27 +109,41 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
 
 // helper function
 [[nodiscard]] std::optional<ChainData> 
-CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
+CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,
+                             const ForceField &forceField, const SimulationBox &simulationBox, 
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t startingBead, 
-                             std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept
+                             std::vector<Atom> molecule, size_t numberOfTrialDirections,
+                             size_t selectedMolecule, double scaling,
+                             const std::vector<Component> &components, size_t selectedComponent) noexcept
 {
-  std::vector<std::vector<Atom>> trialPositions{};
+  std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
 
+  // randomly rotated configurations around the starting bead
   for(size_t i = 0; i < numberOfTrialDirections; ++i)
   {
-    trialPositions.push_back(CBMC::rotateRandomlyAround(random, molecule, startingBead));
+    simd_quatd orientation = random.randomSimdQuatd();
+    std::vector<Atom> randomlyRotatedAtoms = components[selectedComponent].rotatePositions(orientation);
+    double3 shift = molecule[startingBead].position - randomlyRotatedAtoms[startingBead].position;
+    std::for_each(std::begin(randomlyRotatedAtoms), std::end(randomlyRotatedAtoms), [shift, selectedMolecule, scaling](Atom& atom) {
+        atom.position += shift;
+        atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
+        atom.groupId = static_cast<uint8_t>(0);
+        atom.setScaling(scaling);
+    });
+
+    trialPositions.push_back({Molecule(shift, orientation), randomlyRotatedAtoms});
   };
-  
-  const std::vector<std::pair<std::vector<Atom>, RunningEnergy>>  externalEnergies = 
+
+  const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>>  externalEnergies = 
     CBMC::computeExternalNonOverlappingEnergies(hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, 
                                 cutOff, cutOffCoulomb, trialPositions, std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
-      std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) 
-                                                  {return -beta * v.second.total(); });
+      std::back_inserter(logBoltmannFactors), [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy>& v) 
+                                                  {return -beta * std::get<2>(v).total(); });
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
@@ -125,7 +152,9 @@ CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const 
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainData(Molecule(double3(), simd_quatd()),
-                   externalEnergies[selected].first, externalEnergies[selected].second, 
+
+  return ChainData(std::get<0>(externalEnergies[selected]),
+                   std::get<1>(externalEnergies[selected]),
+                   std::get<2>(externalEnergies[selected]),
                    RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }

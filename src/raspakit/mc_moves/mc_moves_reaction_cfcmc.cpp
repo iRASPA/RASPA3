@@ -72,13 +72,11 @@ MC_Moves::reactionMove_CFCMC([[maybe_unused]] RandomNumber &random, System& syst
   Component::GrowType growType = system.components[selectedComponent].growType;
 
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  std::vector<Atom> atoms = 
-    system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = 
     CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                     system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
                                     growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 
-                                    atoms, system.numberOfTrialDirections);
+                                    system.numberOfTrialDirections);
 
   if (!growData) return std::nullopt;
 

@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <vector>
+#include <tuple>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -21,6 +22,7 @@ module cbmc_util;
 
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
+import <tuple>;
 import <algorithm>;
 import <cmath>;
 import <iostream>;
@@ -41,6 +43,7 @@ import <format>;
 import atom;
 import double3x3;
 import double3;
+import simd_quatd;
 import randomnumbers;
 import stringutils;
 
@@ -48,6 +51,19 @@ import stringutils;
 std::vector<Atom> CBMC::rotateRandomlyAround(RandomNumber &random, std::vector<Atom> atoms, size_t startingBead)
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
+  std::vector<Atom> randomlyRotatedAtoms{};
+  for (size_t i = 0; i < atoms.size(); ++i)
+  {
+    Atom b = atoms[i];
+    b.position = atoms[startingBead].position + randomRotationMatrix * (b.position - atoms[startingBead].position);
+    randomlyRotatedAtoms.push_back(b);
+  }
+  return randomlyRotatedAtoms;
+}
+
+std::vector<Atom> CBMC::rotateRandomlyAround(simd_quatd &q, std::vector<Atom> atoms, size_t startingBead)
+{
+  double3x3 randomRotationMatrix = double3x3::buildRotationMatrixInverse(q);
   std::vector<Atom> randomlyRotatedAtoms{};
   for (size_t i = 0; i < atoms.size(); ++i)
   {

@@ -59,14 +59,14 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
   Component::GrowType growType = systemA.components[selectedComponent].growType;
 
-  std::vector<Atom> atoms = systemA.components[selectedComponent].recenteredCopy(1.0, 
-                                                          systemA.numberOfMoleculesPerComponent[selectedComponent]);
+  //std::vector<Atom> atoms = systemA.components[selectedComponent].recenteredCopy(1.0, 
+  //                                                        systemA.numberOfMoleculesPerComponent[selectedComponent]);
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   std::optional<ChainData> growData = 
     CBMC::growMoleculeSwapInsertion(random, systemA.hasExternalField, systemA.components, systemA.forceField, systemA.simulationBox, 
                                     systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
                                     growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 
-                                    atoms, systemA.numberOfTrialDirections);
+                                    systemA.numberOfTrialDirections);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);

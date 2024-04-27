@@ -362,7 +362,7 @@ bool System::checkMoleculeIds()
 }
 
 void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)                                              
-{                                                                                                                       
+{
   for (size_t componentId = 0; const Component & component : components)                                                
   {                                                                                                                     
     if (component.swapable)                                                                                             
@@ -373,13 +373,14 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
         std::optional<ChainData> growData = std::nullopt;                                                               
         do                                                                                                              
         {                                                                                                               
-          std::vector<Atom> atoms =                                                                                     
-            components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);                    
+          //std::vector<Atom> atoms =                                                                                     
+          //  components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);                    
+          std::cout << "grow:" << std::endl;
           Component::GrowType growType  = components[componentId].growType;                                             
           growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                    this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,               
                                    growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,               
-                                   numberOfMoleculesPerComponent[componentId], 0.0, atoms, numberOfTrialDirections);    
+                                   numberOfMoleculesPerComponent[componentId], 0.0, numberOfTrialDirections);    
                                                                                                                         
         } while (!growData || growData->energies.total() > forceField.overlapCriteria);
                                                                                                                         
@@ -392,13 +393,13 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
       std::optional<ChainData> growData = std::nullopt;                                                                 
       do                                                                                                                
       {                                                                                                                 
-        std::vector<Atom> atoms =                                                                                       
-          components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);                      
+        //std::vector<Atom> atoms =                                                                                       
+        //  components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);                      
         Component::GrowType growType  = components[componentId].growType;                                               
         growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                  this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,                 
                                  growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,                 
-                                 numberOfMoleculesPerComponent[componentId], 1.0, atoms, numberOfTrialDirections);
+                                 numberOfMoleculesPerComponent[componentId], 1.0, numberOfTrialDirections);
                                                                                                                         
       } while(!growData || growData->energies.total() > forceField.overlapCriteria);                                    
                                                                                                                         

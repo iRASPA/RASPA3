@@ -37,7 +37,7 @@ export namespace CBMC
                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                             Component::GrowType growType, double cutOff, double cutOffCoulomb, 
                             size_t selectedComponent, size_t selectedMolecule, double scaling, 
-                            std::vector<Atom> atoms, size_t numberOfTrialDirections) noexcept;
+                            size_t numberOfTrialDirections) noexcept;
   
   // deletion
   [[nodiscard]] ChainData

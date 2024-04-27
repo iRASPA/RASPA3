@@ -19,6 +19,7 @@ import <optional>;
 #endif
 
 import atom;
+import molecule;
 import energy_factor;
 import energy_status;
 import energy_status_intra;
@@ -47,6 +48,13 @@ export namespace CBMC
                                         std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                         double cutOffVDW, double cutOffCoulomb, 
                                         std::vector<std::vector<Atom>>& trialPositionSets, 
+                                        std::make_signed_t<std::size_t> skip = -1) noexcept;
+
+  const std::vector<std::tuple<Molecule, std::vector<Atom>,RunningEnergy>> 
+  computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
+                                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
+                                        double cutOffVDW, double cutOffCoulomb, 
+                                        std::vector<std::pair<Molecule, std::vector<Atom>>>& trialPositionSets, 
                                         std::make_signed_t<std::size_t> skip = -1) noexcept;
   
   const std::optional<RunningEnergy> 

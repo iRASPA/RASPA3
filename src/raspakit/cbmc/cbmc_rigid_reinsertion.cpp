@@ -103,9 +103,12 @@ CBMC::growRigidMoleculeReinsertion(RandomNumber &random, bool hasExternalField, 
                      firstBeadData->RosenbluthWeight, firstBeadData->storedR);
   }
 
+  double scaling = 1.0;
   std::optional<ChainData> rigidRotationData = 
     growRigidMoleculeChain(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
-                                                          cutOffCoulomb, startingBead, atoms, numberOfTrialDirections);
+                                                          cutOffCoulomb, startingBead, atoms, numberOfTrialDirections,
+                                                          selectedMolecule, scaling,
+                                                          components, selectedComponent);
   if (!rigidRotationData) return std::nullopt;
 
   return ChainData(rigidRotationData->molecule, rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, 
