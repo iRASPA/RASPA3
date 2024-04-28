@@ -35,9 +35,12 @@ export namespace CBMC
                                  double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
                                  size_t selectedMolecule, double scaling,
                                  size_t numberOfTrialDirections) noexcept;
+}
 
+namespace CBMC
+{
   [[nodiscard]] std::optional<ChainData>                                                                                  
-  growRigidMoleculeChain(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,    
+  growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,    
                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,    
                          double cutOff, double cutOffCoulomb, size_t startingBead,                                  
                          std::vector<Atom> molecule, size_t numberOfTrialDirections,

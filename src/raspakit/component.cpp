@@ -156,11 +156,7 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
     definedAtoms.push_back({atom, mass});
   }
 
-  const auto &[atom_list, inertia_vector, inverse_inertia_vector, shape] = computeRigidProperties(definedAtoms);
-  atoms = atom_list;
-  inertiaVector = inertia_vector;
-  inverseInertiaVector = inverse_inertia_vector;
-  shapeType = shape;
+  computeRigidProperties();
 }
 
 
@@ -307,19 +303,15 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
                            static_cast<uint8_t>(componentId), 0), mass});
   }
 
-  const auto &[atom_list, inertia_vector, inverse_inertia_vector, shape] = computeRigidProperties(definedAtoms);
-  atoms = atom_list;
-  inertiaVector = inertia_vector;
-  inverseInertiaVector = inverse_inertia_vector;
-  shapeType = shape;
+  computeRigidProperties();
 }
 
 
-std::tuple<std::vector<Atom>, double3, double3, Component::Shape> Component::computeRigidProperties(std::vector<std::pair<Atom, double>> atom_list)
+void Component::computeRigidProperties()
 {
   double3 com{};
   double total_mass{};
-  for(auto &[atom, mass]: atom_list)
+  for(auto &[atom, mass]: definedAtoms)
   {
     com += mass * atom.position;
     total_mass += mass;
@@ -327,7 +319,7 @@ std::tuple<std::vector<Atom>, double3, double3, Component::Shape> Component::com
   com = com / total_mass;
 
   double3x3 inertiaTensor{};
-  for(auto &[atom, mass]: atom_list)
+  for(auto &[atom, mass]: definedAtoms)
   {
     double3 dr = atom.position - com;
     inertiaTensor.ax += mass * dr.x * dr.x;
@@ -346,83 +338,79 @@ std::tuple<std::vector<Atom>, double3, double3, Component::Shape> Component::com
   double3x3 eigenvectors{};
   inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
   
-  double3 inertia_vector{};
-  std::vector<Atom> atomsInLocalBodyFrame{};
-  for(auto &[atom, mass]: atom_list)
+  inertiaVector = double3{0.0, 0.0, 0.0};
+  atoms.clear();
+  for(auto [atom, mass]: definedAtoms)
   {
-    Atom atom_local = atom;
-    double3 dr = atom_local.position - com;
+    double3 dr = atom.position - com;
     double3 pos = eigenvectors.transpose() * dr;
     if(std::abs(pos.x)<1e-8) pos.x=0.0;
     if(std::abs(pos.y)<1e-8) pos.y=0.0;
     if(std::abs(pos.z)<1e-8) pos.z=0.0;
 
-
-    inertia_vector.x += mass * (pos.y * pos.y + pos.z * pos.z);
-    inertia_vector.y += mass * (pos.x * pos.x + pos.z * pos.z);
-    inertia_vector.z += mass * (pos.x * pos.x + pos.y * pos.y);
+    inertiaVector.x += mass * (pos.y * pos.y + pos.z * pos.z);
+    inertiaVector.y += mass * (pos.x * pos.x + pos.z * pos.z);
+    inertiaVector.z += mass * (pos.x * pos.x + pos.y * pos.y);
 
     // correct the position
-    atom_local.position = pos;
-    atomsInLocalBodyFrame.push_back(atom_local);
+    atom.position = pos;
+    atoms.push_back(atom);
   }
 
   // set axis system: Ixx >= Iyy >= Izz
-  double rot_xyz = std::max({inertia_vector.x, inertia_vector.y, inertia_vector.z});
-  if(rot_xyz >= inertia_vector.x)
+  double rot_xyz = std::max({inertiaVector.x, inertiaVector.y, inertiaVector.z});
+  if(rot_xyz >= inertiaVector.x)
   {
-    if(inertia_vector.y >= rot_xyz)
+    if(inertiaVector.y >= rot_xyz)
     {
-      for(auto &atom : atomsInLocalBodyFrame)
+      for(auto &atom : atoms)
       { 
         double temp = atom.position.x;
         atom.position.x = atom.position.y;
         atom.position.y = -temp;
       }
-      inertia_vector.y = inertia_vector.x;
-      inertia_vector.x = rot_xyz;
+      inertiaVector.y = inertiaVector.x;
+      inertiaVector.x = rot_xyz;
     }
-    else if(inertia_vector.z >= rot_xyz)
+    else if(inertiaVector.z >= rot_xyz)
     {
-      for(auto &atom : atomsInLocalBodyFrame)
+      for(auto &atom : atoms)
       { 
         double temp = atom.position.x;
         atom.position.x = atom.position.z;
         atom.position.z = -temp;
       }
-      inertia_vector.z = inertia_vector.x;
-      inertia_vector.x = rot_xyz;
+      inertiaVector.z = inertiaVector.x;
+      inertiaVector.x = rot_xyz;
     }
   }
-  if(inertia_vector.z > inertia_vector.y)
+  if(inertiaVector.z > inertiaVector.y)
   {
-    for(auto &atom : atomsInLocalBodyFrame)
+    for(auto &atom : atoms)
     { 
       double temp = atom.position.y;
       atom.position.y = atom.position.z;
       atom.position.z = -temp;
     }
-    double temp = inertia_vector.z;
-    inertia_vector.z = inertia_vector.y;
-    inertia_vector.y = temp;
+    double temp = inertiaVector.z;
+    inertiaVector.z = inertiaVector.y;
+    inertiaVector.y = temp;
   }
 
-  double rotlim = std::max(1.0e-2, inertia_vector.x + inertia_vector.y + inertia_vector.z) * 1.0e-5;
+  double rotlim = std::max(1.0e-2, inertiaVector.x + inertiaVector.y + inertiaVector.z) * 1.0e-5;
 
-  double3 inverse_inertia_vector;
-  inverse_inertia_vector.x = (inertia_vector.x < rotlim) ? 0.0 : 1.0 / inertia_vector.x;
-  inverse_inertia_vector.y = (inertia_vector.y < rotlim) ? 0.0 : 1.0 / inertia_vector.y;
-  inverse_inertia_vector.z = (inertia_vector.z < rotlim) ? 0.0 : 1.0 / inertia_vector.z;
+  inverseInertiaVector.x = (inertiaVector.x < rotlim) ? 0.0 : 1.0 / inertiaVector.x;
+  inverseInertiaVector.y = (inertiaVector.y < rotlim) ? 0.0 : 1.0 / inertiaVector.y;
+  inverseInertiaVector.z = (inertiaVector.z < rotlim) ? 0.0 : 1.0 / inertiaVector.z;
 
-  double rotall = inertia_vector.x + inertia_vector.y + inertia_vector.z > 1.0e-5 ? inertia_vector.x + inertia_vector.y + inertia_vector.z : 1.0;
+  double rotall = inertiaVector.x + inertiaVector.y + inertiaVector.z > 1.0e-5 ? inertiaVector.x + inertiaVector.y + inertiaVector.z : 1.0;
 
   size_t index = 0;
-  if(inertia_vector.x / rotall < 1.0e-5) ++index;
-  if(inertia_vector.y / rotall < 1.0e-5) ++index;
-  if(inertia_vector.z / rotall < 1.0e-5) ++index;
-  Component::Shape shape{index};
+  if(inertiaVector.x / rotall < 1.0e-5) ++index;
+  if(inertiaVector.y / rotall < 1.0e-5) ++index;
+  if(inertiaVector.z / rotall < 1.0e-5) ++index;
 
-  return {atomsInLocalBodyFrame, inertia_vector, inverse_inertia_vector, shape};
+  shapeType = Component::Shape{index};
 }
 
 std::vector<Atom> Component::rotatePositions(const simd_quatd &q) const

@@ -47,15 +47,6 @@ import running_energy;
 import component;
 
 
-[[nodiscard]] std::optional<ChainData>                                                                                
-growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,
-                       const ForceField &forceField, const SimulationBox &simulationBox,        
-                       std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,                     
-                       double beta, double cutOff, double cutOffCoulomb, size_t startingBead,                         
-                       std::vector<Atom> molecule, size_t numberOfTrialDirections,
-                       size_t selectedMolecule, double scaling,
-                       const std::vector<Component> &components, size_t selectedComponent) noexcept;   
-
 // atoms is a recentered copy of the molecule (recentered around the starting bead)
 [[nodiscard]] std::optional<ChainData> 
 CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
@@ -95,7 +86,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
 
 
   std::optional<ChainData> const rigidRotationData = 
-    CBMC::growRigidMoleculeChain(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
+    CBMC::growRigidMoleculeChainInsertion(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
                            cutOffCoulomb, startingBead, atoms, numberOfTrialDirections,
                            selectedMolecule, scaling,
                            components, selectedComponent);
@@ -107,9 +98,8 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
 }
 
 
-// helper function
 [[nodiscard]] std::optional<ChainData> 
-CBMC::growRigidMoleculeChain(RandomNumber &random, bool hasExternalField,
+CBMC::growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalField,
                              const ForceField &forceField, const SimulationBox &simulationBox, 
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t startingBead, 

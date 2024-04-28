@@ -200,7 +200,7 @@ export struct Component
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;
 
-  std::tuple<std::vector<Atom>, double3, double3, Component::Shape> computeRigidProperties(std::vector<std::pair<Atom, double>> atom_list);
+  void computeRigidProperties();
   double3 computeCenterOfMass(std::vector<Atom> atom_list) const;
   std::vector<Atom> rotatePositions(const simd_quatd &q) const;
 
