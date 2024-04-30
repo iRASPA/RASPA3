@@ -10,6 +10,7 @@ add_executable(unit_tests_raspakit
                mc.cpp
                pressure.cpp
                static_energy.cpp
+               rigid_gradient.cpp
                main.cpp)
 
 target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit ${GTEST_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})

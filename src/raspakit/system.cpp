@@ -1235,9 +1235,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<EnergyStatus, double3x3> pressureInfo = 
-      Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, frameworkComponents, components,
-                                                      simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+  std::pair<EnergyStatus, double3x3> pressureInfo =
+       Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, frameworkComponents, components,
+                                                       simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(forceField, components, simulationBox,
                                                       spanOfMoleculeAtoms()));
@@ -1247,7 +1247,6 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                                                             frameworkComponents, components, numberOfMoleculesPerComponent, 
                                                             spanOfMoleculeAtoms()));
 
-  //pressureInfo.first.interComponentEnergies[0].CoulombicFourier -= EnergyFactor(rigidEnergies.ewald, 0.0);
   pressureInfo.first.sumTotal();
 
 
@@ -1295,9 +1294,102 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   return pressureInfo;
 }
 
-void System::MD_Loop()
+void System::integrate()
 {
+  // evolve the positions a half timestep
+  //UpdateVelocities();
+
+  // evolve the positions a full timestep
+  //UpdatePositions();
+
+  // first part of bond-constraints
+  //RattleStageOne();
+
+  // evolve the part of rigid bodies involving free rotation
+  //NoSquishFreeRotorOrderTwo();
+
+  // compute the forces on all the atoms
+  //CalculateForce();
+
+  // evolve the positions a half timestep
+  //UpdateVelocities();
+
+  // second part of bond-constraints
+  //RattleStageTwo();
 }
+
+void System::computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule_positions, std::span<Atom> atom_positions)
+{
+  size_t moleculeIndex = 0;
+  size_t index{ 0 };
+  for(size_t l = 0; l != components.size(); ++l)
+  {
+    size_t size = components[l].atoms.size();
+    double molecularMass = components[l].totalMass;
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      double3 comForce{};
+      for(size_t i = 0; i != size; i++)
+      {
+        comForce -= atom_positions[i].gradient;
+      }
+      std::cout << "TEST: " << comForce.x << ", " << comForce.y << ", " << comForce.z << std::endl;
+      molecule_positions[moleculeIndex].force = comForce;
+
+      double3 torque{};
+      simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
+      double3x3 M = double3x3::buildRotationMatrix(orientation);
+      for(size_t i = 0; i != size; i++)
+      {
+        double mass = components[l].definedAtoms[i].second;
+        double3 force = -atom_positions[i].gradient - comForce * mass / molecularMass;
+        double3 F = M * force;
+        double3 dr = components[l].atoms[i].position;
+        torque.x += dr.y * F.z - dr.z * F.y;
+        torque.y += dr.z * F.x - dr.x * F.z;
+        torque.z += dr.x * F.y - dr.y * F.x;
+      }
+
+      molecule_positions[moleculeIndex].orientationForce.r  = 2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
+      molecule_positions[moleculeIndex].orientationForce.ix = 2.0 * ( orientation.r  * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
+      molecule_positions[moleculeIndex].orientationForce.iy = 2.0 * ( orientation.iz * torque.x + orientation.r  * torque.y - orientation.ix * torque.z);
+      molecule_positions[moleculeIndex].orientationForce.iz = 2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r  * torque.z);
+
+      index += size;
+      ++moleculeIndex;
+    }
+  }
+}
+
+
+/*
+  for(size_t c = 0; c != components.size(); ++c)
+  {
+    size_t numberOfAtoms = components[c].atoms.size();
+
+    if(components[c].rigid)
+    {
+      double mass = components[c].totalMass;
+      for([[maybe_unused]]size_t i = 0; i < numberOfMoleculesPerComponent[c]; ++i)
+      {
+        double3 force{};
+
+        double3 vel = moleculePositions[moleculeIndex].velocity;
+        vel.x = vel.x * aa2 + 0.5 * bb * comForce.x /mass;
+        vel.y = vel.y * aa2 + 0.5 * bb * comForce.y /mass;
+        vel.z = vel.z * aa2 + 0.5 * bb * comForce.z /mass;
+        moleculePositions[moleculeIndex].velocity = vel;
+
+        //moleculePositions[moleculeIndex].orientationMomentum.r  += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.r;
+        //moleculePositions[moleculeIndex].orientationMomentum.ix += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.ix;
+        //moleculePositions[moleculeIndex].orientationMomentum.iy += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.iy;
+        //moleculePositions[moleculeIndex].orientationMomentum.iz += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.iz;
+      }
+      ++moleculeIndex;
+    }
+    atomIndex += numberOfAtoms;
+  }
+  */
 
 std::vector<Atom> 
 System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent,

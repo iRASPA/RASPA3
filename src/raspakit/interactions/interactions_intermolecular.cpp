@@ -389,7 +389,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
     size_t typeA = static_cast<size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
-    double scaleCoulombA = it1->scalingCoulomb;
+    double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
     
     for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
@@ -404,7 +404,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
         size_t typeB = static_cast<size_t>(it2->type);
         bool groupIdB = static_cast<bool>(it2->groupId);
         double scalingVDWB = it2->scalingVDW;
-        double scaleCoulombB = it2->scalingCoulomb;
+        double scalingCoulombB = it2->scalingCoulomb;
         double chargeB = it2->charge;
 
         dr = posA - posB;
@@ -427,7 +427,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
         {
           double r = std::sqrt(rr);
           ForceFactor forceFactor = 
-            potentialCoulombGradient(forceField, groupIdA, groupIdB, scaleCoulombA, scaleCoulombB, r, chargeA, chargeB);
+            potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energy += forceFactor;
 

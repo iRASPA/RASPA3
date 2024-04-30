@@ -467,7 +467,10 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
                                                       std::vector<std::complex<double>> &eik_y,
                                                       std::vector<std::complex<double>> &eik_z,
                                                       std::vector<std::complex<double>> &eik_xy,
+                                                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
                                                       const ForceField &forceField, const SimulationBox &simulationBox,
+                                                      const std::vector<Component> &components,
+                                                      const std::vector<size_t> &numberOfMoleculesPerComponent,
                                                       std::span<Atom> atomPositions)
 {
   double alpha = forceField.EwaldAlpha;
@@ -537,7 +540,7 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
 
   
 
-  //size_t nvec = 0;
+  size_t nvec = 0;
   double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   for (std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
   {
@@ -580,6 +583,8 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
             cksum2 += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
+          cksum += fixedFrameworkStoredEik[nvec].first;
+
           
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
@@ -597,7 +602,7 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
           }
 
           //storedEik[nvec] = cksum;
-//          ++nvec;
+          ++nvec;
         }
       }
     }
@@ -614,38 +619,49 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
     energy.dUdlambda -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
-  // Subtract exclusion-energy (zero force for rigid molecule)
-  //size_t index{ 0 };
-  //for(size_t l = 0; l != components.size(); ++l)
-  //{
-  //  size_t size = components[l].atoms.size();
-  //  for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-  //  {
-  //    std::span<const Atom> span = std::span(&moleculeAtomPositions[index], size);
-  //    for(size_t i = 0; i != span.size() - 1; i++)
-  //    {
-  //      double chargeA = span[i].charge;
-  //      double scalingA = span[i].scalingCoulomb;
-  //      bool groupIdA = static_cast<bool>(span[i].groupId);
-  //      double3 posA = span[i].position;
-  //      for(size_t j = i + 1; j != span.size(); j++)
-  //      {
-  //        double chargeB = span[j].charge;
-  //        double scalingB = span[j].scalingCoulomb;
-  //        bool groupIdB = static_cast<bool>(span[j].groupId);
-  //        double3 posB = span[j].position;
 
-  //        double3 dr = posA - posB;
-  //        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-  //        double r = std::sqrt(double3::dot(dr, dr));
+  // Subtract exclusion-energy
+  size_t index{ 0 };
+  for(size_t l = 0; l != components.size(); ++l)
+  {
+    size_t size = components[l].atoms.size();
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      std::span<Atom> span = std::span(&atomPositions[index], size);
+      for(size_t i = 0; i != span.size() - 1; i++)
+      {
+        double chargeA = span[i].charge;
+        double scalingA = span[i].scalingCoulomb;
+        bool groupIdA = static_cast<bool>(span[i].groupId);
+        double3 posA = span[i].position;
+        for(size_t j = i + 1; j != span.size(); j++)
+        {
+          double chargeB = span[j].charge;
+          double scalingB = span[j].scalingCoulomb;
+          bool groupIdB = static_cast<bool>(span[j].groupId);
+          double3 posB = span[j].position;
 
-  //        double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-  //        energy.energy -= scalingA * scalingB * temp;
-  //        energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
-  //      }
-  //    }
-  //  }
-  //}
+          double3 dr = posA - posB;
+          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+          double rr = double3::dot(dr, dr);
+          double r = std::sqrt(rr);
+
+          double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+          energy.energy -= scalingA * scalingB * temp;
+          energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
+
+          temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha * std::exp(-(alpha * alpha * r * r)) / rr;
+          double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
+          double Bt1 = temp + Bt0 / rr;
+          temp = chargeA * chargeB * Bt1;
+          span[i].gradient -= temp * dr;
+          span[j].gradient += temp * dr;
+
+        }
+      }
+      index += size;
+    }
+  }
 
 
   // Handle net-charges
@@ -1090,19 +1106,19 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
       std::span<const Atom> span = std::span(&atomPositions[index], size);
       for(size_t i = 0; i != span.size() - 1; i++)
       {
-        double factorA = span[i].scalingCoulomb * span[i].charge;
-        double3 posA = span[i].position;
+        double factora = span[i].scalingCoulomb * span[i].charge;
+        double3 posa = span[i].position;
         for(size_t j = i + 1; j != span.size(); j++)
         {
-          double factorB = span[j].scalingCoulomb * span[j].charge;
-          double3 posB = span[j].position;
+          double factorb = span[j].scalingCoulomb * span[j].charge;
+          double3 posb = span[j].position;
 
-          double3 dr = posA - posB;
+          double3 dr = posa - posb;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);
           double r = std::sqrt(double3::dot(dr, dr));
 
           energy.componentEnergy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
-                                                       factorA * factorB * std::erf(alpha * r) / r, 0.0);
+                                                       factora * factorb * std::erf(alpha * r) / r, 0.0);
         }
       }
       index += size;

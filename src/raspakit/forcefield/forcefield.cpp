@@ -81,6 +81,7 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
     shiftPotentials(pseudoAtoms.size()* pseudoAtoms.size(), shifted),
     tailCorrections(pseudoAtoms.size()* pseudoAtoms.size(), applyTailCorrections),
     cutOffVDW(cutOff), 
+    cutOffCoulomb(cutOff),
     numberOfPseudoAtoms(pseudoAtoms.size()), 
     pseudoAtoms(pseudoAtoms)
 {

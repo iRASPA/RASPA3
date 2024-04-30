@@ -239,7 +239,8 @@ export struct System
   void createInitialMolecules(RandomNumber &random);
   void determineSimulationBox();
 
-  void MD_Loop();
+  void integrate();
+  void computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule_positions, std::span<Atom> atom_positions); 
 
   void precomputeTotalRigidEnergy() noexcept;
   void recomputeTotalEnergies() noexcept;

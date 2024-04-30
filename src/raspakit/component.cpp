@@ -466,8 +466,8 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    Compressibility:              {} [-]\n", compressibility);
   std::print(stream, "    Excess molecules:             {} [-]\n\n", amountOfExcessMolecules);
 
-  std::print(stream, "    Number Of Atoms:  {}\n", atoms.size());
-  
+  std::print(stream, "    Number Of Atoms:    {}\n", atoms.size());
+  std::print(stream, "    CBMC starting bead: {}\n", startingBead);
   for(size_t i = 0; i != atoms.size(); ++i)
   {
     size_t atomType = static_cast<size_t>(atoms[i].type);

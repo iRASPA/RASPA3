@@ -291,7 +291,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
                                                            std::span<Atom> frameworkAtoms,
                                                            std::span<Atom> moleculeAtoms) noexcept
 {
-  double3 dr, posA, posB, f;
+  double3 dr, posA, posB;
   double rr;
 
   bool noCharges = forceField.noCharges;
@@ -300,7 +300,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
 
   ForceFactor energy{ 0.0, 0.0, 0.0 };
 
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
     size_t typeA = static_cast<size_t>(it1->type);
@@ -321,29 +321,34 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
       rr = double3::dot(dr, dr);
 
+      dr = posA - posB;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      rr = double3::dot(dr, dr);
+
       if (rr < cutOffVDWSquared)
       {
-        ForceFactor forceFactor = 
+        ForceFactor forceFactor =
           potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
         energy += forceFactor;
 
-        const double3 factor = forceFactor.forceFactor * dr;
+        const double3 f = forceFactor.forceFactor * dr;
 
-        it2->gradient -= factor;
+        it1->gradient += f;
+        it2->gradient -= f;
       }
       if (!noCharges && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        ForceFactor energyFactor = 
-          potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, 
-                                   chargeA, chargeB);
+        ForceFactor forceFactor =
+          potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-        energy += energyFactor;
+        energy += forceFactor;
 
-        const double3 factor = energyFactor.forceFactor * dr;
+        const double3 f = forceFactor.forceFactor * dr;
 
-        it2->gradient -= factor;
+        it1->gradient += f;
+        it2->gradient -= f;
       }
     }
   }

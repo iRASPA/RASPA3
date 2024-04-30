@@ -611,8 +611,9 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
                                         system.forceField, system.simulationBox,
                                         system.spanOfFrameworkAtoms(), rigidenergy);
   [[maybe_unused]] ForceFactor factor = 
-    Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                          system.forceField, system.simulationBox,
+    Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, 
+                                          system.forceField, system.simulationBox, 
+                                          system.components, system.numberOfMoleculesPerComponent,
                                           atomPositions);
 
   double delta = 1e-4;

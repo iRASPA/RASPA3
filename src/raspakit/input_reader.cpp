@@ -471,6 +471,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+
     if (item["CreateNumberOfMolecules"].is_number_integer())
     {
       size_t n = item["CreateNumberOfMolecules"].get<size_t>();
@@ -504,6 +505,20 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       jsonComponents[i][componentId] =
           Component(Component::Type::Adsorbate, componentId, forceFields[i].value(), jsonComponentName,
                     jsonComponentName, jsonNumberOfBlocks, jsonNumberOfLambdaBins, move_probabilities[i]);
+    }
+
+    if (item["StartingBead"].is_number_integer())
+    {
+      size_t n = item["StartingBead"].get<size_t>();
+      for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+      {
+        if (n >= jsonComponents[i][componentId].definedAtoms.size())
+        {
+          throw std::runtime_error(std::format("[Input reader]: starting bead larger than the molecule size'\n"));
+        }
+
+        jsonComponents[i][componentId].startingBead = n;
+      }
     }
 
     componentId++;

@@ -47,11 +47,16 @@ import stringutils;
 export struct Molecule
 {
   double3 centerOfMassPosition;
+  double3 velocity;
+  double3 force;
   simd_quatd orientation;    
+  simd_quatd orientationMomentum;
+  simd_quatd orientationForce;
 
   Molecule() noexcept = default;
   Molecule(double3 centerOfMassPosition, simd_quatd orientation) :
-    centerOfMassPosition(centerOfMassPosition), orientation(orientation)
+    centerOfMassPosition(centerOfMassPosition), velocity(0.0, 0.0, 0.0),
+    orientation(orientation),orientationMomentum(0.0, 0.0, 0.0, 1.0)
   {
   };
 
@@ -66,5 +71,5 @@ export struct Molecule
   }
 };
 
-// should be 2 times double4 = 2x(8x4) = 2x32 = 64 bytes
-static_assert(sizeof(Molecule) == 64, "struct Molecule size is not 64");
+// should be 6 times double4 = 6x(8x4) = 6x32 = 192 bytes
+static_assert(sizeof(Molecule) == 192, "struct Molecule size is not 192");
