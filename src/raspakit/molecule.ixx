@@ -48,15 +48,15 @@ export struct Molecule
 {
   double3 centerOfMassPosition;
   double3 velocity;
-  double3 force;
+  double3 gradient;
   simd_quatd orientation;    
   simd_quatd orientationMomentum;
-  simd_quatd orientationForce;
+  simd_quatd orientationGradient;
 
   Molecule() noexcept = default;
   Molecule(double3 centerOfMassPosition, simd_quatd orientation) :
-    centerOfMassPosition(centerOfMassPosition), velocity(0.0, 0.0, 0.0),
-    orientation(orientation),orientationMomentum(0.0, 0.0, 0.0, 1.0)
+    centerOfMassPosition(centerOfMassPosition), velocity(0.0, 0.0, 0.0), gradient(0.0, 0.0, 0.0),
+    orientation(orientation),orientationMomentum(0.0, 0.0, 0.0, 1.0), orientationGradient(0.0, 0.0, 0.0, 1.0)
   {
   };
 

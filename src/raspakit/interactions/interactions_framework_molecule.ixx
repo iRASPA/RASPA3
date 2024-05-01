@@ -46,9 +46,9 @@ export namespace Interactions
                                                std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
                                                std::span<const Atom> oldatoms) noexcept;
 
-  ForceFactor computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                               std::span<Atom> frameworkAtoms,
-                                               std::span<Atom> moleculeAtoms) noexcept;
+  std::pair<ForceFactor, ForceFactor> computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                       std::span<Atom> frameworkAtoms,
+                                                                       std::span<Atom> moleculeAtoms) noexcept;
 
   [[nodiscard]] std::pair<EnergyStatus, double3x3>
   computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &forceField, 

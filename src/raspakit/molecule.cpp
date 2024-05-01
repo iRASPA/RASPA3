@@ -54,7 +54,11 @@ import stringutils;
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &atom)
 {
   archive << atom.centerOfMassPosition;
+  archive << atom.velocity;
+  archive << atom.gradient;
   archive << atom.orientation;
+  archive << atom.orientationMomentum;
+  archive << atom.orientationGradient;
 
   return archive;
 };
@@ -62,7 +66,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecu
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &atom)
 {
   archive >> atom.centerOfMassPosition;
+  archive >> atom.velocity;
+  archive >> atom.gradient;
   archive >> atom.orientation;
+  archive >> atom.orientationMomentum;
+  archive >> atom.orientationGradient;
 
   return archive;
 }

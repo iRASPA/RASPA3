@@ -366,9 +366,9 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
   return energySum;
 }
 
-ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceField, 
-                                                        const SimulationBox &simulationBox, 
-                                                        std::span<Atom> moleculeAtoms) noexcept
+std::pair<ForceFactor, ForceFactor> Interactions::computeInterMolecularGradient(const ForceField &forceField, 
+                                                                                const SimulationBox &simulationBox, 
+                                                                                std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
   double rr;
@@ -377,9 +377,10 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  ForceFactor energy{ 0.0, 0.0, 0.0 };
+  ForceFactor energyVDW{ 0.0, 0.0, 0.0 };
+  ForceFactor energyCoulomb{ 0.0, 0.0, 0.0 };
 
-  if (moleculeAtoms.empty()) return energy;
+  if (moleculeAtoms.empty()) return {energyVDW, energyCoulomb};
 
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
@@ -416,7 +417,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
           ForceFactor forceFactor = 
             potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-          energy += forceFactor;
+          energyVDW += forceFactor;
 
           const double3 f = forceFactor.forceFactor * dr;
 
@@ -429,7 +430,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
           ForceFactor forceFactor = 
             potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energy += forceFactor;
+          energyCoulomb += forceFactor;
 
           const double3 f = forceFactor.forceFactor * dr;
 
@@ -440,7 +441,7 @@ ForceFactor Interactions::computeInterMolecularGradient(const ForceField &forceF
     }
   }
 
-  return energy;
+  return {energyVDW, energyCoulomb};
 }
 
 

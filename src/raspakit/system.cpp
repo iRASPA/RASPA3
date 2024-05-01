@@ -1226,7 +1226,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
 RunningEnergy System::computeTotalGradients() noexcept
 {
-  RunningEnergy runningEnergy{};
+  RunningEnergy running_energy{};
 
   if(fixedFrameworkStoredEik.empty())
   {
@@ -1236,15 +1236,33 @@ RunningEnergy System::computeTotalGradients() noexcept
   std::span<Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  ForceFactor frameworkMolecule = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
-  ForceFactor interMolecular = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  for(Atom& atom: moleculeAtomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
+
+  std::pair<ForceFactor,ForceFactor> frameworkMolecule = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+  std::pair<ForceFactor,ForceFactor> interMolecular = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
   ForceFactor ewald = Interactions::computeEwaldFourierGradient(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
                                                                 forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
 
-  // correct for the energy of rigid parts
-  runningEnergy -= rigidEnergies;
+  running_energy.externalFieldVDW = 0.0;
+  running_energy.frameworkMoleculeVDW = frameworkMolecule.first.energy;
+  running_energy.moleculeMoleculeVDW = interMolecular.first.energy;
+  running_energy.externalFieldCharge = 0.0;
+  running_energy.frameworkMoleculeCharge = frameworkMolecule.first.energy;
+  running_energy.moleculeMoleculeCharge = interMolecular.second.energy;
+  running_energy.ewald = ewald.energy;
+  running_energy.intraVDW = 0.0;
+  running_energy.intraCoul = 0.0;
+  running_energy.tail = 0.0;
+  running_energy.polarization = 0.0;
+  running_energy.dudlambdaVDW = frameworkMolecule.first.dUdlambda + interMolecular.first.dUdlambda;
+  running_energy.dudlambdaCharge = frameworkMolecule.second.dUdlambda + interMolecular.second.dUdlambda;
+  running_energy.dudlambdaEwald = ewald.dUdlambda;
 
-  return runningEnergy;
+
+  return running_energy;
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
@@ -1337,8 +1355,31 @@ void System::integrate()
   //RattleStageTwo();
 }
 
-void System::computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule_positions, std::span<Atom> atom_positions)
+void System::computeCenterOfMassAndQuaternionForces()
 {
+  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  size_t index{};
+  size_t moleculeIndex{};
+  for(size_t l = 0; l != components.size(); ++l)
+  {
+    size_t size = components[l].atoms.size();
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+      double3 com_gradient{};
+      for(size_t i = 0; i != span.size(); i++)
+      {
+        com_gradient += span[i].gradient;
+      }
+      moleculePositions[moleculeIndex].gradient = com_gradient;
+      ++moleculeIndex;
+      index += size;
+    }
+  }
+
+
+  /*
   size_t moleculeIndex = 0;
   size_t index{ 0 };
   for(size_t l = 0; l != components.size(); ++l)
@@ -1350,10 +1391,10 @@ void System::computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule
       double3 comForce{};
       for(size_t i = 0; i != size; i++)
       {
-        comForce -= atom_positions[i].gradient;
+        comForce -= [i].gradient;
       }
       std::cout << "TEST: " << comForce.x << ", " << comForce.y << ", " << comForce.z << std::endl;
-      molecule_positions[moleculeIndex].force = comForce;
+      moleculePositions[moleculeIndex].force = comForce;
 
       double3 torque{};
       simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
@@ -1378,37 +1419,9 @@ void System::computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule
       ++moleculeIndex;
     }
   }
+  */
 }
 
-
-/*
-  for(size_t c = 0; c != components.size(); ++c)
-  {
-    size_t numberOfAtoms = components[c].atoms.size();
-
-    if(components[c].rigid)
-    {
-      double mass = components[c].totalMass;
-      for([[maybe_unused]]size_t i = 0; i < numberOfMoleculesPerComponent[c]; ++i)
-      {
-        double3 force{};
-
-        double3 vel = moleculePositions[moleculeIndex].velocity;
-        vel.x = vel.x * aa2 + 0.5 * bb * comForce.x /mass;
-        vel.y = vel.y * aa2 + 0.5 * bb * comForce.y /mass;
-        vel.z = vel.z * aa2 + 0.5 * bb * comForce.z /mass;
-        moleculePositions[moleculeIndex].velocity = vel;
-
-        //moleculePositions[moleculeIndex].orientationMomentum.r  += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.r;
-        //moleculePositions[moleculeIndex].orientationMomentum.ix += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.ix;
-        //moleculePositions[moleculeIndex].orientationMomentum.iy += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.iy;
-        //moleculePositions[moleculeIndex].orientationMomentum.iz += 0.5 * timeStep * moleculePositions[moleculeIndex].orientationForce.iz;
-      }
-      ++moleculeIndex;
-    }
-    atomIndex += numberOfAtoms;
-  }
-  */
 
 std::vector<Atom> 
 System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent,
@@ -1542,6 +1555,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.simulationBox;
   archive << s.averageSimulationBox;
   archive << s.atomPositions;
+  archive << s.moleculePositions;
   archive << s.runningEnergies;
   archive << s.rigidEnergies;
   archive << s.averageEnergies;
@@ -1627,6 +1641,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.simulationBox;
   archive >> s.averageSimulationBox;
   archive >> s.atomPositions;
+  archive >> s.moleculePositions;
   archive >> s.runningEnergies;
   archive >> s.rigidEnergies;
   archive >> s.averageEnergies;

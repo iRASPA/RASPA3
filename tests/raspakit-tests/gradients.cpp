@@ -73,7 +73,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  [[maybe_unused]] ForceFactor factorInterMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular =
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(atomPositions[0].gradient.x,   0.000000000000, 1e-6);
@@ -172,7 +172,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355);
   atomPositions[5].position = double3(5.93355, 3.93355, 4.78455);
 
-  [[maybe_unused]] ForceFactor factorFrameworkMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(atomPositions[0].gradient.x,    0.000000000000, 1e-6);
@@ -274,9 +274,9 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  [[maybe_unused]] ForceFactor factorFrameworkMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
-  [[maybe_unused]] ForceFactor factorInterMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular =
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
   //[[maybe_unused]] ForceFactor factorEwald =
   //  Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -384,12 +384,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   atomPositions[3].position = double3(5.93355, 3.93355, 5.93355 + 1.149);
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
-
-  //[[maybe_unused]] ForceFactor factorFrameworkMolecular =
-  //  Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
-  //[[maybe_unused]] ForceFactor factorInterMolecular =
-  //  Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
-
 
   RunningEnergy energy, rigidenergy;
   Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
@@ -504,9 +498,9 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  [[maybe_unused]] ForceFactor factorFrameworkMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
-  [[maybe_unused]] ForceFactor factorInterMolecular =
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular =
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   RunningEnergy energy, rigidenergy;
@@ -758,9 +752,9 @@ TEST(Gradients, Test_CO2_in_ITQ_29_1x1x1)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  [[maybe_unused]] ForceFactor factor = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factor = 
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
-  [[maybe_unused]] ForceFactor factor2 = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factor2 = 
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
@@ -838,9 +832,9 @@ TEST(Gradients, Test_CH4_in_Box_25x25x25)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  [[maybe_unused]] ForceFactor factorFrameworkMolecular = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular = 
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
-  [[maybe_unused]] ForceFactor factorInterMolecular = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular = 
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
@@ -976,9 +970,9 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  [[maybe_unused]] ForceFactor factor = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factor = 
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
-  [[maybe_unused]] ForceFactor factor2 = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factor2 = 
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
@@ -1082,7 +1076,7 @@ TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
     system.atomPositions[i + 20].charge = -1.0;
   }
 
-  [[maybe_unused]] ForceFactor factor = 
+  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factor = 
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;

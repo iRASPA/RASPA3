@@ -240,7 +240,7 @@ export struct System
   void determineSimulationBox();
 
   void integrate();
-  void computeCenterOfMassAndQuaternionForces(std::span<Molecule> molecule_positions, std::span<Atom> atom_positions); 
+  void computeCenterOfMassAndQuaternionForces();
 
   void precomputeTotalRigidEnergy() noexcept;
   void recomputeTotalEnergies() noexcept;

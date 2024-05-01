@@ -87,7 +87,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   system.atomPositions[12].scalingVDW = 0.34;
   system.atomPositions[4].scalingVDW = 0.16;
   system.atomPositions[14].scalingVDW = 0.27;
-  ForceFactor factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
@@ -97,18 +97,19 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   //system.atomPositions[12].scalingVDW = 0.34 + 0.5 * delta;
   //system.atomPositions[4].scalingVDW = 0.16 + 0.5 * delta;
   //system.atomPositions[14].scalingVDW = 0.27 + 0.5 * delta;
-  ForceFactor energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   system.atomPositions[8].scalingVDW = 0.15 - 0.5 * delta;
   system.atomPositions[2].scalingVDW = 0.25 - 0.5 * delta;
   //system.atomPositions[12].scalingVDW = 0.34 - 0.5 * delta;
   //system.atomPositions[4].scalingVDW = 0.16 - 0.5 * delta;
   //system.atomPositions[14].scalingVDW = 0.27 - 0.5 * delta;
-  ForceFactor energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
   
-  double dUdlambda = (energyForward.energy - energyBackward.energy) / delta;
+  double dUdlambda = ((energyForward.first.energy + energyForward.second.energy) - (energyBackward.first.energy + energyBackward.second.energy)) / delta;
 
-  EXPECT_NEAR(factor.dUdlambda, dUdlambda, tolerance) << " ratio: " << factor.dUdlambda / dUdlambda << " " << dUdlambda / factor.dUdlambda;
+  EXPECT_NEAR(factor.first.dUdlambda + factor.second.dUdlambda, dUdlambda, tolerance) << " ratio: " << 
+    (factor.first.dUdlambda + factor.second.dUdlambda) / dUdlambda << " " << dUdlambda / (factor.first.dUdlambda + factor.second.dUdlambda);
 }
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
@@ -173,7 +174,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   system.atomPositions[12].scalingCoulomb = 0.4;
   system.atomPositions[4].scalingCoulomb = 0.6;
   system.atomPositions[14].scalingCoulomb = 0.7;
-  ForceFactor factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
@@ -183,18 +184,19 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   //system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
-  ForceFactor energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
   //system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
-  ForceFactor energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
-  double dUdlambda = (energyForward.energy - energyBackward.energy) / delta;
+  double dUdlambda = ((energyForward.first.energy + energyForward.second.energy) - (energyBackward.first.energy + energyBackward.second.energy)) / delta;
 
-  EXPECT_NEAR(factor.dUdlambda, dUdlambda, tolerance) << " ratio: " << factor.dUdlambda / dUdlambda << " " << dUdlambda / factor.dUdlambda;
+  EXPECT_NEAR(factor.first.dUdlambda + factor.second.dUdlambda, dUdlambda, tolerance) << " ratio: " << 
+    (factor.first.dUdlambda + factor.second.dUdlambda) / dUdlambda << " " << dUdlambda / (factor.first.dUdlambda + factor.second.dUdlambda);
 }
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
@@ -259,7 +261,7 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   system.atomPositions[12].scalingCoulomb = 0.4;
   system.atomPositions[4].scalingCoulomb = 0.6;
   system.atomPositions[14].scalingCoulomb = 0.7;
-  ForceFactor factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
   double tolerance = 1e-3;
@@ -269,18 +271,19 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   //system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
-  ForceFactor energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
   //system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
-  ForceFactor energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
-  double dUdlambda = (energyForward.energy - energyBackward.energy) / delta;
+  double dUdlambda = ((energyForward.first.energy + energyForward.second.energy) - (energyBackward.first.energy + energyBackward.second.energy)) / delta;
 
-  EXPECT_NEAR(factor.dUdlambda, dUdlambda, tolerance) << " ratio: " << factor.dUdlambda / dUdlambda << " " << dUdlambda / factor.dUdlambda;
+  EXPECT_NEAR(factor.first.dUdlambda + factor.second.dUdlambda, dUdlambda, tolerance) << " ratio: " << 
+    (factor.first.dUdlambda + factor.second.dUdlambda) / dUdlambda << " " << dUdlambda / (factor.first.dUdlambda + factor.second.dUdlambda);
 }
 
 
@@ -335,7 +338,7 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   system.atomPositions[12].scalingCoulomb = 0.4;
   system.atomPositions[4].scalingCoulomb = 0.6;
   system.atomPositions[14].scalingCoulomb = 0.7;
-  ForceFactor factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
   double tolerance = 1e-4;
@@ -345,18 +348,19 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
   //system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
-  ForceFactor energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
   system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
   system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
   //system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   //system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   //system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
-  ForceFactor energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+  std::pair<ForceFactor, ForceFactor> energyBackward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
-  double dUdlambda = (energyForward.energy - energyBackward.energy) / delta;
+  double dUdlambda = ((energyForward.first.energy + energyForward.second.energy) - (energyBackward.first.energy + energyBackward.second.energy)) / delta;
 
-  EXPECT_NEAR(factor.dUdlambda, dUdlambda, tolerance) << " ratio: " << factor.dUdlambda / dUdlambda << " " << dUdlambda / factor.dUdlambda;
+  EXPECT_NEAR(factor.first.dUdlambda + factor.second.dUdlambda, dUdlambda, tolerance) << " ratio: " << 
+    (factor.first.dUdlambda + factor.second.dUdlambda) / dUdlambda << " " << dUdlambda / (factor.first.dUdlambda + factor.second.dUdlambda);
 }
 
 /*

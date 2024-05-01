@@ -286,7 +286,7 @@ Interactions::computeFrameworkMoleculeTailEnergyDifference(const ForceField &for
   return energySum;
 }
 
-ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &forceField,                                    
+std::pair<ForceFactor, ForceFactor> Interactions::computeFrameworkMoleculeGradient(const ForceField &forceField,                                    
                                                            const SimulationBox &simulationBox,                              
                                                            std::span<Atom> frameworkAtoms,
                                                            std::span<Atom> moleculeAtoms) noexcept
@@ -298,7 +298,10 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  ForceFactor energy{ 0.0, 0.0, 0.0 };
+  ForceFactor energyVDW{ 0.0, 0.0, 0.0 };
+  ForceFactor energyCoulomb{ 0.0, 0.0, 0.0 };
+
+  if (moleculeAtoms.empty()) return {energyVDW, energyCoulomb};
 
   for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -326,7 +329,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
         ForceFactor forceFactor =
           potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-        energy += forceFactor;
+        energyVDW += forceFactor;
 
         const double3 f = forceFactor.forceFactor * dr;
 
@@ -338,7 +341,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
         ForceFactor forceFactor =
           potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-        energy += forceFactor;
+        energyCoulomb += forceFactor;
 
         const double3 f = forceFactor.forceFactor * dr;
 
@@ -346,7 +349,7 @@ ForceFactor Interactions::computeFrameworkMoleculeGradient(const ForceField &for
       }
     }
   }
-  return energy;
+  return {energyVDW, energyCoulomb};
 }
 
 
