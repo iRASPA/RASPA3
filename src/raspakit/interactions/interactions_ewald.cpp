@@ -389,13 +389,17 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
             cksum.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
-          cksum.first += fixedFrameworkStoredEik[nvec].first;
-          cksum.second += fixedFrameworkStoredEik[nvec].second;
+          std::pair<std::complex<double>, std::complex<double>> rigid = fixedFrameworkStoredEik[nvec];
+
+          cksum.first += rigid.first;
+          cksum.second += rigid.second;
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() + 
-                                        cksum.first.imag() * cksum.first.imag());
+          double rigidEnergy = temp * (rigid.first.real() * rigid.first.real() +
+                                        rigid.first.imag() * rigid.first.imag());
+          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() +
+                                        cksum.first.imag() * cksum.first.imag()) - rigidEnergy;
           energyStatus.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
                                                        cksum.first.imag() * cksum.second.imag());
 

@@ -1159,7 +1159,7 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 
 void System::precomputeTotalRigidEnergy() noexcept
 {
-  rigidEnergies.zero();
+  RunningEnergy rigidEnergies{};
   Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy, 
                                                fixedFrameworkStoredEik, forceField, simulationBox,
                                                spanOfRigidFrameworkAtoms(), rigidEnergies);
@@ -1188,9 +1188,6 @@ void System::recomputeTotalEnergies() noexcept
                                           forceField, simulationBox,
                                           components, numberOfMoleculesPerComponent,
                                           moleculeAtomPositions, runningEnergies);
-
-  // correct for the energy of rigid parts
-  runningEnergies -= rigidEnergies;
 }
 
 
@@ -1217,9 +1214,6 @@ RunningEnergy System::computeTotalEnergies() noexcept
                                           forceField, simulationBox,
                                           components, numberOfMoleculesPerComponent,
                                           moleculeAtomPositions, runningEnergy);
-
-  // correct for the energy of rigid parts
-  runningEnergy -= rigidEnergies;
 
   return runningEnergy;
 }
@@ -1260,9 +1254,6 @@ RunningEnergy System::computeTotalGradients() noexcept
   running_energy.dudlambdaVDW = frameworkMolecule.first.dUdlambda + interMolecular.first.dUdlambda;
   running_energy.dudlambdaCharge = frameworkMolecule.second.dUdlambda + interMolecular.second.dUdlambda;
   running_energy.dudlambdaEwald = ewald.dUdlambda;
-
-  // correct for the energy of rigid parts
-  running_energy -= rigidEnergies;
 
   return running_energy;
 }
@@ -1559,7 +1550,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.atomPositions;
   archive << s.moleculePositions;
   archive << s.runningEnergies;
-  archive << s.rigidEnergies;
   archive << s.averageEnergies;
   archive << s.currentExcessPressureTensor;
   archive << s.currentEnergyStatus;
@@ -1645,7 +1635,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.atomPositions;
   archive >> s.moleculePositions;
   archive >> s.runningEnergies;
-  archive >> s.rigidEnergies;
   archive >> s.averageEnergies;
   archive >> s.currentExcessPressureTensor;
   archive >> s.currentEnergyStatus;

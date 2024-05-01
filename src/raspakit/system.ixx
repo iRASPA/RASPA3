@@ -170,7 +170,6 @@ export struct System
   std::vector<Molecule> moleculePositions;
 
   RunningEnergy runningEnergies;
-  RunningEnergy rigidEnergies;
   PropertyEnergy averageEnergies;
 
   double3x3 currentExcessPressureTensor;

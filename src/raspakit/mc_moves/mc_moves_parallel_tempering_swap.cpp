@@ -127,7 +127,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.numberOfPseudoAtoms, systemB.numberOfPseudoAtoms);
     std::swap(systemA.totalNumberOfPseudoAtoms, systemB.totalNumberOfPseudoAtoms);
     std::swap(systemA.runningEnergies, systemB.runningEnergies);
-    std::swap(systemA.rigidEnergies, systemB.rigidEnergies);
     std::swap(systemA.averageEnergies, systemB.averageEnergies);
     std::swap(systemA.mc_moves_probabilities, systemB.mc_moves_probabilities);
     std::swap(systemA.mc_moves_statistics, systemB.mc_moves_statistics);

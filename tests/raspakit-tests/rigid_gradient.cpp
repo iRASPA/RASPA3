@@ -69,7 +69,6 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);

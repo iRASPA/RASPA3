@@ -253,14 +253,12 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
   RunningEnergy energy, rigidenergy;
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  system.precomputeTotalRigidEnergy();
   system.CoulombicFourierEnergySingleIon =
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      system.forceField, system.simulationBox,
                                                      double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
@@ -268,7 +266,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_1x1x1)
                                           system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 17464.2371790130, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -702.65863478, 1e-6);
+  EXPECT_NEAR(energy.ewald * Units::EnergyToKelvin, -702.65863478, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
@@ -319,14 +317,11 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
   RunningEnergy energy, rigidenergy;
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+  system.precomputeTotalRigidEnergy();
   system.CoulombicFourierEnergySingleIon =
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      system.forceField, system.simulationBox,
                                                      double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
@@ -334,7 +329,7 @@ TEST(Ewald, Test_2_CO2_in_ITQ_29_2x2x2)
                                           system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 9673.9032373025, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -721.64644486, 1e-6);
+  EXPECT_NEAR(energy.ewald * Units::EnergyToKelvin, -721.64644486, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
@@ -419,14 +414,12 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
   RunningEnergy energy, rigidenergy;
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  system.precomputeTotalRigidEnergy();
   system.CoulombicFourierEnergySingleIon =
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      system.forceField, system.simulationBox,
                                                      double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
@@ -434,7 +427,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_1x1x1)
                                           system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 12028.1731827280, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -1191.77790165, 1e-6);
+  EXPECT_NEAR(energy.ewald * Units::EnergyToKelvin, -1191.77790165, 1e-6);
 }
 
 TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
@@ -520,14 +513,12 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
   RunningEnergy energy, rigidenergy;
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+
+  system.precomputeTotalRigidEnergy();
   system.CoulombicFourierEnergySingleIon =
     Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                      system.forceField, system.simulationBox,
                                                      double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
   Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                           system.fixedFrameworkStoredEik, system.storedEik,
                                           system.forceField, system.simulationBox,
@@ -535,7 +526,7 @@ TEST(Ewald, Test_2_CO2_in_MFI_2x2x2)
                                           system.spanOfMoleculeAtoms(), energy);
 
   EXPECT_NEAR(system.CoulombicFourierEnergySingleIon * Units::EnergyToKelvin, 6309.7866899037, 1e-6);
-  EXPECT_NEAR((energy.ewald - rigidenergy.ewald) * Units::EnergyToKelvin, -1197.23909965, 1e-6);
+  EXPECT_NEAR(energy.ewald * Units::EnergyToKelvin, -1197.23909965, 1e-6);
 }
 
 
@@ -602,14 +593,8 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   //system.forceField.initializeEwaldParameters(perpendicularWidths);
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
-  system.CoulombicFourierEnergySingleIon =
-    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     system.forceField, system.simulationBox,
-                                                     double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
+
+  system.precomputeTotalRigidEnergy();
   [[maybe_unused]] ForceFactor factor = 
     Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, 
                                           system.forceField, system.simulationBox, 
@@ -783,16 +768,8 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
 
   RunningEnergy energy, rigidenergy;
 
-  system.CoulombicFourierEnergySingleIon =
-    Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                     system.forceField, system.simulationBox,
-                                                     double3(0.0, 0.0, 0.0), 1.0);
 
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
-
+  system.precomputeTotalRigidEnergy();
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
                                             system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                             system.fixedFrameworkStoredEik, system.storedEik,
