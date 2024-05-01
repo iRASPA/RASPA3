@@ -1261,6 +1261,8 @@ RunningEnergy System::computeTotalGradients() noexcept
   running_energy.dudlambdaCharge = frameworkMolecule.second.dUdlambda + interMolecular.second.dUdlambda;
   running_energy.dudlambdaEwald = ewald.dUdlambda;
 
+  // correct for the energy of rigid parts
+  running_energy -= rigidEnergies;
 
   return running_energy;
 }

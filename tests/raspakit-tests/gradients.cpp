@@ -43,7 +43,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
       VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
-    12.0,
+    11.8,
     true,
     false);
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671),
@@ -65,7 +65,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -73,8 +72,11 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular =
+  std::pair<ForceFactor, ForceFactor> factorInterMolecular =
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+
+  EXPECT_NEAR(factorInterMolecular.first.energy  * Units::EnergyToKelvin,  -242.36960932, 1e-6);
+  EXPECT_NEAR(factorInterMolecular.second.energy * Units::EnergyToKelvin,     0.00000000, 1e-6);
 
   EXPECT_NEAR(atomPositions[0].gradient.x,   0.000000000000, 1e-6);
   EXPECT_NEAR(atomPositions[0].gradient.y,  90.951955774481, 1e-6);
@@ -164,7 +166,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 7.08255);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355);
   atomPositions[2].position = double3(5.93355, 7.93355, 4.78455);
@@ -172,8 +173,11 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355);
   atomPositions[5].position = double3(5.93355, 3.93355, 4.78455);
 
-  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
+  std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+
+  EXPECT_NEAR(factorFrameworkMolecular.first.energy  * Units::EnergyToKelvin, -1932.15586114, 1e-6);
+  EXPECT_NEAR(factorFrameworkMolecular.second.energy * Units::EnergyToKelvin,     0.00000000, 1e-6);
 
   EXPECT_NEAR(atomPositions[0].gradient.x,    0.000000000000, 1e-6);
   EXPECT_NEAR(atomPositions[0].gradient.y, -131.516544539514, 1e-6);
@@ -266,7 +270,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -274,13 +277,15 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
+  std::pair<ForceFactor, ForceFactor> factorFrameworkMolecular =
     Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
-  [[maybe_unused]] std::pair<ForceFactor, ForceFactor> factorInterMolecular =
+  std::pair<ForceFactor, ForceFactor> factorInterMolecular =
     Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
-  //[[maybe_unused]] ForceFactor factorEwald =
-  //  Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-  //                                            system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
+
+  EXPECT_NEAR(factorFrameworkMolecular.first.energy  * Units::EnergyToKelvin, -1932.15586114, 1e-6);
+  EXPECT_NEAR(factorFrameworkMolecular.second.energy * Units::EnergyToKelvin,   554.41444763, 1e-6);
+  EXPECT_NEAR(factorInterMolecular.first.energy  * Units::EnergyToKelvin,      -242.36960932, 1e-6);
+  EXPECT_NEAR(factorInterMolecular.second.energy * Units::EnergyToKelvin,       162.41877650, 1e-6);
 
   EXPECT_NEAR(atomPositions[0].gradient.x,     0.000000000000, 1e-6);
   EXPECT_NEAR(atomPositions[0].gradient.y,   466.705848885190, 1e-6);
@@ -377,7 +382,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -390,11 +394,13 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
                                         system.fixedFrameworkStoredEik,
                                         system.forceField, system.simulationBox,
                                         system.spanOfFrameworkAtoms(), rigidenergy);
-  [[maybe_unused]] ForceFactor factorEwald =
+  ForceFactor factorEwald =
     Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
                                               system.forceField, system.simulationBox, 
                                               system.components, system.numberOfMoleculesPerComponent,
                                               system.spanOfMoleculeAtoms());
+
+  EXPECT_NEAR((factorEwald.energy - rigidenergy.ewald)  * Units::EnergyToKelvin, -759.67572774 + 38.02930863, 1e-4);
 
 
   EXPECT_NEAR(atomPositions[0].gradient.x,     0.000000000000, 1e-4);
@@ -490,7 +496,6 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
-  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 5.93355 - 1.149);
@@ -540,7 +545,9 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
-  system.computeTotalGradients();
+  [[maybe_unused]] RunningEnergy gradientEnergy = system.computeTotalGradients();
+
+  //EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);
 
   EXPECT_NEAR(atomPositions[0].gradient.x,     0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y,   103.939706389550, 1e-4);
