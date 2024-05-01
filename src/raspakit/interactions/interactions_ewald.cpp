@@ -1097,34 +1097,46 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
   }
 
   // Subtract exclusion-energy
-  size_t index{};
+  size_t index{ 0 };
   for(size_t l = 0; l != components.size(); ++l)
   {
     size_t size = components[l].atoms.size();
     for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      std::span<const Atom> span = std::span(&atomPositions[index], size);
+      std::span<Atom> span = std::span(&atomPositions[index], size);
       for(size_t i = 0; i != span.size() - 1; i++)
       {
-        double factora = span[i].scalingCoulomb * span[i].charge;
-        double3 posa = span[i].position;
+        double chargeA = span[i].charge;
+        double scalingA = span[i].scalingCoulomb;
+        bool groupIdA = static_cast<bool>(span[i].groupId);
+        double3 posA = span[i].position;
         for(size_t j = i + 1; j != span.size(); j++)
         {
-          double factorb = span[j].scalingCoulomb * span[j].charge;
-          double3 posb = span[j].position;
+          double chargeB = span[j].charge;
+          double scalingB = span[j].scalingCoulomb;
+          bool groupIdB = static_cast<bool>(span[j].groupId);
+          double3 posB = span[j].position;
 
-          double3 dr = posa - posb;
+          double3 dr = posA - posB;
           dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          double r = std::sqrt(double3::dot(dr, dr));
+          double rr = double3::dot(dr, dr);
+          double r = std::sqrt(rr);
 
           energy.componentEnergy(l,l).CoulombicFourier -= EnergyFactor(Units::CoulombicConversionFactor * 
-                                                       factora * factorb * std::erf(alpha * r) / r, 0.0);
+                                                       scalingA * chargeA * scalingB * chargeB * std::erf(alpha * r) / r, 0.0);
+
+          double temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha * std::exp(-(alpha * alpha * r * r)) / rr;
+          double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
+          double Bt1 = temp + Bt0 / rr;
+          temp = chargeA * chargeB * Bt1;
+          span[i].gradient -= temp * dr;
+          span[j].gradient += temp * dr;
+
         }
       }
       index += size;
     }
   }
-
 
   // Handle net-charges
   for(size_t i = 0; i != numberOfComponents; ++i)

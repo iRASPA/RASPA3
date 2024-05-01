@@ -245,7 +245,7 @@ export struct System
   void precomputeTotalRigidEnergy() noexcept;
   void recomputeTotalEnergies() noexcept;
   RunningEnergy computeTotalEnergies() noexcept;
-  void computeTotalGradients() noexcept;
+  RunningEnergy computeTotalGradients() noexcept;
 
   size_t randomFramework(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(numberOfFrameworks)); }
   size_t randomComponent(RandomNumber &random) { return size_t(random.uniform() * static_cast<double>(components.size())); }

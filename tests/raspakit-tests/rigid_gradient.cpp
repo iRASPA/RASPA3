@@ -28,7 +28,7 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
-TEST(RigidGradient, Test_2_CO2_in_ITQ_29_1x1x1)
+TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -44,10 +44,9 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_1x1x1)
       VDWParameters(85.671, 3.017)
     },
     ForceField::MixingRule::Lorentz_Berthelot,
-    12.0,
+    11.8,
     true,
     false);
-  forceField.noCharges = true;
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671),
     517,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
@@ -56,12 +55,12 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_1x1x1)
       Atom(double3(0.2939, 0.2939, 0),      -1.025, 1.0, 0, 1, 0, 0),
       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
-    int3(1, 1, 1));
+    int3(2, 2, 2));
   Component c = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId
-      Atom(double3(0.0, 0.0,  1.149), -0.3256, 1.0, 0, 4, 1, 0),
-      Atom(double3(0.0, 0.0,  0.0  ),  0.6512, 1.0, 0, 3, 1, 0),
-      Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
+      Atom(double3(0.0, 0.0,  1.149), 0.0, 1.0, 0, 4, 1, 0),
+      Atom(double3(0.0, 0.0,  0.0  ), 0.0, 1.0, 0, 3, 1, 0),
+      Atom(double3(0.0, 0.0, -1.149), 0.0, 1.0, 0, 4, 1, 0)
     }, 5, 21);
 
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, { f }, { c }, { 2 }, 5);
@@ -75,28 +74,34 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_1x1x1)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  system.forceField.EwaldAlpha = 0.25;
-  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
-  RunningEnergy runningEnergies = system.computeTotalEnergies();
+  for(Atom& atom: atomPositions)
+  {
+    atom.gradient = double3(0.0, 0.0, 0.0);
+  }
 
-  //EXPECT_NEAR(runningEnergies.frameworkMoleculeVDW * Units::EnergyToKelvin, -1545.62921755, 1e-6);
-  //EXPECT_NEAR(runningEnergies.frameworkMoleculeCharge * Units::EnergyToKelvin, -1236.47763069, 1e-6);
-  //EXPECT_NEAR(runningEnergies.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.42459776, 1e-6);
-  //EXPECT_NEAR(runningEnergies.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
-  //EXPECT_NEAR(runningEnergies.ewald * Units::EnergyToKelvin, -759.67575888 + 57.01712410, 1e-6);
+  //std::pair<EnergyStatus, double3x3> pressureInfo =
+  //     Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, frameworkComponents, components,
+  //                                                     simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
-  std::pair<EnergyStatus, double3x3> pressure = system.computeMolecularPressure();
-  //system.computeCenterOfMassAndQuaternionForces(system.moleculePositions, atomPositions);
+  //EXPECT_NEAR(atomPositions[0].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[0].gradient.y,  90.951955774481, 1e-6);
+  //EXPECT_NEAR(atomPositions[0].gradient.z,  17.938271420558, 1e-6);
+  //EXPECT_NEAR(atomPositions[1].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[1].gradient.y,  52.398564956433, 1e-6);
+  //EXPECT_NEAR(atomPositions[1].gradient.z,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[2].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[2].gradient.y,  90.951955774481, 1e-6);
+  //EXPECT_NEAR(atomPositions[2].gradient.z, -17.938271420558, 1e-6);
 
-  //EXPECT_NEAR(atomPositions[0].gradient.x, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[0].gradient.y, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[0].gradient.z, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[1].gradient.x, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[1].gradient.y, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[1].gradient.z, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[2].gradient.x, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[2].gradient.y, 1.0, 1e-6);
-  //EXPECT_NEAR(atomPositions[2].gradient.z, 1.0, 1e-6);
+  //EXPECT_NEAR(atomPositions[3].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[3].gradient.y, -90.951955774481, 1e-6);
+  //EXPECT_NEAR(atomPositions[3].gradient.z,  17.938271420558, 1e-6);
+  //EXPECT_NEAR(atomPositions[4].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[4].gradient.y, -52.398564956433, 1e-6);
+  //EXPECT_NEAR(atomPositions[4].gradient.z,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[5].gradient.x,   0.000000000000, 1e-6);
+  //EXPECT_NEAR(atomPositions[5].gradient.y, -90.951955774481, 1e-6);
+  //EXPECT_NEAR(atomPositions[5].gradient.z, -17.938271420558, 1e-6);
 }
 
 /*

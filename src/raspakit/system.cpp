@@ -1224,8 +1224,27 @@ RunningEnergy System::computeTotalEnergies() noexcept
   return runningEnergy;
 }
 
-void System::computeTotalGradients() noexcept
+RunningEnergy System::computeTotalGradients() noexcept
 {
+  RunningEnergy runningEnergy{};
+
+  if(fixedFrameworkStoredEik.empty())
+  {
+    precomputeTotalRigidEnergy();
+  }
+
+  std::span<Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
+  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  ForceFactor frameworkMolecule = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+  ForceFactor interMolecular = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  ForceFactor ewald = Interactions::computeEwaldFourierGradient(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
+                                                                forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
+
+  // correct for the energy of rigid parts
+  runningEnergy -= rigidEnergies;
+
+  return runningEnergy;
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
