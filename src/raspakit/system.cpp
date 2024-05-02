@@ -1369,9 +1369,11 @@ void System::computeCenterOfMassAndQuaternionGradients()
       double3 torque{};
       simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
       double3x3 M = double3x3::buildRotationMatrix(orientation);
+      double inverseMoleculeMass = 1.0 / components[l].totalMass;
       for(size_t i = 0; i != span.size(); i++)
       {
-        double3 F = M * (span[i].gradient - com_gradient);
+        double mass = components[l].definedAtoms[i].second;
+        double3 F = M * (span[i].gradient - com_gradient * mass * inverseMoleculeMass);
         double3 dr = components[l].atoms[i].position;
         torque += double3::cross(F, dr);
       }
