@@ -29,6 +29,7 @@ import threadpool;
 import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;
+import molecular_dynamics;
 import breakthrough;
 import breakthrough_simulation;
 import mixture_prediction_simulation;
@@ -68,6 +69,24 @@ int main()
       {
         MonteCarloTransitionMatrix mc(inputReader);
         mc.run();
+        break;
+      }
+      case InputReader::SimulationType::MolecularDynamics:
+      {
+        MolecularDynamics md(inputReader);
+        if(inputReader.restartFromBinary)
+        {
+          std::ifstream ifile("restart_data.bin", std::ios::binary);
+          if(!ifile.is_open())
+          {
+            throw std::runtime_error("Restart file doesn't exist..\n");
+          }
+          Archive<std::ifstream> archive(ifile);
+          archive >> md;
+          md.createOutputFiles();
+        }
+
+        md.run();
         break;
       }
       case InputReader::SimulationType::Breakthrough:
