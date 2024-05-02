@@ -1348,7 +1348,7 @@ void System::integrate()
   //RattleStageTwo();
 }
 
-void System::computeCenterOfMassAndQuaternionForces()
+void System::computeCenterOfMassAndQuaternionGradients()
 {
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
@@ -1365,54 +1365,26 @@ void System::computeCenterOfMassAndQuaternionForces()
       {
         com_gradient += span[i].gradient;
       }
-      moleculePositions[moleculeIndex].gradient = com_gradient;
-      ++moleculeIndex;
-      index += size;
-    }
-  }
-
-
-  /*
-  size_t moleculeIndex = 0;
-  size_t index{ 0 };
-  for(size_t l = 0; l != components.size(); ++l)
-  {
-    size_t size = components[l].atoms.size();
-    double molecularMass = components[l].totalMass;
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      double3 comForce{};
-      for(size_t i = 0; i != size; i++)
-      {
-        comForce -= [i].gradient;
-      }
-      std::cout << "TEST: " << comForce.x << ", " << comForce.y << ", " << comForce.z << std::endl;
-      moleculePositions[moleculeIndex].force = comForce;
 
       double3 torque{};
       simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
       double3x3 M = double3x3::buildRotationMatrix(orientation);
-      for(size_t i = 0; i != size; i++)
+      for(size_t i = 0; i != span.size(); i++)
       {
-        double mass = components[l].definedAtoms[i].second;
-        double3 force = -atom_positions[i].gradient - comForce * mass / molecularMass;
-        double3 F = M * force;
+        double3 F = M * (span[i].gradient - com_gradient);
         double3 dr = components[l].atoms[i].position;
-        torque.x += dr.y * F.z - dr.z * F.y;
-        torque.y += dr.z * F.x - dr.x * F.z;
-        torque.z += dr.x * F.y - dr.y * F.x;
+        torque += double3::cross(F, dr);
       }
+      moleculePositions[moleculeIndex].gradient = com_gradient;
+      moleculePositions[moleculeIndex].orientationGradient.ix = -2.0 * ( orientation.r  * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.iy = -2.0 * ( orientation.iz * torque.x + orientation.r  * torque.y - orientation.ix * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.iz = -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r  * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.r  = -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
 
-      molecule_positions[moleculeIndex].orientationForce.r  = 2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
-      molecule_positions[moleculeIndex].orientationForce.ix = 2.0 * ( orientation.r  * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
-      molecule_positions[moleculeIndex].orientationForce.iy = 2.0 * ( orientation.iz * torque.x + orientation.r  * torque.y - orientation.ix * torque.z);
-      molecule_positions[moleculeIndex].orientationForce.iz = 2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r  * torque.z);
-
-      index += size;
       ++moleculeIndex;
+      index += size;
     }
   }
-  */
 }
 
 
