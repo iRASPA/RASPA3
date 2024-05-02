@@ -284,6 +284,17 @@ TEST(RigidGradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   atomPositions[8].position = double3(7.675123524814, 7.830783863478,  9.734158102333);
   atomPositions[9].position = double3(8.525606355084, 8.431855339730,  9.262947938533);
 
+  atomPositions[0].velocity = double3( -2.56934959,   3.49026313,   2.46235469);
+  atomPositions[1].velocity = double3( 14.83854769,   8.31306952,  -5.59358085);
+  atomPositions[2].velocity = double3(-10.83853213,  19.76930089,  -0.17504625);
+  atomPositions[3].velocity = double3( -0.73607131,  -7.74519202,   5.70179557);
+  atomPositions[4].velocity = double3(-10.70666431,   0.16931747,   6.59935402);
+  atomPositions[5].velocity = double3(  0.95342220,  -5.47957843,  -2.32188856);
+  atomPositions[6].velocity = double3( 11.57668989, -11.62828553,   5.38545620);
+  atomPositions[7].velocity = double3( 10.25681953,  15.34872196,  -1.86243447);
+  atomPositions[8].velocity = double3(  1.52395494, -16.52600113,   0.66358941);
+  atomPositions[9].velocity = double3(-13.36285337,  -4.55938179, -10.94095934);
+
   system.moleculePositions[0].orientation = simd_quatd(-0.34788397, 0.57840378, 0.41201608, 0.61210176);
   system.moleculePositions[1].orientation = simd_quatd(-0.07669892, 0.19685049, 0.29872787, 0.93066042);
 
@@ -294,6 +305,7 @@ TEST(RigidGradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 
   system.computeTotalGradients();
   system.computeCenterOfMassAndQuaternionGradients();
+  system.computeCenterOfMassAndQuaternionVelocities();
 
   EXPECT_NEAR(atomPositions[0].gradient.x, -10324.973732049806, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y,  -4507.328164443007, 1e-4);
@@ -334,6 +346,14 @@ TEST(RigidGradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   EXPECT_NEAR(system.moleculePositions[1].gradient.y,   5504.28200587, 1e-4);
   EXPECT_NEAR(system.moleculePositions[1].gradient.z,  44128.42380356, 1e-4);
 
+  EXPECT_NEAR(system.moleculePositions[0].velocity.x, -2.06127092, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[0].velocity.y,  4.66344746, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[0].velocity.z,  1.86784481, 1e-4);
+
+  EXPECT_NEAR(system.moleculePositions[1].velocity.x,  2.06127092, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[1].velocity.y, -4.66344746, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[1].velocity.z, -1.86784481, 1e-4);
+
   EXPECT_NEAR(system.moleculePositions[0].orientationGradient.ix, -2303.05396459, 1e-4);
   EXPECT_NEAR(system.moleculePositions[0].orientationGradient.iy,  -829.64716058, 1e-4);
   EXPECT_NEAR(system.moleculePositions[0].orientationGradient.iz,  -544.25501509, 1e-4);
@@ -343,4 +363,14 @@ TEST(RigidGradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   EXPECT_NEAR(system.moleculePositions[1].orientationGradient.iy, -3391.54768162, 1e-4);
   EXPECT_NEAR(system.moleculePositions[1].orientationGradient.iz, -3436.34304600, 1e-4);
   EXPECT_NEAR(system.moleculePositions[1].orientationGradient.r,   2121.95001708, 1e-4);
+
+  EXPECT_NEAR(system.moleculePositions[0].orientationMomentum.ix, -30.13618171, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[0].orientationMomentum.iy, -26.22576279, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[0].orientationMomentum.iz,  48.29543567, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[0].orientationMomentum.r,  -24.85421796, 1e-4);
+
+  EXPECT_NEAR(system.moleculePositions[1].orientationMomentum.ix, -52.66282302, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[1].orientationMomentum.iy,   8.54876925, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[1].orientationMomentum.iz,  27.14344361, 1e-4);
+  EXPECT_NEAR(system.moleculePositions[1].orientationMomentum.r,  -14.86096737, 1e-4);
 }

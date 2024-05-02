@@ -239,6 +239,7 @@ export struct System
   void determineSimulationBox();
 
   void integrate();
+  void computeCenterOfMassAndQuaternionVelocities();
   void computeCenterOfMassAndQuaternionGradients();
 
   void precomputeTotalRigidEnergy() noexcept;

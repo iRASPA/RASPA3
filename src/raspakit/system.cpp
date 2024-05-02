@@ -1348,6 +1348,59 @@ void System::integrate()
   //RattleStageTwo();
 }
 
+void System::computeCenterOfMassAndQuaternionVelocities()
+{
+  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  size_t index{};
+  size_t moleculeIndex{};
+  for(size_t l = 0; l != components.size(); ++l)
+  {
+    size_t size = components[l].atoms.size();
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+
+      double inverseMoleculeMass = 1.0 / components[l].totalMass;
+
+      double3 com{};
+      for(size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[l].definedAtoms[i].second;
+        com += mass * span[i].position;
+      }
+      com = com * inverseMoleculeMass;
+
+      double3 com_velocity{};
+      double3 angularMomentum{};
+      for(size_t i = 0; i != span.size(); i++)
+      {
+        double mass = components[l].definedAtoms[i].second;
+        double3 velocity = span[i].velocity;
+        com_velocity += mass * velocity;
+
+        double3 dr = span[i].position - com;
+        angularMomentum += mass * double3::cross(dr, velocity);
+      }
+      com_velocity = com_velocity * inverseMoleculeMass;
+      moleculePositions[moleculeIndex].velocity = com_velocity;
+
+      double3 I = components[l].inertiaVector;
+      simd_quatd q = moleculePositions[moleculeIndex].orientation;
+      double3x3 M = double3x3::buildRotationMatrix(q);
+      double3 angularVelocity = (M * angularMomentum) * components[l].inverseInertiaVector;
+
+      moleculePositions[moleculeIndex].orientationMomentum.ix = 2.0 * ( q.r  * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iy = 2.0 * ( q.iz * (I.x * angularVelocity.x) + q.r  * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iz = 2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r  * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.r  = 2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+
+      ++moleculeIndex;
+      index += size;
+    }
+  }
+}
+
 void System::computeCenterOfMassAndQuaternionGradients()
 {
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
