@@ -394,7 +394,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
 
      // apply acceptance/rejection rule
      if (random.uniform() < preFactor * std::exp(-systemA.beta * 
-                                          (energyDifferenceA.total() + energyDifferenceB.total()) + biasTerm))
+                                          (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
      {
        systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[0] += 1;
        systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
@@ -599,7 +599,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
     // apply acceptance/rejection rule
-    if (random.uniform() < preFactor * exp(-systemA.beta * (energyDifferenceA.total() + energyDifferenceB.total()) 
+    if (random.uniform() < preFactor * exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) 
                                            + biasTerm))
     {
       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[1] += 1;
@@ -691,7 +691,7 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     double biasTerm = lambdaA.biasFactor[newBin] - lambdaA.biasFactor[oldBin];
 
     // apply acceptance/rejection rule
-    if (random.uniform() < std::exp(-systemA.beta * energyDifference.total() + biasTerm))
+    if (random.uniform() < std::exp(-systemA.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 

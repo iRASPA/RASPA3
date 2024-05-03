@@ -133,7 +133,7 @@ CBMC::growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalFiel
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
       std::back_inserter(logBoltmannFactors), [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy>& v) 
-                                                  {return -beta * std::get<2>(v).total(); });
+                                                  {return -beta * std::get<2>(v).potentialEnergy(); });
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 

@@ -105,7 +105,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   // apply acceptance/rejection rule
   if(random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
-        - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.total() - oldTotalEnergy.total())) * system.beta))
+        - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) * system.beta))
   {
     system.mc_moves_statistics.volumeMove.accepted += 1;
     system.mc_moves_statistics.volumeMove.totalAccepted += 1;

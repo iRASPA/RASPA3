@@ -845,7 +845,7 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                                             moleculeAtomPositions_backward2, EnergyBackward2);
 
 
-    double strainDerivativeApproximation = (-EnergyForward2.total() + 8.0 * EnergyForward1.total() - 8.0 * EnergyBackward1.total() + EnergyBackward2.total()) / (6.0 * delta);
+    double strainDerivativeApproximation = (-EnergyForward2.potentialEnergy() + 8.0 * EnergyForward1.potentialEnergy() - 8.0 * EnergyBackward1.potentialEnergy() + EnergyBackward2.potentialEnergy()) / (6.0 * delta);
 
     EXPECT_NEAR(strainDerivativeApproximation, strain.second, tolerance) << "Wrong strainDerivative";
   }

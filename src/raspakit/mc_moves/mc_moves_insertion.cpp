@@ -127,7 +127,7 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
   double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * system.components[selectedComponent].molFraction * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
-  double Pacc = preFactor * std::exp(-system.beta * energyDifference.total());
+  double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 

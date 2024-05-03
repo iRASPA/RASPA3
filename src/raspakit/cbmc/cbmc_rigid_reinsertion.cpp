@@ -121,7 +121,7 @@ CBMC::growRigidMoleculeChainReinsertion(RandomNumber &random, bool hasExternalFi
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
       std::back_inserter(logBoltmannFactors), [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy>& v)
-                                                  {return -beta * std::get<2>(v).total(); });
+                                                  {return -beta * std::get<2>(v).potentialEnergy(); });
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
@@ -188,7 +188,7 @@ CBMC::retraceRigidChainReinsertion(RandomNumber &random, bool hasExternalField, 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies),
       std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) 
-                                                  {return -beta * v.second.total(); });
+                                                  {return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

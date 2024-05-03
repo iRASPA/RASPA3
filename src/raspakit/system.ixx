@@ -156,6 +156,9 @@ export struct System
   std::vector<std::vector<size_t>> numberOfPseudoAtoms;
   std::vector<size_t> totalNumberOfPseudoAtoms;
 
+  size_t translationalDegreesOfFreedom{};
+  size_t rotationalDegreesOfFreedom{};
+
   std::optional<double> frameworkMass{};
 
   double timeStep{ 0.0005 };
@@ -169,6 +172,8 @@ export struct System
   std::vector<Atom> atomPositions;
   std::vector<Molecule> moleculePositions;
 
+  double conservedEnergy{};
+  double referenceEnergy{};
   RunningEnergy runningEnergies;
   PropertyEnergy averageEnergies;
 
@@ -238,7 +243,15 @@ export struct System
   void createInitialMolecules(RandomNumber &random);
   void determineSimulationBox();
 
+  void initializeVelocities(RandomNumber &random);
+  double computeTranslationalKineticEnergy();
+  double computeRotationalKineticEnergy();
   void integrate();
+  void updatePositions();
+  void updateVelocities();
+  void createCartesianPositions();
+  void noSquishFreeRotorOrderTwo();
+  void noSquishRotate(size_t k, double dt);
   void computeCenterOfMassAndQuaternionVelocities();
   void computeCenterOfMassAndQuaternionGradients();
 

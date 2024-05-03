@@ -142,8 +142,8 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
 
-  double deltaU = (newTotalEnergyA.total() - oldTotalEnergyA.total()) + 
-                  (newTotalEnergyB.total() - oldTotalEnergyB.total());
+  double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) + 
+                  (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
 
   // apply acceptance/rejection rule
   if(random.uniform() < std::exp(-systemA.beta * deltaU +

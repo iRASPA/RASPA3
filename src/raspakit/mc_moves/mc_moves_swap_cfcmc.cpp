@@ -264,7 +264,7 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * exp(-system.beta * 
-                                  (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + biasTerm);
+                                  (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) + biasTerm);
 
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
@@ -500,7 +500,7 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
                          (system.beta * system.components[selectedComponent].molFraction * 
                           fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      double Pacc = preFactor *exp(-system.beta * (energyDifferenceStep1.total() + energyDifferenceStep2.total()) + 
+      double Pacc = preFactor *exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) + 
                                    biasTerm);
 
       double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
@@ -655,7 +655,7 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
 
     // apply acceptance/rejection rule
-    if (random.uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
+    if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.accepted[2] += 1;

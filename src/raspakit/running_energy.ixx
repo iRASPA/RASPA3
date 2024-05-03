@@ -46,13 +46,16 @@ export struct RunningEnergy
                     polarization(0.0),
                     dudlambdaVDW(0.0),
                     dudlambdaCharge(0.0),
-                    dudlambdaEwald(0.0)
+                    dudlambdaEwald(0.0),
+                    translationalKineticEnergy(0.0),
+                    rotationalKineticEnergy(0.0)
   {
   }
 
-  void print(std::ostream &stream, const std::string& label);
+  std::string printMC(const std::string& label);
+  std::string printMD(const std::string& label, double referenceEnergy);
   
-  inline double total() const
+  inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 
            externalFieldCharge + frameworkMoleculeCharge + moleculeMoleculeCharge +
@@ -60,6 +63,23 @@ export struct RunningEnergy
            intraVDW + intraCoul + 
            tail + 
            polarization;
+  }
+
+  inline double kineticEnergy() const
+  {
+    return translationalKineticEnergy + rotationalKineticEnergy;
+  }
+
+  inline double conservedEnergy() const
+  {
+    return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 
+           externalFieldCharge + frameworkMoleculeCharge + moleculeMoleculeCharge +
+           ewald + 
+           intraVDW + intraCoul + 
+           tail + 
+           polarization +
+           translationalKineticEnergy +
+           rotationalKineticEnergy;
   }
 
   inline double dudlambda(double lambda) const
@@ -84,6 +104,8 @@ export struct RunningEnergy
     dudlambdaVDW = 0.0;
     dudlambdaCharge = 0.0;
     dudlambdaEwald = 0.0;
+    translationalKineticEnergy = 0.0;
+    rotationalKineticEnergy = 0.0;
   }
 
   inline RunningEnergy& operator+=(const RunningEnergy& b)
@@ -102,6 +124,8 @@ export struct RunningEnergy
     dudlambdaVDW += b.dudlambdaVDW;
     dudlambdaCharge += b.dudlambdaCharge;
     dudlambdaEwald += b.dudlambdaEwald;
+    translationalKineticEnergy += b.translationalKineticEnergy;
+    rotationalKineticEnergy += b.rotationalKineticEnergy;
     
     return *this;
   }
@@ -122,6 +146,8 @@ export struct RunningEnergy
     dudlambdaVDW -= b.dudlambdaVDW;
     dudlambdaCharge -= b.dudlambdaCharge;
     dudlambdaEwald -= b.dudlambdaEwald;
+    translationalKineticEnergy -= b.translationalKineticEnergy;
+    rotationalKineticEnergy -= b.rotationalKineticEnergy;
 
     return *this;
   }
@@ -143,6 +169,8 @@ export struct RunningEnergy
     v.dudlambdaVDW = -dudlambdaVDW;
     v.dudlambdaCharge = -dudlambdaCharge;
     v.dudlambdaEwald = -dudlambdaEwald;
+    v.translationalKineticEnergy = -translationalKineticEnergy;
+    v.rotationalKineticEnergy = -rotationalKineticEnergy;
 
     return v;
   }
@@ -163,6 +191,8 @@ export struct RunningEnergy
   double dudlambdaVDW;
   double dudlambdaCharge;
   double dudlambdaEwald;
+  double translationalKineticEnergy;
+  double rotationalKineticEnergy;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnergy &c);
@@ -185,6 +215,8 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.dudlambdaVDW = a.dudlambdaVDW + b.dudlambdaVDW;
   m.dudlambdaCharge = a.dudlambdaCharge + b.dudlambdaCharge;
   m.dudlambdaEwald = a.dudlambdaEwald + b.dudlambdaEwald;
+  m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
 
   return m;
 }
@@ -206,6 +238,8 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.dudlambdaVDW = a.dudlambdaVDW - b.dudlambdaVDW;
   m.dudlambdaCharge = a.dudlambdaCharge - b.dudlambdaCharge;
   m.dudlambdaEwald = a.dudlambdaEwald - b.dudlambdaEwald;
+  m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
   return m;
 }
 
@@ -227,6 +261,8 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.dudlambdaVDW = a * b.dudlambdaVDW;
   m.dudlambdaCharge = a * b.dudlambdaCharge;
   m.dudlambdaEwald = a * b.dudlambdaEwald;
+  m.translationalKineticEnergy = a * b.translationalKineticEnergy;
+  m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
 
   return m;
 }
@@ -248,6 +284,8 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.dudlambdaVDW = b * a.dudlambdaVDW;
   m.dudlambdaCharge = b * a.dudlambdaCharge;
   m.dudlambdaEwald = b * a.dudlambdaEwald;
+  m.translationalKineticEnergy = b * a.translationalKineticEnergy;
+  m.rotationalKineticEnergy = b * a.rotationalKineticEnergy;
 
   return m;
 }

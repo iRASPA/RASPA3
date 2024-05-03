@@ -123,7 +123,7 @@ MC_Moves::deletionMove(RandomNumber &random, System& system, size_t selectedComp
     double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * system.components[selectedComponent].molFraction * fugacity * system.simulationBox.volume);
-    double Pacc = preFactor * std::exp(-system.beta * energyDifference.total());
+    double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 

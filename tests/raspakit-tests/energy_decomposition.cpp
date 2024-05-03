@@ -230,6 +230,6 @@ TEST(energy_decomposition, CO2_Methane_in_Framework)
 
   std::pair<EnergyStatus, double3x3> strainDerivative = system.computeMolecularPressure();
   
-  EXPECT_NEAR(energy.total(),
+  EXPECT_NEAR(energy.potentialEnergy(),
               strainDerivative.first.totalEnergy.energy ,1e-6);
 }

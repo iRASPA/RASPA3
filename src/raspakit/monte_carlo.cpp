@@ -200,7 +200,8 @@ void MonteCarlo::initialize()
     system.recomputeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
   };
   
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
@@ -244,6 +245,8 @@ void MonteCarlo::initialize()
         system.loadings = 
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+        stream << system.runningEnergies.printMC("");
+        std::print(stream, "\n\n\n\n");
         std::flush(stream);
       }
     }
@@ -287,7 +290,8 @@ void MonteCarlo::equilibrate()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies();
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
 
     for(Component &component : system.components)
     {
@@ -338,6 +342,8 @@ void MonteCarlo::equilibrate()
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
+        stream << system.runningEnergies.printMC("");
+        std::print(stream, "\n\n\n\n");
         std::flush(stream);
       }
     }
@@ -396,7 +402,8 @@ void MonteCarlo::production()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies(); 
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -492,6 +499,8 @@ void MonteCarlo::production()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
         std::print(stream, "{}", system.writeProductionStatusReport(currentCycle, numberOfCycles));
+        stream << system.runningEnergies.printMC("");
+        std::print(stream, "\n\n\n\n");
         std::flush(stream);
       }
     }
@@ -556,13 +565,16 @@ void MonteCarlo::output()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.runningEnergies.print(stream, "Running energies");
+    stream << system.runningEnergies.printMC("Running energies");
+    std::print(stream, "\n\n\n\n");
     
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
-    recomputedEnergies.print(stream, "Recomputed from scratch");
+    stream << recomputedEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
     
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
-    drift.print(stream, "Monte-Carlo energy drift");
+    stream << drift.printMC("Monte-Carlo energy drift");
+    std::print(stream, "\n\n\n\n");
 
     std::print(stream, "\n\n");
 

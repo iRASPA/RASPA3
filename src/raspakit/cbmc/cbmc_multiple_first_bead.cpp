@@ -58,7 +58,7 @@ CBMC::growMoleculeMultipleFirstBeadSwapInsertion(RandomNumber &random, bool hasE
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
       std::back_inserter(logBoltmannFactors), [&](const std::pair<Atom,RunningEnergy>& v) 
-                                                  {return -beta * v.second.total(); });
+                                                  {return -beta * v.second.potentialEnergy(); });
 
 
   size_t selected = selectTrialPosition(random, logBoltmannFactors);
@@ -94,7 +94,7 @@ CBMC::retraceRigidMultipleFirstBeadSwapDeletion(RandomNumber &random, bool hasEx
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
-      [&](const std::pair<Atom, RunningEnergy>& v) {return -beta * v.second.total(); });
+      [&](const std::pair<Atom, RunningEnergy>& v) {return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
@@ -122,7 +122,7 @@ CBMC::growRigidMultipleFirstBeadReinsertion(RandomNumber &random, bool hasExtern
   std::vector<double> logBoltmannFactors{};
   std::transform(externalEnergies.begin(), externalEnergies.end(),
       std::back_inserter(logBoltmannFactors), [&](const std::pair<Atom, RunningEnergy>& v) 
-                                                  {return -beta * v.second.total(); });
+                                                  {return -beta * v.second.potentialEnergy(); });
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
@@ -158,7 +158,7 @@ CBMC::retraceRigidMultipleFirstBeadReinsertion([[maybe_unused]] RandomNumber &ra
 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies), std::back_inserter(logBoltmannFactors),
-      [&](const std::pair<Atom, RunningEnergy>& v) {return -beta * v.second.total(); });
+      [&](const std::pair<Atom, RunningEnergy>& v) {return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

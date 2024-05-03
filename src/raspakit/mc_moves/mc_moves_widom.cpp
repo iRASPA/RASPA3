@@ -105,8 +105,8 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
     Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
                                          system.spanOfFrameworkAtoms(), newMolecule, {});
 
-  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
-                                                          tailEnergyDifference.total()));
+  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + 
+                                                          tailEnergyDifference.potentialEnergy()));
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 

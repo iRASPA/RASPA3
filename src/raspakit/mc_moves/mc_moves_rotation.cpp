@@ -132,7 +132,7 @@ MC_Moves::rotationMove(RandomNumber &random, System& system, size_t selectedComp
   system.components[selectedComponent].mc_moves_statistics.rotationMove.totalConstructed[selectedDirection] += 1;
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-system.beta * energyDifference.total()))
+  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     system.components[selectedComponent].mc_moves_statistics.rotationMove.accepted[selectedDirection] += 1;
     system.components[selectedComponent].mc_moves_statistics.rotationMove.totalAccepted[selectedDirection] += 1;

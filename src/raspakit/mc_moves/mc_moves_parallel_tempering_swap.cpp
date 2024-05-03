@@ -86,12 +86,12 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     time_end = std::chrono::system_clock::now();
     systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
 
-    acc = std::exp(-systemA.beta * (systemBHamiltonianA.total() - systemA.runningEnergies.total()) -
-                   systemB.beta * (systemAHamiltonianB.total() - systemB.runningEnergies.total()));
+    acc = std::exp(-systemA.beta * (systemBHamiltonianA.potentialEnergy() - systemA.runningEnergies.potentialEnergy()) -
+                   systemB.beta * (systemAHamiltonianB.potentialEnergy() - systemB.runningEnergies.potentialEnergy()));
   }
   else
   {
-    acc = std::exp((systemB.beta - systemA.beta) * (systemB.runningEnergies.total() - systemA.runningEnergies.total()));
+    acc = std::exp((systemB.beta - systemA.beta) * (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy()));
   }
 
   if (systemA.pressure != systemB.pressure)

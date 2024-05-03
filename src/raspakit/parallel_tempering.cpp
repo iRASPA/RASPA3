@@ -240,7 +240,7 @@ void ParallelTempering::initialize()
     system.recomputeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
@@ -329,7 +329,7 @@ void ParallelTempering::equilibrate()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies();
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     for (Component& component : system.components)
     {
@@ -440,7 +440,7 @@ void ParallelTempering::production()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies();
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -519,13 +519,13 @@ void ParallelTempering::output()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.runningEnergies.print(stream, "Running energies");
+    stream << system.runningEnergies.printMC("Running energies");
 
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
-    recomputedEnergies.print(stream, "Recomputed from scratch");
+    stream << recomputedEnergies.printMC("Recomputed from scratch");
 
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
-    drift.print(stream, "Monte-Carlo energy drift");
+    stream << drift.printMC("Monte-Carlo energy drift");
 
     std::print(stream, "\n\n");
 

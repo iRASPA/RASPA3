@@ -109,7 +109,7 @@ retraceRigidChain(RandomNumber &random, bool hasExternalField, const ForceField 
   std::vector<double> logBoltmannFactors{};
   std::transform(std::begin(externalEnergies), std::end(externalEnergies),
       std::back_inserter(logBoltmannFactors), [&](const std::pair<std::vector<Atom>, RunningEnergy>& v) 
-                                                  {return -beta * v.second.total(); });
+                                                  {return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });

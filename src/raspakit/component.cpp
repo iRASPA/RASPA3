@@ -303,6 +303,12 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
                            static_cast<uint8_t>(componentId), 0), mass});
   }
 
+  totalMass = 0.0;
+  for (auto [_, mass] : definedAtoms)
+  {
+    totalMass += mass;
+  }
+
   computeRigidProperties();
 }
 
@@ -410,6 +416,12 @@ void Component::computeRigidProperties()
   if(inertiaVector.y / rotall < 1.0e-5) ++index;
   if(inertiaVector.z / rotall < 1.0e-5) ++index;
 
+  translationalDegreesOfFreedom = 3;
+  rotationalDegreesOfFreedom = 3;
+  if(inertiaVector.x / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+  if(inertiaVector.y / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+  if(inertiaVector.z / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+
   shapeType = Component::Shape{index};
 }
 
@@ -476,7 +488,9 @@ std::string Component::printStatus(const ForceField& forceField) const
                    i, atomTypeString, atoms[i].position.x, atoms[i].position.y, 
                    atoms[i].position.z, atoms[i].charge);
   }
-  std::print(stream, "    Diagonalized inertia-vector:  {:10.8f} {:10.8f} {:10.8f}\n", inertiaVector.x, inertiaVector.y, inertiaVector.z);
+  std::print(stream, "    Diagonalized inertia-vector:      {:10.8f} {:10.8f} {:10.8f}\n", inertiaVector.x, inertiaVector.y, inertiaVector.z);
+  std::print(stream, "    Translational degrees of freedom: {}\n", translationalDegreesOfFreedom);
+  std::print(stream, "    Rotational degrees of freedom:    {}\n", rotationalDegreesOfFreedom);
   switch(shapeType)
   {
     case Shape::NonLinear:

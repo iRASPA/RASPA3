@@ -150,7 +150,8 @@ void MonteCarloTransitionMatrix::initialize()
     system.recomputeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
   };
   
   for (size_t i = 0; i != numberOfInitializationCycles; i++)
@@ -201,7 +202,8 @@ void MonteCarloTransitionMatrix::equilibrate()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies();
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
 
     for(Component &component : system.components)
     {
@@ -285,7 +287,8 @@ void MonteCarloTransitionMatrix::production()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     system.recomputeTotalEnergies(); 
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
     //system.sampleMovie.initialize();
 
     system.clearMoveStatistics();
@@ -386,14 +389,17 @@ void MonteCarloTransitionMatrix::output()
     std::ostream stream(streams[system.systemId].rdbuf());
 
     RunningEnergy runningEnergies = system.runningEnergies;
-    runningEnergies.print(stream, "Running energies");
+    stream << runningEnergies.printMC("Running energies");
+    std::print(stream, "\n\n\n\n");
     
     system.recomputeTotalEnergies();
     RunningEnergy recomputedEnergies = system.runningEnergies;
-    recomputedEnergies.print(stream, "Recomputed from scratch");
+    stream << recomputedEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
     
     RunningEnergy drift = runningEnergies - recomputedEnergies;
-    drift.print(stream, "Monte-Carlo energy drift");
+    stream << drift.printMC("Monte-Carlo energy drift");
+    std::print(stream, "\n\n\n\n");
 
     std::print(stream, "\n\n");
 

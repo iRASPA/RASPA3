@@ -236,7 +236,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     system.mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCTail += (time_end - time_begin);
 
     double correctionFactorEwald = 
-      std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifferenceGrow.total()));
+      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceGrow.potentialEnergy()));
 
     double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
@@ -245,7 +245,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) * 
-                               exp(-system.beta * energyDifference.total() + biasTerm);
+                               exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
     
@@ -351,7 +351,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
       system.mc_moves_cputime.swapLambdaDeletionMoveCBCFCMCTail += (time_end - time_begin);
       
       double correctionFactorEwald = 
-        std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifferenceRetrace.total()));
+        std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy()));
       
       for (Atom &atom : fractionalMolecule) 
       { 
@@ -456,7 +456,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
                 fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double Pacc = preFactor * (idealGasRosenbluthWeight / 
-                            retraceData.RosenbluthWeight) * exp(-system.beta * energyDifference.total() + biasTerm);
+                            retraceData.RosenbluthWeight) * exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
       double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
@@ -603,7 +603,7 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
 
     // apply acceptance/rejection rule
-    if (random.uniform() < std::exp(-system.beta * energyDifference.total() + biasTerm))
+    if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm))
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC_CBMC.accepted[2] += 1;

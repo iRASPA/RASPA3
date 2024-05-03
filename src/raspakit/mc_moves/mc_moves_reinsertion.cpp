@@ -126,11 +126,11 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(system.hasExternalField, system.forceField, system.simulationBox, 
                                system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
                                system.forceField.cutOffVDW, system.forceField.cutOffCoulomb, retraceData.atom);
-    correctionFactorDualCutOff = std::exp(-system.beta * (energyNew->total() - growData->energies.total() 
-                                                       - (energyOld->total() - retraceData.energies.total())) );
+    correctionFactorDualCutOff = std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() 
+                                                       - (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())) );
   }
 
-  double correctionFactorFourier = std::exp(-system.beta * energyFourierDifference.total());
+  double correctionFactorFourier = std::exp(-system.beta * energyFourierDifference.potentialEnergy());
 
   // apply acceptance/rejection rule
   if (random.uniform() < correctionFactorDualCutOff * correctionFactorFourier * 

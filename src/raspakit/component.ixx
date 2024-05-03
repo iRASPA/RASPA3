@@ -117,6 +117,8 @@ export struct Component
   std::string filename{};
 
   bool rigid { true };
+  size_t translationalDegreesOfFreedom{};
+  size_t rotationalDegreesOfFreedom{};
 
   double criticalTemperature{ 0.0 };
   double criticalPressure{ 0.0 };

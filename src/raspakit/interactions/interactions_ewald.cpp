@@ -1112,13 +1112,13 @@ Interactions::computeEwaldFourierEnergyStrainDerivative(std::vector<std::complex
       {
         double chargeA = span[i].charge;
         double scalingA = span[i].scalingCoulomb;
-        bool groupIdA = static_cast<bool>(span[i].groupId);
+        //bool groupIdA = static_cast<bool>(span[i].groupId);
         double3 posA = span[i].position;
         for(size_t j = i + 1; j != span.size(); j++)
         {
           double chargeB = span[j].charge;
           double scalingB = span[j].scalingCoulomb;
-          bool groupIdB = static_cast<bool>(span[j].groupId);
+          //bool groupIdB = static_cast<bool>(span[j].groupId);
           double3 posB = span[j].position;
 
           double3 dr = posA - posB;

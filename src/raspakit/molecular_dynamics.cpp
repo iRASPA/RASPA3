@@ -197,10 +197,14 @@ void MolecularDynamics::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.recomputeTotalEnergies();
+    system.createCartesianPositions();
+    system.runningEnergies = system.computeTotalGradients(); 
+    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
+    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
 
     std::ostream stream(streams[system.systemId].rdbuf());
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::print(stream, "\n\n\n\n");
   };
   
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
@@ -244,6 +248,7 @@ void MolecularDynamics::initialize()
         system.loadings = 
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
         std::flush(stream);
       }
     }
@@ -271,14 +276,16 @@ void MolecularDynamics::initialize()
 
     continueInitializationStage: ;
   }
+
+  for (System& system : systems)
+  {
+    system.createCartesianPositions();
+    system.initializeVelocities(random);
+  }
 }
 
 void MolecularDynamics::equilibrate()
 {
-  size_t totalNumberOfMolecules{ 0uz };
-  size_t totalNumberOfComponents{ 0uz };
-  size_t numberOfStepsPerCycle{ 0uz };
-
   if(simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
 
@@ -286,8 +293,14 @@ void MolecularDynamics::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    system.createCartesianPositions();
+    system.runningEnergies = system.computeTotalGradients(); 
+    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
+    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
+    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+
+    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+    std::print(stream, "\n\n\n\n");
 
     for(Component &component : system.components)
     {
@@ -299,33 +312,9 @@ void MolecularDynamics::equilibrate()
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
-        [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules();});
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
-
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
-
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    for (System& system : systems)
     {
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectedSecondSystem = systems[selectedSystemPair.second];
-
-      size_t selectedComponent = selectedSystem.randomComponent(random);
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, 
-                                      selectedComponent, fractionalMoleculeSystem);
-
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, 
-          selectedSecondSystem.containsTheFractionalMolecule);
-
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-                              selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-                              selectedSecondSystem.containsTheFractionalMolecule);
+      system.integrate();
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -338,6 +327,7 @@ void MolecularDynamics::equilibrate()
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMD("", system.referenceEnergy));
         std::flush(stream);
       }
     }
@@ -383,9 +373,6 @@ void MolecularDynamics::equilibrate()
 void MolecularDynamics::production()
 {
   std::chrono::system_clock::time_point t1, t2;
-  size_t totalNumberOfMolecules{ 0uz };
-  size_t totalNumberOfComponents{ 0uz };
-  size_t numberOfStepsPerCycle{ 0uz };
   double minBias{ 0.0 };
 
   if(simulationStage == SimulationStage::Production) goto continueProductionStage;
@@ -395,8 +382,14 @@ void MolecularDynamics::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies(); 
-    system.runningEnergies.print(stream, "Recomputed from scratch");
+    system.createCartesianPositions();
+    system.runningEnergies = system.computeTotalGradients(); 
+    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
+    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
+    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+
+    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+    std::print(stream, "\n\n\n\n");
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -435,34 +428,9 @@ void MolecularDynamics::production()
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
-    t1 = std::chrono::system_clock::now();
-    estimation.setCurrentSample(currentCycle);
-
-    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
-        [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules();});
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
-
-    numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
-
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    for (System& system : systems)
     {
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectedSecondSystem = systems[selectedSystemPair.second];
-
-      size_t selectedComponent = selectedSystem.randomComponent(random);
-      
-      MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent, 
-                                                fractionalMoleculeSystem, estimation.currentBin);
-
-      // sample the occupancy within the innerloop
-      selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-                               selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
-                               selectedSecondSystem.containsTheFractionalMolecule);
-
-      ++numberOfSteps;
+      system.integrate();
     }
 
     // sample properties
@@ -492,6 +460,7 @@ void MolecularDynamics::production()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
         std::print(stream, "{}", system.writeProductionStatusReport(currentCycle, numberOfCycles));
+        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMD("", system.referenceEnergy));
         std::flush(stream);
       }
     }
@@ -555,16 +524,6 @@ void MolecularDynamics::output()
   for (System& system : systems)
   {
     std::ostream stream(streams[system.systemId].rdbuf());
-
-    system.runningEnergies.print(stream, "Running energies");
-    
-    RunningEnergy recomputedEnergies = system.computeTotalEnergies();
-    recomputedEnergies.print(stream, "Recomputed from scratch");
-    
-    RunningEnergy drift = system.runningEnergies - recomputedEnergies;
-    drift.print(stream, "Monte-Carlo energy drift");
-
-    std::print(stream, "\n\n");
 
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");

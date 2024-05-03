@@ -127,7 +127,7 @@ MC_Moves::randomTranslationMove(RandomNumber &random, System & system,
   system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.totalConstructed[selectedDirection] += 1;
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-system.beta * energyDifference.total()))
+  if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.accepted[selectedDirection] += 1;
     system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.totalAccepted[selectedDirection] += 1;

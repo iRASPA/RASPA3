@@ -110,8 +110,8 @@ MC_Moves::deletionMoveCBMC(RandomNumber &random, System& system, size_t selected
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
     system.mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
 
-    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.total() + 
-                                                            tailEnergyDifference.total()));
+    double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + 
+                                                            tailEnergyDifference.potentialEnergy()));
 
     double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);

@@ -115,7 +115,7 @@ MC_Moves::insertionMoveCBMC(RandomNumber &random, System& system, size_t selecte
   system.mc_moves_cputime.swapInsertionMoveCBMCTail += (time_end - time_begin);
 
   double correctionFactorEwald = 
-    std::exp(-system.beta * (energyFourierDifference.total() + tailEnergyDifference.total()));
+    std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
   double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);

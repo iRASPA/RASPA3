@@ -98,7 +98,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCTail += (v2 - v1);
 
   double correctionFactorEwaldA = 
-    std::exp(-systemA.beta * (energyFourierDifferenceA.total() + tailEnergyDifferenceA.total()));
+    std::exp(-systemA.beta * (energyFourierDifferenceA.potentialEnergy() + tailEnergyDifferenceA.potentialEnergy()));
   
   size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -137,7 +137,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
 
   double correctionFactorEwaldB = 
-    std::exp(systemB.beta * (energyFourierDifferenceB.total() + tailEnergyDifferenceB.total()));
+    std::exp(systemB.beta * (energyFourierDifferenceB.potentialEnergy() + tailEnergyDifferenceB.potentialEnergy()));
 
 
   // apply acceptance/rejection rule
