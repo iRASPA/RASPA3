@@ -389,18 +389,14 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   atomPositions[4].position = double3(5.93355, 3.93355, 5.93355 + 0.0);
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
-  RunningEnergy energy, rigidenergy;
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        system.spanOfFrameworkAtoms(), rigidenergy);
+  system.precomputeTotalRigidEnergy();
   ForceFactor factorEwald =
     Interactions::computeEwaldFourierGradient(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
                                               system.forceField, system.simulationBox, 
                                               system.components, system.numberOfMoleculesPerComponent,
                                               system.spanOfMoleculeAtoms());
 
-  EXPECT_NEAR((factorEwald.energy - rigidenergy.ewald)  * Units::EnergyToKelvin, -759.67572774 + 38.02930863, 1e-4);
+  EXPECT_NEAR(factorEwald.energy * Units::EnergyToKelvin, -759.67572774 + 38.02930863, 1e-4);
 
 
   EXPECT_NEAR(atomPositions[0].gradient.x,     0.000000000000, 1e-4);

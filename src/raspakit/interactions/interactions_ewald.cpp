@@ -587,11 +587,14 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
             cksum2 += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
-          cksum += fixedFrameworkStoredEik[nvec].first;
+          std::pair<std::complex<double>, std::complex<double>> rigid = fixedFrameworkStoredEik[nvec];
 
+          cksum += rigid.first;
           
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag());
+          double rigidEnergy = temp * (rigid.first.real() * rigid.first.real() +
+                                        rigid.first.imag() * rigid.first.imag());
+          energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag()) - rigidEnergy;
           energy.dUdlambda += 2.0 * temp * (cksum.real() * cksum2.real() + cksum.imag() * cksum2.imag());
 
           for (size_t i = 0; i != numberOfAtoms; ++i)

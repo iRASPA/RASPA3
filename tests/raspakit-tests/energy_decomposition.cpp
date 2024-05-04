@@ -226,10 +226,15 @@ TEST(energy_decomposition, CO2_Methane_in_Framework)
 
   System system = System(0, std::nullopt, 300.0, 1e4, forceField, {f}, { methane, co2 }, { 10, 15 }, 5);
 
+  system.precomputeTotalRigidEnergy();
+
   RunningEnergy energy = system.computeTotalEnergies();
+
+  RunningEnergy energyForces = system.computeTotalGradients();
 
   std::pair<EnergyStatus, double3x3> strainDerivative = system.computeMolecularPressure();
   
   EXPECT_NEAR(energy.potentialEnergy(),
               strainDerivative.first.totalEnergy.energy ,1e-6);
+  EXPECT_NEAR(energy.potentialEnergy(), energyForces.potentialEnergy(), 1e-6);
 }
