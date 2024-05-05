@@ -39,11 +39,17 @@ Set your compiler, e.g.<br>
 or<br>
   CXX=clang++-17<br>
 
-Ubuntu 22
-=========
+LLVM general
+============
+wget https://apt.llvm.org/llvm.sh<br>
+chmod u+x llvm.sh<br>
+sudo ./llvm.sh 17<br>
+
+Ubuntu 22.04 and LLVM-17
+========================
 sudo apt install build-essential git cmake<br>
-wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -<br>
-wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc<br>
+sudo add-apt-repository 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main'<br>
+sudo add-apt-repository 'deb-src http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main'<br>
 sudo apt install libllvm-17-ocaml-dev libllvm17 llvm-17 llvm-17-dev llvm-17-runtime<br>
 sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 liblapack-dev clang-tools-17<br>
 cd src<br>
