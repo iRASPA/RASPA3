@@ -44,7 +44,11 @@ Ubuntu 22
 sudo apt install build-essential git cmake<br>
 wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -<br>
 wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc<br>
+sudo apt install libllvm-17-ocaml-dev libllvm17 llvm-17 llvm-17-dev llvm-17-runtime<br>
 sudo apt install libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 liblapack-dev clang-tools-17<br>
+cd src<br>
+make -f makefile-manual<br>
+make -f makefile-manual install<br>
 
 Redhat/Centos 8
 ===============
