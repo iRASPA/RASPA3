@@ -326,7 +326,7 @@ void MolecularDynamics::equilibrate()
         system.loadings = 
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
@@ -388,7 +388,7 @@ void MolecularDynamics::production()
     system.referenceEnergy = system.runningEnergies.conservedEnergy();
 
     stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
-    std::print(stream, "\n\n\n\n");
+    std::print(stream, "\n");
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -461,7 +461,7 @@ void MolecularDynamics::production()
       for (System& system : systems)
       {
         std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, "{}", system.writeProductionStatusReport(currentCycle, numberOfCycles));
+        std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
         std::flush(stream);
       }
     }

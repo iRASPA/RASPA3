@@ -804,7 +804,51 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
+
+  std::print(stream, "{}", simulationBox.printStatus());
+  std::print(stream, "\n");
+
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
+  }
+  std::print(stream, "\n");
+
+  for (const Component& c : components)
+  {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
+    if (c.lambdaGC.computeDUdlambda)
+    { 
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else 
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+    }
+  }
+  std::print(stream, "\n");
+
+  std::print(stream, runningEnergies.printMC());
+
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
+std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t numberOfCycles) const
 {
   std::ostringstream stream;
 
@@ -848,7 +892,130 @@ std::string System::writeEquilibrationStatusReport(size_t currentCycle, size_t n
   return stream.str();
 }
 
-std::string System::writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const
+
+std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t numberOfCycles) const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "===============================================================================\n\n");
+
+  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
+  std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
+  std::print(stream, "\n");
+  
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
+  }
+  std::print(stream, "\n");
+  double conv = Units::EnergyToKelvin;
+
+  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
+  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
+  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+  std::print(stream, "Average pressure tensor: \n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
+          pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
+          pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
+          pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
+  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
+  std::pair<double, double> p = averagePressure.averagePressure();
+  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 
+          1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * excessPressure.first, 
+          1e-5 * Units::PressureConversionFactor * excessPressure.second);
+  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
+          1e-5 * Units::PressureConversionFactor * p.first, 
+          1e-5 * Units::PressureConversionFactor * p.second);
+
+  for (const Component& c : components)
+  {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
+    if (c.lambdaGC.computeDUdlambda)
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+    }
+  }
+  std::print(stream, "\n");
+
+  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
+  std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.totalEnergy.energy, 
+      conv * energyData.first.totalEnergy.energy, 
+      conv * energyData.second.totalEnergy.energy);
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "ExternalField-molecule\n");
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "Framework-molecule\n");
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
+      conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
+      conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
+  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy, 
+      conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy, 
+      conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
+  std::print(stream, "Molecule-molecule\n");
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
+      conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
+      conv * energyData.first.interEnergy.VanDerWaals.energy,
+      conv * energyData.second.interEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
+      conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
+      conv * energyData.first.interEnergy.CoulombicReal.energy,
+      conv * energyData.second.interEnergy.CoulombicReal.energy);
+  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
+      conv * energyData.first.interEnergy.CoulombicFourier.energy, 
+      conv * energyData.second.interEnergy.CoulombicFourier.energy);
+  std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+      conv * currentEnergyStatus.intraEnergy.total().energy,
+      conv * energyData.first.intraEnergy.total().energy,
+      conv * energyData.second.intraEnergy.total().energy);
+  
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
+std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t numberOfCycles) const
 {
   std::ostringstream stream;
 
@@ -972,7 +1139,7 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
       conv * energyData.first.intraEnergy.total().energy,
       conv * energyData.second.intraEnergy.total().energy);
   
-  std::print(stream, "\n\n\n");
+  std::print(stream, "\n");
 
   return stream.str();
 }

@@ -314,8 +314,10 @@ export struct System
 
   std::string writeOutputHeader() const;
   std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeProductionStatusReport(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeEquilibrationStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
 

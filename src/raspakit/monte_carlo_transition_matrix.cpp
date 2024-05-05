@@ -259,7 +259,7 @@ void MonteCarloTransitionMatrix::equilibrate()
 
         system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReport(i, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system.writeEquilibrationStatusReportMC(i, numberOfEquilibrationCycles));
         for(Component &component : system.components)
         {
           if(component.hasFractionalMolecule)
@@ -357,7 +357,7 @@ void MonteCarloTransitionMatrix::production()
       for (System& system : systems)
       {
         std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, "{}", system.writeProductionStatusReport(i, numberOfCycles));
+        std::print(stream, "{}", system.writeProductionStatusReportMC(i, numberOfCycles));
       }
     }
 
