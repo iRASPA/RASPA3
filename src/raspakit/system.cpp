@@ -379,9 +379,6 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
         std::optional<ChainData> growData = std::nullopt;                                                               
         do                                                                                                              
         {                                                                                                               
-          //std::vector<Atom> atoms =                                                                                     
-          //  components[componentId].recenteredCopy(0.0, numberOfMoleculesPerComponent[componentId]);                    
-          std::cout << "grow:" << std::endl;
           Component::GrowType growType  = components[componentId].growType;                                             
           growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                    this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,               
@@ -399,8 +396,6 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
       std::optional<ChainData> growData = std::nullopt;                                                                 
       do                                                                                                                
       {                                                                                                                 
-        //std::vector<Atom> atoms =                                                                                       
-        //  components[componentId].recenteredCopy(1.0, numberOfMoleculesPerComponent[componentId]);                      
         Component::GrowType growType  = components[componentId].growType;                                               
         growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                  this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,                 
