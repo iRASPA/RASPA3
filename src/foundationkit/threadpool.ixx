@@ -16,6 +16,8 @@ module;
 #include <utility>
 #include <optional>
 #include <semaphore>
+#include <deque>
+#include <vector>
 #if defined (__cpp_lib_jthread)
 #include <thread>
 #endif
@@ -42,6 +44,8 @@ import <type_traits>;
 import <utility>;
 import <optional>;
 import <semaphore>;
+import <deque>;
+import <vector>;
 #if defined (__cpp_lib_jthread)
 import <thread>;
 #endif

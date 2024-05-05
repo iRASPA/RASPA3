@@ -8,6 +8,8 @@ module;
 #endif
 #endif
 
+export module rigid;
+
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <tuple>;
@@ -25,7 +27,6 @@ import double3;
 import simd_quatd;
 import stringutils;
 
-export module rigid;
 
 export namespace Rigid
 {

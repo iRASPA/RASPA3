@@ -54,6 +54,61 @@ import units;
 import archive;
 import stringutils;
 
+std::string RunningEnergy::printMC() const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * potentialEnergy());
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "    external field VDW:      {: .6e} [K]\n", conv * externalFieldVDW);
+  std::print(stream, "    external field Real:     {: .6e} [K]\n", conv * externalFieldCharge);
+  std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * frameworkMoleculeVDW);
+  std::print(stream, "    framework-molecule Real: {: .6e} [K]\n", conv * frameworkMoleculeCharge);
+  std::print(stream, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * moleculeMoleculeVDW);
+  std::print(stream, "    molecule-molecule Real:  {: .6e} [K]\n", conv * moleculeMoleculeCharge);
+  std::print(stream, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * tail);
+  std::print(stream, "    Coulombic Ewald:         {: .6e} [K]\n", conv * ewald);
+  std::print(stream, "    intra VDW:               {: .6e} [K]\n", conv * intraVDW);
+  std::print(stream, "    intra Coulombic:         {: .6e} [K]\n", conv * intraCoul);
+  std::print(stream, "    polarization:            {: .6e} [K]\n", conv * polarization);
+  std::print(stream, "    dU/dlambda VDW:          {: .6e} [K]\n", conv * dudlambdaVDW);
+  std::print(stream, "    dU/dlambda Real:         {: .6e} [K]\n", conv * dudlambdaCharge);
+  std::print(stream, "    dU/dlambda Ewald:        {: .6e} [K]\n", conv * dudlambdaEwald);
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
+std::string RunningEnergy::printMD() const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  std::print(stream, "Total potential energy:      {: .6e} [K]\n", conv * potentialEnergy());
+  std::print(stream, "    external field VDW:      {: .6e} [K]\n", conv * externalFieldVDW);
+  std::print(stream, "    external field Real:     {: .6e} [K]\n", conv * externalFieldCharge);
+  std::print(stream, "    framework-molecule VDW:  {: .6e} [K]\n", conv * frameworkMoleculeVDW);
+  std::print(stream, "    framework-molecule Real: {: .6e} [K]\n", conv * frameworkMoleculeCharge);
+  std::print(stream, "    molecule-molecule VDW:   {: .6e} [K]\n", conv * moleculeMoleculeVDW);
+  std::print(stream, "    molecule-molecule Real:  {: .6e} [K]\n", conv * moleculeMoleculeCharge);
+  std::print(stream, "    Van der Waals (Tail):    {: .6e} [K]\n", conv * tail);
+  std::print(stream, "    Coulombic Ewald:         {: .6e} [K]\n", conv * ewald);
+  std::print(stream, "    intra VDW:               {: .6e} [K]\n", conv * intraVDW);
+  std::print(stream, "    intra Coulombic:         {: .6e} [K]\n", conv * intraCoul);
+  std::print(stream, "    polarization:            {: .6e} [K]\n", conv * polarization);
+  std::print(stream, "    dU/dlambda VDW:          {: .6e} [K]\n", conv * dudlambdaVDW);
+  std::print(stream, "    dU/dlambda Real:         {: .6e} [K]\n", conv * dudlambdaCharge);
+  std::print(stream, "    dU/dlambda Ewald:        {: .6e} [K]\n", conv * dudlambdaEwald);
+  std::print(stream, "\n");
+  std::print(stream, "Total kinetic energy:        {: .6e} [K]\n", conv * kineticEnergy());
+  std::print(stream, "    translational:           {: .6e} [K]\n", conv * translationalKineticEnergy);
+  std::print(stream, "    rotational:              {: .6e} [K]\n", conv * rotationalKineticEnergy);
+  std::print(stream, "\n");
+
+  return stream.str();
+}
+
 std::string RunningEnergy::printMC(const std::string &label)
 {
   std::ostringstream stream;

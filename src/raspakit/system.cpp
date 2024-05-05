@@ -777,12 +777,6 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   }
   std::print(stream, "\n");
 
-  //size_t numberOfMolecules = std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-  //double currentExcessPressure = runningEnergies.totalEnergy.forceFactor / (3.0 * simulationBox.volume);
-  //double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(simulationBox.Beta * simulationBox.volume);
-  //double currentPressure = currentIdealPressure + currentExcessPressure;
-  //std::print(outputFile, "Pressure:             {: .6e} [bar]\n", 1e-5 * Units::PressureConversionFactor * currentPressure);
-
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -800,6 +794,11 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
                  c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
+  std::print(stream, "\n");
+
+  std::print(stream, runningEnergies.printMC());
+
+
   std::print(stream, "\n");
 
   return stream.str();
@@ -842,6 +841,10 @@ std::string System::writeEquilibrationStatusReport(size_t currentCycle, size_t n
   }
   std::print(stream, "\n");
 
+  std::print(stream, runningEnergies.printMD());
+
+  std::print(stream, "\n");
+
   return stream.str();
 }
 
@@ -851,6 +854,9 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
 
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
+
+  std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep, 
+                                                           static_cast<double>(currentCycle) * timeStep / 1000.0);
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
@@ -911,6 +917,10 @@ std::string System::writeProductionStatusReport(size_t currentCycle, size_t numb
     }
   }
   std::print(stream, "\n");
+
+  std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
+  double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
+  std::print(stream, "Drift: {} Average drift: {}\n\n", drift, accumulatedDrift / static_cast<double>(currentCycle));
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",

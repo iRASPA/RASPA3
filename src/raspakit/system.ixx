@@ -174,7 +174,7 @@ export struct System
 
   double conservedEnergy{};
   double referenceEnergy{};
-  double accumatedDrift{};
+  double accumulatedDrift{};
   RunningEnergy runningEnergies;
   PropertyEnergy averageEnergies;
 

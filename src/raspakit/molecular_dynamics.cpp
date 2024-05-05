@@ -327,7 +327,6 @@ void MolecularDynamics::equilibrate()
           Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReport(currentCycle, numberOfEquilibrationCycles));
-        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMD("", system.referenceEnergy));
         std::flush(stream);
       }
     }
@@ -431,6 +430,9 @@ void MolecularDynamics::production()
     for (System& system : systems)
     {
       system.integrate();
+
+      system.conservedEnergy = system.runningEnergies.conservedEnergy();
+      system.accumulatedDrift += std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
     }
 
     // sample properties
@@ -460,7 +462,6 @@ void MolecularDynamics::production()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
         std::print(stream, "{}", system.writeProductionStatusReport(currentCycle, numberOfCycles));
-        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMD("", system.referenceEnergy));
         std::flush(stream);
       }
     }
