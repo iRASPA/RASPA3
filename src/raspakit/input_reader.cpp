@@ -481,6 +481,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+
     // Explicit notation listing the properties as an array of the values for the particular systems
     // ========================================================================================================
 
@@ -518,6 +519,15 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
         }
 
         jsonComponents[i][componentId].startingBead = n;
+      }
+    }
+
+    if (item["ThermodynamicIntegration"].is_boolean())
+    {
+      bool thermodynamic_integration = item["ThermodynamicIntegration"].get<bool>();
+      for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+      {
+        jsonComponents[i][componentId].lambdaGC.computeDUdlambda = thermodynamic_integration;
       }
     }
 
@@ -680,14 +690,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     else
     {
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
-    }
-
-    if (value["ThermodynamicIntegration"].is_boolean())
-    {
-      for (size_t i = 0; i != jsonNumberOfComponents; ++i)
-      {
-        systems[systemId].components[i].lambdaGC.computeDUdlambda = value["ThermodynamicIntegration"].get<bool>();
-      }
     }
 
     systemId++;
