@@ -26,6 +26,7 @@
     {
       "Name" : "CO2",
       "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
       "ThermodynamicIntegration" : true,
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,

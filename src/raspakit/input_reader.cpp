@@ -522,6 +522,16 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+    if (item["FugacityCoefficient"].is_number_float())
+    {
+      double fugacity_coefficient = item["FugacityCoefficient"].get<double>();
+      for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+      {
+        jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficient;
+      }
+    }
+
+
     if (item["ThermodynamicIntegration"].is_boolean())
     {
       bool thermodynamic_integration = item["ThermodynamicIntegration"].get<bool>();
