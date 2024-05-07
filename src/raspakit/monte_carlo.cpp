@@ -197,7 +197,7 @@ void MonteCarlo::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
@@ -288,9 +288,7 @@ void MonteCarlo::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n\n\n\n");
+    system.runningEnergies = system.computeTotalEnergies();
 
     for(Component &component : system.components)
     {
@@ -398,9 +396,7 @@ void MonteCarlo::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies(); 
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n");
+    system.runningEnergies = system.computeTotalEnergies(); 
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();

@@ -144,13 +144,13 @@ double Interactions::computeEwaldFourierEnergySingleIon(std::vector<std::complex
 }
 
 
-void Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<double>> &eik_x,
-                          std::vector<std::complex<double>> &eik_y,
-                          std::vector<std::complex<double>> &eik_z,
-                          std::vector<std::complex<double>> &eik_xy,
-                          std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-                          const ForceField &forceField, const SimulationBox &simulationBox,
-                          std::span<const Atom> rigidFrameworkAtoms, RunningEnergy& energyStatus)
+RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<double>> &eik_x,
+                                                           std::vector<std::complex<double>> &eik_y,
+                                                           std::vector<std::complex<double>> &eik_z,
+                                                           std::vector<std::complex<double>> &eik_xy,
+                                                           std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+                                                           const ForceField &forceField, const SimulationBox &simulationBox,
+                                                           std::span<const Atom> rigidFrameworkAtoms)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -158,10 +158,11 @@ void Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<doubl
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
+  RunningEnergy energySum{};
 
 
-  if (forceField.noCharges) return;
-  if (forceField.omitEwaldFourier) return;
+  if (forceField.noCharges) return energySum;
+  if (forceField.omitEwaldFourier) return energySum;
 
   size_t numberOfAtoms = rigidFrameworkAtoms.size();
 
@@ -260,10 +261,10 @@ void Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<doubl
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() + 
-                                        cksum.first.imag() * cksum.first.imag());
-          energyStatus.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
-                                                       cksum.first.imag() * cksum.second.imag());
+          energySum.ewald += temp * (cksum.first.real() * cksum.first.real() + 
+                                     cksum.first.imag() * cksum.first.imag());
+          energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
+                                                    cksum.first.imag() * cksum.second.imag());
 
           fixedFrameworkStoredEik[nvec] = cksum;
           ++nvec;
@@ -271,20 +272,22 @@ void Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<doubl
       }
     }
   }
+
+  return energySum;
 }
 
 // Energy, called with 'storedEik'
 // Volume-move, called with 'totalEik' for 'storedEik'
-void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &eik_x,
-                          std::vector<std::complex<double>> &eik_y,
-                          std::vector<std::complex<double>> &eik_z,
-                          std::vector<std::complex<double>> &eik_xy,
-                          std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-                          std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-                          const ForceField &forceField, const SimulationBox &simulationBox,            
-                          const std::vector<Component> &components,
-                          const std::vector<size_t> &numberOfMoleculesPerComponent,
-                          std::span<const Atom> moleculeAtomPositions, RunningEnergy &energyStatus)
+RunningEnergy Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &eik_x,
+                                                      std::vector<std::complex<double>> &eik_y,
+                                                      std::vector<std::complex<double>> &eik_z,
+                                                      std::vector<std::complex<double>> &eik_xy,
+                                                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+                                                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
+                                                      const ForceField &forceField, const SimulationBox &simulationBox,            
+                                                      const std::vector<Component> &components,
+                                                      const std::vector<size_t> &numberOfMoleculesPerComponent,
+                                                      std::span<const Atom> moleculeAtomPositions)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -292,9 +295,10 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
+  RunningEnergy energySum{};
 
-  if(forceField.noCharges) return;
-  if(forceField.omitEwaldFourier) return;
+  if(forceField.noCharges) return energySum;
+  if(forceField.omitEwaldFourier) return energySum;
 
   size_t numberOfAtoms = moleculeAtomPositions.size();
 
@@ -398,10 +402,10 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           double rigidEnergy = temp * (rigid.first.real() * rigid.first.real() +
                                         rigid.first.imag() * rigid.first.imag());
-          energyStatus.ewald += temp * (cksum.first.real() * cksum.first.real() +
-                                        cksum.first.imag() * cksum.first.imag()) - rigidEnergy;
-          energyStatus.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
-                                                       cksum.first.imag() * cksum.second.imag());
+          energySum.ewald += temp * (cksum.first.real() * cksum.first.real() +
+                                     cksum.first.imag() * cksum.first.imag()) - rigidEnergy;
+          energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
+                                                    cksum.first.imag() * cksum.second.imag());
 
           storedEik[nvec] = cksum;
           ++nvec;
@@ -417,8 +421,8 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
     double charge = moleculeAtomPositions[i].charge;
     double scaling = moleculeAtomPositions[i].scalingCoulomb;
     bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
-    energyStatus.ewald -= prefactor_self * scaling * charge * scaling * charge;
-    energyStatus.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
+    energySum.ewald -= prefactor_self * scaling * charge * scaling * charge;
+    energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
   // Subtract exclusion-energy
@@ -447,8 +451,8 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
           double r = std::sqrt(double3::dot(dr, dr));
 
           double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-          energyStatus.ewald -= scalingA * scalingB * temp;
-          energyStatus.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
+          energySum.ewald -= scalingA * scalingB * temp;
+          energySum.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
         }
       }
       index += size;
@@ -464,18 +468,20 @@ void Interactions::computeEwaldFourierEnergy(std::vector<std::complex<double>> &
   //    //energyStatus.ewald += CoulombicFourierEnergySingleIon * netCharge[i] * netCharge[j];
   //  }
   //}
+  
+  return energySum; 
 }
 
 // compute gradient
-ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<double>> &eik_x,
-                                                      std::vector<std::complex<double>> &eik_y,
-                                                      std::vector<std::complex<double>> &eik_z,
-                                                      std::vector<std::complex<double>> &eik_xy,
-                                                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-                                                      const ForceField &forceField, const SimulationBox &simulationBox,
-                                                      const std::vector<Component> &components,
-                                                      const std::vector<size_t> &numberOfMoleculesPerComponent,
-                                                      std::span<Atom> atomPositions)
+RunningEnergy Interactions::computeEwaldFourierGradient(std::vector<std::complex<double>> &eik_x,
+                                                        std::vector<std::complex<double>> &eik_y,
+                                                        std::vector<std::complex<double>> &eik_z,
+                                                        std::vector<std::complex<double>> &eik_xy,
+                                                        std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+                                                        const ForceField &forceField, const SimulationBox &simulationBox,
+                                                        const std::vector<Component> &components,
+                                                        const std::vector<size_t> &numberOfMoleculesPerComponent,
+                                                        std::span<Atom> atomPositions)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -484,10 +490,10 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  ForceFactor energy{ 0.0, 0.0, 0.0 };
+  RunningEnergy energySum{};
 
-  if (forceField.noCharges) return energy;
-  if (forceField.omitEwaldFourier) return energy;
+  if (forceField.noCharges) return energySum;
+  if (forceField.omitEwaldFourier) return energySum;
 
   size_t numberOfAtoms = atomPositions.size();
 
@@ -594,8 +600,8 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
           double rigidEnergy = temp * (rigid.first.real() * rigid.first.real() +
                                         rigid.first.imag() * rigid.first.imag());
-          energy.energy += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag()) - rigidEnergy;
-          energy.dUdlambda += 2.0 * temp * (cksum.real() * cksum2.real() + cksum.imag() * cksum2.imag());
+          energySum.ewald += temp * (cksum.real() * cksum.real() + cksum.imag() * cksum.imag()) - rigidEnergy;
+          energySum.dudlambdaEwald += 2.0 * temp * (cksum.real() * cksum2.real() + cksum.imag() * cksum2.imag());
 
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -622,8 +628,8 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
     double charge = atomPositions[i].charge;
     double scaling = atomPositions[i].scalingCoulomb;
     bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
-    energy.energy -= prefactor_self * scaling * charge * scaling * charge;
-    energy.dUdlambda -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
+    energySum.ewald -= prefactor_self * scaling * charge * scaling * charge;
+    energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
 
 
@@ -654,8 +660,8 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
           double r = std::sqrt(rr);
 
           double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-          energy.energy -= scalingA * scalingB * temp;
-          energy.dUdlambda -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
+          energySum.ewald -= scalingA * scalingB * temp;
+          energySum.dudlambdaEwald -=  (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
 
           temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha * std::exp(-(alpha * alpha * r * r)) / rr;
           double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
@@ -680,7 +686,7 @@ ForceFactor Interactions::computeEwaldFourierGradient(std::vector<std::complex<d
   //  }
   //}
 
-  return energy;
+  return energySum;
 }
 
 

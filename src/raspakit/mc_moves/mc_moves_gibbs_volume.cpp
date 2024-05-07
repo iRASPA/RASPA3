@@ -87,25 +87,26 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::vector<Atom> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
 
-  RunningEnergy newTotalEnergyA;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
+  RunningEnergy newTotalInterEnergyA = Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA, newTotalEnergyA);
+  RunningEnergy newTotalTailEnergyA = Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
-                                          systemA.fixedFrameworkStoredEik, systemA.totalEik,
-                                          systemA.forceField, newBoxA,
-                                          systemA.components, systemA.numberOfMoleculesPerComponent,
-                                          newPositionsA, newTotalEnergyA);
+  RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
+                                                                               systemA.fixedFrameworkStoredEik, systemA.totalEik,
+                                                                               systemA.forceField, newBoxA,
+                                                                               systemA.components, systemA.numberOfMoleculesPerComponent,
+                                                                               newPositionsA);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
+
+  RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
   systemA.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemA.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
@@ -119,25 +120,26 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   std::vector<Atom> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
 
 
-  RunningEnergy newTotalEnergyB;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
+  RunningEnergy newTotalInterEnergyB = Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB, newTotalEnergyB);
+  RunningEnergy newTotalTailEnergyB = Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
-                                          systemB.fixedFrameworkStoredEik, systemB.totalEik,
-                                          systemB.forceField, newBoxB,
-                                          systemB.components, systemB.numberOfMoleculesPerComponent,
-                                          newPositionsB, newTotalEnergyB);
+  RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
+                                                                               systemB.fixedFrameworkStoredEik, systemB.totalEik,
+                                                                               systemB.forceField, newBoxB,
+                                                                               systemB.components, systemB.numberOfMoleculesPerComponent,
+                                                                               newPositionsB);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
+
+  RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
 
   systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;

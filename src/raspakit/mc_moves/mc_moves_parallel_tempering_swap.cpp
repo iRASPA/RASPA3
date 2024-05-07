@@ -72,17 +72,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
 
   if (systemA.forceField != systemB.forceField)
   {
-    RunningEnergy systemAHamiltonianB;
     time_begin = std::chrono::system_clock::now();
-    Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions,
-                                              systemAHamiltonianB);
+    RunningEnergy systemAHamiltonianB = Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions);
     time_end = std::chrono::system_clock::now();
     systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
 
-    RunningEnergy systemBHamiltonianA;
     time_begin = std::chrono::system_clock::now();
-    Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions,
-                                              systemBHamiltonianA);
+    RunningEnergy systemBHamiltonianA = Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions);
     time_end = std::chrono::system_clock::now();
     systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
 

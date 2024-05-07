@@ -64,9 +64,8 @@ TEST(cbmc_interactions, framework_molecule_1)
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
   atomPositions[0].position = double3(0.5 * 11.8671, 0.5 * 11.8671, 0.5 * 11.8671);
 
-  RunningEnergy energy;
-  Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);
-  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
+  RunningEnergy energy = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+                         Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 
@@ -111,9 +110,8 @@ TEST(cbmc_interactions, framework_molecule_2)
   atomPositions[0].position = double3(0.5 * 11.8671, 0.5 * 11.8671, 0.5 * 11.8671);
   atomPositions[1].position = double3(0.6 * 11.8671, 0.7 * 11.8671, 0.65 * 11.8671);
 
-  RunningEnergy energy;
-  Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions, energy);
-  Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions, energy);
+  RunningEnergy energy = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+                         Interactions::computeFrameworkMoleculeEnergy(system.forceField,system.simulationBox, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1599.10322574, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, 2352.42793591, 1e-6);

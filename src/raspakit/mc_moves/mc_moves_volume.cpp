@@ -79,26 +79,26 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   SimulationBox newBox = system.simulationBox.scaled(scale);
   std::vector<Atom> newPositions = system.scaledCenterOfMassPositions(scale);
 
-  RunningEnergy newTotalEnergy;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
+  RunningEnergy newTotalInterEnergy = Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
+  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                          system.fixedFrameworkStoredEik, system.totalEik,
-                                          system.forceField, newBox,
-                                          system.components, system.numberOfMoleculesPerComponent,
-                                          newPositions, newTotalEnergy);
+  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                                              system.fixedFrameworkStoredEik, system.totalEik,
+                                                                              system.forceField, newBox,
+                                                                              system.components, system.numberOfMoleculesPerComponent,
+                                                                              newPositions);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
 
+  RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
   system.mc_moves_statistics.volumeMove.constructed += 1;
   system.mc_moves_statistics.volumeMove.totalConstructed += 1;

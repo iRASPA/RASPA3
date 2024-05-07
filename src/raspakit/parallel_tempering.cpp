@@ -237,7 +237,7 @@ void ParallelTempering::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
@@ -328,7 +328,7 @@ void ParallelTempering::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
     stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     for (Component& component : system.components)
@@ -439,7 +439,7 @@ void ParallelTempering::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
     stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     system.clearMoveStatistics();

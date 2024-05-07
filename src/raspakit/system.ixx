@@ -257,7 +257,6 @@ export struct System
   void computeCenterOfMassAndQuaternionGradients();
 
   void precomputeTotalRigidEnergy() noexcept;
-  void recomputeTotalEnergies() noexcept;
   RunningEnergy computeTotalEnergies() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
 

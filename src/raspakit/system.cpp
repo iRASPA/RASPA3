@@ -1309,35 +1309,9 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 
 void System::precomputeTotalRigidEnergy() noexcept
 {
-  RunningEnergy rigidEnergies{};
-  Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy, 
-                                               fixedFrameworkStoredEik, forceField, simulationBox,
-                                               spanOfRigidFrameworkAtoms(), rigidEnergies);
-}
-
-void System::recomputeTotalEnergies() noexcept
-{
-  runningEnergies.zero();
-
-  if(fixedFrameworkStoredEik.empty())
-  {
-    precomputeTotalRigidEnergy();
-  }
-
-  std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
-  std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-
-  Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
-  Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergies);
-
-  Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergies);
-  Interactions::computeInterMolecularTailEnergy(forceField, simulationBox,moleculeAtomPositions, runningEnergies);
-
-  Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy,
-                                          fixedFrameworkStoredEik, storedEik,
-                                          forceField, simulationBox,
-                                          components, numberOfMoleculesPerComponent,
-                                          moleculeAtomPositions, runningEnergies);
+  [[maybe_unused]] RunningEnergy rigidEnergies = Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy,
+                                                                       fixedFrameworkStoredEik, forceField, simulationBox,
+                                                                       spanOfRigidFrameworkAtoms());
 }
 
 
@@ -1353,19 +1327,19 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
-  Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
+  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
 
-  Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, runningEnergy);
-  Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions, runningEnergy);
+  RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularTailEnergy = Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
 
-  Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, 
-                                          fixedFrameworkStoredEik, storedEik,
-                                          forceField, simulationBox,
-                                          components, numberOfMoleculesPerComponent,
-                                          moleculeAtomPositions, runningEnergy);
+  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, 
+                                                                      fixedFrameworkStoredEik, storedEik,
+                                                                      forceField, simulationBox,
+                                                                      components, numberOfMoleculesPerComponent,
+                                                                      moleculeAtomPositions);
 
-  return runningEnergy;
+  return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy + ewaldEnergy;
 }
 
 RunningEnergy System::computeTotalGradients() noexcept
@@ -1385,27 +1359,12 @@ RunningEnergy System::computeTotalGradients() noexcept
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<ForceFactor,ForceFactor> frameworkMolecule = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-  std::pair<ForceFactor,ForceFactor> interMolecular = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
-  ForceFactor ewald = Interactions::computeEwaldFourierGradient(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
+  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
                                                                 forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
 
-  running_energy.externalFieldVDW = 0.0;
-  running_energy.frameworkMoleculeVDW = frameworkMolecule.first.energy;
-  running_energy.moleculeMoleculeVDW = interMolecular.first.energy;
-  running_energy.externalFieldCharge = 0.0;
-  running_energy.frameworkMoleculeCharge = frameworkMolecule.second.energy;
-  running_energy.moleculeMoleculeCharge = interMolecular.second.energy;
-  running_energy.ewald = ewald.energy;
-  running_energy.intraVDW = 0.0;
-  running_energy.intraCoul = 0.0;
-  running_energy.tail = 0.0;
-  running_energy.polarization = 0.0;
-  running_energy.dudlambdaVDW = frameworkMolecule.first.dUdlambda + interMolecular.first.dUdlambda;
-  running_energy.dudlambdaCharge = frameworkMolecule.second.dUdlambda + interMolecular.second.dUdlambda;
-  running_energy.dudlambdaEwald = ewald.dUdlambda;
-
-  return running_energy;
+  return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy;
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
