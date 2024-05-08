@@ -21,6 +21,10 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <atomic>
+#include <array>
+#include <deque>
+#include <functional>
 #if defined(__has_include) && __has_include(<print>)
 #include <print>
 #endif
@@ -52,6 +56,10 @@ import <ios>;
 import <complex>;
 import <exception>;
 import <source_location>;
+import <atomic>;
+import <array>;
+import <deque>;
+import <functional>;
 #if defined(__has_include) && __has_include(<print>)
 import <print>;
 #endif

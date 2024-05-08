@@ -3,6 +3,8 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <ostream>
 #include <fstream>
+#include <map>
+#include <vector>
 #endif 
 
 
@@ -11,6 +13,8 @@ export module simd_quatd;
 #ifndef USE_LEGACY_HEADERS
 import <ostream>;
 import <fstream>;
+import <map>;
+import <vector>;
 #endif
 
 
