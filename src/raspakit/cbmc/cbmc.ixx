@@ -36,7 +36,7 @@ export namespace CBMC
                             const ForceField &forceField, const SimulationBox &simulationBox, 
                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                             Component::GrowType growType, double cutOff, double cutOffCoulomb, 
-                            size_t selectedComponent, size_t selectedMolecule, double scaling, 
+                            size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
                             size_t numberOfTrialDirections) noexcept;
   
   // deletion

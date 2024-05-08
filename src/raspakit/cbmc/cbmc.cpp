@@ -45,7 +45,7 @@ CBMC::growMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, con
                                 const ForceField &forceField, const SimulationBox &simulationBox, 
                                 std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                                 Component::GrowType growType, double cutOff, double cutOffCoulomb, 
-                                size_t selectedComponent, size_t selectedMolecule, double scaling, 
+                                size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
                                 size_t numberOfTrialDirections) noexcept
 {
   switch(growType)
@@ -53,7 +53,7 @@ CBMC::growMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, con
     default:
     return CBMC::growRigidMoleculeSwapInsertion(random, hasExternalField, components, forceField, simulationBox, frameworkAtoms, 
                                                 moleculeAtoms, beta, cutOff, cutOffCoulomb, selectedComponent, 
-                                                selectedMolecule, scaling, numberOfTrialDirections);
+                                                selectedMolecule, scaling, groupId, numberOfTrialDirections);
   }
 }
 

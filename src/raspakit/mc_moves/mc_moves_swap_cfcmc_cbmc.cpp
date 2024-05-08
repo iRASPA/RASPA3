@@ -196,7 +196,8 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
     std::optional<ChainData> growData = 
       CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                       system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                                      growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda, 
+                                      growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMolecule, newLambda,
+                                      static_cast<size_t>(oldFractionalMolecule.front().groupId),
                                       system.numberOfTrialDirections);
     time_end = std::chrono::system_clock::now();
     system.components[selectedComponent].mc_moves_cputime.swapLambdaInsertionMoveCBCFCMCNonEwald += (time_end - time_begin);

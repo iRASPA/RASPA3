@@ -261,8 +261,8 @@ RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::comp
 
           double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          energySum.ewald += temp * (cksum.first.real() * cksum.first.real() + 
-                                     cksum.first.imag() * cksum.first.imag());
+          //energySum.ewald += temp * (cksum.first.real() * cksum.first.real() + 
+          //                           cksum.first.imag() * cksum.first.imag());
           energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
                                                     cksum.first.imag() * cksum.second.imag());
 
@@ -406,6 +406,8 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(std::vector<std::complex<d
                                      cksum.first.imag() * cksum.first.imag()) - rigidEnergy;
           energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
                                                     cksum.first.imag() * cksum.second.imag());
+          //energySum.dudlambdaEwald -= 2.0 * temp * (rigid.first.real() * rigid.second.real() + 
+          //                                          rigid.first.imag() * rigid.second.imag());
 
           storedEik[nvec] = cksum;
           ++nvec;

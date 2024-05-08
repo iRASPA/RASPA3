@@ -383,7 +383,7 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
           growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                    this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,               
                                    growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,               
-                                   numberOfMoleculesPerComponent[componentId], 0.0, numberOfTrialDirections);    
+                                   numberOfMoleculesPerComponent[componentId], 0.0, 1uz, numberOfTrialDirections);    
                                                                                                                         
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
                                                                                                                         
@@ -400,7 +400,7 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)
         growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
                                  this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,                 
                                  growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,                 
-                                 numberOfMoleculesPerComponent[componentId], 1.0, numberOfTrialDirections);
+                                 numberOfMoleculesPerComponent[componentId], 1.0, 0uz, numberOfTrialDirections);
                                                                                                                         
       } while(!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);                                    
                                                                                                                         
@@ -1309,9 +1309,9 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 
 void System::precomputeTotalRigidEnergy() noexcept
 {
-  [[maybe_unused]] RunningEnergy rigidEnergies = Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy,
-                                                                       fixedFrameworkStoredEik, forceField, simulationBox,
-                                                                       spanOfRigidFrameworkAtoms());
+  rigidEnergies = Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy,
+                                                               fixedFrameworkStoredEik, forceField, simulationBox,
+                                                               spanOfRigidFrameworkAtoms());
 }
 
 
@@ -1911,6 +1911,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.moleculePositions;
   archive << s.conservedEnergy;
   archive << s.referenceEnergy;
+  archive << s.rigidEnergies;
   archive << s.runningEnergies;
   archive << s.averageEnergies;
   archive << s.currentExcessPressureTensor;
@@ -2000,6 +2001,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.moleculePositions;
   archive >> s.conservedEnergy;
   archive >> s.referenceEnergy;
+  archive >> s.rigidEnergies;
   archive >> s.runningEnergies;
   archive >> s.averageEnergies;
   archive >> s.currentExcessPressureTensor;
