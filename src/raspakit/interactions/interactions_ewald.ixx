@@ -40,14 +40,14 @@ export namespace Interactions
                                             double3 position,
                                             double charge);
 
-  RunningEnergy computeEwaldFourierRigidEnergy(std::vector<std::complex<double>> &eik_x,
-                                      std::vector<std::complex<double>> &eik_y,
-                                      std::vector<std::complex<double>> &eik_z,
-                                      std::vector<std::complex<double>> &eik_xy,
-                                      std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-                                      const ForceField &forceField, 
-                                      const SimulationBox &simulationBox,
-                                      std::span<const Atom> frameworkAtoms);
+  void precomputeEwaldFourierRigid(std::vector<std::complex<double>> &eik_x,
+                                   std::vector<std::complex<double>> &eik_y,
+                                   std::vector<std::complex<double>> &eik_z,
+                                   std::vector<std::complex<double>> &eik_xy,
+                                   std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+                                   const ForceField &forceField, 
+                                   const SimulationBox &simulationBox,
+                                   std::span<const Atom> frameworkAtoms);
 
   RunningEnergy computeEwaldFourierEnergy(std::vector<std::complex<double>> &eik_x,
                                           std::vector<std::complex<double>> &eik_y,

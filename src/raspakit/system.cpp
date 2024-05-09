@@ -1309,9 +1309,9 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 
 void System::precomputeTotalRigidEnergy() noexcept
 {
-  rigidEnergies = Interactions::computeEwaldFourierRigidEnergy(eik_x, eik_y, eik_z, eik_xy,
-                                                               fixedFrameworkStoredEik, forceField, simulationBox,
-                                                               spanOfRigidFrameworkAtoms());
+  Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy,
+                                            fixedFrameworkStoredEik, forceField, simulationBox,
+                                            spanOfRigidFrameworkAtoms());
 }
 
 

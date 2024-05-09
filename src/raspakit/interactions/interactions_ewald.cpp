@@ -144,25 +144,22 @@ double Interactions::computeEwaldFourierEnergySingleIon(std::vector<std::complex
 }
 
 
-RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::complex<double>> &eik_x,
-                                                           std::vector<std::complex<double>> &eik_y,
-                                                           std::vector<std::complex<double>> &eik_z,
-                                                           std::vector<std::complex<double>> &eik_xy,
-                                                           std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-                                                           const ForceField &forceField, const SimulationBox &simulationBox,
-                                                           std::span<const Atom> rigidFrameworkAtoms)
+void Interactions::precomputeEwaldFourierRigid(std::vector<std::complex<double>> &eik_x,
+                                               std::vector<std::complex<double>> &eik_y,
+                                               std::vector<std::complex<double>> &eik_z,
+                                               std::vector<std::complex<double>> &eik_xy,
+                                               std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+                                               const ForceField &forceField, const SimulationBox &simulationBox,
+                                               std::span<const Atom> rigidFrameworkAtoms)
 {
-  double alpha = forceField.EwaldAlpha;
-  double alpha_squared = alpha * alpha;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
-  RunningEnergy energySum{};
 
 
-  if (forceField.noCharges) return energySum;
-  if (forceField.omitEwaldFourier) return energySum;
+  if (forceField.noCharges) return;
+  if (forceField.omitEwaldFourier) return;
 
   size_t numberOfAtoms = rigidFrameworkAtoms.size();
 
@@ -221,18 +218,10 @@ RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::comp
   }
 
   size_t nvec = 0;
-  double prefactor = Units::CoulombicConversionFactor * (2.0 * std::numbers::pi / simulationBox.volume);
   for (std::make_signed_t<std::size_t> kx = 0; kx <= kx_max; ++kx)
   {
-    double3 kvec_x = 2.0 * std::numbers::pi * static_cast<double>(kx) * ax;
-
-    // Only positive kx are used, the negative kx are taken into account by the factor of two
-    double factor = (kx == 0) ? (1.0 * prefactor) : (2.0 * prefactor);
-
     for (std::make_signed_t<std::size_t> ky = -ky_max; ky <= ky_max; ++ky)
     {
-      double3 kvec_y = 2.0 * std::numbers::pi * static_cast<double>(ky) * ay;
-
       // Precompute and store eik_x * eik_y outside the kz-loop
       for (size_t i = 0; i != numberOfAtoms; ++i)
       {
@@ -246,8 +235,6 @@ RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::comp
         // Ommit kvec==0
         if ((kx * kx + ky * ky + kz * kz) != 0)
         {
-          double3 kvec_z = 2.0 * std::numbers::pi * static_cast<double>(kz) * az;
-
           std::pair<std::complex<double>, std::complex<double>> cksum(0.0, 0.0);
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -256,15 +243,7 @@ RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::comp
             double charge = rigidFrameworkAtoms[i].charge;
             double scaling = rigidFrameworkAtoms[i].scalingCoulomb;
             cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
-            cksum.second += charge * (eik_xy[i] * eikz_temp);
           }
-
-          double rksq = (kvec_x + kvec_y + kvec_z).length_squared();
-          double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
-          //energySum.ewald += temp * (cksum.first.real() * cksum.first.real() + 
-          //                           cksum.first.imag() * cksum.first.imag());
-          energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
-                                                    cksum.first.imag() * cksum.second.imag());
 
           fixedFrameworkStoredEik[nvec] = cksum;
           ++nvec;
@@ -272,8 +251,6 @@ RunningEnergy Interactions::computeEwaldFourierRigidEnergy(std::vector<std::comp
       }
     }
   }
-
-  return energySum;
 }
 
 // Energy, called with 'storedEik'
@@ -406,8 +383,8 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(std::vector<std::complex<d
                                      cksum.first.imag() * cksum.first.imag()) - rigidEnergy;
           energySum.dudlambdaEwald += 2.0 * temp * (cksum.first.real() * cksum.second.real() + 
                                                     cksum.first.imag() * cksum.second.imag());
-          //energySum.dudlambdaEwald -= 2.0 * temp * (rigid.first.real() * rigid.second.real() + 
-          //                                          rigid.first.imag() * rigid.second.imag());
+          energySum.dudlambdaEwald -= 2.0 * temp * (rigid.first.real() * rigid.second.real() + 
+                                                    rigid.first.imag() * rigid.second.imag());
 
           storedEik[nvec] = cksum;
           ++nvec;
