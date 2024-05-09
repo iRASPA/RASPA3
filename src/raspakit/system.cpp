@@ -764,14 +764,6 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
-  {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
-  }
-  std::print(stream, "\n");
-
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -791,6 +783,15 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   }
   std::print(stream, "\n");
 
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
+  }
+  std::print(stream, "\n");
+
+
   std::print(stream, runningEnergies.printMC());
 
 
@@ -809,14 +810,6 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
   std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
-  {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
-  }
-  std::print(stream, "\n");
-
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -835,6 +828,15 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
     }
   }
   std::print(stream, "\n");
+
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
+  }
+  std::print(stream, "\n");
+
 
   std::print(stream, runningEnergies.printMC());
 
@@ -853,14 +855,6 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
-  std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
-  {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
-  }
-  std::print(stream, "\n");
-
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -880,6 +874,15 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   }
   std::print(stream, "\n");
 
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
+  }
+  std::print(stream, "\n");
+
+
   std::print(stream, runningEnergies.printMD());
 
   std::print(stream, "\n");
@@ -897,6 +900,25 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
+  std::print(stream, "\n");
+
+  for (const Component& c : components)
+  {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
+    if (c.lambdaGC.computeDUdlambda)
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+    }
+  }
   std::print(stream, "\n");
   
   std::print(stream, "Amount of molecules per component :\n");
@@ -936,24 +958,6 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
           1e-5 * Units::PressureConversionFactor * p.first, 
           1e-5 * Units::PressureConversionFactor * p.second);
 
-  for (const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-  }
-  std::print(stream, "\n");
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
@@ -1023,6 +1027,25 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
+
+  for (const Component& c : components)
+  {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
+    if (c.lambdaGC.computeDUdlambda)
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+    }
+  }
+  std::print(stream, "\n");
   
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
@@ -1060,25 +1083,6 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
           1e-5 * Units::PressureConversionFactor * p.first, 
           1e-5 * Units::PressureConversionFactor * p.second);
-
-  for (const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-  }
-  std::print(stream, "\n");
 
   std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
   double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
