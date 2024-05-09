@@ -163,7 +163,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
   nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
   size_t jsonNumberOfBlocks{5};
-  size_t jsonNumberOfLambdaBins{41};
 
   try
   {
@@ -237,10 +236,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-  if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
-  {
-    // = parsed_data["NumberOfLambdaBins"].get<size_t>();
-  }
   if (parsed_data["NumberOfThreads"].is_number_unsigned())
   {
     numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
@@ -481,6 +476,11 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+     size_t jsonNumberOfLambdaBins{31};
+     if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
+     {
+       jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();
+     }
 
     // Explicit notation listing the properties as an array of the values for the particular systems
     // ========================================================================================================
@@ -665,7 +665,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       // create system
       systems[systemId] =
           System(systemId, std::nullopt, T, P, forceFields[systemId].value(), jsonFrameworkComponents,
-                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], 5, mc_moves_probabilities);
+                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
     }
     else if (caseInSensStringCompare(typeString, "Box"))
     {
@@ -704,11 +704,79 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
       systems[systemId] =
           System(systemId, simulationBox, T, P, forceFields[systemId].value(), {}, jsonComponents[systemId],
-                 jsonCreateNumberOfMolecules[systemId], 5, mc_moves_probabilities);
+                 jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
     }
     else
     {
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
+    }
+
+    if (value["ComputeConventionalRDF"].is_boolean())
+    {
+      if(value["ComputeConventionalRDF"].get<bool>())
+      {
+        size_t numberOfBinsConventionalRDF{ 128 };
+        if (value["NumberOfBinsConventionalRDF"].is_number_unsigned())
+        {
+          numberOfBinsConventionalRDF = value["NumberOfBinsConventionalRDF"].get<size_t>();
+        }
+
+        double rangeConventionalRDF{ 15.0 };
+        if (value["RangeConventionalRDF"].is_number_float())
+        {
+          rangeConventionalRDF = value["RangeConventionalRDF"].get<double>();
+        }
+
+        size_t sampleConventionalRDFEvery{ 10 };
+        if (value["SampleConventionalRDFEvery"].is_number_unsigned())
+        {
+          sampleConventionalRDFEvery = value["SampleConventionalRDFEvery"].get<size_t>();
+        }
+
+        size_t writeConventionalRDFEvery{ 5000 };
+        if (value["WriteConventionalRDFEvery"].is_number_unsigned())
+        {
+          writeConventionalRDFEvery = value["WriteConventionalRDFEvery"].get<size_t>();
+        }
+
+        systems[systemId].propertyConventionalRadialDistributionFunction = 
+          PropertyConventionalRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
+                            numberOfBinsConventionalRDF, rangeConventionalRDF, sampleConventionalRDFEvery, writeConventionalRDFEvery);
+      }
+    }
+
+    if (value["ComputeRDF"].is_boolean())
+    {
+      if(value["ComputeRDF"].get<bool>())
+      {
+        size_t numberOfBinsRDF{ 128 };
+        if (value["NumberOfBinsRDF"].is_number_unsigned())
+        {
+          numberOfBinsRDF = value["NumberOfBinsRDF"].get<size_t>();
+        }
+
+        double rangeRDF{ 15.0 };
+        if (value["RangeRDF"].is_number_float())
+        {
+          rangeRDF = value["RangeRDF"].get<double>();
+        }
+
+        size_t sampleRDFEvery{ 10 };
+        if (value["SampleRDFEvery"].is_number_unsigned())
+        {
+          sampleRDFEvery = value["SampleRDFEvery"].get<size_t>();
+        }
+
+        size_t writeRDFEvery{ 5000 };
+        if (value["WriteRDFEvery"].is_number_unsigned())
+        {
+          writeRDFEvery = value["WriteRDFEvery"].get<size_t>();
+        }
+
+        systems[systemId].propertyRadialDistributionFunction = 
+          PropertyRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
+                            numberOfBinsRDF, rangeRDF, sampleRDFEvery, writeRDFEvery);
+      }
     }
 
     if (value["ComputeDensityGrid"].is_boolean())
@@ -738,6 +806,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
                                       densityGridSize, sampleDensityGridEvery, writeDensityGridEvery);
       }
     }
+
 
     systemId++;
   }
