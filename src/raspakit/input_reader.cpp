@@ -163,7 +163,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
   nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
   size_t jsonNumberOfBlocks{5};
-  size_t jsonNumberOfLambdaBins{21};
+  size_t jsonNumberOfLambdaBins{41};
 
   try
   {
@@ -709,6 +709,34 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     else
     {
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
+    }
+
+    if (value["ComputeDensityGrid"].is_boolean())
+    {
+      if(value["ComputeDensityGrid"].get<bool>())
+      {
+        int3 densityGridSize{ 128, 128, 128 };
+        if (value["DensityGridSize"].is_array())
+        {
+          densityGridSize = parseInt3("DensityGridSize", value["DensityGridSize"]);
+        }
+
+        size_t sampleDensityGridEvery{ 10 };
+        if (value["SampleDensityGridEvery"].is_number_unsigned())
+        {
+          sampleDensityGridEvery = value["SampleDensityGridEvery"].get<size_t>();
+        }
+
+        size_t writeDensityGridEvery{ 5000 };
+        if (value["WriteDensityGridEvery"].is_number_unsigned())
+        {
+          writeDensityGridEvery = value["WriteDensityGridEvery"].get<size_t>();
+        }
+
+
+        systems[systemId].propertyDensityGrid = PropertyDensityGrid(systems[systemId].frameworkComponents.size(), systems[systemId].components.size(),
+                                      densityGridSize, sampleDensityGridEvery, writeDensityGridEvery);
+      }
     }
 
     systemId++;
