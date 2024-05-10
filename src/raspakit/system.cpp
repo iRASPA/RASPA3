@@ -859,6 +859,23 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   std::print(stream, "{}", simulationBox.printStatus());
   std::print(stream, "\n");
 
+  double translationalKineticEnergy = computeTranslationalKineticEnergy();
+  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
+  double rotationalKineticEnergy = computeRotationalKineticEnergy();
+  double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
+  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  std::print(stream, "Temperature: {: .6e}\n", overallTemperature);
+  std::print(stream, "Translational temperature: {: .6e}\n", translationalTemperature);
+  std::print(stream, "Rotational temperature: {: .6e}\n\n", rotationalTemperature);
+
+  std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
+  double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift, accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
+
+  std::print(stream, runningEnergies.printMD());
+
+  std::print(stream, "\n");
+
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -884,11 +901,6 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   {
     std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
-  std::print(stream, "\n");
-
-
-  std::print(stream, runningEnergies.printMD());
-
   std::print(stream, "\n");
 
   return stream.str();
@@ -1032,74 +1044,27 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
-  double translationalKineticEnergy = computeTranslationalKineticEnergy();
-  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
-  double rotationalKineticEnergy = computeRotationalKineticEnergy();
-  double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
-  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
-  std::print(stream, "Temperature: {:g} (translational: {:g}, rotational: {:g})\n",
-                   overallTemperature, translationalTemperature, rotationalTemperature);
+  double translational_kinetic_energy = computeTranslationalKineticEnergy();
+  double translational_temperature = 2.0 * translational_kinetic_energy / static_cast<double>(translationalDegreesOfFreedom);
+  double rotational_kinetic_energy = computeRotationalKineticEnergy();
+  double rotational_temperature = 2.0 * rotational_kinetic_energy / static_cast<double>(rotationalDegreesOfFreedom);
+  double overall_temperature = 2.0 * (translational_kinetic_energy + rotational_kinetic_energy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  std::pair<double, double> average_temperature = averageTemperature.averageTemperature();
+  std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.averageTemperature();
+  std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.averageTemperature();
 
-  for (const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-  }
-  std::print(stream, "\n");
-  
-  std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (const Component & c : components)
-  {
-    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
-  }
-  std::print(stream, "\n");
-  double conv = Units::EnergyToKelvin;
-
-  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
-  std::print(stream, "Average pressure tensor: \n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
-          pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
-          pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
-          pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
-  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-  std::pair<double, double> p = averagePressure.averagePressure();
-  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * excessPressure.first, 
-          1e-5 * Units::PressureConversionFactor * excessPressure.second);
-  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
-          1e-5 * Units::PressureConversionFactor * p.first, 
-          1e-5 * Units::PressureConversionFactor * p.second);
+  std::print(stream, "Temperature: {: .6e} ({: .6e} +/- {:.6e})\n",
+                   overall_temperature, average_temperature.first, average_temperature.second);
+  std::print(stream, "Translational temperature: {: .6e} ({: .6e} +/- {:.6e})\n",
+                   translational_temperature, average_translational_temperature.first, average_translational_temperature.second);
+  std::print(stream, "Rotational temperature: {: .6e} ({: .6e} +/- {:.6e})\n\n",
+                   rotational_temperature, average_rotational_temperature.first, average_rotational_temperature.second);
 
   std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
   double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {} Average drift: {}\n\n", drift, accumulatedDrift / static_cast<double>(currentCycle));
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift, accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
+  double conv = Units::EnergyToKelvin;
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
       conv * currentEnergyStatus.totalEnergy.energy, 
@@ -1151,6 +1116,61 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
       conv * energyData.second.intraEnergy.total().energy);
   
   std::print(stream, "\n");
+  for (const Component& c : components)
+  {
+    double occupancy = static_cast<double>(containsTheFractionalMolecule);
+    double averageOccupancy = c.lambdaGC.occupancy();
+    double lambda = c.lambdaGC.lambdaValue();
+
+    if (c.lambdaGC.computeDUdlambda)
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
+                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+    }
+  }
+  std::print(stream, "\n");
+  
+  std::print(stream, "Amount of molecules per component :\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
+  for (const Component & c : components)
+  {
+    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
+  }
+  std::print(stream, "\n");
+
+  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
+  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
+  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+  std::print(stream, "Average pressure tensor: \n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
+          pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
+          pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
+          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
+          pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
+  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
+  std::pair<double, double> p = averagePressure.averagePressure();
+  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 
+          1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
+          1e-5 * Units::PressureConversionFactor * excessPressure.first, 
+          1e-5 * Units::PressureConversionFactor * excessPressure.second);
+  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
+          1e-5 * Units::PressureConversionFactor * p.first, 
+          1e-5 * Units::PressureConversionFactor * p.second);
+
 
   return stream.str();
 }

@@ -77,7 +77,7 @@ export struct PropertyTemperature
     return summedBlocks.first / summedBlocks.second;
   }
 
-  std::pair<double, double> averagedouble() const
+  std::pair<double, double> averageTemperature() const
   {
     double average = averagedTemperature();
 

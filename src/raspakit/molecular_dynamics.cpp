@@ -315,6 +315,9 @@ void MolecularDynamics::equilibrate()
     for (System& system : systems)
     {
       system.integrate();
+
+      system.conservedEnergy = system.runningEnergies.conservedEnergy();
+      system.accumulatedDrift += std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -394,6 +397,8 @@ void MolecularDynamics::production()
     system.mc_moves_cputime.clearTimingStatistics();
     system.mc_moves_count.clearCountStatistics();
 
+    system.accumulatedDrift = 0.0;
+
     for(Component &component : system.components)
     {
       component.mc_moves_statistics.clearMoveStatistics();
@@ -427,6 +432,8 @@ void MolecularDynamics::production()
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
+    estimation.setCurrentSample(currentCycle);
+
     for (System& system : systems)
     {
       system.integrate();
