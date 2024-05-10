@@ -807,6 +807,21 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+    if (value["OutputPDBMovie"].is_boolean())
+    {
+      if(value["OutputPDBMovie"].get<bool>())
+      {
+        size_t sampleMovieEvery{ 1 };
+        if (value["SampleMovieEvery"].is_number_unsigned())
+        {
+          sampleMovieEvery = value["SampleMovieEvery"].get<size_t>();
+        }
+
+        systems[systemId].samplePDBMovie = SampleMovie(sampleMovieEvery);
+      }
+
+    }
+
 
     systemId++;
   }

@@ -485,7 +485,8 @@ void MolecularDynamics::production()
 
       if(system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId, system.simulationBox.volume, 
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if(system.propertyDensityGrid.has_value())
       {

@@ -9,6 +9,8 @@ module;
 #include <tuple>
 #include <vector>
 #include <algorithm>
+#include <exception>
+#include <source_location>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -37,6 +39,8 @@ import <numbers>;
 import <span>;
 import <array>;
 import <cmath>;
+import <exception>;
+import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif
@@ -46,6 +50,7 @@ import <cmath>;
   import print;
 #endif
 
+import archive;
 import double3;
 import atom;
 import simulationbox;
@@ -237,5 +242,52 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceFiel
       }
     }
   }
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyConventionalRadialDistributionFunction &rdf)
+{
+  archive << rdf.versionNumber;
+
+  archive << rdf.numberOfBlocks;
+  archive << rdf.numberOfPseudoAtoms;
+  archive << rdf.numberOfPseudoAtomsSymmetricMatrix;
+  archive << rdf.numberOfBins;
+  archive << rdf.range;
+  archive << rdf.deltaR;
+  archive << rdf.sampleEvery;
+  archive << rdf.writeEvery;
+  archive << rdf.sumProperty;
+  archive << rdf.totalNumberOfCounts;
+  archive << rdf.numberOfCounts;
+  archive << rdf.pairCount;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConventionalRadialDistributionFunction &rdf)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > rdf.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyConventionalRadialDistributionFunction' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> rdf.numberOfBlocks;
+  archive >> rdf.numberOfPseudoAtoms;
+  archive >> rdf.numberOfPseudoAtomsSymmetricMatrix;
+  archive >> rdf.numberOfBins;
+  archive >> rdf.range;
+  archive >> rdf.deltaR;
+  archive >> rdf.sampleEvery;
+  archive >> rdf.writeEvery;
+  archive >> rdf.sumProperty;
+  archive >> rdf.totalNumberOfCounts;
+  archive >> rdf.numberOfCounts;
+  archive >> rdf.pairCount;
+
+  return archive;
 }
 

@@ -25,29 +25,21 @@ import <vector>;
 #endif
 
 import archive;
-
+import units;
+import randomnumbers;
 
 export struct Thermostat
 {
 
-  Thermostat(size_t thermostatChainLength):
-    thermostatChainLength(thermostatChainLength), 
-    thermostatDegreesOfFreedomTranslation(thermostatChainLength),
-    thermostatForceTranslation(thermostatChainLength),
-    thermostatVelocityTranslation(thermostatChainLength),
-    thermostatPositionTranslation(thermostatChainLength),
-    thermostatMassTranslation(thermostatChainLength),
-    thermostatDegreesOfFreedomRotation(thermostatChainLength),
-    thermostatForceRotation(thermostatChainLength),
-    thermostatVelocityRotation(thermostatChainLength),
-    thermostatPositionRotation(thermostatChainLength),
-    thermostatMassRotation(thermostatChainLength)
-  {
-  }
+  Thermostat(double temperature, size_t thermostatChainLength, size_t numberOfYoshidaSuzukiSteps);
 
+  void initialize(RandomNumber &random, size_t translation_degrees_of_freedom, size_t rotational_degrees_of_freedom);
+  void NoseHooverNVT();
 
+  double temperature;
   size_t thermostatChainLength;
-  double timeScaleParameterThermostat;
+  double timeScaleParameterThermostat{ 0.15 };
+  size_t numberOfYoshidaSuzukiSteps{ 5 };
 
   std::vector<double> thermostatDegreesOfFreedomTranslation;
   std::vector<double> thermostatForceTranslation;
@@ -60,4 +52,6 @@ export struct Thermostat
   std::vector<double> thermostatVelocityRotation;
   std::vector<double> thermostatPositionRotation;
   std::vector<double> thermostatMassRotation;
+
+  std::vector<double> w;
 };

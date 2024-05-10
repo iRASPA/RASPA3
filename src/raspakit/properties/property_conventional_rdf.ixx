@@ -22,6 +22,7 @@ import <span>;
 import <tuple>;
 #endif
 
+import archive;
 import atom;
 import simulationbox;
 import forcefield;
@@ -49,6 +50,8 @@ export struct PropertyConventionalRadialDistributionFunction
   {
   }
 
+  uint64_t versionNumber{ 1 };
+
   std::vector<double> averagedProbabilityHistogram(size_t blockIndex, size_t atomTypeA, size_t atomTypeB) const;
   std::vector<double> averagedProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const;
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const;
@@ -69,6 +72,9 @@ export struct PropertyConventionalRadialDistributionFunction
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
   void writeOutput(const ForceField &forceField, size_t systemId, double volume, std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle);
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyConventionalRadialDistributionFunction &temp);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConventionalRadialDistributionFunction &temp);
 };
 
 

@@ -69,6 +69,7 @@ import property_enthalpy;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
+import property_temperature;
 import multi_site_isotherm;
 import pressure_range;
 import units;
@@ -120,9 +121,7 @@ export struct System
   EquationOfState equationOfState;
 
   Loadings loadings;
-  PropertyLoading averageLoadings;
 
-  PropertyEnthalpy averageEnthalpiesOfAdsorption;
 
   std::vector<size_t> swapableComponents{};
   std::vector<size_t> initialNumberOfMolecules{};
@@ -164,7 +163,6 @@ export struct System
   double timeStep{ 0.0005 };
 
   SimulationBox simulationBox;
-  PropertySimulationBox averageSimulationBox;
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
@@ -177,11 +175,9 @@ export struct System
   double accumulatedDrift{};
   RunningEnergy rigidEnergies;
   RunningEnergy runningEnergies;
-  PropertyEnergy averageEnergies;
 
   double3x3 currentExcessPressureTensor;
   EnergyStatus currentEnergyStatus;
-  PropertyPressure averagePressure;
 
   size_t numberOfTrialDirections{ 10 };
 
@@ -223,6 +219,15 @@ export struct System
   bool containsTheFractionalMolecule{ true };
 
   // property measurements
+  PropertyEnergy averageEnergies;
+  PropertyLoading averageLoadings;
+  PropertyEnthalpy averageEnthalpiesOfAdsorption;
+  PropertyTemperature averageTemperature;
+  PropertyTemperature averageTranslationalTemperature;
+  PropertyTemperature averageRotationalTemperature;
+  PropertyPressure averagePressure;
+  PropertySimulationBox averageSimulationBox;
+  std::optional<SampleMovie> samplePDBMovie;
   std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
   std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
   std::optional<PropertyDensityGrid> propertyDensityGrid;
@@ -246,8 +251,8 @@ export struct System
   void determineSimulationBox();
 
   void initializeVelocities(RandomNumber &random);
-  double computeTranslationalKineticEnergy();
-  double computeRotationalKineticEnergy();
+  double computeTranslationalKineticEnergy() const;
+  double computeRotationalKineticEnergy() const;
   void integrate();
   void updatePositions();
   void updateVelocities();

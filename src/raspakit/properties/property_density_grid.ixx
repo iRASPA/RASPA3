@@ -32,7 +32,7 @@ import <algorithm>;
   import mdspan;
 #endif
 
-
+import archive;
 import int3;
 import double3;
 
@@ -59,6 +59,8 @@ export struct PropertyDensityGrid
   {
   }
 
+  uint64_t versionNumber{ 1 };
+
   size_t numberOfFrameworks;
   size_t numberOfComponents;
   std::vector<double> grid_cell;
@@ -76,6 +78,9 @@ export struct PropertyDensityGrid
                    const std::vector<Framework> &frameworkComponents,
                    const std::vector<Component> &components,
                    size_t currentCycle);
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDensityGrid &temp);
 };
 
 

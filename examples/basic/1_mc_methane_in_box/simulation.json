@@ -10,7 +10,9 @@
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "None"
+      "ChargeMethod" : "None",
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
     }
   ],
 

@@ -104,6 +104,7 @@ import property_loading;
 import property_enthalpy;
 import property_lambda_probability_histogram;
 import property_widom;
+import property_temperature;
 import energy_factor;
 import running_energy;
 import threadpool;
@@ -143,8 +144,6 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
     frameworkComponents(f),
     components(c),
     loadings(c.size()),
-    averageLoadings(numberOfBlocks, c.size()),
-    averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
     swapableComponents(),
     initialNumberOfMolecules(initialNumberOfMolecules),
     numberOfMoleculesPerComponent(c.size()),
@@ -159,18 +158,23 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
     hasExternalField(false),
     numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
     totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
-    averageSimulationBox(numberOfBlocks),
     atomPositions({}),
     moleculePositions({}),
     runningEnergies(),
-    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
     currentEnergyStatus(1, f.size(), c.size()),
-    averagePressure(numberOfBlocks),
     netCharge(c.size()),
     mc_moves_probabilities(systemProbabilities),
     mc_moves_statistics(),
     reactions(),
-    tmmc()
+    tmmc(),
+    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
+    averageLoadings(numberOfBlocks, c.size()),
+    averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
+    averageTemperature(numberOfBlocks),
+    averageTranslationalTemperature(numberOfBlocks),
+    averageRotationalTemperature(numberOfBlocks),
+    averagePressure(numberOfBlocks),
+    averageSimulationBox(numberOfBlocks)
 {
   if(box.has_value())
   {
@@ -1028,6 +1032,14 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
+  double translationalKineticEnergy = computeTranslationalKineticEnergy();
+  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
+  double rotationalKineticEnergy = computeRotationalKineticEnergy();
+  double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
+  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  std::print(stream, "Temperature: {:g} (translational: {:g}, rotational: {:g})\n",
+                   overallTemperature, translationalTemperature, rotationalTemperature);
+
   for (const Component& c : components)
   {
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
@@ -1205,6 +1217,17 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
+  double translationalKineticEnergy = computeTranslationalKineticEnergy();
+  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
+  averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
+
+  double rotationalKineticEnergy = computeRotationalKineticEnergy();
+  double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
+  averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
+
+  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  averageTemperature.addSample(currentBlock, overallTemperature, w);
+
   loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
   averageLoadings.addSample(currentBlock, loadings, w);
 
@@ -1229,6 +1252,11 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
+  }
+
+  if(samplePDBMovie.has_value())
+  {
+    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
   if(propertyConventionalRadialDistributionFunction.has_value())
@@ -1468,7 +1496,7 @@ void System::initializeVelocities(RandomNumber &random)
   }
 }
 
-double System::computeTranslationalKineticEnergy()
+double System::computeTranslationalKineticEnergy() const
 {
   size_t moleculeIndex{};
 
@@ -1487,7 +1515,7 @@ double System::computeTranslationalKineticEnergy()
   return energy;
 }
 
-double System::computeRotationalKineticEnergy()
+double System::computeRotationalKineticEnergy() const
 {
   size_t moleculeIndex{};
 
@@ -1608,7 +1636,8 @@ void System::createCartesianPositions()
 
 void System::noSquishFreeRotorOrderTwo()
 {
-  for(size_t i = 0;i != 5; ++i)
+/*
+  for(size_t i = 0; i != 5; ++i)
   {
     noSquishRotate(3, 0.5 * timeStep / 5.0);
     noSquishRotate(2, 0.5 * timeStep / 5.0);
@@ -1616,6 +1645,7 @@ void System::noSquishFreeRotorOrderTwo()
     noSquishRotate(2, 0.5 * timeStep / 5.0);
     noSquishRotate(3, 0.5 * timeStep / 5.0);
   }
+  */
 }
 
 void System::noSquishRotate(size_t k, double dt)
@@ -1630,8 +1660,8 @@ void System::noSquishRotate(size_t k, double dt)
 
     for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      simd_quatd p = moleculePositions[moleculeIndex].orientation;
-      simd_quatd q = moleculePositions[moleculeIndex].orientationMomentum;
+      simd_quatd p = moleculePositions[moleculeIndex].orientationMomentum;
+      simd_quatd q = moleculePositions[moleculeIndex].orientation;
       switch(k)
       {
         case 1:
@@ -1674,8 +1704,8 @@ void System::noSquishRotate(size_t k, double dt)
           break;
       }
 
-      moleculePositions[moleculeIndex].orientation = p;
-      moleculePositions[moleculeIndex].orientationMomentum = q;
+      moleculePositions[moleculeIndex].orientationMomentum = pn;
+      moleculePositions[moleculeIndex].orientation = qn;
 
       ++moleculeIndex;
     }
@@ -1889,8 +1919,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.numberOfRigidFrameworkAtoms;
   archive << s.components;
   archive << s.loadings;
-  archive << s.averageLoadings;
-  archive << s.averageEnthalpiesOfAdsorption;
   archive << s.swapableComponents;
   archive << s.initialNumberOfMolecules;
   archive << s.numberOfMoleculesPerComponent;
@@ -1910,17 +1938,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.rotationalDegreesOfFreedom;
   archive << s.timeStep;
   archive << s.simulationBox;
-  archive << s.averageSimulationBox;
   archive << s.atomPositions;
   archive << s.moleculePositions;
   archive << s.conservedEnergy;
   archive << s.referenceEnergy;
   archive << s.rigidEnergies;
   archive << s.runningEnergies;
-  archive << s.averageEnergies;
   archive << s.currentExcessPressureTensor;
   archive << s.currentEnergyStatus;
-  archive << s.averagePressure;
   archive << s.numberOfTrialDirections;
   archive << s.eik_xy;
   archive << s.eik_x;
@@ -1953,6 +1978,17 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.carrierGasComponent;
   archive << s.maxIsothermTerms;
   archive << s.containsTheFractionalMolecule;
+  archive << s.averageEnergies;
+  archive << s.averageLoadings;
+  archive << s.averageEnthalpiesOfAdsorption;
+  archive << s.averageTemperature;
+  archive << s.averageTranslationalTemperature;
+  archive << s.averageRotationalTemperature;
+  archive << s.averagePressure;
+  archive << s.averageSimulationBox;
+  archive << s.propertyConventionalRadialDistributionFunction;
+  //archive << s.propertyRadialDistributionFunction;
+  //archive << s.propertyDensityGrid;
 
   return archive;
 }
@@ -1979,8 +2015,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.numberOfRigidFrameworkAtoms;
   archive >> s.components;
   archive >> s.loadings;
-  archive >> s.averageLoadings;
-  archive >> s.averageEnthalpiesOfAdsorption;
   archive >> s.swapableComponents;
   archive >> s.initialNumberOfMolecules;
   archive >> s.numberOfMoleculesPerComponent;
@@ -2000,17 +2034,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.rotationalDegreesOfFreedom;
   archive >> s.timeStep;
   archive >> s.simulationBox;
-  archive >> s.averageSimulationBox;
   archive >> s.atomPositions;
   archive >> s.moleculePositions;
   archive >> s.conservedEnergy;
   archive >> s.referenceEnergy;
   archive >> s.rigidEnergies;
   archive >> s.runningEnergies;
-  archive >> s.averageEnergies;
   archive >> s.currentExcessPressureTensor;
   archive >> s.currentEnergyStatus;
-  archive >> s.averagePressure;
   archive >> s.numberOfTrialDirections;
   archive >> s.eik_xy;
   archive >> s.eik_x;
@@ -2043,6 +2074,17 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.carrierGasComponent;
   archive >> s.maxIsothermTerms;
   archive >> s.containsTheFractionalMolecule;
+  archive >> s.averageEnergies;
+  archive >> s.averageLoadings;
+  archive >> s.averageEnthalpiesOfAdsorption;
+  archive >> s.averageTemperature;
+  archive >> s.averageTranslationalTemperature;
+  archive >> s.averageRotationalTemperature;
+  archive >> s.averagePressure;
+  archive >> s.averageSimulationBox;
+  archive >> s.propertyConventionalRadialDistributionFunction;
+  //archive >> s.propertyRadialDistributionFunction;
+  //archive >> s.propertyDensityGrid;
 
   return archive;
 }
