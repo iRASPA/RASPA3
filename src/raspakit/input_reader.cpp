@@ -817,7 +817,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
           sampleMovieEvery = value["SampleMovieEvery"].get<size_t>();
         }
 
-        systems[systemId].samplePDBMovie = SampleMovie(sampleMovieEvery);
+        systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery);
       }
 
     }

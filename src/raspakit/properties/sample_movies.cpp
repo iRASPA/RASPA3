@@ -42,6 +42,12 @@ import forcefield;
 import units;
 import skelement;
 
+SampleMovie::SampleMovie(size_t systemId, size_t sampleEvery):
+      sampleEvery(sampleEvery)
+{
+  std::filesystem::create_directory("movies");
+  std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
+}
 
 void SampleMovie::update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox, std::span<Atom> atomPositions, size_t currentCycle)
 {
@@ -57,9 +63,10 @@ void SampleMovie::update(const ForceField &forceField, size_t systemId, const Si
     for (int index = 1; const Atom & atom : atomPositions)
     {
         size_t atomicNumber = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].atomicNumber;
+        std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<size_t>(atom.type)].name);
         std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
         std::print(stream, "ATOM  {:>5} {:<4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
-                   index, "name", ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z, 1.0, 0.0, ' ', chemicalElement);
+                   index, name, ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z, 1.0, 0.0, ' ', chemicalElement);
         ++index;
     }
     stream << "ENDMDL\n";
