@@ -57,6 +57,7 @@ import stringutils;
 import json;
 import system;
 import atom;
+import pseudo_atom;
 import framework;
 import component;
 import simulationbox;
@@ -801,9 +802,23 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
           writeDensityGridEvery = value["WriteDensityGridEvery"].get<size_t>();
         }
 
+        std::vector<size_t> densityGridPseudoAtomsList{};
+        if (value["DensityGridPseudoAtomsList"].is_array())
+        {
+          std::vector<std::string> string_list = value["DensityGridPseudoAtomsList"].get<std::vector<std::string>>();
+          for(std::string string: string_list)
+          {
+            std::optional<size_t> atomType = systems[systemId].forceField.findPseudoAtom(string);
+            if(atomType.has_value())
+            {
+              densityGridPseudoAtomsList.push_back(atomType.value());
+            }
+          }
+        }
+
 
         systems[systemId].propertyDensityGrid = PropertyDensityGrid(systems[systemId].frameworkComponents.size(), systems[systemId].components.size(),
-                                      densityGridSize, sampleDensityGridEvery, writeDensityGridEvery);
+                                      densityGridSize, sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList);
       }
     }
 

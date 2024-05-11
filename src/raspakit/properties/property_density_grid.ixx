@@ -46,7 +46,8 @@ export struct PropertyDensityGrid
 {
   PropertyDensityGrid() {}
 
-  PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery, size_t writeEvery) :
+  PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, 
+                      size_t sampleEvery, size_t writeEvery, std::vector<size_t> densityGridPseudoAtomsList) :
     numberOfFrameworks(numberOfFrameworks),
     numberOfComponents(numberOfComponents),
     grid_cell(numberOfComponents * static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
@@ -55,7 +56,8 @@ export struct PropertyDensityGrid
     numberOfGridPoints(numberOfGridPoints),
     gridSize(static_cast<double>(numberOfGridPoints.x), static_cast<double>(numberOfGridPoints.y), static_cast<double>(numberOfGridPoints.z)),
     sampleEvery(sampleEvery),
-    writeEvery(writeEvery)
+    writeEvery(writeEvery),
+    densityGridPseudoAtomsList(densityGridPseudoAtomsList)
   {
   }
 
@@ -68,9 +70,9 @@ export struct PropertyDensityGrid
   size_t totalGridSize;
   int3 numberOfGridPoints;
   double3 gridSize;
-
   size_t sampleEvery;
   size_t writeEvery;
+  std::vector<size_t> densityGridPseudoAtomsList;
 
   void sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms, size_t currrentCycle);
   void writeOutput(size_t systemId, const SimulationBox &simulationBox,
