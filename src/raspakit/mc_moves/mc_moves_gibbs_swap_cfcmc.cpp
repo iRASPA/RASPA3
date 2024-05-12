@@ -87,368 +87,370 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
   //if (selectedNewBin >= std::make_signed_t<std::size_t>(lambdaA.numberOfBins)) 
   if(switchValue < 0.25)
   {
-     // Swap move:
-     // Changing the fractional molecule into a whole molecule, keeping its position fixed
-     // Changing a randomly selected molecule in the other simulation box into a fractional molecule (at same lambda)
+    // Swap move:
+    // Changing the fractional molecule into a whole molecule, keeping its position fixed
+    // Changing a randomly selected molecule in the other simulation box into a fractional molecule (at same lambda)
 
-     if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
+    if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
-     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
-     size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
-     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
-     std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalMoleculeB);
+    size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
+    std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalMoleculeB);
 
-     //assert(fractionalMoleculeA.front().groupId == uint8_t{ 1 });
-     //assert(fractionalMoleculeB.front().groupId == uint8_t{ 1 });
+    //assert(fractionalMoleculeA.front().groupId == uint8_t{ 1 });
+    //assert(fractionalMoleculeB.front().groupId == uint8_t{ 1 });
 
-     // make copy of old fractional molecule for reference and restoring
-     const std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
-     const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
-     std::vector<Atom> oldFractionalMoleculeB2(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
+    // make copy of old fractional molecule for reference and restoring
+    const std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
+    const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
+    std::vector<Atom> oldFractionalMoleculeB2(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
 
-     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[0] += 1;
-     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[0] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[0] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[0] += 1;
 
 
-     // System A: Changing the fractional molecule into a whole molecule, keeping its position fixed
-     //=============================================================================================
+    // System A: Changing the fractional molecule into a whole molecule, keeping its position fixed
+    //=============================================================================================
 
-     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
-     for (Atom& atom : fractionalMoleculeA)
-     {
-       atom.moleculeId = static_cast<uint32_t>(indexFractionalMoleculeA);
-     }
+    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
+    for (Atom& atom : fractionalMoleculeA)
+    {
+      atom.moleculeId = static_cast<uint32_t>(indexFractionalMoleculeA);
+    }
 
-     std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> frameworkDifferenceA = 
-       Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,                 
-                                          systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
-     std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
-
-     if (!frameworkDifferenceA.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       return std::nullopt;
-     }
-
-     std::chrono::system_clock::time_point u1A = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> moleculeDifferenceA = 
-       Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,                      
-                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
-     std::chrono::system_clock::time_point u2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
-
-     if (!moleculeDifferenceA.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       return std::nullopt;
-     }
-
-     std::chrono::system_clock::time_point v1A = std::chrono::system_clock::now();
-     RunningEnergy EwaldFourierDifferenceA = 
-       Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
-                                                  systemA.storedEik, systemA.totalEik,
-                                                  systemA.forceField, systemA.simulationBox,
-                                                  fractionalMoleculeA, oldFractionalMoleculeA);
-     std::chrono::system_clock::time_point v2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2A - v1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2A - v1A);
-
-     std::chrono::system_clock::time_point m1A = std::chrono::system_clock::now();
-     RunningEnergy tailEnergyDifferenceA = 
-       Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                         systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA) +
-       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,                
+    std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkDifferenceA = 
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,                 
                                          systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
-     std::chrono::system_clock::time_point m2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
+    std::chrono::system_clock::time_point t2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2A - t1A);
+
+    if (!frameworkDifferenceA.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      return std::nullopt;
+    }
+
+    std::chrono::system_clock::time_point u1A = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> moleculeDifferenceA = 
+      Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,                      
+                                        systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
+    std::chrono::system_clock::time_point u2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2A - u1A);
+
+    if (!moleculeDifferenceA.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      return std::nullopt;
+    }
+
+    std::chrono::system_clock::time_point v1A = std::chrono::system_clock::now();
+    RunningEnergy EwaldFourierDifferenceA = 
+      Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
+                                                 systemA.storedEik, systemA.totalEik,
+                                                 systemA.forceField, systemA.simulationBox,
+                                                 fractionalMoleculeA, oldFractionalMoleculeA);
+    std::chrono::system_clock::time_point v2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2A - v1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2A - v1A);
+
+    std::chrono::system_clock::time_point m1A = std::chrono::system_clock::now();
+    RunningEnergy tailEnergyDifferenceA = 
+      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                        systemA.spanOfMoleculeAtoms(), fractionalMoleculeA, oldFractionalMoleculeA) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,                
+                                        systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
+    std::chrono::system_clock::time_point m2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2A - m1A);
 
 
 
-     // step 2
+    // step 2
 
-     std::vector<Atom> newMolecule(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
-     for (Atom& atom : newMolecule)
-     {
-       atom.setScalingToInteger();
-       atom.moleculeId = static_cast<uint32_t>(systemA.numberOfMoleculesPerComponent[selectedComponent]);
-     }
+    std::vector<Atom> newMolecule(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
+    for (Atom& atom : newMolecule)
+    {
+      atom.setScalingToInteger();
+      atom.moleculeId = static_cast<uint32_t>(systemA.numberOfMoleculesPerComponent[selectedComponent]);
+    }
 
-     std::chrono::system_clock::time_point w1A = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> frameworkDifferenceA2 = 
-       Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,            
-                                                              systemA.spanOfFrameworkAtoms(), newMolecule, {});
-     std::chrono::system_clock::time_point w2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
+    std::chrono::system_clock::time_point w1A = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkDifferenceA2 = 
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                                             systemA.spanOfFrameworkAtoms(), newMolecule, {});
+    std::chrono::system_clock::time_point w2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2A - w1A);
 
-     if (!frameworkDifferenceA.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       return std::nullopt;
-     }
-
-
-     std::chrono::system_clock::time_point x1A = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> moleculeDifferenceA2 = 
-       Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                                           systemA.spanOfMoleculeAtoms(), newMolecule, {});
-     std::chrono::system_clock::time_point x2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
-
-     if (!moleculeDifferenceA2.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       return std::nullopt;
-     }
+    if (!frameworkDifferenceA.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      return std::nullopt;
+    }
 
 
-     std::chrono::system_clock::time_point y1A = std::chrono::system_clock::now();
-     RunningEnergy EwaldFourierDifferenceA2 = 
-       Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
-                                                  systemA.totalEik, systemA.totalEik,
-                                                  systemA.forceField, systemA.simulationBox,
-                                                  newMolecule, {});
-     std::chrono::system_clock::time_point y2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2A - y1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2A - y1A);
+    std::chrono::system_clock::time_point x1A = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> moleculeDifferenceA2 = 
+      Interactions::computeInterMolecularEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                                          systemA.spanOfMoleculeAtoms(), newMolecule, {});
+    std::chrono::system_clock::time_point x2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2A - x1A);
 
-     std::chrono::system_clock::time_point z1A = std::chrono::system_clock::now();
-     RunningEnergy tailEnergyDifferenceA2 = 
-       Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
-                                         systemA.spanOfMoleculeAtoms(), newMolecule, {}) +
-       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
-                                         systemA.spanOfFrameworkAtoms(), newMolecule, {});
-     std::chrono::system_clock::time_point z2A = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
+    if (!moleculeDifferenceA2.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      return std::nullopt;
+    }
 
-     RunningEnergy energyDifferenceA = 
-       frameworkDifferenceA.value() + moleculeDifferenceA.value() + EwaldFourierDifferenceA + tailEnergyDifferenceA + 
-       frameworkDifferenceA2.value() + moleculeDifferenceA2.value() + EwaldFourierDifferenceA2 + tailEnergyDifferenceA2;
 
-     // System B: Changing a randomly selected molecule in the other simulation box into a fractional molecule 
-     // (at the same lambda)
-     //================================================================================================================
+    std::chrono::system_clock::time_point y1A = std::chrono::system_clock::now();
+    RunningEnergy EwaldFourierDifferenceA2 = 
+      Interactions::energyDifferenceEwaldFourier(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
+                                                 systemA.totalEik, systemA.totalEik,
+                                                 systemA.forceField, systemA.simulationBox,
+                                                 newMolecule, {});
+    std::chrono::system_clock::time_point y2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2A - y1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2A - y1A);
 
-     size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
-     std::span<Atom> selectedIntegerMoleculeB = 
-       systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
+    std::chrono::system_clock::time_point z1A = std::chrono::system_clock::now();
+    RunningEnergy tailEnergyDifferenceA2 = 
+      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+                                        systemA.spanOfMoleculeAtoms(), newMolecule, {}) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,            
+                                        systemA.spanOfFrameworkAtoms(), newMolecule, {});
+    std::chrono::system_clock::time_point z2A = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2A - z1A);
 
-     // make copy of selected molecule for reference and restoring
-     std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
-     std::vector<Atom> oldSelectedIntegerMoleculeB2(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
+    RunningEnergy energyDifferenceA = 
+      frameworkDifferenceA.value() + moleculeDifferenceA.value() + EwaldFourierDifferenceA + tailEnergyDifferenceA + 
+      frameworkDifferenceA2.value() + moleculeDifferenceA2.value() + EwaldFourierDifferenceA2 + tailEnergyDifferenceA2;
 
-     for (Atom& atom : selectedIntegerMoleculeB)
-     {
-       atom.setScalingFullyOff();
-       atom.groupId = uint8_t{ 0 };
-     }
-     
-     std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> frameworkDifferenceB = 
-       Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
-                                systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
-     std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
-     if (!frameworkDifferenceB.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
-                 selectedIntegerMoleculeB.begin());
-       return std::nullopt;
-     }
+    // System B: Changing a randomly selected molecule in the other simulation box into a fractional molecule 
+    // (at the same lambda)
+    //================================================================================================================
 
-     std::chrono::system_clock::time_point u1B = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> moleculeDifferenceB = 
-       Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                 systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
-     std::chrono::system_clock::time_point u2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
-     if (!moleculeDifferenceB.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
-                 selectedIntegerMoleculeB.begin());
-       return std::nullopt;
-     }
+    size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    std::span<Atom> selectedIntegerMoleculeB = 
+      systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
 
-     std::chrono::system_clock::time_point v1B = std::chrono::system_clock::now();
-     RunningEnergy EwaldFourierDifferenceB = 
-       Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
-                                                  systemB.storedEik, systemB.totalEik,
-                                                  systemB.forceField, systemB.simulationBox,
-                                                  selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
-     std::chrono::system_clock::time_point v2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2B - v1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2B - v1B);
+    // make copy of selected molecule for reference and restoring
+    std::vector<Atom> oldSelectedIntegerMoleculeB(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
+    std::vector<Atom> oldSelectedIntegerMoleculeB2(selectedIntegerMoleculeB.begin(), selectedIntegerMoleculeB.end());
 
-     std::chrono::system_clock::time_point m1B = std::chrono::system_clock::now();
-     RunningEnergy tailEnergyDifferenceB = 
-       Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB) +
-       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
-                                systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
-     std::chrono::system_clock::time_point m2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
+    for (Atom& atom : selectedIntegerMoleculeB)
+    {
+      atom.setScalingFullyOff();
+      atom.groupId = uint8_t{ 0 };
+    }
+    
+    std::chrono::system_clock::time_point t1B = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkDifferenceB = 
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                               systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+    std::chrono::system_clock::time_point t2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (t2B - t1B);
+    if (!frameworkDifferenceB.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
+                selectedIntegerMoleculeB.begin());
+      return std::nullopt;
+    }
+
+    std::chrono::system_clock::time_point u1B = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> moleculeDifferenceB = 
+      Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+    std::chrono::system_clock::time_point u2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (u2B - u1B);
+    if (!moleculeDifferenceB.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
+                selectedIntegerMoleculeB.begin());
+      return std::nullopt;
+    }
+
+    std::chrono::system_clock::time_point v1B = std::chrono::system_clock::now();
+    RunningEnergy EwaldFourierDifferenceB = 
+      Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
+                                                 systemB.storedEik, systemB.totalEik,
+                                                 systemB.forceField, systemB.simulationBox,
+                                                 selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+    std::chrono::system_clock::time_point v2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2B - v1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (v2B - v1B);
+
+    std::chrono::system_clock::time_point m1B = std::chrono::system_clock::now();
+    RunningEnergy tailEnergyDifferenceB = 
+      Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                               systemB.spanOfMoleculeAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                               systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
+    std::chrono::system_clock::time_point m2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (m2B - m1B);
     
 
-     std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
-     for (Atom& atom : fractionalMoleculeB)
-     {
-       atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
-       atom.setScaling(oldLambda);
-       atom.groupId = uint8_t{ 1 };
-     }
+    std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
+    for (Atom& atom : fractionalMoleculeB)
+    {
+      atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
+      atom.setScaling(oldLambda);
+      atom.groupId = uint8_t{ 1 };
+    }
 
-     for (Atom& atom : selectedIntegerMoleculeB)
-     {
-       atom.setScalingFullyOff();
-       atom.groupId = uint8_t{ 0 };
-       atom.position = systemA.simulationBox.randomPosition(random);
-     }
+    for (Atom& atom : selectedIntegerMoleculeB)
+    {
+      atom.setScalingFullyOff();
+      atom.groupId = uint8_t{ 0 };
+      atom.position = systemA.simulationBox.randomPosition(random);
+    }
 
-     std::chrono::system_clock::time_point w1B = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> frameworkDifferenceB2 = 
-       Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
-                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-     std::chrono::system_clock::time_point w2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
-     if (!frameworkDifferenceB2.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
-                 selectedIntegerMoleculeB.begin());
-       return std::nullopt;
-     }
+    std::chrono::system_clock::time_point w1B = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkDifferenceB2 = 
+      Interactions::computeFrameworkMoleculeEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                        systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
+    std::chrono::system_clock::time_point w2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (w2B - w1B);
+    if (!frameworkDifferenceB2.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
+                selectedIntegerMoleculeB.begin());
+      return std::nullopt;
+    }
 
-     std::chrono::system_clock::time_point x1B = std::chrono::system_clock::now();
-     std::optional<RunningEnergy> moleculeDifferenceB2 = 
-       Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-     std::chrono::system_clock::time_point x2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
-     if (!moleculeDifferenceB2.has_value())
-     {
-       // reject, set fractional molecule back to old state
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
-                 selectedIntegerMoleculeB.begin());
-       return std::nullopt;
-     }
+    std::chrono::system_clock::time_point x1B = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> moleculeDifferenceB2 = 
+      Interactions::computeInterMolecularEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                        systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
+    std::chrono::system_clock::time_point x2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += (x2B - x1B);
+    if (!moleculeDifferenceB2.has_value())
+    {
+      // reject, set fractional molecule back to old state
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
+                selectedIntegerMoleculeB.begin());
+      return std::nullopt;
+    }
 
-     std::chrono::system_clock::time_point y1B = std::chrono::system_clock::now();
-     RunningEnergy EwaldFourierDifferenceB2 = 
-       Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
-                                                  systemB.totalEik, systemB.totalEik,
-                                                  systemB.forceField, systemB.simulationBox,
-                                                  fractionalMoleculeB, oldFractionalMoleculeB);
-     std::chrono::system_clock::time_point y2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2B - y1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2B - y1B);
+    std::chrono::system_clock::time_point y1B = std::chrono::system_clock::now();
+    RunningEnergy EwaldFourierDifferenceB2 = 
+      Interactions::energyDifferenceEwaldFourier(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
+                                                 systemB.totalEik, systemB.totalEik,
+                                                 systemB.forceField, systemB.simulationBox,
+                                                 fractionalMoleculeB, oldFractionalMoleculeB);
+    std::chrono::system_clock::time_point y2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2B - y1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCEwald += (y2B - y1B);
 
-     std::chrono::system_clock::time_point z1B = std::chrono::system_clock::now();
-     RunningEnergy tailEnergyDifferenceB2 = 
-       Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
-                                         systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB) +
-       Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
-                                         systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
-     std::chrono::system_clock::time_point z2B = std::chrono::system_clock::now();
-     systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
-     systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
-
-
-     RunningEnergy energyDifferenceB = 
-       frameworkDifferenceB.value() + moleculeDifferenceB.value() + EwaldFourierDifferenceB + tailEnergyDifferenceB +
-       frameworkDifferenceB2.value() + moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 + tailEnergyDifferenceB2;
+    std::chrono::system_clock::time_point z1B = std::chrono::system_clock::now();
+    RunningEnergy tailEnergyDifferenceB2 = 
+      Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+                                        systemB.spanOfMoleculeAtoms(), fractionalMoleculeB, oldFractionalMoleculeB) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,            
+                                        systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
+    std::chrono::system_clock::time_point z2B = std::chrono::system_clock::now();
+    systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
+    systemA.mc_moves_cputime.GibbsSwapLambdaInterChangeMoveCFCMCTail += (z2B - z1B);
 
 
-     double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
-
-     double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) / 
-                        (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
-
-     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[0] += 1;
-     systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
-
-     // apply acceptance/rejection rule
-     if (random.uniform() < preFactor * std::exp(-systemA.beta * 
-                                          (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
-     {
-       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[0] += 1;
-       systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
-       
-       // restore
-       std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
-
-       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
-       std::swap(systemA.components[selectedComponent].lambdaGC.currentBin, 
-                 systemB.components[selectedComponent].lambdaGC.currentBin);
+    RunningEnergy energyDifferenceB = 
+      frameworkDifferenceB.value() + moleculeDifferenceB.value() + EwaldFourierDifferenceB + tailEnergyDifferenceB +
+      frameworkDifferenceB2.value() + moleculeDifferenceB2.value() + EwaldFourierDifferenceB2 + tailEnergyDifferenceB2;
 
 
-       // copy the fractional molecule from B to A
-       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
-       for (Atom& atom : fractionalMoleculeA)
-       {
-         atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeA);
-       }
+    double biasTerm = lambdaB.biasFactor[oldBin] - lambdaA.biasFactor[oldBin];
 
-       // make old fractional molecule integer
-       std::vector<Atom> addedMolecule = 
-         std::vector<Atom>(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
-       for (Atom& atom : addedMolecule)
-       {
-         atom.setScalingToInteger();
-       }
-       systemA.insertMolecule(selectedComponent, Molecule(), addedMolecule);
-       
-       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    double preFactor = static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) / 
+                       (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent]));
+
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.constructed[0] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalConstructed[0] += 1;
+
+    // apply acceptance/rejection rule
+    if (random.uniform() < preFactor * std::exp(-systemA.beta * 
+                                         (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
+    {
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.accepted[0] += 1;
+      systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalAccepted[0] += 1;
+      
+      // restore
+      std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), selectedIntegerMoleculeB.begin());
+
+      std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
+      std::swap(systemA.components[selectedComponent].lambdaGC.currentBin, 
+                systemB.components[selectedComponent].lambdaGC.currentBin);
+
+      // copy the fractional molecule from B to A
+      std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
+      for (Atom& atom : fractionalMoleculeA)
+      {
+        atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeA);
+      }
+
+      // make old fractional molecule integer
+      std::vector<Atom> addedMolecule = 
+        std::vector<Atom>(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end());
+      for (Atom& atom : addedMolecule)
+      {
+        atom.setScalingToInteger();
+      }
+      systemA.insertMolecule(selectedComponent, systemA.moleculePositions[indexFractionalMoleculeA], addedMolecule);
+      systemA.moleculePositions[indexFractionalMoleculeA] = systemB.moleculePositions[indexFractionalMoleculeB];
+      
+      Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
 
-       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
-       
-       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
-       for (Atom& atom : fractionalMoleculeB)
-       {
-         atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
-         atom.setScaling(oldLambda);
-         atom.groupId = uint8_t{ 1 };
-       }
+      std::swap(systemB.moleculePositions[indexFractionalMoleculeB], systemB.moleculePositions[indexSelectedIntegerMoleculeB]);
+      systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
+      
+      std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
+      for (Atom& atom : fractionalMoleculeB)
+      {
+        atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
+        atom.setScaling(oldLambda);
+        atom.groupId = uint8_t{ 1 };
+      }
 
-       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+      Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
-       return std::make_pair(energyDifferenceA, energyDifferenceB);
-     }
 
-     std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
-     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
-     std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
-               selectedIntegerMoleculeB.begin());
+      return std::make_pair(energyDifferenceA, energyDifferenceB);
+    }
 
-     return std::nullopt;
+    std::copy(oldFractionalMoleculeA.begin(), oldFractionalMoleculeA.end(), fractionalMoleculeA.begin());
+    std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeB.begin());
+    std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), 
+              selectedIntegerMoleculeB.begin());
+
+    return std::nullopt;
   }
   //else if (selectedNewBin < 0)
   else  if (switchValue < 0.5)
@@ -471,9 +473,11 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
 
 
-    //systemA.components[selectedComponent].
-    std::vector<Atom> newatoms = systemB.randomConfiguration(random, selectedComponent, fractionalMoleculeB);
-    std::copy(newatoms.begin(), newatoms.end(), fractionalMoleculeB.begin());
+    std::pair<Molecule, std::vector<Atom>> trialMolecule =
+    systemB.components[selectedComponent].equilibratedMoleculeRandomInBox(random, systemB.simulationBox);
+
+    //std::vector<Atom> newatoms = systemB.randomConfiguration(random, selectedComponent, fractionalMoleculeB);
+    std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
 
     std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA = 
@@ -608,10 +612,13 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
     
+      std::swap(systemA.moleculePositions[indexFractionalMoleculeA], systemB.moleculePositions[indexFractionalMoleculeB]);
+      systemB.moleculePositions[indexFractionalMoleculeB] = trialMolecule.first;
+
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(systemA.components[selectedComponent].lambdaGC.currentBin, 
                 systemB.components[selectedComponent].lambdaGC.currentBin);
-     
+
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }
 

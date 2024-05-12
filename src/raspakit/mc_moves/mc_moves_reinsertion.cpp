@@ -36,6 +36,7 @@ import <iomanip>;
 
 import component;
 import atom;
+import molecule;
 import double3;
 import double3x3;
 import simd_quatd;
@@ -63,7 +64,7 @@ import interactions_external_field;
 
 std::optional<RunningEnergy> 
 MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule, 
-                          std::span<Atom> molecule)
+                          Molecule &molecule, std::span<Atom> molecule_atoms)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
@@ -82,7 +83,8 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
   std::optional<ChainData> growData = 
     CBMC::growMoleculeReinsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                   system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                                  cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                  cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 
+                                  molecule, molecule_atoms, 
                                   system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
@@ -99,7 +101,8 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
   ChainData retraceData = 
     CBMC::retraceMoleculeReinsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
                                      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                                     cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 
+                                     cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 
+                                     molecule, molecule_atoms, 
                                      growData->storedR, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
@@ -110,7 +113,7 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                system.storedEik, system.totalEik,
                                                system.forceField, system.simulationBox,
-                                               newMolecule, molecule);
+                                               newMolecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCEwald += (time_end - time_begin);
   system.mc_moves_cputime.reinsertionMoveCBMCEwald += (time_end - time_begin);
@@ -140,7 +143,9 @@ MC_Moves::reinsertionMove(RandomNumber &random, System& system, size_t selectedC
     system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.totalAccepted += 1;
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-    std::copy(newMolecule.begin(), newMolecule.end(), molecule.begin());
+    std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+    molecule = growData->molecule;
+
 
     if(system.forceField.useDualCutOff)
     {

@@ -56,6 +56,7 @@ import double3;
 import simd_quatd;
 import averages;
 import atom;
+import molecule;
 import forcefield;
 import property_lambda_probability_histogram;
 import simulationbox;
@@ -213,6 +214,11 @@ export struct Component
   std::vector<Atom> copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, std::span<Atom> molecule, 
                                                double scaling, size_t moleculeId) const;
   std::vector<Atom> copiedAtoms(std::span<Atom> molecule) const;
+
+  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(RandomNumber &random, const SimulationBox &simulationBox) const;
+
+  std::pair<Molecule, std::vector<Atom>> translate(const Molecule &molecule, std::span<Atom> molecule_atoms, double3 displacement) const;
+  std::pair<Molecule, std::vector<Atom>> rotate(const Molecule &molecule, std::span<Atom> molecule_atoms, simd_quatd rotation) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);

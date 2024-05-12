@@ -15,6 +15,7 @@ import <span>;
 #endif
 
 import atom;
+import molecule;
 import double3x3;
 import double3;
 import randomnumbers;
@@ -32,7 +33,7 @@ export namespace CBMC
                                const ForceField &forceField, const SimulationBox &simulationBox, 
                                std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                               size_t selectedMolecule, std::span<Atom> molecule, size_t numberOfTrialDirections) 
+                               size_t selectedMolecule, Molecule &molecule, std::span<Atom> molecule_atoms, size_t numberOfTrialDirections) 
                                noexcept;
 
   [[nodiscard]] ChainData
@@ -41,7 +42,7 @@ export namespace CBMC
                                 std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                 double beta, double cutOff, double cutOffCoulomb,
                                 [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule,
-                                std::span<Atom> molecule, double storedR, size_t numberOfTrialDirections);
+                                Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, size_t numberOfTrialDirections);
 }
 
 namespace CBMC
@@ -50,12 +51,14 @@ namespace CBMC
   growRigidMoleculeChainReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,
                          double cutOff, double cutOffCoulomb, size_t startingBead,
-                         std::vector<Atom> molecule, size_t numberOfTrialDirections) noexcept;
+                         Molecule &molecule, std::vector<Atom> molecule_atoms, 
+                         const std::vector<Component> &components, size_t selectedComponent, size_t numberOfTrialDirections) noexcept;
 
   [[nodiscard]] ChainData
-retraceRigidChainReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,
-                             double cutOff, double cutOffCoulomb, size_t startingBead, std::span<Atom> molecule,
-                             size_t numberOfTrialDirections) noexcept;
+  retraceRigidChainReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+                               std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,
+                               double cutOff, double cutOffCoulomb, size_t startingBead, 
+                               Molecule &molecule, std::span<Atom> molecule_atoms,
+                               size_t numberOfTrialDirections) noexcept;
 
 }

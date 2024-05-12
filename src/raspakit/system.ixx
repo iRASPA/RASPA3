@@ -257,6 +257,7 @@ export struct System
   void updatePositions();
   void updateVelocities();
   void createCartesianPositions();
+  void checkCartesianPositions();
   void noSquishFreeRotorOrderTwo();
   void noSquishRotate(size_t k, double dt);
   void computeCenterOfMassAndQuaternionVelocities();
@@ -352,9 +353,7 @@ export struct System
 
   void clearMoveStatistics();
 
-  std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
-
-  std::vector<Atom> equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent, double scaling, size_t moleculeId) const;
+  std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 

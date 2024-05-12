@@ -15,6 +15,7 @@ import <span>;
 #endif
 
 import atom;
+import molecule;
 import double3x3;
 import double3;
 import randomnumbers;
@@ -54,7 +55,8 @@ export namespace CBMC
                           const std::vector<Component> &components, const ForceField &forceField, 
                           const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, 
                           std::span<const Atom> moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, 
-                          size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule, 
+                          size_t selectedComponent, size_t selectedMolecule, 
+                          Molecule &molecule, std::span<Atom> molecule_atoms, 
                           size_t numberOfTrialDirections) noexcept;
   
   // reinsertion retrace
@@ -63,7 +65,8 @@ export namespace CBMC
                              const ForceField &forceField, const SimulationBox &simulationBox, 
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
-                             std::span<Atom> molecule, double storedR, size_t numberOfTrialDirections) noexcept;
+                             Molecule &molecule, std::span<Atom> molecule_atoms, 
+                             double storedR, size_t numberOfTrialDirections) noexcept;
 }
 
 

@@ -469,6 +469,7 @@ void MonteCarlo::production()
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
+      //system.checkCartesianPositions();
     }
 
     for (System& system : systems)

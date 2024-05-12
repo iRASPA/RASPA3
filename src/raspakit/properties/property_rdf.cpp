@@ -9,6 +9,7 @@ module;
 #include <tuple>
 #include <vector>
 #include <algorithm>
+#include <complex>
 #include <exception>
 #include <source_location>
 #if defined(__has_include) && __has_include(<format>)
@@ -34,6 +35,7 @@ import <sstream>;
 import <tuple>;
 import <vector>;
 import <algorithm>;
+import <complex>;
 import <format>;
 import <numbers>;
 import <span>;

@@ -1314,9 +1314,11 @@ void System::writeCPUTimeStatistics(std::ostream &stream) const
  }
 }
 
-std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
+std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
 {
+  std::vector<Molecule> scaledMolecules;
   std::vector<Atom> scaledAtoms;
+  scaledMolecules.reserve(scaledMolecules.size());
   scaledAtoms.reserve(atomPositions.size());
 
   for(size_t componentId = 0; componentId < components.size(); ++componentId)
@@ -1324,6 +1326,7 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
     for(size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
     {
       const std::span<const Atom> span = spanOfMolecule(componentId, i);
+      const Molecule &molecule = moleculePositions[i];
 
       double totalMass = 0.0;
       double3 com(0.0, 0.0, 0.0);
@@ -1336,6 +1339,8 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
       com = com / totalMass;
 
       double3 d = com * (scale - 1.0);
+      scaledMolecules.push_back({com * scale, molecule.orientation});
+
 
       // create copy
       for(Atom atom: span)
@@ -1345,7 +1350,7 @@ std::vector<Atom> System::scaledCenterOfMassPositions(double scale) const
       }
     }
   }
-  return scaledAtoms;
+  return {scaledMolecules, scaledAtoms};
 }
 
 void System::clearMoveStatistics()
@@ -1666,6 +1671,45 @@ void System::createCartesianPositions()
   }
 }
 
+void System::checkCartesianPositions()
+{
+  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  size_t index{};
+  size_t moleculeIndex{};
+  for(size_t l = 0; l != components.size(); ++l)
+  {
+    size_t size = components[l].atoms.size();
+    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    {
+      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+
+      if(components[l].rigid)
+      {
+        simd_quatd q = moleculePositions[moleculeIndex].orientation;
+        double3x3 M = double3x3::buildRotationMatrixInverse(q);
+
+        double3 com = moleculePositions[moleculeIndex].centerOfMassPosition;
+        for(size_t i = 0; i != span.size(); i++)
+        {
+          double3 expandedPosition = com + M * components[l].atoms[i].position;
+          if((std::abs(span[i].position.x-expandedPosition.x) > 1e-5) ||
+             (std::abs(span[i].position.y-expandedPosition.y) > 1e-5) ||
+             (std::abs(span[i].position.z-expandedPosition.z) > 1e-5))
+          {
+            throw std::runtime_error(std::format("Difference detected between atom position ({} {} {}) and position generated from quaternion ({} {} {})\n",
+                  span[i].position.x, span[i].position.y, span[i].position.z,
+                  expandedPosition.x, expandedPosition.y, expandedPosition.z));
+          }
+        }
+      }
+
+      ++moleculeIndex;
+      index += size;
+    }
+  }
+}
+
 void System::noSquishFreeRotorOrderTwo()
 {
   for(size_t i = 0; i != 5; ++i)
@@ -1838,26 +1882,6 @@ void System::computeCenterOfMassAndQuaternionGradients()
   }
 }
 
-
-std::vector<Atom> 
-System::equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent,
-                                        double scaling, size_t moleculeId) const
-{
-  size_t startingBead = components[selectedComponent].startingBead;
-  double3 center = components[selectedComponent].atoms[startingBead].position;
-  std::vector<Atom> copied_atoms(components[selectedComponent].atoms.begin(), components[selectedComponent].atoms.end());
-
-  double3x3 randomRotationMatrix = random.randomRotationMatrix();
-  double3 position = simulationBox.randomPosition(random);
-
-  for (size_t i = 0; i != copied_atoms.size(); ++i)
-  {
-    copied_atoms[i].setScaling(scaling);
-    copied_atoms[i].position = position + randomRotationMatrix * (components[selectedComponent].atoms[i].position - center);
-    copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
-  }
-  return copied_atoms;
-}
 
 inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double>& move)
 {

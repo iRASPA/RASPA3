@@ -1,0 +1,34 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 100000,
+  "NumberOfInitializationCycles" : 0,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 1000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "Cu-BTC",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature" : 323.0,
+      "ExternalPressure" : 1.0e4,
+      "OutputPDBMovie" : false,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "CO2",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 0.0,
+      "WidomProbability" : 0.0,
+      "CreateNumberOfMolecules" : 20
+    }
+  ]
+}

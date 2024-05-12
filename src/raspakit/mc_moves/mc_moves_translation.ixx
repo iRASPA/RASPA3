@@ -4,6 +4,8 @@ module;
 #include <cstddef>
 #include <optional>
 #include <span>
+#include <vector>
+#include <tuple>
 #endif
 
 export module mc_moves_translation;
@@ -12,15 +14,20 @@ export module mc_moves_translation;
 import <cstddef>;
 import <optional>;
 import <span>;
+import <vector>;
+import <tuple>;
 #endif
 
 import randomnumbers;
 import running_energy;
 import atom;
+import molecule;
+import component;
 import system;
 
 export namespace MC_Moves
 {
   std::optional<RunningEnergy>                                                                                            
-  translationMove(RandomNumber &random, System &system, size_t selectedComponent, std::span<Atom> molecule);
+  translationMove(RandomNumber &random, System &system, size_t selectedComponent, const std::vector<Component> &components,
+                  Molecule &molecule, std::span<Atom> molecule_atoms);
 }
