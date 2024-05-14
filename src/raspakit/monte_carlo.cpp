@@ -635,18 +635,7 @@ void MonteCarlo::output()
   }
 }
 
-void MonteCarlo::log()
-{
-  for (System& system : systems)
-  {
-    // const std::vector<hsize_t> size{3, 2};
-    std::vector<int> data = {0, 1, 12, 144, 12, 1};
-    logs[system.systemId].createDataset<int>("/", "test", std::vector<size_t>{3, 2}, {{"dimensions", "(dim1, dim2)"}});
-    logs[system.systemId].logVector<int>("/", "test", data);
-
-    logs[system.systemId].createGroup("stats");
-  }
-}
+void MonteCarlo::log() {}
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteCarlo& mc)
 {
