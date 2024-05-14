@@ -484,8 +484,9 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
   struct utsname uts;
   uname(&uts);
   hdf5.logMetaInfo("hardware", "Hostname", std::string(uts.nodename, strlen(uts.nodename)));
-  hdf5.logMetaInfo("hardware", "OS type", std::string(uts.sysname, strlen(uts.sysname)),
-                   std::string(uts.machine, strlen(uts.machine)));
+  hdf5.logMetaInfo("hardware", "OS type",
+                   std::format("{}, {}", std::string(uts.sysname, strlen(uts.sysname)),
+                               std::string(uts.machine, strlen(uts.machine))));
   hdf5.logMetaInfo("hardware", "OS release", std::string(uts.release, strlen(uts.release)));
   hdf5.logMetaInfo("hardware", "OS version", std::string(uts.version, strlen(uts.version)));
 #endif
@@ -498,7 +499,7 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
   struct utsname uts;
   uname(&uts);
   hdf5.logMetaInfo("hardware", "Hostname", uts.nodename);
-  hdf5.logMetaInfo("hardware", "OS type", uts.sysname, uts.machine);
+  hdf5.logMetaInfo("hardware", "OS type", std::format("{}, {}", uts.sysname, uts.machine));
   hdf5.logMetaInfo("hardware", "OS release", uts.release);
   hdf5.logMetaInfo("hardware", "OS version", uts.version);
 #endif
