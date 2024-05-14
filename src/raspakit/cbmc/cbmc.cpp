@@ -25,6 +25,7 @@ import <numeric>;
 import randomnumbers;
 import component;
 import atom;
+import molecule;
 import double3;
 import double3x3;
 import simulationbox;
@@ -45,7 +46,7 @@ CBMC::growMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, con
                                 const ForceField &forceField, const SimulationBox &simulationBox, 
                                 std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                                 Component::GrowType growType, double cutOff, double cutOffCoulomb, 
-                                size_t selectedComponent, size_t selectedMolecule, double scaling, 
+                                size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
                                 size_t numberOfTrialDirections) noexcept
 {
   switch(growType)
@@ -53,7 +54,7 @@ CBMC::growMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField, con
     default:
     return CBMC::growRigidMoleculeSwapInsertion(random, hasExternalField, components, forceField, simulationBox, frameworkAtoms, 
                                                 moleculeAtoms, beta, cutOff, cutOffCoulomb, selectedComponent, 
-                                                selectedMolecule, scaling, numberOfTrialDirections);
+                                                selectedMolecule, scaling, groupId, numberOfTrialDirections);
   }
 }
 
@@ -62,11 +63,11 @@ CBMC::growMoleculeReinsertion(RandomNumber &random, bool hasExternalField, const
                               const ForceField &forceField, const SimulationBox &simulationBox, 
                               std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                               double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
-                              std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept 
+                              Molecule &molecule, std::span<Atom> molecule_atoms, size_t numberOfTrialDirections) noexcept 
 {
   return CBMC::growRigidMoleculeReinsertion(random, hasExternalField, components, forceField, simulationBox, frameworkAtoms, 
                                             moleculeAtoms, beta, cutOff, cutOffCoulomb, selectedComponent, 
-                                            selectedMolecule, molecule, numberOfTrialDirections);
+                                            selectedMolecule, molecule, molecule_atoms, numberOfTrialDirections);
 }
 
 [[nodiscard]] ChainData 
@@ -74,12 +75,12 @@ CBMC::retraceMoleculeReinsertion(RandomNumber &random, bool hasExternalField, co
                                  const ForceField &forceField, const SimulationBox &simulationBox, 
                                  std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                  double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent,
-                                 size_t selectedMolecule, std::span<Atom> molecule, double storedR, 
+                                 size_t selectedMolecule, Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, 
                                  size_t numberOfTrialDirections) noexcept
 {
   return CBMC::retraceRigidMoleculeReinsertion(random, hasExternalField, components, forceField, simulationBox, frameworkAtoms, 
                                                moleculeAtoms, beta, cutOff, cutOffCoulomb, selectedComponent, 
-                                               selectedMolecule, molecule, storedR, numberOfTrialDirections);
+                                               selectedMolecule, molecule, molecule_atoms, storedR, numberOfTrialDirections);
 }
 
 [[nodiscard]] ChainData 

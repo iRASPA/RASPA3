@@ -65,7 +65,7 @@ MC_Moves::GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& syst
   std::optional<ChainData> growData = 
     CBMC::growMoleculeSwapInsertion(random, systemA.hasExternalField, systemA.components, systemA.forceField, systemA.simulationBox, 
                                     systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta,
-                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 
+                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 0uz,
                                     systemA.numberOfTrialDirections);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   systemA.components[selectedComponent].mc_moves_cputime.GibbsSwapMoveCBMCNonEwald += (t2 - t1);

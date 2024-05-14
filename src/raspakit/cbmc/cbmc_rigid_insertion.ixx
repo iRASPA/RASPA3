@@ -33,7 +33,7 @@ export namespace CBMC
                                  const ForceField &forceField, const SimulationBox &simulationBox, 
                                  std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
                                  double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                                 size_t selectedMolecule, double scaling,
+                                 size_t selectedMolecule, double scaling, size_t groupId,
                                  size_t numberOfTrialDirections) noexcept;
 }
 
@@ -44,6 +44,6 @@ namespace CBMC
                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,    
                          double cutOff, double cutOffCoulomb, size_t startingBead,                                  
                          std::vector<Atom> molecule, size_t numberOfTrialDirections,
-                         size_t selectedMolecule, double scaling,
+                         size_t selectedMolecule, double scaling, size_t groupId,
                          const std::vector<Component> &components, size_t selectedComponent) noexcept;
 }

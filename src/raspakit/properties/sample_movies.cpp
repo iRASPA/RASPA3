@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <string>
 #include <vector>
+#include <span>
 #include <iostream>
 #include <fstream>
 #include <streambuf>
@@ -18,6 +19,7 @@ module sample_movies;
 #ifndef USE_LEGACY_HEADERS
 import <string>;
 import <vector>;
+import <span>;
 import <iostream>;
 import <fstream>;
 import <streambuf>;
@@ -40,69 +42,34 @@ import forcefield;
 import units;
 import skelement;
 
-SampleMovie::SampleMovie(size_t systemId, const ForceField& forceField, 
-                         const SimulationBox& simulationBox, const std::vector<Atom>& atomPositions) :
-    systemId(systemId),
-    forceField(forceField),
-    simulationBox(simulationBox),
-    atomPositions(atomPositions)
-{ 
+SampleMovie::SampleMovie(size_t systemId, size_t sampleEvery):
+      sampleEvery(sampleEvery)
+{
+  std::filesystem::create_directory("movies");
+  std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
 }
 
-
-SampleMovie::SampleMovie(SampleMovie&& s) noexcept:
-    systemId(s.systemId),
-    forceField(s.forceField),
-    simulationBox(std::move(s.simulationBox)),
-    atomPositions(std::move(s.atomPositions))
-    //outputFile(std::move(s.outputFile))
+void SampleMovie::update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox, std::span<Atom> atomPositions, size_t currentCycle)
 {
-
-}
-
-void SampleMovie::initialize()
-{
-  if (sample)
+  if (currentCycle % sampleEvery == 0)
   {
-    std::filesystem::path cwd = std::filesystem::current_path();
-    std::filesystem::path directoryName = cwd / std::format("Movies/System_{}/", systemId);
-    //std::filesystem::path fileName = cwd / std::print("Movies/System_{}/movie_all_{}_{}.pdb",
-    //    systemId, temperature, pressure * Units::PressureConversionFactor);
-    std::filesystem::create_directories(directoryName);
+    std::filesystem::create_directory("movies");
+    std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId), std::ios_base::app);
 
-    //outputFile = std::ofstream(fileName, std::ios::out);
-  }
-}
+    std::print(stream, "MODEL {}\n", modelNumber);
+    std::print(stream, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA, simulationBox.lengthB, simulationBox.lengthC,
+        simulationBox.angleAlpha * 180.0 / std::numbers::pi, simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
 
-void SampleMovie::update(size_t cycle)
-{
-  if (sample)
-  {
-    if (cycle % writeEvery == 0)
+    for (int index = 1; const Atom & atom : atomPositions)
     {
-      //std::print(outputFile, "MODEL {}\n", modelNumber);
-      //std::print(outputFile, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA, simulationBox.lengthB, simulationBox.lengthC,
-      //    simulationBox.angleAlpha * 180.0 / std::numbers::pi, simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
-
-      //for (int index = 1; const Atom & atom : atomPositions)
-      //{
-      //    size_t atomicNumber = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].atomicNumber;
-      //    std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
-      //    std::print(outputFile, "ATOM  {:>5} {:<4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
-      //               index, "name", ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z, 1.0, 0.0, ' ', chemicalElement);
-      //    ++index;
-      //}
-      //outputFile << "ENDMDL\n";
-      ++modelNumber;
+        size_t atomicNumber = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].atomicNumber;
+        std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<size_t>(atom.type)].name);
+        std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
+        std::print(stream, "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
+                   index, name.substr(0, 4), ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z, 1.0, 0.0, ' ', chemicalElement);
+        ++index;
     }
+    stream << "ENDMDL\n";
+    ++modelNumber;
   }
 }
-
-void SampleMovie::closeOutputFile()
-{
-  //if (sample)
-  //{
-  //    if (outputFile.is_open()) outputFile.close();
-  //}
-}
-

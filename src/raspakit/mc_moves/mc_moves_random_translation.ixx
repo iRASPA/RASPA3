@@ -17,10 +17,13 @@ import <span>;
 import randomnumbers;
 import running_energy;
 import atom;
+import molecule;
+import component;
 import system;
 
 export namespace MC_Moves
 {
   std::optional<RunningEnergy>
-  randomTranslationMove(RandomNumber &random, System &system, size_t selectedComponent, std::span<Atom> molecule);
+  randomTranslationMove(RandomNumber &random, System &system, size_t selectedComponent, const std::vector<Component> &components,
+                  Molecule &molecule, std::span<Atom> molecule_atoms);
 }

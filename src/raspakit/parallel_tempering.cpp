@@ -21,6 +21,10 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <atomic>
+#include <array>
+#include <deque>
+#include <functional>
 #if defined(__has_include) && __has_include(<print>)
 #include <print>
 #endif
@@ -52,6 +56,10 @@ import <ios>;
 import <complex>;
 import <exception>;
 import <source_location>;
+import <atomic>;
+import <array>;
+import <deque>;
+import <functional>;
 #if defined(__has_include) && __has_include(<print>)
 import <print>;
 #endif
@@ -237,7 +245,7 @@ void ParallelTempering::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
@@ -328,7 +336,7 @@ void ParallelTempering::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
     stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     for (Component& component : system.components)
@@ -417,7 +425,8 @@ void ParallelTempering::runSystemCycleProduction(System& system)
 
   if (system.propertyRadialDistributionFunction.has_value())
   {
-    system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
+    system.propertyRadialDistributionFunction->writeOutput(
+        system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
   }
   if (system.propertyDensityGrid.has_value())
   {
@@ -439,7 +448,7 @@ void ParallelTempering::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
     stream << system.runningEnergies.printMC("Recomputed from scratch");
 
     system.clearMoveStatistics();

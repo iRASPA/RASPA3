@@ -53,13 +53,13 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
                                      const ForceField &forceField, const SimulationBox &simulationBox, 
                                      std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                      double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                                     size_t selectedMolecule, double scaling, 
+                                     size_t selectedMolecule, double scaling, size_t groupId,
                                      size_t numberOfTrialDirections) noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
   Atom firstBead = components[selectedComponent].atoms[startingBead];
   firstBead.moleculeId = static_cast<uint32_t>(selectedMolecule);
-  firstBead.groupId = static_cast<uint8_t>(0);
+  firstBead.groupId = static_cast<uint8_t>(groupId);
   firstBead.setScaling(scaling);
 
   std::optional<FirstBeadData> const firstBeadData = 
@@ -80,7 +80,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
   std::for_each(atoms.begin(), atoms.end(), [&](Atom& atom) {
       atom.position += firstBeadData->atom.position - components[selectedComponent].atoms[startingBead].position;
       atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
-      atom.groupId = static_cast<uint8_t>(0);
+      atom.groupId = static_cast<uint8_t>(groupId);
       atom.setScaling(scaling);
     });
 
@@ -88,7 +88,7 @@ CBMC::growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField
   std::optional<ChainData> const rigidRotationData = 
     CBMC::growRigidMoleculeChainInsertion(random, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOff, 
                            cutOffCoulomb, startingBead, atoms, numberOfTrialDirections,
-                           selectedMolecule, scaling,
+                           selectedMolecule, scaling, groupId,
                            components, selectedComponent);
   
   if (!rigidRotationData) return std::nullopt;
@@ -104,7 +104,7 @@ CBMC::growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalFiel
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, 
                              double cutOff, double cutOffCoulomb, size_t startingBead, 
                              std::vector<Atom> molecule, size_t numberOfTrialDirections,
-                             size_t selectedMolecule, double scaling,
+                             size_t selectedMolecule, double scaling, size_t groupId,
                              const std::vector<Component> &components, size_t selectedComponent) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
@@ -115,10 +115,10 @@ CBMC::growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalFiel
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = components[selectedComponent].rotatePositions(orientation);
     double3 shift = molecule[startingBead].position - randomlyRotatedAtoms[startingBead].position;
-    std::for_each(std::begin(randomlyRotatedAtoms), std::end(randomlyRotatedAtoms), [shift, selectedMolecule, scaling](Atom& atom) {
+    std::for_each(std::begin(randomlyRotatedAtoms), std::end(randomlyRotatedAtoms), [shift, selectedMolecule, scaling, groupId](Atom& atom) {
         atom.position += shift;
         atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
-        atom.groupId = static_cast<uint8_t>(0);
+        atom.groupId = static_cast<uint8_t>(groupId);
         atom.setScaling(scaling);
     });
 

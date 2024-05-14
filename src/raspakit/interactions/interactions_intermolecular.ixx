@@ -27,12 +27,11 @@ import component;
 
 export namespace Interactions
 {
-  void computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
-                                   std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
+  RunningEnergy computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
+                                            std::span<const Atom> moleculeAtoms) noexcept;
 
-  void computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
-                                       std::span<const Atom> moleculeAtoms, 
-                                       RunningEnergy &energyStatus) noexcept;
+  RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                std::span<const Atom> moleculeAtoms) noexcept;
 
   [[nodiscard]] std::optional<RunningEnergy> 
   computeInterMolecularEnergyDifference(const ForceField &forceField, const SimulationBox &simulationBox, 
@@ -44,8 +43,8 @@ export namespace Interactions
                                             std::span<const Atom> moleculeAtoms, 
                                             std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
-  std::pair<ForceFactor, ForceFactor> computeInterMolecularGradient(const ForceField &forceField, const SimulationBox &simulationBox, 
-                                                                    std::span<Atom> moleculeAtoms) noexcept;
+  RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const SimulationBox &simulationBox, 
+                                              std::span<Atom> moleculeAtoms) noexcept;
 
   std::pair<EnergyStatus, double3x3>                                                                                      
   computeInterMolecularEnergyStrainDerivative(const ForceField &forceField,

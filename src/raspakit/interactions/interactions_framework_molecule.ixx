@@ -28,13 +28,11 @@ import component;
 
 export namespace Interactions
 {
-  void computeFrameworkMoleculeEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
-                                      std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-                                      RunningEnergy &energyStatus) noexcept;
+  RunningEnergy computeFrameworkMoleculeEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                      std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms) noexcept;
 
-  void computeFrameworkMoleculeTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
-                                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-                                          RunningEnergy &energyStatus) noexcept;
+  RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                   std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms) noexcept;
 
   [[nodiscard]] std::optional<RunningEnergy>
   computeFrameworkMoleculeEnergyDifference(const ForceField &forceField, const SimulationBox &simulationBox,
@@ -46,9 +44,9 @@ export namespace Interactions
                                                std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
                                                std::span<const Atom> oldatoms) noexcept;
 
-  std::pair<ForceFactor, ForceFactor> computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                       std::span<Atom> frameworkAtoms,
-                                                                       std::span<Atom> moleculeAtoms) noexcept;
+  RunningEnergy computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                 std::span<Atom> frameworkAtoms,
+                                                 std::span<Atom> moleculeAtoms) noexcept;
 
   [[nodiscard]] std::pair<EnergyStatus, double3x3>
   computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &forceField, 

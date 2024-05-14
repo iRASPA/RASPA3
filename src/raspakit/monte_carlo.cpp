@@ -209,7 +209,7 @@ void MonteCarlo::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.recomputeTotalEnergies();
+    system.runningEnergies = system.computeTotalEnergies();
 
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
@@ -300,9 +300,7 @@ void MonteCarlo::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n\n\n\n");
+    system.runningEnergies = system.computeTotalEnergies();
 
     for (Component& component : system.components)
     {
@@ -409,9 +407,7 @@ void MonteCarlo::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.recomputeTotalEnergies();
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n");
+    system.runningEnergies = system.computeTotalEnergies();
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -484,6 +480,7 @@ void MonteCarlo::production()
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
+      // system.checkCartesianPositions();
     }
 
     for (System& system : systems)
@@ -532,7 +529,9 @@ void MonteCarlo::production()
 
       if (system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.systemId, currentCycle);
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+                                                               system.simulationBox.volume,
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if (system.propertyDensityGrid.has_value())
       {

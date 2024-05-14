@@ -48,18 +48,18 @@ import threadpool;
 
 
 // used in volume moves for computing the state at a new box and new, scaled atom positions
-void Interactions::computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &box, 
-                                               std::span<const Atom> moleculeAtoms, 
-                                               RunningEnergy &energyStatus) noexcept
+RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &box, 
+                                                        std::span<const Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
 
+  RunningEnergy energySum{};
   bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  if (moleculeAtoms.empty()) return;
+  if (moleculeAtoms.empty()) return energySum;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
@@ -95,8 +95,8 @@ void Interactions::computeInterMolecularEnergy(const ForceField &forceField, con
           EnergyFactor energyFactor = 
             potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-          energyStatus.moleculeMoleculeVDW += energyFactor.energy;
-          energyStatus.dudlambdaVDW += energyFactor.dUdlambda;
+          energySum.moleculeMoleculeVDW += energyFactor.energy;
+          energySum.dudlambdaVDW += energyFactor.dUdlambda;
         }
         if (!noCharges && rr < cutOffChargeSquared)
         {
@@ -105,18 +105,21 @@ void Interactions::computeInterMolecularEnergy(const ForceField &forceField, con
             potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, 
                                    chargeA, chargeB);
 
-          energyStatus.moleculeMoleculeCharge += energyFactor.energy;
-          energyStatus.dudlambdaCharge += energyFactor.dUdlambda;
+          energySum.moleculeMoleculeCharge += energyFactor.energy;
+          energySum.dudlambdaCharge += energyFactor.dUdlambda;
         }
       }
     }
   }
+
+  return energySum;
 }
 
-void Interactions::computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
-                                                   std::span<const Atom> moleculeAtoms, 
-                                                   RunningEnergy &energyStatus) noexcept
+RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
+                                                            std::span<const Atom> moleculeAtoms) noexcept
 {
+  RunningEnergy energySum{};
+
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
@@ -138,8 +141,8 @@ void Interactions::computeInterMolecularTailEnergy(const ForceField &forceField,
       if (!(compA == compB && molA == molB))
       {
         double temp = 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionEnergy;
-        energyStatus.tail += scalingVDWA * scalingVDWB * temp;
-        energyStatus.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0) 
+        energySum.tail += scalingVDWA * scalingVDWB * temp;
+        energySum.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0) 
                                    + (groupIdB ? scalingVDWA * temp : 0.0);
       }
     }
@@ -148,6 +151,8 @@ void Interactions::computeInterMolecularTailEnergy(const ForceField &forceField,
     //energyStatus.tail -= scalingVDWA * scalingVDWA * temp;
     //energyStatus.dudlambdaVDW += (groupIdA ? 2.0 * scalingVDWA * temp : 0.0);
   }
+
+  return energySum;
 }
 
 
@@ -366,21 +371,19 @@ Interactions::computeInterMolecularTailEnergyDifference(const ForceField &forceF
   return energySum;
 }
 
-std::pair<ForceFactor, ForceFactor> Interactions::computeInterMolecularGradient(const ForceField &forceField, 
-                                                                                const SimulationBox &simulationBox, 
-                                                                                std::span<Atom> moleculeAtoms) noexcept
+RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forceField, 
+                                                          const SimulationBox &simulationBox, 
+                                                          std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
   double rr;
+  RunningEnergy energySum{};
 
   bool noCharges = forceField.noCharges;
   const double cutOffVDWSquared = forceField.cutOffVDW * forceField.cutOffVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  ForceFactor energyVDW{ 0.0, 0.0, 0.0 };
-  ForceFactor energyCoulomb{ 0.0, 0.0, 0.0 };
-
-  if (moleculeAtoms.empty()) return {energyVDW, energyCoulomb};
+  if (moleculeAtoms.empty()) return energySum;
 
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
@@ -417,7 +420,8 @@ std::pair<ForceFactor, ForceFactor> Interactions::computeInterMolecularGradient(
           ForceFactor forceFactor = 
             potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-          energyVDW += forceFactor;
+          energySum.moleculeMoleculeVDW += forceFactor.energy;
+          energySum.dudlambdaVDW += forceFactor.dUdlambda;
 
           const double3 f = forceFactor.forceFactor * dr;
 
@@ -430,7 +434,8 @@ std::pair<ForceFactor, ForceFactor> Interactions::computeInterMolecularGradient(
           ForceFactor forceFactor = 
             potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energyCoulomb += forceFactor;
+          energySum.moleculeMoleculeCharge += forceFactor.energy;
+          energySum.dudlambdaCharge += forceFactor.dUdlambda;
 
           const double3 f = forceFactor.forceFactor * dr;
 
@@ -441,7 +446,7 @@ std::pair<ForceFactor, ForceFactor> Interactions::computeInterMolecularGradient(
     }
   }
 
-  return {energyVDW, energyCoulomb};
+  return energySum;
 }
 
 

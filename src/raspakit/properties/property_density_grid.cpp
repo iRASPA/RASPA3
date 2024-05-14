@@ -9,6 +9,9 @@ module;
 #include <tuple>
 #include <vector>
 #include <algorithm>
+#include <complex>
+#include <exception>
+#include <source_location>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
@@ -33,9 +36,12 @@ import <sstream>;
 import <tuple>;
 import <vector>;
 import <algorithm>;
+import <complex>;
 import <format>;
 import <numbers>;
 import <span>;
+import <exception>;
+import <source_location>;
 #if defined(__has_include) && __has_include(<print>)
   import <print>;
 #endif
@@ -51,6 +57,7 @@ import <span>;
   import mdspan;
 #endif
 
+import archive;
 import int3;
 import double3;
 import double3x3;
@@ -211,3 +218,47 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
     }
   }
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp)
+{
+  archive << temp.versionNumber;
+
+  archive << temp.numberOfFrameworks;
+  archive << temp.numberOfComponents;
+  archive << temp.grid_cell;
+  archive << temp.grid_unitcell;
+  archive << temp.totalGridSize;
+  archive << temp.numberOfGridPoints;
+  archive << temp.gridSize;
+
+  archive << temp.sampleEvery;
+  archive << temp.writeEvery;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDensityGrid &temp)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > temp.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'PropertyDensityGrid' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> temp.numberOfFrameworks;
+  archive >> temp.numberOfComponents;
+  archive >> temp.grid_cell;
+  archive >> temp.grid_unitcell;
+  archive >> temp.totalGridSize;
+  archive >> temp.numberOfGridPoints;
+  archive >> temp.gridSize;
+
+  archive >> temp.sampleEvery;
+  archive >> temp.writeEvery;
+
+  return archive;
+}
+

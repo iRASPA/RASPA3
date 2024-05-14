@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <vector>
+#include <span>
 #include <numeric>
 #include <fstream>
 #include <utility>
@@ -12,6 +13,7 @@ export module sample_movies;
 
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
+import <span>;
 import <numeric>;
 import <fstream>;
 import <utility>;
@@ -24,28 +26,11 @@ import forcefield;
 
 export struct SampleMovie
 {
-    SampleMovie(size_t systemId, const ForceField &forceField, const SimulationBox& simulationBox, 
-                const std::vector<Atom>& atomPositions);
-    //SampleMovie() noexcept = default;
-    //SampleMovie(const SampleMovie& a) noexcept = default;
-    //SampleMovie& operator=(const SampleMovie& a) noexcept = default;
-    SampleMovie(SampleMovie&& a) noexcept;
-    //SampleMovie& operator=(SampleMovie&& a) noexcept = default;
-    //~SampleMovie() = default;
+    SampleMovie(size_t systemId, size_t sampleEvery);
 
-    const size_t systemId;
-    const ForceField& forceField;
-    const SimulationBox& simulationBox; 
-    const std::vector<Atom>& atomPositions;
+    void update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox, const std::span<Atom> atomPositions, size_t currentCycle);
 
-    void initialize();
-    void update(size_t cycle);
-    void closeOutputFile();
-
-    size_t writeEvery{ 5000 };
-    bool sample{ false };
+    size_t sampleEvery{ 10 };
 
     int modelNumber{ 1 };
-
-    //std::ofstream outputFile{};
 };

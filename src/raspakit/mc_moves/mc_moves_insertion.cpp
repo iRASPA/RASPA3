@@ -70,12 +70,20 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  //size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.counts += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalCounts += 1;
 
-  std::vector<Atom> trialMolecule = system.equilibratedMoleculeRandomInBox(random, selectedComponent, 1.0, 
-                                    system.numberOfMoleculesPerComponent[selectedComponent]);
+
+  std::pair<Molecule, std::vector<Atom>> trialMolecule = 
+    system.components[selectedComponent].equilibratedMoleculeRandomInBox(random, system.simulationBox);
+
+  std::for_each(std::begin(trialMolecule.second), std::end(trialMolecule.second), [selectedComponent, selectedMolecule](Atom& atom) {
+        atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
+        atom.componentId = static_cast<uint8_t>(selectedComponent);
+        atom.groupId = static_cast<uint8_t>(0);
+        atom.setScaling(1.0);
+    });
 
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.constructed += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalConstructed += 1;
@@ -83,19 +91,19 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
   // compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule =
     Interactions::computeExternalFieldEnergyDifference(system.hasExternalField, system.forceField, system.simulationBox,
-                                                       trialMolecule, {});
+                                                       trialMolecule.second, {});
   if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute framework-molecule energy contribution
   std::optional<RunningEnergy> frameworkMolecule =
     Interactions::computeFrameworkMoleculeEnergyDifference(system.forceField, system.simulationBox,
-                                                           system.spanOfFrameworkAtoms(), trialMolecule, {});
+                                                           system.spanOfFrameworkAtoms(), trialMolecule.second, {});
   if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute molecule-molecule energy contribution
   std::optional<RunningEnergy> interMolecule =
     Interactions::computeInterMolecularEnergyDifference(system.forceField, system.simulationBox,
-                                                        system.spanOfMoleculeAtoms(), trialMolecule, {});
+                                                        system.spanOfMoleculeAtoms(), trialMolecule.second, {});
   if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
 
@@ -105,7 +113,7 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
     Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                system.storedEik, system.totalEik,
                                                system.forceField, system.simulationBox,
-                                               trialMolecule, {});
+                                               trialMolecule.second, {});
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveEwald += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveEwald += (time_end - time_begin);
@@ -113,9 +121,9 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
   time_begin = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference = 
     Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,                 
-                                         system.spanOfMoleculeAtoms(), trialMolecule, {}) +
+                                         system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
     Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
-                                         system.spanOfFrameworkAtoms(), trialMolecule, {});
+                                         system.spanOfFrameworkAtoms(), trialMolecule.second, {});
   time_end = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveTail += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveTail += (time_end - time_begin);
@@ -147,7 +155,7 @@ MC_Moves::insertionMove(RandomNumber &random, System& system, size_t selectedCom
     system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalAccepted += 1;
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-    system.insertMolecule(selectedComponent, Molecule(), trialMolecule);
+    system.insertMolecule(selectedComponent, trialMolecule.first, trialMolecule.second);
 
     return {energyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };

@@ -114,7 +114,6 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   System system = System(0, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, forceField, {}, { co2, co2_2 }, { 15, 30 }, 5);
 
 
-  RunningEnergy rigidenergy;
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
 
@@ -124,13 +123,8 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                    system.forceField, system.simulationBox,
                                                    double3(0.0, 0.0, 0.0), 1.0);
-  Interactions::computeEwaldFourierRigidEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                        system.fixedFrameworkStoredEik,
-                                        system.forceField, system.simulationBox,
-                                        {}, rigidenergy);
 
-
-
+  system.precomputeTotalRigidEnergy();
   std::pair<EnergyStatus, double3x3> strainDerivative =
     Interactions::computeEwaldFourierEnergyStrainDerivative(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                      system.fixedFrameworkStoredEik, system.storedEik, system.forceField, system.simulationBox,

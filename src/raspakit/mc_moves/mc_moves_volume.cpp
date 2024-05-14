@@ -38,6 +38,7 @@ import <iomanip>;
 
 import component;
 import atom;
+import molecule;
 import double3;
 import double3x3;
 import simd_quatd;
@@ -77,28 +78,28 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   double scale = std::pow(newVolume/oldVolume, 1.0/3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
-  std::vector<Atom> newPositions = system.scaledCenterOfMassPositions(scale);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions = system.scaledCenterOfMassPositions(scale);
 
-  RunningEnergy newTotalEnergy;
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
+  RunningEnergy newTotalInterEnergy = Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions, newTotalEnergy);
+  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                          system.fixedFrameworkStoredEik, system.totalEik,
-                                          system.forceField, newBox,
-                                          system.components, system.numberOfMoleculesPerComponent,
-                                          newPositions, newTotalEnergy);
+  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                                              system.fixedFrameworkStoredEik, system.totalEik,
+                                                                              system.forceField, newBox,
+                                                                              system.components, system.numberOfMoleculesPerComponent,
+                                                                              newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
 
+  RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
   system.mc_moves_statistics.volumeMove.constructed += 1;
   system.mc_moves_statistics.volumeMove.totalConstructed += 1;
@@ -111,7 +112,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     system.mc_moves_statistics.volumeMove.totalAccepted += 1;
 
     system.simulationBox = newBox;
-    std::copy(newPositions.begin(), newPositions.end(), system.atomPositions.begin());
+    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculePositions.begin());
+    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomPositions.begin());
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 

@@ -5,6 +5,9 @@ module;
 #include <cmath>
 #include <fstream>
 #include <complex>
+#include <array>
+#include <map>
+#include <algorithm>
 #endif
 
 module simd_quatd;
@@ -14,6 +17,9 @@ import <numbers>;
 import <cmath>;
 import <fstream>;
 import <complex>;
+import <array>;
+import <map>;
+import <algorithm>;
 #endif
 
 import double3;

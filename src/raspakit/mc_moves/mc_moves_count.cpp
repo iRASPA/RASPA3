@@ -72,15 +72,27 @@ const std::string MCMoveCount::writeSystemStatistics(size_t countTotal) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "\n");
-  std::print(stream, "Volume:                          {:14f} [-]\n", 
-             100.0 * static_cast<double>(volumeMove) / static_cast<double>(countTotal));
-  std::print(stream, "Gibbs Volume:                    {:14f} [-]\n", 
-             100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
-  std::print(stream, "Parallel Tempering Swap:         {:14f} [-]\n",
-             100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
+  if(volumeMove || GibbsVolumeMove || ParallelTemperingSwap)
+  {
+    std::print(stream, "\n");
+    if(volumeMove)
+    {
+      std::print(stream, "Volume:                          {:14f} [-]\n", 
+                 100.0 * static_cast<double>(volumeMove) / static_cast<double>(countTotal));
+    }
+    if(GibbsVolumeMove)
+    {
+      std::print(stream, "Gibbs Volume:                    {:14f} [-]\n", 
+                 100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
+    }
+    if(ParallelTemperingSwap)
+    {
+      std::print(stream, "Parallel Tempering Swap:         {:14f} [-]\n",
+                 100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
+    }
 
-  std::print(stream, "\n\n");
+    std::print(stream, "\n\n");
+  }
 
   return stream.str();
 }
@@ -90,43 +102,98 @@ const std::string MCMoveCount::writeComponentStatistics(size_t countTotal, size_
 {
   std::ostringstream stream;
 
-  std::print(stream, "Component {} {}\n", componentId, componentName);
+  if(translationMove || randomTranslationMove || rotationMove || randomRotationMove ||
+     reinsertionMoveCBMC || swapInsertionMove || swapDeletionMove || swapInsertionMoveCBMC || swapDeletionMoveCBMC ||
+     swapLambdaMoveCFCMC || swapLambdaMoveCBCFCMC || GibbsSwapLambdaMoveCFCMC ||
+     WidomMoveCBMC || WidomMoveCFCMC || WidomMoveCBCFCMC || 
+     volumeMove || GibbsVolumeMove || ParallelTemperingSwap)
+  {
+    std::print(stream, "Component {} {}\n", componentId, componentName);
 
-  std::print(stream, "\n");
-  std::print(stream, "    Translation:                 {:14f} [%]\n", 
-             100.0 * static_cast<double>(translationMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Random Translation:          {:14f} [%]\n", 
-             100.0 * static_cast<double>(randomTranslationMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Rotation:                    {:14f} [%]\n", 
-             100.0 * static_cast<double>(rotationMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Random Rotation:             {:14f} [%]\n", 
-             100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Reinsertion CBMC:            {:14f} [%]\n", 
-             100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Insertion:                   {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Deletion:                    {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
-  std::print(stream, "    Insertion CBMC:              {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Deletion CBMC:               {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapDeletionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Insertion/deletion CFCMC:    {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapLambdaMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Insertion/deletion CB/CFCMC: {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapLambdaMoveCBCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Gibbs-swap CBMC:             {:14f} [%]\n", 
-             100.0 * static_cast<double>(GibbsSwapMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Gibbs-swap CFCMC:            {:14f} [%]\n", 
-             100.0 * static_cast<double>(GibbsSwapLambdaMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Widom CBMC:                  {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Widom CFCMC:                 {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "    Widom CB/CFCMC:              {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCBCFCMC) / static_cast<double>(countTotal));
+    std::print(stream, "\n");
+    if(translationMove)
+    {
+      std::print(stream, "    Translation:                 {:14f} [%]\n", 
+                 100.0 * static_cast<double>(translationMove) / static_cast<double>(countTotal));
+    }
+    if(randomTranslationMove)
+    {
+      std::print(stream, "    Random Translation:          {:14f} [%]\n", 
+                 100.0 * static_cast<double>(randomTranslationMove) / static_cast<double>(countTotal));
+    }
+    if(rotationMove)
+    {
+      std::print(stream, "    Rotation:                    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(rotationMove) / static_cast<double>(countTotal));
+    }
+    if(randomRotationMove)
+    {
+      std::print(stream, "    Random Rotation:             {:14f} [%]\n", 
+                 100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
+    }
+    if(reinsertionMoveCBMC)
+    {
+      std::print(stream, "    Reinsertion CBMC:            {:14f} [%]\n", 
+                 100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapInsertionMove)
+    {
+      std::print(stream, "    Insertion:                   {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
+    }
+    if(swapDeletionMove)
+    {
+      std::print(stream, "    Deletion:                    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
+    }
+    if(swapInsertionMoveCBMC)
+    {
+      std::print(stream, "    Insertion CBMC:              {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapDeletionMoveCBMC)
+    {
+      std::print(stream, "    Deletion CBMC:               {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapDeletionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapLambdaMoveCFCMC)
+    {
+      std::print(stream, "    Insertion/deletion CFCMC:    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapLambdaMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(swapLambdaMoveCBCFCMC)
+    {
+      std::print(stream, "    Insertion/deletion CB/CFCMC: {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapLambdaMoveCBCFCMC) / static_cast<double>(countTotal));
+    }
+    if(GibbsSwapMoveCBMC)
+    {
+      std::print(stream, "    Gibbs-swap CBMC:             {:14f} [%]\n", 
+                 100.0 * static_cast<double>(GibbsSwapMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(GibbsSwapLambdaMoveCFCMC)
+    {
+      std::print(stream, "    Gibbs-swap CFCMC:            {:14f} [%]\n", 
+                 100.0 * static_cast<double>(GibbsSwapLambdaMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCBMC)
+    {
+      std::print(stream, "    Widom CBMC:                  {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCFCMC)
+    {
+      std::print(stream, "    Widom CFCMC:                 {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCBCFCMC)
+    {
+      std::print(stream, "    Widom CB/CFCMC:              {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCBCFCMC) / static_cast<double>(countTotal));
+    }
 
-  std::print(stream, "\n\n");
+    std::print(stream, "\n\n");
+  }
 
   return stream.str();
 }
@@ -135,51 +202,115 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Translation:                 {:14f} [%]\n", 
-             100.0 * static_cast<double>(translationMove) / static_cast<double>(countTotal));
-  std::print(stream, "Random Translation:          {:14f} [%]\n", 
-             100.0 * static_cast<double>(randomTranslationMove) / static_cast<double>(countTotal));
-  std::print(stream, "Rotation:                    {:14f} [%]\n", 
-             100.0 * static_cast<double>(rotationMove) / static_cast<double>(countTotal));
-  std::print(stream, "Random rotation:             {:14f} [%]\n", 
-             100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
-  std::print(stream, "Reinsertion CBMC:            {:14f} [%]\n", 
-             100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "Insertion:                   {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
-  std::print(stream, "Deletion:                    {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
-  std::print(stream, "Insertion CBMC:              {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "Deletion CBMC:               {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapDeletionMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "Insertion/deletion CFCMC:    {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapLambdaMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "Insertion/deletion CB/CFCMC: {:14f} [%]\n", 
-             100.0 * static_cast<double>(swapLambdaMoveCBCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "Gibbs-swap CBMC:             {:14f} [%]\n", 
-             100.0 * static_cast<double>(GibbsSwapMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "Gibbs-swap CFCMC:            {:14f} [%]\n", 
-             100.0 * static_cast<double>(GibbsSwapLambdaMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "Volume:                      {:14f} [%]\n", 
-             100.0 * static_cast<double>(volumeMove) / static_cast<double>(countTotal));
-  std::print(stream, "Widom CBMC:                  {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCBMC) / static_cast<double>(countTotal));
-  std::print(stream, "Widom CFCMC:                 {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "Widom CB/CFCMC:              {:14f} [%]\n", 
-             100.0 * static_cast<double>(WidomMoveCBCFCMC) / static_cast<double>(countTotal));
-  std::print(stream, "Gibbs Volume:                {:14f} [%]\n", 
-             100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
-  std::print(stream, "Parallel Tempering Swap:     {:14f} [%]\n",
-             100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
+  if(translationMove || randomTranslationMove || rotationMove || randomRotationMove ||
+     reinsertionMoveCBMC || swapInsertionMove || swapDeletionMove || swapInsertionMoveCBMC || swapDeletionMoveCBMC ||
+     swapLambdaMoveCFCMC || swapLambdaMoveCBCFCMC || GibbsSwapLambdaMoveCFCMC ||
+     WidomMoveCBMC || WidomMoveCFCMC || WidomMoveCBCFCMC || 
+     volumeMove || GibbsVolumeMove || ParallelTemperingSwap)
+  {
+    if(translationMove)
+    {
+      std::print(stream, "Translation:                 {:14f} [%]\n", 
+                 100.0 * static_cast<double>(translationMove) / static_cast<double>(countTotal));
+    }
+    if(randomTranslationMove)
+    {
+      std::print(stream, "Random Translation:          {:14f} [%]\n", 
+                 100.0 * static_cast<double>(randomTranslationMove) / static_cast<double>(countTotal));
+    }
+    if(rotationMove)
+    {
+      std::print(stream, "Rotation:                    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(rotationMove) / static_cast<double>(countTotal));
+    }
+    if(randomRotationMove)
+    {
+      std::print(stream, "Random rotation:             {:14f} [%]\n", 
+                 100.0 * static_cast<double>(randomRotationMove) / static_cast<double>(countTotal));
+    }
+    if(reinsertionMoveCBMC)
+    {
+      std::print(stream, "Reinsertion CBMC:            {:14f} [%]\n", 
+                 100.0 * static_cast<double>(reinsertionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapInsertionMove)
+    {
+      std::print(stream, "Insertion:                   {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapInsertionMove) / static_cast<double>(countTotal));
+    }
+    if(swapDeletionMove)
+    {
+      std::print(stream, "Deletion:                    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapDeletionMove) / static_cast<double>(countTotal));
+    }
+    if(swapInsertionMoveCBMC)
+    {
+      std::print(stream, "Insertion CBMC:              {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapInsertionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapDeletionMoveCBMC)
+    {
+      std::print(stream, "Deletion CBMC:               {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapDeletionMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(swapLambdaMoveCFCMC)
+    {
+      std::print(stream, "Insertion/deletion CFCMC:    {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapLambdaMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(swapLambdaMoveCBCFCMC)
+    {
+      std::print(stream, "Insertion/deletion CB/CFCMC: {:14f} [%]\n", 
+                 100.0 * static_cast<double>(swapLambdaMoveCBCFCMC) / static_cast<double>(countTotal));
+    }
+    if(GibbsSwapMoveCBMC)
+    {
+      std::print(stream, "Gibbs-swap CBMC:             {:14f} [%]\n", 
+                 100.0 * static_cast<double>(GibbsSwapMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(GibbsSwapLambdaMoveCFCMC)
+    {
+      std::print(stream, "Gibbs-swap CFCMC:            {:14f} [%]\n", 
+                 100.0 * static_cast<double>(GibbsSwapLambdaMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(volumeMove)
+    {
+      std::print(stream, "Volume:                      {:14f} [%]\n", 
+                 100.0 * static_cast<double>(volumeMove) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCBMC)
+    {
+      std::print(stream, "Widom CBMC:                  {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCBMC) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCFCMC)
+    { 
+      std::print(stream, "Widom CFCMC:                 {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCFCMC) / static_cast<double>(countTotal));
+    }
+    if(WidomMoveCBCFCMC)
+    {
+      std::print(stream, "Widom CB/CFCMC:              {:14f} [%]\n", 
+                 100.0 * static_cast<double>(WidomMoveCBCFCMC) / static_cast<double>(countTotal));
+    }
+    if(GibbsVolumeMove)
+    {
+      std::print(stream, "Gibbs Volume:                {:14f} [%]\n", 
+                 100.0 * static_cast<double>(GibbsVolumeMove) / static_cast<double>(countTotal));
+    }
+    if(ParallelTemperingSwap)
+    {
+      std::print(stream, "Parallel Tempering Swap:     {:14f} [%]\n",
+                 100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
+    }
 
-  std::print(stream, "\n");
-  std::print(stream, "Production mc-move count:    {:14d} [-]\n", countTotal);
-  std::print(stream, "                All summed:  {:14d} [-]\n", total());
-  std::print(stream, "                difference:  {:14d} [-]\n", countTotal - total());
+    std::print(stream, "\n");
+    std::print(stream, "Production mc-move count:    {:14d} [-]\n", countTotal);
+    std::print(stream, "                All summed:  {:14d} [-]\n", total());
+    std::print(stream, "                difference:  {:14d} [-]\n", countTotal - total());
 
-  std::print(stream, "\n\n");
+    std::print(stream, "\n\n");
+  }
 
   return stream.str();
 }

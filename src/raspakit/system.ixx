@@ -68,6 +68,7 @@ import property_enthalpy;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
+import property_temperature;
 import multi_site_isotherm;
 import pressure_range;
 import units;
@@ -120,9 +121,6 @@ export struct System
   EquationOfState equationOfState;
 
   Loadings loadings;
-  PropertyLoading averageLoadings;
-
-  PropertyEnthalpy averageEnthalpiesOfAdsorption;
 
   std::vector<size_t> swapableComponents{};
   std::vector<size_t> initialNumberOfMolecules{};
@@ -164,7 +162,6 @@ export struct System
   double timeStep{0.0005};
 
   SimulationBox simulationBox;
-  PropertySimulationBox averageSimulationBox;
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
@@ -175,12 +172,11 @@ export struct System
   double conservedEnergy{};
   double referenceEnergy{};
   double accumulatedDrift{};
+  RunningEnergy rigidEnergies;
   RunningEnergy runningEnergies;
-  PropertyEnergy averageEnergies;
 
   double3x3 currentExcessPressureTensor;
   EnergyStatus currentEnergyStatus;
-  PropertyPressure averagePressure;
 
   size_t numberOfTrialDirections{10};
 
@@ -222,6 +218,15 @@ export struct System
   bool containsTheFractionalMolecule{true};
 
   // property measurements
+  PropertyEnergy averageEnergies;
+  PropertyLoading averageLoadings;
+  PropertyEnthalpy averageEnthalpiesOfAdsorption;
+  PropertyTemperature averageTemperature;
+  PropertyTemperature averageTranslationalTemperature;
+  PropertyTemperature averageRotationalTemperature;
+  PropertyPressure averagePressure;
+  PropertySimulationBox averageSimulationBox;
+  std::optional<SampleMovie> samplePDBMovie;
   std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
   std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
   std::optional<PropertyDensityGrid> propertyDensityGrid;
@@ -249,19 +254,19 @@ export struct System
   void determineSimulationBox();
 
   void initializeVelocities(RandomNumber &random);
-  double computeTranslationalKineticEnergy();
-  double computeRotationalKineticEnergy();
+  double computeTranslationalKineticEnergy() const;
+  double computeRotationalKineticEnergy() const;
   void integrate();
   void updatePositions();
   void updateVelocities();
   void createCartesianPositions();
+  void checkCartesianPositions();
   void noSquishFreeRotorOrderTwo();
   void noSquishRotate(size_t k, double dt);
   void computeCenterOfMassAndQuaternionVelocities();
   void computeCenterOfMassAndQuaternionGradients();
 
   void precomputeTotalRigidEnergy() noexcept;
-  void recomputeTotalEnergies() noexcept;
   RunningEnergy computeTotalEnergies() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
 
@@ -362,10 +367,7 @@ export struct System
 
   void clearMoveStatistics();
 
-  std::vector<Atom> scaledCenterOfMassPositions(double scale) const;
-
-  std::vector<Atom> equilibratedMoleculeRandomInBox(RandomNumber &random, size_t selectedComponent, double scaling,
-                                                    size_t moleculeId) const;
+  std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 

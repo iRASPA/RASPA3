@@ -57,6 +57,7 @@ import stringutils;
 import json;
 import system;
 import atom;
+import pseudo_atom;
 import framework;
 import component;
 import simulationbox;
@@ -163,7 +164,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
   nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
 
   size_t jsonNumberOfBlocks{5};
-  size_t jsonNumberOfLambdaBins{21};
 
   try
   {
@@ -237,10 +237,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-  if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
-  {
-    // = parsed_data["NumberOfLambdaBins"].get<size_t>();
-  }
   if (parsed_data["NumberOfThreads"].is_number_unsigned())
   {
     numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
@@ -481,6 +477,11 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
+     size_t jsonNumberOfLambdaBins{31};
+     if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
+     {
+       jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();
+     }
 
     // Explicit notation listing the properties as an array of the values for the particular systems
     // ========================================================================================================
@@ -573,6 +574,15 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       forceFields[systemId]->cutOffCoulomb = value["CutOffCoulomb"].get<double>();
     }
 
+    if (value["OmitEwaldFourier"].is_boolean())
+    {
+      if (!forceFields[systemId].has_value())
+      {
+        throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
+      }
+      forceFields[systemId]->omitEwaldFourier = value["OmitEwaldFourier"].get<bool>();
+    }
+
     if (value["ChargeMethod"].is_string())
     {
       if (!forceFields[systemId].has_value())
@@ -656,7 +666,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       // create system
       systems[systemId] =
           System(systemId, std::nullopt, T, P, forceFields[systemId].value(), jsonFrameworkComponents,
-                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], 5, mc_moves_probabilities);
+                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
     }
     else if (caseInSensStringCompare(typeString, "Box"))
     {
@@ -695,12 +705,138 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
       systems[systemId] =
           System(systemId, simulationBox, T, P, forceFields[systemId].value(), {}, jsonComponents[systemId],
-                 jsonCreateNumberOfMolecules[systemId], 5, mc_moves_probabilities);
+                 jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
     }
     else
     {
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
     }
+
+    if (value["ComputeConventionalRDF"].is_boolean())
+    {
+      if(value["ComputeConventionalRDF"].get<bool>())
+      {
+        size_t numberOfBinsConventionalRDF{ 128 };
+        if (value["NumberOfBinsConventionalRDF"].is_number_unsigned())
+        {
+          numberOfBinsConventionalRDF = value["NumberOfBinsConventionalRDF"].get<size_t>();
+        }
+
+        double rangeConventionalRDF{ 15.0 };
+        if (value["RangeConventionalRDF"].is_number_float())
+        {
+          rangeConventionalRDF = value["RangeConventionalRDF"].get<double>();
+        }
+
+        size_t sampleConventionalRDFEvery{ 10 };
+        if (value["SampleConventionalRDFEvery"].is_number_unsigned())
+        {
+          sampleConventionalRDFEvery = value["SampleConventionalRDFEvery"].get<size_t>();
+        }
+
+        size_t writeConventionalRDFEvery{ 5000 };
+        if (value["WriteConventionalRDFEvery"].is_number_unsigned())
+        {
+          writeConventionalRDFEvery = value["WriteConventionalRDFEvery"].get<size_t>();
+        }
+
+        systems[systemId].propertyConventionalRadialDistributionFunction = 
+          PropertyConventionalRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
+                            numberOfBinsConventionalRDF, rangeConventionalRDF, sampleConventionalRDFEvery, writeConventionalRDFEvery);
+      }
+    }
+
+    if (value["ComputeRDF"].is_boolean())
+    {
+      if(value["ComputeRDF"].get<bool>())
+      {
+        size_t numberOfBinsRDF{ 128 };
+        if (value["NumberOfBinsRDF"].is_number_unsigned())
+        {
+          numberOfBinsRDF = value["NumberOfBinsRDF"].get<size_t>();
+        }
+
+        double rangeRDF{ 15.0 };
+        if (value["RangeRDF"].is_number_float())
+        {
+          rangeRDF = value["RangeRDF"].get<double>();
+        }
+
+        size_t sampleRDFEvery{ 10 };
+        if (value["SampleRDFEvery"].is_number_unsigned())
+        {
+          sampleRDFEvery = value["SampleRDFEvery"].get<size_t>();
+        }
+
+        size_t writeRDFEvery{ 5000 };
+        if (value["WriteRDFEvery"].is_number_unsigned())
+        {
+          writeRDFEvery = value["WriteRDFEvery"].get<size_t>();
+        }
+
+        systems[systemId].propertyRadialDistributionFunction = 
+          PropertyRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
+                            numberOfBinsRDF, rangeRDF, sampleRDFEvery, writeRDFEvery);
+      }
+    }
+
+    if (value["ComputeDensityGrid"].is_boolean())
+    {
+      if(value["ComputeDensityGrid"].get<bool>())
+      {
+        int3 densityGridSize{ 128, 128, 128 };
+        if (value["DensityGridSize"].is_array())
+        {
+          densityGridSize = parseInt3("DensityGridSize", value["DensityGridSize"]);
+        }
+
+        size_t sampleDensityGridEvery{ 10 };
+        if (value["SampleDensityGridEvery"].is_number_unsigned())
+        {
+          sampleDensityGridEvery = value["SampleDensityGridEvery"].get<size_t>();
+        }
+
+        size_t writeDensityGridEvery{ 5000 };
+        if (value["WriteDensityGridEvery"].is_number_unsigned())
+        {
+          writeDensityGridEvery = value["WriteDensityGridEvery"].get<size_t>();
+        }
+
+        std::vector<size_t> densityGridPseudoAtomsList{};
+        if (value["DensityGridPseudoAtomsList"].is_array())
+        {
+          std::vector<std::string> string_list = value["DensityGridPseudoAtomsList"].get<std::vector<std::string>>();
+          for(std::string string: string_list)
+          {
+            std::optional<size_t> atomType = systems[systemId].forceField.findPseudoAtom(string);
+            if(atomType.has_value())
+            {
+              densityGridPseudoAtomsList.push_back(atomType.value());
+            }
+          }
+        }
+
+
+        systems[systemId].propertyDensityGrid = PropertyDensityGrid(systems[systemId].frameworkComponents.size(), systems[systemId].components.size(),
+                                      densityGridSize, sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList);
+      }
+    }
+
+    if (value["OutputPDBMovie"].is_boolean())
+    {
+      if(value["OutputPDBMovie"].get<bool>())
+      {
+        size_t sampleMovieEvery{ 1 };
+        if (value["SampleMovieEvery"].is_number_unsigned())
+        {
+          sampleMovieEvery = value["SampleMovieEvery"].get<size_t>();
+        }
+
+        systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery);
+      }
+
+    }
+
 
     systemId++;
   }

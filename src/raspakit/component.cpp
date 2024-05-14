@@ -710,6 +710,101 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
   return copied_atoms;
 }
 
+std::pair<Molecule, std::vector<Atom>> Component::equilibratedMoleculeRandomInBox(
+    RandomNumber &random, const SimulationBox &simulationBox) const
+{
+  simd_quatd q = random.randomSimdQuatd();
+  double3x3 M = double3x3::buildRotationMatrixInverse(q);
+  double3 com = simulationBox.randomPosition(random);
+
+  std::vector<Atom> trial_atoms(atoms);
+  for (size_t i = 0; i != atoms.size(); i++)
+  {
+    trial_atoms[i].position = com + M * atoms[i].position;
+  }
+  /*
+  size_t startingBead = components[selectedComponent].startingBead;
+  double3 center = components[selectedComponent].atoms[startingBead].position;
+  std::vector<Atom> copied_atoms(components[selectedComponent].atoms.begin(),
+  components[selectedComponent].atoms.end());
+
+  double3x3 randomRotationMatrix = random.randomRotationMatrix();
+  double3 position = simulationBox.randomPosition(random);
+
+  for (size_t i = 0; i != copied_atoms.size(); ++i)
+  {
+    copied_atoms[i].setScaling(scaling);
+    copied_atoms[i].position = position + randomRotationMatrix * (components[selectedComponent].atoms[i].position -
+  center); copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
+  }
+  */
+  return {{com, q}, trial_atoms};
+}
+
+std::pair<Molecule, std::vector<Atom>> Component::translate(const Molecule &molecule, std::span<Atom> molecule_atoms,
+                                                            double3 displacement) const
+{
+  std::vector<Atom> trialAtoms(molecule_atoms.begin(), molecule_atoms.end());
+  Molecule trialMolecule = molecule;
+
+  if (rigid)
+  {
+    simd_quatd q = trialMolecule.orientation;
+    double3x3 M = double3x3::buildRotationMatrixInverse(q);
+
+    trialMolecule.centerOfMassPosition += displacement;
+    double3 com = trialMolecule.centerOfMassPosition;
+    for (size_t i = 0; i != trialAtoms.size(); ++i)
+    {
+      trialAtoms[i].position = com + M * atoms[i].position;
+    }
+  }
+  else
+  {
+    std::transform(molecule_atoms.begin(), molecule_atoms.end(), trialAtoms.begin(),
+                   [&](Atom a)
+                   {
+                     a.position += displacement;
+                     return a;
+                   });
+  }
+
+  return {trialMolecule, trialAtoms};
+}
+
+std::pair<Molecule, std::vector<Atom>> Component::rotate(const Molecule &molecule, std::span<Atom> molecule_atoms,
+                                                         simd_quatd rotation) const
+{
+  std::vector<Atom> trialAtoms(molecule_atoms.begin(), molecule_atoms.end());
+  Molecule trialMolecule = molecule;
+
+  if (rigid)
+  {
+    simd_quatd q = rotation * trialMolecule.orientation;
+    double3x3 M = double3x3::buildRotationMatrixInverse(q);
+
+    trialMolecule.orientation = q;
+    double3 com = trialMolecule.centerOfMassPosition;
+    for (size_t i = 0; i != trialAtoms.size(); ++i)
+    {
+      trialAtoms[i].position = com + M * atoms[i].position;
+    }
+  }
+  else
+  {
+    double3x3 rotationMatrix = double3x3(rotation);
+    std::transform(molecule_atoms.begin(), molecule_atoms.end(), trialAtoms.begin(),
+                   [&](Atom a)
+                   {
+                     a.position = rotationMatrix * (a.position - molecule_atoms[startingBead].position) +
+                                  molecule_atoms[startingBead].position;
+                     return a;
+                   });
+  }
+
+  return {trialMolecule, trialAtoms};
+}
+
 std::string Component::printBreakthroughStatus() const
 {
   std::ostringstream stream;
