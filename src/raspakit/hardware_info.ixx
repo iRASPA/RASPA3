@@ -10,7 +10,10 @@ export module hardware_info;
 import <string>;
 #endif
 
+import hdf5;
+
 export namespace HardwareInfo
 {
   std::string writeInfo();
+  void logInfo(HDF5Handler& hdf5);
 }

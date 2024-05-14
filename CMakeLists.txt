@@ -18,6 +18,9 @@ endif()
 
 find_package(OpenMP REQUIRED)
 
+find_package(HDF5 REQUIRED COMPONENTS CXX)
+include_directories(${HDF5_INCLUDE_DIRS})
+
 # Set the version of C++ for the project
 set(CMAKE_CXX_STANDARD 23)
 

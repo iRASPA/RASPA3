@@ -13,6 +13,7 @@ target_link_libraries(${PROJECT_NAME}
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         OpenMP::OpenMP_CXX
+        ${HDF5_CXX_LIBRARIES}
 )
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

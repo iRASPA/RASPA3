@@ -28,7 +28,7 @@ import mc_moves;
 import input_reader;
 import energy_status;
 import archive;
-
+import hdf5;
 
 export struct MonteCarlo
 {
@@ -69,6 +69,7 @@ export struct MonteCarlo
   size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;
+  std::vector<HDF5Handler> logs;
 
   BlockErrorEstimation estimation;
 
@@ -81,6 +82,7 @@ export struct MonteCarlo
   void production();
   void output();
   System& randomSystem();
+  void log();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MonteCarlo &mc);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MonteCarlo &mc);

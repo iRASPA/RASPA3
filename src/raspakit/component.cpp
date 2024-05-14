@@ -1,34 +1,34 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <iostream>
-#include <ostream>
-#include <sstream>
 #include <algorithm>
-#include <vector>
 #include <array>
-#include <map>
-#include <string>
-#include <span>
-#include <optional>
-#include <filesystem>
-#include <fstream>
-#include <cstdlib>
-#include <exception>
-#include <iterator>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <optional>
+#include <ostream>
+#include <span>
+#include <sstream>
+#include <string>
 #include <type_traits>
 #include <utility>
-#include <functional>
+#include <vector>
 #if defined(_WIN32)
 #include <cassert.h>
 #endif
+#include <complex>
 #include <exception>
 #include <source_location>
-#include <complex>
 #if defined(__has_include) && __has_include(<print>)
-  #include <print>
+#include <print>
 #endif
 #endif
 
@@ -66,12 +66,12 @@ import <exception>;
 import <source_location>;
 import <complex>;
 #if defined(__has_include) && __has_include(<print>)
-  import <print>;
+import <print>;
 #endif
 #endif
 
 #if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import print;
 #endif
 
 import int3;
@@ -104,26 +104,23 @@ import mc_moves_probabilities_particles;
 import mc_moves_statistics_particles;
 import mc_moves_cputime;
 import mc_moves_count;
-
+import hdf5;
 
 // default constructor, needed for binary restart-file
-Component::Component()
-{
-}
+Component::Component() {}
 
 // create Component in 'inputreader.cpp'
-Component::Component(Component::Type type, size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-                     std::optional<const std::string> fileName,
-                     size_t numberOfBlocks, size_t numberOfLambdaBins,
-                     const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false) :
-                     type(type), 
-                     componentId(currentComponent), 
-                     name(componentName),
-                     filenameData(fileName),
-                     lambdaGC(numberOfBlocks, numberOfLambdaBins),
-                     lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
-                     mc_moves_probabilities(particleProbalities),
-                     averageRosenbluthWeights(numberOfBlocks)
+Component::Component(Component::Type type, size_t currentComponent, const ForceField &forceField,
+                     const std::string &componentName, std::optional<const std::string> fileName, size_t numberOfBlocks,
+                     size_t numberOfLambdaBins, const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false)
+    : type(type),
+      componentId(currentComponent),
+      name(componentName),
+      filenameData(fileName),
+      lambdaGC(numberOfBlocks, numberOfLambdaBins),
+      lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+      mc_moves_probabilities(particleProbalities),
+      averageRosenbluthWeights(numberOfBlocks)
 {
   if (filenameData.has_value())
   {
@@ -132,23 +129,22 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 }
 
 // create programmatically an 'adsorbate' component
-Component::Component(size_t componentId, const ForceField &forceField, std::string componentName,
-                     double T_c, double P_c, double w, std::vector<Atom> atomList,
-                     size_t numberOfBlocks, size_t numberOfLambdaBins,
-                     const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false) :
-    type(Type::Adsorbate),
-    componentId(componentId),
-    name(componentName),
-    criticalTemperature(T_c),
-    criticalPressure(P_c),
-    acentricFactor(w),
-    lambdaGC(numberOfBlocks, numberOfLambdaBins),
-    lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
-    mc_moves_probabilities(particleProbalities),
-    averageRosenbluthWeights(numberOfBlocks)
+Component::Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
+                     double P_c, double w, std::vector<Atom> atomList, size_t numberOfBlocks, size_t numberOfLambdaBins,
+                     const MCMoveProbabilitiesParticles &particleProbalities) noexcept(false)
+    : type(Type::Adsorbate),
+      componentId(componentId),
+      name(componentName),
+      criticalTemperature(T_c),
+      criticalPressure(P_c),
+      acentricFactor(w),
+      lambdaGC(numberOfBlocks, numberOfLambdaBins),
+      lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
+      mc_moves_probabilities(particleProbalities),
+      averageRosenbluthWeights(numberOfBlocks)
 {
   totalMass = 0.0;
-  for (const Atom& atom : atomList)
+  for (const Atom &atom : atomList)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     double mass = forceField.pseudoAtoms[atomType].mass;
@@ -159,33 +155,32 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
   computeRigidProperties();
 }
 
-
-
 // read the component from the molecule-file
-void Component::readComponent(const ForceField& forceField, const std::string& fileName)
+void Component::readComponent(const ForceField &forceField, const std::string &fileName)
 {
   const std::string defaultMoleculeFileName = fileName + ".json";
 
   std::string moleculeFileName = defaultMoleculeFileName;
-  if(!std::filesystem::exists(std::filesystem::path{moleculeFileName}))
+  if (!std::filesystem::exists(std::filesystem::path{moleculeFileName}))
   {
-    const char* env_p = std::getenv("RASPA_DIR");
+    const char *env_p = std::getenv("RASPA_DIR");
     if (env_p)
     {
       moleculeFileName = env_p + std::string("/") + defaultMoleculeFileName;
     }
   }
 
-  if (!std::filesystem::exists(moleculeFileName)) 
+  if (!std::filesystem::exists(moleculeFileName))
   {
     throw std::runtime_error(std::format("[Component reader]: File '{}' not found\n", moleculeFileName));
   }
 
   std::filesystem::path moleculePathfile = std::filesystem::path(moleculeFileName);
-  std::ifstream moleculeStream{ moleculePathfile };
-  if (!moleculeStream) 
+  std::ifstream moleculeStream{moleculePathfile};
+  if (!moleculeStream)
   {
-    throw std::runtime_error(std::format("[Component reader] File '{}' exists, but error opening file\n", moleculeFileName));
+    throw std::runtime_error(
+        std::format("[Component reader] File '{}' exists, but error opening file\n", moleculeFileName));
   }
 
   nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
@@ -194,7 +189,7 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   {
     parsed_data = nlohmann::json::parse(moleculeStream);
   }
-  catch (nlohmann::json::parse_error& ex)
+  catch (nlohmann::json::parse_error &ex)
   {
     throw std::runtime_error(std::format("[Component reader]: Parse error of file {} at byte {}\n{}\n",
                                          std::format("{}.json", fileName), ex.byte, ex.what()));
@@ -204,30 +199,33 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   {
     criticalTemperature = parsed_data.value("CriticalTemperature", 0.0);
   }
-  catch (nlohmann::json::exception& ex)
+  catch (nlohmann::json::exception &ex)
   {
-    throw std::runtime_error(std::format("[Component reader]: item 'CriticalTemperature' listed as {} must be floating point number\n{}\n",
-           parsed_data["CriticalTemperature"].dump(), ex.what()));
+    throw std::runtime_error(
+        std::format("[Component reader]: item 'CriticalTemperature' listed as {} must be floating point number\n{}\n",
+                    parsed_data["CriticalTemperature"].dump(), ex.what()));
   }
 
   try
   {
     criticalPressure = parsed_data.value("CriticalPressure", 0.0);
   }
-  catch (nlohmann::json::exception& ex)
+  catch (nlohmann::json::exception &ex)
   {
-    throw std::runtime_error(std::format("[Component reader]: item 'CriticalPressure' listed as {} must be floating point number\n{}\n",
-           parsed_data["CriticalPressure"].dump(), ex.what()));
+    throw std::runtime_error(
+        std::format("[Component reader]: item 'CriticalPressure' listed as {} must be floating point number\n{}\n",
+                    parsed_data["CriticalPressure"].dump(), ex.what()));
   }
 
   try
   {
     acentricFactor = parsed_data.value("AcentricFactor", 0.0);
   }
-  catch (nlohmann::json::exception& ex)
+  catch (nlohmann::json::exception &ex)
   {
-    throw std::runtime_error(std::format("[Component reader]: item 'AcentricFactor' listed as {} must be floating point number\n{}\n",
-           parsed_data["AcentricFactor"].dump(), ex.what()));
+    throw std::runtime_error(
+        std::format("[Component reader]: item 'AcentricFactor' listed as {} must be floating point number\n{}\n",
+                    parsed_data["AcentricFactor"].dump(), ex.what()));
   }
 
   size_t jsonNumberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
@@ -235,53 +233,61 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   definedAtoms.clear();
   definedAtoms.reserve(jsonNumberOfPseudoAtoms);
 
-  if(jsonNumberOfPseudoAtoms == 0)
+  if (jsonNumberOfPseudoAtoms == 0)
   {
     throw std::runtime_error(std::format("[Component reader]: key 'PseudoAtoms' empty]\n"));
   }
 
-  if(!parsed_data.contains("PseudoAtoms"))
+  if (!parsed_data.contains("PseudoAtoms"))
   {
-    throw std::runtime_error(std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
+    throw std::runtime_error(
+        std::format("[Component reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
   }
 
-  for (auto& [_, item ] : parsed_data["PseudoAtoms"].items())
+  for (auto &[_, item] : parsed_data["PseudoAtoms"].items())
   {
-    if(!item.is_array())
+    if (!item.is_array())
     {
       throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
     }
 
-
-    if(item.size() != 2)
+    if (item.size() != 2)
     {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be an array with two elements, "
-                "the pseudo-atom-name and an array with the x,y,z positions\n", item.dump()));
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an array with two elements, "
+                      "the pseudo-atom-name and an array with the x,y,z positions\n",
+                      item.dump()));
     }
 
-    if(!item[0].is_string())
+    if (!item[0].is_string())
     {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be an string (the name of the pseudo-atom)\n", item[0].dump()));
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an string (the name of the pseudo-atom)\n", item[0].dump()));
     }
     std::string pseudoAtomName = item[0].get<std::string>();
 
     // find atom-type based on read 'atomTypeString'
     std::optional<size_t> index = forceField.findPseudoAtom(pseudoAtomName);
-    if(!index.has_value())
+    if (!index.has_value())
     {
-      throw std::runtime_error(std::format("[Component reader]: unknown pseudo-atom '{}', please lookup type in in 'pseudo_atoms.json'\n", pseudoAtomName));
+      throw std::runtime_error(
+          std::format("[Component reader]: unknown pseudo-atom '{}', please lookup type in in 'pseudo_atoms.json'\n",
+                      pseudoAtomName));
     }
     size_t pseudoAtomType = index.value();
 
-    if(!item[1].is_array())
+    if (!item[1].is_array())
     {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be an array (with the positions)\n", item[1].dump()));
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an array (with the positions)\n", item[1].dump()));
     }
 
-    if(item[1].size() != 3)
+    if (item[1].size() != 3)
     {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be an array with three elements, "
-                "the x,y,z positions\n", item[1].dump()));
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an array with three elements, "
+                      "the x,y,z positions\n",
+                      item[1].dump()));
     }
 
     std::vector<double> position{};
@@ -289,18 +295,20 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
     {
       position = item[1].is_array() ? item[1].get<std::vector<double>>() : std::vector<double>{};
     }
-    catch (nlohmann::json::exception& ex)
+    catch (nlohmann::json::exception &ex)
     {
-      throw std::runtime_error(std::format("[Component reader]: item {} must be array of three floating point numbers \n{}\n",
-             item[1].dump(), ex.what()));
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be array of three floating point numbers \n{}\n",
+                      item[1].dump(), ex.what()));
     }
 
     double mass = forceField.pseudoAtoms[pseudoAtomType].mass;
     double charge = forceField.pseudoAtoms[pseudoAtomType].charge;
     double scaling = 1.0;
 
-    definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]) , charge, scaling, 0, static_cast<uint16_t>(pseudoAtomType),
-                           static_cast<uint8_t>(componentId), 0), mass});
+    definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]), charge, scaling, 0,
+                                 static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0),
+                            mass});
   }
 
   totalMass = 0.0;
@@ -312,12 +320,11 @@ void Component::readComponent(const ForceField& forceField, const std::string& f
   computeRigidProperties();
 }
 
-
 void Component::computeRigidProperties()
 {
   double3 com{};
   double total_mass{};
-  for(auto &[atom, mass]: definedAtoms)
+  for (auto &[atom, mass] : definedAtoms)
   {
     com += mass * atom.position;
     total_mass += mass;
@@ -325,7 +332,7 @@ void Component::computeRigidProperties()
   com = com / total_mass;
 
   double3x3 inertiaTensor{};
-  for(auto &[atom, mass]: definedAtoms)
+  for (auto &[atom, mass] : definedAtoms)
   {
     double3 dr = atom.position - com;
     inertiaTensor.ax += mass * dr.x * dr.x;
@@ -343,16 +350,16 @@ void Component::computeRigidProperties()
   double3 eigenvalues{};
   double3x3 eigenvectors{};
   inertiaTensor.EigenSystemSymmetric(eigenvalues, eigenvectors);
-  
+
   inertiaVector = double3{0.0, 0.0, 0.0};
   atoms.clear();
-  for(auto [atom, mass]: definedAtoms)
+  for (auto [atom, mass] : definedAtoms)
   {
     double3 dr = atom.position - com;
     double3 pos = eigenvectors.transpose() * dr;
-    if(std::abs(pos.x)<1e-8) pos.x=0.0;
-    if(std::abs(pos.y)<1e-8) pos.y=0.0;
-    if(std::abs(pos.z)<1e-8) pos.z=0.0;
+    if (std::abs(pos.x) < 1e-8) pos.x = 0.0;
+    if (std::abs(pos.y) < 1e-8) pos.y = 0.0;
+    if (std::abs(pos.z) < 1e-8) pos.z = 0.0;
 
     inertiaVector.x += mass * (pos.y * pos.y + pos.z * pos.z);
     inertiaVector.y += mass * (pos.x * pos.x + pos.z * pos.z);
@@ -365,12 +372,12 @@ void Component::computeRigidProperties()
 
   // set axis system: Ixx >= Iyy >= Izz
   double rot_xyz = std::max({inertiaVector.x, inertiaVector.y, inertiaVector.z});
-  if(rot_xyz >= inertiaVector.x)
+  if (rot_xyz >= inertiaVector.x)
   {
-    if(inertiaVector.y >= rot_xyz)
+    if (inertiaVector.y >= rot_xyz)
     {
-      for(auto &atom : atoms)
-      { 
+      for (auto &atom : atoms)
+      {
         double temp = atom.position.x;
         atom.position.x = atom.position.y;
         atom.position.y = -temp;
@@ -378,10 +385,10 @@ void Component::computeRigidProperties()
       inertiaVector.y = inertiaVector.x;
       inertiaVector.x = rot_xyz;
     }
-    else if(inertiaVector.z >= rot_xyz)
+    else if (inertiaVector.z >= rot_xyz)
     {
-      for(auto &atom : atoms)
-      { 
+      for (auto &atom : atoms)
+      {
         double temp = atom.position.x;
         atom.position.x = atom.position.z;
         atom.position.z = -temp;
@@ -390,10 +397,10 @@ void Component::computeRigidProperties()
       inertiaVector.x = rot_xyz;
     }
   }
-  if(inertiaVector.z > inertiaVector.y)
+  if (inertiaVector.z > inertiaVector.y)
   {
-    for(auto &atom : atoms)
-    { 
+    for (auto &atom : atoms)
+    {
       double temp = atom.position.y;
       atom.position.y = atom.position.z;
       atom.position.z = -temp;
@@ -409,18 +416,20 @@ void Component::computeRigidProperties()
   inverseInertiaVector.y = (inertiaVector.y < rotlim) ? 0.0 : 1.0 / inertiaVector.y;
   inverseInertiaVector.z = (inertiaVector.z < rotlim) ? 0.0 : 1.0 / inertiaVector.z;
 
-  double rotall = inertiaVector.x + inertiaVector.y + inertiaVector.z > 1.0e-5 ? inertiaVector.x + inertiaVector.y + inertiaVector.z : 1.0;
+  double rotall = inertiaVector.x + inertiaVector.y + inertiaVector.z > 1.0e-5
+                      ? inertiaVector.x + inertiaVector.y + inertiaVector.z
+                      : 1.0;
 
   size_t index = 0;
-  if(inertiaVector.x / rotall < 1.0e-5) ++index;
-  if(inertiaVector.y / rotall < 1.0e-5) ++index;
-  if(inertiaVector.z / rotall < 1.0e-5) ++index;
+  if (inertiaVector.x / rotall < 1.0e-5) ++index;
+  if (inertiaVector.y / rotall < 1.0e-5) ++index;
+  if (inertiaVector.z / rotall < 1.0e-5) ++index;
 
   translationalDegreesOfFreedom = 3;
   rotationalDegreesOfFreedom = 3;
-  if(inertiaVector.x / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
-  if(inertiaVector.y / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
-  if(inertiaVector.z / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+  if (inertiaVector.x / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+  if (inertiaVector.y / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
+  if (inertiaVector.z / rotall < 1.0e-5) --rotationalDegreesOfFreedom;
 
   shapeType = Component::Shape{index};
 }
@@ -438,17 +447,16 @@ std::vector<Atom> Component::rotatePositions(const simd_quatd &q) const
   return rotatedAtoms;
 }
 
-
 double3 Component::computeCenterOfMass(std::vector<Atom> atom_list) const
 {
   std::vector<std::pair<Atom, double>> a{definedAtoms};
-  for(size_t i = 0; i != a.size(); ++i)
+  for (size_t i = 0; i != a.size(); ++i)
   {
     a[i].first.position = atom_list[i].position;
   }
   double3 com{};
   double total_mass{};
-  for(const auto &[atom, mass]: a)
+  for (const auto &[atom, mass] : a)
   {
     com += mass * atom.position;
     total_mass += mass;
@@ -456,8 +464,7 @@ double3 Component::computeCenterOfMass(std::vector<Atom> atom_list) const
   return com / total_mass;
 }
 
-
-std::string Component::printStatus(const ForceField& forceField) const
+std::string Component::printStatus(const ForceField &forceField) const
 {
   std::ostringstream stream;
 
@@ -470,7 +477,7 @@ std::string Component::printStatus(const ForceField& forceField) const
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
   std::print(stream << std::boolalpha, "    Swapable:                     {}\n\n", swapable);
   std::print(stream, "    Mass:                         {} [-]\n", totalMass);
-  if(fugacityCoefficient.has_value())
+  if (fugacityCoefficient.has_value())
   {
     std::print(stream, "    Fugacity coefficient:         {} [-]\n", fugacityCoefficient.value());
   }
@@ -480,18 +487,18 @@ std::string Component::printStatus(const ForceField& forceField) const
 
   std::print(stream, "    Number Of Atoms:    {}\n", atoms.size());
   std::print(stream, "    CBMC starting bead: {}\n", startingBead);
-  for(size_t i = 0; i != atoms.size(); ++i)
+  for (size_t i = 0; i != atoms.size(); ++i)
   {
     size_t atomType = static_cast<size_t>(atoms[i].type);
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
-    std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
-                   i, atomTypeString, atoms[i].position.x, atoms[i].position.y, 
-                   atoms[i].position.z, atoms[i].charge);
+    std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", i, atomTypeString,
+               atoms[i].position.x, atoms[i].position.y, atoms[i].position.z, atoms[i].charge);
   }
-  std::print(stream, "    Diagonalized inertia-vector:      {:10.8f} {:10.8f} {:10.8f}\n", inertiaVector.x, inertiaVector.y, inertiaVector.z);
+  std::print(stream, "    Diagonalized inertia-vector:      {:10.8f} {:10.8f} {:10.8f}\n", inertiaVector.x,
+             inertiaVector.y, inertiaVector.z);
   std::print(stream, "    Translational degrees of freedom: {}\n", translationalDegreesOfFreedom);
   std::print(stream, "    Rotational degrees of freedom:    {}\n", rotationalDegreesOfFreedom);
-  switch(shapeType)
+  switch (shapeType)
   {
     case Shape::NonLinear:
       std::print(stream, "    Shape of the molecule is: 'Non-linear'\n");
@@ -505,8 +512,7 @@ std::string Component::printStatus(const ForceField& forceField) const
   }
   std::print(stream, "    Net-charge:      {:10.8f}\n", netCharge);
   std::print(stream, "\n");
- 
-  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities; 
+  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities;
   std::print(stream, "    Translation-move probability:             {} [-]\n", mc.probabilityTranslationMove);
   std::print(stream, "    Random translation-move probability:      {} [-]\n", mc.probabilityRandomTranslationMove);
   std::print(stream, "    Rotation-move probability:                {} [-]\n", mc.probabilityRotationMove);
@@ -533,17 +539,106 @@ std::string Component::printStatus(const ForceField& forceField) const
     std::print(stream, "        {}", bonds[i].print());
   }
   std::print(stream, "\n");
-
   return stream.str();
 }
 
+void Component::logStatus(HDF5Handler &hdf5, const ForceField &forceField) const
+{
+  std::string group = std::format("{}_{}", componentId, name);
+  hdf5.createGroup(group);
+  hdf5.logMetaInfo(group, "Critical temperature [K]", criticalTemperature);
+  hdf5.logMetaInfo(group, "Critical pressure [Pa]", criticalPressure);
+  hdf5.logMetaInfo(group, "Acentric factor [-]", acentricFactor);
+  hdf5.logMetaInfo(group, "Mol fraction [-]", molFraction);
+  hdf5.logMetaInfo(group, "Swappable", std::format("{}", swapable));
+  hdf5.logMetaInfo(group, "Mass", totalMass);
+  if (fugacityCoefficient.has_value())
+  {
+    hdf5.logMetaInfo(group, "Fugacity coefficient [-]", fugacityCoefficient.value());
+  }
+  hdf5.logMetaInfo(group, "Bulk fluid density [-]", bulkFluidDensity);
+  hdf5.logMetaInfo(group, "Compressibility [-]", compressibility);
+  hdf5.logMetaInfo(group, "Excess molecules [-]", amountOfExcessMolecules);
+  hdf5.logMetaInfo(group, "Number of Atoms", atoms.size());
+  hdf5.logMetaInfo(group, "CBMC starting bead", startingBead);
 
-std::vector<Atom> Component::rotateRandomlyAroundCenterOfMass([[maybe_unused]]const simd_quatd &q)
+  std::vector<double> position(3 * atoms.size());
+  std::vector<double> charge(atoms.size());
+  std::vector<std::string> typenames(atoms.size());
+  for (size_t i = 0; i < atoms.size(); i++)
+  {
+    size_t atomType = static_cast<size_t>(atoms[i].type);
+    typenames[i] = forceField.pseudoAtoms[atomType].name;
+    position[3 * i] = atoms[i].position.x;
+    position[3 * i + 1] = atoms[i].position.y;
+    position[3 * i + 2] = atoms[i].position.z;
+    charge[i] = atoms[i].charge;
+  }
+
+  hdf5.createDataset<double>(group, "positions", {atoms.size(), 3}, {{"dimensions", "(numberOfAtoms, 3)"}});
+  hdf5.logVector(group, "positions", position);
+
+  hdf5.createDataset<double>(group, "charges", {atoms.size()}, {{"dimensions", "(numberOfAtoms, )"}});
+  hdf5.logVector(group, "charges", charge);
+
+  hdf5.createStringDataset(group, "types", {atoms.size()}, 8);
+  hdf5.logVector<std::string>(group, "types", typenames);
+
+  hdf5.createDataset<double>(group, "Diagonalized inertia-vector", {3}, {{"dimensions", "(3, )"}});
+  hdf5.logVector(group, "Diagonalized inertia-vector",
+                 std::vector<double>{inertiaVector.x, inertiaVector.y, inertiaVector.z});
+  hdf5.logMetaInfo(group, "Translational degrees of freedom", translationalDegreesOfFreedom);
+  hdf5.logMetaInfo(group, "Rotational degrees of freedom", rotationalDegreesOfFreedom);
+  switch (shapeType)
+  {
+    case Shape::NonLinear:
+
+      hdf5.logMetaInfo(group, "Shape", "Non-linear");
+      break;
+    case Shape::Linear:
+      hdf5.logMetaInfo(group, "Shape", "Linear");
+      break;
+    case Shape::Point:
+      hdf5.logMetaInfo(group, "Shape", "Point");
+      break;
+  }
+
+  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities;
+  hdf5.logMetaInfo(group, "Translation-move probability [-]", mc.probabilityTranslationMove);
+  hdf5.logMetaInfo(group, "Random translation-move probability [-]", mc.probabilityRandomTranslationMove);
+  hdf5.logMetaInfo(group, "Rotation-move probability [-]", mc.probabilityRotationMove);
+  hdf5.logMetaInfo(group, "Random rotation-move probability [-]", mc.probabilityRandomRotationMove);
+  hdf5.logMetaInfo(group, "Volume-move probability [-]", mc.probabilityVolumeMove);
+  hdf5.logMetaInfo(group, "Reinsertion (CBMC) probability [-]", mc.probabilityReinsertionMove_CBMC);
+  hdf5.logMetaInfo(group, "Identity-change (CBMC) probability [-]", mc.probabilityIdentityChangeMove_CBMC);
+  hdf5.logMetaInfo(group, "Swap-move (CBMC) probability [-]", mc.probabilitySwapMove_CBMC);
+  hdf5.logMetaInfo(group, "Swap-move (CFCMC) probability [-]", mc.probabilitySwapMove_CFCMC);
+  hdf5.logMetaInfo(group, "Swap-move (CFCMC/CBMC) probability [-]", mc.probabilitySwapMove_CFCMC_CBMC);
+  hdf5.logMetaInfo(group, "Gibbs Volume-move probability [-]", mc.probabilityGibbsVolumeMove);
+  hdf5.logMetaInfo(group, "Gibbs Swap-move (CBMC) probability [-]", mc.probabilityGibbsSwapMove_CBMC);
+  hdf5.logMetaInfo(group, "Gibbs Swap-move (CFCMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC);
+  hdf5.logMetaInfo(group, "Gibbs Swap-move (CFCMC/CBMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC_CBMC);
+  hdf5.logMetaInfo(group, "Widom probability [-]", mc.probabilityWidomMove);
+  hdf5.logMetaInfo(group, "Widom (CFCMC) probability [-]", mc.probabilityWidomMove_CFCMC);
+  hdf5.logMetaInfo(group, "Widom (CFCMC/CBMC) probability [-]", mc.probabilityWidomMove_CFCMC_CBMC);
+  hdf5.logMetaInfo(group, "Parallel Tempering Swap [-]", mc.probabilityParallelTemperingSwap);
+
+  hdf5.logMetaInfo(group, "Number of Bonds", bonds.size());
+  std::vector<std::string> bondTypes(bonds.size());
+  for (size_t i = 0; i < bonds.size(); ++i)
+  {
+    bondTypes[i] = bonds[i].print();
+  }
+  hdf5.createStringDataset(group, "bondtypes", {bonds.size()}, 128);
+  hdf5.logVector<std::string>(group, "bondtypes", bondTypes);
+}
+
+std::vector<Atom> Component::rotateRandomlyAroundCenterOfMass([[maybe_unused]] const simd_quatd &q)
 {
   double3 com{};
 
   double total_mass{};
-  for(auto &[atom, mass]: definedAtoms)
+  for (auto &[atom, mass] : definedAtoms)
   {
     com += mass * atom.position;
     totalMass += mass;
@@ -558,9 +653,8 @@ std::vector<double3> Component::randomlyRotatedPositionsAroundStartingBead(Rando
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<double3> randomPositions{};
-  std::transform(std::begin(atoms), std::end(atoms),
-          std::back_inserter(randomPositions), [&](const Atom& atom) 
-          {return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
+  std::transform(std::begin(atoms), std::end(atoms), std::back_inserter(randomPositions), [&](const Atom &atom)
+                 { return randomRotationMatrix * (atom.position - atoms[startingBead].position); });
   return randomPositions;
 }
 
@@ -570,9 +664,9 @@ std::vector<Atom> Component::recenteredCopy(double scaling, size_t moleculeId) c
 
   for (size_t i = 0; i != atoms.size(); ++i)
   {
-    new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, 
-                 atoms[i].charge, scaling, static_cast<uint32_t>(moleculeId), static_cast<uint16_t>(atoms[i].type), 
-                 static_cast<uint8_t>(componentId), static_cast<uint8_t>(atoms[i].groupId));
+    new_atoms[i] = Atom(atoms[i].position - atoms[startingBead].position, atoms[i].charge, scaling,
+                        static_cast<uint32_t>(moleculeId), static_cast<uint16_t>(atoms[i].type),
+                        static_cast<uint8_t>(componentId), static_cast<uint8_t>(atoms[i].groupId));
   }
 
   return new_atoms;
@@ -590,16 +684,17 @@ std::vector<Atom> Component::copyAtoms(std::span<Atom> molecule, double scaling,
   return copied_atoms;
 }
 
-std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position, 
-                                   std::span<Atom> molecule, double scaling, size_t moleculeId) const
+std::vector<Atom> Component::copyAtomsRandomlyRotatedAt(RandomNumber &random, double3 position,
+                                                        std::span<Atom> molecule, double scaling,
+                                                        size_t moleculeId) const
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
   std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
   for (size_t i = 0; i != atoms.size(); ++i)
   {
     copied_atoms[i].setScaling(scaling);
-    copied_atoms[i].position = position + randomRotationMatrix * 
-                                          (molecule[i].position - molecule[startingBead].position);
+    copied_atoms[i].position =
+        position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
     copied_atoms[i].moleculeId = static_cast<uint32_t>(moleculeId);
   }
   return copied_atoms;
@@ -615,20 +710,19 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
   return copied_atoms;
 }
 
-
 std::string Component::printBreakthroughStatus() const
 {
   std::ostringstream stream;
 
   std::print(stream, "Component {} [{}]\n", componentId, name);
-  if(isCarrierGas)
+  if (isCarrierGas)
   {
     std::print(stream, "    carrier-gas\n");
 
     std::print(stream, "{}", isotherm.print());
   }
   std::print(stream, "    mol-fraction in the gas:   {} [-]\n", molFraction);
-  if(!isCarrierGas)
+  if (!isCarrierGas)
   {
     std::print(stream, "    mass-transfer coefficient: {} [1/s]\n", massTransferCoefficient);
     std::print(stream, "    diffusion coefficient:     {} [m^2/s]\n", axialDispersionCoefficient);
@@ -683,21 +777,21 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.chiralCenters;
   archive << c.bonds;
   archive << c.connectivityTable;
-  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  //std::vector<std::pair<size_t, size_t>> intraVDW{};
-  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  // std::vector<std::pair<size_t, size_t>> intraVDW{};
+  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
@@ -706,7 +800,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
 
   archive << c.averageRosenbluthWeights;
 
-  //MultiSiteIsotherm isotherm{};      // isotherm information
+  // MultiSiteIsotherm isotherm{};      // isotherm information
   archive << c.massTransferCoefficient;
   archive << c.axialDispersionCoefficient;
   archive << c.isCarrierGas;
@@ -726,11 +820,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > c.versionNumber)
+  if (versionNumber > c.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Component' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Component' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
   }
 
   archive >> c.type;
@@ -773,21 +867,21 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.chiralCenters;
   archive >> c.bonds;
   archive >> c.connectivityTable;
-  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  //std::vector<std::pair<size_t, size_t>> intraVDW{};
-  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  // std::vector<std::pair<size_t, size_t>> intraVDW{};
+  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;
@@ -796,7 +890,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 
   archive >> c.averageRosenbluthWeights;
 
-  //MultiSiteIsotherm isotherm{};      // isotherm information
+  // MultiSiteIsotherm isotherm{};      // isotherm information
   archive >> c.massTransferCoefficient;
   archive >> c.axialDispersionCoefficient;
   archive >> c.isCarrierGas;
@@ -812,7 +906,4 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   return archive;
 }
 
-std::string Component::repr() const
-{
-  return std::string("Component test");
-}
+std::string Component::repr() const { return std::string("Component test"); }

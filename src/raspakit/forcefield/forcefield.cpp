@@ -1,31 +1,31 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <cstdlib>
 #include <iostream>
-#include <sstream>
-#include <vector>
-#include <array>
 #include <map>
-#include <cmath>
+#include <numbers>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <optional>
-#include <numbers>
-#include <algorithm>
+#include <vector>
 #if defined(__has_include) && __has_include(<format>)
 #include <format>
 #endif
-#include <exception>
-#include <source_location>
 #include <complex>
-#include <type_traits>
-#include <iterator>
+#include <exception>
 #include <functional>
+#include <iterator>
+#include <source_location>
+#include <type_traits>
 #if defined(__has_include) && __has_include(<print>)
-  #include <print>
+#include <print>
 #endif
 #endif
 
@@ -54,12 +54,12 @@ import <type_traits>;
 import <iterator>;
 import <functional>;
 #if defined(__has_include) && __has_include(<print>)
-  import <print>;
+import <print>;
 #endif
 #endif
 
 #if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import print;
 #endif
 
 import archive;
@@ -72,18 +72,18 @@ import double4;
 import stringutils;
 import pseudo_atom;
 import vdwparameters;
+import hdf5;
 
-
-ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions, 
-                       [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted, 
-                       bool applyTailCorrections) noexcept(false) :
-    data(pseudoAtoms.size()* pseudoAtoms.size(), VDWParameters(0.0, 0.0)),
-    shiftPotentials(pseudoAtoms.size()* pseudoAtoms.size(), shifted),
-    tailCorrections(pseudoAtoms.size()* pseudoAtoms.size(), applyTailCorrections),
-    cutOffVDW(cutOff), 
-    cutOffCoulomb(cutOff),
-    numberOfPseudoAtoms(pseudoAtoms.size()), 
-    pseudoAtoms(pseudoAtoms)
+ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions,
+                       [[maybe_unused]] MixingRule mixingRule, double cutOff, bool shifted,
+                       bool applyTailCorrections) noexcept(false)
+    : data(pseudoAtoms.size() * pseudoAtoms.size(), VDWParameters(0.0, 0.0)),
+      shiftPotentials(pseudoAtoms.size() * pseudoAtoms.size(), shifted),
+      tailCorrections(pseudoAtoms.size() * pseudoAtoms.size(), applyTailCorrections),
+      cutOffVDW(cutOff),
+      cutOffCoulomb(cutOff),
+      numberOfPseudoAtoms(pseudoAtoms.size()),
+      pseudoAtoms(pseudoAtoms)
 {
   for (size_t i = 0; i < selfInteractions.size(); ++i)
   {
@@ -101,11 +101,11 @@ void ForceField::applyMixingRule()
   {
     for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
     {
-      double mix0 = 
-        std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
-      double mix1 = 
-        0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
-      
+      double mix0 =
+          std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
+      double mix1 =
+          0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
+
       data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
       data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
       data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
@@ -133,48 +133,49 @@ void ForceField::preComputeTailCorrection()
     {
       data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
 
-      if(tailCorrections[i * numberOfPseudoAtoms + j])
+      if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
         switch (data[i * numberOfPseudoAtoms + j].type)
         {
-        case VDWParameters::Type::LennardJones:
-        {
-          double arg1 = data[i * numberOfPseudoAtoms + j].parameters.x;
-          double arg2 = data[i * numberOfPseudoAtoms + j].parameters.y;
-          double term3 = (arg2/cutOffVDW) * (arg2/cutOffVDW) * (arg2/cutOffVDW);
-          double term6 = term3 * term3;
-          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 
-            (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
-          break;
-        }
-        default:
-          data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
-          break;
+          case VDWParameters::Type::LennardJones:
+          {
+            double arg1 = data[i * numberOfPseudoAtoms + j].parameters.x;
+            double arg2 = data[i * numberOfPseudoAtoms + j].parameters.y;
+            double term3 = (arg2 / cutOffVDW) * (arg2 / cutOffVDW) * (arg2 / cutOffVDW);
+            double term6 = term3 * term3;
+            data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy =
+                (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+            break;
+          }
+          default:
+            data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
+            break;
         }
       }
     }
   }
 }
 
-
-std::optional<ForceField> ForceField::readForceField(std::optional<std::string> directoryName, std::string forceFieldFileName) noexcept(false)
+std::optional<ForceField> ForceField::readForceField(std::optional<std::string> directoryName,
+                                                     std::string forceFieldFileName) noexcept(false)
 {
   // try to look in directory 'directoryName' if set, otherwise the local directory
-  std::filesystem::path forceFieldPathfile = std::filesystem::path(directoryName.value_or(".") + "/" + forceFieldFileName);
-  if (!std::filesystem::exists(forceFieldPathfile)) 
+  std::filesystem::path forceFieldPathfile =
+      std::filesystem::path(directoryName.value_or(".") + "/" + forceFieldFileName);
+  if (!std::filesystem::exists(forceFieldPathfile))
   {
     // if not found, try the install directory and directory 'directoryName' in 'share/raspa3/forcefields'
     const char* env_p = std::getenv("RASPA_DIR");
-    forceFieldPathfile = std::filesystem::path(std::string(env_p) + "/share/raspa3/forcefields/" 
-                                              + directoryName.value_or(".") + "/" + forceFieldFileName);
+    forceFieldPathfile = std::filesystem::path(std::string(env_p) + "/share/raspa3/forcefields/" +
+                                               directoryName.value_or(".") + "/" + forceFieldFileName);
     if (!std::filesystem::exists(forceFieldPathfile))
     {
       return std::nullopt;
     }
   }
 
-  std::ifstream forceFieldStream{ forceFieldPathfile };
-  if (!forceFieldStream) 
+  std::ifstream forceFieldStream{forceFieldPathfile};
+  if (!forceFieldStream)
   {
     return std::nullopt;
   }
@@ -187,16 +188,18 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
   }
   catch (nlohmann::json::parse_error& ex)
   {
-    throw std::runtime_error(std::format("[Forcefield reader]: Parse error of file {} at byte {}\n{}\n", forceFieldFileName, ex.byte, ex.what()));
+    throw std::runtime_error(std::format("[Forcefield reader]: Parse error of file {} at byte {}\n{}\n",
+                                         forceFieldFileName, ex.byte, ex.what()));
   }
 
-  if(!parsed_data.contains("PseudoAtoms"))
+  if (!parsed_data.contains("PseudoAtoms"))
   {
-    throw std::runtime_error(std::format("[Forcefield reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
+    throw std::runtime_error(
+        std::format("[Forcefield reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n"));
   }
   size_t numberOfPseudoAtoms = parsed_data["PseudoAtoms"].size();
 
-  if(numberOfPseudoAtoms == 0)
+  if (numberOfPseudoAtoms == 0)
   {
     throw std::runtime_error(std::format("[ReadPseudoAtoms]: key 'PseudoAtoms' empty]\n"));
   }
@@ -213,7 +216,7 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
     size_t jsonPrintToOutput = item["print_to_output"].is_boolean() ? item["print_to_output"].get<bool>() : true;
     std::string jsonSource = item["source"].is_string() ? item["source"].get<std::string>() : std::string{};
 
-    size_t atomicNumber{ 1 };
+    size_t atomicNumber{1};
     auto it = PredefinedElements::atomicNumberData.find(jsonElement);
     if (it != PredefinedElements::atomicNumberData.end())
     {
@@ -225,13 +228,14 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
 
   std::vector<VDWParameters> jsonSelfInteractions(numberOfPseudoAtoms);
 
-  if(!parsed_data.contains("SelfInteractions"))
+  if (!parsed_data.contains("SelfInteractions"))
   {
-    throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: No pseudo-atoms found [keyword 'SelfInteractions' missing]\n"));
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: No pseudo-atoms found [keyword 'SelfInteractions' missing]\n"));
   }
   size_t jsonNumberOfPseudoAtoms = parsed_data["SelfInteractions"].size();
 
-  if(jsonNumberOfPseudoAtoms == 0)
+  if (jsonNumberOfPseudoAtoms == 0)
   {
     throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: key 'SelfInteractions' empty]\n"));
   }
@@ -244,24 +248,29 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
     std::vector<double> scannedJsonParameters{};
     try
     {
-      scannedJsonParameters = item["parameters"].is_array() ? item["parameters"].get<std::vector<double>>() : std::vector<double>{};
+      scannedJsonParameters =
+          item["parameters"].is_array() ? item["parameters"].get<std::vector<double>>() : std::vector<double>{};
     }
     catch (nlohmann::json::exception& ex)
     {
-      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: parameters {} must be array of numbers \n{}\n", 
-             item["parameters"].dump(), ex.what()));
+      throw std::runtime_error(
+          std::format("[ReadForceFieldSelfInteractions]: parameters {} must be array of numbers \n{}\n",
+                      item["parameters"].dump(), ex.what()));
     }
 
     std::optional<size_t> index = ForceField::findPseudoAtom(jsonPseudoAtoms, jsonName);
 
-    if(!index.has_value())
+    if (!index.has_value())
     {
-      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define in 'pseudo_atoms.json'\n", jsonName));
+      throw std::runtime_error(std::format(
+          "[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define in 'pseudo_atoms.json'\n",
+          jsonName));
     }
 
-    if(scannedJsonParameters.size() < 2)
+    if (scannedJsonParameters.size() < 2)
     {
-      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n", item["parameters"].dump()));
+      throw std::runtime_error(
+          std::format("[ReadForceFieldSelfInteractions]: incorrect vdw parameters {}\n", item["parameters"].dump()));
     }
 
     double param0 = scannedJsonParameters[0];
@@ -271,57 +280,57 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
   }
 
   MixingRule jsonMixingRule{MixingRule::Lorentz_Berthelot};
-  if(parsed_data["MixingRule"].is_string())
+  if (parsed_data["MixingRule"].is_string())
   {
-    if(caseInSensStringCompare(parsed_data["MixingRule"].get<std::string>(), "Lorentz-Berthelot"))
+    if (caseInSensStringCompare(parsed_data["MixingRule"].get<std::string>(), "Lorentz-Berthelot"))
     {
     }
   }
 
   bool jsonShiftPotentials{true};
-  if(parsed_data["TruncationMethod"].is_string())
+  if (parsed_data["TruncationMethod"].is_string())
   {
-    if(caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "shifted"))
+    if (caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "shifted"))
     {
       jsonShiftPotentials = true;
     }
-    else if(caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "truncated"))
+    else if (caseInSensStringCompare(parsed_data["TruncationMethod"].get<std::string>(), "truncated"))
     {
       jsonShiftPotentials = false;
     }
   }
 
   bool jsonTailCorrections{false};
-  if(parsed_data["TailCorrections"].is_boolean())
+  if (parsed_data["TailCorrections"].is_boolean())
   {
-    if(parsed_data["TailCorrections"].get<bool>())
+    if (parsed_data["TailCorrections"].get<bool>())
     {
       jsonTailCorrections = true;
     }
   }
 
   double cutOff = 12.0;
-  return ForceField{jsonPseudoAtoms, jsonSelfInteractions, jsonMixingRule, cutOff, jsonShiftPotentials, jsonTailCorrections};
+  return ForceField{jsonPseudoAtoms, jsonSelfInteractions, jsonMixingRule,
+                    cutOff,          jsonShiftPotentials,  jsonTailCorrections};
 }
-
 
 std::string ForceField::printPseudoAtomStatus() const
 {
   std::ostringstream stream;
- 
+
   std::print(stream, "Pseudo-atoms\n");
   std::print(stream, "===============================================================================\n\n");
 
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-      std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", 
-                         i, pseudoAtoms[i].name, pseudoAtoms[i].mass, pseudoAtoms[i].charge);
+    std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].mass,
+               pseudoAtoms[i].charge);
   }
   std::print(stream, "\n");
 
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    if(!pseudoAtoms[i].source.empty())
+    if (!pseudoAtoms[i].source.empty())
     {
       std::print(stream, "{:3d} - {:8} {}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].source);
     }
@@ -344,64 +353,127 @@ std::string ForceField::printForceFieldStatus() const
     {
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
-      case VDWParameters::Type::LennardJones:
-        std::print(stream, "{:8} - {:8} {} p₀/kʙ: {:9.5f} [K], p₁: {:8.5f} [Å]\n",
-            pseudoAtoms[i].name, pseudoAtoms[j].name, "Lennard-Jones",
-            Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
-            data[i * numberOfPseudoAtoms + j].parameters.y);
-        std::print(stream, "{:33} shift: {:9.5f} [K], tailcorrections: {}\n",
-            std::string(""),
-            Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
-            tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
-        break;
-      default:
-        break;
+        case VDWParameters::Type::LennardJones:
+          std::print(stream, "{:8} - {:8} {} p₀/kʙ: {:9.5f} [K], p₁: {:8.5f} [Å]\n", pseudoAtoms[i].name,
+                     pseudoAtoms[j].name, "Lennard-Jones",
+                     Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
+                     data[i * numberOfPseudoAtoms + j].parameters.y);
+          std::print(stream, "{:33} shift: {:9.5f} [K], tailcorrections: {}\n", std::string(""),
+                     Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
+                     tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
+          break;
+        default:
+          break;
       }
     }
   }
   std::print(stream, "\n");
-  if(automaticEwald)
+  if (automaticEwald)
   {
     std::print(stream, "Ewald precision: {}\n", EwaldPrecision);
     std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
-    std::print(stream, "Ewald k-vectors: {} {} {}\n", 
-                       numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y,
+               numberOfWaveVectors.z);
   }
   else
   {
     std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
-    std::print(stream, "Ewald k-vectors: {} {} {}\n", 
-                       numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y,
+               numberOfWaveVectors.z);
   }
   std::print(stream, "\n\n");
 
   return stream.str();
 }
 
+void ForceField::logPseudoAtomStatus(HDF5Handler& hdf5) const
+{
+  hdf5.createGroup("forcefield");
+
+  std::vector<double> masses(numberOfPseudoAtoms);
+  std::vector<double> charges(numberOfPseudoAtoms);
+  std::vector<std::string> names(numberOfPseudoAtoms);
+  std::vector<std::string> sources(numberOfPseudoAtoms);
+  for (size_t i = 0; i < numberOfPseudoAtoms; i++)
+  {
+    masses[i] = pseudoAtoms[i].mass;
+    charges[i] = pseudoAtoms[i].charge;
+    names[i] = pseudoAtoms[i].name;
+    sources[i] = pseudoAtoms[i].source;
+  }
+
+  hdf5.createDataset<double>("forcefield", "mass", {numberOfPseudoAtoms}, {{"dimensions", "(numberOfPseudoAtoms, )"}});
+  hdf5.logVector("forcefield", "mass", masses);
+  hdf5.createDataset<double>("forcefield", "charge", {numberOfPseudoAtoms},
+                             {{"dimensions", "(numberOfPseudoAtoms, )"}});
+  hdf5.logVector("forcefield", "charge", charges);
+  hdf5.createStringDataset("forcefield", "names", {numberOfPseudoAtoms}, 8);
+  hdf5.logVector<std::string>("forcefield", "names", names);
+  hdf5.createStringDataset("forcefield", "sources", {numberOfPseudoAtoms}, 128);
+  hdf5.logVector<std::string>("forcefield", "sources", sources);
+}
+
+void ForceField::logForceFieldStatus(HDF5Handler& hdf5) const
+{
+  std::vector<double> epsilons(numberOfPseudoAtoms * numberOfPseudoAtoms);
+  std::vector<double> sigmas(numberOfPseudoAtoms * numberOfPseudoAtoms);
+  std::vector<double> shifts(numberOfPseudoAtoms * numberOfPseudoAtoms);
+  size_t count = 0;
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    {
+      epsilons[count] = Units::EnergyToKelvin * data[count].parameters.x;
+      sigmas[count] = data[count].parameters.y;
+      shifts[count] = Units::EnergyToKelvin * data[count].shift;
+      count++;
+    }
+  }
+  hdf5.createDataset<double>("forcefield", "epsilon", {numberOfPseudoAtoms, numberOfPseudoAtoms},
+                             {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
+  hdf5.logVector("forcefield", "epsilon", epsilons);
+  hdf5.createDataset<double>("forcefield", "sigma", {numberOfPseudoAtoms, numberOfPseudoAtoms},
+                             {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
+  hdf5.logVector("forcefield", "epsilon", sigmas);
+  hdf5.createDataset<double>("forcefield", "shift", {numberOfPseudoAtoms, numberOfPseudoAtoms},
+                             {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
+  hdf5.logVector("forcefield", "shift", shifts);
+
+  hdf5.createDataset<bool>("forcefield", "tailcorrections", {numberOfPseudoAtoms, numberOfPseudoAtoms},
+                           {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
+  hdf5.logVector<bool>("forcefield", "tailcorrections", tailCorrections);
+
+  if (automaticEwald)
+  {
+    hdf5.logMetaInfo("forcefield", "ewald_precision", std::format("{}", EwaldPrecision));
+  }
+  hdf5.logMetaInfo("forcefield", "ewald_alpha", std::format("{}", EwaldAlpha));
+  hdf5.createDataset<int>("forcefield", "ewald_kvectors", {3}, {{"dimensions", "(xyz, )"}});
+  hdf5.logVector("forcefield", "ewald_kvectors",
+                 std::vector<int>{numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z});
+}
 
 std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
 {
-  std::vector<PseudoAtom>::const_iterator match = std::find_if(
-        pseudoAtoms.begin(), pseudoAtoms.end(),
-        [&name](const PseudoAtom& x) { return x.name == name; });
+  std::vector<PseudoAtom>::const_iterator match =
+      std::find_if(pseudoAtoms.begin(), pseudoAtoms.end(), [&name](const PseudoAtom& x) { return x.name == name; });
   if (match != std::end(pseudoAtoms))
   {
     return static_cast<size_t>(std::distance(pseudoAtoms.begin(), match));
   }
- 
+
   return std::nullopt;
 }
 
 std::optional<size_t> ForceField::findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name)
 {
-  std::vector<PseudoAtom>::const_iterator match = std::find_if(
-        pseudoAtoms.begin(), pseudoAtoms.end(),
-        [&name](const PseudoAtom& x) { return x.name == name; });
+  std::vector<PseudoAtom>::const_iterator match =
+      std::find_if(pseudoAtoms.begin(), pseudoAtoms.end(), [&name](const PseudoAtom& x) { return x.name == name; });
   if (match != std::end(pseudoAtoms))
   {
     return static_cast<size_t>(std::distance(pseudoAtoms.begin(), match));
   }
- 
+
   return std::nullopt;
 }
 
@@ -417,19 +489,18 @@ void ForceField::initializeEwaldParameters(double3 perpendicularWidths)
     EwaldAlpha = std::sqrt(std::abs(std::log(eps * cutOffCoulomb * tol))) / cutOffCoulomb;
     double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
-    numberOfWaveVectors = 
-      int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-           static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-           static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+    numberOfWaveVectors =
+        int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
 
-    //numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
-    //if (ReciprocalCutOffSquared[i] < 0.0)
-    //    ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
+    // numberOfWavevectors = ((kx_max_unsigned + 1) * (2 * ky_max_unsigned + 1) * (2 * kz_max_unsigned + 1));
+    // if (ReciprocalCutOffSquared[i] < 0.0)
+    //     ReciprocalCutOffSquared[i] = SQR(1.05 * MAX3(kvec[i].x, kvec[i].y, kvec[i].z));
   }
 }
 
-
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceField& f)
 {
   archive << f.versionNumber;
 
@@ -460,11 +531,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceF
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& f)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > f.versionNumber)
+  if (versionNumber > f.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'ForceField' at line {} in file {}\n",

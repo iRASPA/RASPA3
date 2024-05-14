@@ -1,22 +1,21 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <numbers>
-#include <string>
-#include <iostream>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <functional>
+#include <iostream>
 #include <istream>
+#include <map>
+#include <numbers>
 #include <ostream>
 #include <sstream>
-#include <fstream>
+#include <string>
 #include <type_traits>
-#include <map>
-#include <functional>
 #endif
 
 export module simulationbox;
-
 
 #ifndef USE_LEGACY_HEADERS
 import <numbers>;
@@ -40,39 +39,39 @@ import int3;
 import double3x3;
 import randomnumbers;
 import units;
-
+import hdf5;
 
 #if defined(__GNUC__)
-#define ALWAYS_INLINE __attribute__((__always_inline__)) 
+#define ALWAYS_INLINE __attribute__((__always_inline__))
 #elif defined(_MSC_VER)
 #define ALWAYS_INLINE __forceinline
 #endif
-
 
 export struct SimulationBox
 {
   enum class Type : int
   {
-      Rectangular = 0,
-      Triclinic = 1
+    Rectangular = 0,
+    Triclinic = 1
   };
 
-  SimulationBox() :
-      lengthA(0.0), lengthB(0.0), lengthC(0.0), 
-      angleAlpha(0.0), angleBeta(0.0), angleGamma(0.0),
-      cell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
-      inverseCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
-      volume(0.0)
-  {
-  };
+  SimulationBox()
+      : lengthA(0.0),
+        lengthB(0.0),
+        lengthC(0.0),
+        angleAlpha(0.0),
+        angleBeta(0.0),
+        angleGamma(0.0),
+        cell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
+        inverseCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
+        volume(0.0){};
 
   bool operator==(SimulationBox const&) const = default;
 
   explicit SimulationBox(double a, double b, double c, Type type = Type::Rectangular);
-  explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma, 
+  explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma,
                          Type type = Type::Rectangular);
   explicit SimulationBox(double3x3 m, Type type = Type::Rectangular);
-      
 
   ALWAYS_INLINE inline double3 applyPeriodicBoundaryConditions(const double3& dr) const
   {
@@ -81,12 +80,15 @@ export struct SimulationBox
       case SimulationBox::Type::Rectangular:
       {
         double3 s;
-        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax + 
-                                                                        ((dr.x >= 0.0) ? 0.5 : -0.5))) * cell.ax;
-        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by + 
-                                                                        ((dr.y >= 0.0) ? 0.5 : -0.5))) * cell.by;
-        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz + 
-                                                                        ((dr.z >= 0.0) ? 0.5 : -0.5))) * cell.cz;
+        s.x = dr.x - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.x * inverseCell.ax +
+                                                                                      ((dr.x >= 0.0) ? 0.5 : -0.5))) *
+                         cell.ax;
+        s.y = dr.y - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.y * inverseCell.by +
+                                                                                      ((dr.y >= 0.0) ? 0.5 : -0.5))) *
+                         cell.by;
+        s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz +
+                                                                                      ((dr.z >= 0.0) ? 0.5 : -0.5))) *
+                         cell.cz;
         /*
         s.x = dr.x - cell.ax * std::rint(dr.x * inverseCell.ax);
         s.y = dr.y - cell.by * std::rint(dr.y * inverseCell.by);
@@ -112,13 +114,14 @@ export struct SimulationBox
   void setBoxAngles(double3 angles);
   double3 lengths();
   double3 angles();
-  double3 randomPosition(RandomNumber &random) const;
+  double3 randomPosition(RandomNumber& random) const;
   double3 perpendicularWidths() const;
 
   std::string printStatus() const;
   std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
+  void logStatus(HDF5Handler& hdf5) const;
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
   double lengthA;
   double lengthB;
   double lengthC;
@@ -153,7 +156,7 @@ export struct SimulationBox
     double temp = (cos(angleAlpha) - cos(angleGamma) * cos(angleBeta)) / sin(angleGamma);
     double3 v1 = double3(lengthA, 0.0, 0.0);
     double3 v2 = double3(lengthB * cos(angleGamma), lengthB * sin(angleGamma), 0.0);
-    double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp, 
+    double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp,
                          lengthC * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
     cell = double3x3(v1, v2, v3);
     inverseCell = cell.inverse();
@@ -169,7 +172,7 @@ export struct SimulationBox
     double temp = (cos(angleAlpha) - cos(angleGamma) * cos(angleBeta)) / sin(angleGamma);
     double3 v1 = double3(lengthA, 0.0, 0.0);
     double3 v2 = double3(lengthB * cos(angleGamma), lengthB * sin(angleGamma), 0.0);
-    double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp, 
+    double3 v3 = double3(lengthC * cos(angleBeta), lengthC * temp,
                          lengthC * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
     cell = double3x3(v1, v2, v3);
     inverseCell = cell.inverse();
@@ -190,7 +193,7 @@ export struct SimulationBox
     double temp = (cos(v.angleAlpha) - cos(v.angleGamma) * cos(v.angleBeta)) / sin(v.angleGamma);
     double3 v1 = double3(v.lengthA, 0.0, 0.0);
     double3 v2 = double3(v.lengthB * cos(v.angleGamma), v.lengthB * sin(v.angleGamma), 0.0);
-    double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp, 
+    double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp,
                          v.lengthC * sqrt(1.0 - cos(v.angleBeta) * cos(v.angleBeta) - temp * temp));
     v.cell = double3x3(v1, v2, v3);
     v.inverseCell = v.cell.inverse();
@@ -214,7 +217,7 @@ export struct SimulationBox
     double temp = (cos(v.angleAlpha) - cos(v.angleGamma) * cos(v.angleBeta)) / sin(v.angleGamma);
     double3 v1 = double3(v.lengthA, 0.0, 0.0);
     double3 v2 = double3(v.lengthB * cos(v.angleGamma), v.lengthB * sin(v.angleGamma), 0.0);
-    double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp, 
+    double3 v3 = double3(v.lengthC * cos(v.angleBeta), v.lengthC * temp,
                          v.lengthC * sqrt(1.0 - cos(v.angleBeta) * cos(v.angleBeta) - temp * temp));
     v.cell = double3x3(v1, v2, v3);
     v.inverseCell = v.cell.inverse();
@@ -224,14 +227,14 @@ export struct SimulationBox
     return v;
   }
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SimulationBox &box);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBox &box);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SimulationBox& box);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, SimulationBox& box);
 };
 
 export inline SimulationBox operator+(const SimulationBox& a, const SimulationBox& b)
 {
   SimulationBox m;
-  
+
   m.lengthA = a.lengthA + b.lengthA;
   m.lengthB = a.lengthB + b.lengthB;
   m.lengthC = a.lengthC + b.lengthC;
@@ -290,7 +293,6 @@ export inline SimulationBox operator*(const double& a, const SimulationBox& b)
   return m;
 }
 
-
 export inline SimulationBox operator/(const SimulationBox& a, const double& b)
 {
   SimulationBox m;
@@ -306,7 +308,6 @@ export inline SimulationBox operator/(const SimulationBox& a, const double& b)
   m.volume = a.volume * temp;
   return m;
 }
-
 
 export inline SimulationBox sqrt(const SimulationBox& a)
 {
@@ -326,15 +327,11 @@ export inline SimulationBox sqrt(const SimulationBox& a)
 
 export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
 {
-  SimulationBox c = SimulationBox(std::max(a.lengthA, b.lengthA),
-                       std::max(a.lengthB, b.lengthB),
-                       std::max(a.lengthC, b.lengthC),
-                       std::max(a.angleAlpha, b.angleAlpha),
-                       std::max(a.angleBeta, b.angleBeta),
-                       std::max(a.angleGamma, b.angleGamma));
+  SimulationBox c = SimulationBox(std::max(a.lengthA, b.lengthA), std::max(a.lengthB, b.lengthB),
+                                  std::max(a.lengthC, b.lengthC), std::max(a.angleAlpha, b.angleAlpha),
+                                  std::max(a.angleBeta, b.angleBeta), std::max(a.angleGamma, b.angleGamma));
 
- 
-  if(a.type == SimulationBox::Type::Triclinic || b.type == SimulationBox::Type::Triclinic) 
+  if (a.type == SimulationBox::Type::Triclinic || b.type == SimulationBox::Type::Triclinic)
   {
     c.type = SimulationBox::Type::Triclinic;
   }
@@ -342,7 +339,4 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
   return c;
 }
 
-export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b)
-{
-  return SimulationBox(a * b.cell);
-}
+export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b) { return SimulationBox(a * b.cell); }
