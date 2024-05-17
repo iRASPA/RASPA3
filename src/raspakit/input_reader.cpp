@@ -66,6 +66,7 @@ import double3;
 import units;
 import sample_movies;
 import threadpool;
+import threading;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;
@@ -237,11 +238,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-  if (parsed_data["NumberOfThreads"].is_number_unsigned())
-  {
-    numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
-    if (numberOfThreads > 1) threadingType = ThreadPool::ThreadingType::ThreadPool;
-  }
 
   if (parsed_data["SimulationType"].is_string())
   {
@@ -308,6 +304,13 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     {
       threadingType = ThreadPool::ThreadingType::GPU_Offload;
     }
+  }
+
+  if (parsed_data["NumberOfThreads"].is_number_unsigned())
+  {
+    numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
+    if (numberOfThreads > 1) threadingType = ThreadPool::ThreadingType::ThreadPool;
+    else threadingType = ThreadPool::ThreadingType::Serial;
   }
 
   // count number of components

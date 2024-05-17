@@ -110,6 +110,8 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
+import threadpool;
+import threading;
 
 ParallelTempering::ParallelTempering() : random(std::nullopt){};
 
@@ -123,8 +125,7 @@ ParallelTempering::ParallelTempering(InputReader& reader) noexcept
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
       random(reader.randomSeed),
-      estimation(reader.numberOfBlocks, reader.numberOfCycles),
-      threadPool(static_cast<const unsigned int>(reader.numberOfThreads), reader.threadingType)
+      estimation(reader.numberOfBlocks, reader.numberOfCycles)
 {
 }
 
@@ -255,7 +256,8 @@ void ParallelTempering::initialize()
   {
     for (System& system : systems)
     {
-      threadPool.enqueue_detach([this](System& system) { runSystemCycleInitialize(system); }, system);
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      pool.enqueue_detach([this](System& system) { runSystemCycleInitialize(system); }, system);
     }
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
@@ -351,7 +353,8 @@ void ParallelTempering::equilibrate()
   {
     for (System& system : systems)
     {
-      threadPool.enqueue_detach([this](System& system) { runSystemCycleEquilibrate(system); }, system);
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      pool.enqueue_detach([this](System& system) { runSystemCycleEquilibrate(system); }, system);
     }
 
     if (currentCycle % printEvery == 0uz)
@@ -493,7 +496,8 @@ void ParallelTempering::production()
 
     for (System& system : systems)
     {
-      threadPool.enqueue_detach([this](System& system) { runSystemCycleProduction(system); }, system);
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      pool.enqueue_detach([this](System& system) { runSystemCycleProduction(system); }, system);
     }
 
     // write binary-restart file

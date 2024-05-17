@@ -109,7 +109,7 @@ std::string RunningEnergy::printMD() const
   return stream.str();
 }
 
-std::string RunningEnergy::printMC(const std::string &label)
+std::string RunningEnergy::printMC(const std::string &label) const
 {
   std::ostringstream stream;
 
@@ -136,7 +136,7 @@ std::string RunningEnergy::printMC(const std::string &label)
   return stream.str();
 }
 
-std::string RunningEnergy::printMD(const std::string &label, double referenceEnergy)
+std::string RunningEnergy::printMD(const std::string &label, double referenceEnergy) const
 {
   std::ostringstream stream;
 

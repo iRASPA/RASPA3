@@ -735,25 +735,25 @@ std::string System::writeOutputHeader() const
     std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
   #endif
 
-  ThreadPool &pool = ThreadPool::instance();
-  const size_t numberOfHelperThreads = pool.getThreadCount();
+  //ThreadPool &pool = ThreadPool::instance();
+  //const size_t numberOfHelperThreads = pool.getThreadCount();
 
-  switch(pool.threadingType)
-  {
-    case ThreadPool::ThreadingType::Serial:
-      std::print(stream, "Parallelization: Serial, 1 thread\n");
-      break;
-    case ThreadPool::ThreadingType::OpenMP:
-      std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
-      break;
-    case ThreadPool::ThreadingType::ThreadPool:
-      std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
-      break;
-    case ThreadPool::ThreadingType::GPU_Offload:
-      std::print(stream, "Parallelization: GPU-Offload\n");
-      break;
-  } 
-  std::print(stream, "\n");
+  //switch(pool.threadingType)
+  //{
+  //  case ThreadPool::ThreadingType::Serial:
+  //    std::print(stream, "Parallelization: Serial, 1 thread\n");
+  //    break;
+  //  case ThreadPool::ThreadingType::OpenMP:
+  //    std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+  //    break;
+  //  case ThreadPool::ThreadingType::ThreadPool:
+  //    std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+  //    break;
+  //  case ThreadPool::ThreadingType::GPU_Offload:
+  //    std::print(stream, "Parallelization: GPU-Offload\n");
+  //    break;
+  //} 
+  //std::print(stream, "\n");
 
   return stream.str();
 }
@@ -796,7 +796,7 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   std::print(stream, "\n");
 
 
-  std::print(stream, runningEnergies.printMC());
+  stream << runningEnergies.printMC();
 
 
   std::print(stream, "\n");
@@ -842,7 +842,7 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
   std::print(stream, "\n");
 
 
-  std::print(stream, runningEnergies.printMC());
+  stream << runningEnergies.printMC();
 
   std::print(stream, "\n");
 
@@ -872,7 +872,7 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift, accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
-  std::print(stream, runningEnergies.printMD());
+  stream << runningEnergies.printMD();
 
   std::print(stream, "\n");
 

@@ -19,7 +19,6 @@ import <optional>;
 #endif
 
 import randomnumbers;
-import threadpool;
 
 import averages;
 import system;
@@ -27,6 +26,8 @@ import mc_moves;
 import input_reader;
 import energy_status;
 import archive;
+import threadpool;
+import threading;
 
 export struct ParallelTempering
 {
@@ -71,7 +72,6 @@ export struct ParallelTempering
   BlockErrorEstimation estimation;
 
   std::chrono::duration<double> totalSimulationTime{0};
-  ThreadPool threadPool;
 
   void runSystemCycleInitialize(System &system);
   void runSystemCycleEquilibrate(System &system);

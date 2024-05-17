@@ -13,6 +13,6 @@ add_executable(unit_tests_raspakit
                rigid_gradient.cpp
                main.cpp)
 
-target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit ${GTEST_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+        target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit ${GTEST_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} -lc++ -lc++abi)
 
 add_test(NAME RaspaKit COMMAND unit_tests_raspakit)

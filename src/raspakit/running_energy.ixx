@@ -54,8 +54,8 @@ export struct RunningEnergy
 
   std::string printMC() const;
   std::string printMD() const;
-  std::string printMC(const std::string& label);
-  std::string printMD(const std::string& label, double referenceEnergy);
+  std::string printMC(const std::string& label) const;
+  std::string printMD(const std::string& label, double referenceEnergy) const;
   
   inline double potentialEnergy() const
   {
