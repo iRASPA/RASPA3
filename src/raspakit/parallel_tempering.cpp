@@ -256,7 +256,7 @@ void ParallelTempering::initialize()
   {
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleInitialize(system); }, system);
     }
 
@@ -353,7 +353,7 @@ void ParallelTempering::equilibrate()
   {
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleEquilibrate(system); }, system);
     }
 
@@ -496,7 +496,7 @@ void ParallelTempering::production()
 
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleProduction(system); }, system);
     }
 

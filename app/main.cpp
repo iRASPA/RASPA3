@@ -44,7 +44,7 @@ int main()
   {
     InputReader inputReader("simulation.input");
 
-    auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+    auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
     pool.init(inputReader.numberOfThreads, inputReader.threadingType);
 
     switch (inputReader.simulationType)
