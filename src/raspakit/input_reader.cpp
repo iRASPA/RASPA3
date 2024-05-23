@@ -203,6 +203,16 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     forceFields[i] = standard;
   }
 
+  if (parsed_data["RestartFromBinaryFile"].is_boolean())
+  {
+    restartFromBinary = parsed_data["RestartFromBinaryFile"].get<bool>();
+  }
+
+  if (parsed_data["RandomSeed"].is_number_unsigned())
+  {
+    randomSeed = parsed_data["RandomSeed"].get<unsigned long long>();
+  }
+
   if (parsed_data["NumberOfCycles"].is_number_unsigned())
   {
     numberOfCycles = parsed_data["NumberOfCycles"].get<size_t>();

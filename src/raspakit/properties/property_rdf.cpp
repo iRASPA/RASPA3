@@ -60,9 +60,11 @@ import forcefield;
 import averages;
 
 void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, 
-                                                            std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block)
+                                                const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, 
+                                                size_t currentCycle, size_t block)
 {
   double3 dr, posA, posB, f;
+  double3 gradientA, gradientB;
   double rr, r;
 
   if(currentCycle % sampleEvery != 0uz) return;
@@ -72,10 +74,12 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
+    gradientA = it1->gradient;
     size_t typeA = static_cast<size_t>(it1->type);
     for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
       posB = it2->position;
+      gradientB = it2->gradient;
       size_t typeB = static_cast<size_t>(it2->type);
 
       pairCount[typeB + typeA * numberOfPseudoAtoms]++;
@@ -86,13 +90,15 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
       rr = double3::dot(dr, dr);
       r = std::sqrt(rr);
 
+      double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
+
       size_t bin = static_cast<size_t>(r / deltaR);
-      if(bin < numberOfBins)
+      for(size_t i = 0; i < bin; ++i)
       {
         size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-        sumProperty[index][bin] += 1.0;
+        sumProperty[index][bin] += value;
         index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-        sumProperty[index][bin] += 1.0;
+        sumProperty[index][bin] += value;
       }
     }
   }
@@ -100,6 +106,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
     posA = it1->position;
+    gradientA = it1->gradient;
     size_t molA = static_cast<size_t>(it1->moleculeId);
     size_t compA = static_cast<size_t>(it1->componentId);
     size_t typeA = static_cast<size_t>(it1->type);
@@ -108,6 +115,7 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
     {
       size_t molB = static_cast<size_t>(it2->moleculeId);
       size_t compB = static_cast<size_t>(it2->componentId);
+      gradientB = it2->gradient;
 
       // skip interactions within the same molecule
       if (!((compA == compB) && (molA == molB)))
@@ -123,17 +131,38 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
         rr = double3::dot(dr, dr);
         r = std::sqrt(rr);
 
-        size_t bin = static_cast<size_t>(r / deltaR);
-        if(bin < numberOfBins)
+        if(r < range)
         {
-          size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-          sumProperty[index][bin] += 1.0;
-          index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-          sumProperty[index][bin] += 1.0;
+          double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
+
+          for(size_t i = 0; i < numberOfBins; ++i)
+          {
+            if((static_cast<double>(i) + 0.5) * deltaR < r)
+            {
+              size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
+              sumProperty[index][i] += value;
+              index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
+              sumProperty[index][i] += value;
+            }
+          }
         }
       }
     }
   }
+
+  /*
+  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  {
+    posA = it1->position;
+    gradientA = it1->gradient;
+    size_t molA = static_cast<size_t>(it1->moleculeId);
+    size_t compA = static_cast<size_t>(it1->componentId);
+    size_t typeA = static_cast<size_t>(it1->type);
+
+    (atom.position.x - com.x) * atom.gradient.x
+  }
+  */
+
 
   totalNumberOfCounts += 2;
   numberOfCounts[block] += 2;
@@ -209,7 +238,7 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
 {
   if(currentCycle % writeEvery != 0uz) return;
 
-  std::filesystem::create_directory("conventional_rdf");
+  std::filesystem::create_directory("rdf");
 
   for(size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
   {
@@ -217,7 +246,7 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
     {
       if(pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
       {
-        std::ofstream stream_rdf_output(std::format("conventional_rdf/rdf_{}_{}.s{}.data", 
+        std::ofstream stream_rdf_output(std::format("rdf/rdf_{}_{}.s{}.data", 
               forceField.pseudoAtoms[atomTypeA].name,
               forceField.pseudoAtoms[atomTypeB].name,
               systemId));
@@ -233,13 +262,13 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
         double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
                                                  pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) / static_cast<double>(totalNumberOfCounts);
-        double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
+        double normalization = 1.0 / std::abs(average[0]);
 
         for(size_t bin = 0; bin != numberOfBins; ++bin)
         {
           stream_rdf_output << std::format("{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR, 
-              average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
-              error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)));
+              1.0 + average[bin] * normalization,
+              error[bin] * normalization);
         }
       }
     }

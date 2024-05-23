@@ -24,6 +24,8 @@ import <tuple>;
 
 import archive;
 import atom;
+import molecule;
+import molecule;
 import simulationbox;
 import forcefield;
 
@@ -70,7 +72,8 @@ export struct PropertyRadialDistributionFunction
   std::vector<size_t> numberOfCounts;
   std::vector<size_t> pairCount;
 
-  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
+  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, const std::vector<Molecule> &molecules, 
+              std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
   void writeOutput(const ForceField &forceField, size_t systemId, double volume, std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyRadialDistributionFunction &temp);

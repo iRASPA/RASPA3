@@ -1287,7 +1287,9 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   if(propertyRadialDistributionFunction.has_value())
   {
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(),
+    computeTotalGradients();
+    computeCenterOfMassAndQuaternionGradients();
+    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculePositions,
                                                spanOfMoleculeAtoms(), currentCycle, currentBlock);
   }
 
@@ -1869,6 +1871,8 @@ void System::computeCenterOfMassAndQuaternionGradients()
         double3 F = M * (span[i].gradient - com_gradient * mass * inverseMoleculeMass);
         double3 dr = components[l].atoms[i].position;
         torque += double3::cross(F, dr);
+
+        //span[i].gradient = com_gradient;
       }
 
       moleculePositions[moleculeIndex].orientationGradient.ix = -2.0 * ( orientation.r  * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);

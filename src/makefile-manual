@@ -205,7 +205,7 @@ raspakit/properties/property_enthalpy.pcm: foundationkit/archive.pcm raspakit/av
 raspakit/properties/property_lambda_probability_histogram.pcm: foundationkit/archive.pcm raspakit/averages.pcm mathkit/double3.pcm foundationkit/print.pcm mathkit/randomnumbers.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_loading.pcm: foundationkit/archive.pcm raspakit/averages.pcm raspakit/component.pcm raspakit/properties/loadings.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_pressure.pcm: foundationkit/archive.pcm raspakit/averages.pcm mathkit/double3.pcm mathkit/double3x3.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
-raspakit/properties/property_rdf.pcm: foundationkit/archive.pcm raspakit/atom.pcm mathkit/double3.pcm raspakit/simulationbox.pcm
+raspakit/properties/property_rdf.pcm: foundationkit/archive.pcm raspakit/atom.pcm raspakit/molecule.pcm mathkit/double3.pcm raspakit/simulationbox.pcm
 raspakit/properties/property_simulationbox.pcm: foundationkit/archive.pcm raspakit/averages.pcm foundationkit/print.pcm raspakit/simulationbox.pcm
 raspakit/properties/property_widom.pcm: foundationkit/archive.pcm raspakit/averages.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_temperature.pcm: foundationkit/archive.pcm raspakit/averages.pcm raspakit/simulationbox.pcm

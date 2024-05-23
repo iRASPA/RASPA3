@@ -337,6 +337,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 
         const double3 f = forceFactor.forceFactor * dr;
 
+        it1->gradient += f;
         it2->gradient -= f;
       }
       if (!noCharges && rr < cutOffChargeSquared)
@@ -350,6 +351,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 
         const double3 f = forceFactor.forceFactor * dr;
 
+        it1->gradient += f;
         it2->gradient -= f;
       }
     }
@@ -379,7 +381,7 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
 
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
     size_t compA = static_cast<size_t>(it1->componentId);
@@ -415,6 +417,7 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
 
         const double3 g = forceFactor.forceFactor * dr;
 
+        it1->gradient += g;
         it2->gradient -= g;
 
         strainDerivativeTensor.ax += g.x*dr.x;
@@ -441,6 +444,7 @@ Interactions::computeFrameworkMoleculeEnergyStrainDerivative(const ForceField &f
 
         const double3 g = forceFactor.forceFactor * dr;
 
+        it1->gradient += g;
         it2->gradient -= g;
 
         strainDerivativeTensor.ax += g.x*dr.x;

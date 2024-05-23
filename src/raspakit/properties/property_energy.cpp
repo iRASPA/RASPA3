@@ -573,6 +573,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << e.versionNumber;
 
   archive << e.numberOfBlocks;
+  archive << e.numberOfExternalFields;
+  archive << e.numberOfFrameworks;
   archive << e.numberOfComponents;
   archive << e.bookKeepingEnergyStatus;
 
@@ -591,6 +593,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
   }
 
   archive >> e.numberOfBlocks;
+  archive >> e.numberOfExternalFields;
+  archive >> e.numberOfFrameworks;
   archive >> e.numberOfComponents;
   archive >> e.bookKeepingEnergyStatus;
 
