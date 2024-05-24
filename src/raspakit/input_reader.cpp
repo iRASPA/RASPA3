@@ -490,7 +490,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
-     size_t jsonNumberOfLambdaBins{31};
+     size_t jsonNumberOfLambdaBins{41};
      if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
      {
        jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();
