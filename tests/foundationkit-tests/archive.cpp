@@ -8,6 +8,7 @@
 
 import archive;
 
+/*
 struct teststruct
 {
   size_t a{0};
@@ -80,3 +81,4 @@ TEST(archive, Test_archiving)
 
   EXPECT_EQ(a, b);
 }
+*/

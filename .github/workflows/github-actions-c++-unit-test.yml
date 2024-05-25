@@ -11,15 +11,18 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: build-essential git cmake ninja-build llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev pybind11-dev python3-pybind11 libblas-dev liblapack-dev doxygen graphviz googletest libgtest-dev
-          version: 1.0
+
+      - name: install packages
+        run: sudo apt-get install -y build-essential git cmake ninja-build llvm-17 clang-17 clang-tools-17 clang-tidy-17 libc++-17-dev libc++abi-17-dev libomp-17-dev pybind11-dev python3-pybind11 libblas3 libblas-dev liblapack3 liblapack-dev doxygen graphviz
+
+      - name: install gtest
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake -DCMAKE_CXX_COMPILER=clang++-17 CMakeLists.txt && sudo make && sudo cp lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
       - name: build RASPA3
         shell: bash
         run: |
           mkdir build
-          cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release .
+          cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++-17 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release .
           CLICOLOR_FORCE=1 ninja -C build -v
       - name: run tests
         shell: bash
