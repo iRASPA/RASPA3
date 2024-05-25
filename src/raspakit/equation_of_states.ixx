@@ -10,6 +10,7 @@ export module equation_of_states;
 import <vector>;
 #endif
 
+import archive;
 import component;
 import simulationbox;
 
@@ -34,6 +35,8 @@ export struct EquationOfState
     VaporLiquid = 4
   };
 
+  uint64_t versionNumber{ 1 };
+
   EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
   EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
   EquationOfState::MultiComponentMixingRules
@@ -49,8 +52,6 @@ export struct EquationOfState
                   double HeliumVoidFraction,
                   std::vector<Component> &components); 
 
-  bool operator==(EquationOfState const&) const = default;
-
   void computeComponentFluidProperties(EquationOfState::Type equationOfState,                           
                                        EquationOfState::MultiComponentMixingRules multiComponentMixingRules,         
                                        double temperature,
@@ -58,4 +59,7 @@ export struct EquationOfState
                                        const SimulationBox &simulationBox,
                                        double HeliumVoidFraction,
                                        std::vector<Component> &components);
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EquationOfState &s);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EquationOfState &s);
 };

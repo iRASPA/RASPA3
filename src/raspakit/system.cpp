@@ -1976,7 +1976,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.numberOfFrameworks;
   archive << s.numberOfFrameworkAtoms;
   archive << s.numberOfRigidFrameworkAtoms;
+  archive << s.frameworkComponents;
   archive << s.components;
+  archive << s.equationOfState;
   archive << s.loadings;
   archive << s.swapableComponents;
   archive << s.initialNumberOfMolecules;
@@ -2072,7 +2074,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.numberOfFrameworks;
   archive >> s.numberOfFrameworkAtoms;
   archive >> s.numberOfRigidFrameworkAtoms;
+  archive >> s.frameworkComponents;
   archive >> s.components;
+  archive >> s.equationOfState;
   archive >> s.loadings;
   archive >> s.swapableComponents;
   archive >> s.initialNumberOfMolecules;

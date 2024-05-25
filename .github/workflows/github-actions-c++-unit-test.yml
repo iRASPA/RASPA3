@@ -1,0 +1,27 @@
+name: Test RASPA3 C++ Unit Tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: build-essential git cmake ninja-build llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev pybind11-dev python3-pybind11 libblas-dev liblapack-dev doxygen graphviz googletest libgtest-dev
+          version: 1.0
+      - name: build RASPA3
+        shell: bash
+        run: |
+          mkdir build
+          cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release .
+          CLICOLOR_FORCE=1 ninja -C build -v
+      - name: run tests
+        shell: bash
+        run: |
+          ctest --test-dir build/tests --verbose

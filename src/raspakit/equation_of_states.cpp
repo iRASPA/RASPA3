@@ -5,6 +5,7 @@ module;
 #include <cmath>
 #include <optional>
 #include <iostream>
+#include <source_location>
 #endif
 
 module equation_of_states;
@@ -14,8 +15,10 @@ import <vector>;
 import <cmath>;
 import <optional>;
 import <iostream>;
+import <source_location>;
 #endif
 
+import archive;
 import units;
 import cubic;
 import component;
@@ -383,3 +386,33 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   */
 
 }
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EquationOfState &s)
+{
+  archive << s.versionNumber;
+
+  archive << s.fluidState;
+  archive << s.equationOfState;
+  archive << s.multiComponentMixingRules;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EquationOfState &s)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if(versionNumber > s.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'EquationOfState' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+
+  archive >> s.fluidState;
+  archive >> s.equationOfState;
+  archive >> s.multiComponentMixingRules;
+
+  return archive;
+}
+
