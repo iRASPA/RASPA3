@@ -1,6 +1,7 @@
-find_package(GTest)
+enable_testing()
+find_package(GTest CONFIG)
 if (GTest_FOUND)
-  include_directories(${GTEST_INCLUDE_DIRS})
+  include(GoogleTest)
 else ()
   include(FetchContent)
   FetchContent_Declare(googletest

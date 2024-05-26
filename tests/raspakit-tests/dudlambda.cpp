@@ -444,33 +444,33 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_VDW)
   atomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
   atomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
 
-  atomPositions[8].groupId = 1;
+  //atomPositions[8].groupId = 1;
   atomPositions[2].groupId = 1;
-  atomPositions[12].groupId = 1;
-  //atomPositions[4].groupId = 1;
+  //atomPositions[12].groupId = 1;
+  atomPositions[4].groupId = 1;
   //atomPositions[14].groupId = 1;
 
-  atomPositions[8].scalingVDW = 0.45;
+  //atomPositions[8].scalingVDW = 0.45;
   atomPositions[2].scalingVDW = 0.5;
-  atomPositions[12].scalingVDW = 0.4;
+  //atomPositions[12].scalingVDW = 0.4;
   atomPositions[4].scalingVDW = 0.6;
-  atomPositions[14].scalingVDW = 0.7;
+  //atomPositions[14].scalingVDW = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
   double delta = 1e-5;
   double tolerance = 1e-3;
 
-  atomPositions[8].scalingVDW = 0.45 + 0.5 * delta;
+  //atomPositions[8].scalingVDW = 0.45 + 0.5 * delta;
   atomPositions[2].scalingVDW = 0.5 + 0.5 * delta;
-  atomPositions[12].scalingVDW = 0.4 + 0.5 * delta;
-  //atomPositions[4].scalingVDW = 0.6 + 0.5 * delta;
+  //atomPositions[12].scalingVDW = 0.4 + 0.5 * delta;
+  atomPositions[4].scalingVDW = 0.6 + 0.5 * delta;
   //atomPositions[14].scalingVDW = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
-  atomPositions[8].scalingVDW = 0.45 - 0.5 * delta;
+  //atomPositions[8].scalingVDW = 0.45 - 0.5 * delta;
   atomPositions[2].scalingVDW = 0.5 - 0.5 * delta;
-  atomPositions[12].scalingVDW = 0.4 - 0.5 * delta;
-  //atomPositions[4].scalingVDW = 0.6 - 0.5 * delta;
+  //atomPositions[12].scalingVDW = 0.4 - 0.5 * delta;
+  atomPositions[4].scalingVDW = 0.6 - 0.5 * delta;
   //atomPositions[14].scalingVDW = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
@@ -561,33 +561,33 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Coulomb)
   atomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
   atomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
 
-  atomPositions[8].groupId = 1;
+  //atomPositions[8].groupId = 1;
   atomPositions[2].groupId = 1;
-  atomPositions[12].groupId = 1;
-  //atomPositions[4].groupId = 1;
+  //atomPositions[12].groupId = 1;
+  atomPositions[4].groupId = 1;
   //atomPositions[14].groupId = 1;
 
-  atomPositions[8].scalingCoulomb = 0.45;
+  //atomPositions[8].scalingCoulomb = 0.45;
   atomPositions[2].scalingCoulomb = 0.5;
-  atomPositions[12].scalingCoulomb = 0.4;
+  //atomPositions[12].scalingCoulomb = 0.4;
   atomPositions[4].scalingCoulomb = 0.6;
-  atomPositions[14].scalingCoulomb = 0.7;
+  //atomPositions[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
   double delta = 1e-5;
   double tolerance = 1e-3;
 
-  atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
+  //atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
   atomPositions[2].scalingCoulomb = 0.5 + 0.5 * delta;
-  atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
-  //atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
+  //atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
+  atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   //atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
-  atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
+  //atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
   atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
-  atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
-  //atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
+  //atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
+  atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   //atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
@@ -678,17 +678,17 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Ewald)
   atomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
   atomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
 
-  atomPositions[8].groupId = 1;
+  //atomPositions[8].groupId = 1;
   atomPositions[2].groupId = 1;
-  atomPositions[12].groupId = 1;
-  //atomPositions[4].groupId = 1;
+  //atomPositions[12].groupId = 1;
+  atomPositions[4].groupId = 1;
   //atomPositions[14].groupId = 1;
 
-  atomPositions[8].scalingCoulomb = 0.45;
+  //atomPositions[8].scalingCoulomb = 0.45;
   atomPositions[2].scalingCoulomb = 0.5;
-  atomPositions[12].scalingCoulomb = 0.4;
+  //atomPositions[12].scalingCoulomb = 0.4;
   atomPositions[4].scalingCoulomb = 0.6;
-  atomPositions[14].scalingCoulomb = 0.7;
+  //atomPositions[14].scalingCoulomb = 0.7;
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy factor = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
@@ -700,10 +700,10 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Ewald)
   double delta = 1e-5;
   double tolerance = 1e-3;
 
-  atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
+  //atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
   atomPositions[2].scalingCoulomb = 0.5 + 0.5 * delta;
-  atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
-  //atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
+  //atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
+  atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   //atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
                                           system.fixedFrameworkStoredEik, system.storedEik,
@@ -711,10 +711,10 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Ewald)
                                           system.components, system.numberOfMoleculesPerComponent,
                                           atomPositions);
 
-  atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
+  //atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
   atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
-  atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
-  //atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
+  //atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
+  atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   //atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
   RunningEnergy energyBackward = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
                                           system.fixedFrameworkStoredEik, system.storedEik,

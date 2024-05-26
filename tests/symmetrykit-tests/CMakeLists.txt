@@ -9,7 +9,7 @@ add_executable(unit_tests_symmetrykit
                find_spacegroup_no_partial_occupancies.cpp
                main.cpp)
 
-target_link_libraries(unit_tests_symmetrykit PRIVATE libs::raspakit ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} ${GTEST_LIBRARIES} -lc++ -lc++abi -lpthread)
+target_link_libraries(unit_tests_symmetrykit PRIVATE libs::raspakit ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main -lc++ -lc++abi -lpthread)
 
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
