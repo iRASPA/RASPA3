@@ -754,12 +754,12 @@ std::string System::writeOutputHeader() const
   return stream.str();
 }
 
-void System::logMetaData(HDF5Handler& hdf5) const
+void System::logMetaData(HDF5Writer& hdf5) const
 {
 #ifdef VERSION
 #define QUOTE(str) #str
 #define EXPAND_AND_QUOTE(str) QUOTE(str)
-  hdf5.logMetaInfo("/", "RASPA version", EXPAND_AND_QUOTE(VERSION));
+  hdf5.writeMetaInfo("/", "RASPA version", EXPAND_AND_QUOTE(VERSION));
 #endif
 
   ThreadPool& pool = ThreadPool::instance();
@@ -768,17 +768,17 @@ void System::logMetaData(HDF5Handler& hdf5) const
   switch (pool.threadingType)
   {
     case ThreadPool::ThreadingType::Serial:
-      hdf5.logMetaInfo("/", "Parallelization", "Serial, 1 thread");
+      hdf5.writeMetaInfo("/", "Parallelization", "Serial, 1 thread");
       break;
     case ThreadPool::ThreadingType::OpenMP:
-      hdf5.logMetaInfo("/", "Parallelization", "OpenMP, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
+      hdf5.writeMetaInfo("/", "Parallelization", "OpenMP, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
       break;
     case ThreadPool::ThreadingType::ThreadPool:
-      hdf5.logMetaInfo("/", "Parallelization",
-                       "Threadpool, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
+      hdf5.writeMetaInfo("/", "Parallelization",
+                         "Threadpool, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
       break;
     case ThreadPool::ThreadingType::GPU_Offload:
-      hdf5.logMetaInfo("/", "Parallelization", "GPU-Offload");
+      hdf5.writeMetaInfo("/", "Parallelization", "GPU-Offload");
       break;
   }
 }
@@ -1205,12 +1205,12 @@ std::string System::writeSystemStatus() const
   return stream.str();
 }
 
-void System::logSystemStatus(HDF5Handler& hdf5) const
+void System::logSystemStatus(HDF5Writer& hdf5) const
 {
   hdf5.createGroup("initial_conditions");
-  hdf5.logMetaInfo("initial_conditions", "temperature", std::format("{}", temperature));
-  hdf5.logMetaInfo("initial_conditions", "beta", std::format("{}", beta));
-  hdf5.logMetaInfo("initial_conditions", "pressure", std::format("{}", pressure * Units::PressureConversionFactor));
+  hdf5.writeMetaInfo("initial_conditions", "temperature", std::format("{}", temperature));
+  hdf5.writeMetaInfo("initial_conditions", "beta", std::format("{}", beta));
+  hdf5.writeMetaInfo("initial_conditions", "pressure", std::format("{}", pressure * Units::PressureConversionFactor));
   simulationBox.logStatus(hdf5);
 }
 
@@ -1233,7 +1233,7 @@ std::string System::writeComponentStatus() const
   return stream.str();
 }
 
-void System::logComponentStatus(HDF5Handler& hdf5) const
+void System::logComponentStatus(HDF5Writer& hdf5) const
 {
   // for (const Framework& component : frameworkComponents)
   // {

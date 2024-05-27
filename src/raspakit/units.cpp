@@ -66,27 +66,27 @@ std::string Units::printStatus()
   return stream.str();
 }
 
-void Units::logStatus(HDF5Handler& hdf5)
+void Units::logStatus(HDF5Writer& hdf5)
 {
   hdf5.createGroup("units");
-  hdf5.logMetaInfo("units", "temperature", "Kelvin");
-  hdf5.logMetaInfo("units", "length [m]", Units::LengthUnit);
-  hdf5.logMetaInfo("units", "time [s]", Units::TimeUnit);
-  hdf5.logMetaInfo("units", "mass [kg]", Units::MassUnit);
-  hdf5.logMetaInfo("units", "charge [C/particle]", Units::ChargeUnit);
-  hdf5.logMetaInfo("units", "Boltzmann constant [-]", Units::KB);
-  hdf5.logMetaInfo("units", "energy [J]", Units::EnergyConversionFactor);
-  hdf5.logMetaInfo("units", "force [N]", Units::ForceConversionFactor);
-  hdf5.logMetaInfo("units", "pressure [Pa]", Units::PressureConversionFactor);
-  hdf5.logMetaInfo("units", "velocity [m/s]", Units::VelocityConversionFactor);
-  hdf5.logMetaInfo("units", "acceleration [m²/s]", Units::AccelerationConversionFactor);
-  hdf5.logMetaInfo("units", "diffusion [m²/s]", Units::DiffusionConversionFactor);
-  hdf5.logMetaInfo("units", "dipole moment [C.m]", Units::DipoleMomentConversionFactor);
-  hdf5.logMetaInfo("units", "electric potential [V]", Units::ElectricPotentialConversionFactor);
-  hdf5.logMetaInfo("units", "electric field [V]", Units::ElectricFieldConversionFactor);
-  hdf5.logMetaInfo("units", "polarizability [-]", Units::PolarizilibityConversionFactor);
-  hdf5.logMetaInfo("units", "Coulomb potential [K]", Units::CoulombicConversionFactor * Units::EnergyToKelvin);
-  hdf5.logMetaInfo("units", "Unit of dielectric constant:[s² C²/(kg m³)]", Units::DielectricConstantConversionFactor);
-  hdf5.logMetaInfo("units", "Energy to Kelvin [-]", Units::EnergyToKelvin);
-  hdf5.logMetaInfo("units", "Kelvin to energy [-]", Units::KelvinToEnergy);
+  hdf5.writeMetaInfo("units", "temperature", "Kelvin");
+  hdf5.writeMetaInfo("units", "length [m]", Units::LengthUnit);
+  hdf5.writeMetaInfo("units", "time [s]", Units::TimeUnit);
+  hdf5.writeMetaInfo("units", "mass [kg]", Units::MassUnit);
+  hdf5.writeMetaInfo("units", "charge [C/particle]", Units::ChargeUnit);
+  hdf5.writeMetaInfo("units", "Boltzmann constant [-]", Units::KB);
+  hdf5.writeMetaInfo("units", "energy [J]", Units::EnergyConversionFactor);
+  hdf5.writeMetaInfo("units", "force [N]", Units::ForceConversionFactor);
+  hdf5.writeMetaInfo("units", "pressure [Pa]", Units::PressureConversionFactor);
+  hdf5.writeMetaInfo("units", "velocity [m/s]", Units::VelocityConversionFactor);
+  hdf5.writeMetaInfo("units", "acceleration [m²/s]", Units::AccelerationConversionFactor);
+  hdf5.writeMetaInfo("units", "diffusion [m²/s]", Units::DiffusionConversionFactor);
+  hdf5.writeMetaInfo("units", "dipole moment [C.m]", Units::DipoleMomentConversionFactor);
+  hdf5.writeMetaInfo("units", "electric potential [V]", Units::ElectricPotentialConversionFactor);
+  hdf5.writeMetaInfo("units", "electric field [V]", Units::ElectricFieldConversionFactor);
+  hdf5.writeMetaInfo("units", "polarizability [-]", Units::PolarizilibityConversionFactor);
+  hdf5.writeMetaInfo("units", "Coulomb potential [K]", Units::CoulombicConversionFactor * Units::EnergyToKelvin);
+  hdf5.writeMetaInfo("units", "Unit of dielectric constant:[s² C²/(kg m³)]", Units::DielectricConstantConversionFactor);
+  hdf5.writeMetaInfo("units", "Energy to Kelvin [-]", Units::EnergyToKelvin);
+  hdf5.writeMetaInfo("units", "Kelvin to energy [-]", Units::KelvinToEnergy);
 }

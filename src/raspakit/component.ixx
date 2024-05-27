@@ -201,7 +201,7 @@ export struct Component
   std::string printStatus(const ForceField &forceField) const;
   std::string printBreakthroughStatus() const;
 
-  void logStatus(HDF5Handler &hdf5, const ForceField &forceField) const;
+  void logStatus(HDF5Writer &hdf5, const ForceField &forceField) const;
 
   void computeRigidProperties();
   double3 computeCenterOfMass(std::vector<Atom> atom_list) const;

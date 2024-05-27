@@ -425,7 +425,7 @@ std::string HardwareInfo::writeInfo()
   return stream.str();
 }
 
-void HardwareInfo::logInfo(HDF5Handler& hdf5)
+void HardwareInfo::logInfo(HDF5Writer& hdf5)
 {
   hdf5.createGroup("hardware");
   // see what compiler is used
@@ -455,9 +455,9 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
 #define COMPILER_STRING "unknown compiler/version"
 #endif
 
-  hdf5.logMetaInfo("hardware", "Compiler", COMPILER_STRING);
-  hdf5.logMetaInfo("hardware", "Compile Date", __DATE__);
-  hdf5.logMetaInfo("hardware", "Compile Time", __TIME__);
+  hdf5.writeMetaInfo("hardware", "Compiler", COMPILER_STRING);
+  hdf5.writeMetaInfo("hardware", "Compile Date", __DATE__);
+  hdf5.writeMetaInfo("hardware", "Compile Time", __TIME__);
 
   // Get a local time_point with system_clock::duration precision
   //  FIX
@@ -472,23 +472,23 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
   std::chrono::year_month_day ymd{dp};
   std::chrono::weekday weekday{dp};
   std::chrono::hh_mm_ss<std::chrono::minutes> time{std::chrono::duration_cast<std::chrono::minutes>(now - dp)};
-  // hdf5.logMetaInfo("hardware", "Start", now);
+  // hdf5.writeMetaInfo("hardware", "Start", now);
 
 #if defined(__has_include) && __has_include(<print>)
-  // hdf5.logMetaInfo("hardware", "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
-  // hdf5.logMetaInfo("hardware", "The start time was {}\n\n", time);
+  // hdf5.writeMetaInfo("hardware", "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
+  // hdf5.writeMetaInfo("hardware", "The start time was {}\n\n", time);
 #endif
 
   // get hostname and cpu-info for linux
 #if defined(__linux__) || defined(__linux)
   struct utsname uts;
   uname(&uts);
-  hdf5.logMetaInfo("hardware", "Hostname", std::string(uts.nodename, strlen(uts.nodename)));
-  hdf5.logMetaInfo("hardware", "OS type",
-                   std::format("{}, {}", std::string(uts.sysname, strlen(uts.sysname)),
-                               std::string(uts.machine, strlen(uts.machine))));
-  hdf5.logMetaInfo("hardware", "OS release", std::string(uts.release, strlen(uts.release)));
-  hdf5.logMetaInfo("hardware", "OS version", std::string(uts.version, strlen(uts.version)));
+  hdf5.writeMetaInfo("hardware", "Hostname", std::string(uts.nodename, strlen(uts.nodename)));
+  hdf5.writeMetaInfo("hardware", "OS type",
+                     std::format("{}, {}", std::string(uts.sysname, strlen(uts.sysname)),
+                                 std::string(uts.machine, strlen(uts.machine))));
+  hdf5.writeMetaInfo("hardware", "OS release", std::string(uts.release, strlen(uts.release)));
+  hdf5.writeMetaInfo("hardware", "OS version", std::string(uts.version, strlen(uts.version)));
 #endif
 
 #if defined(__CYGWIN__)
@@ -498,10 +498,10 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
 
   struct utsname uts;
   uname(&uts);
-  hdf5.logMetaInfo("hardware", "Hostname", uts.nodename);
-  hdf5.logMetaInfo("hardware", "OS type", std::format("{}, {}", uts.sysname, uts.machine));
-  hdf5.logMetaInfo("hardware", "OS release", uts.release);
-  hdf5.logMetaInfo("hardware", "OS version", uts.version);
+  hdf5.writeMetaInfo("hardware", "Hostname", uts.nodename);
+  hdf5.writeMetaInfo("hardware", "OS type", std::format("{}, {}", uts.sysname, uts.machine));
+  hdf5.writeMetaInfo("hardware", "OS release", uts.release);
+  hdf5.writeMetaInfo("hardware", "OS version", uts.version);
 #endif
 
   // get hostname and cpu-info for mac osx
@@ -512,26 +512,26 @@ void HardwareInfo::logInfo(HDF5Handler& hdf5)
 
   len = sizeof(cpudata);
   sysctlbyname("hw.machine", &cpudata, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "Cpu data", std::string(cpudata, cpudata + len - 1));
+  hdf5.writeMetaInfo("hardware", "Cpu data", std::string(cpudata, cpudata + len - 1));
 
   len = sizeof(cpumodel);
   sysctlbyname("hw.model", &cpumodel, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "Cpu Model", std::string(cpumodel, cpumodel + len - 1));
+  hdf5.writeMetaInfo("hardware", "Cpu Model", std::string(cpumodel, cpumodel + len - 1));
 
   len = sizeof(hostname);
   sysctlbyname("kern.hostname", &hostname, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "Host name", std::string(hostname, hostname + len - 1));
+  hdf5.writeMetaInfo("hardware", "Host name", std::string(hostname, hostname + len - 1));
 
   len = sizeof(osrelease);
   sysctlbyname("kern.osrelease", &osrelease, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "OS release", std::string(osrelease, osrelease + len - 1));
+  hdf5.writeMetaInfo("hardware", "OS release", std::string(osrelease, osrelease + len - 1));
 
   len = sizeof(ostype);
   sysctlbyname("kern.ostype", &ostype, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "OS type", std::string(ostype, ostype + len - 1));
+  hdf5.writeMetaInfo("hardware", "OS type", std::string(ostype, ostype + len - 1));
 
   len = sizeof(osversion);
   sysctlbyname("kern.osversion", &osversion, &len, NULL, 0);
-  hdf5.logMetaInfo("hardware", "OS version", std::string(osversion, osversion + len - 1));
+  hdf5.writeMetaInfo("hardware", "OS version", std::string(osversion, osversion + len - 1));
 #endif
 }

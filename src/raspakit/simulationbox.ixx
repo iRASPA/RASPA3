@@ -119,7 +119,7 @@ export struct SimulationBox
 
   std::string printStatus() const;
   std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
-  void logStatus(HDF5Handler& hdf5) const;
+  void logStatus(HDF5Writer& hdf5) const;
 
   uint64_t versionNumber{1};
   double lengthA;

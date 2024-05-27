@@ -91,8 +91,8 @@ export struct ForceField
 
   std::string printPseudoAtomStatus() const;
   std::string printForceFieldStatus() const;
-  void logPseudoAtomStatus(HDF5Handler &hdf5) const;
-  void logForceFieldStatus(HDF5Handler &hdf5) const;
+  void logPseudoAtomStatus(HDF5Writer &hdf5) const;
+  void logForceFieldStatus(HDF5Writer &hdf5) const;
 
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
   static std::optional<size_t> findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name);

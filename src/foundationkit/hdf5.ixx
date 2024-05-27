@@ -27,10 +27,10 @@ import vector;
  *
  */
 
-export class HDF5Handler
+export class HDF5Writer
 {
  public:
-  HDF5Handler(const std::string& filename) : file(filename, H5F_ACC_TRUNC) {}
+  HDF5Writer(const std::string& filename) : file(filename, H5F_ACC_TRUNC) {}
   void createGroup(const std::string& groupName) { file.createGroup(groupName); }
 
   // It is not yet possible with H5Cpp.h to add dimension scales. This should be added in future versions,
@@ -69,7 +69,7 @@ export class HDF5Handler
   }
 
   template <typename T>
-  void logVector(const std::string& groupName, const std::string& datasetName, const std::vector<T>& data)
+  void writeVector(const std::string& groupName, const std::string& datasetName, const std::vector<T>& data)
   {
     H5::Group group = file.openGroup(groupName);
     H5::DataSet dataset = group.openDataSet(datasetName);
@@ -79,7 +79,7 @@ export class HDF5Handler
   }
 
   template <>
-  void logVector<bool>(const std::string& groupName, const std::string& datasetName, const std::vector<bool>& data)
+  void writeVector<bool>(const std::string& groupName, const std::string& datasetName, const std::vector<bool>& data)
   {
     H5::Group group = file.openGroup(groupName);
     H5::DataSet dataset = group.openDataSet(datasetName);
@@ -92,8 +92,8 @@ export class HDF5Handler
   }
 
   template <>
-  void logVector<std::string>(const std::string& groupName, const std::string& datasetName,
-                              const std::vector<std::string>& data)
+  void writeVector<std::string>(const std::string& groupName, const std::string& datasetName,
+                                const std::vector<std::string>& data)
   {
     H5::Group group = file.openGroup(groupName);
     H5::DataSet dataset = group.openDataSet(datasetName);
@@ -111,8 +111,8 @@ export class HDF5Handler
   }
 
   template <typename T>
-  void logSingleValue(const std::string& groupName, const std::string& datasetName, const std::vector<hsize_t>& indices,
-                      T value)
+  void writeSingleValue(const std::string& groupName, const std::string& datasetName,
+                        const std::vector<hsize_t>& indices, T value)
   {
     H5::Group group = file.openGroup(groupName);
     H5::DataSet dataset = group.openDataSet(datasetName);
@@ -123,7 +123,7 @@ export class HDF5Handler
     dataset.write(&value, getH5Type<T>(), memspace, dataspace);
   }
 
-  void logMetaInfo(const std::string& groupName, const std::string& infoName, const std::string& infoValue)
+  void writeMetaInfo(const std::string& groupName, const std::string& infoName, const std::string& infoValue)
   {
     // Create a string attribute at the root of the file
     H5::Group group = file.openGroup(groupName);
@@ -133,7 +133,7 @@ export class HDF5Handler
     attr.write(strType, infoValue);
   }
 
-  void logMetaInfo(const std::string& groupName, const std::string& infoName, const double& infoValue)
+  void writeMetaInfo(const std::string& groupName, const std::string& infoName, const double& infoValue)
   {
     // Create a string attribute at the root of the file
     H5::Group group = file.openGroup(groupName);
@@ -143,7 +143,7 @@ export class HDF5Handler
     attr.write(datatype, &infoValue);
   }
 
-  void logMetaInfo(const std::string& groupName, const std::string& infoName, const size_t& infoValue)
+  void writeMetaInfo(const std::string& groupName, const std::string& infoName, const size_t& infoValue)
   {
     // Create a string attribute at the root of the file
     H5::Group group = file.openGroup(groupName);

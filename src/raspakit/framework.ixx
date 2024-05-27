@@ -114,7 +114,7 @@ export struct Framework
 
   std::string printStatus(const ForceField &forceField) const;
   std::string printBreakthroughStatus() const;
-  void logStatus(HDF5Handler &hdf5, const ForceField &forceField) const;
+  void logStatus(HDF5Writer &hdf5, const ForceField &forceField) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c);

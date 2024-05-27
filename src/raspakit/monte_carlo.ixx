@@ -69,7 +69,7 @@ export struct MonteCarlo
   size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;
-  std::vector<HDF5Handler> logs;
+  std::vector<HDF5Writer> logs;
 
   BlockErrorEstimation estimation;
 

@@ -158,7 +158,7 @@ void MonteCarlo::createOutputFiles()
 
     std::string fileNameStringHDF5 =
         std::format("output/output_{}_{}.s{}.h5", system.temperature, system.input_pressure, system.systemId);
-    logs.emplace_back(HDF5Handler(fileNameStringHDF5));
+    logs.emplace_back(HDF5Writer(fileNameStringHDF5));
   }
 }
 
@@ -197,7 +197,7 @@ void MonteCarlo::initialize()
     std::print(stream, "{}", system.reactions.printStatus());
 
     system.logMetaData(logs[system.systemId]);
-    logs[system.systemId].logMetaInfo("/", "seed", std::to_string(random.seed));
+    logs[system.systemId].writeMetaInfo("/", "seed", std::to_string(random.seed));
     HardwareInfo::logInfo(logs[system.systemId]);
     Units::logStatus(logs[system.systemId]);
     system.logSystemStatus(logs[system.systemId]);
@@ -635,7 +635,29 @@ void MonteCarlo::output()
   }
 }
 
-void MonteCarlo::log() {}
+void MonteCarlo::log()
+{
+  for (System& system : systems)
+  {
+    // recomputedEnergies.printMC
+    // drift.printMC
+    system.runningEnergies.printMC(logs[system.systemId], "running_energies");
+
+    RunningEnergy recomputedEnergies = system.computeTotalEnergies();
+    reomputedEnergies.printMC(logs[system.systemId], "recomputed_energies");
+
+    RunningEnergy drift = system.runningEnergies - recomputedEnergies;
+    drift.printMC(logs[system.systemId], "drift");
+
+    // system.writeMCMoveStatistics
+    // for component: copmonent.mc_moves_count.writeComponentStatistics
+    // system.mc_moves_count.writeSystemStatistics
+    // countTotal.writeAllSystemStatistics
+    // for componnet: component.mc_moves_cputime.writeMCMoveCPUTimeStatistics
+    // system.mc_moves_cputime.writeMCMoveCPUTimeStatistics
+    // total.writeMCMoveCPUTimeStatistics
+  }
+}
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteCarlo& mc)
 {

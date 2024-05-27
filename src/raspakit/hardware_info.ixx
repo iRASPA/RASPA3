@@ -15,5 +15,5 @@ import hdf5;
 export namespace HardwareInfo
 {
   std::string writeInfo();
-  void logInfo(HDF5Handler& hdf5);
+  void logInfo(HDF5Writer& hdf5);
 }

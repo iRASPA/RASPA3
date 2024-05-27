@@ -542,25 +542,25 @@ std::string Component::printStatus(const ForceField &forceField) const
   return stream.str();
 }
 
-void Component::logStatus(HDF5Handler &hdf5, const ForceField &forceField) const
+void Component::logStatus(HDF5Writer &hdf5, const ForceField &forceField) const
 {
   std::string group = std::format("{}_{}", componentId, name);
   hdf5.createGroup(group);
-  hdf5.logMetaInfo(group, "Critical temperature [K]", criticalTemperature);
-  hdf5.logMetaInfo(group, "Critical pressure [Pa]", criticalPressure);
-  hdf5.logMetaInfo(group, "Acentric factor [-]", acentricFactor);
-  hdf5.logMetaInfo(group, "Mol fraction [-]", molFraction);
-  hdf5.logMetaInfo(group, "Swappable", std::format("{}", swapable));
-  hdf5.logMetaInfo(group, "Mass", totalMass);
+  hdf5.writeMetaInfo(group, "Critical temperature [K]", criticalTemperature);
+  hdf5.writeMetaInfo(group, "Critical pressure [Pa]", criticalPressure);
+  hdf5.writeMetaInfo(group, "Acentric factor [-]", acentricFactor);
+  hdf5.writeMetaInfo(group, "Mol fraction [-]", molFraction);
+  hdf5.writeMetaInfo(group, "Swappable", std::format("{}", swapable));
+  hdf5.writeMetaInfo(group, "Mass", totalMass);
   if (fugacityCoefficient.has_value())
   {
-    hdf5.logMetaInfo(group, "Fugacity coefficient [-]", fugacityCoefficient.value());
+    hdf5.writeMetaInfo(group, "Fugacity coefficient [-]", fugacityCoefficient.value());
   }
-  hdf5.logMetaInfo(group, "Bulk fluid density [-]", bulkFluidDensity);
-  hdf5.logMetaInfo(group, "Compressibility [-]", compressibility);
-  hdf5.logMetaInfo(group, "Excess molecules [-]", amountOfExcessMolecules);
-  hdf5.logMetaInfo(group, "Number of Atoms", atoms.size());
-  hdf5.logMetaInfo(group, "CBMC starting bead", startingBead);
+  hdf5.writeMetaInfo(group, "Bulk fluid density [-]", bulkFluidDensity);
+  hdf5.writeMetaInfo(group, "Compressibility [-]", compressibility);
+  hdf5.writeMetaInfo(group, "Excess molecules [-]", amountOfExcessMolecules);
+  hdf5.writeMetaInfo(group, "Number of Atoms", atoms.size());
+  hdf5.writeMetaInfo(group, "CBMC starting bead", startingBead);
 
   std::vector<double> position(3 * atoms.size());
   std::vector<double> charge(atoms.size());
@@ -576,61 +576,61 @@ void Component::logStatus(HDF5Handler &hdf5, const ForceField &forceField) const
   }
 
   hdf5.createDataset<double>(group, "positions", {atoms.size(), 3}, {{"dimensions", "(numberOfAtoms, 3)"}});
-  hdf5.logVector(group, "positions", position);
+  hdf5.writeVector(group, "positions", position);
 
   hdf5.createDataset<double>(group, "charges", {atoms.size()}, {{"dimensions", "(numberOfAtoms, )"}});
-  hdf5.logVector(group, "charges", charge);
+  hdf5.writeVector(group, "charges", charge);
 
   hdf5.createStringDataset(group, "types", {atoms.size()}, 8);
-  hdf5.logVector<std::string>(group, "types", typenames);
+  hdf5.writeVector<std::string>(group, "types", typenames);
 
   hdf5.createDataset<double>(group, "Diagonalized inertia-vector", {3}, {{"dimensions", "(3, )"}});
-  hdf5.logVector(group, "Diagonalized inertia-vector",
-                 std::vector<double>{inertiaVector.x, inertiaVector.y, inertiaVector.z});
-  hdf5.logMetaInfo(group, "Translational degrees of freedom", translationalDegreesOfFreedom);
-  hdf5.logMetaInfo(group, "Rotational degrees of freedom", rotationalDegreesOfFreedom);
+  hdf5.writeVector(group, "Diagonalized inertia-vector",
+                   std::vector<double>{inertiaVector.x, inertiaVector.y, inertiaVector.z});
+  hdf5.writeMetaInfo(group, "Translational degrees of freedom", translationalDegreesOfFreedom);
+  hdf5.writeMetaInfo(group, "Rotational degrees of freedom", rotationalDegreesOfFreedom);
   switch (shapeType)
   {
     case Shape::NonLinear:
 
-      hdf5.logMetaInfo(group, "Shape", "Non-linear");
+      hdf5.writeMetaInfo(group, "Shape", "Non-linear");
       break;
     case Shape::Linear:
-      hdf5.logMetaInfo(group, "Shape", "Linear");
+      hdf5.writeMetaInfo(group, "Shape", "Linear");
       break;
     case Shape::Point:
-      hdf5.logMetaInfo(group, "Shape", "Point");
+      hdf5.writeMetaInfo(group, "Shape", "Point");
       break;
   }
 
   const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities;
-  hdf5.logMetaInfo(group, "Translation-move probability [-]", mc.probabilityTranslationMove);
-  hdf5.logMetaInfo(group, "Random translation-move probability [-]", mc.probabilityRandomTranslationMove);
-  hdf5.logMetaInfo(group, "Rotation-move probability [-]", mc.probabilityRotationMove);
-  hdf5.logMetaInfo(group, "Random rotation-move probability [-]", mc.probabilityRandomRotationMove);
-  hdf5.logMetaInfo(group, "Volume-move probability [-]", mc.probabilityVolumeMove);
-  hdf5.logMetaInfo(group, "Reinsertion (CBMC) probability [-]", mc.probabilityReinsertionMove_CBMC);
-  hdf5.logMetaInfo(group, "Identity-change (CBMC) probability [-]", mc.probabilityIdentityChangeMove_CBMC);
-  hdf5.logMetaInfo(group, "Swap-move (CBMC) probability [-]", mc.probabilitySwapMove_CBMC);
-  hdf5.logMetaInfo(group, "Swap-move (CFCMC) probability [-]", mc.probabilitySwapMove_CFCMC);
-  hdf5.logMetaInfo(group, "Swap-move (CFCMC/CBMC) probability [-]", mc.probabilitySwapMove_CFCMC_CBMC);
-  hdf5.logMetaInfo(group, "Gibbs Volume-move probability [-]", mc.probabilityGibbsVolumeMove);
-  hdf5.logMetaInfo(group, "Gibbs Swap-move (CBMC) probability [-]", mc.probabilityGibbsSwapMove_CBMC);
-  hdf5.logMetaInfo(group, "Gibbs Swap-move (CFCMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC);
-  hdf5.logMetaInfo(group, "Gibbs Swap-move (CFCMC/CBMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC_CBMC);
-  hdf5.logMetaInfo(group, "Widom probability [-]", mc.probabilityWidomMove);
-  hdf5.logMetaInfo(group, "Widom (CFCMC) probability [-]", mc.probabilityWidomMove_CFCMC);
-  hdf5.logMetaInfo(group, "Widom (CFCMC/CBMC) probability [-]", mc.probabilityWidomMove_CFCMC_CBMC);
-  hdf5.logMetaInfo(group, "Parallel Tempering Swap [-]", mc.probabilityParallelTemperingSwap);
+  hdf5.writeMetaInfo(group, "Translation-move probability [-]", mc.probabilityTranslationMove);
+  hdf5.writeMetaInfo(group, "Random translation-move probability [-]", mc.probabilityRandomTranslationMove);
+  hdf5.writeMetaInfo(group, "Rotation-move probability [-]", mc.probabilityRotationMove);
+  hdf5.writeMetaInfo(group, "Random rotation-move probability [-]", mc.probabilityRandomRotationMove);
+  hdf5.writeMetaInfo(group, "Volume-move probability [-]", mc.probabilityVolumeMove);
+  hdf5.writeMetaInfo(group, "Reinsertion (CBMC) probability [-]", mc.probabilityReinsertionMove_CBMC);
+  hdf5.writeMetaInfo(group, "Identity-change (CBMC) probability [-]", mc.probabilityIdentityChangeMove_CBMC);
+  hdf5.writeMetaInfo(group, "Swap-move (CBMC) probability [-]", mc.probabilitySwapMove_CBMC);
+  hdf5.writeMetaInfo(group, "Swap-move (CFCMC) probability [-]", mc.probabilitySwapMove_CFCMC);
+  hdf5.writeMetaInfo(group, "Swap-move (CFCMC/CBMC) probability [-]", mc.probabilitySwapMove_CFCMC_CBMC);
+  hdf5.writeMetaInfo(group, "Gibbs Volume-move probability [-]", mc.probabilityGibbsVolumeMove);
+  hdf5.writeMetaInfo(group, "Gibbs Swap-move (CBMC) probability [-]", mc.probabilityGibbsSwapMove_CBMC);
+  hdf5.writeMetaInfo(group, "Gibbs Swap-move (CFCMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC);
+  hdf5.writeMetaInfo(group, "Gibbs Swap-move (CFCMC/CBMC) probability [-]", mc.probabilityGibbsSwapMove_CFCMC_CBMC);
+  hdf5.writeMetaInfo(group, "Widom probability [-]", mc.probabilityWidomMove);
+  hdf5.writeMetaInfo(group, "Widom (CFCMC) probability [-]", mc.probabilityWidomMove_CFCMC);
+  hdf5.writeMetaInfo(group, "Widom (CFCMC/CBMC) probability [-]", mc.probabilityWidomMove_CFCMC_CBMC);
+  hdf5.writeMetaInfo(group, "Parallel Tempering Swap [-]", mc.probabilityParallelTemperingSwap);
 
-  hdf5.logMetaInfo(group, "Number of Bonds", bonds.size());
+  hdf5.writeMetaInfo(group, "Number of Bonds", bonds.size());
   std::vector<std::string> bondTypes(bonds.size());
   for (size_t i = 0; i < bonds.size(); ++i)
   {
     bondTypes[i] = bonds[i].print();
   }
   hdf5.createStringDataset(group, "bondtypes", {bonds.size()}, 128);
-  hdf5.logVector<std::string>(group, "bondtypes", bondTypes);
+  hdf5.writeVector<std::string>(group, "bondtypes", bondTypes);
 }
 
 std::vector<Atom> Component::rotateRandomlyAroundCenterOfMass([[maybe_unused]] const simd_quatd &q)

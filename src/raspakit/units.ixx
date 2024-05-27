@@ -108,5 +108,5 @@ import hdf5;
 
   
   std::string printStatus();
-  void logStatus(HDF5Handler& hdf5);
+  void logStatus(HDF5Writer& hdf5);
 };

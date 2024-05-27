@@ -386,7 +386,7 @@ std::string ForceField::printForceFieldStatus() const
   return stream.str();
 }
 
-void ForceField::logPseudoAtomStatus(HDF5Handler& hdf5) const
+void ForceField::logPseudoAtomStatus(HDF5Writer& hdf5) const
 {
   hdf5.createGroup("forcefield");
 
@@ -403,17 +403,17 @@ void ForceField::logPseudoAtomStatus(HDF5Handler& hdf5) const
   }
 
   hdf5.createDataset<double>("forcefield", "mass", {numberOfPseudoAtoms}, {{"dimensions", "(numberOfPseudoAtoms, )"}});
-  hdf5.logVector("forcefield", "mass", masses);
+  hdf5.writeVector("forcefield", "mass", masses);
   hdf5.createDataset<double>("forcefield", "charge", {numberOfPseudoAtoms},
                              {{"dimensions", "(numberOfPseudoAtoms, )"}});
-  hdf5.logVector("forcefield", "charge", charges);
+  hdf5.writeVector("forcefield", "charge", charges);
   hdf5.createStringDataset("forcefield", "names", {numberOfPseudoAtoms}, 8);
-  hdf5.logVector<std::string>("forcefield", "names", names);
+  hdf5.writeVector<std::string>("forcefield", "names", names);
   hdf5.createStringDataset("forcefield", "sources", {numberOfPseudoAtoms}, 128);
-  hdf5.logVector<std::string>("forcefield", "sources", sources);
+  hdf5.writeVector<std::string>("forcefield", "sources", sources);
 }
 
-void ForceField::logForceFieldStatus(HDF5Handler& hdf5) const
+void ForceField::logForceFieldStatus(HDF5Writer& hdf5) const
 {
   std::vector<double> epsilons(numberOfPseudoAtoms * numberOfPseudoAtoms);
   std::vector<double> sigmas(numberOfPseudoAtoms * numberOfPseudoAtoms);
@@ -431,26 +431,26 @@ void ForceField::logForceFieldStatus(HDF5Handler& hdf5) const
   }
   hdf5.createDataset<double>("forcefield", "epsilon", {numberOfPseudoAtoms, numberOfPseudoAtoms},
                              {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
-  hdf5.logVector("forcefield", "epsilon", epsilons);
+  hdf5.writeVector("forcefield", "epsilon", epsilons);
   hdf5.createDataset<double>("forcefield", "sigma", {numberOfPseudoAtoms, numberOfPseudoAtoms},
                              {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
-  hdf5.logVector("forcefield", "epsilon", sigmas);
+  hdf5.writeVector("forcefield", "epsilon", sigmas);
   hdf5.createDataset<double>("forcefield", "shift", {numberOfPseudoAtoms, numberOfPseudoAtoms},
                              {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
-  hdf5.logVector("forcefield", "shift", shifts);
+  hdf5.writeVector("forcefield", "shift", shifts);
 
   hdf5.createDataset<bool>("forcefield", "tailcorrections", {numberOfPseudoAtoms, numberOfPseudoAtoms},
                            {{"dimensions", "(numberOfPseudoAtoms, numberOfPseudoAtoms)"}});
-  hdf5.logVector<bool>("forcefield", "tailcorrections", tailCorrections);
+  hdf5.writeVector<bool>("forcefield", "tailcorrections", tailCorrections);
 
   if (automaticEwald)
   {
-    hdf5.logMetaInfo("forcefield", "ewald_precision", std::format("{}", EwaldPrecision));
+    hdf5.writeMetaInfo("forcefield", "ewald_precision", std::format("{}", EwaldPrecision));
   }
-  hdf5.logMetaInfo("forcefield", "ewald_alpha", std::format("{}", EwaldAlpha));
+  hdf5.writeMetaInfo("forcefield", "ewald_alpha", std::format("{}", EwaldAlpha));
   hdf5.createDataset<int>("forcefield", "ewald_kvectors", {3}, {{"dimensions", "(xyz, )"}});
-  hdf5.logVector("forcefield", "ewald_kvectors",
-                 std::vector<int>{numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z});
+  hdf5.writeVector("forcefield", "ewald_kvectors",
+                   std::vector<int>{numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z});
 }
 
 std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const

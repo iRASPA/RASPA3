@@ -196,13 +196,14 @@ std::string SimulationBox::printStatus() const
   return stream.str();
 }
 
-void SimulationBox::logStatus(HDF5Handler &hdf5) const
+void SimulationBox::logStatus(HDF5Writer &hdf5) const
 {
   hdf5.createDataset<double>("initial_conditions", "box", std::vector<size_t>{3, 3}, {{"dimensions", "(xyz, xyz)"}});
-  hdf5.logVector("initial_conditions", "box",
-                 std::vector<double>{cell.ax, cell.bx, cell.cx, cell.ay, cell.by, cell.cy, cell.az, cell.bz, cell.cz});
+  hdf5.writeVector(
+      "initial_conditions", "box",
+      std::vector<double>{cell.ax, cell.bx, cell.cx, cell.ay, cell.by, cell.cy, cell.az, cell.bz, cell.cz});
   hdf5.createDataset<double>("initial_conditions", "boxLengths", std::vector<size_t>{3}, {{"dimensions", "(xyz, )"}});
-  hdf5.logVector("initial_conditions", "boxLengths", std::vector<double>{lengthA, lengthB, lengthC});
+  hdf5.writeVector("initial_conditions", "boxLengths", std::vector<double>{lengthA, lengthB, lengthC});
   hdf5.createDataset<double>("initial_conditions", "boxAngles", std::vector<size_t>{3}, {{"dimensions", "(xyz, )"}});
 }
 

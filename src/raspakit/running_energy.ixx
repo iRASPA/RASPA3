@@ -34,21 +34,27 @@ import <functional>;
 
 import archive;
 import scaling;
-
+import hdf5;
 
 export struct RunningEnergy
 {
-  RunningEnergy() : externalFieldVDW(0.0), frameworkMoleculeVDW(0.0), moleculeMoleculeVDW(0.0), 
-                    externalFieldCharge(0.0), frameworkMoleculeCharge(0.0), moleculeMoleculeCharge(0.0),
-                    ewald(0.0),
-                    intraVDW(0.0), intraCoul(0.0),
-                    tail(0.0),
-                    polarization(0.0),
-                    dudlambdaVDW(0.0),
-                    dudlambdaCharge(0.0),
-                    dudlambdaEwald(0.0),
-                    translationalKineticEnergy(0.0),
-                    rotationalKineticEnergy(0.0)
+  RunningEnergy()
+      : externalFieldVDW(0.0),
+        frameworkMoleculeVDW(0.0),
+        moleculeMoleculeVDW(0.0),
+        externalFieldCharge(0.0),
+        frameworkMoleculeCharge(0.0),
+        moleculeMoleculeCharge(0.0),
+        ewald(0.0),
+        intraVDW(0.0),
+        intraCoul(0.0),
+        tail(0.0),
+        polarization(0.0),
+        dudlambdaVDW(0.0),
+        dudlambdaCharge(0.0),
+        dudlambdaEwald(0.0),
+        translationalKineticEnergy(0.0),
+        rotationalKineticEnergy(0.0)
   {
   }
 
@@ -56,7 +62,10 @@ export struct RunningEnergy
   std::string printMD() const;
   std::string printMC(const std::string& label);
   std::string printMD(const std::string& label, double referenceEnergy);
-  
+
+  void logMC(HDF5Writer& hdf5, std::string& label) const;
+  void logMD(HDF5Writer& hdf5, std::string& label, double referenceEnergy) const;
+
   inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 

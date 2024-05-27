@@ -338,9 +338,9 @@ export struct System
 
   std::string writeMCMoveStatistics() const;
 
-  void logMetaData(HDF5Handler &hdf5) const;
-  void logSystemStatus(HDF5Handler &hdf5) const;
-  void logComponentStatus(HDF5Handler &hdf5) const;
+  void logMetaData(HDF5Writer &hdf5) const;
+  void logSystemStatus(HDF5Writer &hdf5) const;
+  void logComponentStatus(HDF5Writer &hdf5) const;
 
   std::vector<Component> nonFrameworkComponents()
   {

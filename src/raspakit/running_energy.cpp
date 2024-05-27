@@ -136,6 +136,28 @@ std::string RunningEnergy::printMC(const std::string &label)
   return stream.str();
 }
 
+void RunningEnergy::logMC(HDF5Writer &hdf5, std::string &label) const
+{
+  double conv = Units::EnergyToKelvin;
+  std::string group = "statistics/" + label;
+  hdf5.createGroup(group);
+  hdf5.writeMetaInfo(group, "Total potential energy: [K]", conv * potentialEnergy());
+  hdf5.writeMetaInfo(group, "external field VDW: [K]", conv * externalFieldVDW);
+  hdf5.writeMetaInfo(group, "external field Real: [K]", conv * externalFieldCharge);
+  hdf5.writeMetaInfo(group, "framework-molecule VDW: [K]", conv * frameworkMoleculeVDW);
+  hdf5.writeMetaInfo(group, "framework-molecule Real [K]", conv * frameworkMoleculeCharge);
+  hdf5.writeMetaInfo(group, "molecule-molecule VDW: [K]", conv * moleculeMoleculeVDW);
+  hdf5.writeMetaInfo(group, "molecule-molecule Real: [K]", conv * moleculeMoleculeCharge);
+  hdf5.writeMetaInfo(group, "Van der Waals (Tail): [K]", conv * tail);
+  hdf5.writeMetaInfo(group, "Coulombic Ewald: [K]", conv * ewald);
+  hdf5.writeMetaInfo(group, "intra VDW: [K]", conv * intraVDW);
+  hdf5.writeMetaInfo(group, "intra Coulombic: [K]", conv * intraCoul);
+  hdf5.writeMetaInfo(group, "polarization: [K]", conv * polarization);
+  hdf5.writeMetaInfo(group, "dU/dlambda VDW: [K]", conv * dudlambdaVDW);
+  hdf5.writeMetaInfo(group, "dU/dlambda Real: [K]", conv * dudlambdaCharge);
+  hdf5.writeMetaInfo(group, "dU/dlambda Ewald: [K]", conv * dudlambdaEwald);
+}
+
 std::string RunningEnergy::printMD(const std::string &label, double referenceEnergy)
 {
   std::ostringstream stream;
@@ -166,6 +188,18 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
   std::print(stream, "\n");
 
   return stream.str();
+}
+
+void RunningEnergy::logMD(HDF5Writer &hdf5, std::string &label, double referenceEnergy) const
+{
+  double conv = Units::EnergyToKelvin;
+  std::string group = "statistics/" + label;
+  logMC(hdf5, label);
+  hdf5.writeMetaInfo(group, "Conserved energy: [K]", conv * conservedEnergy());
+  hdf5.writeMetaInfo(group, "Drift: [K]", std::abs(conv * (conservedEnergy() - referenceEnergy) / referenceEnergy));
+  hdf5.writeMetaInfo(group, "Total kinetic energy: [K]", conv * kineticEnergy());
+  hdf5.writeMetaInfo(group, "translation kinetic: [K]", conv * translationalKineticEnergy);
+  hdf5.writeMetaInfo(group, "rotational kinetic: [K]", conv * rotationalKineticEnergy);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &e)

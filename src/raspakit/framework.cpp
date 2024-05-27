@@ -281,12 +281,12 @@ std::string Framework::printStatus(const ForceField& forceField) const
   return stream.str();
 }
 
-void Framework::logStatus(HDF5Handler& hdf5, const ForceField& forceField) const
+void Framework::logStatus(HDF5Writer& hdf5, const ForceField& forceField) const
 {
   std::string group = std::format("{}_{}", frameworkId, name);
   hdf5.createGroup(group);
-  hdf5.logMetaInfo(group, "Number of Atoms", unitCellAtoms.size());
-  hdf5.logMetaInfo(group, "Mass", mass);
+  hdf5.writeMetaInfo(group, "Number of Atoms", unitCellAtoms.size());
+  hdf5.writeMetaInfo(group, "Mass", mass);
 
   std::vector<std::string> typenames(definedAtoms.size());
   std::vector<double> positions(3 * definedAtoms.size());
@@ -303,22 +303,22 @@ void Framework::logStatus(HDF5Handler& hdf5, const ForceField& forceField) const
   }
 
   hdf5.createDataset<double>(group, "positions", {atoms.size(), 3}, {{"dimensions", "(numberOfAtoms, 3)"}});
-  hdf5.logVector(group, "positions", positions);
+  hdf5.writeVector(group, "positions", positions);
 
   hdf5.createDataset<double>(group, "charges", {atoms.size()}, {{"dimensions", "(numberOfAtoms, )"}});
-  hdf5.logVector(group, "charges", charges);
+  hdf5.writeVector(group, "charges", charges);
 
   hdf5.createStringDataset(group, "types", {atoms.size()}, 8);
-  hdf5.logVector<std::string>(group, "types", typenames);
+  hdf5.writeVector<std::string>(group, "types", typenames);
 
-  hdf5.logMetaInfo(group, "Number of Bonds", bonds.size());
+  hdf5.writeMetaInfo(group, "Number of Bonds", bonds.size());
   std::vector<std::string> bondTypes(bonds.size());
   for (size_t i = 0; i < bonds.size(); ++i)
   {
     bondTypes[i] = bonds[i].print();
   }
   hdf5.createStringDataset(group, "bondtypes", {bonds.size()}, 128);
-  hdf5.logVector<std::string>(group, "bondtypes", bondTypes);
+  hdf5.writeVector<std::string>(group, "bondtypes", bondTypes);
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c)
