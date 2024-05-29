@@ -1,9 +1,5 @@
 name: Test RASPA3 C++ Unit Tests
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
     branches: [ "main" ]
 
@@ -35,3 +31,9 @@ jobs:
         shell: bash
         run: |
           ctest -C ${{env.BUILD_TYPE}} --test-dir ${{github.workspace}}/build/tests --verbose
+
+      - name: Generate documentation
+        working-directory: ${{github.workspace}}/build
+        # this is defined in the repo docs/CMakeLists.txt file
+        run: |
+          cmake --build ${{github.workspace}}/build -t documentation
