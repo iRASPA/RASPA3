@@ -88,7 +88,7 @@ CBMC::growRigidMoleculeReinsertion(RandomNumber &random, bool hasExternalField, 
 CBMC::growRigidMoleculeChainReinsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
                              std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,
                              double cutOff, double cutOffCoulomb, size_t startingBead,
-                             Molecule &molecule, std::vector<Atom> molecule_atoms, 
+                             [[maybe_unused]]Molecule &molecule, std::vector<Atom> molecule_atoms, 
                              const std::vector<Component> &components, size_t selectedComponent,
                              size_t numberOfTrialDirections) noexcept
 {

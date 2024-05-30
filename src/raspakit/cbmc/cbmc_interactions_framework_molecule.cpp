@@ -53,6 +53,7 @@ import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
+import threading;
 
 
 template <ThreadPool::ThreadingType T>
@@ -133,11 +134,12 @@ computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(const Forc
 {
   std::atomic_flag cancel;
 
-  ThreadPool &pool = ThreadPool::instance();
+  auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
   const size_t numberOfHelperThreads = pool.getThreadCount();
 
   std::vector<std::future<RunningEnergy>> threads(numberOfHelperThreads);
 
+  //size_t const block_size = frameworkAtoms.size() / numberOfHelperThreads;
   size_t const block_size = frameworkAtoms.size() / (numberOfHelperThreads + 1);
 
   auto task = [skip, cutOffVDW, cutOffCoulomb, atoms, &cancel, &forceField, &simulationBox]
@@ -207,6 +209,25 @@ computeFrameworkMoleculeEnergy<ThreadPool::ThreadingType::ThreadPool>(const Forc
 
         return energySum;
     };
+/*
+  std::span<const Atom>::iterator block_start = frameworkAtoms.begin();
+  for(size_t i = 0 ; i != numberOfHelperThreads - 1; ++i)
+  {
+    std::span<const Atom>::iterator block_end = block_start;
+    std::advance(block_end,block_size);
+
+    threads[i] = pool.enqueue(task, block_start, block_end);
+    block_start=block_end;
+  }
+  threads[numberOfHelperThreads - 1] = pool.enqueue(task, block_start, frameworkAtoms.end());
+
+  RunningEnergy energy{};
+  for(size_t i = 0; i != numberOfHelperThreads; ++i)
+  {
+    energy += threads[i].get();
+  }
+  if(cancel.test()) return std::nullopt;
+  */
 
   std::span<const Atom>::iterator block_start = frameworkAtoms.begin();
   for(size_t i = 0 ; i != numberOfHelperThreads; ++i)
@@ -317,8 +338,8 @@ CBMC::computeFrameworkMoleculeEnergy(const ForceField &forceField, const Simulat
   std::span<const Atom> frameworkAtoms, double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, 
   std::make_signed_t<std::size_t> skip) noexcept
 {
-  ThreadPool &pool = ThreadPool::instance();
-  switch(pool.threadingType)
+  auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
+  switch(pool.getThreadingType())
   {
     default:
     case ThreadPool::ThreadingType::Serial:

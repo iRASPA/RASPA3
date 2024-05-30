@@ -45,10 +45,10 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # -stdlib=libc++
-set(CMAKE_CXX_FLAGS_DEBUG "-fvisibility=hidden -fexperimental-library  -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "-fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_DEBUG "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
 
 # rpm-settings
 set(CPACK_PACKAGE_VERSION ${VERSION})

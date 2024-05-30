@@ -51,6 +51,52 @@ module;
     #include <ranges> // enable_borrowed_range
 #endif
 
+#include <any>
+#include <string_view>
+
+#include <algorithm> // generate_n
+#include <array> // array
+#include <cmath> // ldexp
+#include <cstddef> // size_t
+#include <cstdint> // uint8_t, uint16_t, uint32_t, uint64_t
+#include <cstdio> // snprintf
+#include <cstring> // memcpy
+#include <iterator> // back_inserter
+#include <limits> // numeric_limits
+#include <string> // char_traits, string
+#include <utility> // make_pair, move
+#include <vector> // vector
+
+// #include <nlohmann/detail/exceptions.hpp>
+
+// #include <nlohmann/detail/input/input_adapters.hpp>
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-License-Identifier: MIT
+
+
+
+#include <array> // array
+#include <cstddef> // size_t
+#include <cstring> // strlen
+#include <iterator> // begin, end, iterator_traits, random_access_iterator_tag, distance, next
+#include <memory> // shared_ptr, make_shared, addressof
+#include <numeric> // accumulate
+#include <string> // string, char_traits
+#include <type_traits> // enable_if, is_base_of, is_pointer, is_integral, remove_pointer
+#include <utility> // pair, declval
+
+#ifndef JSON_NO_IO
+    #include <cstdio>   // FILE *
+    #include <istream>  // istream
+#endif                  // JSON_NO_IO
+
+
+
 export module json;
 
 #ifndef USE_LEGACY_HEADERS
@@ -6149,55 +6195,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-
-
-#include <algorithm> // generate_n
-#include <array> // array
-#include <cmath> // ldexp
-#include <cstddef> // size_t
-#include <cstdint> // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstdio> // snprintf
-#include <cstring> // memcpy
-#include <iterator> // back_inserter
-#include <limits> // numeric_limits
-#include <string> // char_traits, string
-#include <utility> // make_pair, move
-#include <vector> // vector
-
-// #include <nlohmann/detail/exceptions.hpp>
-
-// #include <nlohmann/detail/input/input_adapters.hpp>
-//     __ _____ _____ _____
-//  __|  |   __|     |   | |  JSON for Modern C++
-// |  |  |__   |  |  | | | |  version 3.11.3
-// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
-//
-// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
-// SPDX-License-Identifier: MIT
-
-
-
-#include <array> // array
-#include <cstddef> // size_t
-#include <cstring> // strlen
-#include <iterator> // begin, end, iterator_traits, random_access_iterator_tag, distance, next
-#include <memory> // shared_ptr, make_shared, addressof
-#include <numeric> // accumulate
-#include <string> // string, char_traits
-#include <type_traits> // enable_if, is_base_of, is_pointer, is_integral, remove_pointer
-#include <utility> // pair, declval
-
-#ifndef JSON_NO_IO
-    #include <cstdio>   // FILE *
-    #include <istream>  // istream
-#endif                  // JSON_NO_IO
-
-// #include <nlohmann/detail/iterators/iterator_traits.hpp>
-
-// #include <nlohmann/detail/macro_scope.hpp>
-
-// #include <nlohmann/detail/meta/type_traits.hpp>
 
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
@@ -19735,13 +19732,6 @@ private:
 };
 
 NLOHMANN_JSON_NAMESPACE_END
-
-#if defined(JSON_HAS_CPP_17)
-    #if JSON_HAS_STATIC_RTTI
-        #include <any>
-    #endif
-    #include <string_view>
-#endif
 
 /*!
 @brief namespace for Niels Lohmann

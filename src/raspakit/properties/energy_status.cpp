@@ -115,8 +115,12 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.numberOfComponents;
   archive << e.totalEnergy;
   archive << e.intraEnergy;
+  archive << e.externalFieldMoleculeEnergy;
+  archive << e.frameworkMoleculeEnergy;
   archive << e.interEnergy;
   archive << e.intraComponentEnergies;
+  archive << e.externalFieldComponentEnergies;
+  archive << e.frameworkComponentEnergies;
   archive << e.interComponentEnergies;
   archive << e.dUdlambda;
 
@@ -139,8 +143,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.numberOfComponents;
   archive >> e.totalEnergy;
   archive >> e.intraEnergy;
+  archive >> e.externalFieldMoleculeEnergy;
+  archive >> e.frameworkMoleculeEnergy;
   archive >> e.interEnergy;
   archive >> e.intraComponentEnergies;
+  archive >> e.externalFieldComponentEnergies;
+  archive >> e.frameworkComponentEnergies;
   archive >> e.interComponentEnergies;
   archive >> e.dUdlambda;
 

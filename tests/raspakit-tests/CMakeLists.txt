@@ -13,6 +13,6 @@ add_executable(unit_tests_raspakit
                rigid_gradient.cpp
                main.cpp)
 
-target_link_libraries(unit_tests_raspakit PRIVATE libs::raspakit ${GTEST_LIBRARIES} ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+        target_link_libraries(unit_tests_raspakit libs::raspakit ${BLAS_LIBRARIES} ${LAPACK_LIBRARIES} OpenMP::OpenMP_CXX GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main -lc++ -lc++abi -lpthread)
 
 add_test(NAME RaspaKit COMMAND unit_tests_raspakit)

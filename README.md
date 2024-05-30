@@ -110,11 +110,11 @@ cd examples/basic/1_mc_methane_in_box<br>
 Ubuntu 24 (fully supported)
 ===========================
 sudo apt install build-essential git cmake ninja-build<br>
-sudo apt install llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev<br>
+sudo apt install llvm-17 clang-17 clang-tools-17 clang-tidy-17 libc++-17-dev libc++abi-17-dev libomp-17-dev<br>
 sudo apt pybind11-dev python3-pybind11<br>
 sudo apt liblapack-dev<br>
 sudo apt doxygen graphviz<br>
-cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release .<br>
+cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON .<br>
 cmake --build build  (or: ninja -C build -v)<br>
 cmake --install build --config Release<br>
 ctest --test-dir build/tests --verbose<br>

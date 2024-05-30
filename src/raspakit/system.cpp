@@ -731,25 +731,25 @@ std::string System::writeOutputHeader() const
   std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
 #endif
 
-  ThreadPool& pool = ThreadPool::instance();
-  const size_t numberOfHelperThreads = pool.getThreadCount();
+  // ThreadPool &pool = ThreadPool::instance();
+  // const size_t numberOfHelperThreads = pool.getThreadCount();
 
-  switch (pool.threadingType)
-  {
-    case ThreadPool::ThreadingType::Serial:
-      std::print(stream, "Parallelization: Serial, 1 thread\n");
-      break;
-    case ThreadPool::ThreadingType::OpenMP:
-      std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
-      break;
-    case ThreadPool::ThreadingType::ThreadPool:
-      std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
-      break;
-    case ThreadPool::ThreadingType::GPU_Offload:
-      std::print(stream, "Parallelization: GPU-Offload\n");
-      break;
-  }
-  std::print(stream, "\n");
+  // switch(pool.threadingType)
+  //{
+  //   case ThreadPool::ThreadingType::Serial:
+  //     std::print(stream, "Parallelization: Serial, 1 thread\n");
+  //     break;
+  //   case ThreadPool::ThreadingType::OpenMP:
+  //     std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+  //     break;
+  //   case ThreadPool::ThreadingType::ThreadPool:
+  //     std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+  //     break;
+  //   case ThreadPool::ThreadingType::GPU_Offload:
+  //     std::print(stream, "Parallelization: GPU-Offload\n");
+  //     break;
+  // }
+  // std::print(stream, "\n");
 
   return stream.str();
 }
@@ -820,7 +820,7 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   }
   std::print(stream, "\n");
 
-  std::print(stream, runningEnergies.printMC());
+  stream << runningEnergies.printMC();
 
   std::print(stream, "\n");
 
@@ -864,7 +864,7 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
   }
   std::print(stream, "\n");
 
-  std::print(stream, runningEnergies.printMC());
+  stream << runningEnergies.printMC();
 
   std::print(stream, "\n");
 
@@ -897,7 +897,7 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
              accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
-  std::print(stream, runningEnergies.printMD());
+  stream << runningEnergies.printMD();
 
   std::print(stream, "\n");
 
@@ -1322,8 +1322,10 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   if (propertyRadialDistributionFunction.has_value())
   {
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
-                                               currentCycle, currentBlock);
+    computeTotalGradients();
+    computeCenterOfMassAndQuaternionGradients();
+    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculePositions,
+                                               spanOfMoleculeAtoms(), currentCycle, currentBlock);
   }
 
   if (propertyDensityGrid.has_value())
@@ -1920,6 +1922,8 @@ void System::computeCenterOfMassAndQuaternionGradients()
         double3 F = M * (span[i].gradient - com_gradient * mass * inverseMoleculeMass);
         double3 dr = components[l].atoms[i].position;
         torque += double3::cross(F, dr);
+
+        // span[i].gradient = com_gradient;
       }
 
       moleculePositions[moleculeIndex].orientationGradient.ix =
@@ -2020,7 +2024,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfFrameworks;
   archive << s.numberOfFrameworkAtoms;
   archive << s.numberOfRigidFrameworkAtoms;
+  archive << s.frameworkComponents;
   archive << s.components;
+  archive << s.equationOfState;
   archive << s.loadings;
   archive << s.swapableComponents;
   archive << s.initialNumberOfMolecules;
@@ -2116,7 +2122,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfFrameworks;
   archive >> s.numberOfFrameworkAtoms;
   archive >> s.numberOfRigidFrameworkAtoms;
+  archive >> s.frameworkComponents;
   archive >> s.components;
+  archive >> s.equationOfState;
   archive >> s.loadings;
   archive >> s.swapableComponents;
   archive >> s.initialNumberOfMolecules;

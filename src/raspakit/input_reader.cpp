@@ -66,6 +66,7 @@ import double3;
 import units;
 import sample_movies;
 import threadpool;
+import threading;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;
@@ -202,6 +203,16 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     forceFields[i] = standard;
   }
 
+  if (parsed_data["RestartFromBinaryFile"].is_boolean())
+  {
+    restartFromBinary = parsed_data["RestartFromBinaryFile"].get<bool>();
+  }
+
+  if (parsed_data["RandomSeed"].is_number_unsigned())
+  {
+    randomSeed = parsed_data["RandomSeed"].get<unsigned long long>();
+  }
+
   if (parsed_data["NumberOfCycles"].is_number_unsigned())
   {
     numberOfCycles = parsed_data["NumberOfCycles"].get<size_t>();
@@ -237,11 +248,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-  if (parsed_data["NumberOfThreads"].is_number_unsigned())
-  {
-    numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
-    if (numberOfThreads > 1) threadingType = ThreadPool::ThreadingType::ThreadPool;
-  }
 
   if (parsed_data["SimulationType"].is_string())
   {
@@ -308,6 +314,13 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     {
       threadingType = ThreadPool::ThreadingType::GPU_Offload;
     }
+  }
+
+  if (parsed_data["NumberOfThreads"].is_number_unsigned())
+  {
+    numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
+    if (numberOfThreads > 1) threadingType = ThreadPool::ThreadingType::ThreadPool;
+    else threadingType = ThreadPool::ThreadingType::Serial;
   }
 
   // count number of components
@@ -477,7 +490,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
-     size_t jsonNumberOfLambdaBins{31};
+     size_t jsonNumberOfLambdaBins{41};
      if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
      {
        jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();

@@ -1,7 +1,7 @@
 {
   "PseudoAtoms" :
   [
-    {"name" : "O",     "print_to_output" : true,  "element" : "O",  "print_as" : "O",  "mass" : 28.0855,  "charge" :  2.05,
+    {"name" : "O",     "print_to_output" : true,  "element" : "O",  "print_as" : "O",  "mass" : 28.0855,  "charge" : -1.025, 
               "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"},
     {"name" : "Al",    "print_to_output" : true,  "element" : "Al", "print_as" : "Al", "mass" : 26.98154 ,"charge" :  1.75,
               "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"},

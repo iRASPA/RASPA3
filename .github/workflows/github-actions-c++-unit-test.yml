@@ -1,0 +1,39 @@
+name: Test RASPA3 C++ Unit Tests
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install packages
+        run: sudo apt-get install -y build-essential git cmake ninja-build llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev pybind11-dev python3-pybind11 libblas3 libblas-dev liblapack3 liblapack-dev doxygen graphviz
+
+      - name: configure cmake raspa3 
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DBUILD_TESTING=ON .
+
+      - name: build raspa3 and tests
+        shell: bash
+        run: |
+          cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+
+      - name: run tests
+        shell: bash
+        run: |
+          ctest -C ${{env.BUILD_TYPE}} --test-dir ${{github.workspace}}/build/tests --verbose
+
+      - name: Generate documentation
+        working-directory: ${{github.workspace}}/build
+        # this is defined in the repo docs/CMakeLists.txt file
+        run: |
+          cmake --build ${{github.workspace}}/build -t documentation

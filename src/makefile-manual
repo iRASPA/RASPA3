@@ -4,7 +4,7 @@ DESTDIR=${HOME}/raspa3
 VERSION=3.0.0
 DBGCXXFLAGS = -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined
 RELCXXFLAGS = -g -O3 -march=native -ffast-math
-COMMONFLAGS= -DVERSION=${VERSION} -I/usr/local/include -fexperimental-library -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fopenmp -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct  -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-deprecated-declarations -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops
+COMMONFLAGS= -DVERSION=${VERSION} -I/usr/local/opt/libomp/include -I/usr/local/include -fexperimental-library -std=c++2b -fmodules -fbuiltin-module-map -stdlib=libc++ -fopenmp -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wno-gnu-anonymous-struct  -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-deprecated-declarations -fomit-frame-pointer -ftree-vectorize -fno-stack-check -funroll-loops
 
 MODULEPATHS = -fprebuilt-module-path=. -fprebuilt-module-path=./foundationkit -fprebuilt-module-path=./mathkit -fprebuilt-module-path=./symmetrykit -fprebuilt-module-path=./raspakit -fprebuilt-module-path=./raspakit/interactions -fprebuilt-module-path=./raspakit/mc_moves -fprebuilt-module-path=./raspakit/potentials -fprebuilt-module-path=./raspakit/properties -fprebuilt-module-path=./raspakit/cbmc -fprebuilt-module-path=./raspakit/forcefield
 
@@ -205,7 +205,7 @@ raspakit/properties/property_enthalpy.pcm: foundationkit/archive.pcm raspakit/av
 raspakit/properties/property_lambda_probability_histogram.pcm: foundationkit/archive.pcm raspakit/averages.pcm mathkit/double3.pcm foundationkit/print.pcm mathkit/randomnumbers.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_loading.pcm: foundationkit/archive.pcm raspakit/averages.pcm raspakit/component.pcm raspakit/properties/loadings.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_pressure.pcm: foundationkit/archive.pcm raspakit/averages.pcm mathkit/double3.pcm mathkit/double3x3.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
-raspakit/properties/property_rdf.pcm: foundationkit/archive.pcm raspakit/atom.pcm mathkit/double3.pcm raspakit/simulationbox.pcm
+raspakit/properties/property_rdf.pcm: foundationkit/archive.pcm raspakit/atom.pcm raspakit/molecule.pcm mathkit/double3.pcm raspakit/simulationbox.pcm
 raspakit/properties/property_simulationbox.pcm: foundationkit/archive.pcm raspakit/averages.pcm foundationkit/print.pcm raspakit/simulationbox.pcm
 raspakit/properties/property_widom.pcm: foundationkit/archive.pcm raspakit/averages.pcm foundationkit/print.pcm foundationkit/stringutils.pcm raspakit/units.pcm
 raspakit/properties/property_temperature.pcm: foundationkit/archive.pcm raspakit/averages.pcm raspakit/simulationbox.pcm
@@ -231,7 +231,7 @@ raspakit/thermostat.pcm: foundationkit/archive.pcm mathkit/randomnumbers.pcm ras
 
 raspa3: $(OBJ)
 	$(CXX) $(CXXFLAGS) $(MODULEPATHS) ../app/main.cpp -c -o ../app/main.o
-	$(CXX) $(CXXFLAGS) -flto -stdlib=libc++ -o ../app/raspa ../app/main.o foundationkit/*.o mathkit/*.o symmetrykit/*.o raspakit/*.o raspakit/interactions/*.o raspakit/mc_moves/*.o raspakit/potentials/*.o raspakit/properties/*.o raspakit/cbmc/*.o raspakit/forcefield/*.o -llapack -lblas -fopenmp $(PYTHONLDFLAGS)
+	$(CXX) $(CXXFLAGS) -L/usr/local/opt/libomp/lib -flto -stdlib=libc++ -o ../app/raspa ../app/main.o foundationkit/*.o mathkit/*.o symmetrykit/*.o raspakit/*.o raspakit/interactions/*.o raspakit/mc_moves/*.o raspakit/potentials/*.o raspakit/properties/*.o raspakit/cbmc/*.o raspakit/forcefield/*.o -llapack -lblas -fopenmp $(PYTHONLDFLAGS)
 
 raspa3lib: $(OBJ)
 	$(CXX) -shared mathkit/*.o foundationkit/*.o symmetrykit/*.o raspakit/*.o raspakit/interactions/*.o raspakit/mc_moves/*.o raspakit/potentials/*.o raspakit/properties/*.o raspakit/cbmc/*.o raspakit/forcefield/*.o $(PYTHONLDFLAGS) -llapack -lblas -fopenmp  -o ../python/raspakit.so

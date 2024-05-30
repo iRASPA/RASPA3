@@ -26,6 +26,7 @@ import <complex>;
 
 import archive;
 import threadpool;
+import threading;
 import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;
@@ -43,7 +44,8 @@ int main()
   {
     InputReader inputReader("simulation.input");
 
-    ThreadPool::createPool(inputReader.numberOfThreads, inputReader.threadingType);
+    auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+    pool.init(inputReader.numberOfThreads, inputReader.threadingType);
 
     switch (inputReader.simulationType)
     {
