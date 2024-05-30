@@ -324,12 +324,13 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
     // (1) Unbiased: the existing fractional molecule with lambda=lambda_o is removed.
     // (2) Unbiased: A new fractional molecule is chosen with lambda_new = 1 - epsilon, deltaU is computed.
 
+    system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.counts[1] += 1;
+    system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.totalCounts[1] += 1;
+
     if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
     {
       selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
 
-      system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.counts[1] += 1;
-      system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.totalCounts[1] += 1;
 
       std::span<Atom> fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::span<Atom> newFractionalMolecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
