@@ -236,6 +236,12 @@ void MonteCarlo::initialize()
       }
     }
 
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
+
     if (currentCycle % printEvery == 0uz)
     {
       for (System& system : systems)
@@ -328,6 +334,12 @@ void MonteCarlo::equilibrate()
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
                               selectedSecondSystem.containsTheFractionalMolecule);
     }
+
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -465,11 +477,16 @@ void MonteCarlo::production()
       ++numberOfSteps;
     }
 
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
+
     // sample properties
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
-      //system.checkCartesianPositions();
     }
 
     for (System& system : systems)

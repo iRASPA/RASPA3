@@ -270,7 +270,8 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
       std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
       fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
-      std::swap(system.moleculePositions[indexFractionalMolecule], system.moleculePositions[lastMoleculeId]);
+      std::swap(system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)], 
+                system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
       
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC_CBMC.accepted[0] += 1;
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC_CBMC.totalAccepted[0] += 1;
@@ -476,7 +477,8 @@ MC_Moves::swapMove_CFCMC_CBMC(RandomNumber &random, System& system, size_t selec
         // Swap first and last molecule (selectedMolecule) so that molecule 'indexFractionalMolecule' 
         // is always the fractional molecule 
         std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-        std::swap(system.moleculePositions[selectedMolecule], system.moleculePositions[indexFractionalMolecule]);
+        std::swap(system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)], 
+                  system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)]);
       
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
       

@@ -300,7 +300,8 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
       std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
       fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
-      std::swap(system.moleculePositions[indexFractionalMolecule], system.moleculePositions[lastMoleculeId]);
+      std::swap(system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, indexFractionalMolecule)], 
+                system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, lastMoleculeId)]);
 
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.accepted[0] += 1;
       system.components[selectedComponent].mc_moves_statistics.swapMove_CFCMC.totalAccepted[0] += 1;
@@ -314,7 +315,7 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
   else if (selectedNewBin < 0) // Deletion move
-  {
+  { 
     if (deletionDisabled)
     {
       return {std::nullopt, double3(0.0, 0.0, 0.0)};
@@ -532,7 +533,8 @@ MC_Moves::swapMove_CFCMC(RandomNumber &random, System& system, size_t selectedCo
         // Swap first and last molecule (selectedMolecule) so that molecule 'indexFractionalMolecule' 
         // is always the fractional molecule 
         std::swap_ranges(newFractionalMolecule.begin(), newFractionalMolecule.end(), fractionalMolecule.begin());
-        std::swap(system.moleculePositions[selectedMolecule], system.moleculePositions[0]);
+        std::swap(system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)], 
+                  system.moleculePositions[system.moleculeIndexOfComponent(selectedComponent, 0)]);
 
         system.deleteMolecule(selectedComponent, selectedMolecule, newFractionalMolecule);
 

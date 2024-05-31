@@ -276,6 +276,7 @@ export struct System
   size_t indexOfFirstMolecule(size_t selectedComponent);
   std::vector<Atom>::iterator iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule);
   std::vector<Molecule>::iterator indexForMolecule(size_t selectedComponent, size_t selectedMolecule);
+  size_t moleculeIndexOfComponent(size_t selectedComponent, size_t selectedMolecule);
   std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule); 
   const std::span<const Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const; 
   std::span<const Atom> spanOfFrameworkAtoms() const;

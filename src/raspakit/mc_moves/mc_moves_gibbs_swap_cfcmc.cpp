@@ -423,13 +423,17 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
       {
         atom.setScalingToInteger();
       }
-      systemA.insertMolecule(selectedComponent, systemA.moleculePositions[indexFractionalMoleculeA], addedMolecule);
-      systemA.moleculePositions[indexFractionalMoleculeA] = systemB.moleculePositions[indexFractionalMoleculeB];
+      systemA.insertMolecule(selectedComponent, 
+                             systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)], 
+                             addedMolecule);
+      systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] = 
+        systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
       
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
 
-      std::swap(systemB.moleculePositions[indexFractionalMoleculeB], systemB.moleculePositions[indexSelectedIntegerMoleculeB]);
+      std::swap(systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)], 
+                systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexSelectedIntegerMoleculeB)]);
       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
       
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
@@ -613,8 +617,9 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
     
-      std::swap(systemA.moleculePositions[indexFractionalMoleculeA], systemB.moleculePositions[indexFractionalMoleculeB]);
-      systemB.moleculePositions[indexFractionalMoleculeB] = trialMolecule.first;
+      std::swap(systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)], 
+                systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)]);
+      systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] = trialMolecule.first;
 
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(systemA.components[selectedComponent].lambdaGC.currentBin, 

@@ -449,25 +449,30 @@ std::vector<Molecule>::iterator System::indexForMolecule(size_t selectedComponen
   return moleculePositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
+size_t System::moleculeIndexOfComponent(size_t selectedComponent, size_t selectedMolecule)
+{
+  size_t index{ 0 };
+  for (size_t i = 0; i < selectedComponent; ++i)
+  {
+    index += numberOfMoleculesPerComponent[i];
+  }
+  index += selectedMolecule;
+  return index;
+}
+
 std::span<const Atom> System::spanOfFrameworkAtoms() const
 {
   return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
-  //return std::span(atomPositions.begin(), 
-  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms)); 
 }
 
 std::span<Atom> System::spanOfFrameworkAtoms()
 {
   return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
-  //return std::span(atomPositions.begin(), 
-  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
 
 std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
 {
   return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
-  //return std::span(atomPositions.begin(), 
-  //                 atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms));
 }
 
 

@@ -668,6 +668,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
         P = value["ExternalPressure"].get<double>();
       }
 
+
       if (!forceFields[systemId].has_value())
       {
         throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
@@ -680,6 +681,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       systems[systemId] =
           System(systemId, std::nullopt, T, P, forceFields[systemId].value(), jsonFrameworkComponents,
                  jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+
     }
     else if (caseInSensStringCompare(typeString, "Box"))
     {
@@ -723,6 +725,11 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     else
     {
       throw std::runtime_error(std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
+    }
+
+    if (value.contains("ExternalField"))
+    {
+      systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
     }
 
     if (value["ComputeConventionalRDF"].is_boolean())
