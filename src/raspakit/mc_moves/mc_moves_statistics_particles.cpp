@@ -76,6 +76,7 @@ void MCMoveStatisticsParticles::optimizeMCMoves()
   translationMove.optimizeAcceptance(0.01, 1.5);
   rotationMove.optimizeAcceptance(0.01, 1.5);
 
+  swapMove_CFCMC.optimizeAcceptance(0.0, 1.0);
   swapMove_CFCMC_CBMC.optimizeAcceptance(0.0, 1.0);
   GibbsSwapMove_CFCMC.optimizeAcceptance(0.0, 1.0);
 }

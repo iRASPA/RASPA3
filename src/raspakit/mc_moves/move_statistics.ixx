@@ -56,9 +56,12 @@ struct MoveStatistics
 
   void clear()
   {
-    counts = T();
-    constructed = T();
-    accepted = T();
+    counts = T{};
+    constructed = T{};
+    accepted = T{};
+    totalCounts = T{};
+    totalConstructed = T{};
+    totalAccepted = T{};
   }
 
   void optimizeAcceptance(T lowerLimit = T(0.0), T upperLimit = T(1.0))
@@ -74,9 +77,9 @@ struct MoveStatistics
       T scaling = clamp(ratio / targetAcceptance, T(0.5), T(1.5));
       maxChange = clamp(maxChange * scaling, lowerLimit, upperLimit);
     }
-    counts = T();
-    constructed = T();
-    accepted = T();
+    counts = T{};
+    constructed = T{};
+    accepted = T{};
   }
 
   template<class U> 

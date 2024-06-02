@@ -125,11 +125,11 @@ export struct PropertyLambdaProbabilityHistogram
     return static_cast<double>(currentBin) * delta;
   }
 
-  inline int selectNewBin(RandomNumber &random) const
-  {
-    return static_cast<int>(currentBin) + 
-           static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (random.uniform() - 0.5));
-  }
+  //inline int selectNewBin(RandomNumber &random) const
+  //{
+  //  return static_cast<int>(currentBin) + 
+  //         static_cast<int>(static_cast<double>(jump_bins) * 2.0 * (random.uniform() - 0.5));
+  //}
 
   inline int selectNewBin(RandomNumber &random, double scale) const
   {
