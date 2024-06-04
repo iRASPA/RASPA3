@@ -31,7 +31,8 @@ import <type_traits>;
   import print;
 #endif
 
-#if !defined (__cpp_lib_jthread)
+  /*
+#if (defined(__has_include) && __has_include(<print>))
   export namespace std
   {
     template<typename... Args> constexpr void print(std::ostream & os, const std::string_view str_fmt, Args&&... args)
@@ -45,6 +46,7 @@ import <type_traits>;
     }
   }
 #endif
+*/
 
 export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
 {

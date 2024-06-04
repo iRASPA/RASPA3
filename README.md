@@ -199,7 +199,7 @@ ${HOME}/software/bin/ctest --test-dir build/tests/raspakit-tests --verbose<br>
 
 Make rpm
 ========
-cmake -B build -GNinja  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGE=ON .
+cmake -B build -GNinja  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON .
 ninja -C build
 ninja -C build package
 rpm -qlp /home/dubbelda/source/raspa3/build/raspa3-3.0.0-1.el7.centos.x86_64.rpm<br>
