@@ -1,4 +1,4 @@
 module;
 
-module move_statistics; 
+module move_statistics;
 

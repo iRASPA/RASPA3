@@ -65,6 +65,7 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.counts += 1;
+  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.totalCounts += 1;
 
   double cutOffVDW = system.forceField.cutOffVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
@@ -86,8 +87,8 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
   
-
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
+  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = 

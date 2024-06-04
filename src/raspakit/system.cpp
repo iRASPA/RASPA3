@@ -1930,7 +1930,6 @@ std::string System::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
 
-  std::print(stream, "System\n");
   std::print(stream, "{}", mc_moves_statistics.writeMCMoveStatistics());
   for (size_t componentId = 0; const Component& component: components)
   {

@@ -68,6 +68,7 @@ void MCMoveCount::clearCountStatistics()
   ParallelTemperingSwap = size_t{0};
 }
 
+/*
 const std::string MCMoveCount::writeSystemStatistics(size_t countTotal) const
 {
   std::ostringstream stream;
@@ -197,6 +198,7 @@ const std::string MCMoveCount::writeComponentStatistics(size_t countTotal, size_
 
   return stream.str();
 }
+*/
 
 const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
 {
@@ -305,7 +307,27 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
     }
 
     std::print(stream, "\n");
-    std::print(stream, "Production mc-move count:    {:14d} [-]\n", countTotal);
+    std::print(stream, "Production count MC-steps:   {:14d} [-]\n\n", countTotal);
+
+    std::print(stream, "Translation:                 {:14d} [-]\n", translationMove);
+    std::print(stream, "Random translation:          {:14d} [-]\n", randomTranslationMove);
+    std::print(stream, "Rotation:                    {:14d} [-]\n", rotationMove);
+    std::print(stream, "Random rotation:             {:14d} [-]\n", randomRotationMove);
+    std::print(stream, "Reinsertion CBMC:            {:14d} [-]\n", reinsertionMoveCBMC);
+    std::print(stream, "Insertion:                   {:14d} [-]\n", swapInsertionMove);
+    std::print(stream, "Deletion:                    {:14d} [-]\n", swapDeletionMove);
+    std::print(stream, "Insertion CBMC:              {:14d} [-]\n", swapInsertionMoveCBMC);
+    std::print(stream, "Deletion CBMC:               {:14d} [-]\n", swapDeletionMoveCBMC);
+    std::print(stream, "Insertion/deletion CFCMC:    {:14d} [-]\n", swapLambdaMoveCFCMC);
+    std::print(stream, "Insertion/deletion CB/CFCMC: {:14d} [-]\n", swapLambdaMoveCBCFCMC);
+    std::print(stream, "Gibbs-swap CBMC:             {:14d} [-]\n", GibbsSwapMoveCBMC);
+    std::print(stream, "Gibbs-swap CFCMC:            {:14d} [-]\n", GibbsSwapLambdaMoveCFCMC);
+    std::print(stream, "Widom CBMC:                  {:14d} [-]\n", WidomMoveCBMC);
+    std::print(stream, "Widom CFCMC:                 {:14d} [-]\n", WidomMoveCFCMC);
+    std::print(stream, "Widom CB/CFCMC:              {:14d} [-]\n", WidomMoveCBCFCMC);
+    std::print(stream, "Volume:                      {:14d} [-]\n", volumeMove);
+    std::print(stream, "Gibbs Volume:                {:14d} [-]\n", GibbsVolumeMove);
+    std::print(stream, "Parallel Tempering Swap:     {:14d} [-]\n", ParallelTemperingSwap);
     std::print(stream, "                All summed:  {:14d} [-]\n", total());
     std::print(stream, "                difference:  {:14d} [-]\n", countTotal - total());
 
@@ -328,7 +350,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << c.swapDeletionMove;
   archive << c.swapInsertionMoveCBMC;
   archive << c.swapDeletionMoveCBMC;
-  archive << c.swapLambdaDeletionMove;
   archive << c.swapLambdaMoveCFCMC;
   archive << c.swapLambdaMoveCBCFCMC;
   archive << c.GibbsSwapMoveCBMC;
@@ -363,7 +384,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
   archive >> c.swapDeletionMove;
   archive >> c.swapInsertionMoveCBMC;
   archive >> c.swapDeletionMoveCBMC;
-  archive >> c.swapLambdaDeletionMove;
   archive >> c.swapLambdaMoveCFCMC;
   archive >> c.swapLambdaMoveCBCFCMC;
   archive >> c.GibbsSwapMoveCBMC;
