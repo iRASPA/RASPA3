@@ -19,18 +19,37 @@ force_field = ForceField(atomTypes, parameters, ForceField.MixingRule.Lorentz_Be
 
 print(force_field)
 
-framework = Framework(0, force_field, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517, [
-    Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0),
-    Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-    Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-    Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
-], int3(1, 1, 1))
+framework = Framework(
+    0,
+    force_field,
+    "ITQ-29",
+    SimulationBox(11.8671, 11.8671, 11.8671),
+    517,
+    [
+        Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)
+    ],
+    int3(1, 1, 1),
+)
 
-component = Component(0, force_field, "CO2", 304.1282, 7377300.0, 0.22394, [
-    Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0),
-    Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-    Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
-], 5, 21, MCMoveProbabilitiesParticles(probabilityTranslationMove=1.0, probabilityRotationMove=1.0))
+component = Component(
+    0,
+    force_field,
+    "CO2",
+    304.1282,
+    7377300.0,
+    0.22394,
+    [
+        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0),
+        Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
+        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)
+    ],
+    5,
+    21,
+    MCMoveProbabilitiesParticles(probabilityTranslationMove=1.0, probabilityRotationMove=1.0),
+)
 
 system = System(0, None, 300.0, 1e4, force_field, [framework], [component], [2], 5)
 
