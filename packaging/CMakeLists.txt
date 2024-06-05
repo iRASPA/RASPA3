@@ -11,7 +11,7 @@ set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 set(CPACK_RPM_PACKAGE_RELEASE 1)
 set(CPACK_RPM_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
 set(CPACK_RPM_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
-SET(CPACK_RPM_PACKAGE_DEPENDS "libblas, liblapack")
+SET(CPACK_RPM_PACKAGE_DEPENDS "blas, lapack")
 
 include(CPack)
 
@@ -29,7 +29,7 @@ SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.md")
 set(CPACK_DEBIAN_PACKAGE_VERSION ${PACKAGE_VERSION})
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-SET(CPACK_DEBIAN_PACKAGE_DEPENDS "libblas, liblapack")
+SET(CPACK_DEBIAN_PACKAGE_DEPENDS "libblas3, liblapack3")
 SET(CPACK_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
 
 include(CPack)

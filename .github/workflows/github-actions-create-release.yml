@@ -44,7 +44,7 @@ jobs:
       - name: configure cmake raspa3
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build -GNinja  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON .
       - name: create raspa3 rpm package
         shell: bash
         run: |
@@ -77,7 +77,7 @@ jobs:
       - name: configure cmake raspa3
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build -GNinja  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON .
       - name: create raspa3 deb package
         shell: bash
         run: |
@@ -109,7 +109,7 @@ jobs:
       - name: configure cmake raspa3
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build -GNinja  -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON .
       - name: create raspa3 deb package
         shell: bash
         run: |
