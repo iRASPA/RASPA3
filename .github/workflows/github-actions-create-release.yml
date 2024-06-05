@@ -95,3 +95,35 @@ jobs:
           asset_content_type: application/octet-stream
           overwrite: true
 
+  ubuntu-22-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/ubuntu-22-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa3
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build -GNinja  -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON .
+      - name: create raspa3 deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa3_3.0.0_amd64.deb .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa3_3.0.0_amd64.deb
+          asset_name: raspa3_3.0.0_amd64-ubuntu-22.deb
+          asset_content_type: application/octet-stream
+          overwrite: true
+
