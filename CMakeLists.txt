@@ -43,9 +43,9 @@ endif()
 
 # -stdlib=libc++
 set(CMAKE_CXX_FLAGS_DEBUG "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
+set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
 
 add_subdirectory(src)
 add_subdirectory(app)
