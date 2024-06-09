@@ -50,7 +50,10 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperim
 add_subdirectory(src)
 add_subdirectory(app)
 add_subdirectory(data)
-add_subdirectory(docs)
+
+if(BUILD_DOXYGEN)
+  add_subdirectory(docs)
+endif()
 
 add_subdirectory(packaging)
 
