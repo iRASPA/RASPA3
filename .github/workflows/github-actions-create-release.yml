@@ -41,15 +41,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa3
+      - name: configure cmake raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
-      - name: create raspa3 rpm package
+      - name: create raspa rpm package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa3-3.0.0-1.el8.x86_64.rpm .
+          mv ${{github.workspace}}/build/raspa-3.0.0-1.el8.x86_64.rpm .
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -57,8 +57,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa3-3.0.0-1.el8.x86_64.rpm
-          asset_name: raspa3-3.0.0-1.el8.x86_64.rpm
+          asset_path: ./raspa-3.0.0-1.el8.x86_64.rpm
+          asset_name: raspa-3.0.0-1.el8.x86_64.rpm
           asset_content_type: application/octet-stream
           overwrite: true
 
@@ -73,15 +73,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa3
+      - name: configure cmake raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
-      - name: create raspa3 rpm package
+      - name: create raspa rpm package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa3-3.0.0-1.el9.x86_64.rpm .
+          mv ${{github.workspace}}/build/raspa-3.0.0-1.el9.x86_64.rpm .
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -89,8 +89,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa3-3.0.0-1.el9.x86_64.rpm
-          asset_name: raspa3-3.0.0-1.el9.x86_64.rpm
+          asset_path: ./raspa-3.0.0-1.el9.x86_64.rpm
+          asset_name: raspa-3.0.0-1.el9.x86_64.rpm
           asset_content_type: application/octet-stream
           overwrite: true
 
@@ -106,15 +106,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa3
+      - name: configure cmake raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
-      - name: create raspa3 deb package
+      - name: create raspa deb package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa3_3.0.0_amd64.deb .
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -122,8 +122,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa3_3.0.0_amd64.deb
-          asset_name: raspa3_3.0.0_amd64-ubuntu-24.deb
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-ubuntu-24.deb
           asset_content_type: application/octet-stream
           overwrite: true
 
@@ -138,15 +138,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa3
+      - name: configure cmake raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
-      - name: create raspa3 deb package
+      - name: create raspa deb package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa3_3.0.0_amd64.deb .
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -154,8 +154,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa3_3.0.0_amd64.deb
-          asset_name: raspa3_3.0.0_amd64-ubuntu-22.deb
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-ubuntu-22.deb
           asset_content_type: application/octet-stream
           overwrite: true
 
@@ -170,15 +170,15 @@ jobs:
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa3
+      - name: configure cmake raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
-      - name: create raspa3 deb package
+      - name: create raspa deb package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa3_3.0.0_amd64.deb .
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
       - name: Upload Release Asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -186,8 +186,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa3_3.0.0_amd64.deb
-          asset_name: raspa3_3.0.0_amd64-ubuntu-20.deb
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-ubuntu-20.deb
           asset_content_type: application/octet-stream
           overwrite: true
 
