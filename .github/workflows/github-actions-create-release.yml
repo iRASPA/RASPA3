@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           yum install -y blas64
-          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 -DBLAS_LIBRARIES=/usr/lib/libblas64_so.3.8 -DLAPACK_LIBRARIES=/usr/lib/liblapack64_.so.3.8 .
       - name: create raspa rpm package
         shell: bash
         run: |
