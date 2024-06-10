@@ -44,6 +44,7 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
+          yum install -y blas64
           cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
