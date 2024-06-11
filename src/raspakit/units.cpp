@@ -25,6 +25,7 @@ import <ostream>;
 #endif
 
 import stringutils;
+import json;
 
 std::string Units::printStatus()
 {
@@ -80,4 +81,37 @@ std::string Units::printStatus()
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+nlohmann::json Units::jsonStatus()
+{
+  nlohmann::json units;
+
+  units["temperature"] = "Kelvin";
+  units["length [m]"] = Units::LengthUnit;
+  units["time [s]"] = Units::TimeUnit;
+  units["mass [kg]"] = Units::MassUnit;
+  units["charge [C/particle]"] = Units::ChargeUnit;
+  units["Boltzmann constant [-]"] = Units::KB;
+  units["energy [J]"] = Units::EnergyConversionFactor;
+  units["force [N]"] = Units::ForceConversionFactor;
+  units["pressure [Pa]"] = Units::PressureConversionFactor;
+  units["velocity [m/s]"] = Units::VelocityConversionFactor;
+  units["acceleration [m²/s]"] = Units::AccelerationConversionFactor;
+  units["diffusion [m²/s]"] = Units::DiffusionConversionFactor;
+  units["dipole moment [C.m]"] = Units::DipoleMomentConversionFactor;
+  units["electric potential [V]"] = Units::ElectricPotentialConversionFactor;
+  units["electric field [V]"] = Units::ElectricFieldConversionFactor;
+  units["polarizability [-]"] = Units::PolarizilibityConversionFactor;
+  units["dielectric constant [s² C²/(kg m³)]\n"] = Units::DielectricConstantConversionFactor;
+  units["Boltzmann constant [-]"] = Units::KB;
+  units["energy [J]"] = Units::EnergyConversionFactor;
+  units["force [N]"] = Units::ForceConversionFactor;
+  units["pressure [Pa]"] = Units::PressureConversionFactor;
+  units["velocity [m/s]"] = Units::VelocityConversionFactor;
+  units["Coulomb potential [K]"] = Units::CoulombicConversionFactor * Units::EnergyToKelvin;
+  units["Energy to Kelvin [-]"] = Units::EnergyToKelvin;
+  units["Kelvin to energy [-]"] = Units::KelvinToEnergy;
+
+  return units;
 }

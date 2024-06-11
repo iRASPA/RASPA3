@@ -108,17 +108,18 @@ MonteCarlo::MonteCarlo(): random(std::nullopt)
 {
 };
 
-MonteCarlo::MonteCarlo(InputReader& reader) noexcept : 
-    numberOfCycles(reader.numberOfCycles),
-    numberOfInitializationCycles(reader.numberOfInitializationCycles),
-    numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
-    printEvery(reader.printEvery),
-    writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
-    rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
-    optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
-    systems(std::move(reader.systems)),
-    random(reader.randomSeed),
-    estimation(reader.numberOfBlocks, reader.numberOfCycles)
+MonteCarlo::MonteCarlo(InputReader& reader) noexcept
+    : numberOfCycles(reader.numberOfCycles),
+      numberOfInitializationCycles(reader.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
+      printEvery(reader.printEvery),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
+      systems(std::move(reader.systems)),
+      random(reader.randomSeed),
+      outputJsons(systems.size()),
+      estimation(reader.numberOfBlocks, reader.numberOfCycles)
 {
     
 }
@@ -157,6 +158,9 @@ void MonteCarlo::createOutputFiles()
     std::string fileNameString = std::format("output/output_{}_{}.s{}.data",
         system.temperature, system.input_pressure, system.systemId);
     streams.emplace_back(fileNameString, std::ios::out );
+    fileNameString =
+        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
+    outputJsonFiles.emplace_back(fileNameString, std::ios::out);
   }
 }
 
@@ -193,6 +197,20 @@ void MonteCarlo::initialize()
     std::print(stream, "{}", system.forceField.printForceFieldStatus());
     std::print(stream, "{}", system.writeComponentStatus());
     std::print(stream, "{}", system.reactions.printStatus());
+
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+    outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+    // system.writeOutputHeader(outputJsons[system.systemId]);
+    outputJsons[system.systemId]["seed"] = random.seed;
+    outputJsons[system.systemId]["hardware_info"] = HardwareInfo::jsonInfo();
+    outputJsons[system.systemId]["units"] = Units::jsonStatus();
+    outputJsons[system.systemId]["initial_conditions"] = system.jsonSystemStatus();
+
+    std::cout << outputJsons[system.systemId].dump(4) << std::endl;
   }
 
   for (System& system : systems)
@@ -283,6 +301,11 @@ void MonteCarlo::initialize()
     totalSimulationTime += (t2 - t1);
 
     continueInitializationStage: ;
+  }
+
+  for (System& system : systems)
+  {
+    outputJsonFiles[system.systemId] << outputJsons[system.systemId].dump(4);
   }
 }
 

@@ -50,6 +50,7 @@ import double3;
 import archive;
 import units;
 import stringutils;
+import json;
 
 SimulationBox::SimulationBox(double a, double b, double c, Type type): type(type)
 {
@@ -198,6 +199,16 @@ std::string SimulationBox::printStatus() const
   std::print(stream, "Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * angleAlpha, conv * angleBeta, conv * angleGamma);
 
   return stream.str();
+}
+
+nlohmann::json SimulationBox::jsonStatus() const
+{
+  nlohmann::json box;
+  box["box"] = {{cell.ax, cell.bx, cell.cx}, {cell.ay, cell.by, cell.cy}, {cell.az, cell.bz, cell.cz}};
+  box["box_lengths"] = {lengthA, lengthB, lengthC};
+  double conv = 180.0 / std::numbers::pi;
+  box["box_angles"] = {conv * angleAlpha, conv * angleBeta, conv * angleGamma};
+  return box;
 }
 
 std::string SimulationBox::printStatus(const SimulationBox& average, [[maybe_unused]] const SimulationBox& error) const

@@ -84,6 +84,7 @@ import reaction;
 import reactions;
 import transition_matrix;
 import equation_of_states;
+import json;
 
 export struct System
 {
@@ -327,8 +328,11 @@ export struct System
   std::string writeProductionStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
-
   std::string writeMCMoveStatistics() const;
+
+  nlohmann::json jsonSystemStatus() const;
+  nlohmann::json jsonComponentStatus() const;
+  nlohmann::json jsonMCMoveStatistics() const;
 
   std::vector<Component> nonFrameworkComponents()
   {

@@ -28,7 +28,7 @@ import mc_moves;
 import input_reader;
 import energy_status;
 import archive;
-
+import json;
 
 export struct MonteCarlo
 {
@@ -69,6 +69,8 @@ export struct MonteCarlo
   size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;
+  std::vector<std::ofstream> outputJsonFiles;
+  std::vector<nlohmann::json> outputJsons;
 
   BlockErrorEstimation estimation;
 

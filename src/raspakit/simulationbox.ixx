@@ -40,7 +40,7 @@ import int3;
 import double3x3;
 import randomnumbers;
 import units;
-
+import json;
 
 #if defined(__GNUC__)
 #define ALWAYS_INLINE __attribute__((__always_inline__)) 
@@ -117,6 +117,8 @@ export struct SimulationBox
 
   std::string printStatus() const;
   std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
+
+  nlohmann::json jsonStatus() const;
 
   uint64_t versionNumber{ 1 };
   double lengthA;

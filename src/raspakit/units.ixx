@@ -24,8 +24,10 @@ import <sstream>;
   import print;
 #endif
 
-export namespace Units
-{
+import json;
+
+  export namespace Units
+  {
   // Fundamental constants of nature
   constexpr double Angstrom = 1e-10;
   constexpr double AngstromCubed = 1e-30;
@@ -106,4 +108,5 @@ export namespace Units
 
   
   std::string printStatus();
+  nlohmann::json jsonStatus();
 };

@@ -10,7 +10,10 @@ export module hardware_info;
 import <string>;
 #endif
 
+import json;
+
 export namespace HardwareInfo
 {
   std::string writeInfo();
+  nlohmann::json jsonInfo();
 }

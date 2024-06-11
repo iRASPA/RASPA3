@@ -124,7 +124,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import equation_of_states;
-
+import json;
 
 // construct System programmatically
 /*! \brief Brief description.
@@ -132,51 +132,50 @@ import equation_of_states;
  *
  *  Detailed description starts here.
  */
-System::System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield, 
-               std::vector<Framework> f, std::vector<Component> c, 
-               std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
-               const MCMoveProbabilitiesSystem &systemProbabilities) :
-    systemId(id), 
-    temperature(T),
-    pressure(P.value_or(0.0) / Units::PressureConversionFactor),
-    input_pressure(P.value_or(0.0)),
-    beta(1.0 / (Units::KB * T)),
-    frameworkComponents(f),
-    components(c),
-    loadings(c.size()),
-    swapableComponents(),
-    initialNumberOfMolecules(initialNumberOfMolecules),
-    numberOfMoleculesPerComponent(c.size()),
-    numberOfIntegerMoleculesPerComponent(c.size()),
-    numberOfFractionalMoleculesPerComponent(c.size()),
-    numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
-    numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
-    idealGasEnergiesPerComponent(c.size()),
-    forceField(forcefield),
-    hasExternalField(false),
-    numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
-    totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
-    atomPositions({}),
-    moleculePositions({}),
-    runningEnergies(),
-    currentEnergyStatus(1, f.size(), c.size()),
-    netCharge(c.size()),
-    mc_moves_probabilities(systemProbabilities),
-    mc_moves_statistics(),
-    reactions(),
-    tmmc(),
-    averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
-    averageLoadings(numberOfBlocks, c.size()),
-    averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
-    averageTemperature(numberOfBlocks),
-    averageTranslationalTemperature(numberOfBlocks),
-    averageRotationalTemperature(numberOfBlocks),
-    averagePressure(numberOfBlocks),
-    averageSimulationBox(numberOfBlocks)
+System::System(size_t id, std::optional<SimulationBox> box, double T, std::optional<double> P, ForceField forcefield,
+               std::vector<Framework> f, std::vector<Component> c, std::vector<size_t> initialNumberOfMolecules,
+               size_t numberOfBlocks, const MCMoveProbabilitiesSystem& systemProbabilities)
+    : systemId(id),
+      temperature(T),
+      pressure(P.value_or(0.0) / Units::PressureConversionFactor),
+      input_pressure(P.value_or(0.0)),
+      beta(1.0 / (Units::KB * T)),
+      frameworkComponents(f),
+      components(c),
+      loadings(c.size()),
+      swapableComponents(),
+      initialNumberOfMolecules(initialNumberOfMolecules),
+      numberOfMoleculesPerComponent(c.size()),
+      numberOfIntegerMoleculesPerComponent(c.size()),
+      numberOfFractionalMoleculesPerComponent(c.size()),
+      numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
+      idealGasEnergiesPerComponent(c.size()),
+      forceField(forcefield),
+      hasExternalField(false),
+      numberOfPseudoAtoms(c.size(), std::vector<size_t>(forceField.pseudoAtoms.size())),
+      totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
+      atomPositions({}),
+      moleculePositions({}),
+      runningEnergies(),
+      currentEnergyStatus(1, f.size(), c.size()),
+      netCharge(c.size()),
+      mc_moves_probabilities(systemProbabilities),
+      mc_moves_statistics(),
+      reactions(),
+      tmmc(),
+      averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
+      averageLoadings(numberOfBlocks, c.size()),
+      averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
+      averageTemperature(numberOfBlocks),
+      averageTranslationalTemperature(numberOfBlocks),
+      averageRotationalTemperature(numberOfBlocks),
+      averagePressure(numberOfBlocks),
+      averageSimulationBox(numberOfBlocks)
 {
-  if(box.has_value())
+  if (box.has_value())
   {
     simulationBox = box.value();
   }
@@ -195,16 +194,15 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
   double3 perpendicularWidths = simulationBox.perpendicularWidths();
   forceField.initializeEwaldParameters(perpendicularWidths);
 
-  Interactions::computeEwaldFourierEnergySingleIon(eik_x, eik_y, eik_z, eik_xy,
-                                                   forceField, simulationBox,
+  Interactions::computeEwaldFourierEnergySingleIon(eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox,
                                                    double3(0.0, 0.0, 0.0), 1.0);
 
   RandomNumber random(1400);
   createInitialMolecules(random);
 
-  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, 
-                                    EquationOfState::MultiComponentMixingRules::VanDerWaals, 
-                                    T, P.value_or(0.0), simulationBox, HeliumVoidFraction, components);
+  equationOfState =
+      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
+                      P.value_or(0.0), simulationBox, HeliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swapableComponents.size());
 }
@@ -213,7 +211,7 @@ void System::createFrameworks()
 {
   for (Framework& framework : frameworkComponents)
   {
-    const std::vector<Atom> &atoms = framework.atoms;
+    const std::vector<Atom>& atoms = framework.atoms;
     for (const Atom& atom : atoms)
     {
       atomPositions.push_back(atom);
@@ -229,22 +227,23 @@ void System::determineSimulationBox()
   {
     // For multiple framework, the simulation box is the union of the boxes
     simulationBox = max(simulationBox, framework.simulationBox.scaled(framework.numberOfUnitCells));
-  } 
+  }
 }
 
-void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]const Molecule &molecule, std::vector<Atom> atoms, size_t moleculeId)
+void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
+                                      std::vector<Atom> atoms, size_t moleculeId)
 {
   double l = 0.0;
   for (Atom& atom : atoms)
   {
-    if(components[selectedComponent].lambdaGC.computeDUdlambda)
+    if (components[selectedComponent].lambdaGC.computeDUdlambda)
     {
       atom.moleculeId = static_cast<uint16_t>(moleculeId);
-      atom.groupId = uint8_t{ 1 };
+      atom.groupId = uint8_t{1};
     }
     atom.setScaling(l);
   }
-  std::vector<Atom>::const_iterator iterator =  iteratorForMolecule(selectedComponent, 0);
+  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
   atomPositions.insert(iterator, atoms.begin(), atoms.end());
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, 0);
@@ -252,9 +251,8 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
 
   numberOfMoleculesPerComponent[selectedComponent] += 1;
 
-
   // set moleculesIds
-  size_t index = numberOfFrameworkAtoms; // indexOfFirstMolecule(selectedComponent);
+  size_t index = numberOfFrameworkAtoms;  // indexOfFirstMolecule(selectedComponent);
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
     for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
@@ -276,14 +274,16 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
 /// - Parameters:
 ///   - selectedComponent: the index of the component
 ///   - atoms: vector of atoms to be inserted
-/// - returns: 
-void System::insertMolecule(size_t selectedComponent, [[maybe_unused]]const Molecule &molecule, std::vector<Atom> atoms)
+/// - returns:
+void System::insertMolecule(size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
+                            std::vector<Atom> atoms)
 {
-  std::vector<Atom>::const_iterator iterator = 
-    iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  std::vector<Atom>::const_iterator iterator =
+      iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
   atomPositions.insert(iterator, atoms.begin(), atoms.end());
 
-  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  std::vector<Molecule>::iterator moleculeIterator =
+      indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
   moleculePositions.insert(moleculeIterator, molecule);
 
   numberOfMoleculesPerComponent[selectedComponent] += 1;
@@ -292,16 +292,14 @@ void System::insertMolecule(size_t selectedComponent, [[maybe_unused]]const Mole
   translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
 
-
   // Update the number of pseudo atoms per type (used for tail-corrections)
-  for(Atom& atom: atoms)
+  for (Atom& atom : atoms)
   {
     atom.moleculeId = static_cast<uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
     numberOfPseudoAtoms[selectedComponent][static_cast<size_t>(atom.type)] += 1;
     totalNumberOfPseudoAtoms[static_cast<size_t>(atom.type)] += 1;
   }
 
- 
   size_t index = numberOfFrameworkAtoms;
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
@@ -320,7 +318,7 @@ void System::insertMolecule(size_t selectedComponent, [[maybe_unused]]const Mole
 void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> molecule)
 {
   // Update the number of pseudo atoms per type (used for tail-corrections)
-  for(const Atom& atom: molecule)
+  for (const Atom& atom : molecule)
   {
     numberOfPseudoAtoms[selectedComponent][static_cast<size_t>(atom.type)] -= 1;
     totalNumberOfPseudoAtoms[static_cast<size_t>(atom.type)] -= 1;
@@ -338,7 +336,7 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
   translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;
 
-  size_t index = numberOfFrameworkAtoms; 
+  size_t index = numberOfFrameworkAtoms;
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
     for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
@@ -355,7 +353,7 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
 
 bool System::checkMoleculeIds()
 {
-  size_t index = 0; // indexOfFirstMolecule(selectedComponent);
+  size_t index = 0;  // indexOfFirstMolecule(selectedComponent);
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
     for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
@@ -371,63 +369,64 @@ bool System::checkMoleculeIds()
   return true;
 }
 
-void System::createInitialMolecules([[maybe_unused]] RandomNumber &random)                                              
+void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
 {
-  for (size_t componentId = 0; const Component & component : components)                                                
-  {                                                                                                                     
-    if (component.swapable)                                                                                             
-    {                                                                                                                   
-      numberOfMoleculesPerComponent[componentId] = 0;                                                                   
-      for (size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)                                 
-      {                                                                                                                 
-        std::optional<ChainData> growData = std::nullopt;                                                               
-        do                                                                                                              
-        {                                                                                                               
-          Component::GrowType growType  = components[componentId].growType;                                             
-          growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
-                                   this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,               
-                                   growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,               
-                                   numberOfMoleculesPerComponent[componentId], 0.0, 1uz, numberOfTrialDirections);    
-                                                                                                                        
+  for (size_t componentId = 0; const Component& component : components)
+  {
+    if (component.swapable)
+    {
+      numberOfMoleculesPerComponent[componentId] = 0;
+      for (size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
+      {
+        std::optional<ChainData> growData = std::nullopt;
+        do
+        {
+          Component::GrowType growType = components[componentId].growType;
+          growData = CBMC::growMoleculeSwapInsertion(
+              random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
+              this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta, growType, forceField.cutOffVDW,
+              forceField.cutOffCoulomb, componentId, numberOfMoleculesPerComponent[componentId], 0.0, 1uz,
+              numberOfTrialDirections);
+
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
-                                                                                                                        
+
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
-      }                                                                                                                 
-    }                                                                                                                   
-                                                                                                                        
-    for (size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)                                                  
-    {                                                                                                                   
-      std::optional<ChainData> growData = std::nullopt;                                                                 
-      do                                                                                                                
-      {                                                                                                                 
-        Component::GrowType growType  = components[componentId].growType;                                               
-        growData = CBMC::growMoleculeSwapInsertion(random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
-                                 this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta,                 
-                                 growType, forceField.cutOffVDW, forceField.cutOffCoulomb, componentId,                 
-                                 numberOfMoleculesPerComponent[componentId], 1.0, 0uz, numberOfTrialDirections);
-                                                                                                                        
-      } while(!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);                                    
-                                                                                                                        
+      }
+    }
+
+    for (size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
+    {
+      std::optional<ChainData> growData = std::nullopt;
+      do
+      {
+        Component::GrowType growType = components[componentId].growType;
+        growData = CBMC::growMoleculeSwapInsertion(
+            random, this->hasExternalField, this->components, this->forceField, this->simulationBox,
+            this->spanOfFrameworkAtoms(), this->spanOfMoleculeAtoms(), this->beta, growType, forceField.cutOffVDW,
+            forceField.cutOffCoulomb, componentId, numberOfMoleculesPerComponent[componentId], 1.0, 0uz,
+            numberOfTrialDirections);
+
+      } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
+
       insertMolecule(componentId, growData->molecule, growData->atom);
-    }                                                                                                                   
-    componentId++;                                                                                                      
-  }                                                                                                                     
+    }
+    componentId++;
+  }
 }
-size_t System::randomMoleculeOfComponent(RandomNumber &random, size_t selectedComponent)
+size_t System::randomMoleculeOfComponent(RandomNumber& random, size_t selectedComponent)
 {
   return size_t(random.uniform() * static_cast<double>(numberOfMoleculesPerComponent[selectedComponent]));
 }
 
-size_t System::randomIntegerMoleculeOfComponent(RandomNumber &random, size_t selectedComponent)
+size_t System::randomIntegerMoleculeOfComponent(RandomNumber& random, size_t selectedComponent)
 {
-  return numberOfFractionalMoleculesPerComponent[selectedComponent] + 
+  return numberOfFractionalMoleculesPerComponent[selectedComponent] +
          size_t(random.uniform() * static_cast<double>(numberOfIntegerMoleculesPerComponent[selectedComponent]));
 }
 
-
 std::vector<Atom>::iterator System::iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     size_t size = components[i].atoms.size();
@@ -440,7 +439,7 @@ std::vector<Atom>::iterator System::iteratorForMolecule(size_t selectedComponent
 
 std::vector<Molecule>::iterator System::indexForMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     index += numberOfMoleculesPerComponent[i];
@@ -451,7 +450,7 @@ std::vector<Molecule>::iterator System::indexForMolecule(size_t selectedComponen
 
 size_t System::moleculeIndexOfComponent(size_t selectedComponent, size_t selectedMolecule)
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     index += numberOfMoleculesPerComponent[i];
@@ -465,39 +464,34 @@ std::span<const Atom> System::spanOfFrameworkAtoms() const
   return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
 }
 
-std::span<Atom> System::spanOfFrameworkAtoms()
-{
-  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
-}
+std::span<Atom> System::spanOfFrameworkAtoms() { return std::span(atomPositions.begin(), numberOfFrameworkAtoms); }
 
 std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
 {
   return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
 }
 
-
 std::span<const Atom> System::spanOfFlexibleAtoms() const
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms), 
+  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
                    atomPositions.end());
 }
 
-
 std::span<const Atom> System::spanOfMoleculeAtoms() const
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms), 
+  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
                    atomPositions.end());
 }
 
 std::span<Atom> System::spanOfMoleculeAtoms()
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms), 
+  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
                    atomPositions.end());
 }
 
 std::span<Atom> System::spanOfMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     size_t size = components[i].atoms.size();
@@ -510,7 +504,7 @@ std::span<Atom> System::spanOfMolecule(size_t selectedComponent, size_t selected
 
 const std::span<const Atom> System::spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     size_t size = components[i].atoms.size();
@@ -523,7 +517,7 @@ const std::span<const Atom> System::spanOfMolecule(size_t selectedComponent, siz
 
 size_t System::indexOfFirstMolecule(size_t selectedComponent)
 {
-  size_t index{ 0 };
+  size_t index{0};
   for (size_t i = 0; i < selectedComponent; ++i)
   {
     size_t size = components[i].atoms.size();
@@ -536,8 +530,8 @@ void System::determineSwapableComponents()
 {
   for (Component& component : components)
   {
-    if (component.mc_moves_probabilities.probabilitySwapMove > 0.0 || 
-        component.mc_moves_probabilities.probabilitySwapMove_CBMC > 0.0 || 
+    if (component.mc_moves_probabilities.probabilitySwapMove > 0.0 ||
+        component.mc_moves_probabilities.probabilitySwapMove_CBMC > 0.0 ||
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0 ||
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
     {
@@ -550,16 +544,15 @@ void System::determineSwapableComponents()
     {
       component.swapable = true;
     }
-    
-    if(component.swapable)
+
+    if (component.swapable)
     {
       swapableComponents.push_back(component.componentId);
     }
   }
 }
 
-
-// determine the required number of fractional molecules 
+// determine the required number of fractional molecules
 void System::determineFractionalComponents()
 {
   for (size_t i = 0; i < components.size(); ++i)
@@ -567,11 +560,10 @@ void System::determineFractionalComponents()
     numberOfFractionalMoleculesPerComponent[i] = 0;
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
-   
 
-    if (components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC> 0.0 || 
+    if (components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0 ||
         components[i].mc_moves_probabilities.probabilityWidomMove_CFCMC > 0.0 ||
-        components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0 || 
+        components[i].mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0 ||
         components[i].mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
@@ -580,7 +572,7 @@ void System::determineFractionalComponents()
     }
 
     // Gibbs
-    if (components[i].mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC > 0.0 || 
+    if (components[i].mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC > 0.0 ||
         components[i].mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
@@ -589,23 +581,25 @@ void System::determineFractionalComponents()
     }
   }
 
-  for (size_t reactionId{ 0 }; [[maybe_unused]] const Reaction& reaction : reactions.list)
+  for (size_t reactionId{0}; [[maybe_unused]] const Reaction& reaction : reactions.list)
   {
     for (size_t j = 0; j < components.size(); ++j)
     {
       numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][j] = 0;
     }
 
-    //for ([[maybe_unused]]  size_t componentId{ 0 };  const size_t [[maybe_unused]]  stoichiometry : reaction.reactantStoichiometry)
+    // for ([[maybe_unused]]  size_t componentId{ 0 };  const size_t [[maybe_unused]]  stoichiometry :
+    // reaction.reactantStoichiometry)
     //{
-    //  //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //  ++componentId;
-    //}
-    //for ([[maybe_unused]] size_t componentId{ 0 };  const [[maybe_unused]] size_t stoichiometry : reaction.productStoichiometry)
+    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
+    //   ++componentId;
+    // }
+    // for ([[maybe_unused]] size_t componentId{ 0 };  const [[maybe_unused]] size_t stoichiometry :
+    // reaction.productStoichiometry)
     //{
-    //  //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //  ++componentId;
-    //}
+    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
+    //   ++componentId;
+    // }
     ++reactionId;
   }
 }
@@ -628,15 +622,15 @@ void System::removeRedundantMoves()
   for (Component& component : components)
   {
     // WidomMove_CFCMC already done when using SwapMove_CFCMC
-    if(component.mc_moves_probabilities.probabilityWidomMove_CFCMC > 0.0 && 
-       component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0)
+    if (component.mc_moves_probabilities.probabilityWidomMove_CFCMC > 0.0 &&
+        component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0)
     {
       component.mc_moves_probabilities.probabilityWidomMove_CFCMC = 0.0;
     }
 
     // WidomMove_CFCMC_CBMC already done when using SwapMove_CFCMC_CBMC
-    if(component.mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC > 0.0 && 
-       component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
+    if (component.mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC > 0.0 &&
+        component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
     {
       component.mc_moves_probabilities.probabilityWidomMove_CFCMC_CBMC = 0.0;
     }
@@ -697,22 +691,22 @@ void System::computeFrameworkDensity()
 
 void System::computeNumberOfPseudoAtoms()
 {
-  for(size_t i = 0; i != components.size(); ++i)
+  for (size_t i = 0; i != components.size(); ++i)
   {
     std::fill(numberOfPseudoAtoms[i].begin(), numberOfPseudoAtoms[i].end(), 0);
   }
   std::fill(totalNumberOfPseudoAtoms.begin(), totalNumberOfPseudoAtoms.end(), 0);
 
-  for(const Atom& atom: atomPositions)
+  for (const Atom& atom : atomPositions)
   {
     size_t componentId = static_cast<size_t>(atom.componentId);
     size_t type = static_cast<size_t>(atom.type);
     numberOfPseudoAtoms[componentId][type] += 1;
     totalNumberOfPseudoAtoms[type] += 1;
-  } 
+  }
 }
 
-std::vector<Atom> System::randomConfiguration(RandomNumber &random, size_t selectedComponent, 
+std::vector<Atom> System::randomConfiguration(RandomNumber& random, size_t selectedComponent,
                                               const std::span<const Atom> molecule)
 {
   double3x3 randomRotationMatrix = random.randomRotationMatrix();
@@ -721,8 +715,8 @@ std::vector<Atom> System::randomConfiguration(RandomNumber &random, size_t selec
   size_t startingBead = components[selectedComponent].startingBead;
   for (size_t i = 0; i != molecule.size(); ++i)
   {
-    copied_atoms[i].position = position + 
-                               randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
+    copied_atoms[i].position =
+        position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
   }
   return copied_atoms;
 }
@@ -734,31 +728,31 @@ std::string System::writeOutputHeader() const
   std::print(stream, "Compiler and run-time data\n");
   std::print(stream, "===============================================================================\n");
 
-  #ifdef VERSION
-    #define QUOTE(str) #str
-    #define EXPAND_AND_QUOTE(str) QUOTE(str)
-    std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
-  #endif
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+  std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
+#endif
 
-  //ThreadPool &pool = ThreadPool::instance();
-  //const size_t numberOfHelperThreads = pool.getThreadCount();
+  // ThreadPool &pool = ThreadPool::instance();
+  // const size_t numberOfHelperThreads = pool.getThreadCount();
 
-  //switch(pool.threadingType)
+  // switch(pool.threadingType)
   //{
-  //  case ThreadPool::ThreadingType::Serial:
-  //    std::print(stream, "Parallelization: Serial, 1 thread\n");
-  //    break;
-  //  case ThreadPool::ThreadingType::OpenMP:
-  //    std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
-  //    break;
-  //  case ThreadPool::ThreadingType::ThreadPool:
-  //    std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
-  //    break;
-  //  case ThreadPool::ThreadingType::GPU_Offload:
-  //    std::print(stream, "Parallelization: GPU-Offload\n");
-  //    break;
-  //} 
-  //std::print(stream, "\n");
+  //   case ThreadPool::ThreadingType::Serial:
+  //     std::print(stream, "Parallelization: Serial, 1 thread\n");
+  //     break;
+  //   case ThreadPool::ThreadingType::OpenMP:
+  //     std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
+  //     break;
+  //   case ThreadPool::ThreadingType::ThreadPool:
+  //     std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
+  //     break;
+  //   case ThreadPool::ThreadingType::GPU_Offload:
+  //     std::print(stream, "Parallelization: GPU-Offload\n");
+  //     break;
+  // }
+  // std::print(stream, "\n");
 
   return stream.str();
 }
@@ -1195,6 +1189,17 @@ std::string System::writeSystemStatus() const
   std::print(stream, "\n\n\n");
 
   return stream.str();
+}
+
+nlohmann::json System::jsonSystemStatus() const
+{
+  nlohmann::json system;
+  system["temperature"] = temperature;
+  system["beta"] = beta;
+  system["pressure"] = pressure * Units::PressureConversionFactor;
+
+  system.merge_patch(simulationBox.jsonStatus());
+  return system;
 }
 
 std::string System::writeComponentStatus() const
