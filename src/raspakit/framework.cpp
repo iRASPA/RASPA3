@@ -88,6 +88,7 @@ import simulationbox;
 import cif_reader;
 import move_statistics;
 import bond_potential;
+import json;
 
 // default constructor, needed for binary restart-file
 Framework::Framework()
@@ -289,6 +290,25 @@ std::string Framework::printStatus(const ForceField& forceField) const
   return stream.str();
 }
 
+nlohmann::json Framework::jsonStatus() const
+{
+  nlohmann::json status;
+  status["name"] = name;
+  status["id"] = frameworkId;
+  status["mass"] = mass;
+
+  // TODO I feel that the masses, positions and charges belong in the hdf5.
+  status["n_bonds"] = bonds.size();
+
+  std::vector<std::string> bondTypes(bonds.size());
+  for (size_t i = 0; i < bonds.size(); ++i)
+  {
+    bondTypes[i] = bonds[i].print();
+  }
+  status["bondTypes"] = bondTypes;
+
+  return status;
+}
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c)
 {

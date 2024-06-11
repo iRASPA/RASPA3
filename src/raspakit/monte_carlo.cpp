@@ -209,8 +209,9 @@ void MonteCarlo::initialize()
     outputJsons[system.systemId]["hardware_info"] = HardwareInfo::jsonInfo();
     outputJsons[system.systemId]["units"] = Units::jsonStatus();
     outputJsons[system.systemId]["initial_conditions"] = system.jsonSystemStatus();
+    outputJsons[system.systemId]["components"] = system.jsonComponentStatus();
 
-    std::cout << outputJsons[system.systemId].dump(4) << std::endl;
+    // std::cout << outputJsons[system.systemId].dump(4) << std::endl;
   }
 
   for (System& system : systems)

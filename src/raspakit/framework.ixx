@@ -61,6 +61,7 @@ import property_widom;
 import isotherm;
 import multi_site_isotherm;
 import bond_potential;
+import json;
 
 export struct Framework
 {
@@ -114,6 +115,8 @@ export struct Framework
 
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;
+
+  nlohmann::json jsonStatus() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c);

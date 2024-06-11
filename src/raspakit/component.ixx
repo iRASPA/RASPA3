@@ -69,7 +69,7 @@ import mc_moves_probabilities_particles;
 import mc_moves_statistics_particles;
 import mc_moves_cputime;
 import mc_moves_count;
-
+import json;
 
 export struct Component
 {
@@ -202,6 +202,8 @@ export struct Component
 
   std::string printStatus(const ForceField& forceField) const;
   std::string printBreakthroughStatus() const;
+
+  nlohmann::json jsonStatus() const;
 
   void computeRigidProperties();
   double3 computeCenterOfMass(std::vector<Atom> atom_list) const;

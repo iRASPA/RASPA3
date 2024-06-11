@@ -1221,6 +1221,21 @@ std::string System::writeComponentStatus() const
   return stream.str();
 }
 
+nlohmann::json System::jsonComponentStatus() const
+{
+  nlohmann::json status;
+  for (const Framework& component : frameworkComponents)
+  {
+    status[component.name] = component.jsonStatus();
+  }
+  for (const Component& component : components)
+  {
+    status[component.name] = component.jsonStatus();
+  }
+
+  return status;
+}
+
 void System::writeComponentFittingStatus(std::ostream &stream, 
                                          const std::vector<std::pair<double, double>> &rawData) const
 {
