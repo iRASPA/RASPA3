@@ -17,6 +17,7 @@ import <fstream>;
 import double3;
 import archive;
 import move_statistics;
+import hdf5;
 
 export struct MCMoveStatisticsParticles
 {
@@ -47,7 +48,7 @@ export struct MCMoveStatisticsParticles
   void clearMoveStatistics();
   void optimizeMCMoves();
   const std::string writeMCMoveStatistics() const;
-  void logMCMoveStatistics(HDF5Handler &hdf5) const;
+  void logMCMoveStatistics(HDF5Writer &hdf5) const;
 
   const std::string writeMCMoveStatistics(size_t countTotal, size_t componentId,
                                           const std::string &componentName) const;

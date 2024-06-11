@@ -96,20 +96,6 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
 std::string formatStatistics(const std::string name, const MoveStatistics<double3> &move)
 {
   std::ostringstream stream;
-<<<<<<< HEAD
-  std::print(stream, "    {} total:        {:10} {:10} {:10}\n", name, move.totalCounts.x, move.totalCounts.y,
-             move.totalCounts.z);
-  std::print(stream, "    {} constructed:  {:10} {:10} {:10}\n", name, move.totalConstructed.x, move.totalConstructed.y,
-             move.totalConstructed.z);
-  std::print(stream, "    {} accepted:     {:10} {:10} {:10}\n", name, move.totalAccepted.x, move.totalAccepted.y,
-             move.totalAccepted.z);
-  std::print(stream, "    {} fraction:     {:10f} {:10f} {:10f}\n", name,
-             move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
-             move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)),
-             move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z)));
-  std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y,
-             move.maxChange.z);
-=======
   std::print(stream, "    {} all:          {:10}\n", name, move.allCounts);
   std::print(stream, "    {} total:        {:10} {:10} {:10}\n", 
                      name, move.totalCounts.x, move.totalCounts.y, move.totalCounts.z);
@@ -121,9 +107,8 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
                      name, move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
                      move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)), 
                      move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z)));
-  std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", 
-                     name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
->>>>>>> main
+  std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y,
+             move.maxChange.z);
   return stream.str();
 }
 
@@ -154,11 +139,11 @@ std::vector<double> asVector(const MoveStatistics<double3> &move)
   return v;
 }
 
-void logStatistics(HDF5Handler &hdf5, const std::string &dataset, const MoveStatistics<double> &move)
+void logStatistics(HDF5Writer &hdf5, const std::string &dataset, const MoveStatistics<double> &move)
 {
   std::vector data = asVector(move);
 }
-void logStatistics(HDF5Handler &hdf5, const std::string &dataset, const MoveStatistics<double3> &move)
+void logStatistics(HDF5Writer &hdf5, const std::string &dataset, const MoveStatistics<double3> &move)
 {
   std::vector data = asVector(move);
 }
@@ -227,19 +212,11 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics() const
     std::print(stream, "{}", formatStatistics("Widom (CB/CFCMC)", WidomMove_CFCMC_CBMC));
   }
 
-<<<<<<< HEAD
-  if (GibbsSwapMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Gibbs Swap (CBMC)", GibbsSwapMove_CBMC));
-  }
-  if (GibbsSwapMove_CFCMC.totalCounts.x > 0)
-=======
   if (GibbsSwapMove_CBMC.totalCounts > 0.0) 
   {
     std::print(stream, "{}", formatStatistics("Gibbs Swap (CBMC)", GibbsSwapMove_CBMC));
   }
-  if (GibbsSwapMove_CFCMC.totalCounts.x > 0.0) 
->>>>>>> main
+  if (GibbsSwapMove_CFCMC.totalCounts.x > 0.0)
   {
     std::print(stream, "{}", formatStatistics("Gibbs Swap (CFCMC)", GibbsSwapMove_CFCMC));
   }
@@ -247,79 +224,6 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics() const
   return stream.str();
 }
 
-<<<<<<< HEAD
-void MCMoveStatisticsParticles::logMCMoveStatistics(HDF5Handler &hdf5, const std::string &group) const
-{
-  if (translationMove.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Translation", translationMove));
-  }
-  if (randomTranslationMove.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Random translation", randomTranslationMove));
-  }
-  if (rotationMove.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Rotation", rotationMove));
-  }
-  if (randomRotationMove.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Random rotation", randomRotationMove));
-  }
-  if (reinsertionMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Reinsertion(CBMC)", reinsertionMove_CBMC));
-  }
-  if (identityChangeMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Identity Swap (CBMC)", identityChangeMove_CBMC));
-  }
-  if (swapInsertionMove.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap Insertion", swapInsertionMove));
-  }
-  if (swapDeletionMove.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap Deletion", swapDeletionMove));
-  }
-  if (swapInsertionMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap Insertion (CBMC)", swapInsertionMove_CBMC));
-  }
-  if (swapDeletionMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap Deletion (CBMC)", swapDeletionMove_CBMC));
-  }
-  if (swapMove_CFCMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap (CFCMC)", swapMove_CFCMC));
-  }
-  if (swapMove_CFCMC_CBMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Swap (CB/CFCMC)", swapMove_CFCMC_CBMC));
-  }
-  if (WidomMove_CBMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Widom (CBMC)", WidomMove_CBMC));
-  }
-  if (WidomMove_CFCMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Widom (CFCMC)", WidomMove_CFCMC));
-  }
-  if (WidomMove_CFCMC_CBMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Widom (CB/CFCMC)", WidomMove_CFCMC_CBMC));
-  }
-
-  if (GibbsSwapMove_CBMC.totalCounts > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Gibbs Swap (CBMC)", GibbsSwapMove_CBMC));
-  }
-  if (GibbsSwapMove_CFCMC.totalCounts.x > 0)
-  {
-    std::print(stream, "{}", formatStatistics("Gibbs Swap (CFCMC)", GibbsSwapMove_CFCMC));
-  }
-=======
 const std::string MCMoveStatisticsParticles::writeMCMoveStatistics(size_t countTotal, size_t componentId,
                                                                    const std::string &componentName) const
 {
@@ -424,7 +328,6 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics(size_t countT
   }
 
   return stream.str();
->>>>>>> main
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsParticles &p)
