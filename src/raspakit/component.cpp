@@ -550,22 +550,22 @@ nlohmann::json Component::jsonStatus() const
 
   status["name"] = name;
   status["id"] = componentId;
-  status["critical_temperature"] = criticalTemperature;
-  status["critical_pressure"] = criticalPressure;
-  status["acentric_factor"] = acentricFactor;
-  status["mol_fraction"] = molFraction;
+  status["criticalTemperature"] = criticalTemperature;
+  status["criticalPressure"] = criticalPressure;
+  status["acentricFactor"] = acentricFactor;
+  status["molFraction"] = molFraction;
   status["swappable"] = swapable;
   status["mass"] = totalMass;
   status["n_atoms"] = atoms.size();
-  status["cbmc_starting_bead"] = startingBead;
-  status["diagonalized_inertia_vector"] = {inertiaVector.x, inertiaVector.y, inertiaVector.z};
-  status["translational_dof"] = translationalDegreesOfFreedom;
-  status["rotational_dof"] = rotationalDegreesOfFreedom;
-  status["net_charge"] = netCharge;
+  status["cbmcStartingBead"] = startingBead;
+  status["diagonalizedInertiaVector"] = {inertiaVector.x, inertiaVector.y, inertiaVector.z};
+  status["translationalDOF"] = translationalDegreesOfFreedom;
+  status["rotationalDOF"] = rotationalDegreesOfFreedom;
+  status["netCharge"] = netCharge;
 
   if (fugacityCoefficient.has_value())
   {
-    status["fugacity_coefficient"] = fugacityCoefficient.value();
+    status["fugacityCoefficient"] = fugacityCoefficient.value();
   }
 
   switch (shapeType)
@@ -602,7 +602,7 @@ nlohmann::json Component::jsonStatus() const
   moves["Widom (CFCMC/CBMC) probability"] = mc.probabilityWidomMove_CFCMC_CBMC;
   moves["Parallel Tempering Swap"] = mc.probabilityParallelTemperingSwap;
 
-  status["move_probabilities"] = moves;
+  status["moveProbabilities"] = moves;
 
   status["n_bonds"] = bonds.size();
   std::vector<std::string> bondTypes(bonds.size());

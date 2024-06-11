@@ -206,9 +206,10 @@ void MonteCarlo::initialize()
 
     // system.writeOutputHeader(outputJsons[system.systemId]);
     outputJsons[system.systemId]["seed"] = random.seed;
-    outputJsons[system.systemId]["hardware_info"] = HardwareInfo::jsonInfo();
+    outputJsons[system.systemId]["hardwareInfo"] = HardwareInfo::jsonInfo();
     outputJsons[system.systemId]["units"] = Units::jsonStatus();
-    outputJsons[system.systemId]["initial_conditions"] = system.jsonSystemStatus();
+    outputJsons[system.systemId]["initialConditions"] = system.jsonSystemStatus();
+    outputJsons[system.systemId]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
     outputJsons[system.systemId]["components"] = system.jsonComponentStatus();
 
     // std::cout << outputJsons[system.systemId].dump(4) << std::endl;

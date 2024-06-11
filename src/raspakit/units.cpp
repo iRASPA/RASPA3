@@ -103,7 +103,7 @@ nlohmann::json Units::jsonStatus()
   units["electric potential [V]"] = Units::ElectricPotentialConversionFactor;
   units["electric field [V]"] = Units::ElectricFieldConversionFactor;
   units["polarizability [-]"] = Units::PolarizilibityConversionFactor;
-  units["dielectric constant [s² C²/(kg m³)]\n"] = Units::DielectricConstantConversionFactor;
+  units["dielectric constant [s² C²/(kg m³)]"] = Units::DielectricConstantConversionFactor;
   units["Boltzmann constant [-]"] = Units::KB;
   units["energy [J]"] = Units::EnergyConversionFactor;
   units["force [N]"] = Units::ForceConversionFactor;

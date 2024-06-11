@@ -28,7 +28,7 @@ import double3;
 import int3;
 import pseudo_atom;
 import vdwparameters;
-
+import json;
 
 export struct ForceField
 {
@@ -90,6 +90,8 @@ export struct ForceField
 
   std::string printPseudoAtomStatus() const;
   std::string printForceFieldStatus() const;
+  std::vector<nlohmann::json> jsonPseudoAtomStatus() const;
+  nlohmann::json jsonForceFieldStatus() const;
 
   std::optional<size_t> findPseudoAtom(const std::string &name) const;
   static std::optional<size_t> findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name);
