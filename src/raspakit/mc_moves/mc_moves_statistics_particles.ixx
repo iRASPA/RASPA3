@@ -34,11 +34,11 @@ export struct MCMoveStatisticsParticles
   MoveStatistics<double> swapDeletionMove{};
   MoveStatistics<double> swapInsertionMove_CBMC{};
   MoveStatistics<double> swapDeletionMove_CBMC{};
-  MoveStatistics<double3> swapMove_CFCMC{.maxChange = double3(0.0, 0.0, 0.5)};
-  MoveStatistics<double3> swapMove_CFCMC_CBMC{.maxChange = double3(0.0, 0.0, 0.5)};
-  MoveStatistics<double3> WidomMove_CBMC{};
-  MoveStatistics<double3> WidomMove_CFCMC{};
-  MoveStatistics<double3> WidomMove_CFCMC_CBMC{};
+  MoveStatistics<double3> swapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };
+  MoveStatistics<double3> swapMove_CFCMC_CBMC{ .maxChange = double3(0.0,0.0,0.5) };
+  MoveStatistics<double> WidomMove_CBMC{};
+  MoveStatistics<double> WidomMove_CFCMC{};
+  MoveStatistics<double> WidomMove_CFCMC_CBMC{};
 
   MoveStatistics<double> GibbsSwapMove_CBMC{};
   MoveStatistics<double3> GibbsSwapMove_CFCMC{.maxChange = double3(0.0, 0.0, 0.5)};
@@ -48,6 +48,9 @@ export struct MCMoveStatisticsParticles
   void optimizeMCMoves();
   const std::string writeMCMoveStatistics() const;
   void logMCMoveStatistics(HDF5Handler &hdf5) const;
+
+  const std::string writeMCMoveStatistics(size_t countTotal, size_t componentId,
+                                          const std::string &componentName) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsParticles &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatisticsParticles &p);

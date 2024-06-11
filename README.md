@@ -81,13 +81,12 @@ sudo dnf --enablerepo=devel install python3-devel python3-pybind11<br>
 sudo dnf --enablerepo=devel install pybind11-devel<br>
 sudo dnf --enablerepo=devel install lapack-devel<br>
 Note: no libc++-devel for Redhat-9, the one of Fedora 38 works<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-16.0.6-1.fc38.x86_64.rpm<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-devel-16.0.6-1.fc38.x86_64.rpm<br>
-wget https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-static-16.0.6-1.fc38.x86_64.rpm<br>
-sudo dnf install libcxx*.rpm
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-16.0.6-1.fc38.x86_64.rpm<br>
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-devel-16.0.6-1.fc38.x86_64.rpm<br>
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxx-static-16.0.6-1.fc38.x86_64.rpm<br>
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-16.0.6-1.fc38.x86_64.rpm<br>
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-devel-16.0.6-1.fc38.x86_64.rpm<br>
+sudo dnf install https://kojipkgs.fedoraproject.org//packages/libcxx/16.0.6/1.fc38/x86_64/libcxxabi-static-16.0.6-1.fc38.x86_64.rpm<br>
 
 Compilation
 ===========
@@ -200,6 +199,8 @@ ${HOME}/software/bin/ctest --test-dir build/tests/raspakit-tests --verbose<br>
 
 Make rpm
 ========
-cb build<br>
-ninja package<br>
+cmake -B build -GNinja  -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON .
+ninja -C build
+ninja -C build package
 rpm -qlp /home/dubbelda/source/raspa3/build/raspa3-3.0.0-1.el7.centos.x86_64.rpm<br>
+

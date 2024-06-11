@@ -1,0 +1,22 @@
+# Maintainer: David Dubbeldam <d.dubbeldam@uva.nl>
+pkgname=raspa
+pkgver=3.0.0
+pkgrel=1
+pkgdesc="Molecular simulation code for adsorption and diffusion in nanoporours materials."
+arch=('x86_64')
+url="https://www.iraspa.org"
+license=('MIT')
+makedepends=()
+depends=('glibc' 'blas64' 'lapack64' 'gcc-libs' 'openmp')
+source=(raspa3.tar.gz)
+md5sums=('SKIP')
+
+build() {
+  cmake -B build -GNinja -DCMAKE_INSTALL_PREFIX=${pkgdir} -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_DEB_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
+  cmake --build build
+}
+
+package() {
+  cmake --install build 
+}
+

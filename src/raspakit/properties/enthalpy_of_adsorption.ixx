@@ -226,9 +226,9 @@ export struct EnthalpyOfAdsorptionTerms
         v.values[i] = 0.0;
         for (size_t j = 0; j < size; ++j)
         {
-          v.values[i] += (totalEnergyTimesNumberOfMolecules[j] - totalEnergy * numberOfMolecules[j]) * m(j, i) 
-                          - temperature;
+          v.values[i] += (totalEnergyTimesNumberOfMolecules[j] - totalEnergy * numberOfMolecules[j]) * m(j, i);
         }
+        v.values[i] -= temperature;
       }
     }
     return v;

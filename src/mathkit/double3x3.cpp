@@ -19,8 +19,8 @@ module;
 /* DSYEV prototype */
 extern "C"
 {
-    void dsyev_(char* jobz, char* uplo, int* n, double* a, int* lda,
-        double* w, double* work, int* lwork, int* info);
+  void dsyev_(char* jobz, char* uplo, long long* n, double* a, long long* lda,
+        double* w, double* work, long long* lwork, long long* info);
 }
 
 module double3x3;
@@ -229,11 +229,11 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
   char upload = 'U';
   std::vector<double> matrix = std::vector<double>{ ax, ay, az, bx, by, bz, cx, cy, cz };
   std::vector<double> work(9 * 3);
-  int lwork = 9 * 3;
+  long long lwork = 9 * 3;
   std::vector<double> e = std::vector<double>(3);
-  int error = 0;
-  int N = 3;
-  int M = 3;
+  long long error = 0;
+  long long N = 3;
+  long long M = 3;
 
   dsyev_(&decompositionJobV, &upload, &M, matrix.data(), &N, e.data(), work.data(), &lwork, &error);
 
@@ -245,7 +245,7 @@ void double3x3::EigenSystemSymmetric(double3& eigenvalues, double3x3& eigenvecto
   eigenvectors = double3x3(v1, v2, v3);
   if (eigenvectors.determinant() < 0)
   {
-      eigenvectors = double3x3(v1, v3, v2);
+    eigenvectors = double3x3(v1, v3, v2);
   }
 }
 

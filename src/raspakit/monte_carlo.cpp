@@ -164,9 +164,10 @@ void MonteCarlo::createOutputFiles()
 
 void MonteCarlo::initialize()
 {
-  size_t totalNumberOfMolecules{0uz};
-  size_t totalNumberOfComponents{0uz};
-  size_t numberOfStepsPerCycle{0uz};
+  std::chrono::system_clock::time_point t1, t2;
+  size_t totalNumberOfMolecules{ 0uz };
+  size_t totalNumberOfComponents{ 0uz };
+  size_t numberOfStepsPerCycle{ 0uz };
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
@@ -218,9 +219,10 @@ void MonteCarlo::initialize()
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
   {
-    totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
+    t1 = std::chrono::system_clock::now();
+    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
+        [](const size_t& acc, const size_t& b) { return acc + b; },
+        [](const System& system) { return system.numberOfMolecules();});
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
     numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
@@ -247,6 +249,12 @@ void MonteCarlo::initialize()
         }
       }
     }
+
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -282,6 +290,9 @@ void MonteCarlo::initialize()
         std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
       }
     }
+    t2 = std::chrono::system_clock::now();
+    totalInitializationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
 
   continueInitializationStage:;
   }
@@ -289,9 +300,10 @@ void MonteCarlo::initialize()
 
 void MonteCarlo::equilibrate()
 {
-  size_t totalNumberOfMolecules{0uz};
-  size_t totalNumberOfComponents{0uz};
-  size_t numberOfStepsPerCycle{0uz};
+  std::chrono::system_clock::time_point t1, t2;
+  size_t totalNumberOfMolecules{ 0uz };
+  size_t totalNumberOfComponents{ 0uz };
+  size_t numberOfStepsPerCycle{ 0uz };
 
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
@@ -312,9 +324,10 @@ void MonteCarlo::equilibrate()
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
+    t1 = std::chrono::system_clock::now();
+    totalNumberOfMolecules = std::transform_reduce(systems.begin(), systems.end(), 0uz,
+        [](const size_t& acc, const size_t& b) { return acc + b; },
+        [](const System& system) { return system.numberOfMolecules();});
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
     numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
@@ -340,6 +353,12 @@ void MonteCarlo::equilibrate()
       selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
           selectedSecondSystem.containsTheFractionalMolecule);
     }
+
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -388,7 +407,12 @@ void MonteCarlo::equilibrate()
         std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
       }
     }
-  continueEquilibrationStage:;
+    t2 = std::chrono::system_clock::now();
+    totalEquilibrationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
+
+    continueEquilibrationStage: ;
+
   }
 }
 
@@ -476,11 +500,16 @@ void MonteCarlo::production()
       ++numberOfSteps;
     }
 
+    //for (System& system : systems)
+    //{
+    //  system.checkCartesianPositions();
+    //  system.checkMoleculeIds();
+    //}
+
     // sample properties
     for (System& system : systems)
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
-      // system.checkCartesianPositions();
     }
 
     for (System& system : systems)
@@ -553,8 +582,11 @@ void MonteCarlo::production()
       }
     }
     t2 = std::chrono::system_clock::now();
+    totalProductionSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
-  continueProductionStage:;
+
+    continueProductionStage: ;
+
   }
 }
 
@@ -595,11 +627,10 @@ void MonteCarlo::output()
 
     for (const Component& component : system.components)
     {
-      std::print(
-          stream, "{}",
-          component.mc_moves_count.writeComponentStatistics(numberOfSteps, component.componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, 
+                                                             component.componentId, component.name));
     }
-    std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
+    //std::print(stream, "{}", system.mc_moves_statistics.writeSystemStatistics(numberOfSteps));
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
@@ -621,7 +652,11 @@ void MonteCarlo::output()
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
+    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
+    std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
+    std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
+    std::print(stream, "Production simulation time:     {:14f} [s]\n", totalProductionSimulationTime.count());
+    std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
     std::print(stream, "\n\n");
 
     std::print(stream, "{}",
@@ -683,8 +718,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
 
   archive << mc.estimation;
 
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << mc.totalInitializationSimulationTime;
+  archive << mc.totalEquilibrationSimulationTime;
+  archive << mc.totalProductionSimulationTime;
+  archive << mc.totalSimulationTime;
 
+  archive << static_cast<uint64_t>(0x6f6b6179); // magic number 'okay' in hex
+ 
   return archive;
 }
 
@@ -718,6 +758,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.fractionalMoleculeSystem;
 
   archive >> mc.estimation;
+
+  archive >> mc.totalInitializationSimulationTime;
+  archive >> mc.totalEquilibrationSimulationTime;
+  archive >> mc.totalProductionSimulationTime;
+  archive >> mc.totalSimulationTime;
 
   uint64_t magicNumber;
   archive >> magicNumber;

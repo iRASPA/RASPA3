@@ -45,29 +45,20 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 # -stdlib=libc++
-set(CMAKE_CXX_FLAGS_DEBUG "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library  -fopenmp -g -O3 -march=native -ffast-math")
-
-# rpm-settings
-set(CPACK_PACKAGE_VERSION ${VERSION})
-set(CPACK_GENERATOR RPM)
-set(CPACK_RPM_PACKAGE_NAME "raspa3")
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-set(CPACK_RPM_PACKAGE_DESCRIPTION "Molecular simulation code for adsorption and diffusion in nanoporours materials.")
-set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
-set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
-set(CPACK_RPM_PACKAGE_RELEASE 1)
-set(CPACK_RPM_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
-set(CPACK_RPM_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
-set(CPACK_RPM_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-include(CPack)
+set(CMAKE_CXX_FLAGS_DEBUG "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
+set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
 
 add_subdirectory(src)
 add_subdirectory(app)
 add_subdirectory(data)
-add_subdirectory(docs)
+
+if(BUILD_DOXYGEN)
+  add_subdirectory(docs)
+endif()
+
+add_subdirectory(packaging)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)

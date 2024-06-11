@@ -54,7 +54,6 @@ export struct MCMoveCount
   size_t swapDeletionMove;
   size_t swapInsertionMoveCBMC;
   size_t swapDeletionMoveCBMC;
-  size_t swapLambdaDeletionMove;
   size_t swapLambdaMoveCFCMC;
   size_t swapLambdaMoveCBCFCMC;
   size_t GibbsSwapMoveCBMC;
@@ -75,9 +74,6 @@ export struct MCMoveCount
   }
 
   void clearCountStatistics();
-  const std::string writeSystemStatistics(size_t countTotal) const;
-  const std::string writeComponentStatistics(size_t countTotal, size_t componentId, 
-                                             const std::string &componentName) const;
   const std::string writeAllSystemStatistics(size_t countTotal) const;
 
   inline MCMoveCount& operator+=(const MCMoveCount& b)

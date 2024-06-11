@@ -73,6 +73,9 @@ export struct MonteCarlo
 
   BlockErrorEstimation estimation;
 
+  std::chrono::duration<double> totalInitializationSimulationTime{ 0 };
+  std::chrono::duration<double> totalEquilibrationSimulationTime{ 0 };
+  std::chrono::duration<double> totalProductionSimulationTime{ 0 };
   std::chrono::duration<double> totalSimulationTime{ 0 };
 
   void createOutputFiles();

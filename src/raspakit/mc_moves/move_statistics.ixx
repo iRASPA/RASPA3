@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <string>
 #include <algorithm>
 #include <fstream>
 #if defined(__has_include) && __has_include(<format>)
@@ -18,6 +19,7 @@ module;
 export module move_statistics;
 
 #ifndef USE_LEGACY_HEADERS
+import <string>;
 import <algorithm>;
 import <fstream>;
 import <format>;
@@ -41,22 +43,27 @@ struct MoveStatistics
 {
   uint64_t versionNumber{1};
 
+  bool operator==(MoveStatistics<T> const&) const = default;
+
   T counts{};
   T constructed{};
   T accepted{};
+  std::size_t allCounts{};
   T totalCounts{};
   T totalConstructed{};
   T totalAccepted{};
   T maxChange{};
   T targetAcceptance{0.5};
 
-  bool operator==(MoveStatistics<T> const &) const = default;
-
   void clear()
   {
-    counts = T();
-    constructed = T();
-    accepted = T();
+    counts = T{};
+    constructed = T{};
+    accepted = T{};
+    allCounts = std::size_t{};
+    totalCounts = T{};
+    totalConstructed = T{};
+    totalAccepted = T{};
   }
 
   void optimizeAcceptance(T lowerLimit = T(0.0), T upperLimit = T(1.0))
@@ -72,9 +79,9 @@ struct MoveStatistics
       T scaling = clamp(ratio / targetAcceptance, T(0.5), T(1.5));
       maxChange = clamp(maxChange * scaling, lowerLimit, upperLimit);
     }
-    counts = T();
-    constructed = T();
-    accepted = T();
+    counts = T{};
+    constructed = T{};
+    accepted = T{};
   }
 
   template <class U>
@@ -92,6 +99,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   archive << m.counts;
   archive << m.constructed;
   archive << m.accepted;
+  archive << m.allCounts;
   archive << m.totalCounts;
   archive << m.totalConstructed;
   archive << m.totalAccepted;
@@ -116,6 +124,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
   archive >> m.counts;
   archive >> m.constructed;
   archive >> m.accepted;
+  archive >> m.allCounts;
   archive >> m.totalCounts;
   archive >> m.totalConstructed;
   archive >> m.totalAccepted;

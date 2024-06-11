@@ -542,17 +542,17 @@ void MolecularDynamics::output()
     std::print(stream, "Production run counting of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for(const Component &component : system.components)
-    {
-      std::print(stream, "{}", component.mc_moves_count.writeComponentStatistics(numberOfSteps, 
-                                                       component.componentId, component.name));
-    }
-    std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
+    //for(const Component &component : system.components)
+    //{
+    //  std::print(stream, "{}", component.mc_moves_count.writeComponentStatistics(numberOfSteps, 
+    //                                                   component.componentId, component.name));
+    //}
+    //std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
+    std::print(stream, "{}\n", countTotal.writeAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 

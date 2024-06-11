@@ -487,12 +487,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(translationMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Translation:                   {:14f} [s]\n", translationMove.count());
-    std::print(stream, "    ExternalField-Molecule:    {:14f} [s]\n", translationMoveExternalFieldMolecule.count());
-    std::print(stream, "    Framework-Molecule:        {:14f} [s]\n", translationMoveFrameworkMolecule.count());
-    std::print(stream, "    Molecule-Molecule:         {:14f} [s]\n", translationMoveMoleculeMolecule.count());
-    std::print(stream, "    Ewald:                     {:14f} [s]\n", translationMoveEwald.count());
-    std::print(stream, "    Overhead:                  {:14f} [s]\n",
+    std::print(stream, "Translation:                    {:14f} [s]\n", translationMove.count());
+    std::print(stream, "    ExternalField-Molecule:     {:14f} [s]\n", translationMoveExternalFieldMolecule.count());
+    std::print(stream, "    Framework-Molecule:         {:14f} [s]\n", translationMoveFrameworkMolecule.count());
+    std::print(stream, "    Molecule-Molecule:          {:14f} [s]\n", translationMoveMoleculeMolecule.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", translationMoveEwald.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  translationMove.count() - translationMoveExternalFieldMolecule.count() - translationMoveFrameworkMolecule.count() -
                  translationMoveMoleculeMolecule.count() - translationMoveEwald.count());
   }
@@ -500,12 +500,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(randomTranslationMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Random Translation:          {:14f} [s]\n", randomTranslationMove.count());
-    std::print(stream, "    ExternalField-Molecule:  {:14f} [s]\n", randomTranslationMoveExternalFieldMolecule.count());
-    std::print(stream, "    Framework-Molecule:      {:14f} [s]\n", randomTranslationMoveMoleculeMolecule.count());
-    std::print(stream, "    Molecule-Molecul:        {:14f} [s]\n", randomTranslationMoveMoleculeMolecule.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", randomTranslationMoveEwald.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Random Translation:             {:14f} [s]\n", randomTranslationMove.count());
+    std::print(stream, "    ExternalField-Molecule:     {:14f} [s]\n", randomTranslationMoveExternalFieldMolecule.count());
+    std::print(stream, "    Framework-Molecule:         {:14f} [s]\n", randomTranslationMoveMoleculeMolecule.count());
+    std::print(stream, "    Molecule-Molecul:           {:14f} [s]\n", randomTranslationMoveMoleculeMolecule.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", randomTranslationMoveEwald.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  randomTranslationMove.count() - randomTranslationMoveExternalFieldMolecule.count() - 
                  randomTranslationMoveFrameworkMolecule.count() - randomTranslationMoveMoleculeMolecule.count() -
                  randomTranslationMoveEwald.count());
@@ -514,12 +514,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(rotationMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Rotation:                    {:14f} [s]\n", rotationMove.count());
-    std::print(stream, "    ExternalField-Molecule:  {:14f} [s]\n", rotationMoveExternalFieldMolecule.count());
-    std::print(stream, "    Framework-Molecule:      {:14f} [s]\n", rotationMoveMoleculeMolecule.count());
-    std::print(stream, "    Molecule-Molecul:        {:14f} [s]\n", rotationMoveMoleculeMolecule.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", rotationMoveEwald.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Rotation:                       {:14f} [s]\n", rotationMove.count());
+    std::print(stream, "    ExternalField-Molecule:     {:14f} [s]\n", rotationMoveExternalFieldMolecule.count());
+    std::print(stream, "    Framework-Molecule:         {:14f} [s]\n", rotationMoveMoleculeMolecule.count());
+    std::print(stream, "    Molecule-Molecul:           {:14f} [s]\n", rotationMoveMoleculeMolecule.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", rotationMoveEwald.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  rotationMove.count() - rotationMoveExternalFieldMolecule.count() - rotationMoveFrameworkMolecule.count() -
                  rotationMoveMoleculeMolecule.count() - rotationMoveEwald.count());
   }
@@ -527,12 +527,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(randomRotationMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Random rotation:             {:14f} [s]\n", randomRotationMove.count());
-    std::print(stream, "    ExternalField-Molecule:  {:14f} [s]\n", randomRotationMoveExternalFieldMolecule.count());
-    std::print(stream, "    Framework-Molecule:      {:14f} [s]\n", randomRotationMoveMoleculeMolecule.count());
-    std::print(stream, "    Molecule-Molecul:        {:14f} [s]\n", randomRotationMoveMoleculeMolecule.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", randomRotationMoveEwald.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Random rotation:                {:14f} [s]\n", randomRotationMove.count());
+    std::print(stream, "    ExternalField-Molecule:     {:14f} [s]\n", randomRotationMoveExternalFieldMolecule.count());
+    std::print(stream, "    Framework-Molecule:         {:14f} [s]\n", randomRotationMoveMoleculeMolecule.count());
+    std::print(stream, "    Molecule-Molecul:           {:14f} [s]\n", randomRotationMoveMoleculeMolecule.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", randomRotationMoveEwald.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  randomRotationMove.count() - randomRotationMoveExternalFieldMolecule.count() -
                  randomRotationMoveFrameworkMolecule.count() - randomRotationMoveMoleculeMolecule.count() -
                  randomRotationMoveEwald.count());
@@ -541,21 +541,21 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(reinsertionMoveCBMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Reinsertion CBMC:            {:14f} [s]\n", reinsertionMoveCBMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", reinsertionMoveCBMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", reinsertionMoveCBMCEwald.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Reinsertion CBMC:                {:14f} [s]\n", reinsertionMoveCBMC.count());
+    std::print(stream, "    Non-Ewald:                   {:14f} [s]\n", reinsertionMoveCBMCNonEwald.count());
+    std::print(stream, "    Ewald:                       {:14f} [s]\n", reinsertionMoveCBMCEwald.count());
+    std::print(stream, "    Overhead:                    {:14f} [s]\n",
                  reinsertionMoveCBMC.count() - reinsertionMoveCBMCNonEwald.count() - reinsertionMoveCBMCEwald.count());
   }
 
   if(swapInsertionMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Insertion:                   {:14f} [s]\n", swapInsertionMove.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapInsertionMoveNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", swapInsertionMoveEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", swapInsertionMoveTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Insertion:                       {:14f} [s]\n", swapInsertionMove.count());
+    std::print(stream, "    Non-Ewald:                   {:14f} [s]\n", swapInsertionMoveNonEwald.count());
+    std::print(stream, "    Ewald:                       {:14f} [s]\n", swapInsertionMoveEwald.count());
+    std::print(stream, "    Tail:                        {:14f} [s]\n", swapInsertionMoveTail.count());
+    std::print(stream, "    Overhead:                    {:14f} [s]\n",
                  swapInsertionMove.count() - swapInsertionMoveNonEwald.count() - 
                  swapInsertionMoveEwald.count() - swapInsertionMoveTail.count());
   }
@@ -563,11 +563,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(swapDeletionMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Deletion:                    {:14f} [s]\n", swapDeletionMove.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapDeletionMoveNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", swapDeletionMoveEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", swapDeletionMoveTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Deletion:                       {:14f} [s]\n", swapDeletionMove.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", swapDeletionMoveNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", swapDeletionMoveEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", swapDeletionMoveTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  swapDeletionMove.count() - swapDeletionMoveNonEwald.count() - 
                  swapDeletionMoveEwald.count() - swapDeletionMoveTail.count());
   }
@@ -575,11 +575,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(swapInsertionMoveCBMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Insertion CBMC:              {:14f} [s]\n", swapInsertionMoveCBMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapInsertionMoveCBMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", swapInsertionMoveCBMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", swapInsertionMoveCBMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Insertion CBMC:                 {:14f} [s]\n", swapInsertionMoveCBMC.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", swapInsertionMoveCBMCNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", swapInsertionMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", swapInsertionMoveCBMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  swapInsertionMoveCBMC.count() - swapInsertionMoveCBMCNonEwald.count() - 
                  swapInsertionMoveCBMCEwald.count() - swapInsertionMoveCBMCTail.count());
   }
@@ -587,11 +587,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(swapDeletionMoveCBMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Deletion CBMC:               {:14f} [s]\n", swapDeletionMoveCBMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", swapDeletionMoveCBMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", swapDeletionMoveCBMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", swapDeletionMoveCBMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Deletion CBMC:                  {:14f} [s]\n", swapDeletionMoveCBMC.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", swapDeletionMoveCBMCNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", swapDeletionMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", swapDeletionMoveCBMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  swapDeletionMoveCBMC.count() - swapDeletionMoveCBMCNonEwald.count() - 
                  swapDeletionMoveCBMCEwald.count() - swapDeletionMoveCBMCTail.count());
   }
@@ -599,23 +599,23 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(swapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Insertion/deletion CFCMC:    {:14f} [s]\n", swapLambdaMoveCFCMC.count());
-    std::print(stream, "    Insertion ExternalField: {:14f} [s]\n", swapLambdaInsertionMoveCFCMCExternalField.count());
-    std::print(stream, "    Insertion Framework:     {:14f} [s]\n", swapLambdaInsertionMoveCFCMCFramework.count());
-    std::print(stream, "    Insertion Molecule:      {:14f} [s]\n", swapLambdaInsertionMoveCFCMCMolecule.count());
-    std::print(stream, "    Insertion Ewald:         {:14f} [s]\n", swapLambdaInsertionMoveCFCMCEwald.count());
-    std::print(stream, "    Insertion Tail:          {:14f} [s]\n", swapLambdaInsertionMoveCFCMCTail.count());
-    std::print(stream, "    Lambda ExternalField:    {:14f} [s]\n", swapLambdaChangeMoveCFCMCExternalField.count());
-    std::print(stream, "    Lambda Framework:        {:14f} [s]\n", swapLambdaChangeMoveCFCMCFramework.count());
-    std::print(stream, "    Lambda Molecule:         {:14f} [s]\n", swapLambdaChangeMoveCFCMCMolecule.count());
-    std::print(stream, "    Lambda Ewald:            {:14f} [s]\n", swapLambdaChangeMoveCFCMCEwald.count());
-    std::print(stream, "    Lambda Tail:             {:14f} [s]\n", swapLambdaChangeMoveCFCMCTail.count());
-    std::print(stream, "    Deletion ExternalField:  {:14f} [s]\n", swapLambdaDeletionMoveCFCMCExternalField.count());
-    std::print(stream, "    Deletion Framework:      {:14f} [s]\n", swapLambdaDeletionMoveCFCMCFramework.count());
-    std::print(stream, "    Deletion Molecule:    :  {:14f} [s]\n", swapLambdaDeletionMoveCFCMCMolecule.count());
-    std::print(stream, "    Deletion Ewald:          {:14f} [s]\n", swapLambdaDeletionMoveCFCMCEwald.count());
-    std::print(stream, "    Deletion Tail:           {:14f} [s]\n", swapLambdaDeletionMoveCFCMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n", swapLambdaMoveCFCMC.count()
+    std::print(stream, "Insertion/deletion CFCMC:       {:14f} [s]\n", swapLambdaMoveCFCMC.count());
+    std::print(stream, "    Insertion ExternalField:    {:14f} [s]\n", swapLambdaInsertionMoveCFCMCExternalField.count());
+    std::print(stream, "    Insertion Framework:        {:14f} [s]\n", swapLambdaInsertionMoveCFCMCFramework.count());
+    std::print(stream, "    Insertion Molecule:         {:14f} [s]\n", swapLambdaInsertionMoveCFCMCMolecule.count());
+    std::print(stream, "    Insertion Ewald:            {:14f} [s]\n", swapLambdaInsertionMoveCFCMCEwald.count());
+    std::print(stream, "    Insertion Tail:             {:14f} [s]\n", swapLambdaInsertionMoveCFCMCTail.count());
+    std::print(stream, "    Lambda ExternalField:       {:14f} [s]\n", swapLambdaChangeMoveCFCMCExternalField.count());
+    std::print(stream, "    Lambda Framework:           {:14f} [s]\n", swapLambdaChangeMoveCFCMCFramework.count());
+    std::print(stream, "    Lambda Molecule:            {:14f} [s]\n", swapLambdaChangeMoveCFCMCMolecule.count());
+    std::print(stream, "    Lambda Ewald:               {:14f} [s]\n", swapLambdaChangeMoveCFCMCEwald.count());
+    std::print(stream, "    Lambda Tail:                {:14f} [s]\n", swapLambdaChangeMoveCFCMCTail.count());
+    std::print(stream, "    Deletion ExternalField:     {:14f} [s]\n", swapLambdaDeletionMoveCFCMCExternalField.count());
+    std::print(stream, "    Deletion Framework:         {:14f} [s]\n", swapLambdaDeletionMoveCFCMCFramework.count());
+    std::print(stream, "    Deletion Molecule:          {:14f} [s]\n", swapLambdaDeletionMoveCFCMCMolecule.count());
+    std::print(stream, "    Deletion Ewald:             {:14f} [s]\n", swapLambdaDeletionMoveCFCMCEwald.count());
+    std::print(stream, "    Deletion Tail:              {:14f} [s]\n", swapLambdaDeletionMoveCFCMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n", swapLambdaMoveCFCMC.count()
                  - swapLambdaInsertionMoveCFCMCExternalField.count() - swapLambdaInsertionMoveCFCMCFramework.count()
                  - swapLambdaInsertionMoveCFCMCMolecule.count() - swapLambdaInsertionMoveCFCMCEwald.count()
                  - swapLambdaInsertionMoveCFCMCTail.count()
@@ -630,25 +630,25 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(swapLambdaMoveCBCFCMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Insertion/deletion CB/CFCMC: {:14f} [s]\n", swapLambdaMoveCBCFCMC.count());
-    std::print(stream, "    Insertion ExternalField: {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCExternalField.count());
-    std::print(stream, "    Insertion Framework:     {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCFramework.count());
-    std::print(stream, "    Insertion Molecule:      {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCMolecule.count());
-    std::print(stream, "    Insertion Non-Ewald:     {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCNonEwald.count());
-    std::print(stream, "    Insertion Ewald:         {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCEwald.count());
-    std::print(stream, "    Insertion Tail:          {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCTail.count());
-    std::print(stream, "    Lambda ExternalField:    {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCExternalField.count());
-    std::print(stream, "    Lambda Framework:        {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCFramework.count());
-    std::print(stream, "    Lambda Molecule:         {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCMolecule.count());
-    std::print(stream, "    Lambda Ewald:            {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCEwald.count());
-    std::print(stream, "    Lambda Tail:             {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCTail.count());
-    std::print(stream, "    Deletion ExternalField:  {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCExternalField.count());
-    std::print(stream, "    Deletion Framework:      {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCFramework.count());
-    std::print(stream, "    Deletion Molecule:       {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCMolecule.count());
-    std::print(stream, "    Deletion Non-Ewald:      {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCNonEwald.count());
-    std::print(stream, "    Deletion Ewald:          {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCEwald.count());
-    std::print(stream, "    Deletion Tail:           {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n", swapLambdaMoveCBCFCMC.count()
+    std::print(stream, "Insertion/deletion CB/CFCMC:    {:14f} [s]\n", swapLambdaMoveCBCFCMC.count());
+    std::print(stream, "    Insertion ExternalField:    {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCExternalField.count());
+    std::print(stream, "    Insertion Framework:        {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCFramework.count());
+    std::print(stream, "    Insertion Molecule:         {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCMolecule.count());
+    std::print(stream, "    Insertion Non-Ewald:        {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCNonEwald.count());
+    std::print(stream, "    Insertion Ewald:            {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCEwald.count());
+    std::print(stream, "    Insertion Tail:             {:14f} [s]\n", swapLambdaInsertionMoveCBCFCMCTail.count());
+    std::print(stream, "    Lambda ExternalField:       {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCExternalField.count());
+    std::print(stream, "    Lambda Framework:           {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCFramework.count());
+    std::print(stream, "    Lambda Molecule:            {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCMolecule.count());
+    std::print(stream, "    Lambda Ewald:               {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCEwald.count());
+    std::print(stream, "    Lambda Tail:                {:14f} [s]\n", swapLambdaChangeMoveCBCFCMCTail.count());
+    std::print(stream, "    Deletion ExternalField:     {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCExternalField.count());
+    std::print(stream, "    Deletion Framework:         {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCFramework.count());
+    std::print(stream, "    Deletion Molecule:          {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCMolecule.count());
+    std::print(stream, "    Deletion Non-Ewald:         {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCNonEwald.count());
+    std::print(stream, "    Deletion Ewald:             {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCEwald.count());
+    std::print(stream, "    Deletion Tail:              {:14f} [s]\n", swapLambdaDeletionMoveCBCFCMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n", swapLambdaMoveCBCFCMC.count()
                  - swapLambdaInsertionMoveCBCFCMCExternalField.count() - swapLambdaInsertionMoveCBCFCMCFramework.count() - swapLambdaInsertionMoveCBCFCMCMolecule.count()
                  - swapLambdaInsertionMoveCBCFCMCNonEwald.count() - swapLambdaInsertionMoveCBCFCMCEwald.count() - swapLambdaInsertionMoveCBCFCMCTail.count()
                  - swapLambdaChangeMoveCBCFCMCExternalField.count() - swapLambdaChangeMoveCBCFCMCFramework.count() - swapLambdaChangeMoveCBCFCMCMolecule.count()
@@ -660,11 +660,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(GibbsSwapMoveCBMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Gibbs-swap CBMC:             {:14f} [s]\n", GibbsSwapMoveCBMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", GibbsSwapMoveCBMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", GibbsSwapMoveCBMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", GibbsSwapMoveCBMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Gibbs-swap CBMC:                {:14f} [s]\n", GibbsSwapMoveCBMC.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", GibbsSwapMoveCBMCNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", GibbsSwapMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", GibbsSwapMoveCBMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  GibbsSwapMoveCBMC.count() - GibbsSwapMoveCBMCNonEwald.count() - 
                  GibbsSwapMoveCBMCEwald.count() - GibbsSwapMoveCBMCTail.count());
   }
@@ -672,17 +672,17 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(GibbsSwapLambdaMoveCFCMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Gibbs-swap CFCMC:            {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count());
-    std::print(stream, "    Inter-change Non-Ewald:  {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count());
-    std::print(stream, "    Inter-change Ewald:      {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCEwald.count());
-    std::print(stream, "    Inter-change Tail:       {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCTail.count());
-    std::print(stream, "    Lambda-change Non-Ewald: {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCNonEwald.count());
-    std::print(stream, "    Lambda-change Ewald:     {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCEwald.count());
-    std::print(stream, "    Lambda-change Tail:      {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCTail.count());
-    std::print(stream, "    Shuffle Non-Ewald:       {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count());
-    std::print(stream, "    Shuffle Ewald:           {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
-    std::print(stream, "    Shuffle Tail:            {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count()
+    std::print(stream, "Gibbs-swap CFCMC:               {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count());
+    std::print(stream, "    Inter-change Non-Ewald:     {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count());
+    std::print(stream, "    Inter-change Ewald:         {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCEwald.count());
+    std::print(stream, "    Inter-change Tail:          {:14f} [s]\n", GibbsSwapLambdaInterChangeMoveCFCMCTail.count());
+    std::print(stream, "    Lambda-change Non-Ewald:    {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCNonEwald.count());
+    std::print(stream, "    Lambda-change Ewald:        {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCEwald.count());
+    std::print(stream, "    Lambda-change Tail:         {:14f} [s]\n", GibbsSwapLambdaChangeMoveCFCMCTail.count());
+    std::print(stream, "    Shuffle Non-Ewald:          {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count());
+    std::print(stream, "    Shuffle Ewald:              {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCEwald.count());
+    std::print(stream, "    Shuffle Tail:               {:14f} [s]\n", GibbsSwapLambdaShuffleMoveCFCMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n", GibbsSwapLambdaMoveCFCMC.count()
                  - GibbsSwapLambdaInterChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCEwald.count() - GibbsSwapLambdaInterChangeMoveCFCMCTail.count()
                  - GibbsSwapLambdaChangeMoveCFCMCNonEwald.count() - GibbsSwapLambdaChangeMoveCFCMCEwald.count() - GibbsSwapLambdaChangeMoveCFCMCTail.count()
                  - GibbsSwapLambdaShuffleMoveCFCMCNonEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCEwald.count() - GibbsSwapLambdaShuffleMoveCFCMCTail.count());
@@ -691,35 +691,35 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(volumeMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Volume:                      {:14f} [s]\n", volumeMove.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", volumeMoveNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", volumeMoveEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", volumeMoveTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Volume:                         {:14f} [s]\n", volumeMove.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", volumeMoveNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", volumeMoveEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", volumeMoveTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  volumeMove.count() - volumeMoveNonEwald.count() - volumeMoveEwald.count() - volumeMoveTail.count());
   }
 
   if(WidomMoveCBMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Widom CBMC:                  {:14f} [s]\n", WidomMoveCBMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", WidomMoveCBMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", WidomMoveCBMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", WidomMoveCBMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Widom CBMC:                     {:14f} [s]\n", WidomMoveCBMC.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", WidomMoveCBMCNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", WidomMoveCBMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", WidomMoveCBMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  WidomMoveCBMC.count() - WidomMoveCBMCNonEwald.count() - WidomMoveCBMCEwald.count() - WidomMoveCBMCTail.count());
   }
 
   if(WidomMoveCFCMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Widom CFCMC:                 {:14f} [s]\n", WidomMoveCFCMC.count());
-    std::print(stream, "    ExternalField:           {:14f} [s]\n", WidomMoveCFCMCExternalField.count());
-    std::print(stream, "    Framework:               {:14f} [s]\n", WidomMoveCFCMCFramework.count());
-    std::print(stream, "    Molecule:                {:14f} [s]\n", WidomMoveCFCMCMolecule.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", WidomMoveCFCMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", WidomMoveCFCMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Widom CFCMC:                    {:14f} [s]\n", WidomMoveCFCMC.count());
+    std::print(stream, "    ExternalField:              {:14f} [s]\n", WidomMoveCFCMCExternalField.count());
+    std::print(stream, "    Framework:                  {:14f} [s]\n", WidomMoveCFCMCFramework.count());
+    std::print(stream, "    Molecule:                   {:14f} [s]\n", WidomMoveCFCMCMolecule.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", WidomMoveCFCMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", WidomMoveCFCMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  WidomMoveCFCMC.count() - WidomMoveCFCMCExternalField.count()
                  - WidomMoveCFCMCFramework.count() - WidomMoveCFCMCMolecule.count()
                  - WidomMoveCFCMCEwald.count() - WidomMoveCFCMCTail.count());
@@ -728,42 +728,42 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
   if(WidomMoveCBCFCMC > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Widom CB/CFCMC:              {:14f} [s]\n", WidomMoveCBCFCMC.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", WidomMoveCBCFCMCNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", WidomMoveCBCFCMCEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", WidomMoveCBCFCMCTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Widom CB/CFCMC:                 {:14f} [s]\n", WidomMoveCBCFCMC.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", WidomMoveCBCFCMCNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", WidomMoveCBCFCMCEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", WidomMoveCBCFCMCTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  WidomMoveCBCFCMC.count() - WidomMoveCBCFCMCNonEwald.count() - WidomMoveCBCFCMCEwald.count() - WidomMoveCBCFCMCTail.count());
   }
 
   if(GibbsVolumeMove > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Gibbs Volume:                {:14f} [s]\n", GibbsVolumeMove.count());
-    std::print(stream, "    Non-Ewald:               {:14f} [s]\n", GibbsVolumeMoveNonEwald.count());
-    std::print(stream, "    Ewald:                   {:14f} [s]\n", GibbsVolumeMoveEwald.count());
-    std::print(stream, "    Tail:                    {:14f} [s]\n", GibbsVolumeMoveTail.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Gibbs Volume:                   {:14f} [s]\n", GibbsVolumeMove.count());
+    std::print(stream, "    Non-Ewald:                  {:14f} [s]\n", GibbsVolumeMoveNonEwald.count());
+    std::print(stream, "    Ewald:                      {:14f} [s]\n", GibbsVolumeMoveEwald.count());
+    std::print(stream, "    Tail:                       {:14f} [s]\n", GibbsVolumeMoveTail.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                  GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count() - GibbsVolumeMoveTail.count());
   }
 
   if (ParallelTemperingSwap > std::chrono::duration<double>::zero())
   {
     std::print(stream, "\n");
-    std::print(stream, "Parallel Tempering Swap:     {:14f} [s]\n", ParallelTemperingSwap.count());
-    std::print(stream, "    Energy recalculation:    {:14f} [s]\n", ParallelTemperingSwapEnergy.count());
-    std::print(stream, "    Fugacity swap:           {:14f} [s]\n", ParallelTemperingSwapFugacity.count());
-    std::print(stream, "    Overhead:                {:14f} [s]\n",
+    std::print(stream, "Parallel Tempering Swap:        {:14f} [s]\n", ParallelTemperingSwap.count());
+    std::print(stream, "    Energy recalculation:       {:14f} [s]\n", ParallelTemperingSwapEnergy.count());
+    std::print(stream, "    Fugacity swap:              {:14f} [s]\n", ParallelTemperingSwapFugacity.count());
+    std::print(stream, "    Overhead:                   {:14f} [s]\n",
                ParallelTemperingSwap.count() - ParallelTemperingSwapEnergy.count());
   }
 
   std::print(stream, "\n");
-  std::print(stream, "Property sampling:           {:14f} [s]\n", propertySampling.count());
-  std::print(stream, "Energy/pressure sampling:    {:14f} [s]\n\n", energyPressureComputation.count());
+  std::print(stream, "Property sampling:              {:14f} [s]\n", propertySampling.count());
+  std::print(stream, "Energy/pressure sampling:       {:14f} [s]\n\n", energyPressureComputation.count());
 
-  std::print(stream, "Production simulation time:  {:14f} [s]\n", totalSimulation.count());
-  std::print(stream, "                All summed:  {:14f} [s]\n", total().count());
-  std::print(stream, "                  Overhead:  {:14f} [s]\n", totalSimulation.count() - total().count());
+  std::print(stream, "Production simulation time:     {:14f} [s]\n", totalSimulation.count());
+  std::print(stream, "                All summed:     {:14f} [s]\n", total().count());
+  std::print(stream, "                  Overhead:     {:14f} [s]\n", totalSimulation.count() - total().count());
 
   std::print(stream, "\n\n");
 

@@ -91,6 +91,9 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     // Changing the fractional molecule into a whole molecule, keeping its position fixed
     // Changing a randomly selected molecule in the other simulation box into a fractional molecule (at same lambda)
 
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[0] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[0] += 1;
+
     if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
@@ -106,8 +109,6 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     const std::vector<Atom> oldFractionalMoleculeB(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
     std::vector<Atom> oldFractionalMoleculeB2(fractionalMoleculeB.begin(), fractionalMoleculeB.end());
 
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[0] += 1;
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[0] += 1;
 
 
     // System A: Changing the fractional molecule into a whole molecule, keeping its position fixed
@@ -422,13 +423,17 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
       {
         atom.setScalingToInteger();
       }
-      systemA.insertMolecule(selectedComponent, systemA.moleculePositions[indexFractionalMoleculeA], addedMolecule);
-      systemA.moleculePositions[indexFractionalMoleculeA] = systemB.moleculePositions[indexFractionalMoleculeB];
+      systemA.insertMolecule(selectedComponent, 
+                             systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)], 
+                             addedMolecule);
+      systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)] = 
+        systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)];
       
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
 
-      std::swap(systemB.moleculePositions[indexFractionalMoleculeB], systemB.moleculePositions[indexSelectedIntegerMoleculeB]);
+      std::swap(systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)], 
+                systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexSelectedIntegerMoleculeB)]);
       systemB.deleteMolecule(selectedComponent, indexSelectedIntegerMoleculeB, selectedIntegerMoleculeB);
       
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
@@ -612,8 +617,9 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
       Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
     
-      std::swap(systemA.moleculePositions[indexFractionalMoleculeA], systemB.moleculePositions[indexFractionalMoleculeB]);
-      systemB.moleculePositions[indexFractionalMoleculeB] = trialMolecule.first;
+      std::swap(systemA.moleculePositions[systemA.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeA)], 
+                systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)]);
+      systemB.moleculePositions[systemB.moleculeIndexOfComponent(selectedComponent, indexFractionalMoleculeB)] = trialMolecule.first;
 
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(systemA.components[selectedComponent].lambdaGC.currentBin, 
@@ -630,17 +636,15 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
   }
   else  // lambda move
   {
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[2] += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[2] += 1;
+
     if (selectedNewBin < 0) return  std::nullopt;
     if (selectedNewBin >= std::make_signed_t<std::size_t>(lambdaA.numberOfBins)) return  std::nullopt;
 
     size_t newBin = static_cast<size_t>(selectedNewBin);
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
-    
-    
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.counts[2] += 1;
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CFCMC.totalCounts[2] += 1;
-    
     size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
     

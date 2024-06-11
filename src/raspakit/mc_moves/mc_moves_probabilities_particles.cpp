@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <string>
+#include <iostream>
 #include <sstream>
 #include <fstream>
 #if defined(__has_include) && __has_include(<format>)
@@ -25,6 +26,7 @@ module mc_moves_probabilities_particles;
 
 #ifndef USE_LEGACY_HEADERS
 import <string>;
+import <iostream>;
 import <sstream>;
 import <fstream>;
 import <format>;
