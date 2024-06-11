@@ -71,11 +71,15 @@ export struct ParallelTempering
 
   BlockErrorEstimation estimation;
 
-  std::chrono::duration<double> totalSimulationTime{0};
-
   void runSystemCycleInitialize(System &system);
   void runSystemCycleEquilibrate(System &system);
   void runSystemCycleProduction(System &system);
+
+  std::chrono::duration<double> totalInitializationSimulationTime{0};
+  std::chrono::duration<double> totalEquilibrationSimulationTime{0};
+  std::chrono::duration<double> totalProductionSimulationTime{0};
+  std::chrono::duration<double> totalSimulationTime{0};
+
   void createOutputFiles();
   void run();
   void initialize();

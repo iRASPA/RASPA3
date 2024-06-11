@@ -136,7 +136,7 @@ std::string RunningEnergy::printMC(const std::string &label) const
   return stream.str();
 }
 
-void RunningEnergy::logMC(HDF5Writer &hdf5, std::string &label) const
+void RunningEnergy::logMC(HDF5Writer &hdf5, const std::string &label) const
 {
   double conv = Units::EnergyToKelvin;
   std::string group = "statistics/" + label;
@@ -158,7 +158,7 @@ void RunningEnergy::logMC(HDF5Writer &hdf5, std::string &label) const
   hdf5.writeMetaInfo(group, "dU/dlambda Ewald: [K]", conv * dudlambdaEwald);
 }
 
-std::string RunningEnergy::printMD(const std::string &label, double referenceEnergy)
+std::string RunningEnergy::printMD(const std::string &label, double referenceEnergy) const
 {
   std::ostringstream stream;
 
@@ -191,7 +191,7 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
   return stream.str();
 }
 
-void RunningEnergy::logMD(HDF5Writer &hdf5, std::string &label, double referenceEnergy) const
+void RunningEnergy::logMD(HDF5Writer &hdf5, const std::string &label, double referenceEnergy) const
 {
   double conv = Units::EnergyToKelvin;
   std::string group = "statistics/" + label;

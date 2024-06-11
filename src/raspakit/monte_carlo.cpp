@@ -641,13 +641,13 @@ void MonteCarlo::log()
   {
     // recomputedEnergies.printMC
     // drift.printMC
-    system.runningEnergies.printMC(logs[system.systemId], "running_energies");
+    system.runningEnergies.logMC(logs[system.systemId], "running_energies");
 
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
-    reomputedEnergies.printMC(logs[system.systemId], "recomputed_energies");
+    recomputedEnergies.logMC(logs[system.systemId], "recomputed_energies");
 
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
-    drift.printMC(logs[system.systemId], "drift");
+    drift.logMC(logs[system.systemId], "drift");
 
     // system.writeMCMoveStatistics
     // for component: copmonent.mc_moves_count.writeComponentStatistics

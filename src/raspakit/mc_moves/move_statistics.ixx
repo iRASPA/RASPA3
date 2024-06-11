@@ -7,16 +7,15 @@ module;
 #include <format>
 #endif
 #include <exception>
-#include <source_location>
 #include <map>
+#include <source_location>
 #if defined(__has_include) && __has_include(<print>)
-  #include <print>
+#include <print>
 #endif
 #include <functional>
 #endif
 
 export module move_statistics;
-
 
 #ifndef USE_LEGACY_HEADERS
 import <algorithm>;
@@ -26,22 +25,21 @@ import <exception>;
 import <source_location>;
 import <map>;
 #if defined(__has_include) && __has_include(<print>)
-  import <print>;
+import <print>;
 #endif
 import <functional>;
 #endif
 
 #if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import print;
 #endif
 
 import archive;
 
-
-export template<typename T>
+export template <typename T>
 struct MoveStatistics
 {
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   T counts{};
   T constructed{};
@@ -50,9 +48,9 @@ struct MoveStatistics
   T totalConstructed{};
   T totalAccepted{};
   T maxChange{};
-  T targetAcceptance{ 0.5};
+  T targetAcceptance{0.5};
 
-  bool operator==(MoveStatistics<T> const&) const = default;
+  bool operator==(MoveStatistics<T> const &) const = default;
 
   void clear()
   {
@@ -64,10 +62,10 @@ struct MoveStatistics
   void optimizeAcceptance(T lowerLimit = T(0.0), T upperLimit = T(1.0))
   {
     T ratio = accepted / (counts + T(1.0));
-    if constexpr (std::is_same_v<double, T>) 
+    if constexpr (std::is_same_v<double, T>)
     {
-      T scaling = std::clamp( ratio / targetAcceptance, T(0.5), T(1.5) );
-      maxChange = std::clamp( maxChange * scaling, lowerLimit, upperLimit );
+      T scaling = std::clamp(ratio / targetAcceptance, T(0.5), T(1.5));
+      maxChange = std::clamp(maxChange * scaling, lowerLimit, upperLimit);
     }
     else
     {
@@ -79,14 +77,14 @@ struct MoveStatistics
     accepted = T();
   }
 
-  template<class U> 
+  template <class U>
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<U> &m);
 
-  template<class U> 
+  template <class U>
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<U> &m);
 };
 
-export template<class T> 
+export template <class T>
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<T> &m)
 {
   archive << m.versionNumber;
@@ -103,14 +101,14 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   return archive;
 }
 
-export template<class T> 
+export template <class T>
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<T> &m)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > m.versionNumber)
+  if (versionNumber > m.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'MoveStatistics' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
@@ -126,4 +124,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
 
   return archive;
 }
-

@@ -341,6 +341,7 @@ export struct System
   void logMetaData(HDF5Writer &hdf5) const;
   void logSystemStatus(HDF5Writer &hdf5) const;
   void logComponentStatus(HDF5Writer &hdf5) const;
+  void logMCMoveStatistics(HDF5Writer &hdf5) const;
 
   std::vector<Component> nonFrameworkComponents()
   {

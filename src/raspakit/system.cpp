@@ -762,25 +762,25 @@ void System::logMetaData(HDF5Writer& hdf5) const
   hdf5.writeMetaInfo("/", "RASPA version", EXPAND_AND_QUOTE(VERSION));
 #endif
 
-  ThreadPool& pool = ThreadPool::instance();
-  const size_t numberOfHelperThreads = pool.getThreadCount();
+  // ThreadPool& pool = ThreadPool::instance();
+  // const size_t numberOfHelperThreads = pool.getThreadCount();
 
-  switch (pool.threadingType)
-  {
-    case ThreadPool::ThreadingType::Serial:
-      hdf5.writeMetaInfo("/", "Parallelization", "Serial, 1 thread");
-      break;
-    case ThreadPool::ThreadingType::OpenMP:
-      hdf5.writeMetaInfo("/", "Parallelization", "OpenMP, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
-      break;
-    case ThreadPool::ThreadingType::ThreadPool:
-      hdf5.writeMetaInfo("/", "Parallelization",
-                         "Threadpool, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
-      break;
-    case ThreadPool::ThreadingType::GPU_Offload:
-      hdf5.writeMetaInfo("/", "Parallelization", "GPU-Offload");
-      break;
-  }
+  // switch (pool.threadingType)
+  // {
+  //   case ThreadPool::ThreadingType::Serial:
+  //     hdf5.writeMetaInfo("/", "Parallelization", "Serial, 1 thread");
+  //     break;
+  //   case ThreadPool::ThreadingType::OpenMP:
+  //     hdf5.writeMetaInfo("/", "Parallelization", "OpenMP, " + std::to_string(numberOfHelperThreads + 1) + "
+  //     threads"); break;
+  //   case ThreadPool::ThreadingType::ThreadPool:
+  //     hdf5.writeMetaInfo("/", "Parallelization",
+  //                        "Threadpool, " + std::to_string(numberOfHelperThreads + 1) + "  threads");
+  //     break;
+  //   case ThreadPool::ThreadingType::GPU_Offload:
+  //     hdf5.writeMetaInfo("/", "Parallelization", "GPU-Offload");
+  //     break;
+  // }
 }
 
 std::string System::writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const
@@ -2009,6 +2009,12 @@ std::string System::writeMCMoveStatistics() const
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+void System::logMCMoveStatistics(HDF5Writer& hdf5) const
+{
+  std::string group = "MCMoveStatistics";
+  hdf5.createGroup(group);
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
