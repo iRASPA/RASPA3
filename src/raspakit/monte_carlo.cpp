@@ -643,6 +643,8 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
 
     std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
+    outputJsons[system.systemId]["output"]["MCMoveStatisticsAllSystems"] =
+        countTotal.jsonAllSystemStatistics(numberOfSteps);
 
     std::print(stream, "\n\n");
 

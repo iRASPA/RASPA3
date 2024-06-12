@@ -1985,18 +1985,18 @@ nlohmann::json System::jsonMCMoveStatistics() const
   {
     status[component.name] = component.mc_moves_statistics.jsonMCMoveStatistics();
 
-    /*
     if (component.hasFractionalMolecule)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
 
-      std::print(stream, "{}",
-                 component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
-      std::print(stream, "{}",
-                 component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      status["lambdaStatistics"]["CFCMC"] =
+          component.lambdaGC.jsonAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity);
+      status["lambdaStatistics"]["thermodynamicIntegration"] =
+          component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
     }
 
+    /*
     if (component.mc_moves_probabilities.probabilityWidomMove > 0.0)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;

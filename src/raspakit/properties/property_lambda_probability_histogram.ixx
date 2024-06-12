@@ -33,8 +33,8 @@ import <fstream>;
 import double3;
 import randomnumbers;
 import archive;
-
 import averages;
+import json;
 
 inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
@@ -197,6 +197,12 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::string writeDUdLambdaStatistics(double beta, std::optional<double> imposedChemicalPotential, 
                                        std::optional<double> imposedFugacity) const;
+
+  nlohmann::json jsonAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential,
+                                        std::optional<double> imposedFugacity) const;
+
+  nlohmann::json jsonDUdLambdaStatistics(double beta, std::optional<double> imposedChemicalPotential,
+                                         std::optional<double> imposedFugacity) const;
 
   //====================================================================================================================
 
