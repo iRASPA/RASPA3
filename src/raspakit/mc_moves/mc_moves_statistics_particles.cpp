@@ -38,7 +38,7 @@ import archive;
 import double3;
 import move_statistics;
 import stringutils;
-
+import json;
 
 void MCMoveStatisticsParticles::clearMoveStatistics()
 {
@@ -101,6 +101,32 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
   std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", 
                      name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
   return stream.str();
+}
+
+nlohmann::json jsonStatistics(const MoveStatistics<double> &move)
+{
+  nlohmann::json status;
+  status["all"] = move.allCounts;
+  status["total"] = move.totalCounts;
+  status["constructed"] = move.totalConstructed;
+  status["accepted"] = move.totalAccepted;
+  status["fraction"] = move.totalAccepted / std::max(1.0, double(move.totalCounts));
+  status["maxChange"] = move.maxChange;
+  return status;
+}
+
+nlohmann::json jsonStatistics(const MoveStatistics<double3> &move)
+{
+  nlohmann::json status;
+  status["all"] = move.allCounts;
+  status["total"] = {move.totalCounts.x, move.totalCounts.y, move.totalCounts.z};
+  status["constructed"] = {move.totalConstructed.x, move.totalConstructed.y, move.totalConstructed.z};
+  status["accepted"] = {move.totalAccepted.x, move.totalAccepted.y, move.totalAccepted.z};
+  status["fraction"] = {move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
+                        move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)),
+                        move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z))};
+  status["maxChange"] = {move.maxChange.x, move.maxChange.y, move.maxChange.z};
+  return status;
 }
 
 const std::string MCMoveStatisticsParticles::writeMCMoveStatistics() const
@@ -177,6 +203,81 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics() const
   }
 
   return stream.str();
+}
+
+const nlohmann::json MCMoveStatisticsParticles::jsonMCMoveStatistics() const
+{
+  nlohmann::json status;
+  if (translationMove.totalCounts.x > 0.0)
+  {
+    status["translation"] = jsonStatistics(translationMove);
+  }
+  if (randomTranslationMove.totalCounts.x > 0.0)
+  {
+    status["randomTranslation"] = jsonStatistics(randomTranslationMove);
+  }
+  if (rotationMove.totalCounts.x > 0.0)
+  {
+    status["rotation"] = jsonStatistics(rotationMove);
+  }
+  if (randomRotationMove.totalCounts.x > 0.0)
+  {
+    status["randomRotation"] = jsonStatistics(randomRotationMove);
+  }
+  if (reinsertionMove_CBMC.totalCounts > 0.0)
+  {
+    status["reinsertionCBMC"] = jsonStatistics(reinsertionMove_CBMC);
+  }
+  if (identityChangeMove_CBMC.totalCounts > 0.0)
+  {
+    status["identitySwapCBMC"] = jsonStatistics(identityChangeMove_CBMC);
+  }
+  if (swapInsertionMove.totalCounts > 0.0)
+  {
+    status["swapInsertion"] = jsonStatistics(swapInsertionMove);
+  }
+  if (swapDeletionMove.totalCounts > 0.0)
+  {
+    status["swapDeletion"] = jsonStatistics(swapDeletionMove);
+  }
+  if (swapInsertionMove_CBMC.totalCounts > 0.0)
+  {
+    status["swapInsertionCBMC"] = jsonStatistics(swapInsertionMove_CBMC);
+  }
+  if (swapDeletionMove_CBMC.totalCounts > 0.0)
+  {
+    status["swapDeletionCBMC"] = jsonStatistics(swapDeletionMove_CBMC);
+  }
+  if (swapMove_CFCMC.totalCounts.x > 0.0)
+  {
+    status["swapCFCMC"] = jsonStatistics(swapMove_CFCMC);
+  }
+  if (swapMove_CFCMC_CBMC.totalCounts.x > 0.0)
+  {
+    status["swapCBCFCMC"] = jsonStatistics(swapMove_CFCMC_CBMC);
+  }
+  if (WidomMove_CBMC.totalCounts > 0.0)
+  {
+    status["widomCBMC"] = jsonStatistics(WidomMove_CBMC);
+  }
+  if (WidomMove_CFCMC.totalCounts > 0.0)
+  {
+    status["widomCFCMC"] = jsonStatistics(WidomMove_CFCMC);
+  }
+  if (WidomMove_CFCMC_CBMC.totalCounts > 0.0)
+  {
+    status["widomCBCFCMC"] = jsonStatistics(WidomMove_CFCMC_CBMC);
+  }
+  if (GibbsSwapMove_CBMC.totalCounts > 0.0)
+  {
+    status["gibbsSwapCBMC"] = jsonStatistics(GibbsSwapMove_CBMC);
+  }
+  if (GibbsSwapMove_CFCMC.totalCounts.x > 0.0)
+  {
+    status["gibbsSwapCFCMC"] = jsonStatistics(GibbsSwapMove_CFCMC);
+  }
+
+  return status;
 }
 
 const std::string MCMoveStatisticsParticles::writeMCMoveStatistics(size_t countTotal, size_t componentId,
@@ -283,6 +384,95 @@ const std::string MCMoveStatisticsParticles::writeMCMoveStatistics(size_t countT
   }
 
   return stream.str();
+}
+
+const nlohmann::json MCMoveStatisticsParticles::jsonMCMoveStatistics(size_t countTotal) const
+{
+  nlohmann::json status;
+
+  if (translationMove.allCounts || randomTranslationMove.allCounts || rotationMove.allCounts ||
+      randomRotationMove.allCounts || reinsertionMove_CBMC.allCounts || swapInsertionMove.allCounts ||
+      swapDeletionMove.allCounts || swapInsertionMove_CBMC.allCounts || swapDeletionMove_CBMC.allCounts ||
+      swapMove_CFCMC.allCounts || swapMove_CFCMC_CBMC.allCounts || GibbsSwapMove_CBMC.allCounts ||
+      GibbsSwapMove_CFCMC.allCounts || GibbsSwapMove_CFCMC_CBMC.allCounts || WidomMove_CBMC.allCounts ||
+      WidomMove_CFCMC.allCounts || WidomMove_CFCMC_CBMC.allCounts)
+  {
+    if (translationMove.allCounts)
+    {
+      status["translation"] = 100.0 * static_cast<double>(translationMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (randomTranslationMove.allCounts)
+    {
+      status["randomTranslation"] =
+          100.0 * static_cast<double>(randomTranslationMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (rotationMove.allCounts)
+    {
+      status["rotation"] = 100.0 * static_cast<double>(rotationMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (randomRotationMove.allCounts)
+    {
+      status["randomRotation"] =
+          100.0 * static_cast<double>(randomRotationMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (reinsertionMove_CBMC.allCounts)
+    {
+      status["reinsertionCBMC"] =
+          100.0 * static_cast<double>(reinsertionMove_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapInsertionMove.allCounts)
+    {
+      status["insertion"] = 100.0 * static_cast<double>(swapInsertionMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapDeletionMove.allCounts)
+    {
+      status["deletion"] = 100.0 * static_cast<double>(swapDeletionMove.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapInsertionMove_CBMC.allCounts)
+    {
+      status["insertionCBMC"] =
+          100.0 * static_cast<double>(swapInsertionMove_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapDeletionMove_CBMC.allCounts)
+    {
+      status["deletionCBMC"] =
+          100.0 * static_cast<double>(swapDeletionMove_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapMove_CFCMC.allCounts)
+    {
+      status["insertionDeletionCFCMC"] =
+          100.0 * static_cast<double>(swapMove_CFCMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (swapMove_CFCMC_CBMC.allCounts)
+    {
+      status["insertionDeletionCBCFCMC"] =
+          100.0 * static_cast<double>(swapMove_CFCMC_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (GibbsSwapMove_CBMC.allCounts)
+    {
+      status["gibbsSwapCBMC"] =
+          100.0 * static_cast<double>(GibbsSwapMove_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (GibbsSwapMove_CFCMC.allCounts)
+    {
+      status["gibbsSwapCFCMC"] =
+          100.0 * static_cast<double>(GibbsSwapMove_CFCMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (WidomMove_CBMC.allCounts)
+    {
+      status["widomCBMC"] = 100.0 * static_cast<double>(WidomMove_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (WidomMove_CFCMC.allCounts)
+    {
+      status["widomCFCMC"] = 100.0 * static_cast<double>(WidomMove_CFCMC.allCounts) / static_cast<double>(countTotal);
+    }
+    if (WidomMove_CFCMC_CBMC.allCounts)
+    {
+      status["widomCBCFCMC"] =
+          100.0 * static_cast<double>(WidomMove_CFCMC_CBMC.allCounts) / static_cast<double>(countTotal);
+    }
+  }
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsParticles &p)

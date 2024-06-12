@@ -17,6 +17,7 @@ import <fstream>;
 import double3;
 import archive;
 import move_statistics;
+import json;
 
 export struct MCMoveStatisticsParticles
 {
@@ -47,9 +48,11 @@ export struct MCMoveStatisticsParticles
   void clearMoveStatistics();
   void optimizeMCMoves();
   const std::string writeMCMoveStatistics() const;
+  const nlohmann::json jsonMCMoveStatistics() const;
 
   const std::string writeMCMoveStatistics(size_t countTotal, size_t componentId,
                                           const std::string &componentName) const;
+  const nlohmann::json jsonMCMoveStatistics(size_t countTotal) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsParticles &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatisticsParticles &p);

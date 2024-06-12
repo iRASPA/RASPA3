@@ -34,7 +34,7 @@ import <print>;
 import archive;
 import stringutils;
 import reaction;
-
+import json;
 
 std::string Reactions::printStatus() const
 {
@@ -45,14 +45,27 @@ std::string Reactions::printStatus() const
   std::print(stream, "Reactions:\n");
   std::print(stream, "===============================================================================\n");
 
-  std::print(stream,"{} reactions\n", list.size());
-  for (const Reaction& reaction : list)
+  std::print(stream, "{} reactions\n", list.size());
+  for (const Reaction &reaction : list)
   {
     std::print(stream, "{}", reaction.printStatus());
   }
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+nlohmann::json Reactions::jsonStatus() const
+{
+  nlohmann::json status;
+
+  if (list.empty()) return status;
+  status["n_reactions"] = list.size();
+
+  nlohmann::json reactions(list.size());
+  for (size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
+  status["reactions"] = reactions;
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reactions &r)

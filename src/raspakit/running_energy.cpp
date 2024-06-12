@@ -44,6 +44,7 @@ import <print>;
 import units;
 import archive;
 import stringutils;
+import json;
 
 std::string RunningEnergy::printMC() const
 {
@@ -157,6 +158,40 @@ std::string RunningEnergy::printMD(const std::string &label, double referenceEne
   std::print(stream, "\n");
 
   return stream.str();
+}
+
+nlohmann::json RunningEnergy::jsonMC() const
+{
+  nlohmann::json status;
+
+  double conv = Units::EnergyToKelvin;
+  status["Total potential energy [K]"] = conv * potentialEnergy();
+  status["external field VDW [K]"] = conv * externalFieldVDW;
+  status["external field Real [K]"] = conv * externalFieldCharge;
+  status["framework-molecule VDW [K]"] = conv * frameworkMoleculeVDW;
+  status["framework-molecule Rea [K]"] = conv * frameworkMoleculeCharge;
+  status["molecule-molecule VDW [K]"] = conv * moleculeMoleculeVDW;
+  status["molecule-molecule Real [K]"] = conv * moleculeMoleculeCharge;
+  status["Van der Waals (Tail) [K]"] = conv * tail;
+  status["Coulombic Ewald [K]"] = conv * ewald;
+  status["intra VDW [K]"] = conv * intraVDW;
+  status["intra Coulombic [K]"] = conv * intraCoul;
+  status["polarization [K]"] = conv * polarization;
+  status["dU/dlambda VDW [K]"] = conv * dudlambdaVDW;
+  status["dU/dlambda Real [K]"] = conv * dudlambdaCharge;
+  status["dU/dlambda Ewald [K]"] = conv * dudlambdaEwald;
+
+  return status;
+}
+
+nlohmann::json RunningEnergy::jsonMD() const
+{
+  nlohmann::json status = jsonMC();
+  double conv = Units::EnergyToKelvin;
+  status["Total kinetic energy [K]"] = conv * kineticEnergy();
+  status["translational [K]"] = conv * translationalKineticEnergy;
+  status["rotational [K]"] = conv * rotationalKineticEnergy;
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &e)

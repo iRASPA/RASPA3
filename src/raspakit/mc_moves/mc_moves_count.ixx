@@ -16,7 +16,7 @@ import <fstream>;
 
 import double3;
 import archive;
-
+import json;
 
 export struct MCMoveCount
 {
@@ -75,6 +75,7 @@ export struct MCMoveCount
 
   void clearCountStatistics();
   const std::string writeAllSystemStatistics(size_t countTotal) const;
+  const nlohmann::json jsonAllSystemStatistics(size_t countTotal) const;
 
   inline MCMoveCount& operator+=(const MCMoveCount& b)
   {

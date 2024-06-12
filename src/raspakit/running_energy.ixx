@@ -34,7 +34,7 @@ import <functional>;
 
 import archive;
 import scaling;
-
+import json;
 
 export struct RunningEnergy
 {
@@ -56,7 +56,10 @@ export struct RunningEnergy
   std::string printMD() const;
   std::string printMC(const std::string& label) const;
   std::string printMD(const std::string& label, double referenceEnergy) const;
-  
+
+  nlohmann::json jsonMC() const;
+  nlohmann::json jsonMD() const;
+
   inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + 

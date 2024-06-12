@@ -396,6 +396,45 @@ std::string ForceField::printForceFieldStatus() const
   return stream.str();
 }
 
+nlohmann::json ForceField::jsonForceFieldStatus() const
+{
+  nlohmann::json status;
+  size_t n_interactions = static_cast<size_t>(static_cast<double>(numberOfPseudoAtoms) *
+                                              (static_cast<double>(numberOfPseudoAtoms) + 1.0) / 2.0);
+  std::vector<nlohmann::json> interactions(n_interactions);
+
+  size_t count = 0;
+  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  {
+    for (size_t j = i; j < numberOfPseudoAtoms; ++j)
+    {
+      switch (data[i * numberOfPseudoAtoms + j].type)
+      {
+        case VDWParameters::Type::LennardJones:
+          interactions[count]["typeA"] = pseudoAtoms[i].name;
+          interactions[count]["typeB"] = pseudoAtoms[i].name;
+          interactions[count]["potential"] = "Lennard-Jones";
+          interactions[count]["ε/kʙ [K]"] = data[i * numberOfPseudoAtoms + j].parameters.x * Units::EnergyToKelvin;
+          interactions[count]["σ/kʙ [Å]"] = data[i * numberOfPseudoAtoms + j].parameters.y;
+          interactions[count]["shift [K]"] = data[i * numberOfPseudoAtoms + j].shift * Units::EnergyToKelvin;
+          interactions[count]["tailCorrections"] = tailCorrections[i * numberOfPseudoAtoms + j];
+          break;
+        default:
+          break;
+      }
+      count++;
+    }
+  }
+  status["interactions"] = interactions;
+  if (automaticEwald)
+  {
+    status["Ewald"]["precision"] = EwaldPrecision;
+  }
+  status["Ewald"]["alpha"] = EwaldAlpha;
+  status["Ewald"]["kVectors"] = {numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z};
+
+  return status;
+}
 
 std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
 {

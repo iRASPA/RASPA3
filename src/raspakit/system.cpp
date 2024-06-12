@@ -1976,7 +1976,41 @@ std::string System::writeMCMoveStatistics() const
   return stream.str();
 }
 
+nlohmann::json System::jsonMCMoveStatistics() const
+{
+  nlohmann::json status;
 
+  status["system"] = mc_moves_statistics.jsonMCMoveStatistics();
+  for (size_t componentId = 0; const Component& component : components)
+  {
+    status[component.name] = component.mc_moves_statistics.jsonMCMoveStatistics();
+
+    /*
+    if (component.hasFractionalMolecule)
+    {
+      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
+      double imposedFugacity = component.molFraction * pressure;
+
+      std::print(stream, "{}",
+                 component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, "{}",
+                 component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
+    }
+
+    if (component.mc_moves_probabilities.probabilityWidomMove > 0.0)
+    {
+      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
+      double imposedFugacity = component.molFraction * pressure;
+      std::print(
+          stream, "{}",
+          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+    }
+    */
+    ++componentId;
+  }
+
+  return status;
+}
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s)
 {

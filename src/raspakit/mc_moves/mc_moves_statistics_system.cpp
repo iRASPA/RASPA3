@@ -37,7 +37,7 @@ import archive;
 import double3;
 import move_statistics;
 import stringutils;
-
+import json;
 
 void MCMoveStatisticsSystem::clear()
 {
@@ -65,6 +65,18 @@ std::string formatStatistics(const std::string name, const MoveStatistics<double
   return stream.str();
 }
 
+nlohmann::json jsonStatistics(const MoveStatistics<double> &move)
+{
+  nlohmann::json status;
+  status["all"] = move.allCounts;
+  status["total"] = move.totalCounts;
+  status["constructed"] = move.totalConstructed;
+  status["accepted"] = move.totalAccepted;
+  status["fraction"] = move.totalAccepted / std::max(1.0, double(move.totalCounts));
+  status["maxChange"] = move.maxChange;
+  return status;
+}
+
 const std::string MCMoveStatisticsSystem::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
@@ -82,6 +94,25 @@ const std::string MCMoveStatisticsSystem::writeMCMoveStatistics() const
   }
 
   return stream.str();
+}
+
+const nlohmann::json MCMoveStatisticsSystem::jsonMCMoveStatistics() const
+{
+  nlohmann::json status;
+  if (volumeMove.totalCounts > 0)
+  {
+    status["volumeMove"] = jsonStatistics(volumeMove);
+  }
+  if (GibbsVolumeMove.totalCounts > 0)
+  {
+    status["gibbsVolumeMove"] = jsonStatistics(GibbsVolumeMove);
+  }
+  if (ParallelTemperingSwap.totalCounts > 0)
+  {
+    status["parallelTemperingSwap"] = jsonStatistics(ParallelTemperingSwap);
+  }
+
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsSystem &p)

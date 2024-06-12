@@ -20,7 +20,7 @@ import <fstream>;
 
 import archive;
 import property_lambda_probability_histogram;
-
+import json;
 
 export struct Reaction
 {
@@ -41,6 +41,7 @@ export struct Reaction
   PropertyLambdaProbabilityHistogram lambda;
 
   std::string printStatus() const;
+  nlohmann::json jsonStatus() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reaction &r);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r);

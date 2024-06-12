@@ -20,7 +20,7 @@ import <fstream>;
 
 import archive;
 import reaction;
-
+import json;
 
 export struct Reactions
 {
@@ -31,6 +31,7 @@ export struct Reactions
   std::vector<Reaction> list;
 
   std::string printStatus() const;
+  nlohmann::json jsonStatus() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reactions &r);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reactions &r);

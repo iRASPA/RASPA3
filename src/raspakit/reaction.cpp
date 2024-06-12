@@ -47,6 +47,20 @@ std::string Reaction::printStatus() const
   return stream.str();
 }
 
+nlohmann::json Reaction::jsonStatus() const
+{
+  nlohmann::json status;
+  status["id"] = id;
+
+  std::string r, p;
+  for (const size_t &i : reactantStoichiometry) r += (r.empty() ? "" : ",") + std::to_string(i);
+  for (const size_t &i : productStoichiometry) p += (p.empty() ? "" : ",") + std::to_string(i);
+  status["reactants"] = r;
+  status["products"] = p;
+
+  return status;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reaction &r)
 {
   archive << r.versionNumber;

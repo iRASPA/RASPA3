@@ -17,6 +17,7 @@ import <fstream>;
 import archive;
 import double3;
 import move_statistics;
+import json;
 
 export struct MCMoveStatisticsSystem
 {
@@ -31,6 +32,7 @@ export struct MCMoveStatisticsSystem
   void optimizeAcceptance();
   void clear();
   const std::string writeMCMoveStatistics() const;
+  const nlohmann::json jsonMCMoveStatistics() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatisticsSystem &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatisticsSystem &p);
