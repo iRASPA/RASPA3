@@ -19,9 +19,7 @@ module;
 #include <unordered_set>
 #include <chrono>
 #include <optional>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module isotherm_fitting;
@@ -45,14 +43,9 @@ import <climits>;
 import <unordered_set>;
 import <chrono>;
 import <optional>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import randomnumbers;
 import stringutils;

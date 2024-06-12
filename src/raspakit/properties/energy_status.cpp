@@ -9,16 +9,12 @@ module;
 #include <array>
 #include <map>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <complex>
 #include <type_traits>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module energy_status;
@@ -37,14 +33,9 @@ import <exception>;
 import <source_location>;
 import <complex>;
 import <type_traits>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import stringutils;

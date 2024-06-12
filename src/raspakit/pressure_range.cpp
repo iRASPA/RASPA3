@@ -10,9 +10,7 @@ module;
 #include <map>
 #include <algorithm>
 #include <utility>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module pressure_range;
@@ -27,14 +25,9 @@ import <array>;
 import <map>;
 import <algorithm>;
 import <utility>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 

@@ -1,4 +1,20 @@
 
+if(BUILD_MAC_PACKAGE)
+
+set(CPACK_PACKAGE_VERSION ${VERSION})
+set(CPACK_GENERATOR "DragNDrop")
+set(CPACK_DMG_DISABLE_APPLICATIONS_SYMLINK ON)
+set(CPACK_PACKAGE_NAME "raspa")
+set(CPACK_PACKAGE_LICENSE "MIT")
+set(CPACK_PACKAGE_DESCRIPTION "Molecular simulation code for adsorption and diffusion in nanoporours materials.")
+set(CPACK_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
+set(CPACK_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
+
+include(CPack)
+
+endif()
+
+
 if(BUILD_CENTOS6_PACKAGE)
 
 set(CPACK_PACKAGE_VERSION ${VERSION})

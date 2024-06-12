@@ -7,15 +7,11 @@ module;
 #include <cmath>
 #include <iostream>
 #include <exception>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #if defined(__has_include) && __has_include(<stacktrace>)
   #include <stacktrace>
 #endif
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module cbmc_util;
@@ -31,14 +27,9 @@ import <format>;
 #if defined(__has_include) && __has_include(<stacktrace>)
   import <stacktrace>;
 #endif
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import atom;
 import double3x3;

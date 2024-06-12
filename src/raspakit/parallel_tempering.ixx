@@ -27,7 +27,6 @@ import input_reader;
 import energy_status;
 import archive;
 import threadpool;
-import threading;
 
 export struct ParallelTempering
 {

@@ -9,9 +9,7 @@ module;
 #include <streambuf>
 #include <filesystem>
 #include <numbers>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module sample_movies;
@@ -25,14 +23,9 @@ import <fstream>;
 import <streambuf>;
 import <filesystem>;
 import <numbers>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import double3;
 import stringutils;

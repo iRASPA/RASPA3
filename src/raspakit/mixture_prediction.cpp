@@ -15,9 +15,7 @@ module;
 #include <numeric>
 #include <ostream>
 #include <filesystem>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
 #endif
 
 module mixture_prediction;
@@ -37,13 +35,7 @@ import <algorithm>;
 import <numeric>;
 import <ostream>;
 import <filesystem>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

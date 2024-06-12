@@ -12,16 +12,12 @@ module;
 #include <complex>
 #include <exception>
 #include <source_location>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <numbers>
 #include <span>
 #include <array>
 #include <cmath>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module property_conventional_rdf;
@@ -43,14 +39,9 @@ import <array>;
 import <cmath>;
 import <exception>;
 import <source_location>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import double3;

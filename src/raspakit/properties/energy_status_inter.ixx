@@ -6,9 +6,7 @@ module;
 #include <sstream>
 #include <fstream>
 #include <cmath>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 export module energy_status_inter;
@@ -19,13 +17,7 @@ import <iostream>;
 import <sstream>;
 import <fstream>;
 import <cmath>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

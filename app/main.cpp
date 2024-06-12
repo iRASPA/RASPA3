@@ -26,7 +26,6 @@ import <complex>;
 
 import archive;
 import threadpool;
-import threading;
 import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;

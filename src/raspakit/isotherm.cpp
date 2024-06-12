@@ -6,9 +6,7 @@ module;
 #include <sstream>
 #include <cmath>
 #include <vector>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module isotherm;
@@ -19,13 +17,7 @@ import <iostream>;
 import <sstream>;
 import <cmath>;
 import <vector>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

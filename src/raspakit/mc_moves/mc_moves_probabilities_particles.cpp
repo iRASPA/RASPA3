@@ -5,9 +5,7 @@ module;
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <complex>
@@ -17,9 +15,7 @@ module;
 #include <utility>
 #include <algorithm>
 #include <functional>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
 #endif
 
 module mc_moves_probabilities_particles;
@@ -39,14 +35,9 @@ import <map>;
 import <utility>;
 import <algorithm>;
 import <functional>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import double3;

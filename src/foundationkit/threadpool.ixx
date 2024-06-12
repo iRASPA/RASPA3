@@ -20,12 +20,8 @@ module;
 #include <deque>
 #include <vector>
 #include <concepts>
-#if defined (__cpp_lib_jthread)
 #include <thread>
-#endif
-#if defined(__has_include) && __has_include(<stop_token>)
 #include <stop_token>
-#endif
 #endif
 
 #include <omp.h>
@@ -50,18 +46,10 @@ import <semaphore>;
 import <deque>;
 import <vector>;
 import <concepts>;
-#if defined (__cpp_lib_jthread)
 import <thread>;
-#endif
-#if defined(__has_include) && __has_include(<stop_token>)
 import <stop_token>;
 #endif
-#endif
 
-#if !defined (__cpp_lib_jthread)
-import threading;
-#endif
- 
 
 
 // https://github.com/DeveloperPaul123/thread-pool

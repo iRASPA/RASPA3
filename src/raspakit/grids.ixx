@@ -8,9 +8,7 @@ module;
 #include <fstream>
 #include <sstream>
 #include <type_traits>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 #if defined(_WIN32)
@@ -29,14 +27,9 @@ import <ostream>;
 import <fstream>;
 import <sstream>;
 import <type_traits>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import double3;

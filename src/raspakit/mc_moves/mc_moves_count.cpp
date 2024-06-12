@@ -12,9 +12,7 @@ module;
 #include <array>
 #include <map>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module mc_moves_count;
@@ -31,14 +29,9 @@ import <vector>;
 import <array>;
 import <map>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import double3;
 import stringutils;

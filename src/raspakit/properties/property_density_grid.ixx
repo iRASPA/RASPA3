@@ -8,9 +8,7 @@ module;
 #include <string>
 #include <span>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
-#endif
+#include <mdspan>
 #endif
 
 export module property_density_grid;
@@ -23,14 +21,9 @@ import <cmath>;
 import <string>;
 import <span>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
-#endif
+import <mdspan>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
-#endif
 
 import archive;
 import int3;

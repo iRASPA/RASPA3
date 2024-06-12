@@ -10,9 +10,7 @@ module;
 #include <vector>
 #include <ranges>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
   
 module property_temperature;
@@ -26,14 +24,9 @@ import <map>;
 import <array>;
 import <vector>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 

@@ -6,9 +6,7 @@ module;
 #include <chrono>
 #include <sstream>
 #include <type_traits>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -39,14 +37,9 @@ import <random>;
 import <chrono>;
 import <sstream>;
 import <type_traits>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import stringutils;
 import json;
@@ -117,10 +110,8 @@ std::string HardwareInfo::writeInfo()
     std::chrono::hh_mm_ss<std::chrono::minutes> time{ std::chrono::duration_cast<std::chrono::minutes>(now - dp) };
     std::print(stream, "{}\n", now);
 
-#if defined(__has_include) && __has_include(<print>)
     std::print(stream, "Simulation started on {}, {} {}\n", weekday, ymd.month(), ymd.day());
     std::print(stream, "The start time was {}\n\n", time);
-#endif
 
     // get hostname and cpu-info for linux
 #if defined (__linux__)|| defined(__linux)
@@ -474,10 +465,8 @@ nlohmann::json HardwareInfo::jsonInfo()
   std::chrono::weekday weekday{dp};
   std::chrono::hh_mm_ss<std::chrono::minutes> time{std::chrono::duration_cast<std::chrono::minutes>(now - dp)};
 
-#if defined(__has_include) && __has_include(<print>)
   info["start_date"] = std::format("{}, {} {}", weekday, ymd.month(), ymd.day());
   info["start_time"] = std::format("{}", time);
-#endif
 
   // get hostname and cpu-info for linux
 #if defined(__linux__) || defined(__linux)

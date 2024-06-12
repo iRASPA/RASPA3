@@ -12,12 +12,8 @@ module;
 #include <numbers>
 #include <iostream>
 #include <exception>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module cif_reader;
@@ -35,14 +31,9 @@ import <numbers>;
 import <iostream>;
 import <exception>;
 import <format>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import double3;
 import skspacegroup;

@@ -12,9 +12,7 @@ module;
 #include <string>
 #include <unordered_set>
 #include <vector>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #endif
 
 export module input_reader;

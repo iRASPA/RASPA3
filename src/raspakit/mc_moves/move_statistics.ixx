@@ -4,15 +4,11 @@ module;
 #include <string>
 #include <algorithm>
 #include <fstream>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <map>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #include <functional>
 #endif
 
@@ -27,15 +23,10 @@ import <format>;
 import <exception>;
 import <source_location>;
 import <map>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 import <functional>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 

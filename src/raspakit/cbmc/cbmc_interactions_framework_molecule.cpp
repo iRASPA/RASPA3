@@ -53,7 +53,6 @@ import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
-import threading;
 
 
 template <ThreadPool::ThreadingType T>

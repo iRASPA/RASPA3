@@ -6,12 +6,8 @@ module;
 #include <optional>
 #include <iostream>
 #include <source_location>
-#if defined(__has_include) && __has_include(<format>)
-  #include <format>
-#endif
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <format>
+#include <print>
 #endif
 
 module equation_of_states;
@@ -22,16 +18,8 @@ import <cmath>;
 import <optional>;
 import <iostream>;
 import <source_location>;
-#if defined(__has_include) && __has_include(<format>)
-  import <format>;
-#endif
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <format>;
+import <print>;
 #endif
 
 

@@ -6,9 +6,7 @@ module;
 #include <vector>
 #include <iostream>
 #include <ostream>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module multi_site_isotherm;
@@ -19,13 +17,7 @@ import <cmath>;
 import <vector>;
 import <iostream>;
 import <ostream>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

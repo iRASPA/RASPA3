@@ -25,12 +25,8 @@ module;
 #include <array>
 #include <deque>
 #include <functional>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
-#endif
 #endif
 
 module parallel_tempering;
@@ -60,20 +56,10 @@ import <atomic>;
 import <array>;
 import <deque>;
 import <functional>;
-#if defined(__has_include) && __has_include(<print>)
 import <print>;
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
 import <mdspan>;
 #endif
-#endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-import print;
-#endif
-#if !(defined(__has_include) && __has_include(<mdspan>))
-import mdspan;
-#endif
 
 import stringutils;
 import hardware_info;
@@ -111,7 +97,6 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 import threadpool;
-import threading;
 
 ParallelTempering::ParallelTempering() : random(std::nullopt){};
 

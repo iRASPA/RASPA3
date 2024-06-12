@@ -12,17 +12,11 @@ module;
 #include <complex>
 #include <exception>
 #include <source_location>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <numbers>
 #include <span>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
-#endif
+#include <print>
+#include <mdspan>
 #endif
 
 module property_density_grid;
@@ -42,20 +36,10 @@ import <numbers>;
 import <span>;
 import <exception>;
 import <source_location>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
-#endif
+import <print>;
+import <mdspan>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
-#if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
-#endif
 
 import archive;
 import int3;
@@ -76,16 +60,8 @@ void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const
 {
   if(currentCycle % sampleEvery != 0uz) return;
 
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #endif
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #endif
+  std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for (std::span<const Atom>::iterator it = moleculeAtoms.begin(); it != moleculeAtoms.end(); ++it)
   {
@@ -114,16 +90,8 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]]const Sim
 
   std::filesystem::create_directory("density_grids");
 
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #endif
-  #if defined(__has_include) && __has_include(<mdspan>)
-    std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #else
-    std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  #endif
+  std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents, std::min(1uz, numberOfFrameworks), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for(size_t i = 0; i < components.size(); ++i)
   {

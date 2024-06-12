@@ -6,9 +6,7 @@ module;
 #include <tuple>
 #include <string>
 #include <fstream>
-#if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
-#endif
+#include <mdspan>
 #endif
 
 export module breakthrough;
@@ -19,14 +17,9 @@ import <span>;
 import <tuple>;
 import <string>;
 import <fstream>;
-#if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
-#endif
+import <mdspan>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
-#endif
 
 import input_reader;
 import component;
@@ -87,65 +80,25 @@ export struct Breakthrough
 
     // vector of size '(Ngrid + 1) * Ncomp', for each grid point, data per component (contiguous)
     std::vector<double> P_vector;         // partial pressure at every grid point for each component
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> P;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> P;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> P;
     std::vector<double> Pnew_vector;
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Pnew;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Pnew;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Pnew;
     std::vector<double> Q_vector;         // volume-averaged adsorption amount at every grid point for each component
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Q;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Q;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Q;
     std::vector<double> Qnew_vector;
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Qnew;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Qnew;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Qnew;
     std::vector<double> Qeq_vector;       // equilibrium adsorption amount at every grid point for each component
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Qeq;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Qeq;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Qeq;
     std::vector<double> Qeqnew_vector;
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Qeqnew;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Qeqnew;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Qeqnew;
     std::vector<double> Dpdt_vector;      // derivative of P with respect to time
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Dpdt;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Dpdt;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Dpdt;
     std::vector<double> Dpdtnew_vector;
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Dpdtnew;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Dpdtnew;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Dpdtnew;
     std::vector<double> Dqdt_vector;      // derivative of Q with respect to time
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Dqdt;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Dqdt;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Dqdt;
     std::vector<double> Dqdtnew_vector;
-    #if defined(__has_include) && __has_include(<mdspan>)
-      std::mdspan<double, std::dextents<size_t, 2>> Dqdtnew;
-    #else
-      std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> Dqdtnew;
-    #endif
+    std::mdspan<double, std::dextents<size_t, 2>> Dqdtnew;
     std::vector<double> cachedP0;  // cached hypothetical pressure
     std::vector<double> cachedPsi; // cached reduced grand potential over the column
 
@@ -156,21 +109,12 @@ export struct Breakthrough
       Iterative = 1
     };
 
-    #if defined(__has_include) && __has_include(<mdspan>)
-      void computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
-                                   std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
-                                   const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
-                                   const std::mdspan<double, std::dextents<size_t, 2>> &q,
-                                   const std::vector<double> &v,
-                                   const std::mdspan<double, std::dextents<size_t, 2>> &p);
-    #else
-      void computeFirstDerivatives(std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dqdt,
-                                   std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dpdt,
-                                   const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q_eq,
-                                   const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q,
-                                   const std::vector<double> &v,
-                                   const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &p);
-    #endif
+    void computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
+                                 std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &q,
+                                 const std::vector<double> &v,
+                                 const std::mdspan<double, std::dextents<size_t, 2>> &p);
 
     void computeEquilibriumLoadings();
 

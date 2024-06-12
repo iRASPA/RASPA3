@@ -3,9 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <tuple>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 export module rigid;
@@ -13,14 +11,9 @@ export module rigid;
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <tuple>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import double3;

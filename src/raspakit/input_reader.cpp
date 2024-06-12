@@ -18,9 +18,7 @@ module;
 #include <sstream>
 #include <streambuf>
 #include <vector>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
 #endif
 
 module input_reader;
@@ -43,14 +41,9 @@ import <algorithm>;
 import <map>;
 import <iterator>;
 import <functional>;
-#if defined(__has_include) && __has_include(<print>)
 import <print>;
 #endif
-#endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-import print;
-#endif
 
 import int3;
 import stringutils;
@@ -66,7 +59,6 @@ import double3;
 import units;
 import sample_movies;
 import threadpool;
-import threading;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;

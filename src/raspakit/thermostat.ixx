@@ -4,9 +4,7 @@ module;
 #include <cmath>
 #include <tuple>
 #include <vector>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 export module thermostat;
@@ -15,14 +13,9 @@ export module thermostat;
 import <cmath>;
 import <tuple>;
 import <vector>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import units;

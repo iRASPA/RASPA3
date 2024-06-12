@@ -21,12 +21,8 @@ module;
 #include <complex>
 #include <exception>
 #include <source_location>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
-#endif
+#include <print>
+#include <mdspan>
 #endif
 
 module molecular_dynamics;
@@ -52,20 +48,10 @@ import <ios>;
 import <complex>;
 import <exception>;
 import <source_location>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
-#endif
+import <print>;
+import <mdspan>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
-#if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
-#endif
 
 import stringutils;
 import hardware_info;

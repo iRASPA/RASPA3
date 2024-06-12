@@ -14,9 +14,7 @@ module;
 #include <array>
 #include <map>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module simulationbox;
@@ -35,14 +33,9 @@ import <complex>;
 import <array>;
 import <map>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import randomnumbers;
 import double3x3;

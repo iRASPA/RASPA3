@@ -15,9 +15,7 @@ module;
 #include <chrono>
 #include <type_traits>
 #include <complex>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module breakthrough_simulation;
@@ -37,14 +35,9 @@ import <sstream>;
 import <chrono>;
 import <type_traits>;
 import <complex>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import stringutils;
 import hardware_info;

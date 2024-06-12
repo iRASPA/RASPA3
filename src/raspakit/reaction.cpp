@@ -5,16 +5,12 @@ module;
 #include <sstream>
 #include <vector>
 #include <map>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <fstream>
 #include <complex>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module reaction;
@@ -29,13 +25,7 @@ import <exception>;
 import <source_location>;
 import <fstream>;
 import <complex>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

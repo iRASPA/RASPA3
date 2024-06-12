@@ -7,9 +7,7 @@ module;
 #include <array>
 #include <fstream>
 #include <type_traits>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 export module bond_potential;
@@ -21,14 +19,9 @@ import <vector>;
 import <array>;
 import <fstream>;
 import <type_traits>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import stringutils;
 import archive;

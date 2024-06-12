@@ -14,9 +14,7 @@ module;
 #include <tuple>
 #include <ios>
 #include <complex>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module monte_carlo_transition_matrix;
@@ -35,14 +33,9 @@ import <filesystem>;
 import <tuple>;
 import <ios>;
 import <complex>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import stringutils;
 import hardware_info;

@@ -4,9 +4,7 @@ module;
 #include <string>
 #include <sstream>
 #include <fstream>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <complex>
@@ -15,9 +13,7 @@ module;
 #include <map>
 #include <utility>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
 #endif
 
 module mc_moves_probabilities_system;
@@ -35,13 +31,7 @@ import <array>;
 import <map>;
 import <utility>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 

@@ -4,9 +4,7 @@ module;
 #include <string>
 #include <sstream>
 #include <ostream>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module units;
@@ -15,14 +13,9 @@ module units;
 import <string>;
 import <sstream>;
 import <ostream>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import stringutils;
 import json;

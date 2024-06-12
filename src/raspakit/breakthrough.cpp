@@ -14,12 +14,8 @@ module;
 #include <sstream>
 #include <chrono>
 #include <type_traits>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
-#endif
+#include <print>
+#include <mdspan>
 #endif
 
 module breakthrough;
@@ -38,20 +34,10 @@ import <numeric>;
 import <sstream>;
 import <chrono>;
 import <type_traits>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
-#endif
+import <print>;
+import <mdspan>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
-#if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
-#endif
 
 import stringutils;
 import input_reader;
@@ -497,21 +483,12 @@ void Breakthrough::computeEquilibriumLoadings()
 
 
 // calculate the derivatives Dq/dt and Dp/dt along the column
-#if defined(__has_include) && __has_include(<mdspan>)
 void Breakthrough::computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
                                            std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &q,
                                            const std::vector<double> &v,
                                            const std::mdspan<double, std::dextents<size_t, 2>> &p)
-#else
-void Breakthrough::computeFirstDerivatives(std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dqdt,
-                                           std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &dpdt,
-                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q_eq,
-                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &q,
-                                           const std::vector<double> &v,
-                                           const std::experimental::mdspan<double, std::experimental::dextents<size_t, 2>> &p)
-#endif
 {
   double idx = 1.0 / dx;
   double idx2 = 1.0 / (dx * dx);

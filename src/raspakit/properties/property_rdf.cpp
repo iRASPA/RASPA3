@@ -12,16 +12,12 @@ module;
 #include <complex>
 #include <exception>
 #include <source_location>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <numbers>
 #include <span>
 #include <array>
 #include <cmath>
-#if defined(__has_include) && __has_include(<print>)
-  #include <print>
-#endif
+#include <print>
 #endif
 
 module property_rdf;
@@ -43,14 +39,9 @@ import <array>;
 import <cmath>;
 import <exception>;
 import <source_location>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
+import <print>;
 #endif
 
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
-#endif
 
 import archive;
 import double3;
@@ -60,7 +51,7 @@ import forcefield;
 import averages;
 
 void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, 
-                                                const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, 
+                                                [[maybe_unused]]const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, 
                                                 size_t currentCycle, size_t block)
 {
   double3 dr, posA, posB, f;
@@ -232,7 +223,7 @@ PropertyRadialDistributionFunction::averageProbabilityHistogram(size_t atomTypeA
 }
 
 
-void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId, double volume,
+void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId, [[maybe_unused]]double volume,
                                                                  [[maybe_unused]]std::vector<size_t> &numberOfPseudoAtomsType,
                                                                  size_t currentCycle)
 {
@@ -260,7 +251,7 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
-        double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
+        [[maybe_unused]]double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
                                                  pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) / static_cast<double>(totalNumberOfCounts);
         double normalization = 1.0 / std::abs(average[0]);
 

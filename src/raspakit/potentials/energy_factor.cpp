@@ -2,9 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <fstream>
-#if defined(__has_include) && __has_include(<format>)
 #include <format>
-#endif
 #include <exception>
 #include <source_location>
 #include <complex>
@@ -12,9 +10,7 @@ module;
 #include <array>
 #include <map>
 #include <algorithm>
-#if defined(__has_include) && __has_include(<print>)
 #include <print>
-#endif
 #endif
 
 module energy_factor;
@@ -29,13 +25,7 @@ import <vector>;
 import <array>;
 import <map>;
 import <algorithm>;
-#if defined(__has_include) && __has_include(<print>)
-  import <print>;
-#endif
-#endif
-
-#if !(defined(__has_include) && __has_include(<print>))
-  import print;
+import <print>;
 #endif
 
 
