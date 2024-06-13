@@ -129,7 +129,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/rocky-9-llvm-17:latest
+      image: ghcr.io/iraspa/rocky-9-llvm-18:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
