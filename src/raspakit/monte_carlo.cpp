@@ -211,6 +211,8 @@ void MonteCarlo::initialize()
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
+
+    system.writeRestartFile();
   };
   
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)

@@ -2201,6 +2201,27 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   return archive;
 }
 
+void System::writeRestartFile()
+{
+  nlohmann::json j;
+
+  j["simulationBox"] = simulationBox;
+  j["atomPositions"] = atomPositions;
+  j["moleculePositions"] = moleculePositions;
+
+  // use pretty print and indent of 2
+  std::cout << std::setw(2) << j << std::endl;
+}
+
+void System::readRestartFile()
+{
+  nlohmann::json j;
+
+  simulationBox = j["simulationBox"];
+  atomPositions = j["atomPositions"];
+  moleculePositions = j["moleculePositions"];
+}
+
 std::string System::repr() const
 {
   return std::string("system test");

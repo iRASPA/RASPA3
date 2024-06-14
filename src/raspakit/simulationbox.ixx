@@ -228,6 +228,9 @@ export struct SimulationBox
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SimulationBox &box);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBox &box);
+
+  friend void to_json(nlohmann::json&, const SimulationBox&);
+  friend void from_json(const nlohmann::json&, SimulationBox&);
 };
 
 export inline SimulationBox operator+(const SimulationBox& a, const SimulationBox& b)
@@ -348,3 +351,44 @@ export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b
 {
   return SimulationBox(a * b.cell);
 }
+
+void to_json(nlohmann::json& j, const SimulationBox &b)
+{
+  j = nlohmann::json{
+    {"lengthA", b.lengthA},
+    {"lengthB", b.lengthB},
+    {"lengthC", b.lengthC},
+    {"angleAlpha", b.angleAlpha * 180.0 / (std::numbers::pi * 90.0)},
+    {"angleBeta", b.angleBeta * 180.0 / (std::numbers::pi * 90.0)},
+    {"angleGamma", b.angleGamma * 180.0 / (std::numbers::pi * 90.0)}};
+}
+
+void from_json(const nlohmann::json& j, SimulationBox &b)
+{
+  j.at("lengthA").get_to(b.lengthA);
+  j.at("lengthB").get_to(b.lengthB);
+  j.at("lengthC").get_to(b.lengthC);
+  j.at("angleAlpha").get_to(b.angleAlpha);
+  j.at("angleBeta").get_to(b.angleBeta);
+  j.at("angleGamma").get_to(b.angleGamma);
+  b.angleAlpha *= std::numbers::pi * 90.0 / 180.0;
+  b.angleBeta *= std::numbers::pi * 90.0 / 180.0;
+  b.angleGamma *= std::numbers::pi * 90.0 / 180.0;
+
+  double temp = (cos(b.angleAlpha) - std::cos(b.angleGamma) * std::cos(b.angleBeta)) / std::sin(b.angleGamma);
+
+  double3 v1 = double3(b.lengthA, 0.0, 0.0);
+  double3 v2 = double3(b.lengthB * std::cos(b.angleGamma), b.lengthB * std::sin(b.angleGamma), 0.0);
+  double3 v3 = double3(b.lengthC * std::cos(b.angleBeta), b.lengthC * temp, b.lengthC * std::sqrt(1.0 - std::cos(b.angleBeta) * std::cos(b.angleBeta) - temp * temp));
+  b.cell = double3x3(v1, v2, v3);
+  if(b.lengthA != 0.0 && b.lengthB != 0.0 && b.lengthC != 0.0)
+  {
+    b.inverseCell = b.cell.inverse();
+    b.volume = b.cell.determinant();
+  }
+  else
+  {
+    b.volume = 0.0;
+  }
+}
+

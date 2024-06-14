@@ -20,6 +20,7 @@ import <vector>;
 
 import double3;
 import archive;
+import json;
 
 export union simd_quatd
 {
@@ -49,6 +50,9 @@ export union simd_quatd
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const simd_quatd &q);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, simd_quatd &q);
+
+  friend void to_json(nlohmann::json&, const simd_quatd&);
+  friend void from_json(const nlohmann::json&, simd_quatd&);
 };
 
 export inline simd_quatd operator+(const simd_quatd& a, const simd_quatd& b)
@@ -76,3 +80,14 @@ export inline simd_quatd operator*(const simd_quatd& a, const simd_quatd& b)
             a.r * b.iy - a.ix * b.iz + a.iy * b.r + a.iz * b.ix,
             a.r * b.iz + a.ix * b.iy - a.iy * b.ix + a.iz * b.r));
 }
+
+void to_json(nlohmann::json& j, const simd_quatd &q)
+{
+  j = nlohmann::json{ q.ix, q.iy, q.iz , q.r};
+}
+
+void from_json(const nlohmann::json& j, simd_quatd &q)
+{
+  j.get_to(q);
+}
+

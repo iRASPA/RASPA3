@@ -26,6 +26,7 @@ import int3;
 import bool3;
 import hashcombine;
 import archive;
+import json;
 
 export union double3
 {
@@ -43,6 +44,7 @@ export union double3
     double3(double v) : x(v), y(v), z(v), w(0.0) {}
     double3(double x, double y, double z): x(x), y(y), z(z), w(0.0) {}
     double3(int3 a) :x(double(a.x)), y(double(a.y)), z(double(a.z)), w(0.0) {}
+    double3(double a[3]) :x(double(a[0])), y(double(a[1])), z(double(a[2])), w(0.0) {}
 
     bool operator==(double3 const& rhs) const
     {
@@ -133,6 +135,9 @@ export union double3
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const double3 &vec);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3 &vec);
+
+  friend void to_json(nlohmann::json&, const double3&);
+  friend void from_json(const nlohmann::json&, double3&);
 };
 
 
@@ -188,3 +193,14 @@ export double3 clamp(double3 value, double3 low, double3 high)
 {
   return double3(std::clamp(value.x, low.x, high.x), std::clamp(value.y, low.y, high.y), std::clamp(value.z, low.z, high.z));
 }
+
+void to_json(nlohmann::json& j, const double3 &a)
+{
+  j = nlohmann::json{ a.x, a.y, a.z };
+}
+
+void from_json(const nlohmann::json& j, double3 &a)
+{
+  j.get_to(a);
+}
+

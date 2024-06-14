@@ -481,8 +481,12 @@ MC_Moves::GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& sys
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
     systemB.components[selectedComponent].equilibratedMoleculeRandomInBox(random, systemB.simulationBox);
 
-    //std::vector<Atom> newatoms = systemB.randomConfiguration(random, selectedComponent, fractionalMoleculeB);
-    std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
+    //std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
+    std::transform(fractionalMoleculeB.begin(), fractionalMoleculeB.end(),
+                   trialMolecule.second.begin(), fractionalMoleculeB.begin(),
+                     [](const Atom& a, const Atom& b) { return Atom(b.position, a.charge, a.scalingVDW, a.scalingCoulomb,
+                                                                  a.moleculeId, a.type, a.componentId, a.groupId); });
+
 
     std::chrono::system_clock::time_point t1A = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA = 

@@ -72,11 +72,11 @@ SimulationBox::SimulationBox(double a, double b, double c, Type type): type(type
 SimulationBox::SimulationBox(double a, double b, double c, double alpha, double beta, double gamma, Type type):
     lengthA(a), lengthB(b), lengthC(c), angleAlpha(alpha), angleBeta(beta), angleGamma(gamma), type(type)
 {
-  double temp = (cos(alpha) - cos(gamma) * cos(beta)) / sin(gamma);
+  double temp = (std::cos(alpha) - std::cos(gamma) * std::cos(beta)) / std::sin(gamma);
 
   double3 v1 = double3(a, 0.0, 0.0);
-  double3 v2 = double3(b * cos(gamma), b * sin(gamma), 0.0);
-  double3 v3 = double3(c * cos(beta), c * temp, c * sqrt(1.0 - cos(beta) * cos(beta) - temp * temp));
+  double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
+  double3 v3 = double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
   cell = double3x3(v1, v2, v3);
   if(a != 0.0 && b != 0.0 && c != 0.0)
   {
@@ -131,11 +131,11 @@ void SimulationBox::setBoxLengths(double3 lengths)
   lengthA = lengths.x;
   lengthB = lengths.y;
   lengthC = lengths.z;
-  double temp = (cos(angleAlpha) - cos(angleGamma) * cos(angleBeta)) / sin(angleGamma);
+  double temp = (std::cos(angleAlpha) - std::cos(angleGamma) * std::cos(angleBeta)) / std::sin(angleGamma);
   double3 v1 = double3(lengths.x, 0.0, 0.0);
-  double3 v2 = double3(lengths.y * cos(angleGamma), lengths.y * sin(angleGamma), 0.0);
-  double3 v3 = double3(lengths.z * cos(angleBeta), lengths.z * temp, 
-                       lengths.z * sqrt(1.0 - cos(angleBeta) * cos(angleBeta) - temp * temp));
+  double3 v2 = double3(lengths.y * std::cos(angleGamma), lengths.y * std::sin(angleGamma), 0.0);
+  double3 v3 = double3(lengths.z * std::cos(angleBeta), lengths.z * temp, 
+                       lengths.z * std::sqrt(1.0 - std::cos(angleBeta) * std::cos(angleBeta) - temp * temp));
   cell = double3x3(v1, v2, v3);
   inverseCell = cell.inverse();
   volume = cell.determinant();
@@ -150,11 +150,11 @@ void SimulationBox::setBoxAngles(double3 angles)
   lengthA = lengths.x;
   lengthB = lengths.y;
   lengthC = lengths.z;
-  double temp = (cos(angles.x) - cos(angles.z) * cos(angles.y)) / sin(angles.z);
+  double temp = (std::cos(angles.x) - std::cos(angles.z) * std::cos(angles.y)) / std::sin(angles.z);
   double3 v1 = double3(lengths.x, 0.0, 0.0);
-  double3 v2 = double3(lengths.y * cos(angles.z), lengths.y * sin(angles.z), 0.0);
-  double3 v3 = double3(lengths.z * cos(angles.y), lengths.z * temp, 
-                       lengths.z * sqrt(1.0 - cos(angles.y) * cos(angles.y) - temp * temp));
+  double3 v2 = double3(lengths.y * std::cos(angles.z), lengths.y * std::sin(angles.z), 0.0);
+  double3 v3 = double3(lengths.z * std::cos(angles.y), lengths.z * temp, 
+                       lengths.z * std::sqrt(1.0 - std::cos(angles.y) * std::cos(angles.y) - temp * temp));
   cell = double3x3(v1, v2, v3);
   inverseCell = cell.inverse();
   volume = cell.determinant();
@@ -175,9 +175,9 @@ double3 SimulationBox::angles()
   double length2 = column2.length();
   double length3 = column3.length();
 
-  return double3(acos(double3::dot(column2, column3) / (length2 * length3)),
-                 acos(double3::dot(column1, column3) / (length1 * length3)),
-                 acos(double3::dot(column1, column2) / (length1 * length2)));
+  return double3(std::acos(double3::dot(column2, column3) / (length2 * length3)),
+                 std::acos(double3::dot(column1, column3) / (length1 * length3)),
+                 std::acos(double3::dot(column1, column2) / (length1 * length2)));
 }
 
 std::string SimulationBox::printStatus() const
