@@ -158,9 +158,6 @@ jobs:
     needs: release-job
     container:
       image: ubuntu:24.04
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
@@ -293,9 +290,6 @@ jobs:
     needs: release-job
     container:
       image: fedora:40
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
@@ -341,17 +335,17 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -b ${{github.workspace}}/build -gninja -dcmake_install_prefix=/usr -dcmake_cxx_compiler=clang++ -dcmake_build_with_install_rpath=on -dcmake_build_type=release -dbuild_rpm_package=on -dbla_sizeof_integer=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
         run: |
-          ninja -c ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.fc39.x86_64.rpm .
       - name: upload release asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
-          github_token: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.fc39.x86_64.rpm
@@ -372,17 +366,17 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -b ${{github.workspace}}/build -gninja -dcmake_install_prefix=/usr -dcmake_cxx_compiler=clang++ -dcmake_build_with_install_rpath=on -dcmake_build_type=release -dbuild_rpm_package=on -dbla_sizeof_integer=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
         run: |
-          ninja -c ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.fc38.x86_64.rpm .
       - name: upload release asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
-          github_token: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.fc38.x86_64.rpm
@@ -403,17 +397,17 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -b ${{github.workspace}}/build -gninja -dcmake_install_prefix=/usr -dcmake_cxx_compiler=clang++ -dcmake_build_with_install_rpath=on -dcmake_build_type=release -dbuild_rpm_package=on -dbla_sizeof_integer=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
         run: |
-          ninja -c ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.fc37.x86_64.rpm .
       - name: upload release asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
-          github_token: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.fc37.x86_64.rpm
@@ -434,21 +428,21 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -b ${{github.workspace}}/build -gninja -dcmake_install_prefix=/usr -dcmake_cxx_compiler=clang++ -dcmake_build_with_install_rpath=on -dcmake_build_type=release -dbuild_rpm_package=on -dbla_sizeof_integer=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
         run: |
-          ninja -c ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.fc36.x86_64.rpm .
       - name: upload release asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
-          github_token: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.fc36.x86_64.rpm
-          asset_name: raspa-3.0.0-1.fc67.x86_64.rpm
+          asset_name: raspa-3.0.0-1.fc36.x86_64.rpm
           asset_content_type: application/octet-stream
 
   fedora-35-job:
@@ -465,19 +459,19 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -b ${{github.workspace}}/build -gninja -dcmake_install_prefix=/usr -dcmake_cxx_compiler=clang++ -dcmake_build_with_install_rpath=on -dcmake_build_type=release -dbuild_rpm_package=on -dbla_sizeof_integer=8 .
+          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
       - name: create raspa rpm package
         shell: bash
         run: |
-          ninja -c ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.fc35.x86_64.rpm .
       - name: upload release asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
-          github_token: ${{ secrets.github_token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.fc35.x86_64.rpm
-          asset_name: raspa-3.0.0-1.fc67.x86_64.rpm
+          asset_name: raspa-3.0.0-1.fc35.x86_64.rpm
           asset_content_type: application/octet-stream

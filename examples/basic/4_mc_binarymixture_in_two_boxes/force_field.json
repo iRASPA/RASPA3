@@ -73,7 +73,7 @@
       "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
     },
     {
-      "name" : "N_n2",
+      "name" : "N_com",
       "type" : "none",    
       "parameters" : [0.0, 1.0],
       "source" : "A. Martin-Calvo et al. , Phys. Chem. Chem. Phys. 2011, 13, 11165-11174"
