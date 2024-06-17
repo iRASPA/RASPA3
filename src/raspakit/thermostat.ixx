@@ -2,9 +2,9 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
+#include <print>
 #include <tuple>
 #include <vector>
-#include <print>
 #endif
 
 export module thermostat;
@@ -16,14 +16,12 @@ import <vector>;
 import <print>;
 #endif
 
-
 import archive;
 import units;
 import randomnumbers;
 
 export struct Thermostat
 {
-
   Thermostat(double temperature, size_t thermostatChainLength, size_t numberOfYoshidaSuzukiSteps);
 
   void initialize(RandomNumber &random, size_t translation_degrees_of_freedom, size_t rotational_degrees_of_freedom);
@@ -31,8 +29,8 @@ export struct Thermostat
 
   double temperature;
   size_t thermostatChainLength;
-  double timeScaleParameterThermostat{ 0.15 };
-  size_t numberOfYoshidaSuzukiSteps{ 5 };
+  double timeScaleParameterThermostat{0.15};
+  size_t numberOfYoshidaSuzukiSteps{5};
 
   std::vector<double> thermostatDegreesOfFreedomTranslation;
   std::vector<double> thermostatForceTranslation;

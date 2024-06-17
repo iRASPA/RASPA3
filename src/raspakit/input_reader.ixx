@@ -4,6 +4,7 @@ module;
 #include <algorithm>
 #include <cctype>
 #include <complex>
+#include <format>
 #include <fstream>
 #include <istream>
 #include <locale>
@@ -12,7 +13,6 @@ module;
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include <format>
 #endif
 
 export module input_reader;

@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <span>
-#include <tuple>
-#include <string>
 #include <fstream>
+#include <span>
+#include <string>
+#include <tuple>
+#include <vector>
 #endif
 
 export module mixture_prediction_simulation;
@@ -24,14 +24,13 @@ import system;
 import multi_site_isotherm;
 import mixture_prediction;
 
-
 export struct MixturePredictionSimulation
 {
-  public:
-    MixturePredictionSimulation(InputReader &inputreader);
+ public:
+  MixturePredictionSimulation(InputReader &inputreader);
 
-    void run();
+  void run();
 
-  private:
-    std::vector<System> systems;
+ private:
+  std::vector<System> systems;
 };

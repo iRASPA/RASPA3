@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <span>
-#include <numeric>
 #include <fstream>
-#include <utility>
+#include <numeric>
+#include <span>
 #include <string>
+#include <utility>
+#include <vector>
 #endif
 
 export module sample_movies;
@@ -26,11 +26,12 @@ import forcefield;
 
 export struct SampleMovie
 {
-    SampleMovie(size_t systemId, size_t sampleEvery);
+  SampleMovie(size_t systemId, size_t sampleEvery);
 
-    void update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox, const std::span<Atom> atomPositions, size_t currentCycle);
+  void update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox,
+              const std::span<Atom> atomPositions, size_t currentCycle);
 
-    size_t sampleEvery{ 10 };
+  size_t sampleEvery{10};
 
-    int modelNumber{ 1 };
+  int modelNumber{1};
 };

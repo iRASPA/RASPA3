@@ -1,21 +1,21 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <span>
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <limits>
-#include <filesystem>
 #include <algorithm>
-#include <numeric>
-#include <sstream>
 #include <chrono>
-#include <type_traits>
+#include <cmath>
 #include <complex>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <numeric>
 #include <print>
+#include <span>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <vector>
 #endif
 
 module breakthrough_simulation;
@@ -38,7 +38,6 @@ import <complex>;
 import <print>;
 #endif
 
-
 import stringutils;
 import hardware_info;
 import input_reader;
@@ -48,29 +47,27 @@ import simulationbox;
 import mixture_prediction;
 import breakthrough;
 
-
-BreakthroughSimulation::BreakthroughSimulation(InputReader &inputReader):
-    systems(std::move(inputReader.systems))
+BreakthroughSimulation::BreakthroughSimulation(InputReader &inputReader) : systems(std::move(inputReader.systems))
 {
-  for(System &system: systems)
+  for (System &system : systems)
   {
     std::string directoryNameString = std::format("output/system_{}/", system.systemId);
-    std::filesystem::path directoryName{ directoryNameString };
+    std::filesystem::path directoryName{directoryNameString};
     std::filesystem::create_directories(directoryName);
   }
 }
 
 void BreakthroughSimulation::run()
 {
-  for(System &system: systems)
+  for (System &system : systems)
   {
     Breakthrough breakthrough(system);
 
-    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
-        system.systemId, system.temperature, system.input_pressure);
-    std::ofstream fstream(fileNameString, std::ios::out );
+    std::string fileNameString =
+        std::format("output/system_{}/output_{}_{}.data", system.systemId, system.temperature, system.input_pressure);
+    std::ofstream fstream(fileNameString, std::ios::out);
     std::ostream stream(fstream.rdbuf());
-    //std::ostream stream(std::cout.rdbuf());
+    // std::ostream stream(std::cout.rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "{}", HardwareInfo::writeInfo());
@@ -89,4 +86,3 @@ void BreakthroughSimulation::run()
     std::print(stream, "Breakthrough simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
   }
 }
-

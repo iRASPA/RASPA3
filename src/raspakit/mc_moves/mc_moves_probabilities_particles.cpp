@@ -1,21 +1,21 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <map>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 #endif
 
 module mc_moves_probabilities_particles;
@@ -38,11 +38,9 @@ import <functional>;
 import <print>;
 #endif
 
-
 import archive;
 import double3;
 import stringutils;
-
 
 void MCMoveProbabilitiesParticles::normalizeMoveProbabilties()
 {
@@ -165,12 +163,13 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > p.versionNumber)
+  if (versionNumber > p.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'MCMoveProbabilitiesParticles' "
-                                         "at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(
+        std::format("Invalid version reading 'MCMoveProbabilitiesParticles' "
+                    "at line {} in file {}\n",
+                    location.line(), location.file_name()));
   }
 
   archive >> p.probabilityTranslationMove;
@@ -215,4 +214,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
 
   return archive;
 }
-

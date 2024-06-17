@@ -1,15 +1,14 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <vector>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <fstream>
 #include <iostream>
 #include <numeric>
-#include <string>
 #include <sstream>
-#include <fstream>
+#include <string>
+#include <vector>
 #endif
 
 export module energy_status;
@@ -34,16 +33,23 @@ import component;
 
 export struct EnergyStatus
 {
-  EnergyStatus(): totalEnergy(0.0, 0.0) {};
+  EnergyStatus() : totalEnergy(0.0, 0.0) {};
 
-  EnergyStatus(size_t numberOfExternalFields, size_t numberOfFrameworks, size_t numberOfComponents) : 
-      numberOfExternalFields(numberOfExternalFields), numberOfFrameworks(numberOfFrameworks), numberOfComponents(numberOfComponents), 
-      totalEnergy(0.0, 0.0), intraEnergy({}), externalFieldMoleculeEnergy({}), frameworkMoleculeEnergy({}), interEnergy({}),
-      intraComponentEnergies(std::vector<EnergyIntra>(numberOfComponents)),
-      externalFieldComponentEnergies(std::vector<EnergyInter>(std::max(1uz, numberOfExternalFields) * numberOfComponents)),
-      frameworkComponentEnergies(std::vector<EnergyInter>(std::max(1uz, numberOfFrameworks) * numberOfComponents)),
-      interComponentEnergies(std::vector<EnergyInter>(numberOfComponents * numberOfComponents)),
-      dUdlambda(0.0)
+  EnergyStatus(size_t numberOfExternalFields, size_t numberOfFrameworks, size_t numberOfComponents)
+      : numberOfExternalFields(numberOfExternalFields),
+        numberOfFrameworks(numberOfFrameworks),
+        numberOfComponents(numberOfComponents),
+        totalEnergy(0.0, 0.0),
+        intraEnergy({}),
+        externalFieldMoleculeEnergy({}),
+        frameworkMoleculeEnergy({}),
+        interEnergy({}),
+        intraComponentEnergies(std::vector<EnergyIntra>(numberOfComponents)),
+        externalFieldComponentEnergies(
+            std::vector<EnergyInter>(std::max(1uz, numberOfExternalFields) * numberOfComponents)),
+        frameworkComponentEnergies(std::vector<EnergyInter>(std::max(1uz, numberOfFrameworks) * numberOfComponents)),
+        interComponentEnergies(std::vector<EnergyInter>(numberOfComponents * numberOfComponents)),
+        dUdlambda(0.0)
   {
   }
 
@@ -62,11 +68,10 @@ export struct EnergyStatus
     return interComponentEnergies[compA * numberOfComponents + compB];
   }
 
-
-  EnergyFactor interEnergyComponent(size_t compA) 
+  EnergyFactor interEnergyComponent(size_t compA)
   {
     EnergyFactor sum(0.0, 0.0);
-    for(size_t i=0; i < numberOfComponents; i++)
+    for (size_t i = 0; i < numberOfComponents; i++)
     {
       sum += interComponentEnergies[compA * numberOfComponents + i].totalInter;
     }
@@ -86,7 +91,6 @@ export struct EnergyStatus
     std::fill(frameworkComponentEnergies.begin(), frameworkComponentEnergies.end(), EnergyInter());
     std::fill(interComponentEnergies.begin(), interComponentEnergies.end(), EnergyInter());
   }
-
 
   void sumTotal()
   {
@@ -113,11 +117,12 @@ export struct EnergyStatus
       interComponentEnergies[i].sumTotal();
       interEnergy += interComponentEnergies[i];
     }
-    totalEnergy = intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() + interEnergy.total();
+    totalEnergy = intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
+                  interEnergy.total();
   }
 
-  std::string printEnergyStatus(const std::vector<Component> &components, const std::string& label);
-  
+  std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
+
   inline EnergyStatus& operator+=(const EnergyStatus& b)
   {
     totalEnergy += b.totalEnergy;
@@ -142,7 +147,7 @@ export struct EnergyStatus
     {
       interComponentEnergies[i] += b.interComponentEnergies[i];
     }
-    
+
     return *this;
   }
 
@@ -203,7 +208,7 @@ export struct EnergyStatus
     return v;
   }
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
   size_t numberOfExternalFields;
   size_t numberOfFrameworks;
   size_t numberOfComponents;
@@ -212,16 +217,15 @@ export struct EnergyStatus
   EnergyInter externalFieldMoleculeEnergy;
   EnergyInter frameworkMoleculeEnergy;
   EnergyInter interEnergy;
-  std::vector < EnergyIntra > intraComponentEnergies;
-  std::vector < EnergyInter > externalFieldComponentEnergies;
-  std::vector < EnergyInter > frameworkComponentEnergies;
-  std::vector < EnergyInter > interComponentEnergies;
+  std::vector<EnergyIntra> intraComponentEnergies;
+  std::vector<EnergyInter> externalFieldComponentEnergies;
+  std::vector<EnergyInter> frameworkComponentEnergies;
+  std::vector<EnergyInter> interComponentEnergies;
   double dUdlambda;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyStatus &e);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus &e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyStatus& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyStatus& e);
 };
-
 
 export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& b)
 {
@@ -339,7 +343,6 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
   return m;
 }
 
-
 export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
 {
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
@@ -369,7 +372,6 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
   return m;
 }
 
-
 export inline EnergyStatus sqrt(const EnergyStatus& a)
 {
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
@@ -398,4 +400,3 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
 
   return m;
 }
-

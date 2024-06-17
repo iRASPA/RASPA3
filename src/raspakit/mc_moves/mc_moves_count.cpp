@@ -1,18 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <string>
-#include <sstream>
-#include <exception>
-#include <source_location>
-#include <fstream>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
 #include <algorithm>
+#include <array>
+#include <chrono>
+#include <complex>
+#include <exception>
+#include <fstream>
+#include <map>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 module mc_moves_count;
@@ -31,7 +31,6 @@ import <map>;
 import <algorithm>;
 import <print>;
 #endif
-
 
 import double3;
 import stringutils;
@@ -485,9 +484,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > c.versionNumber)
+  if (versionNumber > c.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'MCMoveCpuTime' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

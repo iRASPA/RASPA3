@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <span>
-#include <tuple>
-#include <string>
 #include <fstream>
+#include <span>
+#include <string>
+#include <tuple>
+#include <vector>
 #endif
 
 export module breakthrough_simulation;
@@ -25,11 +25,11 @@ import mixture_prediction;
 
 export struct BreakthroughSimulation
 {
-  public:
-    BreakthroughSimulation(InputReader &inputreader);
+ public:
+  BreakthroughSimulation(InputReader &inputreader);
 
-    void run();
+  void run();
 
-  private:
-    std::vector<System> systems;
+ private:
+  std::vector<System> systems;
 };

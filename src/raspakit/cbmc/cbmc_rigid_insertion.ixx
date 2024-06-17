@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
 #include <optional>
 #include <span>
+#include <vector>
 #endif
 
 export module cbmc_rigid_insertion;
@@ -25,25 +25,21 @@ import cbmc_multiple_first_bead;
 import cbmc_interactions;
 import component;
 
-
-export namespace CBMC                                                                                                   
+export namespace CBMC
 {
-  [[nodiscard]] std::optional<ChainData> 
-  growRigidMoleculeSwapInsertion(RandomNumber &random, bool hasExternalField,  const std::vector<Component> &components, 
-                                 const ForceField &forceField, const SimulationBox &simulationBox, 
-                                 std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
-                                 double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                                 size_t selectedMolecule, double scaling, size_t groupId,
-                                 size_t numberOfTrialDirections) noexcept;
+[[nodiscard]] std::optional<ChainData> growRigidMoleculeSwapInsertion(
+    RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling,
+    size_t groupId, size_t numberOfTrialDirections) noexcept;
 }
 
 namespace CBMC
 {
-  [[nodiscard]] std::optional<ChainData>                                                                                  
-  growRigidMoleculeChainInsertion(RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,    
-                         std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,    
-                         double cutOff, double cutOffCoulomb, size_t startingBead,                                  
-                         std::vector<Atom> molecule, size_t numberOfTrialDirections,
-                         size_t selectedMolecule, double scaling, size_t groupId,
-                         const std::vector<Component> &components, size_t selectedComponent) noexcept;
+[[nodiscard]] std::optional<ChainData> growRigidMoleculeChainInsertion(
+    RandomNumber &random, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOff,
+    double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule, size_t numberOfTrialDirections,
+    size_t selectedMolecule, double scaling, size_t groupId, const std::vector<Component> &components,
+    size_t selectedComponent) noexcept;
 }

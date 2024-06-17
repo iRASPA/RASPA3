@@ -3,16 +3,21 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <complex>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <ios>
 #include <iostream>
 #include <map>
+#include <mdspan>
 #include <numeric>
 #include <optional>
+#include <print>
 #include <ranges>
 #include <source_location>
 #include <span>
@@ -21,12 +26,6 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <atomic>
-#include <array>
-#include <deque>
-#include <functional>
-#include <print>
-#include <mdspan>
 #endif
 
 module parallel_tempering;
@@ -59,7 +58,6 @@ import <functional>;
 import <print>;
 import <mdspan>;
 #endif
-
 
 import stringutils;
 import hardware_info;
@@ -98,7 +96,7 @@ import interactions_ewald;
 import equation_of_states;
 import threadpool;
 
-ParallelTempering::ParallelTempering() : random(std::nullopt){};
+ParallelTempering::ParallelTempering() : random(std::nullopt) {};
 
 ParallelTempering::ParallelTempering(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -241,7 +239,7 @@ void ParallelTempering::initialize()
   {
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+      auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleInitialize(system); }, system);
     }
 
@@ -338,7 +336,7 @@ void ParallelTempering::equilibrate()
   {
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+      auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleEquilibrate(system); }, system);
     }
 
@@ -481,7 +479,7 @@ void ParallelTempering::production()
 
     for (System& system : systems)
     {
-      auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
+      auto& pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();
       pool.enqueue_detach([this](System& system) { runSystemCycleProduction(system); }, system);
     }
 
@@ -535,13 +533,14 @@ void ParallelTempering::output()
     std::print(stream, "Production run counting of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    //for (const Component& component : system.components)
+    // for (const Component& component : system.components)
     //{
-    //  std::print(
-    //      stream, "{}",
-    //      component.mc_moves_count.writeComponentStatistics(numberOfSteps, component.componentId, component.name));
-    //}
-    //std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
+    //   std::print(
+    //       stream, "{}",
+    //       component.mc_moves_count.writeComponentStatistics(numberOfSteps, component.componentId,
+    //       component.name));
+    // }
+    // std::print(stream, "{}", system.mc_moves_count.writeSystemStatistics(numberOfSteps));
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
@@ -572,7 +571,7 @@ void ParallelTempering::output()
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     std::print(
         stream, "{}",
-        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
     std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 }

@@ -88,7 +88,11 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
+<<<<<<< HEAD
 MonteCarlo::MonteCarlo() : random(std::nullopt){};
+=======
+MonteCarlo::MonteCarlo() : random(std::nullopt){};
+>>>>>>> 0df18b6cf497572d0e6e8215a6df597fb940c5d9
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),

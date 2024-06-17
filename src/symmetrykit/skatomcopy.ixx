@@ -18,44 +18,51 @@ class SKAsymmetricAtom;
 
 export class SKAtomCopy
 {
-public:
-    enum class AtomCopyType : int64_t
-    {
-        copy = 2, duplicate = 3
-    };
+ public:
+  enum class AtomCopyType : int64_t
+  {
+    copy = 2,
+    duplicate = 3
+  };
 
-    SKAtomCopy() : _position(), _tag(0), _type(AtomCopyType::copy), _parent() {}
-    SKAtomCopy(const SKAtomCopy& atomCopy);
-    SKAtomCopy(std::shared_ptr<SKAsymmetricAtom> asymmetricParentAtom, double3 position) : _position(position), _tag(0), _type(AtomCopyType::copy), _parent(asymmetricParentAtom) {}
-   
-    const std::shared_ptr<SKAsymmetricAtom> parent() const { return this->_parent.lock(); }
-    double3 position() const { return _position; }
-    void setPosition(double3 p) { _position = p; }
-    AtomCopyType type() { return _type; }
-    void setType(AtomCopyType type) { _type = type; }
-    int64_t tag() { return _tag; }
-    void setTag(int64_t tag) { _tag = tag; }
-    int64_t asymmetricIndex() { return _asymmetricIndex; }
-    void setAsymmetricIndex(int64_t value) { _asymmetricIndex = value; }
-private:
-    int64_t _versionNumber{ 1 };
-    struct Hash
+  SKAtomCopy() : _position(), _tag(0), _type(AtomCopyType::copy), _parent() {}
+  SKAtomCopy(const SKAtomCopy& atomCopy);
+  SKAtomCopy(std::shared_ptr<SKAsymmetricAtom> asymmetricParentAtom, double3 position)
+      : _position(position), _tag(0), _type(AtomCopyType::copy), _parent(asymmetricParentAtom)
+  {
+  }
+
+  const std::shared_ptr<SKAsymmetricAtom> parent() const { return this->_parent.lock(); }
+  double3 position() const { return _position; }
+  void setPosition(double3 p) { _position = p; }
+  AtomCopyType type() { return _type; }
+  void setType(AtomCopyType type) { _type = type; }
+  int64_t tag() { return _tag; }
+  void setTag(int64_t tag) { _tag = tag; }
+  int64_t asymmetricIndex() { return _asymmetricIndex; }
+  void setAsymmetricIndex(int64_t value) { _asymmetricIndex = value; }
+
+ private:
+  int64_t _versionNumber{1};
+  struct Hash
+  {
+    template <typename T>
+    std::size_t operator()(T* const& p) const
     {
-        template <typename T> std::size_t operator() (T* const& p) const
-        {
-            return std::hash<T>()(*p);
-        }
-    };
-    struct Compare
+      return std::hash<T>()(*p);
+    }
+  };
+  struct Compare
+  {
+    template <typename T>
+    size_t operator()(T* const& a, T* const& b) const
     {
-        template <typename T> size_t operator() (T* const& a, T* const& b) const
-        {
-            return *a == *b;
-        }
-    };
-    double3 _position;
-    int64_t _tag;
-    AtomCopyType _type;
-    std::weak_ptr<SKAsymmetricAtom> _parent; // FIX!!!
-    int64_t _asymmetricIndex;
+      return *a == *b;
+    }
+  };
+  double3 _position;
+  int64_t _tag;
+  AtomCopyType _type;
+  std::weak_ptr<SKAsymmetricAtom> _parent;  // FIX!!!
+  int64_t _asymmetricIndex;
 };

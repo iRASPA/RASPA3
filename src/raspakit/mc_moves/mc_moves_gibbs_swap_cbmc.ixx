@@ -24,6 +24,6 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<std::pair<RunningEnergy, RunningEnergy>>
-  GibbsSwapMove_CBMC(RandomNumber &random, System& systemA, System& systemB, size_t selectedComponent);
+std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CBMC(RandomNumber& random, System& systemA,
+                                                                          System& systemB, size_t selectedComponent);
 }

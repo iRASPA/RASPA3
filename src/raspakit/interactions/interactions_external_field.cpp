@@ -1,15 +1,15 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <span>
-#include <numbers>
-#include <cmath>
-#include <vector>
-#include <iostream>
 #include <algorithm>
-#include <type_traits>
+#include <cmath>
+#include <complex>
+#include <iostream>
+#include <numbers>
 #include <optional>
+#include <span>
+#include <type_traits>
+#include <vector>
 #endif
 
 module interactions_external_field;
@@ -40,12 +40,12 @@ import running_energy;
 import component;
 import forcefield;
 
-void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField, 
+void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
                                               [[maybe_unused]] const SimulationBox &simulationBox,
-                                              [[maybe_unused]] std::span<const Atom> moleculeAtoms, 
+                                              [[maybe_unused]] std::span<const Atom> moleculeAtoms,
                                               [[maybe_unused]] RunningEnergy &energyStatus) noexcept
 {
-  if(hasExternalField)
+  if (hasExternalField)
   {
     if (moleculeAtoms.empty()) return;
 
@@ -61,7 +61,6 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
       [[maybe_unused]] double3 posA = it1->position;
       [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
 
-
       // Fill in the energy based on the atom properties and the fractional position 's'
       EnergyFactor energyFactor = EnergyFactor(0.0, 0.0);
 
@@ -71,31 +70,30 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
   }
 }
 
-void Interactions::computeExternalFieldTailEnergy(bool hasExternalField,[[maybe_unused]] const ForceField &forceField, 
+void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
                                                   [[maybe_unused]] const SimulationBox &simulationBox,
-                                                  [[maybe_unused]] std::span<const Atom> moleculeAtoms, 
+                                                  [[maybe_unused]] std::span<const Atom> moleculeAtoms,
                                                   [[maybe_unused]] RunningEnergy &energyStatus) noexcept
 {
-  if(hasExternalField)
+  if (hasExternalField)
   {
   }
 }
 
-[[nodiscard]] std::optional<RunningEnergy>
-Interactions::computeExternalFieldEnergyDifference(bool hasExternalField, [[maybe_unused]] const ForceField &forceField, 
-                                                   [[maybe_unused]] const SimulationBox &simulationBox,
-                                                   [[maybe_unused]] std::span<const Atom> newatoms, 
-                                                   [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
+[[nodiscard]] std::optional<RunningEnergy> Interactions::computeExternalFieldEnergyDifference(
+    bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
+    [[maybe_unused]] const SimulationBox &simulationBox, [[maybe_unused]] std::span<const Atom> newatoms,
+    [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum;
 
   const double overlapCriteria = forceField.overlapCriteria;
 
-  if(hasExternalField)
+  if (hasExternalField)
   {
     for (std::span<const Atom>::iterator it1 = newatoms.begin(); it1 != newatoms.end(); ++it1)
     {
-      [[maybe_unused]]  double3 posA = it1->position;
+      [[maybe_unused]] double3 posA = it1->position;
       [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
       [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
       [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
@@ -123,7 +121,6 @@ Interactions::computeExternalFieldEnergyDifference(bool hasExternalField, [[mayb
       [[maybe_unused]] double chargeA = it1->charge;
       [[maybe_unused]] double3 posA = it1->position;
       [[maybe_unused]] double3 s = (simulationBox.inverseCell * posA).fract();
-
 
       // Fill in the energy based on the atom properties and the fractional position 's'
       EnergyFactor energyFactor = EnergyFactor(0.0, 0.0);

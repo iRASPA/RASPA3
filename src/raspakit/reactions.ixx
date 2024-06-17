@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <numbers>
-#include <string>
-#include <sstream>
 #include <fstream>
+#include <numbers>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 export module reactions;
@@ -24,9 +24,9 @@ import json;
 
 export struct Reactions
 {
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  bool operator==(Reactions const&) const = default;
+  bool operator==(Reactions const &) const = default;
 
   std::vector<Reaction> list;
 

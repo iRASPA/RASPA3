@@ -1,18 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <fstream>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <fstream>
+#include <map>
 #include <print>
+#include <source_location>
+#include <utility>
+#include <vector>
 #endif
-  
+
 module bond_potential;
 
 #ifndef USE_LEGACY_HEADERS
@@ -28,8 +28,6 @@ import <algorithm>;
 import <print>;
 #endif
 
-
-
 import archive;
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b)
@@ -43,14 +41,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPo
   return archive;
 }
 
-
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotential &b)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > b.versionNumber)
+  if (versionNumber > b.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'BondPotential' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
@@ -61,4 +58,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotentia
 
   return archive;
 }
-

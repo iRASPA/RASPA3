@@ -1,23 +1,23 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <tuple>
-#include <vector>
 #include <algorithm>
-#include <complex>
-#include <exception>
-#include <source_location>
-#include <format>
-#include <numbers>
-#include <span>
 #include <array>
 #include <cmath>
+#include <complex>
+#include <cstddef>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <numbers>
 #include <print>
+#include <source_location>
+#include <span>
+#include <sstream>
+#include <string>
+#include <tuple>
+#include <vector>
 #endif
 
 module property_conventional_rdf;
@@ -42,7 +42,6 @@ import <source_location>;
 import <print>;
 #endif
 
-
 import archive;
 import double3;
 import atom;
@@ -50,15 +49,17 @@ import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, 
-                                                            std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block)
+void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox,
+                                                            std::span<Atom> frameworkAtoms,
+                                                            std::span<Atom> moleculeAtoms, size_t currentCycle,
+                                                            size_t block)
 {
   double3 dr, posA, posB, f;
   double rr, r;
 
-  if(currentCycle % sampleEvery != 0uz) return;
+  if (currentCycle % sampleEvery != 0uz) return;
 
-  if(moleculeAtoms.empty()) return;
+  if (moleculeAtoms.empty()) return;
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -78,7 +79,7 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       r = std::sqrt(rr);
 
       size_t bin = static_cast<size_t>(r / deltaR);
-      if(bin < numberOfBins)
+      if (bin < numberOfBins)
       {
         size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
         sumProperty[index][bin] += 1.0;
@@ -115,7 +116,7 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         r = std::sqrt(rr);
 
         size_t bin = static_cast<size_t>(r / deltaR);
-        if(bin < numberOfBins)
+        if (bin < numberOfBins)
         {
           size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
           sumProperty[index][bin] += 1.0;
@@ -130,37 +131,40 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   numberOfCounts[block] += 2;
 }
 
-
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t blockIndex, size_t atomTypeA, size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t blockIndex,
+                                                                                                 size_t atomTypeA,
+                                                                                                 size_t atomTypeB) const
 {
   size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
   std::vector<double> averagedData(numberOfBins);
-  std::transform(sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(), 
-                 sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].end(), averagedData.begin(),
-                 [&](const double &sample){return sample / static_cast<double>(numberOfCounts[blockIndex]);});
+  std::transform(sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
+                 sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].end(),
+                 averagedData.begin(),
+                 [&](const double &sample) { return sample / static_cast<double>(numberOfCounts[blockIndex]); });
   return averagedData;
 }
 
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t atomTypeA,
+                                                                                                 size_t atomTypeB) const
 {
   size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
   std::vector<double> summedBlocks(numberOfBins);
-  for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
-    std::transform(summedBlocks.begin(), summedBlocks.end(), 
-                   sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(), summedBlocks.begin(),
-                   [](const double & a, const double & b){ return a + b; });
+    std::transform(summedBlocks.begin(), summedBlocks.end(),
+                   sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
+                   summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
   }
   std::vector<double> average(numberOfBins);
   std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                 [&](const double &sample){return sample / static_cast<double>(totalNumberOfCounts);});
+                 [&](const double &sample) { return sample / static_cast<double>(totalNumberOfCounts); });
 
   return average;
 }
 
-std::pair<std::vector<double>, std::vector<double>> 
+std::pair<std::vector<double>, std::vector<double>>
 PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const
 {
   size_t degreesOfFreedom = numberOfBlocks - 1;
@@ -168,50 +172,47 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size
   std::vector<double> average = averagedProbabilityHistogram(atomTypeA, atomTypeB);
 
   std::vector<double> sumOfSquares(numberOfBins);
-  for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex, atomTypeA, atomTypeB);
-    for(size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+    for (size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
     {
       double value = blockAverage[binIndex] - average[binIndex];
       sumOfSquares[binIndex] += value * value;
     }
   }
   std::vector<double> standardDeviation(numberOfBins);
-  std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
-                 [&](const double &sumofsquares)
-                 {return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom));});
+  std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(), [&](const double &sumofsquares)
+                 { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
 
   std::vector<double> standardError(numberOfBins);
   std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                 [&](const double &sigma){return sigma / std::sqrt(static_cast<double>(numberOfBlocks));});
+                 [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
 
   std::vector<double> confidenceIntervalError(numberOfBins);
   std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                 [&](const double &error){return intermediateStandardNormalDeviate * error;});
+                 [&](const double &error) { return intermediateStandardNormalDeviate * error; });
 
   return std::make_pair(average, confidenceIntervalError);
 }
 
-
-void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId, double volume,
-                                                                 [[maybe_unused]]std::vector<size_t> &numberOfPseudoAtomsType,
-                                                                 size_t currentCycle)
+void PropertyConventionalRadialDistributionFunction::writeOutput(
+    const ForceField &forceField, size_t systemId, double volume,
+    [[maybe_unused]] std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle)
 {
-  if(currentCycle % writeEvery != 0uz) return;
+  if (currentCycle % writeEvery != 0uz) return;
 
   std::filesystem::create_directory("conventional_rdf");
 
-  for(size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
+  for (size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
   {
-    for(size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
+    for (size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
     {
-      if(pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
+      if (pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
       {
-        std::ofstream stream_rdf_output(std::format("conventional_rdf/rdf_{}_{}.s{}.data", 
-              forceField.pseudoAtoms[atomTypeA].name,
-              forceField.pseudoAtoms[atomTypeB].name,
-              systemId));
+        std::ofstream stream_rdf_output(std::format("conventional_rdf/rdf_{}_{}.s{}.data",
+                                                    forceField.pseudoAtoms[atomTypeA].name,
+                                                    forceField.pseudoAtoms[atomTypeB].name, systemId));
 
         stream_rdf_output << std::format("# rdf, number of counts: {}\n", totalNumberOfCounts);
         stream_rdf_output << "# column 1: distance []\n";
@@ -223,12 +224,14 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceFiel
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
         double avg_n_pairs = static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
-                                                 pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) / static_cast<double>(totalNumberOfCounts);
+                                                 pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
+                             static_cast<double>(totalNumberOfCounts);
         double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
 
-        for(size_t bin = 0; bin != numberOfBins; ++bin)
+        for (size_t bin = 0; bin != numberOfBins; ++bin)
         {
-          stream_rdf_output << std::format("{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR, 
+          stream_rdf_output << std::format(
+              "{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR,
               average[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)),
               error[bin] * normalization / ((static_cast<double>(bin) + 0.5) * (static_cast<double>(bin) + 0.5)));
         }
@@ -237,7 +240,8 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(const ForceFiel
   }
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyConventionalRadialDistributionFunction &rdf)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
+                                   const PropertyConventionalRadialDistributionFunction &rdf)
 {
   archive << rdf.versionNumber;
 
@@ -261,11 +265,12 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > rdf.versionNumber)
+  if (versionNumber > rdf.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyConventionalRadialDistributionFunction' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(
+        std::format("Invalid version reading 'PropertyConventionalRadialDistributionFunction' at line {} in file {}\n",
+                    location.line(), location.file_name()));
   }
 
   archive >> rdf.numberOfBlocks;
@@ -283,4 +288,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
 
   return archive;
 }
-

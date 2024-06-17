@@ -1,20 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <vector>
-#include <array>
-#include <tuple>
-#include <optional>
-#include <span>
-#include <optional>
-#include <tuple>
 #include <algorithm>
-#include <numeric>
+#include <array>
 #include <chrono>
 #include <cmath>
-#include <iostream>
+#include <complex>
 #include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <optional>
+#include <span>
+#include <tuple>
+#include <vector>
 #endif
 
 module mc_moves_volume;
@@ -61,7 +59,6 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 
-
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -70,32 +67,32 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.mc_moves_statistics.volumeMove.totalCounts += 1;
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
-  double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(), 
-                        system.numberOfIntegerMoleculesPerComponent.end()));
+  double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(),
+                                                             system.numberOfIntegerMoleculesPerComponent.end()));
   double oldVolume = system.simulationBox.volume;
   double maxVolumeChange = system.mc_moves_statistics.volumeMove.maxChange;
   double newVolume = std::exp(std::log(oldVolume) + maxVolumeChange * (2.0 * random.uniform() - 1.0));
-  double scale = std::pow(newVolume/oldVolume, 1.0/3.0);
+  double scale = std::pow(newVolume / oldVolume, 1.0 / 3.0);
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions = system.scaledCenterOfMassPositions(scale);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalInterEnergy = Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
+  RunningEnergy newTotalInterEnergy =
+      Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalTailEnergy = Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
+  RunningEnergy newTotalTailEnergy =
+      Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                                              system.fixedFrameworkStoredEik, system.totalEik,
-                                                                              system.forceField, newBox,
-                                                                              system.components, system.numberOfMoleculesPerComponent,
-                                                                              newPositions.second);
+  RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
+      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
 
@@ -105,8 +102,10 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   system.mc_moves_statistics.volumeMove.totalConstructed += 1;
 
   // apply acceptance/rejection rule
-  if(random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume/oldVolume)
-        - (system.pressure * (newVolume - oldVolume)+ (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) * system.beta))
+  if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
+                                  (system.pressure * (newVolume - oldVolume) +
+                                   (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
+                                      system.beta))
   {
     system.mc_moves_statistics.volumeMove.accepted += 1;
     system.mc_moves_statistics.volumeMove.totalAccepted += 1;

@@ -1,19 +1,19 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <sstream>
-#include <fstream>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <map>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 #endif
 
 module mc_moves_probabilities_system;
@@ -34,11 +34,9 @@ import <algorithm>;
 import <print>;
 #endif
 
-
 import archive;
 import double3;
 import stringutils;
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilitiesSystem &p)
 {
@@ -55,9 +53,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > p.versionNumber)
+  if (versionNumber > p.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'MCMoveProbabilitiesSystem' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

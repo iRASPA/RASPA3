@@ -24,7 +24,7 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<std::pair<RunningEnergy, RunningEnergy>>
-  GibbsSwapMove_CFCMC(RandomNumber &random, System& systemA, System& systemB, size_t selectedComponent,
-                      [[maybe_unused]] size_t &fractionalMoleculeSystem);
+std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsSwapMove_CFCMC(
+    RandomNumber& random, System& systemA, System& systemB, size_t selectedComponent,
+    [[maybe_unused]] size_t& fractionalMoleculeSystem);
 }

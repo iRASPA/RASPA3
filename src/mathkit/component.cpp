@@ -467,7 +467,7 @@ std::string Component::printStatus(const ForceField &forceField) const
   std::print(stream, "    Acentric factor:       {} [-]\n\n", acentricFactor);
 
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);
-  std::print(stream << std::boolalpha, "    Swappable:                   {}\n\n", swappable);
+  std::print(stream << std::boolalpha, "    Swappable:                    {}\n\n", swappable);
   std::print(stream, "    Mass:                         {} [-]\n", totalMass);
   if (fugacityCoefficient.has_value())
   {

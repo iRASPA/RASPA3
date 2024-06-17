@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <tuple>
-#include <vector>
-#include <array>
-#include <map>
-#include <ranges>
-#include <istream>
-#include <ostream>
-#include <iostream>
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <chrono>
 #include <complex>
 #include <functional>
+#include <iostream>
+#include <istream>
+#include <map>
+#include <ostream>
+#include <ranges>
+#include <string>
+#include <tuple>
+#include <vector>
 #endif
 
 export module archive;
@@ -36,7 +36,6 @@ import <complex>;
 import <functional>;
 #endif
 
-
 // on linux uint64_t is unsigned long        8
 //          size_t   is unsigned long        8
 //          size_t is an alias for uint64_t
@@ -44,23 +43,22 @@ import <functional>;
 //          size_t   is unsigned long        8
 //          size_t is an alias for unsigned long
 
-export template <class STREAM> class Archive
+export template <class STREAM>
+class Archive
 {
-public:
-	Archive(STREAM &stream): stream(stream) {};
+ public:
+  Archive(STREAM& stream) : stream(stream) {};
 
-  //a function that can serialize any enum
-  template<typename Enum,
-           typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
-  Archive& operator<<(const Enum& e) 
+  // a function that can serialize any enum
+  template <typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
+  Archive& operator<<(const Enum& e)
   {
     *this << static_cast<int64_t>(e);
     return *this;
   }
 
-  //a function that can deserialize any enum from an archive
-  template<typename Enum,
-           typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
+  // a function that can deserialize any enum from an archive
+  template <typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
   Archive& operator>>(Enum& e)
   {
     int64_t v;
@@ -72,8 +70,8 @@ public:
   {
     uint8_t w;
     *this >> w;
-    v=static_cast<bool>(w);
-    return *this; 
+    v = static_cast<bool>(w);
+    return *this;
   }
 
   Archive& operator<<(const bool& v)
@@ -84,9 +82,12 @@ public:
 
   Archive& operator>>(int8_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(int8_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
-    return *this; 
+    stream.read(std::bit_cast<char*>(&v), sizeof(int8_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
+    return *this;
   }
 
   Archive& operator<<(const int8_t& v)
@@ -97,9 +98,12 @@ public:
 
   Archive& operator>>(uint8_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(uint8_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
-    return *this; 
+    stream.read(std::bit_cast<char*>(&v), sizeof(uint8_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
+    return *this;
   }
 
   Archive& operator<<(const uint8_t& v)
@@ -110,13 +114,16 @@ public:
 
   Archive& operator>>(int16_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(int16_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(int16_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const int16_t& v)
@@ -132,13 +139,16 @@ public:
 
   Archive& operator>>(uint16_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(uint16_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(uint16_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const uint16_t& v)
@@ -154,13 +164,16 @@ public:
 
   Archive& operator>>(int32_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(int32_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(int32_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const int32_t& v)
@@ -176,13 +189,16 @@ public:
 
   Archive& operator>>(uint32_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(uint32_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(uint32_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const uint32_t& v)
@@ -198,13 +214,16 @@ public:
 
   Archive& operator>>(int64_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(int64_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(int64_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const int64_t& v)
@@ -218,16 +237,19 @@ public:
     return *this;
   }
 
-  #if defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__) && defined(__MACH__)
   Archive& operator>>(uint64_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(uint64_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(uint64_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const uint64_t& v)
@@ -240,17 +262,20 @@ public:
     stream.write(std::bit_cast<const char*>(&w), sizeof(uint64_t));
     return *this;
   }
-  #endif
+#endif
 
   Archive& operator>>(size_t& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(size_t)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(size_t));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
-      v = std::byteswap(v); 
+      v = std::byteswap(v);
     }
-    return *this; 
+    return *this;
   }
 
   Archive& operator<<(const size_t& v)
@@ -264,37 +289,43 @@ public:
     return *this;
   }
 
-  Archive& operator>>(double &v)
+  Archive& operator>>(double& v)
   {
-    stream.read(std::bit_cast<char*>(&v), sizeof(double)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    stream.read(std::bit_cast<char*>(&v), sizeof(double));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
       auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(v);
       std::ranges::reverse(value_representation);
       v = std::bit_cast<double>(value_representation);
     }
-    return *this; 
+    return *this;
   }
-  
-  Archive<std::ofstream>& operator<<(const double &v)
+
+  Archive<std::ofstream>& operator<<(const double& v)
   {
     double w{v};
     if constexpr (std::endian::native == std::endian::little)
     {
       auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(w);
       std::ranges::reverse(value_representation);
-      w =  std::bit_cast<double>(value_representation);
+      w = std::bit_cast<double>(value_representation);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(double));
     return *this;
   }
 
-  Archive& operator>>(std::chrono::duration<double> &v)
+  Archive& operator>>(std::chrono::duration<double>& v)
   {
-    double count{ 0.0 };
-    stream.read(std::bit_cast<char*>(&count), sizeof(double)); 
-    if(!stream) { throw std::runtime_error("malformed data"); } 
+    double count{0.0};
+    stream.read(std::bit_cast<char*>(&count), sizeof(double));
+    if (!stream)
+    {
+      throw std::runtime_error("malformed data");
+    }
     if constexpr (std::endian::native == std::endian::little)
     {
       auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(count);
@@ -302,115 +333,122 @@ public:
       count = std::bit_cast<double>(value_representation);
     }
     v = std::chrono::duration<double>(count);
-    return *this; 
+    return *this;
   }
-  
-  Archive<std::ofstream>& operator<<(const std::chrono::duration<double> &v)
+
+  Archive<std::ofstream>& operator<<(const std::chrono::duration<double>& v)
   {
     double w{v.count()};
     if constexpr (std::endian::native == std::endian::little)
     {
       auto value_representation = std::bit_cast<std::array<std::byte, sizeof(double)>>(w);
       std::ranges::reverse(value_representation);
-      w =  std::bit_cast<double>(value_representation);
+      w = std::bit_cast<double>(value_representation);
     }
     stream.write(std::bit_cast<const char*>(&w), sizeof(double));
     return *this;
   }
 
-  Archive& operator>>(std::complex<double> &v)
+  Archive& operator>>(std::complex<double>& v)
   {
     double real, imag;
     *this >> real;
     *this >> imag;
     v = std::complex<double>(real, imag);
-    return *this; 
+    return *this;
   }
-  
-  Archive<std::ofstream>& operator<<(const std::complex<double> &v)
+
+  Archive<std::ofstream>& operator<<(const std::complex<double>& v)
   {
     *this << v.real();
     *this << v.imag();
     return *this;
   }
 
-  template <class T> Archive& operator>>(std::optional<T>& v)
+  template <class T>
+  Archive& operator>>(std::optional<T>& v)
   {
     v.reset();
     bool has_value;
     *this >> has_value;
-    if(has_value)
+    if (has_value)
     {
       T element;
       *this >> element;
       v = std::move(element);
     }
     return *this;
-  } 
+  }
 
-  template <class T> const Archive& operator<<(const std::optional<T>& v)
-  { 
+  template <class T>
+  const Archive& operator<<(const std::optional<T>& v)
+  {
     bool has_value = v.has_value();
-    *this << has_value; 
-    if(has_value)
+    *this << has_value;
+    if (has_value)
     {
       *this << v.value();
     }
     return *this;
   }
 
-  template <class T, size_t size> Archive& operator>>(std::array<T, size>& v)
+  template <class T, size_t size>
+  Archive& operator>>(std::array<T, size>& v)
   {
-    for(size_t i = 0; i < size; ++i)
+    for (size_t i = 0; i < size; ++i)
     {
       T element;
       *this >> element;
       v[i] = std::move(element);
     }
     return *this;
-  } 
+  }
 
-  template <typename T, size_t size> const Archive& operator<<(const std::array<T, size>& v)
-  { 
-    for(size_t i = 0; i < size; ++i)
+  template <typename T, size_t size>
+  const Archive& operator<<(const std::array<T, size>& v)
+  {
+    for (size_t i = 0; i < size; ++i)
     {
       *this << v[i];
     }
     return *this;
   }
 
-  template <class T> Archive& operator>>(std::vector<T>& v)
+  template <class T>
+  Archive& operator>>(std::vector<T>& v)
   {
     size_t len;
     *this >> len;
     v.clear();
     v.reserve(len);
-    for(size_t i = 0; i < len; ++i)
+    for (size_t i = 0; i < len; ++i)
     {
       T element;
       *this >> element;
       v.push_back(std::move(element));
     }
     return *this;
-  } 
+  }
 
-  template <class T> const Archive& operator<<(const std::vector<T>& v)
-  { 
+  template <class T>
+  const Archive& operator<<(const std::vector<T>& v)
+  {
     size_t len = v.size();
-    *this << len; 
-    for(const T& element : v)
+    *this << len;
+    for (const T& element : v)
     {
       *this << element;
     }
     return *this;
   }
 
-  template <class T1, class T2> Archive& operator>>(std::map<T1, T2>& v)
+  template <class T1, class T2>
+  Archive& operator>>(std::map<T1, T2>& v)
   {
     size_t len;
     *this >> len;
-    for(size_t i = 0; i < len; ++i)
-    { 
+    for (size_t i = 0; i < len; ++i)
+    {
       std::pair<T1, T2> value;
       *this >> value;
       v.push_back(value);
@@ -418,24 +456,27 @@ public:
     return *this;
   }
 
-  template <class T1, class T2> const Archive& operator<<(const std::map<T1, T2>& v)
+  template <class T1, class T2>
+  const Archive& operator<<(const std::map<T1, T2>& v)
   {
     size_t len = v.size();
     *this << len;
-    for(typename std::map<T1, T2>::const_iterator it = v.begin(); it != v.end(); ++it)
+    for (typename std::map<T1, T2>::const_iterator it = v.begin(); it != v.end(); ++it)
     {
       *this << *it;
     }
     return *this;
   }
 
-  template <class T1, class T2> Archive& operator>>(std::pair<T1, T2>& v)
+  template <class T1, class T2>
+  Archive& operator>>(std::pair<T1, T2>& v)
   {
     *this >> v.first >> v.second;
     return *this;
   }
 
-  template <class T1, class T2> const Archive& operator<<(const std::pair<T1, T2>& v)
+  template <class T1, class T2>
+  const Archive& operator<<(const std::pair<T1, T2>& v)
   {
     *this << v.first << v.second;
     return *this;
@@ -448,11 +489,11 @@ public:
     v.clear();
     char buffer[256];
     size_t toRead = len;
-    while(toRead != 0)
+    while (toRead != 0)
     {
       size_t l = std::min(toRead, sizeof(buffer));
       stream.read(buffer, static_cast<std::streamsize>(l));
-      if(!stream) throw std::runtime_error("malformed data");
+      if (!stream) throw std::runtime_error("malformed data");
       v += std::string(buffer, l);
       toRead -= l;
     }
@@ -467,7 +508,6 @@ public:
     return *this;
   }
 
-private:
+ private:
   STREAM& stream;
 };
-

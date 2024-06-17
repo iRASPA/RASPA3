@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
+#include <optional>
+#include <span>
 #include <tuple>
 #include <type_traits>
-#include <span>
-#include <optional>
+#include <vector>
 #endif
 
 export module cbmc_interactions;
@@ -34,33 +34,26 @@ import units;
 import cbmc_interactions_intermolecular;
 import cbmc_interactions_framework_molecule;
 
+export namespace CBMC
+{
+[[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> computeExternalNonOverlappingEnergies(
+    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb,
+    std::vector<Atom> &trialPositions) noexcept;
 
-export namespace CBMC                                                                                                   
-{ 
-  [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> 
-  computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
-                                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
-                                        double cutOffVDW, double cutOffCoulomb,  std::vector<Atom>& trialPositions) 
-                                        noexcept;
-  
-  const std::vector<std::pair<std::vector<Atom>,RunningEnergy>> 
-  computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
-                                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
-                                        double cutOffVDW, double cutOffCoulomb, 
-                                        std::vector<std::vector<Atom>>& trialPositionSets, 
-                                        std::make_signed_t<std::size_t> skip = -1) noexcept;
+const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
+    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb,
+    std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip = -1) noexcept;
 
-  const std::vector<std::tuple<Molecule, std::vector<Atom>,RunningEnergy>> 
-  computeExternalNonOverlappingEnergies(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
-                                        std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
-                                        double cutOffVDW, double cutOffCoulomb, 
-                                        std::vector<std::pair<Molecule, std::vector<Atom>>>& trialPositionSets, 
-                                        std::make_signed_t<std::size_t> skip = -1) noexcept;
-  
-  const std::optional<RunningEnergy> 
-  computeExternalNonOverlappingEnergyDualCutOff(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox, 
-                                                std::span<const Atom> frameworkAtoms, 
-                                                std::span<const Atom> moleculeAtoms, 
-                                                double cutOffVDW, double cutOffCoulomb, 
-                                                std::vector<Atom>& trialPositionSet) noexcept;
-}
+const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
+    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb,
+    std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
+    std::make_signed_t<std::size_t> skip = -1) noexcept;
+
+const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(
+    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb,
+    std::vector<Atom> &trialPositionSet) noexcept;
+}  // namespace CBMC

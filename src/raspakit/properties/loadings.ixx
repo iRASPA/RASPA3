@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cmath>
+#include <fstream>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <vector>
-#include <optional>
-#include <cmath>
-#include <ostream>
-#include <fstream>
 #endif
 
 export module loadings;
@@ -24,18 +24,16 @@ import archive;
 import simulationbox;
 import component;
 
-
 export struct Loadings
 {
   Loadings() {};
 
-  Loadings(size_t size) : 
-      size(size), 
-      numberOfMolecules(std::vector<double>(size)), 
-      numberDensities(std::vector<double>(size)),
-      inverseNumberDensities(std::vector<double>(size))
+  Loadings(size_t size)
+      : size(size),
+        numberOfMolecules(std::vector<double>(size)),
+        numberDensities(std::vector<double>(size)),
+        inverseNumberDensities(std::vector<double>(size))
   {
-
   }
 
   bool operator==(Loadings const&) const = default;
@@ -47,11 +45,8 @@ export struct Loadings
     inverseNumberDensities.resize(numberOfComponents);
   }
 
-  Loadings(size_t size, const std::vector<size_t> &numberOfIntegerMolecules, const SimulationBox &box) : 
-      size(size),
-      numberOfMolecules(size), 
-      numberDensities(size),
-      inverseNumberDensities(size)
+  Loadings(size_t size, const std::vector<size_t>& numberOfIntegerMolecules, const SimulationBox& box)
+      : size(size), numberOfMolecules(size), numberDensities(size), inverseNumberDensities(size)
   {
     double inverseVolume = 1.0 / box.volume;
 
@@ -60,17 +55,18 @@ export struct Loadings
     for (size_t i = 0; i < this->numberOfMolecules.size(); ++i)
     {
       this->numberOfMolecules[i] = static_cast<double>(numberOfIntegerMolecules[i]);
-      totalNumberOfMolecules += static_cast<double>(numberOfIntegerMolecules[i]);;
+      totalNumberOfMolecules += static_cast<double>(numberOfIntegerMolecules[i]);
+      ;
       this->numberDensities[i] = static_cast<double>(numberOfIntegerMolecules[i]) * inverseVolume;
       totalDensity += static_cast<double>(numberOfIntegerMolecules[i]) * inverseVolume;
       this->inverseNumberDensities[i] = box.volume / static_cast<double>(numberOfIntegerMolecules[i]);
     }
   }
 
-  double& operator() (size_t compA) { return numberOfMolecules[compA]; }
+  double& operator()(size_t compA) { return numberOfMolecules[compA]; }
 
   std::string printStatus(const Component& compA, std::optional<double> frameworkMass) const;
-  std::string printStatus(const Component &compA, const Loadings& average, const Loadings& error, 
+  std::string printStatus(const Component& compA, const Loadings& average, const Loadings& error,
                           std::optional<double> frameworkMass) const;
 
   inline Loadings& operator+=(const Loadings& b)
@@ -86,7 +82,7 @@ export struct Loadings
     return *this;
   }
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   size_t size;
   double totalNumberOfMolecules;
@@ -95,16 +91,14 @@ export struct Loadings
   std::vector<double> numberDensities;
   std::vector<double> inverseNumberDensities;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Loadings &l);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Loadings &l);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Loadings& l);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Loadings& l);
 };
-
-
 
 export inline Loadings operator+(const Loadings& a, const Loadings& b)
 {
   Loadings m(a.numberOfMolecules.size());
-  
+
   m.totalNumberOfMolecules = a.totalNumberOfMolecules + b.totalNumberOfMolecules;
   m.totalDensity = a.totalDensity + b.totalDensity;
   for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
@@ -134,7 +128,7 @@ export inline Loadings operator-(const Loadings& a, const Loadings& b)
 export inline Loadings operator*(const Loadings& a, const Loadings& b)
 {
   Loadings m(a.numberOfMolecules.size());
-  
+
   m.totalNumberOfMolecules = a.totalNumberOfMolecules * b.totalNumberOfMolecules;
   m.totalDensity = a.totalDensity * b.totalDensity;
   for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
@@ -149,7 +143,7 @@ export inline Loadings operator*(const Loadings& a, const Loadings& b)
 export inline Loadings operator*(const double& a, const Loadings& b)
 {
   Loadings m(b.numberOfMolecules.size());
-  
+
   m.totalNumberOfMolecules = a * b.totalNumberOfMolecules;
   m.totalDensity = a * b.totalDensity;
   for (size_t i = 0; i != b.numberOfMolecules.size(); ++i)
@@ -161,11 +155,10 @@ export inline Loadings operator*(const double& a, const Loadings& b)
   return m;
 }
 
-
 export inline Loadings operator/(const Loadings& a, const double& b)
 {
   Loadings m(a.numberOfMolecules.size());
-  
+
   double temp = 1.0 / b;
   m.totalNumberOfMolecules = a.totalNumberOfMolecules * temp;
   m.totalDensity = a.totalDensity * temp;
@@ -178,11 +171,10 @@ export inline Loadings operator/(const Loadings& a, const double& b)
   return m;
 }
 
-
 export inline Loadings sqrt(const Loadings& a)
 {
   Loadings m(a.numberOfMolecules.size());
-  
+
   m.totalNumberOfMolecules = sqrt(a.totalNumberOfMolecules);
   m.totalDensity = std::sqrt(a.totalDensity);
   for (size_t i = 0; i != a.numberOfMolecules.size(); ++i)
@@ -193,4 +185,3 @@ export inline Loadings sqrt(const Loadings& a)
   }
   return m;
 }
-

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
 #include <chrono>
 #include <fstream>
+#include <string>
 #endif
 
 export module mc_moves_probabilities_crosssystem;
@@ -18,12 +18,9 @@ import archive;
 
 export struct MCMoveProbabilitiesCrossSystem
 {
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  MCMoveProbabilitiesCrossSystem():
-    probability(0.0)
-  {
-  };
+  MCMoveProbabilitiesCrossSystem() : probability(0.0) {};
 
   void print();
 

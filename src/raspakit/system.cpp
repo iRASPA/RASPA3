@@ -1,32 +1,31 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <numbers>
-#include <complex>
-#include <vector>
-#include <random>
-#include <span>
-#include <tuple>
-#include <iostream>
-#include <ostream>
-#include <fstream>
-#include <streambuf>
-#include <filesystem>
-#include <optional>
-#include <cmath>
-#include <chrono>
 #include <algorithm>
-#include <numeric>
-#include <map>
-#include <vector>
 #include <array>
+#include <chrono>
+#include <cmath>
+#include <complex>
+#include <cstddef>
+#include <exception>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <numbers>
+#include <numeric>
+#include <optional>
+#include <ostream>
+#include <print>
+#include <random>
+#include <source_location>
+#include <span>
+#include <streambuf>
 #include <string>
 #include <string_view>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <print>
+#include <tuple>
+#include <vector>
 #endif
 
 module system;
@@ -59,7 +58,6 @@ import <string>;
 import <string_view>;
 import <print>;
 #endif
-
 
 import archive;
 import randomnumbers;
@@ -134,7 +132,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
       frameworkComponents(f),
       components(c),
       loadings(c.size()),
-      swapableComponents(),
+      swappableComponents(),
       initialNumberOfMolecules(initialNumberOfMolecules),
       numberOfMoleculesPerComponent(c.size()),
       numberOfIntegerMoleculesPerComponent(c.size()),
@@ -172,7 +170,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
   }
 
   removeRedundantMoves();
-  determineSwapableComponents();
+  determineSwappableComponents();
   determineFractionalComponents();
   rescaleMoveProbabilities();
   rescaleMolarFractions();
@@ -195,7 +193,7 @@ System::System(size_t id, std::optional<SimulationBox> box, double T, std::optio
       EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
                       P.value_or(0.0), simulationBox, HeliumVoidFraction, components);
 
-  averageEnthalpiesOfAdsorption.resize(swapableComponents.size());
+  averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
 }
 
 void System::createFrameworks()
@@ -364,7 +362,7 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
 {
   for (size_t componentId = 0; const Component& component : components)
   {
-    if (component.swapable)
+    if (component.swappable)
     {
       numberOfMoleculesPerComponent[componentId] = 0;
       for (size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
@@ -517,7 +515,7 @@ size_t System::indexOfFirstMolecule(size_t selectedComponent)
   return index + numberOfFrameworkAtoms;
 }
 
-void System::determineSwapableComponents()
+void System::determineSwappableComponents()
 {
   for (Component& component : components)
   {
@@ -526,19 +524,19 @@ void System::determineSwapableComponents()
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC > 0.0 ||
         component.mc_moves_probabilities.probabilitySwapMove_CFCMC_CBMC > 0.0)
     {
-      component.swapable = true;
+      component.swappable = true;
     }
 
     if (component.mc_moves_probabilities.probabilityGibbsSwapMove_CBMC > 0.0 ||
         component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC > 0.0 ||
         component.mc_moves_probabilities.probabilityGibbsSwapMove_CFCMC_CBMC > 0.0)
     {
-      component.swapable = true;
+      component.swappable = true;
     }
 
-    if (component.swapable)
+    if (component.swappable)
     {
-      swapableComponents.push_back(component.componentId);
+      swappableComponents.push_back(component.componentId);
     }
   }
 }
@@ -640,13 +638,13 @@ void System::optimizeMCMoves()
 void System::rescaleMolarFractions()
 {
   double totalMolfraction = 0.0;
-  double numberOfSwapableComponents = 0.0;
+  double numberOfSwappableComponents = 0.0;
   for (const Component& component : components)
   {
-    if (component.swapable)
+    if (component.swappable)
     {
       totalMolfraction += component.molFraction;
-      numberOfSwapableComponents += 1.0;
+      numberOfSwappableComponents += 1.0;
     }
   }
 
@@ -654,7 +652,7 @@ void System::rescaleMolarFractions()
   {
     for (Component& component : components)
     {
-      if (component.swapable)
+      if (component.swappable)
       {
         component.molFraction /= totalMolfraction;
       }
@@ -664,9 +662,9 @@ void System::rescaleMolarFractions()
   {
     for (Component& component : components)
     {
-      if (component.swapable)
+      if (component.swappable)
       {
-        component.molFraction /= numberOfSwapableComponents;
+        component.molFraction /= numberOfSwappableComponents;
       }
     }
   }
@@ -763,31 +761,29 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
     double occupancy = static_cast<double>(containsTheFractionalMolecule);
     double averageOccupancy = c.lambdaGC.occupancy();
     double lambda = c.lambdaGC.lambdaValue();
-    
+
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                         c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
+  for (const Component& c : components)
   {
     std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
 
-
   stream << runningEnergies.printMC();
-
 
   std::print(stream, "\n");
 
@@ -811,26 +807,25 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
     double lambda = c.lambdaGC.lambdaValue();
 
     if (c.lambdaGC.computeDUdlambda)
-    { 
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else 
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
+  for (const Component& c : components)
   {
     std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
   std::print(stream, "\n");
-
 
   stream << runningEnergies.printMC();
 
@@ -850,17 +845,20 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   std::print(stream, "\n");
 
   double translationalKineticEnergy = computeTranslationalKineticEnergy();
-  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
+  double translationalTemperature =
+      2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
   double rotationalKineticEnergy = computeRotationalKineticEnergy();
   double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
-  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
+                              static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
   std::print(stream, "Temperature: {: .6e}\n", overallTemperature);
   std::print(stream, "Translational temperature: {: .6e}\n", translationalTemperature);
   std::print(stream, "Rotational temperature: {: .6e}\n\n", rotationalTemperature);
 
   std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
   double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift, accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
+             accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
   stream << runningEnergies.printMD();
 
@@ -873,21 +871,21 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
     double lambda = c.lambdaGC.lambdaValue();
 
     if (c.lambdaGC.computeDUdlambda)
-    { 
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else 
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+    }
+    else
+    {
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
 
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component & c : components)
+  for (const Component& c : components)
   {
     std::print(stream, "{}", loadings.printStatus(c, frameworkMass));
   }
@@ -895,7 +893,6 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
 
   return stream.str();
 }
-
 
 std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t numberOfCycles) const
 {
@@ -916,21 +913,21 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
-  
+
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (const Component & c : components)
+  for (const Component& c : components)
   {
     std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
   }
@@ -942,79 +939,72 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
   std::print(stream, "Average pressure tensor: \n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
-          pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
-          pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
-          pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
+             pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
+             pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
+             pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
   std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
   std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
   std::pair<double, double> p = averagePressure.averagePressure();
-  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * excessPressure.first, 
-          1e-5 * Units::PressureConversionFactor * excessPressure.second);
-  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
-          1e-5 * Units::PressureConversionFactor * p.first, 
-          1e-5 * Units::PressureConversionFactor * p.second);
-
+  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
+             1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
+             1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
+             1e-5 * Units::PressureConversionFactor * excessPressure.first,
+             1e-5 * Units::PressureConversionFactor * excessPressure.second);
+  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
+             1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.totalEnergy.energy, 
-      conv * energyData.first.totalEnergy.energy, 
-      conv * energyData.second.totalEnergy.energy);
+             conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
+             conv * energyData.second.totalEnergy.energy);
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
   std::print(stream, "Framework-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
   std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
   std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
   std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy, 
-      conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy, 
-      conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
   std::print(stream, "Molecule-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
-      conv * energyData.first.interEnergy.VanDerWaals.energy,
-      conv * energyData.second.interEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
+             conv * energyData.first.interEnergy.VanDerWaals.energy,
+             conv * energyData.second.interEnergy.VanDerWaals.energy);
   std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
+             conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
   std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
-      conv * energyData.first.interEnergy.CoulombicReal.energy,
-      conv * energyData.second.interEnergy.CoulombicReal.energy);
+             conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
+             conv * energyData.first.interEnergy.CoulombicReal.energy,
+             conv * energyData.second.interEnergy.CoulombicReal.energy);
   std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
-      conv * energyData.first.interEnergy.CoulombicFourier.energy, 
-      conv * energyData.second.interEnergy.CoulombicFourier.energy);
+             conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
+             conv * energyData.first.interEnergy.CoulombicFourier.energy,
+             conv * energyData.second.interEnergy.CoulombicFourier.energy);
   std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.intraEnergy.total().energy,
-      conv * energyData.first.intraEnergy.total().energy,
-      conv * energyData.second.intraEnergy.total().energy);
-  
+             conv * currentEnergyStatus.intraEnergy.total().energy, conv * energyData.first.intraEnergy.total().energy,
+             conv * energyData.second.intraEnergy.total().energy);
+
   std::print(stream, "\n");
 
   return stream.str();
@@ -1027,84 +1017,85 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep, 
-                                                           static_cast<double>(currentCycle) * timeStep / 1000.0);
+  std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
+             static_cast<double>(currentCycle) * timeStep / 1000.0);
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
   double translational_kinetic_energy = computeTranslationalKineticEnergy();
-  double translational_temperature = 2.0 * translational_kinetic_energy / static_cast<double>(translationalDegreesOfFreedom);
+  double translational_temperature =
+      2.0 * translational_kinetic_energy / static_cast<double>(translationalDegreesOfFreedom);
   double rotational_kinetic_energy = computeRotationalKineticEnergy();
   double rotational_temperature = 2.0 * rotational_kinetic_energy / static_cast<double>(rotationalDegreesOfFreedom);
-  double overall_temperature = 2.0 * (translational_kinetic_energy + rotational_kinetic_energy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  double overall_temperature = 2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
+                               static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
   std::pair<double, double> average_temperature = averageTemperature.averageTemperature();
   std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.averageTemperature();
   std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.averageTemperature();
 
-  std::print(stream, "Temperature: {: .6e} ({: .6e} +/- {:.6e})\n",
-                   overall_temperature, average_temperature.first, average_temperature.second);
-  std::print(stream, "Translational temperature: {: .6e} ({: .6e} +/- {:.6e})\n",
-                   translational_temperature, average_translational_temperature.first, average_translational_temperature.second);
-  std::print(stream, "Rotational temperature: {: .6e} ({: .6e} +/- {:.6e})\n\n",
-                   rotational_temperature, average_rotational_temperature.first, average_rotational_temperature.second);
+  std::print(stream, "Temperature: {: .6e} ({: .6e} +/- {:.6e})\n", overall_temperature, average_temperature.first,
+             average_temperature.second);
+  std::print(stream, "Translational temperature: {: .6e} ({: .6e} +/- {:.6e})\n", translational_temperature,
+             average_translational_temperature.first, average_translational_temperature.second);
+  std::print(stream, "Rotational temperature: {: .6e} ({: .6e} +/- {:.6e})\n\n", rotational_temperature,
+             average_rotational_temperature.first, average_rotational_temperature.second);
 
   std::print(stream, "Conserved energy: {: .6e}\n", conservedEnergy);
   double drift = std::abs(Units::EnergyToKelvin * (conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift, accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
+  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
+             accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
 
   double conv = Units::EnergyToKelvin;
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.totalEnergy.energy, 
-      conv * energyData.first.totalEnergy.energy, 
-      conv * energyData.second.totalEnergy.energy);
+             conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
+             conv * energyData.second.totalEnergy.energy);
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
   std::print(stream, "Framework-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
   std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
   std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
-      conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-      conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
   std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy, 
-      conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy, 
-      conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
+             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
+             conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy,
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
   std::print(stream, "Molecule-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n", 
-      conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
-      conv * energyData.first.interEnergy.VanDerWaals.energy,
-      conv * energyData.second.interEnergy.VanDerWaals.energy);
+  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
+             conv * energyData.first.interEnergy.VanDerWaals.energy,
+             conv * energyData.second.interEnergy.VanDerWaals.energy);
   std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-      conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
+             conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
+             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
   std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
-      conv * energyData.first.interEnergy.CoulombicReal.energy,
-      conv * energyData.second.interEnergy.CoulombicReal.energy);
+             conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
+             conv * energyData.first.interEnergy.CoulombicReal.energy,
+             conv * energyData.second.interEnergy.CoulombicReal.energy);
   std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy, 
-      conv * energyData.first.interEnergy.CoulombicFourier.energy, 
-      conv * energyData.second.interEnergy.CoulombicFourier.energy);
+             conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
+             conv * energyData.first.interEnergy.CoulombicFourier.energy,
+             conv * energyData.second.interEnergy.CoulombicFourier.energy);
   std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-      conv * currentEnergyStatus.intraEnergy.total().energy,
-      conv * energyData.first.intraEnergy.total().energy,
-      conv * energyData.second.intraEnergy.total().energy);
-  
+             conv * currentEnergyStatus.intraEnergy.total().energy, conv * energyData.first.intraEnergy.total().energy,
+             conv * energyData.second.intraEnergy.total().energy);
+
   std::print(stream, "\n");
   for (const Component& c : components)
   {
@@ -1114,21 +1105,21 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
 
     if (c.lambdaGC.computeDUdlambda)
     {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
+                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", 
-                 c.componentId, c.name, c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
+                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
     }
   }
   std::print(stream, "\n");
-  
+
   std::print(stream, "Amount of molecules per component :\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (const Component & c : components)
+  for (const Component& c : components)
   {
     std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass));
   }
@@ -1139,28 +1130,23 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
   std::print(stream, "Average pressure tensor: \n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ax, pressureTensor.bx, pressureTensor.cx, 
-          pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.ay, pressureTensor.by, pressureTensor.cy, 
-          pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", 
-          pressureTensor.az, pressureTensor.bz, pressureTensor.cz, 
-          pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
+             pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
+             pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
+             pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
   std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
   std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
   std::pair<double, double> p = averagePressure.averagePressure();
-  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.first, 
-          1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n", 
-          1e-5 * Units::PressureConversionFactor * excessPressure.first, 
-          1e-5 * Units::PressureConversionFactor * excessPressure.second);
-  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n", 
-          1e-5 * Units::PressureConversionFactor * p.first, 
-          1e-5 * Units::PressureConversionFactor * p.second);
-
+  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
+             1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
+             1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
+             1e-5 * Units::PressureConversionFactor * excessPressure.first,
+             1e-5 * Units::PressureConversionFactor * excessPressure.second);
+  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
+             1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
 
   return stream.str();
 }
@@ -1227,21 +1213,21 @@ nlohmann::json System::jsonComponentStatus() const
   return status;
 }
 
-void System::writeComponentFittingStatus(std::ostream &stream, 
-                                         const std::vector<std::pair<double, double>> &rawData) const
+void System::writeComponentFittingStatus(std::ostream& stream,
+                                         const std::vector<std::pair<double, double>>& rawData) const
 {
   std::print(stream, "Found {} data points\n", rawData.size());
-  for(const std::pair<double, double> &data : rawData)
+  for (const std::pair<double, double>& data : rawData)
   {
     std::print(stream, "pressure: {:.8e}  loading: {}\n", data.first, data.second);
   }
   std::print(stream, "\n");
 
-  if(!rawData.empty())
+  if (!rawData.empty())
   {
     std::pair<double, double> pressureRange = std::make_pair(rawData.front().first, rawData.back().first);
-    std::print(stream,"Lowest pressure:     {:.8e}\n", pressureRange.first);
-    std::print(stream,"Highest pressure:    {:.8e}\n", pressureRange.second);
+    std::print(stream, "Lowest pressure:     {:.8e}\n", pressureRange.first);
+    std::print(stream, "Highest pressure:    {:.8e}\n", pressureRange.second);
   }
   std::print(stream, "\n\n");
 }
@@ -1254,34 +1240,35 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
   double translationalKineticEnergy = computeTranslationalKineticEnergy();
-  double translationalTemperature = 2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
+  double translationalTemperature =
+      2.0 * translationalKineticEnergy / static_cast<double>(translationalDegreesOfFreedom);
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
   double rotationalKineticEnergy = computeRotationalKineticEnergy();
   double rotationalTemperature = 2.0 * rotationalKineticEnergy / static_cast<double>(rotationalDegreesOfFreedom);
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
 
-  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) / static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
+  double overallTemperature = 2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
+                              static_cast<double>(translationalDegreesOfFreedom + rotationalDegreesOfFreedom);
   averageTemperature.addSample(currentBlock, overallTemperature, w);
 
   loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
   averageLoadings.addSample(currentBlock, loadings, w);
 
-  EnthalpyOfAdsorptionTerms enthalpyTerms = 
-    EnthalpyOfAdsorptionTerms(swapableComponents, numberOfIntegerMoleculesPerComponent, 
-                              runningEnergies.potentialEnergy(), temperature);
+  EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(
+      swappableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.potentialEnergy(), temperature);
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
-  size_t numberOfMolecules = 
-    std::reduce(numberOfIntegerMoleculesPerComponent.begin(),  numberOfIntegerMoleculesPerComponent.end());
-  double currentIdealPressure =  static_cast<double>(numberOfMolecules)/(beta * simulationBox.volume);
+  size_t numberOfMolecules =
+      std::reduce(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end());
+  double currentIdealPressure = static_cast<double>(numberOfMolecules) / (beta * simulationBox.volume);
 
   averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 
-  for(Component &component : components)
+  for (Component& component : components)
   {
-    double componentDensity  = 
-      static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
+    double componentDensity =
+        static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
 
     double lambda = component.lambdaGC.lambdaValue();
     double dudlambda = runningEnergies.dudlambda(lambda);
@@ -1290,18 +1277,18 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
     component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
   }
 
-  if(samplePDBMovie.has_value())
+  if (samplePDBMovie.has_value())
   {
     samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
-  if(propertyConventionalRadialDistributionFunction.has_value())
+  if (propertyConventionalRadialDistributionFunction.has_value())
   {
-    propertyConventionalRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(),
-                                                           spanOfMoleculeAtoms(), currentCycle, currentBlock);
+    propertyConventionalRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(),
+                                                           currentCycle, currentBlock);
   }
 
-  if(propertyRadialDistributionFunction.has_value())
+  if (propertyRadialDistributionFunction.has_value())
   {
     computeTotalGradients();
     computeCenterOfMassAndQuaternionGradients();
@@ -1309,27 +1296,25 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
                                                spanOfMoleculeAtoms(), currentCycle, currentBlock);
   }
 
-  if(propertyDensityGrid.has_value())
+  if (propertyDensityGrid.has_value())
   {
     propertyDensityGrid->sample(frameworkComponents, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
-
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
   mc_moves_cputime.propertySampling += (t2 - t1);
 }
 
-void System::writeCPUTimeStatistics(std::ostream &stream) const
+void System::writeCPUTimeStatistics(std::ostream& stream) const
 {
   std::print(stream, "Sampling properties:        {:14f} [s]\n", mc_moves_cputime.propertySampling.count());
   std::print(stream, "Pressure computation:       {:14f} [s]\n\n", mc_moves_cputime.energyPressureComputation.count());
 
-
- for (size_t componentId = 0; const Component& component : components)
- {
-   std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
- }
+  for (size_t componentId = 0; const Component& component : components)
+  {
+    std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+  }
 }
 
 std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
@@ -1339,16 +1324,16 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   scaledMolecules.reserve(scaledMolecules.size());
   scaledAtoms.reserve(atomPositions.size());
 
-  for(size_t componentId = 0; componentId < components.size(); ++componentId)
+  for (size_t componentId = 0; componentId < components.size(); ++componentId)
   {
-    for(size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
     {
       const std::span<const Atom> span = spanOfMolecule(componentId, i);
-      const Molecule &molecule = moleculePositions[i];
+      const Molecule& molecule = moleculePositions[i];
 
       double totalMass = 0.0;
       double3 com(0.0, 0.0, 0.0);
-      for(const Atom& atom: span)
+      for (const Atom& atom : span)
       {
         double mass = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].mass;
         com += mass * atom.position;
@@ -1359,11 +1344,10 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
       double3 d = com * (scale - 1.0);
       scaledMolecules.push_back({com * scale, molecule.orientation});
 
-
       // create copy
-      for(Atom atom: span)
+      for (Atom atom : span)
       {
-        atom.position += d; 
+        atom.position += d;
         scaledAtoms.push_back(atom);
       }
     }
@@ -1371,30 +1355,25 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   return {scaledMolecules, scaledAtoms};
 }
 
-void System::clearMoveStatistics()
-{
-  mc_moves_statistics.clear();
-}
+void System::clearMoveStatistics() { mc_moves_statistics.clear(); }
 
-inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3> &lhs, 
-                                                   const std::pair<EnergyStatus, double3x3> &rhs)
+inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
+                                                   const std::pair<EnergyStatus, double3x3>& rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
 void System::precomputeTotalRigidEnergy() noexcept
 {
-  Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy,
-                                            fixedFrameworkStoredEik, forceField, simulationBox,
-                                            spanOfRigidFrameworkAtoms());
+  Interactions::precomputeEwaldFourierRigid(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField,
+                                            simulationBox, spanOfRigidFrameworkAtoms());
 }
-
 
 RunningEnergy System::computeTotalEnergies() noexcept
 {
   RunningEnergy runningEnergy{};
 
-  if(fixedFrameworkStoredEik.empty())
+  if (fixedFrameworkStoredEik.empty())
   {
     precomputeTotalRigidEnergy();
   }
@@ -1402,26 +1381,29 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<const Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-  RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularEnergy =
+      Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
 
-  RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-  RunningEnergy intermolecularTailEnergy = Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
+  RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularTailEnergy =
+      Interactions::computeInterMolecularTailEnergy(forceField, simulationBox, moleculeAtomPositions);
 
-  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, 
-                                                                      fixedFrameworkStoredEik, storedEik,
-                                                                      forceField, simulationBox,
-                                                                      components, numberOfMoleculesPerComponent,
-                                                                      moleculeAtomPositions);
+  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(
+      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
+      numberOfMoleculesPerComponent, moleculeAtomPositions);
 
-  return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy + ewaldEnergy;
+  return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
+         ewaldEnergy;
 }
 
 RunningEnergy System::computeTotalGradients() noexcept
 {
   RunningEnergy running_energy{};
 
-  if(fixedFrameworkStoredEik.empty())
+  if (fixedFrameworkStoredEik.empty())
   {
     precomputeTotalRigidEnergy();
   }
@@ -1429,54 +1411,55 @@ RunningEnergy System::computeTotalGradients() noexcept
   std::span<Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
-  for(Atom& atom: moleculeAtomPositions)
+  for (Atom& atom : moleculeAtomPositions)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-  RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
-  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
-                                                                forceField, simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
+  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+  RunningEnergy intermolecularEnergy =
+      Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
+  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
+      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField, simulationBox, components,
+      numberOfMoleculesPerComponent, moleculeAtomPositions);
 
   return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy;
 }
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 {
-  for(Atom& atom: atomPositions)
+  for (Atom& atom : atomPositions)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<EnergyStatus, double3x3> pressureInfo =
-       Interactions::computeFrameworkMoleculeEnergyStrainDerivative(forceField, frameworkComponents, components,
-                                                       simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+  std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
+      forceField, frameworkComponents, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
-  pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(forceField, components, simulationBox,
-                                                      spanOfMoleculeAtoms()));
+  pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
+                                            forceField, components, simulationBox, spanOfMoleculeAtoms()));
 
-  pressureInfo = pair_acc(pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(eik_x, eik_y, eik_z, eik_xy,
-                                                            fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                                                            frameworkComponents, components, numberOfMoleculesPerComponent, 
-                                                            spanOfMoleculeAtoms()));
+  pressureInfo = pair_acc(
+      pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
+                        eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
+                        frameworkComponents, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms()));
 
   pressureInfo.first.sumTotal();
 
-
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm;
-  for(size_t componentId = 0; componentId < components.size(); ++componentId)
+  for (size_t componentId = 0; componentId < components.size(); ++componentId)
   {
-    if(components[componentId].rigid)
+    if (components[componentId].rigid)
     {
-      for(size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+      for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
       {
         std::span<Atom> span = spanOfMolecule(componentId, i);
 
         double totalMass = 0.0;
         double3 com(0.0, 0.0, 0.0);
-        for(const Atom& atom: span)
+        for (const Atom& atom : span)
         {
           double mass = forceField.pseudoAtoms[static_cast<size_t>(atom.type)].mass;
           com += mass * atom.position;
@@ -1484,7 +1467,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
         }
         com = com / totalMass;
 
-        for(const Atom& atom: span)
+        for (const Atom& atom : span)
         {
           correctionTerm.ax += (atom.position.x - com.x) * atom.gradient.x;
           correctionTerm.ay += (atom.position.x - com.x) * atom.gradient.y;
@@ -1503,25 +1486,26 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   }
   pressureInfo.second = -(pressureInfo.second - correctionTerm);
 
-
-
   return pressureInfo;
 }
 
-void System::initializeVelocities(RandomNumber &random)
+void System::initializeVelocities(RandomNumber& random)
 {
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     double molecularMass = components[l].totalMass;
     double3 I = components[l].inertiaVector;
     double3 inverseInertiaVector = components[l].inverseInertiaVector;
 
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      moleculePositions[moleculeIndex].velocity.x = random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
-      moleculePositions[moleculeIndex].velocity.y = random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
-      moleculePositions[moleculeIndex].velocity.z = random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
+      moleculePositions[moleculeIndex].velocity.x =
+          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
+      moleculePositions[moleculeIndex].velocity.y =
+          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
+      moleculePositions[moleculeIndex].velocity.z =
+          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
 
       double3 angularVelocity{};
       angularVelocity.x = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.x);
@@ -1529,10 +1513,16 @@ void System::initializeVelocities(RandomNumber &random)
       angularVelocity.z = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.z);
 
       simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      moleculePositions[moleculeIndex].orientationMomentum.ix = 2.0 * ( q.r  * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iy = 2.0 * ( q.iz * (I.x * angularVelocity.x) + q.r  * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iz = 2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r  * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.r  = 2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.ix =
+          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iy =
+          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iz =
+          2.0 *
+          (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.r =
+          2.0 *
+          (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
 
       ++moleculeIndex;
     }
@@ -1544,10 +1534,10 @@ double System::computeTranslationalKineticEnergy() const
   size_t moleculeIndex{};
 
   double energy{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     double molecularMass = components[l].totalMass;
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       double3 vel = moleculePositions[moleculeIndex].velocity;
       energy += 0.5 * molecularMass * vel.x * vel.x;
@@ -1566,18 +1556,18 @@ double System::computeRotationalKineticEnergy() const
   double3 ang_vel;
 
   double energy{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     double3 inertiaVector = components[l].inertiaVector;
     double3 inverseInertiaVector = components[l].inverseInertiaVector;
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       simd_quatd p = moleculePositions[moleculeIndex].orientationMomentum;
       simd_quatd q = moleculePositions[moleculeIndex].orientation;
 
-      ang_vel.x = 0.5 * (-p.r * q.ix  + p.ix * q.r  + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x;
-      ang_vel.y = 0.5 * (-p.r * q.iy  - p.ix * q.iz + p.iy * q.r  + p.iz * q.ix) * inverseInertiaVector.y;
-      ang_vel.z = 0.5 * (-p.r * q.iz  + p.ix * q.iy - p.iy * q.ix + p.iz * q.r ) * inverseInertiaVector.z;
+      ang_vel.x = 0.5 * (-p.r * q.ix + p.ix * q.r + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x;
+      ang_vel.y = 0.5 * (-p.r * q.iy - p.ix * q.iz + p.iy * q.r + p.iz * q.ix) * inverseInertiaVector.y;
+      ang_vel.z = 0.5 * (-p.r * q.iz + p.ix * q.iy - p.iy * q.ix + p.iz * q.r) * inverseInertiaVector.z;
 
       energy += 0.5 * inertiaVector.x * (ang_vel.x * ang_vel.x);
       energy += 0.5 * inertiaVector.y * (ang_vel.y * ang_vel.y);
@@ -1598,7 +1588,7 @@ void System::integrate()
   updatePositions();
 
   // first part of bond-constraints
-  //RattleStageOne();
+  // RattleStageOne();
 
   // evolve the part of rigid bodies involving free rotation
   noSquishFreeRotorOrderTwo();
@@ -1616,8 +1606,8 @@ void System::integrate()
   updateVelocities();
 
   // second part of bond-constraints
-  //RattleStageTwo();
-  
+  // RattleStageTwo();
+
   runningEnergies.translationalKineticEnergy = computeTranslationalKineticEnergy();
   runningEnergies.rotationalKineticEnergy = computeRotationalKineticEnergy();
 }
@@ -1626,12 +1616,13 @@ void System::updatePositions()
 {
   size_t moleculeIndex{};
   double scaling = 1.0;
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      moleculePositions[moleculeIndex].centerOfMassPosition = scaling * moleculePositions[moleculeIndex].centerOfMassPosition + 
-                                                              timeStep * moleculePositions[moleculeIndex].velocity;
+      moleculePositions[moleculeIndex].centerOfMassPosition =
+          scaling * moleculePositions[moleculeIndex].centerOfMassPosition +
+          timeStep * moleculePositions[moleculeIndex].velocity;
 
       ++moleculeIndex;
     }
@@ -1642,19 +1633,24 @@ void System::updateVelocities()
 {
   size_t moleculeIndex{};
   double scaling = 1.0;
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     double inverseMolecularMass = 1.0 / components[l].totalMass;
 
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
-      moleculePositions[moleculeIndex].velocity = scaling * moleculePositions[moleculeIndex].velocity - 
-                                                  0.5 * timeStep * moleculePositions[moleculeIndex].gradient * inverseMolecularMass;
+      moleculePositions[moleculeIndex].velocity =
+          scaling * moleculePositions[moleculeIndex].velocity -
+          0.5 * timeStep * moleculePositions[moleculeIndex].gradient * inverseMolecularMass;
 
-      moleculePositions[moleculeIndex].orientationMomentum.r  -= 0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.r;
-      moleculePositions[moleculeIndex].orientationMomentum.ix -= 0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.ix;
-      moleculePositions[moleculeIndex].orientationMomentum.iy -= 0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iy;
-      moleculePositions[moleculeIndex].orientationMomentum.iz -= 0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iz;
+      moleculePositions[moleculeIndex].orientationMomentum.r -=
+          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.r;
+      moleculePositions[moleculeIndex].orientationMomentum.ix -=
+          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.ix;
+      moleculePositions[moleculeIndex].orientationMomentum.iy -=
+          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iy;
+      moleculePositions[moleculeIndex].orientationMomentum.iz -=
+          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iz;
 
       ++moleculeIndex;
     }
@@ -1667,10 +1663,10 @@ void System::createCartesianPositions()
 
   size_t index{};
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     size_t size = components[l].atoms.size();
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
 
@@ -1678,7 +1674,7 @@ void System::createCartesianPositions()
       double3x3 M = double3x3::buildRotationMatrixInverse(q);
 
       double3 com = moleculePositions[moleculeIndex].centerOfMassPosition;
-      for(size_t i = 0; i != span.size(); i++)
+      for (size_t i = 0; i != span.size(); i++)
       {
         span[i].position = com + M * components[l].atoms[i].position;
       }
@@ -1695,29 +1691,31 @@ void System::checkCartesianPositions()
 
   size_t index{};
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     size_t size = components[l].atoms.size();
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
 
-      if(components[l].rigid)
+      if (components[l].rigid)
       {
         simd_quatd q = moleculePositions[moleculeIndex].orientation;
         double3x3 M = double3x3::buildRotationMatrixInverse(q);
 
         double3 com = moleculePositions[moleculeIndex].centerOfMassPosition;
-        for(size_t i = 0; i != span.size(); i++)
+        for (size_t i = 0; i != span.size(); i++)
         {
           double3 expandedPosition = com + M * components[l].atoms[i].position;
-          if((std::abs(span[i].position.x-expandedPosition.x) > 1e-5) ||
-             (std::abs(span[i].position.y-expandedPosition.y) > 1e-5) ||
-             (std::abs(span[i].position.z-expandedPosition.z) > 1e-5))
+          if ((std::abs(span[i].position.x - expandedPosition.x) > 1e-5) ||
+              (std::abs(span[i].position.y - expandedPosition.y) > 1e-5) ||
+              (std::abs(span[i].position.z - expandedPosition.z) > 1e-5))
           {
-            throw std::runtime_error(std::format("Difference detected between atom position ({} {} {}) and position generated from quaternion ({} {} {})\n",
-                  span[i].position.x, span[i].position.y, span[i].position.z,
-                  expandedPosition.x, expandedPosition.y, expandedPosition.z));
+            throw std::runtime_error(
+                std::format("Difference detected between atom position ({} {} {}) and position generated from "
+                            "quaternion ({} {} {})\n",
+                            span[i].position.x, span[i].position.y, span[i].position.z, expandedPosition.x,
+                            expandedPosition.y, expandedPosition.z));
           }
         }
       }
@@ -1730,7 +1728,7 @@ void System::checkCartesianPositions()
 
 void System::noSquishFreeRotorOrderTwo()
 {
-  for(size_t i = 0; i != 5; ++i)
+  for (size_t i = 0; i != 5; ++i)
   {
     noSquishRotate(3, 0.5 * timeStep / 5.0);
     noSquishRotate(2, 0.5 * timeStep / 5.0);
@@ -1746,48 +1744,48 @@ void System::noSquishRotate(size_t k, double dt)
   simd_quatd pn, qn;
 
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     double3 inverseInertiaVector = components[l].inverseInertiaVector;
 
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       simd_quatd p = moleculePositions[moleculeIndex].orientationMomentum;
       simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      switch(k)
+      switch (k)
       {
         case 1:
           zeta = dt * (-p.r * q.ix + p.ix * q.r + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x / 4.0;
-          pn.r  = std::cos(zeta) * p.r  - std::sin(zeta) * p.ix;
+          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.ix;
           pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.r;
           pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.iz;
           pn.iz = std::cos(zeta) * p.iz - std::sin(zeta) * p.iy;
 
-          qn.r  = std::cos(zeta) * q.r  - std::sin(zeta) * q.ix;
+          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.ix;
           qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.r;
           qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.iz;
           qn.iz = std::cos(zeta) * q.iz - std::sin(zeta) * q.iy;
           break;
         case 2:
           zeta = dt * (-p.r * q.iy - p.ix * q.iz + p.iy * q.r + p.iz * q.ix) * inverseInertiaVector.y / 4.0;
-          pn.r  = std::cos(zeta) * p.r  - std::sin(zeta) * p.iy;
+          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iy;
           pn.ix = std::cos(zeta) * p.ix - std::sin(zeta) * p.iz;
           pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.r;
           pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.ix;
 
-          qn.r  = std::cos(zeta) * q.r  - std::sin(zeta) * q.iy;
+          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iy;
           qn.ix = std::cos(zeta) * q.ix - std::sin(zeta) * q.iz;
           qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.r;
           qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.ix;
           break;
         case 3:
           zeta = dt * (-p.r * q.iz + p.ix * q.iy - p.iy * q.ix + p.iz * q.r) * inverseInertiaVector.z / 4.0;
-          pn.r  = std::cos(zeta) * p.r  - std::sin(zeta) * p.iz;
+          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iz;
           pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.iy;
           pn.iy = std::cos(zeta) * p.iy - std::sin(zeta) * p.ix;
           pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.r;
 
-          qn.r  = std::cos(zeta) * q.r  - std::sin(zeta) * q.iz;
+          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iz;
           qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.iy;
           qn.iy = std::cos(zeta) * q.iy - std::sin(zeta) * q.ix;
           qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.r;
@@ -1804,24 +1802,23 @@ void System::noSquishRotate(size_t k, double dt)
   }
 }
 
-
 void System::computeCenterOfMassAndQuaternionVelocities()
 {
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
   size_t index{};
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     size_t size = components[l].atoms.size();
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
 
       double inverseMolecularMass = 1.0 / components[l].totalMass;
 
       double3 com{};
-      for(size_t i = 0; i != span.size(); i++)
+      for (size_t i = 0; i != span.size(); i++)
       {
         double mass = components[l].definedAtoms[i].second;
         com += mass * span[i].position;
@@ -1830,7 +1827,7 @@ void System::computeCenterOfMassAndQuaternionVelocities()
 
       double3 com_velocity{};
       double3 angularMomentum{};
-      for(size_t i = 0; i != span.size(); i++)
+      for (size_t i = 0; i != span.size(); i++)
       {
         double mass = components[l].definedAtoms[i].second;
         double3 velocity = span[i].velocity;
@@ -1847,10 +1844,16 @@ void System::computeCenterOfMassAndQuaternionVelocities()
       double3x3 M = double3x3::buildRotationMatrix(q);
       double3 angularVelocity = (M * angularMomentum) * components[l].inverseInertiaVector;
 
-      moleculePositions[moleculeIndex].orientationMomentum.ix = 2.0 * ( q.r  * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iy = 2.0 * ( q.iz * (I.x * angularVelocity.x) + q.r  * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iz = 2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r  * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.r  = 2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.ix =
+          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iy =
+          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.iz =
+          2.0 *
+          (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+      moleculePositions[moleculeIndex].orientationMomentum.r =
+          2.0 *
+          (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
 
       ++moleculeIndex;
       index += size;
@@ -1864,14 +1867,14 @@ void System::computeCenterOfMassAndQuaternionGradients()
 
   size_t index{};
   size_t moleculeIndex{};
-  for(size_t l = 0; l != components.size(); ++l)
+  for (size_t l = 0; l != components.size(); ++l)
   {
     size_t size = components[l].atoms.size();
-    for(size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
     {
       std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
       double3 com_gradient{};
-      for(size_t i = 0; i != span.size(); i++)
+      for (size_t i = 0; i != span.size(); i++)
       {
         com_gradient += span[i].gradient;
       }
@@ -1881,27 +1884,30 @@ void System::computeCenterOfMassAndQuaternionGradients()
       simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
       double3x3 M = double3x3::buildRotationMatrix(orientation);
       double inverseMoleculeMass = 1.0 / components[l].totalMass;
-      for(size_t i = 0; i != span.size(); i++)
+      for (size_t i = 0; i != span.size(); i++)
       {
         double mass = components[l].definedAtoms[i].second;
         double3 F = M * (span[i].gradient - com_gradient * mass * inverseMoleculeMass);
         double3 dr = components[l].atoms[i].position;
         torque += double3::cross(F, dr);
 
-        //span[i].gradient = com_gradient;
+        // span[i].gradient = com_gradient;
       }
 
-      moleculePositions[moleculeIndex].orientationGradient.ix = -2.0 * ( orientation.r  * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.iy = -2.0 * ( orientation.iz * torque.x + orientation.r  * torque.y - orientation.ix * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.iz = -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r  * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.r  = -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.ix =
+          -2.0 * (orientation.r * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.iy =
+          -2.0 * (orientation.iz * torque.x + orientation.r * torque.y - orientation.ix * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.iz =
+          -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r * torque.z);
+      moleculePositions[moleculeIndex].orientationGradient.r =
+          -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
 
       ++moleculeIndex;
       index += size;
     }
   }
 }
-
 
 inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double>& move)
 {
@@ -1916,23 +1922,19 @@ inline std::string formatMoveStatistics(const std::string name, const MoveStatis
   return stream.str();
 }
 
-inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double3> &move)
+inline std::string formatMoveStatistics(const std::string name, const MoveStatistics<double3>& move)
 {
   std::ostringstream stream;
 
-  std::print(stream, "{} total:        {:10} {:10} {:10}\n", 
-                     name, move.counts.x, move.counts.y, move.counts.z);
-  std::print(stream, "{} constructed:  {:10} {:10} {:10}\n", 
-                     name, move.constructed.x, move.constructed.y, move.constructed.z);
-  std::print(stream, "{} accepted:     {:10} {:10} {:10}\n", 
-                     name, move.accepted.x, move.accepted.y, move.accepted.z);
-  std::print(stream, "{} fraction:     {:10f} {:10f} {:10f}\n", 
-                     name, 
-                     move.accepted.x / std::max(1.0, double(move.counts.x)),
-                     move.accepted.y / std::max(1.0, double(move.counts.y)), 
-                     move.accepted.z / std::max(1.0, double(move.counts.z)));
-  std::print(stream, "{} max-change:   {:10f} {:10f} {:10f}\n\n", 
-                     name, move.maxChange.x, move.maxChange.y, move.maxChange.z);
+  std::print(stream, "{} total:        {:10} {:10} {:10}\n", name, move.counts.x, move.counts.y, move.counts.z);
+  std::print(stream, "{} constructed:  {:10} {:10} {:10}\n", name, move.constructed.x, move.constructed.y,
+             move.constructed.z);
+  std::print(stream, "{} accepted:     {:10} {:10} {:10}\n", name, move.accepted.x, move.accepted.y, move.accepted.z);
+  std::print(
+      stream, "{} fraction:     {:10f} {:10f} {:10f}\n", name, move.accepted.x / std::max(1.0, double(move.counts.x)),
+      move.accepted.y / std::max(1.0, double(move.counts.y)), move.accepted.z / std::max(1.0, double(move.counts.z)));
+  std::print(stream, "{} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y,
+             move.maxChange.z);
 
   return stream.str();
 }
@@ -1942,35 +1944,35 @@ std::string System::writeMCMoveStatistics() const
   std::ostringstream stream;
 
   std::print(stream, "{}", mc_moves_statistics.writeMCMoveStatistics());
-  for (size_t componentId = 0; const Component& component: components)
+  for (size_t componentId = 0; const Component& component : components)
   {
-    std::print(stream,"Component {} [{}]\n", componentId, component.name);
+    std::print(stream, "Component {} [{}]\n", componentId, component.name);
 
     std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics());
 
-    if(component.hasFractionalMolecule)
+    if (component.hasFractionalMolecule)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
 
-      std::print(stream, "{}", 
+      std::print(stream, "{}",
                  component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
-      std::print(stream, "{}", 
+      std::print(stream, "{}",
                  component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
-    if(component.mc_moves_probabilities.probabilityWidomMove > 0.0)
+    if (component.mc_moves_probabilities.probabilityWidomMove > 0.0)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
-      std::print(stream, "{}", 
-        component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(
+          stream, "{}",
+          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     ++componentId;
   }
 
- 
   std::print(stream, "\n\n");
 
   return stream.str();
@@ -2003,7 +2005,8 @@ nlohmann::json System::jsonMCMoveStatistics() const
       double imposedFugacity = component.molFraction * pressure;
       std::print(
           stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential,
+    imposedFugacity));
     }
     */
     ++componentId;
@@ -2012,7 +2015,7 @@ nlohmann::json System::jsonMCMoveStatistics() const
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
 {
   archive << s.versionNumber;
 
@@ -2029,7 +2032,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.components;
   archive << s.equationOfState;
   archive << s.loadings;
-  archive << s.swapableComponents;
+  archive << s.swappableComponents;
   archive << s.initialNumberOfMolecules;
   archive << s.numberOfMoleculesPerComponent;
   archive << s.numberOfIntegerMoleculesPerComponent;
@@ -2097,21 +2100,21 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System
   archive << s.averagePressure;
   archive << s.averageSimulationBox;
   archive << s.propertyConventionalRadialDistributionFunction;
-  //archive << s.propertyRadialDistributionFunction;
-  //archive << s.propertyDensityGrid;
+  // archive << s.propertyRadialDistributionFunction;
+  // archive << s.propertyDensityGrid;
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > s.versionNumber)
+  if (versionNumber > s.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'System' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(
+        std::format("Invalid version reading 'System' at line {} in file {}\n", location.line(), location.file_name()));
   }
 
   archive >> s.systemId;
@@ -2127,7 +2130,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.components;
   archive >> s.equationOfState;
   archive >> s.loadings;
-  archive >> s.swapableComponents;
+  archive >> s.swappableComponents;
   archive >> s.initialNumberOfMolecules;
   archive >> s.numberOfMoleculesPerComponent;
   archive >> s.numberOfIntegerMoleculesPerComponent;
@@ -2195,8 +2198,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s)
   archive >> s.averagePressure;
   archive >> s.averageSimulationBox;
   archive >> s.propertyConventionalRadialDistributionFunction;
-  //archive >> s.propertyRadialDistributionFunction;
-  //archive >> s.propertyDensityGrid;
+  // archive >> s.propertyRadialDistributionFunction;
+  // archive >> s.propertyDensityGrid;
 
   return archive;
 }
@@ -2222,7 +2225,4 @@ void System::readRestartFile()
   moleculePositions = j["moleculePositions"];
 }
 
-std::string System::repr() const
-{
-  return std::string("system test");
-}
+std::string System::repr() const { return std::string("system test"); }

@@ -1,13 +1,13 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <tuple>
+#include <algorithm>
+#include <iostream>
+#include <numeric>
 #include <optional>
 #include <span>
-#include <iostream>
-#include <algorithm>
-#include <numeric>
+#include <tuple>
+#include <vector>
 #endif
 
 module cbmc_flexible_insertion;
@@ -29,17 +29,18 @@ import double3;
 import double3x3;
 import simulationbox;
 import energy_status;
-//import cbmc;
-//import cbmc_growing_status;
-//import cbmc_first_bead_data;
-//import cbmc_chain_data;
+// import cbmc;
+// import cbmc_growing_status;
+// import cbmc_first_bead_data;
+// import cbmc_chain_data;
 import forcefield;
 import energy_factor;
 import running_energy;
 
-
 /*
-[[nodiscard]] std::optional<ChainData> growFlexibleMoleculeSwapInsertion(const Component &component, RandomNumber &random, double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double scaling, [[maybe_unused]] std::vector<Atom> atoms) noexcept
+[[nodiscard]] std::optional<ChainData> growFlexibleMoleculeSwapInsertion(const Component &component, RandomNumber
+&random, double cutOff, double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, double
+scaling, [[maybe_unused]] std::vector<Atom> atoms) noexcept
 {
   for (Atom& atom : atoms)
   {
@@ -47,8 +48,9 @@ import running_energy;
   }
   size_t startingBead = component.startingBead;
 
-  std::optional<FirstBeadData> 
-    const firstBeadData = growMoleculeMultipleFirstBeadSwapInsertion(random, cutOff, cutOffCoulomb, atoms[startingBead]);
+  std::optional<FirstBeadData>
+    const firstBeadData = growMoleculeMultipleFirstBeadSwapInsertion(random, cutOff, cutOffCoulomb,
+atoms[startingBead]);
 
   if (!firstBeadData) return std::nullopt;
 
@@ -59,14 +61,17 @@ import running_energy;
     return ChainData({firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
-  std::optional<ChainData> const rigidRotationData = growFlexibleMoleculeChain(random, cutOff, cutOffCoulomb, startingBead, atoms);
-  
+  std::optional<ChainData> const rigidRotationData = growFlexibleMoleculeChain(random, cutOff, cutOffCoulomb,
+startingBead, atoms);
+
   if (!rigidRotationData) return std::nullopt;
 
-  return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies, firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, 0.0);
+  return ChainData(rigidRotationData->atom, firstBeadData->energies + rigidRotationData->energies,
+firstBeadData->RosenbluthWeight * rigidRotationData->RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] std::optional<ChainData> growFlexibleMoleculeChain(RandomNumber &random, double cutOff, double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule) noexcept
+[[nodiscard]] std::optional<ChainData> growFlexibleMoleculeChain(RandomNumber &random, double cutOff, double
+cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule) noexcept
 {
   std::vector<std::vector<Atom>> trialPositions{};
 
@@ -74,9 +79,9 @@ import running_energy;
   {
     trialPositions.push_back(rotateRandomlyAround(random, molecule, startingBead));
   };
-  
-  const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> 
-  externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions, 
+
+  const std::vector<std::pair<std::vector<Atom>, RunningEnergy>>
+  externalEnergies = computeExternalNonOverlappingEnergies(cutOff, cutOffCoulomb, trialPositions,
                                                            std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 
@@ -91,7 +96,7 @@ import running_energy;
 
   if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;
 
-  return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight / 
+  return ChainData(externalEnergies[selected].first, externalEnergies[selected].second, RosenbluthWeight /
                    double(numberOfTrialDirections), 0.0);
 }
 */

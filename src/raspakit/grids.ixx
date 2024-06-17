@@ -3,18 +3,18 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
+#include <fstream>
 #include <istream>
 #include <ostream>
-#include <fstream>
+#include <print>
 #include <sstream>
 #include <type_traits>
-#include <print>
 #endif
 
 #if defined(_WIN32)
-  import <cassert>;
+import <cassert>;
 #else
-  #include <assert.h>
+#include <assert.h>
 #endif
 
 export module grids;
@@ -30,13 +30,11 @@ import <type_traits>;
 import <print>;
 #endif
 
-
 import archive;
 import double3;
 import stringutils;
 
 import scaling;
-
 
 export struct Grid
 {

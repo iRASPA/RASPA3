@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <iostream>
 #include <algorithm>
-#include <numeric>
 #include <chrono>
-#include <vector>
+#include <complex>
+#include <filesystem>
+#include <fstream>
+#include <ios>
+#include <iostream>
+#include <numeric>
+#include <optional>
+#include <print>
 #include <span>
 #include <string>
-#include <optional>
-#include <fstream>
-#include <filesystem>
 #include <tuple>
-#include <ios>
-#include <complex>
-#include <print>
+#include <vector>
 #endif
 
 module monte_carlo_transition_matrix;
@@ -35,7 +35,6 @@ import <ios>;
 import <complex>;
 import <print>;
 #endif
-
 
 import stringutils;
 import hardware_info;
@@ -69,17 +68,15 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 
-
-MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept :
-    numberOfCycles(reader.numberOfCycles),
-    numberOfInitializationCycles(reader.numberOfInitializationCycles),
-    numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
-    printEvery(reader.printEvery),
-    systems(std::move(reader.systems)),
-    random(reader.randomSeed),
-    estimation(reader.numberOfBlocks, reader.numberOfCycles)
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept
+    : numberOfCycles(reader.numberOfCycles),
+      numberOfInitializationCycles(reader.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
+      printEvery(reader.printEvery),
+      systems(std::move(reader.systems)),
+      random(reader.randomSeed),
+      estimation(reader.numberOfBlocks, reader.numberOfCycles)
 {
-    
 }
 
 System& MonteCarloTransitionMatrix::randomSystem()
@@ -101,24 +98,26 @@ void MonteCarloTransitionMatrix::run()
 
 void MonteCarloTransitionMatrix::initialize()
 {
-  for (System &system: systems)
+  for (System& system : systems)
   {
     system.tmmc.initialize();
 
     std::string directoryNameString = std::format("output/system_{}/", system.systemId);
-    std::filesystem::path directoryName{ directoryNameString };
+    std::filesystem::path directoryName{directoryNameString};
     std::filesystem::create_directories(directoryName);
 
-    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
-        system.systemId, system.temperature, system.input_pressure);
-    streams.emplace_back(fileNameString, std::ios::out );
+    std::string fileNameString =
+        std::format("output/system_{}/output_{}_{}.data", system.systemId, system.temperature, system.input_pressure);
+    streams.emplace_back(fileNameString, std::ios::out);
   }
 
-  for(System & system : systems)
+  for (System& system : systems)
   {
     // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0) system.containsTheFractionalMolecule = true;
-    else system.containsTheFractionalMolecule = false;
+    if (system.systemId == 0)
+      system.containsTheFractionalMolecule = true;
+    else
+      system.containsTheFractionalMolecule = false;
   }
 
   for (const System& system : systems)
@@ -138,7 +137,6 @@ void MonteCarloTransitionMatrix::initialize()
 
   for (System& system : systems)
   {
-
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 
@@ -146,7 +144,7 @@ void MonteCarloTransitionMatrix::initialize()
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
   };
-  
+
   for (size_t i = 0; i != numberOfInitializationCycles; i++)
   {
     for (size_t j = 0; j != systems.size(); ++j)
@@ -155,11 +153,13 @@ void MonteCarloTransitionMatrix::initialize()
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
-      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+      size_t numberOfSteps =
+          std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -173,7 +173,8 @@ void MonteCarloTransitionMatrix::initialize()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
 
-        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system.loadings =
+            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
         std::print(stream, "{}", system.writeInitializationStatusReport(i, numberOfInitializationCycles));
       }
     }
@@ -198,9 +199,10 @@ void MonteCarloTransitionMatrix::equilibrate()
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
 
-    for(Component &component : system.components)
+    for (Component& component : system.components)
     {
-      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize, system.containsTheFractionalMolecule);
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                             system.containsTheFractionalMolecule);
     }
   };
 
@@ -217,11 +219,13 @@ void MonteCarloTransitionMatrix::equilibrate()
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
-      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+      size_t numberOfSteps =
+          std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem);
+        MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -232,13 +236,14 @@ void MonteCarloTransitionMatrix::equilibrate()
 
     for (System& system : systems)
     {
-      for(Component &component : system.components)
+      for (Component& component : system.components)
       {
-        if(component.hasFractionalMolecule)
+        if (component.hasFractionalMolecule)
         {
-          if(system.containsTheFractionalMolecule)
+          if (system.containsTheFractionalMolecule)
           {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, system.containsTheFractionalMolecule);
+            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+                                                   system.containsTheFractionalMolecule);
           }
         }
       }
@@ -250,14 +255,17 @@ void MonteCarloTransitionMatrix::equilibrate()
       {
         std::ostream stream(streams[system.systemId].rdbuf());
 
-        system.loadings = Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system.loadings =
+            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReportMC(i, numberOfEquilibrationCycles));
-        for(Component &component : system.components)
+        for (Component& component : system.components)
         {
-          if(component.hasFractionalMolecule)
+          if (component.hasFractionalMolecule)
           {
-            component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, system.containsTheFractionalMolecule);
+            component.lambdaGC.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
+                system.containsTheFractionalMolecule);
           }
         }
       }
@@ -279,21 +287,22 @@ void MonteCarloTransitionMatrix::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.runningEnergies = system.computeTotalEnergies(); 
+    system.runningEnergies = system.computeTotalEnergies();
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
-    //system.sampleMovie.initialize();
+    // system.sampleMovie.initialize();
 
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
 
-    for(Component &component : system.components)
+    for (Component& component : system.components)
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
-      if(component.hasFractionalMolecule)
+      if (component.hasFractionalMolecule)
       {
-        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, system.containsTheFractionalMolecule);
+        component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
+                                               system.containsTheFractionalMolecule);
       }
     }
   };
@@ -302,7 +311,7 @@ void MonteCarloTransitionMatrix::production()
   {
     systems[j].tmmc.numberOfSteps = 0;
   }
-  
+
   for (size_t i = 0; i != numberOfCycles; i++)
   {
     estimation.setCurrentSample(i);
@@ -312,12 +321,14 @@ void MonteCarloTransitionMatrix::production()
       std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
-      
-      size_t numberOfSteps = std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
+
+      size_t numberOfSteps =
+          std::max(selectedSystem.numberOfMolecules(), size_t(20)) * selectedSystem.numerOfAdsorbateComponents();
       for (size_t k = 0; k != numberOfSteps; k++)
       {
         size_t selectedComponent = selectedSystem.randomComponent(random);
-        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectSecondSystem, selectedComponent, fractionalMoleculeSystem, estimation.currentBin);
+        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectSecondSystem, selectedComponent,
+                                              fractionalMoleculeSystem, estimation.currentBin);
 
         size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
         selectedSystem.tmmc.updateHistogram(N);
@@ -341,7 +352,6 @@ void MonteCarloTransitionMatrix::production()
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
 
-      
       system.sampleProperties(estimation.currentBin, estimation.currentBin);
     }
 
@@ -362,9 +372,9 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
-    //for (System& system : systems)
+    // for (System& system : systems)
     //{
-        //system.sampleMovie.update(i);
+    // system.sampleMovie.update(i);
     //}
   }
 
@@ -384,12 +394,12 @@ void MonteCarloTransitionMatrix::output()
     RunningEnergy runningEnergies = system.runningEnergies;
     stream << runningEnergies.printMC("Running energies");
     std::print(stream, "\n\n\n\n");
-    
+
     system.runningEnergies = system.computeTotalEnergies();
     RunningEnergy recomputedEnergies = system.runningEnergies;
     stream << recomputedEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
-    
+
     RunningEnergy drift = runningEnergies - recomputedEnergies;
     stream << drift.printMC("Monte-Carlo energy drift");
     std::print(stream, "\n\n\n\n");
@@ -398,9 +408,9 @@ void MonteCarloTransitionMatrix::output()
 
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");
-    
+
     std::print(stream, "{}", system.writeMCMoveStatistics());
-    //std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
+    // std::print(stream, system.lambda.writeAveragesStatistics(system.beta));
 
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
@@ -408,16 +418,17 @@ void MonteCarloTransitionMatrix::output()
     std::chrono::duration<double> totalSimulationTime = (t2 - t1);
     std::print(stream, "\nProduction simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
 
-    //std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
-    //std::print(stream, system.averagePressure.writeAveragesStatistics());
-    //std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
-    //std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
+    // std::print(stream, system.averageEnergies.writeAveragesStatistics(system.components));
+    // std::print(stream, system.averagePressure.writeAveragesStatistics());
+    // std::print(stream, system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents,
+    // system.components)); std::print(stream, system.averageLoadings.writeAveragesStatistics(system.components,
+    // system.frameworkMass));
   }
 }
 void MonteCarloTransitionMatrix::cleanup()
 {
-  //for (System& system : systems)
+  // for (System& system : systems)
   //{
-  //  //system.sampleMovie.closeOutputFile();
-  //}
+  //   //system.sampleMovie.closeOutputFile();
+  // }
 }

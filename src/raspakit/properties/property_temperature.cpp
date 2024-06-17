@@ -1,18 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <fstream>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <map>
-#include <array>
-#include <vector>
-#include <ranges>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <fstream>
+#include <map>
 #include <print>
+#include <ranges>
+#include <source_location>
+#include <vector>
 #endif
-  
+
 module property_temperature;
 
 #ifndef USE_LEGACY_HEADERS
@@ -26,7 +26,6 @@ import <vector>;
 import <algorithm>;
 import <print>;
 #endif
-
 
 import archive;
 
@@ -43,9 +42,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyTemp
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > temp.versionNumber)
+  if (versionNumber > temp.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyTemperature' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

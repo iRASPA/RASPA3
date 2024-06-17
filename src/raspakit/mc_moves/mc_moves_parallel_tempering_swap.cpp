@@ -73,12 +73,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   if (systemA.forceField != systemB.forceField)
   {
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy systemAHamiltonianB = Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions);
+    RunningEnergy systemAHamiltonianB =
+        Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions);
     time_end = std::chrono::system_clock::now();
     systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
 
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy systemBHamiltonianA = Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions);
+    RunningEnergy systemBHamiltonianA =
+        Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions);
     time_end = std::chrono::system_clock::now();
     systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
 
@@ -87,7 +89,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   }
   else
   {
-    acc = std::exp((systemB.beta - systemA.beta) * (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy()));
+    acc = std::exp((systemB.beta - systemA.beta) *
+                   (systemB.runningEnergies.potentialEnergy() - systemA.runningEnergies.potentialEnergy()));
   }
 
   if (systemA.pressure != systemB.pressure)

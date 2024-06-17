@@ -1,12 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstdint>
 #include <array>
+#include <cstdint>
+#include <memory>
 #include <tuple>
 #include <utility>
-#include <memory>
-#include <cstdint>
 #endif
 
 export module skboundingbox;
@@ -42,23 +41,22 @@ export struct SKBoundingBox
   double3 minimum() const { return _minimum; }
   SKBoundingBox adjustForTransformation(double4x4 transformation);
 
-  int64_t _versionNumber{ 1 };
+  int64_t _versionNumber{1};
   double3 _minimum = double3(0.0, 0.0, 0.0);
   double3 _maximum = double3(0.0, 0.0, 0.0);
 };
 
 inline SKBoundingBox operator+(const SKBoundingBox left, const SKBoundingBox right)
 {
-    return SKBoundingBox(left._minimum + right.minimum(), left._maximum + right._maximum);
+  return SKBoundingBox(left._minimum + right.minimum(), left._maximum + right._maximum);
 }
 
 inline SKBoundingBox operator+(const SKBoundingBox left, double3 right)
 {
-    return SKBoundingBox(left._minimum + right, left._maximum + right);
+  return SKBoundingBox(left._minimum + right, left._maximum + right);
 }
 
 inline SKBoundingBox operator-(const SKBoundingBox left, double3 right)
 {
-    return SKBoundingBox(left._minimum - right, left._maximum - right);
+  return SKBoundingBox(left._minimum - right, left._maximum - right);
 }
-

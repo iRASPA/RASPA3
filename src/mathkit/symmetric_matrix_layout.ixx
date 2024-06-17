@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
 #include <optional>
+#include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #else
-  import mdspan;
+import mdspan;
 #endif
 #endif
 
@@ -16,45 +16,37 @@ export module symmetric_matrix_layout;
 import <vector>;
 import <optional>;
 #if defined(__has_include) && __has_include(<mdspan>)
-  import <mdspan>;
+import <mdspan>;
 #else
-  import mdspan;
+import mdspan;
 #endif
 #endif
-
 
 export struct layout_symmetric_matrix
 {
-  template<class Extents>
-  requires (Extents::rank() = 2)
+  template <class Extents>
+    requires(Extents::rank() = 2)
 
   struct mapping
   {
     using extents_type = Extents;
     using size_type = typename extents_type::size_type;
 
-    constexpr mapping(const extents_type &extents) noexcept:
-      _extents(extents), n(extents.extent(0))
+    constexpr mapping(const extents_type &extents) noexcept : _extents(extents), n(extents.extent(0))
+    {
+      if constexpr (extents_type::rank_dynamic() == 0)
       {
-        if constexpr(extents_type::rank_dynamic() == 0)
-        {
-          static_assert(extents_type::static_extent(0) == extents_type::static_extent(1));
-        }
-        else 
-        {
-          assert(_extents.extent(0) == _extents.extent(1));
-        }
+        static_assert(extents_type::static_extent(0) == extents_type::static_extent(1));
       }
-
-    constexpr const extents_type &extents() const noexcept
-    {
-      return _extents;
+      else
+      {
+        assert(_extents.extent(0) == _extents.extent(1));
+      }
     }
 
-    constexpr size_type required_span_size() const noexcept
-    {
-      return n * (n + 1) /2;
-    }
+    constexpr const extents_type &extents() const noexcept { return _extents; }
+
+    constexpr size_type required_span_size() const noexcept { return n * (n + 1) / 2; }
 
     constexpr size_type operator()(size_type i, size_type j) const noexcept
     {
@@ -70,9 +62,8 @@ export struct layout_symmetric_matrix
     static constexpr bool is_exhaustive() noexcept { return true; }
     static constexpr bool is_strided() noexcept { return false; }
 
-  private:
+   private:
     extents_type _extents;
     std::size_t n;
   };
 };
-

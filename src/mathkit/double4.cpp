@@ -1,13 +1,13 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <fstream>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <complex>
+#include <fstream>
+#include <map>
+#include <vector>
 #endif
 
 module double4;
@@ -48,4 +48,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double4 &vec
   archive >> vec.x >> vec.y >> vec.z >> vec.w;
   return archive;
 }
-

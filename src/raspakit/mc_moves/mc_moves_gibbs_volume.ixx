@@ -24,6 +24,6 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<std::pair<RunningEnergy, RunningEnergy>>
-  GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB);
+std::optional<std::pair<RunningEnergy, RunningEnergy>> GibbsVolumeMove(RandomNumber &random, System &systemA,
+                                                                       System &systemB);
 }

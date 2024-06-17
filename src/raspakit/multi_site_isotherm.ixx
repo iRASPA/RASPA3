@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
-#include <vector>
+#include <cstddef>
 #include <iostream>
+#include <vector>
 #endif
 
 export module multi_site_isotherm;
@@ -20,7 +20,6 @@ import hashcombine;
 import randomnumbers;
 import isotherm;
 
-
 export struct MultiSiteIsotherm
 {
   enum class PredictionMethod
@@ -31,22 +30,22 @@ export struct MultiSiteIsotherm
     SEI = 3
   };
 
-  bool operator==(MultiSiteIsotherm const&) const = default;
+  bool operator==(MultiSiteIsotherm const &) const = default;
 
-  size_t numberOfSites{ 0 };
+  size_t numberOfSites{0};
   std::vector<Isotherm> sites{};
 
-  size_t numberOfParameters { 0 };
+  size_t numberOfParameters{0};
   std::vector<std::pair<size_t, size_t>> parameterIndices{};
   std::vector<size_t> siteParameterIndex{};
 
-  double& parameters(size_t i) 
-  { 
+  double &parameters(size_t i)
+  {
     std::pair<size_t, size_t> index = parameterIndices[i];
     return sites[index.first].parameters[index.second];
   }
-  const double& parameters(size_t i) const
-  { 
+  const double &parameters(size_t i) const
+  {
     std::pair<size_t, size_t> index = parameterIndices[i];
     return sites[index.first].parameters[index.second];
   }
@@ -59,7 +58,7 @@ export struct MultiSiteIsotherm
   MultiSiteIsotherm randomized(RandomNumber &random, double maximumLoading)
   {
     MultiSiteIsotherm copy(*this);
-    for(size_t i = 0; i < numberOfSites; ++i)
+    for (size_t i = 0; i < numberOfSites; ++i)
     {
       copy.sites[i].randomize(random, maximumLoading);
     }
@@ -69,7 +68,7 @@ export struct MultiSiteIsotherm
   inline double value(double pressure) const
   {
     double sum = 0.0;
-    for(size_t i = 0; i < numberOfSites; ++i)
+    for (size_t i = 0; i < numberOfSites; ++i)
     {
       sum += sites[i].value(pressure);
     }
@@ -78,7 +77,7 @@ export struct MultiSiteIsotherm
 
   inline double value(size_t site, double pressure) const
   {
-    if(site < numberOfSites)
+    if (site < numberOfSites)
     {
       return sites[site].value(pressure);
     }
@@ -89,7 +88,7 @@ export struct MultiSiteIsotherm
   inline double psiForPressure(double pressure) const
   {
     double sum = 0.0;
-    for(size_t i = 0; i < numberOfSites; ++i)
+    for (size_t i = 0; i < numberOfSites; ++i)
     {
       sum += sites[i].psiForPressure(pressure);
     }
@@ -99,7 +98,7 @@ export struct MultiSiteIsotherm
   // computed reduced grand potential for pressure
   inline double psiForPressure(size_t site, double pressure) const
   {
-    if(site < numberOfSites)
+    if (site < numberOfSites)
     {
       return sites[site].psiForPressure(pressure);
     }
@@ -110,7 +109,7 @@ export struct MultiSiteIsotherm
 
   double inversePressureForPsi(size_t site, double reduced_grand_potential, double &cachedP0) const
   {
-    if(site < numberOfSites)
+    if (site < numberOfSites)
     {
       return sites[site].inversePressureForPsi(reduced_grand_potential, cachedP0);
     }
@@ -123,19 +122,20 @@ export struct MultiSiteIsotherm
 
 namespace std
 {
-  export template <> struct hash<MultiSiteIsotherm>
+export template <>
+struct hash<MultiSiteIsotherm>
+{
+  size_t operator()(const MultiSiteIsotherm &k) const
   {
-    size_t operator()(const MultiSiteIsotherm& k) const
+    std::size_t h = 0;
+    for (const Isotherm &isotherm : k.sites)
     {
-      std::size_t h=0;
-      for(const Isotherm &isotherm: k.sites)
+      for (size_t i = 0; i < isotherm.numberOfParameters; ++i)
       {
-        for(size_t i = 0; i < isotherm.numberOfParameters; ++i)
-        {
-          hash_combine(h, isotherm.parameters[i]);
-        }
+        hash_combine(h, isotherm.parameters[i]);
       }
-      return h;
     }
-  };
-}
+    return h;
+  }
+};
+}  // namespace std

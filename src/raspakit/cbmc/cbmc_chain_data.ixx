@@ -17,7 +17,6 @@ import double3;
 import randomnumbers;
 import running_energy;
 
-
 export struct ChainData
 {
   Molecule molecule;
@@ -26,8 +25,9 @@ export struct ChainData
   double RosenbluthWeight;
   double storedR;
 
-  ChainData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept :
-      molecule(molecule), atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
+  ChainData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
+            double storedR) noexcept
+      : molecule(molecule), atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };

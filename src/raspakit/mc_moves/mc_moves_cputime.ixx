@@ -20,7 +20,11 @@ import json;
 
 export struct MCMoveCpuTime
 {
+<<<<<<< HEAD
   MCMoveCpuTime(){};
+=======
+  MCMoveCpuTime(){};
+>>>>>>> 0df18b6cf497572d0e6e8215a6df597fb940c5d9
 
   uint64_t versionNumber{1};
 
@@ -176,16 +180,16 @@ export struct MCMoveCpuTime
 
   void clearTimingStatistics();
   const std::string writeMCMoveCPUTimeStatistics() const;
-  const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string &componentName) const;
+  const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string& componentName) const;
   const std::string writeMCMoveCPUTimeStatistics(std::chrono::duration<double> total) const;
 
   const nlohmann::json jsonSystemMCMoveCPUTimeStatistics() const;
   const nlohmann::json jsonComponentMCMoveCPUTimeStatistics() const;
   const nlohmann::json jsonOverallMCMoveCPUTimeStatistics(std::chrono::duration<double> total) const;
 
-  MCMoveCpuTime(const MCMoveCpuTime &) = default;
+  MCMoveCpuTime(const MCMoveCpuTime&) = default;
 
-  inline MCMoveCpuTime &operator=(const MCMoveCpuTime &b)
+  inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
   {
     propertySampling = b.propertySampling;
     energyPressureComputation = b.energyPressureComputation;
@@ -327,7 +331,7 @@ export struct MCMoveCpuTime
     return *this;
   }
 
-  inline MCMoveCpuTime &operator+=(const MCMoveCpuTime &b)
+  inline MCMoveCpuTime& operator+=(const MCMoveCpuTime& b)
   {
     propertySampling += b.propertySampling;
     energyPressureComputation += b.energyPressureComputation;
@@ -469,11 +473,11 @@ export struct MCMoveCpuTime
     return *this;
   }
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveCpuTime &t);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTime &t);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMoveCpuTime& t);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTime& t);
 };
 
-export inline MCMoveCpuTime operator+(const MCMoveCpuTime &a, const MCMoveCpuTime &b)
+export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTime& b)
 {
   MCMoveCpuTime m;
 

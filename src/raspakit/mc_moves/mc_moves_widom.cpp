@@ -1,19 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <vector>
-#include <array>
-#include <tuple>
-#include <optional>
-#include <span>
-#include <optional>
-#include <tuple>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
-#include <iostream>
+#include <complex>
 #include <iomanip>
+#include <iostream>
+#include <optional>
+#include <span>
+#include <tuple>
+#include <vector>
 #endif
 
 module mc_moves_widom;
@@ -59,9 +57,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-
-std::optional<double> 
-MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedComponent)
+std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.counts += 1;
@@ -70,15 +66,15 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
   double cutOffVDW = system.forceField.cutOffVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
   Component::GrowType growType = system.components[selectedComponent].growType;
-  
+
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  //std::vector<Atom> atoms = 
-  //  system.components[selectedComponent].recenteredCopy(1.0, system.numberOfMoleculesPerComponent[selectedComponent]);
-  std::optional<ChainData> growData = 
-    CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
-                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, 
-                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
-                                    system.numberOfTrialDirections);
+  // std::vector<Atom> atoms =
+  //   system.components[selectedComponent].recenteredCopy(1.0,
+  //   system.numberOfMoleculesPerComponent[selectedComponent]);
+  std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
+      random, system.hasExternalField, system.components, system.forceField, system.simulationBox,
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType, cutOffVDW, cutOffCoulomb,
+      selectedComponent, selectedMolecule, 1.0, 0uz, system.numberOfTrialDirections);
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
   system.mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
@@ -86,31 +82,28 @@ MC_Moves::WidomMove(RandomNumber &random, System& system, size_t selectedCompone
   if (!growData) return std::nullopt;
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
-  
+
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
   system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.totalConstructed += 1;
 
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifference = 
-    Interactions::energyDifferenceEwaldFourier(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                               system.storedEik, system.totalEik,
-                                               system.forceField, system.simulationBox,
-                                               newMolecule, {});
+  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+      system.simulationBox, newMolecule, {});
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
   system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
   system.mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
 
   RunningEnergy tailEnergyDifference =
-    Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                         system.spanOfMoleculeAtoms(),newMolecule, {}) +
-    Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,            
-                                         system.spanOfFrameworkAtoms(), newMolecule, {});
+      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
+                                                              system.spanOfMoleculeAtoms(), newMolecule, {}) +
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                 system.spanOfFrameworkAtoms(), newMolecule, {});
 
-  double correctionFactorEwald = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + 
-                                                          tailEnergyDifference.potentialEnergy()));
+  double correctionFactorEwald =
+      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 
-  return  correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 }
-
