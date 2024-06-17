@@ -88,11 +88,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
-<<<<<<< HEAD
 MonteCarlo::MonteCarlo() : random(std::nullopt){};
-=======
-MonteCarlo::MonteCarlo() : random(std::nullopt){};
->>>>>>> 0df18b6cf497572d0e6e8215a6df597fb940c5d9
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -687,7 +683,7 @@ void MonteCarlo::output()
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     std::print(
         stream, "{}",
-        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swapableComponents, system.components));
+        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
     std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
   }
 
