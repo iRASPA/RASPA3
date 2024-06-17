@@ -1,19 +1,19 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <iostream>
-#include <random>
-#include <sstream>
-#include <fstream>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
 #include <print>
+#include <random>
+#include <source_location>
+#include <sstream>
+#include <vector>
 #endif
 
 module property_energy;
@@ -34,7 +34,6 @@ import <algorithm>;
 import <print>;
 #endif
 
-
 import archive;
 import stringutils;
 import framework;
@@ -46,8 +45,8 @@ import energy_status_inter;
 import averages;
 import units;
 
-
-std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vector<Framework>& frameworkComponents, std::vector<Component>& components) const
+std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
+                                                    std::vector<Component> &components) const
 {
   std::ostringstream stream;
 
@@ -56,7 +55,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
   std::print(stream, "Energy averages and statistics:\n");
   std::print(stream, "===============================================================================\n\n");
 
-  if(externalField)
+  if (externalField)
   {
     std::print(stream, "ExternalField-molecular energy:\n");
     std::print(stream, "-------------------------------------------------------------------------------\n\n");
@@ -68,25 +67,26 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    ExternalField-molecule energy {}-{} [{}-{}]:\n", k, l,
-            components[k].name, components[l].name);
+          std::print(stream, "    ExternalField-molecule energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                     components[l].name);
         }
         else
         {
           prefactor *= 2.0;
           std::print(stream, "    ExternalField-molecule energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-            components[k].name, components[l].name);
+                     components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
         {
           EnergyStatus blockAverage = averagedEnergy(i);
-          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.externalFieldComponentEnergy(k, l).totalInter.energy);
+          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                     prefactor * blockAverage.externalFieldComponentEnergy(k, l).totalInter.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-          prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).totalInter.energy,
-          prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).totalInter.energy);
+                   prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).totalInter.energy,
+                   prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).totalInter.energy);
         std::print(stream, "\n");
       }
     }
@@ -102,25 +102,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l,
-            components[k].name, components[l].name);
+          std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-            components[k].name, components[l].name);
+          std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                     components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
         {
           EnergyStatus blockAverage = averagedEnergy(i);
-          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.externalFieldComponentEnergy(k, l).VanDerWaals.energy);
+          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                     prefactor * blockAverage.externalFieldComponentEnergy(k, l).VanDerWaals.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-          prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).VanDerWaals.energy,
-          prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).VanDerWaals.energy);
+                   prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).VanDerWaals.energy,
+                   prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).VanDerWaals.energy);
         std::print(stream, "\n");
       }
     }
@@ -132,26 +132,27 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l,
-            components[k].name, components[l].name);
+          std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                     components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-            components[k].name, components[l].name);
+          std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                     components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
         {
           EnergyStatus blockAverage = averagedEnergy(i);
-          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, 
-                             prefactor * blockAverage.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                     prefactor * blockAverage.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
-        std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-          prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy,
-          prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+        std::print(
+            stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
+            prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy,
+            prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
         std::print(stream, "\n");
       }
     }
@@ -163,25 +164,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l,
-            components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-            components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                     components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
         {
           EnergyStatus blockAverage = averagedEnergy(i);
-          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.externalFieldComponentEnergy(k, l).CoulombicReal.energy);
+          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                     prefactor * blockAverage.externalFieldComponentEnergy(k, l).CoulombicReal.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-          prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).CoulombicReal.energy,
-          prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).CoulombicReal.energy);
+                   prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).CoulombicReal.energy,
+                   prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).CoulombicReal.energy);
         std::print(stream, "\n");
       }
     }
@@ -193,32 +194,31 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l,
-            components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                     components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-            components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                     components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
         {
           EnergyStatus blockAverage = averagedEnergy(i);
-          std::print(stream, "        Block[ {:2d}] {: .6e}\n", 
-                             i, prefactor * blockAverage.externalFieldComponentEnergy(k, l).CoulombicFourier.energy);
+          std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                     prefactor * blockAverage.externalFieldComponentEnergy(k, l).CoulombicFourier.energy);
         }
         std::print(stream, "        -----------------------------------------------------------------------\n");
         std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-          prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).CoulombicFourier.energy,
-          prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).CoulombicFourier.energy);
+                   prefactor * computedAverage.first.externalFieldComponentEnergy(k, l).CoulombicFourier.energy,
+                   prefactor * computedAverage.second.externalFieldComponentEnergy(k, l).CoulombicFourier.energy);
         std::print(stream, "\n");
       }
     }
     std::print(stream, "\n\n");
   }
-
 
   std::print(stream, "Framework-molecule energy:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n\n");
@@ -230,25 +230,26 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Framework-molecule energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Framework-molecule energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                   components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Framework-molecule energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Framework-molecule energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.frameworkComponentEnergy(k, l).totalInter.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.frameworkComponentEnergy(k, l).totalInter.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.frameworkComponentEnergy(k, l).totalInter.energy,
-        prefactor * computedAverage.second.frameworkComponentEnergy(k, l).totalInter.energy);
+                 prefactor * computedAverage.first.frameworkComponentEnergy(k, l).totalInter.energy,
+                 prefactor * computedAverage.second.frameworkComponentEnergy(k, l).totalInter.energy);
       std::print(stream, "\n");
     }
   }
@@ -264,25 +265,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.frameworkComponentEnergy(k, l).VanDerWaals.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.frameworkComponentEnergy(k, l).VanDerWaals.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaals.energy,
-        prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaals.energy);
+                 prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaals.energy,
+                 prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaals.energy);
       std::print(stream, "\n");
     }
   }
@@ -294,26 +295,26 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                   components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, 
-                           prefactor * blockAverage.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy,
-        prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+                 prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy,
+                 prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy);
       std::print(stream, "\n");
     }
   }
@@ -325,25 +326,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.frameworkComponentEnergy(k, l).CoulombicReal.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.frameworkComponentEnergy(k, l).CoulombicReal.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicReal.energy,
-        prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicReal.energy);
+                 prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicReal.energy,
+                 prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicReal.energy);
       std::print(stream, "\n");
     }
   }
@@ -355,31 +356,29 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", 
-                           i, prefactor * blockAverage.frameworkComponentEnergy(k, l).CoulombicFourier.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.frameworkComponentEnergy(k, l).CoulombicFourier.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicFourier.energy,
-        prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicFourier.energy);
+                 prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicFourier.energy,
+                 prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicFourier.energy);
       std::print(stream, "\n");
     }
   }
   std::print(stream, "\n\n");
-
 
   std::print(stream, "Inter-molecular energy:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n\n");
@@ -391,25 +390,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Inter-molecular energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Inter-molecular energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Inter-molecular energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Inter-molecular energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.componentEnergy(k, l).totalInter.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.componentEnergy(k, l).totalInter.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.componentEnergy(k, l).totalInter.energy,
-        prefactor * computedAverage.second.componentEnergy(k, l).totalInter.energy);
+                 prefactor * computedAverage.first.componentEnergy(k, l).totalInter.energy,
+                 prefactor * computedAverage.second.componentEnergy(k, l).totalInter.energy);
       std::print(stream, "\n");
     }
   }
@@ -426,25 +425,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Van der Waals energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Van der Waals energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.componentEnergy(k, l).VanDerWaals.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.componentEnergy(k, l).VanDerWaals.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaals.energy,
-        prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaals.energy);
+                 prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaals.energy,
+                 prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaals.energy);
       std::print(stream, "\n");
     }
   }
@@ -456,26 +455,26 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy {}-{} [{}-{}]:\n", k, l, components[k].name,
+                   components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, 
-                           prefactor * blockAverage.componentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.componentEnergy(k, l).VanDerWaalsTailCorrection.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaalsTailCorrection.energy,
-        prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaalsTailCorrection.energy);
+                 prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaalsTailCorrection.energy,
+                 prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaalsTailCorrection.energy);
       std::print(stream, "\n");
     }
   }
@@ -487,25 +486,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Real energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Real energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.componentEnergy(k, l).CoulombicReal.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.componentEnergy(k, l).CoulombicReal.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.componentEnergy(k, l).CoulombicReal.energy,
-        prefactor * computedAverage.second.componentEnergy(k, l).CoulombicReal.energy);
+                 prefactor * computedAverage.first.componentEnergy(k, l).CoulombicReal.energy,
+                 prefactor * computedAverage.second.componentEnergy(k, l).CoulombicReal.energy);
       std::print(stream, "\n");
     }
   }
@@ -517,26 +516,25 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy {}-{} [{}-{}]:\n", k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k,
-          components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy {}-{} + {}-{} [{}-{}]:\n", k, l, l, k, components[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
       {
         EnergyStatus blockAverage = averagedEnergy(i);
-        std::print(stream, "        Block[ {:2d}] {: .6e}\n", 
-                           i, prefactor * blockAverage.componentEnergy(k, l).CoulombicFourier.energy);
+        std::print(stream, "        Block[ {:2d}] {: .6e}\n", i,
+                   prefactor * blockAverage.componentEnergy(k, l).CoulombicFourier.energy);
       }
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Average  {: .6e} +/- {: .6e} [K]\n",
-        prefactor * computedAverage.first.componentEnergy(k, l).CoulombicFourier.energy,
-        prefactor * computedAverage.second.componentEnergy(k, l).CoulombicFourier.energy);
+                 prefactor * computedAverage.first.componentEnergy(k, l).CoulombicFourier.energy,
+                 prefactor * computedAverage.second.componentEnergy(k, l).CoulombicFourier.energy);
       std::print(stream, "\n");
     }
   }
@@ -551,8 +549,8 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
     std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.totalEnergy.energy);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Average  {: .6e} +/- {: .6e} [K]\n", prefactor * computedAverage.first.totalEnergy.energy, 
-                                                               prefactor * computedAverage.second.totalEnergy.energy);
+  std::print(stream, "    Average  {: .6e} +/- {: .6e} [K]\n", prefactor * computedAverage.first.totalEnergy.energy,
+             prefactor * computedAverage.second.totalEnergy.energy);
 
   std::print(stream, "\n");
 
@@ -576,9 +574,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > e.versionNumber)
+  if (versionNumber > e.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyEnergy' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

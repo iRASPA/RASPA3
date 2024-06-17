@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
 #include <optional>
+#include <string>
 #include <vector>
 #endif
 
@@ -23,8 +23,8 @@ import forcefield;
 export struct CIFReader
 {
   CIFReader(const std::string& content, const ForceField& forceField);
- 
-  void parseLine(std::string &string);
+
+  void parseLine(std::string& string);
   void parseAudit(std::string& string);
   void parseChemical(std::string& string);
   void parseCell(std::string& string);

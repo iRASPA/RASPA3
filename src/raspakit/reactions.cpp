@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <sstream>
-#include <ostream>
-#include <vector>
-#include <map>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <fstream>
 #include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <map>
+#include <ostream>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 module reactions;
@@ -29,7 +29,6 @@ import <fstream>;
 import <complex>;
 import <print>;
 #endif
-
 
 import archive;
 import stringutils;
@@ -80,11 +79,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reactions &r
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > r.versionNumber)
+  if (versionNumber > r.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Reactions' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Reactions' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
   }
 
   archive >> r.list;

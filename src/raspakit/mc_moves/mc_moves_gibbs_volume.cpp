@@ -1,20 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <vector>
-#include <array>
-#include <tuple>
-#include <optional>
-#include <span>
-#include <optional>
-#include <tuple>
 #include <algorithm>
-#include <numeric>
+#include <array>
 #include <chrono>
 #include <cmath>
-#include <iostream>
+#include <complex>
 #include <iomanip>
+#include <iostream>
+#include <numeric>
+#include <optional>
+#include <span>
+#include <tuple>
+#include <vector>
 #endif
 
 module mc_moves_gibbs_volume;
@@ -61,9 +59,8 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-
-std::optional<std::pair<RunningEnergy, RunningEnergy>> 
-MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB)
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA,
+                                                                                 System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
@@ -77,33 +74,33 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   double maxVolumeChangeA = systemA.mc_moves_statistics.GibbsVolumeMove.maxChange;
   double oldVolumeB = systemB.simulationBox.volume;
   double totalVolume = oldVolumeA + oldVolumeB;
-  double expdv = std::exp(std::log(oldVolumeA/oldVolumeB) + maxVolumeChangeA * (2.0 * random.uniform() - 1.0));
+  double expdv = std::exp(std::log(oldVolumeA / oldVolumeB) + maxVolumeChangeA * (2.0 * random.uniform() - 1.0));
   double newVolumeA = expdv * totalVolume / (1.0 + expdv);
   double newVolumeB = totalVolume - newVolumeA;
 
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
-  double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(), 
+  double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(),
                                                               systemA.numberOfIntegerMoleculesPerComponent.end()));
-  double scaleA = std::pow(newVolumeA/oldVolumeA, 1.0/3.0);
+  double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalInterEnergyA = Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second);
+  RunningEnergy newTotalInterEnergyA =
+      Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalTailEnergyA = Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
+  RunningEnergy newTotalTailEnergyA =
+      Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy,
-                                                                               systemA.fixedFrameworkStoredEik, systemA.totalEik,
-                                                                               systemA.forceField, newBoxA,
-                                                                               systemA.components, systemA.numberOfMoleculesPerComponent,
-                                                                               newPositionsA.second);
+  RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
+      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
+      systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 
@@ -112,31 +109,29 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   systemA.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemA.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
 
-
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
-  double numberOfMoleculesB = static_cast<double>(std::reduce(systemB.numberOfIntegerMoleculesPerComponent.begin(), 
-                        systemB.numberOfIntegerMoleculesPerComponent.end()));
-  double scaleB = std::pow(newVolumeB/oldVolumeB, 1.0/3.0);
+  double numberOfMoleculesB = static_cast<double>(std::reduce(systemB.numberOfIntegerMoleculesPerComponent.begin(),
+                                                              systemB.numberOfIntegerMoleculesPerComponent.end()));
+  double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
 
-
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalInterEnergyB = Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second);
+  RunningEnergy newTotalInterEnergyB =
+      Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalTailEnergyB = Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
+  RunningEnergy newTotalTailEnergyB =
+      Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy,
-                                                                               systemB.fixedFrameworkStoredEik, systemB.totalEik,
-                                                                               systemB.forceField, newBoxB,
-                                                                               systemB.components, systemB.numberOfMoleculesPerComponent,
-                                                                               newPositionsB.second);
+  RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
+      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
+      systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 
@@ -145,13 +140,13 @@ MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA, System &systemB
   systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
 
-  double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) + 
+  double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) +
                   (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
 
   // apply acceptance/rejection rule
-  if(random.uniform() < std::exp(-systemA.beta * deltaU +
-           (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA/oldVolumeA))+
-           (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB/oldVolumeB)) ))
+  if (random.uniform() < std::exp(-systemA.beta * deltaU +
+                                  (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
+                                  (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     systemA.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
     systemA.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;

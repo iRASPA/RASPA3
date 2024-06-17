@@ -24,5 +24,5 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
+std::optional<RunningEnergy> volumeMove(RandomNumber &random, System &system);
 }

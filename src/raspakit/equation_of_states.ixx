@@ -35,30 +35,23 @@ export struct EquationOfState
     VaporLiquid = 4
   };
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  EquationOfState::FluidState fluidState{ EquationOfState::FluidState::Unknown };
-  EquationOfState::Type equationOfState{ EquationOfState::Type::PengRobinson };
-  EquationOfState::MultiComponentMixingRules
-    multiComponentMixingRules{ EquationOfState::MultiComponentMixingRules::VanDerWaals };
+  EquationOfState::FluidState fluidState{EquationOfState::FluidState::Unknown};
+  EquationOfState::Type equationOfState{EquationOfState::Type::PengRobinson};
+  EquationOfState::MultiComponentMixingRules multiComponentMixingRules{
+      EquationOfState::MultiComponentMixingRules::VanDerWaals};
 
   EquationOfState() = default;
 
-  EquationOfState(EquationOfState::Type type,
-                  EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
-                  double temperature,
-                  double pressure,
-                  const SimulationBox &simulationBox,
-                  double HeliumVoidFraction,
-                  std::vector<Component> &components); 
+  EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
+                  double temperature, double pressure, const SimulationBox &simulationBox, double HeliumVoidFraction,
+                  std::vector<Component> &components);
 
-  void computeComponentFluidProperties(EquationOfState::Type equationOfState,                           
-                                       EquationOfState::MultiComponentMixingRules multiComponentMixingRules,         
-                                       double temperature,
-                                       double pressure,
-                                       const SimulationBox &simulationBox,
-                                       double HeliumVoidFraction,
-                                       std::vector<Component> &components);
+  void computeComponentFluidProperties(EquationOfState::Type equationOfState,
+                                       EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
+                                       double temperature, double pressure, const SimulationBox &simulationBox,
+                                       double HeliumVoidFraction, std::vector<Component> &components);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EquationOfState &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EquationOfState &s);

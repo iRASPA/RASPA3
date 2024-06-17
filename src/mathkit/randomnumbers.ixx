@@ -1,13 +1,13 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <tuple>
-#include <random>
 #include <cmath>
-#include <utility>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <random>
+#include <tuple>
+#include <utility>
 #endif
 
 export module randomnumbers;
@@ -40,14 +40,12 @@ export struct RandomNumber
 
   bool operator==(RandomNumber const &rhs) const
   {
-    return (mt == rhs.mt) &&
-           (seed == rhs.seed) &&
-           (count == rhs.count);
+    return (mt == rhs.mt) && (seed == rhs.seed) && (count == rhs.count);
   }
 
   std::mt19937_64 mt;
-  size_t seed{ 1400 };
-  size_t count{ 0 };
+  size_t seed{1400};
+  size_t count{0};
   std::uniform_real_distribution<double> uniformDistribution;
   std::normal_distribution<double> normalDistribution;
 
@@ -63,17 +61,14 @@ export struct RandomNumber
     return normalDistribution(mt);
   }
 
-  size_t integer(size_t i, size_t j)
-  {
-    return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * uniform());
-  }
+  size_t integer(size_t i, size_t j) { return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * uniform()); }
 
   std::pair<size_t, size_t> randomPairAdjacentIntegers(size_t size)
   {
-    if(size <= 1) return std::make_pair(0, 0);
+    if (size <= 1) return std::make_pair(0, 0);
     size_t first = static_cast<size_t>(static_cast<double>(size - 1) * uniform());
     size_t second = first + 1;
-    if(uniform() < 0.5) std::swap(first, second);
+    if (uniform() < 0.5) std::swap(first, second);
     return std::make_pair(first, second);
   }
 
@@ -104,4 +99,3 @@ export struct RandomNumber
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RandomNumber &r);
 };
-

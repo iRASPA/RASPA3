@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <sstream>
 #include <ostream>
 #include <print>
+#include <sstream>
+#include <string>
 #endif
 
 module units;
@@ -15,7 +15,6 @@ import <sstream>;
 import <ostream>;
 import <print>;
 #endif
-
 
 import stringutils;
 import json;

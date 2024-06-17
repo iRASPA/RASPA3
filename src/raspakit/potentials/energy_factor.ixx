@@ -14,15 +14,12 @@ import <fstream>;
 
 import archive;
 
-
 export struct EnergyFactor
 {
   double energy;
   double dUdlambda;
 
-  EnergyFactor(double energy, double dUdlambda):
-      energy(energy),
-      dUdlambda(dUdlambda) {}
+  EnergyFactor(double energy, double dUdlambda) : energy(energy), dUdlambda(dUdlambda) {}
 
   bool operator==(EnergyFactor const&) const = default;
 
@@ -48,8 +45,8 @@ export struct EnergyFactor
     return v;
   }
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyFactor &e);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyFactor &e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyFactor& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyFactor& e);
 };
 
 export inline EnergyFactor operator+(const EnergyFactor& a, const EnergyFactor& b)
@@ -106,7 +103,7 @@ export inline EnergyFactor operator/(const EnergyFactor& a, const double& b)
   return m;
 }
 
-export inline EnergyFactor sqrt(const EnergyFactor & a)
+export inline EnergyFactor sqrt(const EnergyFactor& a)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = std::sqrt(a.energy);

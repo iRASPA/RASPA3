@@ -1,15 +1,15 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <array>
+#include <complex>
 #include <fstream>
 #include <iostream>
-#include <complex>
+#include <map>
 #include <numbers>
 #include <random>
-#include <vector>
-#include <array>
-#include <map>
 #include <utility>
+#include <vector>
 #endif
 
 module randomnumbers;
@@ -63,7 +63,7 @@ double3x3 RandomNumber::randomRotationAroundX(double angle)
 {
   double c = std::cos(angle);
   double s = std::sin(angle);
-  return double3x3(double3(1.0,0.0,0.0), double3(0.0,c,s), double3(0.0,-s,c));
+  return double3x3(double3(1.0, 0.0, 0.0), double3(0.0, c, s), double3(0.0, -s, c));
 }
 
 double3x3 RandomNumber::randomRotationAroundY(double angle)
@@ -109,7 +109,8 @@ simd_quatd RandomNumber::randomSimdQuatd()
   theta1 = 2.0 * std::numbers::pi * uniform();
   theta2 = 2.0 * std::numbers::pi * uniform();
 
-  return simd_quatd(sigma2 * std::cos(theta2), sigma1 * std::sin(theta1), sigma1 * std::cos(theta1), sigma2 * std::sin(theta2));
+  return simd_quatd(sigma2 * std::cos(theta2), sigma1 * std::sin(theta1), sigma1 * std::cos(theta1),
+                    sigma2 * std::sin(theta2));
 }
 
 simd_quatd RandomNumber::smallRandomQuaternion(double angleRange)
@@ -118,7 +119,6 @@ simd_quatd RandomNumber::smallRandomQuaternion(double angleRange)
   double angle = angleRange * 2.0 * ((double(rand()) / RAND_MAX) - 0.5);
   return simd_quatd::fromAxisAngle(angle, randomDirection).normalized();
 }
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r)
 {

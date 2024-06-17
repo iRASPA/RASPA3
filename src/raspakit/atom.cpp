@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <istream>
-#include <ostream>
-#include <sstream>
-#include <fstream>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <vector>
-#include <array>
-#include <map>
-#include <utility>
 #include <algorithm>
+#include <array>
+#include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <istream>
+#include <map>
+#include <ostream>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <utility>
+#include <vector>
 #endif
 
 module atom;
@@ -35,7 +35,6 @@ import <utility>;
 import <algorithm>;
 import <print>;
 #endif
-
 
 import archive;
 import double3;
@@ -72,5 +71,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom)
 
   return archive;
 }
-
-

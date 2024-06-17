@@ -22,8 +22,7 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<RunningEnergy> 
-  reinsertionMove(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule, 
-                  Molecule &molecule, std::span<Atom> molecule_atoms);
+std::optional<RunningEnergy> reinsertionMove(RandomNumber &random, System &system, size_t selectedComponent,
+                                             size_t selectedMolecule, Molecule &molecule,
+                                             std::span<Atom> molecule_atoms);
 }
-

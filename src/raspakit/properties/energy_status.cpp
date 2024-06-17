@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <array>
-#include <map>
 #include <algorithm>
-#include <format>
-#include <exception>
-#include <source_location>
+#include <array>
 #include <complex>
-#include <type_traits>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <vector>
 #endif
 
 module energy_status;
@@ -36,7 +36,6 @@ import <type_traits>;
 import <print>;
 #endif
 
-
 import archive;
 import stringutils;
 import units;
@@ -45,8 +44,7 @@ import energy_status_intra;
 import energy_status_inter;
 import energy_factor;
 
-
-std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& components, const std::string &label)
+std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &components, const std::string &label)
 {
   std::ostringstream stream;
 
@@ -54,16 +52,22 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
   std::print(stream, "Energy status {}\n", label);
   std::print(stream, "===============================================================================\n\n");
   std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
-  std::print(stream, "    framework-molecule Van der Waals:        {: .6e}\n", conv * frameworkMoleculeEnergy.VanDerWaals.energy);
-  std::print(stream, "    framework-molecule Van der Waals (Tail): {: .6e}\n", conv * frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
-  std::print(stream, "    framework-molecule Coulombic Real:       {: .6e}\n", conv * frameworkMoleculeEnergy.CoulombicReal.energy);
-  std::print(stream, "    framework-molecule Coulombic Fourier:    {: .6e}\n", conv * frameworkMoleculeEnergy.CoulombicFourier.energy);
+  std::print(stream, "    framework-molecule Van der Waals:        {: .6e}\n",
+             conv * frameworkMoleculeEnergy.VanDerWaals.energy);
+  std::print(stream, "    framework-molecule Van der Waals (Tail): {: .6e}\n",
+             conv * frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    framework-molecule Coulombic Real:       {: .6e}\n",
+             conv * frameworkMoleculeEnergy.CoulombicReal.energy);
+  std::print(stream, "    framework-molecule Coulombic Fourier:    {: .6e}\n",
+             conv * frameworkMoleculeEnergy.CoulombicFourier.energy);
   std::print(stream, "    molecule-molecule  Van der Waals:        {: .6e}\n", conv * interEnergy.VanDerWaals.energy);
-  std::print(stream, "    molecule-molecule  Van der Waals (Tail): {: .6e}\n", conv * interEnergy.VanDerWaalsTailCorrection.energy);
+  std::print(stream, "    molecule-molecule  Van der Waals (Tail): {: .6e}\n",
+             conv * interEnergy.VanDerWaalsTailCorrection.energy);
   std::print(stream, "    molecule-molecule  Coulombic Real:       {: .6e}\n", conv * interEnergy.CoulombicReal.energy);
-  std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e}\n", conv * interEnergy.CoulombicFourier.energy);
+  std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e}\n",
+             conv * interEnergy.CoulombicFourier.energy);
   std::print(stream, "    dU/dlambda:                              {: .6e}\n", conv * totalEnergy.dUdlambda);
-  
+
   for (size_t i = 0; i < components.size(); ++i)
   {
     std::print(stream, "    Component: {} [{}]\n", i, components[i].name);
@@ -80,17 +84,22 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component>& compon
     std::print(stream, "    Molecule bendBend          {: .6e}\n", conv * intraComponentEnergies[i].bendBend);
     std::print(stream, "    Molecule bendTorsion       {: .6e}\n", conv * intraComponentEnergies[i].bendTorsion);
     std::print(stream, "    Molecule intraVDW          {: .6e}\n", conv * intraComponentEnergies[i].intraVDW);
-    std::print(stream, "    Molecule intraChargeCharge {: .6e}\n\n", conv * intraComponentEnergies[i].intraChargeCharge);
+    std::print(stream, "    Molecule intraChargeCharge {: .6e}\n\n",
+               conv * intraComponentEnergies[i].intraChargeCharge);
     for (size_t j = 0; j < components.size(); ++j)
     {
       std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);
-      std::print(stream, "        Van der Waals:        {: .6e}\n", conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaals.energy);
-      std::print(stream, "        Van der Waals (Tail): {: .6e}\n", conv * 
-                                                                    interComponentEnergies[i * numberOfComponents + j].VanDerWaalsTailCorrection.energy);
-      std::print(stream, "        Coulombic Real:       {: .6e}\n", conv * interComponentEnergies[i * numberOfComponents + j].CoulombicReal.energy);
-      std::print(stream, "        Coulombic Fourier:    {: .6e}\n", conv * interComponentEnergies[i * numberOfComponents + j].CoulombicFourier.energy);
+      std::print(stream, "        Van der Waals:        {: .6e}\n",
+                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaals.energy);
+      std::print(stream, "        Van der Waals (Tail): {: .6e}\n",
+                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaalsTailCorrection.energy);
+      std::print(stream, "        Coulombic Real:       {: .6e}\n",
+                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicReal.energy);
+      std::print(stream, "        Coulombic Fourier:    {: .6e}\n",
+                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicFourier.energy);
       std::print(stream, "        -----------------------------------------------------------------------\n");
-      std::print(stream, "        Sum                   {: .6e}\n\n", conv * interComponentEnergies[i * numberOfComponents + j].totalInter.energy);
+      std::print(stream, "        Sum                   {: .6e}\n\n",
+                 conv * interComponentEnergies[i * numberOfComponents + j].totalInter.energy);
     }
   }
   std::print(stream, "\n");
@@ -122,9 +131,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > e.versionNumber)
+  if (versionNumber > e.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'EnergyStatus' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

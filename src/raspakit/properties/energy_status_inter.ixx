@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
-#include <iostream>
-#include <sstream>
-#include <fstream>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <print>
+#include <sstream>
+#include <string>
 #endif
 
 export module energy_status_inter;
@@ -20,14 +20,12 @@ import <cmath>;
 import <print>;
 #endif
 
-
 import archive;
 import energy_factor;
 
-
 export struct EnergyInter
 {
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   EnergyFactor VanDerWaals;
   EnergyFactor VanDerWaalsTailCorrection;
@@ -35,8 +33,12 @@ export struct EnergyInter
   EnergyFactor CoulombicFourier;
   EnergyFactor totalInter;
 
-  EnergyInter() : VanDerWaals(0.0, 0.0), VanDerWaalsTailCorrection(0.0, 0.0), CoulombicReal(0.0, 0.0), 
-                  CoulombicFourier(0.0, 0.0), totalInter(0.0, 0.0)
+  EnergyInter()
+      : VanDerWaals(0.0, 0.0),
+        VanDerWaalsTailCorrection(0.0, 0.0),
+        CoulombicReal(0.0, 0.0),
+        CoulombicFourier(0.0, 0.0),
+        totalInter(0.0, 0.0)
   {
   }
 
@@ -51,10 +53,7 @@ export struct EnergyInter
     totalInter = EnergyFactor(0.0, 0.0);
   }
 
-  void sumTotal()
-  {
-    totalInter = VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier;
-  }
+  void sumTotal() { totalInter = VanDerWaals + VanDerWaalsTailCorrection + CoulombicReal + CoulombicFourier; }
 
   inline EnergyFactor totalEnergyFactor() const
   {
@@ -97,8 +96,8 @@ export struct EnergyInter
     return v;
   }
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyInter &e);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyInter &e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyInter& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyInter& e);
 };
 
 export inline EnergyInter operator+(const EnergyInter& a, const EnergyInter& b)
@@ -156,7 +155,7 @@ export inline EnergyInter operator/(const EnergyInter& a, const double& b)
   return m;
 }
 
-export inline EnergyInter sqrt(const EnergyInter & a)
+export inline EnergyInter sqrt(const EnergyInter& a)
 {
   EnergyInter m{};
   m.VanDerWaals = sqrt(a.VanDerWaals);
@@ -166,4 +165,3 @@ export inline EnergyInter sqrt(const EnergyInter & a)
   m.totalInter = sqrt(a.totalInter);
   return m;
 }
-

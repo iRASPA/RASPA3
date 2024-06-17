@@ -18,20 +18,21 @@ import units;
 
 import double4;
 
-export [[clang::always_inline]] inline EnergyFactor 
-potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, 
-                       const double& scalingA, const double& scalingB, const double& r, 
-                       const double& chargeA, const double& chargeB)
+export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield,
+                                                                           const bool& groupIdA, const bool& groupIdB,
+                                                                           const double& scalingA,
+                                                                           const double& scalingB, const double& r,
+                                                                           const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;
-  switch(forcefield.chargeMethod)
+  switch (forcefield.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      EnergyFactor result = EnergyFactor(scaling * temp,
-                                        (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0));
+      EnergyFactor result =
+          EnergyFactor(scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0));
       return result;
     }
     case ForceField::ChargeMethod::Coulomb:

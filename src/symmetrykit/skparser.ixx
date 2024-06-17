@@ -2,10 +2,10 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstdlib>
-#include <vector>
-#include <tuple>
 #include <memory>
 #include <numbers>
+#include <tuple>
+#include <vector>
 #endif
 
 export module skparser;
@@ -23,21 +23,22 @@ import skstructure;
 
 export class SKParser
 {
-public:
-    enum class ImportType : int64_t
-    {
-        asSeperateProjects = 0,
-        asSingleProject = 1,
-        asMovieFrames = 2
-    };
-    SKParser();
-    virtual ~SKParser();
-    virtual void startParsing() noexcept(false) = 0;
-    std::vector<std::vector<std::shared_ptr<SKStructure>>> movies();
+ public:
+  enum class ImportType : int64_t
+  {
+    asSeperateProjects = 0,
+    asSingleProject = 1,
+    asMovieFrames = 2
+  };
+  SKParser();
+  virtual ~SKParser();
+  virtual void startParsing() noexcept(false) = 0;
+  std::vector<std::vector<std::shared_ptr<SKStructure>>> movies();
 
-    std::vector<std::tuple<double3, size_t, double> > firstTestFrame();
-protected:
-    double _a, _b, _c;
-    double _alpha, _beta, _gamma;
-    std::vector<std::vector<std::shared_ptr<SKStructure>>> _movies;
+  std::vector<std::tuple<double3, size_t, double>> firstTestFrame();
+
+ protected:
+  double _a, _b, _c;
+  double _alpha, _beta, _gamma;
+  std::vector<std::vector<std::shared_ptr<SKStructure>>> _movies;
 };

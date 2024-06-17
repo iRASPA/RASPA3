@@ -1,28 +1,27 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <iostream>
-#include <ostream>
-#include <sstream>
 #include <algorithm>
-#include <vector>
 #include <array>
-#include <map>
-#include <string>
-#include <span>
-#include <optional>
-#include <filesystem>
-#include <fstream>
+#include <chrono>
+#include <complex>
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <iterator>
-#include <chrono>
-#include <cstddef>
-#include <exception>
-#include <source_location>
-#include <complex>
-#include <type_traits>
+#include <map>
+#include <optional>
+#include <ostream>
 #include <print>
+#include <source_location>
+#include <span>
+#include <sstream>
+#include <string>
+#include <type_traits>
+#include <vector>
 #endif
 
 #if !defined(_WIN32)
@@ -59,7 +58,6 @@ import <type_traits>;
 import <print>;
 #endif
 
-
 import archive;
 import int3;
 import double3;
@@ -84,17 +82,12 @@ import bond_potential;
 import json;
 
 // default constructor, needed for binary restart-file
-Framework::Framework()
-{
-}
+Framework::Framework() {}
 
 // create Component in 'inputreader.cpp'
-Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string &componentName,
-                     std::optional<const std::string> fileName, int3 numberOfUnitCells) noexcept(false) :
-                     numberOfUnitCells(numberOfUnitCells),
-                     frameworkId(currentFramework),
-                     name(componentName),
-                     filenameData(fileName)
+Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string& componentName,
+                     std::optional<const std::string> fileName, int3 numberOfUnitCells) noexcept(false)
+    : numberOfUnitCells(numberOfUnitCells), frameworkId(currentFramework), name(componentName), filenameData(fileName)
 {
   if (filenameData.has_value())
   {
@@ -109,15 +102,16 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
 }
 
 // create programmatically an 'framework' component
-Framework::Framework(size_t frameworkId, const ForceField &forceField, std::string fileName, SimulationBox simulationBox, 
-                     size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false) :
-    simulationBox(simulationBox),
-    spaceGroupHallNumber(spaceGroupHallNumber),
-    numberOfUnitCells(numberOfUnitCells),
-    frameworkId(frameworkId),
-    name(fileName),
-    filenameData(fileName),
-    definedAtoms(definedAtoms)
+Framework::Framework(size_t frameworkId, const ForceField& forceField, std::string fileName,
+                     SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
+                     int3 numberOfUnitCells) noexcept(false)
+    : simulationBox(simulationBox),
+      spaceGroupHallNumber(spaceGroupHallNumber),
+      numberOfUnitCells(numberOfUnitCells),
+      frameworkId(frameworkId),
+      name(fileName),
+      filenameData(fileName),
+      definedAtoms(definedAtoms)
 {
   expandDefinedAtomsToUnitCell();
   makeSuperCell();
@@ -141,9 +135,7 @@ Framework::Framework(size_t frameworkId, const ForceField &forceField, std::stri
     unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
   }
-
 }
-
 
 void Framework::readFramework(const ForceField& forceField, const std::string& fileName)
 {
@@ -152,15 +144,14 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   const std::string frameworkFileName = fileName + ".cif";
 
   std::filesystem::path frameworkPathfile = std::filesystem::path(frameworkFileName);
-  if (!std::filesystem::exists(frameworkPathfile)) 
-    frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
+  if (!std::filesystem::exists(frameworkPathfile)) frameworkPathfile = std::filesystem::path(env_p) / frameworkFileName;
 
-  if (!std::filesystem::exists(frameworkPathfile)) 
+  if (!std::filesystem::exists(frameworkPathfile))
     throw std::runtime_error(std::format("File '{}' not found\n", frameworkFileName));
 
   std::ifstream t(frameworkPathfile);
   std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
- 
+
   CIFReader parser = CIFReader(fileContent, forceField);
   simulationBox = parser.simulationBox;
   definedAtoms = parser.fractionalAtoms;
@@ -189,7 +180,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   {
     unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = static_cast<uint8_t>(frameworkId);
-  }  
+  }
 }
 
 void Framework::expandDefinedAtomsToUnitCell()
@@ -244,15 +235,14 @@ void Framework::makeSuperCell()
         for (const Atom& atom : unitCellAtoms)
         {
           Atom atomCopy = atom;
-          atomCopy.position += simulationBox.cell * 
-                               double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          atomCopy.position +=
+              simulationBox.cell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
           atoms.push_back(atomCopy);
         }
       }
     }
   }
 }
-
 
 std::string Framework::printStatus(const ForceField& forceField) const
 {
@@ -262,15 +252,15 @@ std::string Framework::printStatus(const ForceField& forceField) const
 
   std::print(stream, "    number Of Atoms:  {}\n", unitCellAtoms.size());
   std::print(stream, "    Mass:             {} [amu]\n", mass);
-  
+
   for (size_t i = 0; i != definedAtoms.size(); ++i)
   {
     size_t atomType = static_cast<size_t>(definedAtoms[i].type);
 
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
-    std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", 
-                   i, atomTypeString, definedAtoms[i].position.x, definedAtoms[i].position.y, 
-                   definedAtoms[i].position.z, definedAtoms[i].charge);
+    std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", i, atomTypeString,
+               definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z,
+               definedAtoms[i].charge);
   }
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());
@@ -303,7 +293,7 @@ nlohmann::json Framework::jsonStatus() const
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c)
 {
   archive << c.versionNumber;
 
@@ -325,34 +315,34 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framew
 
   archive << c.chiralCenters;
   archive << c.bonds;
-  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  //std::vector<std::pair<size_t, size_t>> intraVDW{};
-  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  // std::vector<std::pair<size_t, size_t>> intraVDW{};
+  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > c.versionNumber)
+  if (versionNumber > c.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'Framework' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(std::format("Invalid version reading 'Framework' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
   }
 
   archive >> c.simulationBox;
@@ -373,26 +363,23 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c
 
   archive >> c.chiralCenters;
   archive >> c.bonds;
-  //std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  //std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  //std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  //std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  //std::vector<std::pair<size_t, size_t>> intraVDW{};
-  //std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  //std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  //std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
+  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
+  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
+  // std::vector<std::pair<size_t, size_t>> intraVDW{};
+  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
+  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
+  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   return archive;
 }
 
-std::string Framework::repr() const
-{
-  return std::string("Framework test");
-}
+std::string Framework::repr() const { return std::string("Framework test"); }

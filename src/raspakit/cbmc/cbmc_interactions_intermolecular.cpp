@@ -1,16 +1,16 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <numbers>
-#include <iostream>
 #include <algorithm>
-#include <vector>
-#include <span>
 #include <cmath>
-#include <optional>
-#include <thread>
 #include <future>
+#include <iostream>
+#include <numbers>
+#include <optional>
+#include <span>
+#include <thread>
 #include <type_traits>
+#include <vector>
 #endif
 
 module cbmc_interactions_intermolecular;
@@ -20,7 +20,7 @@ import <numbers>;
 import <iostream>;
 import <algorithm>;
 import <vector>;
-import <span>; 
+import <span>;
 import <cmath>;
 import <optional>;
 import <thread>;
@@ -46,11 +46,9 @@ import running_energy;
 import units;
 import threadpool;
 
-
-[[nodiscard]] std::optional<RunningEnergy> 
-CBMC::computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
-                                  std::span<const Atom> moleculeAtoms, double cutOffVDW, double cutOffCoulomb, 
-                                  std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
+[[nodiscard]] std::optional<RunningEnergy> CBMC::computeInterMolecularEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -74,7 +72,7 @@ CBMC::computeInterMolecularEnergy(const ForceField &forceField, const Simulation
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    for (int index = 0; const Atom& atom : atoms)
+    for (int index = 0; const Atom &atom : atoms)
     {
       if (index != skip)
       {
@@ -95,8 +93,8 @@ CBMC::computeInterMolecularEnergy(const ForceField &forceField, const Simulation
 
           if (rr < cutOffVDWSquared)
           {
-            EnergyFactor energyFactor = 
-              potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            EnergyFactor energyFactor =
+                potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
             energySum.moleculeMoleculeVDW += energyFactor.energy;
@@ -105,9 +103,8 @@ CBMC::computeInterMolecularEnergy(const ForceField &forceField, const Simulation
           if (!noCharges && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            EnergyFactor energyFactor = 
-              potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, 
-                                           chargeA, chargeB);
+            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA,
+                                                               scalingCoulombB, r, chargeA, chargeB);
 
             energySum.moleculeMoleculeCharge += energyFactor.energy;
             energySum.dudlambdaCharge += energyFactor.dUdlambda;

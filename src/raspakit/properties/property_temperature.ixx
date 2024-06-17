@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <array>
-#include <optional>
-#include <cmath>
-#include <string>
 #include <algorithm>
-#include <numeric>
-#include <numbers>
-#include <tuple>
-#include <iostream>
+#include <array>
+#include <cmath>
 #include <fstream>
+#include <iostream>
+#include <numbers>
+#include <numeric>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <vector>
 #endif
 
 export module property_temperature;
@@ -34,24 +34,21 @@ import archive;
 import averages;
 import simulationbox;
 
-inline std::pair<double, double>
-pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
+inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
-
 
 export struct PropertyTemperature
 {
   PropertyTemperature() {};
 
-  PropertyTemperature(size_t numberOfBlocks) :
-      numberOfBlocks(numberOfBlocks),
-      bookKeepingTemperature(numberOfBlocks, std::make_pair(0.0, 0.0))
+  PropertyTemperature(size_t numberOfBlocks)
+      : numberOfBlocks(numberOfBlocks), bookKeepingTemperature(numberOfBlocks, std::make_pair(0.0, 0.0))
   {
   }
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   size_t numberOfBlocks;
   std::vector<std::pair<double, double>> bookKeepingTemperature;
@@ -71,9 +68,8 @@ export struct PropertyTemperature
 
   double averagedTemperature() const
   {
-    std::pair<double, double> summedBlocks = 
-      std::accumulate(bookKeepingTemperature.begin(), bookKeepingTemperature.end(), 
-                      std::make_pair(0.0, 0.0), pair_sum);
+    std::pair<double, double> summedBlocks = std::accumulate(
+        bookKeepingTemperature.begin(), bookKeepingTemperature.end(), std::make_pair(0.0, 0.0), pair_sum);
     return summedBlocks.first / summedBlocks.second;
   }
 
@@ -83,10 +79,10 @@ export struct PropertyTemperature
 
     double sumOfSquares{};
     size_t numberOfSamples = 0;
-    for(size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingTemperature[blockIndex].second / bookKeepingTemperature[0].second > 0.5)
-      { 
+      {
         double value = averagedTemperature(blockIndex) - average;
         sumOfSquares += value * value;
         ++numberOfSamples;
@@ -94,7 +90,7 @@ export struct PropertyTemperature
     }
 
     double confidenceIntervalError{};
-    if(numberOfSamples >= 3)
+    if (numberOfSamples >= 3)
     {
       size_t degreesOfFreedom = numberOfSamples - 1;
       double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);

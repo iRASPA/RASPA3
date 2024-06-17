@@ -1,16 +1,16 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <array>
+#include <complex>
+#include <fstream>
 #include <iostream>
 #include <istream>
-#include <ostream>
-#include <fstream>
-#include <complex>
-#include <vector>
 #include <map>
-#include <array>
+#include <ostream>
 #include <utility>
-#include <algorithm>
+#include <vector>
 #endif
 
 module averages;
@@ -29,7 +29,6 @@ import <algorithm>;
 #endif
 
 import archive;
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BlockErrorEstimation &blockerror)
 {

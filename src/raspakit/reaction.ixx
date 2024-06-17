@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <numbers>
-#include <string>
-#include <sstream>
 #include <fstream>
+#include <numbers>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 export module reaction;
@@ -25,14 +25,14 @@ import json;
 export struct Reaction
 {
   Reaction() {};
-  Reaction(size_t id, std::vector<size_t> reactantStoichiometry, std::vector<size_t> productStoichiometry): 
-            id(id), reactantStoichiometry(reactantStoichiometry), productStoichiometry(productStoichiometry),
-            lambda(5,21)
-  {}
+  Reaction(size_t id, std::vector<size_t> reactantStoichiometry, std::vector<size_t> productStoichiometry)
+      : id(id), reactantStoichiometry(reactantStoichiometry), productStoichiometry(productStoichiometry), lambda(5, 21)
+  {
+  }
 
-  bool operator==(Reaction const&) const = default;
+  bool operator==(Reaction const &) const = default;
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   size_t id;
   std::vector<size_t> reactantStoichiometry;

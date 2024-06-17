@@ -1,23 +1,23 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <filesystem>
-#include <fstream>
-#include <cstdlib>
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <array>
-#include <map>
 #include <algorithm>
-#include <format>
-#include <exception>
-#include <source_location>
+#include <array>
 #include <complex>
-#include <type_traits>
-#include <iterator>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <iterator>
+#include <map>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <type_traits>
+#include <vector>
 #endif
 
 module pseudo_atom;
@@ -42,7 +42,6 @@ import <functional>;
 import <print>;
 #endif
 
-
 import archive;
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a)
@@ -61,9 +60,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > a.versionNumber)
+  if (versionNumber > a.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PseudoAtom' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

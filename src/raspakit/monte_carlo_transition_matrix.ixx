@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <chrono>
+#include <fstream>
+#include <iostream>
+#include <vector>
 #endif
 
 export module monte_carlo_transition_matrix;
@@ -24,7 +24,6 @@ import system;
 import mc_moves;
 import input_reader;
 import energy_status;
-
 
 export struct MonteCarloTransitionMatrix
 {
@@ -48,12 +47,12 @@ export struct MonteCarloTransitionMatrix
   size_t numberOfCycles;
   size_t numberOfInitializationCycles;
   size_t numberOfEquilibrationCycles;
-  size_t optimizeMCMovesEvery{ 5000 };
+  size_t optimizeMCMovesEvery{5000};
   size_t printEvery;
 
   std::vector<System> systems;
   RandomNumber random;
-  size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
+  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;
 

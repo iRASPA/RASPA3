@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <chrono>
+#include <fstream>
+#include <iostream>
 #include <optional>
+#include <vector>
 #endif
 
 export module molecular_dynamics;
@@ -21,14 +21,12 @@ import <optional>;
 import randomnumbers;
 import threadpool;
 
-
 import averages;
 import system;
 import mc_moves;
 import input_reader;
 import energy_status;
 import archive;
-
 
 export struct MolecularDynamics
 {
@@ -48,9 +46,9 @@ export struct MolecularDynamics
 
   MolecularDynamics();
 
-  MolecularDynamics(InputReader& reader) noexcept;
+  MolecularDynamics(InputReader &reader) noexcept;
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
   size_t numberOfCycles;
   size_t numberOfSteps;
@@ -61,18 +59,18 @@ export struct MolecularDynamics
   size_t rescaleWangLandauEvery;
   size_t optimizeMCMovesEvery;
 
-  size_t currentCycle{ 0 };
+  size_t currentCycle{0};
   SimulationStage simulationStage{SimulationStage::Uninitialized};
 
   std::vector<System> systems;
   RandomNumber random;
-  size_t fractionalMoleculeSystem{ 0 };   // the system where the fractional molecule is located
+  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;
 
   BlockErrorEstimation estimation;
 
-  std::chrono::duration<double> totalSimulationTime{ 0 };
+  std::chrono::duration<double> totalSimulationTime{0};
 
   void createOutputFiles();
   void run();
@@ -80,7 +78,7 @@ export struct MolecularDynamics
   void equilibrate();
   void production();
   void output();
-  System& randomSystem();
+  System &randomSystem();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MolecularDynamics &mc);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MolecularDynamics &mc);

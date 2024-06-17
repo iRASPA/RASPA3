@@ -16,7 +16,6 @@ import double3;
 import randomnumbers;
 import running_energy;
 
-
 export struct FirstBeadData
 {
   Atom atom;
@@ -25,9 +24,8 @@ export struct FirstBeadData
   double storedR;
 
   FirstBeadData() noexcept = delete;
-  FirstBeadData(Atom atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept :
-      atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
+  FirstBeadData(Atom atom, RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept
+      : atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };
-

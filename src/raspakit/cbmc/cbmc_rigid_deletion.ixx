@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
 #include <optional>
 #include <span>
+#include <vector>
 #endif
 
 export module cbmc_rigid_deletion;
@@ -24,14 +24,11 @@ import cbmc_chain_data;
 import cbmc_interactions;
 import component;
 
-
-export namespace CBMC                                                                                                   
+export namespace CBMC
 {
-  [[nodiscard]] ChainData
-  retraceRigidMoleculeSwapDeletion(RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, 
-                                   const ForceField &forcefield, const SimulationBox &simulationBox, 
-                                   std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, 
-                                   double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, 
-                                   size_t selectedMolecule, std::span<Atom> molecule, double scaling,
-                                   size_t numberOfTrialDirections) noexcept;
+[[nodiscard]] ChainData retraceRigidMoleculeSwapDeletion(
+    RandomNumber &random, bool hasExternalField, const std::vector<Component> &components, const ForceField &forcefield,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+    std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept;
 }

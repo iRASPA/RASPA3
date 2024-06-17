@@ -24,7 +24,6 @@ import system;
 
 export namespace MC_Moves
 {
-  std::pair<std::optional<RunningEnergy>, double3>
-  insertionMove(RandomNumber &random, System& system, size_t selectedComponent);
+std::pair<std::optional<RunningEnergy>, double3> insertionMove(RandomNumber& random, System& system,
+                                                               size_t selectedComponent);
 }
-

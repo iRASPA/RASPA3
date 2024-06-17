@@ -20,10 +20,10 @@ export struct ForceFactor
   double forceFactor;
   double dUdlambda;
 
-  ForceFactor(double energy, double forceFactor, double dUdlambda):
-      energy(energy),
-      forceFactor(forceFactor),
-      dUdlambda(dUdlambda) {}
+  ForceFactor(double energy, double forceFactor, double dUdlambda)
+      : energy(energy), forceFactor(forceFactor), dUdlambda(dUdlambda)
+  {
+  }
 
   bool operator==(ForceFactor const&) const = default;
 
@@ -52,15 +52,15 @@ export struct ForceFactor
     return v;
   }
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceFactor &e);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceFactor &e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceFactor& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceFactor& e);
 };
 
 export inline ForceFactor operator+(const ForceFactor& a, const ForceFactor& b)
 {
   ForceFactor m(0.0, 0.0, 0.0);
   m.energy = a.energy + b.energy;
-  m.forceFactor = a.forceFactor +b.forceFactor;
+  m.forceFactor = a.forceFactor + b.forceFactor;
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
 
   return m;
@@ -116,7 +116,7 @@ export inline ForceFactor operator/(const ForceFactor& a, const double& b)
   return m;
 }
 
-export inline ForceFactor sqrt(const ForceFactor & a)
+export inline ForceFactor sqrt(const ForceFactor& a)
 {
   ForceFactor m(0.0, 0.0, 0.0);
   m.energy = std::sqrt(a.energy);

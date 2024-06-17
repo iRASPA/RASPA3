@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <chrono>
+#include <cmath>
 #include <optional>
 #include <span>
-#include <chrono>
-#include <vector>
-#include <cmath>
 #include <tuple>
+#include <vector>
 #endif
 
 module mc_moves_identity_change;
@@ -40,11 +40,11 @@ import simulationbox;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 
-
-std::optional<RunningEnergy> 
-MC_Moves::identityChangeMove([[maybe_unused]] RandomNumber &random, [[maybe_unused]] System& system, 
-                            [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, 
-                            [[maybe_unused]] std::span<Atom> atoms)
+std::optional<RunningEnergy> MC_Moves::identityChangeMove([[maybe_unused]] RandomNumber& random,
+                                                          [[maybe_unused]] System& system,
+                                                          [[maybe_unused]] size_t selectedComponent,
+                                                          [[maybe_unused]] size_t selectedMolecule,
+                                                          [[maybe_unused]] std::span<Atom> atoms)
 {
   return std::nullopt;
 }

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
 #include <optional>
 #include <span>
+#include <vector>
 #endif
 
 export module cbmc_flexible_insertion;
@@ -21,7 +21,7 @@ import randomnumbers;
 import cbmc_chain_data;
 import component;
 
-//export [[nodiscard]] std::optional<ChainData> 
-//growFlexibleMoleculeSwapInsertion(const Component &component, RandomNumber &random, double cutOff, 
-//                                  double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, 
-//                                  double scaling, std::vector<Atom> atoms) noexcept;
+// export [[nodiscard]] std::optional<ChainData>
+// growFlexibleMoleculeSwapInsertion(const Component &component, RandomNumber &random, double cutOff,
+//                                   double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+//                                   double scaling, std::vector<Atom> atoms) noexcept;

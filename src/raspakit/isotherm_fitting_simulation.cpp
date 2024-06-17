@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <span>
-#include <cmath>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <limits>
-#include <filesystem>
 #include <algorithm>
-#include <numeric>
-#include <sstream>
 #include <chrono>
+#include <cmath>
 #include <complex>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <numeric>
 #include <print>
+#include <span>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 module isotherm_fitting_simulation;
@@ -36,7 +36,6 @@ import <complex>;
 import <print>;
 #endif
 
-
 import stringutils;
 import hardware_info;
 import input_reader;
@@ -46,29 +45,27 @@ import simulationbox;
 import multi_site_isotherm;
 import isotherm_fitting;
 
-
-IsothermFittingSimulation::IsothermFittingSimulation(InputReader &inputReader):
-    systems(std::move(inputReader.systems))
+IsothermFittingSimulation::IsothermFittingSimulation(InputReader &inputReader) : systems(std::move(inputReader.systems))
 {
-  for(System &system: systems)
+  for (System &system : systems)
   {
     std::string directoryNameString = std::format("output/system_{}/", system.systemId);
-    std::filesystem::path directoryName{ directoryNameString };
+    std::filesystem::path directoryName{directoryNameString};
     std::filesystem::create_directories(directoryName);
   }
 }
 
 void IsothermFittingSimulation::run()
 {
-  for(System &system: systems)
+  for (System &system : systems)
   {
     IsothermFitting fitting(system);
 
-    std::string fileNameString = std::format("output/system_{}/output_{}_{}.data",
-        system.systemId, system.temperature, system.input_pressure);
-    std::ofstream fstream(fileNameString, std::ios::out );
+    std::string fileNameString =
+        std::format("output/system_{}/output_{}_{}.data", system.systemId, system.temperature, system.input_pressure);
+    std::ofstream fstream(fileNameString, std::ios::out);
     std::ostream stream(fstream.rdbuf());
-    //std::ostream stream(std::cout.rdbuf());
+    // std::ostream stream(std::cout.rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "{}", HardwareInfo::writeInfo());
@@ -86,4 +83,3 @@ void IsothermFittingSimulation::run()
     std::print(stream, "Isotherm fitting simulation time: {:14f} [s]\n\n\n", totalSimulationTime.count());
   }
 }
-

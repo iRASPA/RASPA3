@@ -1,19 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <vector>
-#include <array>
-#include <tuple>
-#include <optional>
-#include <span>
-#include <optional>
-#include <tuple>
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
-#include <iostream>
+#include <complex>
 #include <iomanip>
+#include <iostream>
+#include <optional>
+#include <span>
+#include <tuple>
+#include <vector>
 #endif
 
 module mc_moves_reaction;
@@ -58,11 +56,9 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-
-std::optional<RunningEnergy> 
-MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system, 
-                       [[maybe_unused]] const std::vector<size_t> reactantStoichiometry, 
-                       [[maybe_unused]] const std::vector<size_t> productStoichiometry)
+std::optional<RunningEnergy> MC_Moves::reactionMove([[maybe_unused]] RandomNumber& random, System& system,
+                                                    [[maybe_unused]] const std::vector<size_t> reactantStoichiometry,
+                                                    [[maybe_unused]] const std::vector<size_t> productStoichiometry)
 {
   size_t selectedComponent = 0;
   size_t selectedMolecule = 0;
@@ -74,11 +70,10 @@ MC_Moves::reactionMove([[maybe_unused]] RandomNumber &random, System& system,
 
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
-  std::optional<ChainData> growData = 
-    CBMC::growMoleculeSwapInsertion(random, system.hasExternalField, system.components, system.forceField, system.simulationBox, 
-                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
-                                    growType, cutOffVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
-                                    system.numberOfTrialDirections);
+  std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
+      random, system.hasExternalField, system.components, system.forceField, system.simulationBox,
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType, cutOffVDW, cutOffCoulomb,
+      selectedComponent, selectedMolecule, 1.0, 0uz, system.numberOfTrialDirections);
 
   if (!growData) return std::nullopt;
 

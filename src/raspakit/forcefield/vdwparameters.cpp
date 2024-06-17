@@ -1,28 +1,28 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <filesystem>
-#include <fstream>
-#include <cstdlib>
-#include <iostream>
-#include <sstream>
-#include <vector>
+#include <algorithm>
 #include <array>
-#include <map>
 #include <cmath>
+#include <complex>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
+#include <format>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <numbers>
+#include <optional>
+#include <print>
+#include <source_location>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <optional>
-#include <numbers>
-#include <algorithm>
-#include <format>
-#include <exception>
-#include <source_location>
-#include <complex>
 #include <type_traits>
-#include <iterator>
-#include <functional>
-#include <print>
+#include <vector>
 #endif
 
 module vdwparameters;
@@ -52,7 +52,6 @@ import <functional>;
 import <print>;
 #endif
 
-
 import archive;
 
 bool VDWParameters::operator==(const VDWParameters &other) const
@@ -80,4 +79,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameter
 
   return archive;
 }
-

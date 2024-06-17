@@ -4,8 +4,8 @@ module;
 #include <cstddef>
 #include <optional>
 #include <span>
-#include <vector>
 #include <tuple>
+#include <vector>
 #endif
 
 export module mc_moves_translation;
@@ -27,7 +27,7 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<RunningEnergy>                                                                                            
-  translationMove(RandomNumber &random, System &system, size_t selectedComponent, const std::vector<Component> &components,
-                  Molecule &molecule, std::span<Atom> molecule_atoms);
+std::optional<RunningEnergy> translationMove(RandomNumber &random, System &system, size_t selectedComponent,
+                                             const std::vector<Component> &components, Molecule &molecule,
+                                             std::span<Atom> molecule_atoms);
 }

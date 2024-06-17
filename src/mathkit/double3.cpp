@@ -1,14 +1,14 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <iostream>
-#include <fstream>
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <complex>
+#include <fstream>
+#include <iostream>
 #include <map>
-#include <array>
 #include <utility>
-#include <algorithm>
 #endif
 
 module double3;
@@ -75,7 +75,7 @@ double3 double3::fract() const
   return s;
 }
 
-std::ostream& operator<<(std::ostream& out, const double3& vec) // output
+std::ostream &operator<<(std::ostream &out, const double3 &vec)  // output
 {
   out << vec.x;
   out << ",";
@@ -100,4 +100,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, double3 &vec
   archive >> vec.z;
   return archive;
 }
-

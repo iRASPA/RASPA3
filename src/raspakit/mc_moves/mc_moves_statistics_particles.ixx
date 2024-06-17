@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
 #include <chrono>
 #include <fstream>
+#include <string>
 #endif
 
 export module mc_moves_statistics_particles;
@@ -21,13 +21,13 @@ import json;
 
 export struct MCMoveStatisticsParticles
 {
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  bool operator==(MCMoveStatisticsParticles const&) const = default;
+  bool operator==(MCMoveStatisticsParticles const &) const = default;
 
-  MoveStatistics<double3> translationMove{ .maxChange = double3(1.0,1.0,1.0) };
+  MoveStatistics<double3> translationMove{.maxChange = double3(1.0, 1.0, 1.0)};
   MoveStatistics<double3> randomTranslationMove{};
-  MoveStatistics<double3> rotationMove{ .maxChange = double3(1.0,1.0,1.0) };
+  MoveStatistics<double3> rotationMove{.maxChange = double3(1.0, 1.0, 1.0)};
   MoveStatistics<double3> randomRotationMove{};
   MoveStatistics<double> reinsertionMove_CBMC{};
   MoveStatistics<double> identityChangeMove_CBMC{};
@@ -35,15 +35,15 @@ export struct MCMoveStatisticsParticles
   MoveStatistics<double> swapDeletionMove{};
   MoveStatistics<double> swapInsertionMove_CBMC{};
   MoveStatistics<double> swapDeletionMove_CBMC{};
-  MoveStatistics<double3> swapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };
-  MoveStatistics<double3> swapMove_CFCMC_CBMC{ .maxChange = double3(0.0,0.0,0.5) };
+  MoveStatistics<double3> swapMove_CFCMC{.maxChange = double3(0.0, 0.0, 0.5)};
+  MoveStatistics<double3> swapMove_CFCMC_CBMC{.maxChange = double3(0.0, 0.0, 0.5)};
   MoveStatistics<double> WidomMove_CBMC{};
   MoveStatistics<double> WidomMove_CFCMC{};
   MoveStatistics<double> WidomMove_CFCMC_CBMC{};
 
   MoveStatistics<double> GibbsSwapMove_CBMC{};
-  MoveStatistics<double3> GibbsSwapMove_CFCMC{ .maxChange = double3(0.0,0.0,0.5) };
-  MoveStatistics<double3> GibbsSwapMove_CFCMC_CBMC{ .maxChange = double3(0.0,0.0,0.5)};
+  MoveStatistics<double3> GibbsSwapMove_CFCMC{.maxChange = double3(0.0, 0.0, 0.5)};
+  MoveStatistics<double3> GibbsSwapMove_CFCMC_CBMC{.maxChange = double3(0.0, 0.0, 0.5)};
 
   void clearMoveStatistics();
   void optimizeMCMoves();

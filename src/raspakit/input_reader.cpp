@@ -15,10 +15,10 @@ module;
 #include <map>
 #include <numbers>
 #include <optional>
+#include <print>
 #include <sstream>
 #include <streambuf>
 #include <vector>
-#include <print>
 #endif
 
 module input_reader;
@@ -43,7 +43,6 @@ import <iterator>;
 import <functional>;
 import <print>;
 #endif
-
 
 import int3;
 import stringutils;
@@ -240,7 +239,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<size_t>();
   }
 
-
   if (parsed_data["SimulationType"].is_string())
   {
     std::string simulationTypeString = parsed_data["SimulationType"].get<std::string>();
@@ -311,8 +309,10 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
   if (parsed_data["NumberOfThreads"].is_number_unsigned())
   {
     numberOfThreads = parsed_data["NumberOfThreads"].get<size_t>();
-    if (numberOfThreads > 1) threadingType = ThreadPool::ThreadingType::ThreadPool;
-    else threadingType = ThreadPool::ThreadingType::Serial;
+    if (numberOfThreads > 1)
+      threadingType = ThreadPool::ThreadingType::ThreadPool;
+    else
+      threadingType = ThreadPool::ThreadingType::Serial;
   }
 
   // count number of components
@@ -472,7 +472,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
-
     if (item["CreateNumberOfMolecules"].is_number_integer())
     {
       size_t n = item["CreateNumberOfMolecules"].get<size_t>();
@@ -482,11 +481,11 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       }
     }
 
-     size_t jsonNumberOfLambdaBins{41};
-     if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
-     {
-       jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();
-     }
+    size_t jsonNumberOfLambdaBins{41};
+    if (parsed_data["NumberOfLambdaBins"].is_number_unsigned())
+    {
+      jsonNumberOfLambdaBins = parsed_data["NumberOfLambdaBins"].get<size_t>();
+    }
 
     // Explicit notation listing the properties as an array of the values for the particular systems
     // ========================================================================================================
@@ -536,7 +535,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
         jsonComponents[i][componentId].fugacityCoefficient = fugacity_coefficient;
       }
     }
-
 
     if (item["ThermodynamicIntegration"].is_boolean())
     {
@@ -649,8 +647,9 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
       if (!value.contains("ExternalTemperature"))
       {
-        throw std::runtime_error(std::format(
-            "[Input reader]: framework must have a key 'ExternalTemperature' with a value of floating-point-type'\n"));
+        throw std::runtime_error(
+            std::format("[Input reader]: framework must have a key 'ExternalTemperature' with a value of "
+                        "floating-point-type'\n"));
       }
       double T = value["ExternalTemperature"].get<double>();
 
@@ -659,7 +658,6 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
       {
         P = value["ExternalPressure"].get<double>();
       }
-
 
       if (!forceFields[systemId].has_value())
       {
@@ -670,10 +668,9 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
           Framework(0, forceFields[systemId].value(), frameworkNameString, frameworkNameString, jsonNumberOfUnitCells)};
 
       // create system
-      systems[systemId] =
-          System(systemId, std::nullopt, T, P, forceFields[systemId].value(), jsonFrameworkComponents,
-                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
-
+      systems[systemId] = System(systemId, std::nullopt, T, P, forceFields[systemId].value(), jsonFrameworkComponents,
+                                 jsonComponents[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks,
+                                 mc_moves_probabilities);
     }
     else if (caseInSensStringCompare(typeString, "Box"))
     {
@@ -681,8 +678,9 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
       if (!value.contains("ExternalTemperature"))
       {
-        throw std::runtime_error(std::format(
-            "[Input reader]: framework must have a key 'ExternalTemperature' with a value of floating-point-type'\n"));
+        throw std::runtime_error(
+            std::format("[Input reader]: framework must have a key 'ExternalTemperature' with a value of "
+                        "floating-point-type'\n"));
       }
       [[maybe_unused]] double T = value["ExternalTemperature"].get<double>();
 
@@ -726,89 +724,90 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
     if (value["ComputeConventionalRDF"].is_boolean())
     {
-      if(value["ComputeConventionalRDF"].get<bool>())
+      if (value["ComputeConventionalRDF"].get<bool>())
       {
-        size_t numberOfBinsConventionalRDF{ 128 };
+        size_t numberOfBinsConventionalRDF{128};
         if (value["NumberOfBinsConventionalRDF"].is_number_unsigned())
         {
           numberOfBinsConventionalRDF = value["NumberOfBinsConventionalRDF"].get<size_t>();
         }
 
-        double rangeConventionalRDF{ 15.0 };
+        double rangeConventionalRDF{15.0};
         if (value["RangeConventionalRDF"].is_number_float())
         {
           rangeConventionalRDF = value["RangeConventionalRDF"].get<double>();
         }
 
-        size_t sampleConventionalRDFEvery{ 10 };
+        size_t sampleConventionalRDFEvery{10};
         if (value["SampleConventionalRDFEvery"].is_number_unsigned())
         {
           sampleConventionalRDFEvery = value["SampleConventionalRDFEvery"].get<size_t>();
         }
 
-        size_t writeConventionalRDFEvery{ 5000 };
+        size_t writeConventionalRDFEvery{5000};
         if (value["WriteConventionalRDFEvery"].is_number_unsigned())
         {
           writeConventionalRDFEvery = value["WriteConventionalRDFEvery"].get<size_t>();
         }
 
-        systems[systemId].propertyConventionalRadialDistributionFunction = 
-          PropertyConventionalRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
-                            numberOfBinsConventionalRDF, rangeConventionalRDF, sampleConventionalRDFEvery, writeConventionalRDFEvery);
+        systems[systemId].propertyConventionalRadialDistributionFunction =
+            PropertyConventionalRadialDistributionFunction(
+                jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(), numberOfBinsConventionalRDF,
+                rangeConventionalRDF, sampleConventionalRDFEvery, writeConventionalRDFEvery);
       }
     }
 
     if (value["ComputeRDF"].is_boolean())
     {
-      if(value["ComputeRDF"].get<bool>())
+      if (value["ComputeRDF"].get<bool>())
       {
-        size_t numberOfBinsRDF{ 128 };
+        size_t numberOfBinsRDF{128};
         if (value["NumberOfBinsRDF"].is_number_unsigned())
         {
           numberOfBinsRDF = value["NumberOfBinsRDF"].get<size_t>();
         }
 
-        double rangeRDF{ 15.0 };
+        double rangeRDF{15.0};
         if (value["RangeRDF"].is_number_float())
         {
           rangeRDF = value["RangeRDF"].get<double>();
         }
 
-        size_t sampleRDFEvery{ 10 };
+        size_t sampleRDFEvery{10};
         if (value["SampleRDFEvery"].is_number_unsigned())
         {
           sampleRDFEvery = value["SampleRDFEvery"].get<size_t>();
         }
 
-        size_t writeRDFEvery{ 5000 };
+        size_t writeRDFEvery{5000};
         if (value["WriteRDFEvery"].is_number_unsigned())
         {
           writeRDFEvery = value["WriteRDFEvery"].get<size_t>();
         }
 
-        systems[systemId].propertyRadialDistributionFunction = 
-          PropertyRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
-                            numberOfBinsRDF, rangeRDF, sampleRDFEvery, writeRDFEvery);
+        systems[systemId].propertyRadialDistributionFunction =
+            PropertyRadialDistributionFunction(jsonNumberOfBlocks, systems[systemId].forceField.pseudoAtoms.size(),
+                                               numberOfBinsRDF, rangeRDF, sampleRDFEvery, writeRDFEvery);
       }
     }
 
     if (value["ComputeDensityGrid"].is_boolean())
     {
-      if(value["ComputeDensityGrid"].get<bool>())
+      if (value["ComputeDensityGrid"].get<bool>())
       {
-        int3 densityGridSize{ 128, 128, 128 };
+        int3 densityGridSize{128, 128, 128};
         if (value["DensityGridSize"].is_array())
         {
           densityGridSize = parseInt3("DensityGridSize", value["DensityGridSize"]);
         }
 
-        size_t sampleDensityGridEvery{ 10 };
+        size_t sampleDensityGridEvery{10};
         if (value["SampleDensityGridEvery"].is_number_unsigned())
         {
           sampleDensityGridEvery = value["SampleDensityGridEvery"].get<size_t>();
         }
 
-        size_t writeDensityGridEvery{ 5000 };
+        size_t writeDensityGridEvery{5000};
         if (value["WriteDensityGridEvery"].is_number_unsigned())
         {
           writeDensityGridEvery = value["WriteDensityGridEvery"].get<size_t>();
@@ -818,27 +817,27 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
         if (value["DensityGridPseudoAtomsList"].is_array())
         {
           std::vector<std::string> string_list = value["DensityGridPseudoAtomsList"].get<std::vector<std::string>>();
-          for(std::string string: string_list)
+          for (std::string string : string_list)
           {
             std::optional<size_t> atomType = systems[systemId].forceField.findPseudoAtom(string);
-            if(atomType.has_value())
+            if (atomType.has_value())
             {
               densityGridPseudoAtomsList.push_back(atomType.value());
             }
           }
         }
 
-
-        systems[systemId].propertyDensityGrid = PropertyDensityGrid(systems[systemId].frameworkComponents.size(), systems[systemId].components.size(),
-                                      densityGridSize, sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList);
+        systems[systemId].propertyDensityGrid = PropertyDensityGrid(
+            systems[systemId].frameworkComponents.size(), systems[systemId].components.size(), densityGridSize,
+            sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList);
       }
     }
 
     if (value["OutputPDBMovie"].is_boolean())
     {
-      if(value["OutputPDBMovie"].get<bool>())
+      if (value["OutputPDBMovie"].get<bool>())
       {
-        size_t sampleMovieEvery{ 1 };
+        size_t sampleMovieEvery{1};
         if (value["SampleMovieEvery"].is_number_unsigned())
         {
           sampleMovieEvery = value["SampleMovieEvery"].get<size_t>();
@@ -846,9 +845,7 @@ InputReader::InputReader(const std::string inputFile) : inputStream(inputFile)
 
         systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery);
       }
-
     }
-
 
     systemId++;
   }

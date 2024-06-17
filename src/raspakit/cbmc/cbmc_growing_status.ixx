@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
 #include <tuple>
+#include <vector>
 #endif
 
 export module cbmc_growing_status;
@@ -16,22 +16,21 @@ import component;
 import atom;
 import bond_potential;
 
-
 export struct GrowingStatus
 {
-  GrowingStatus(const Component& component, const std::vector<bool> &placedBeads) : size(component.atoms.size()),
-      placement(size, false), connectivity(size * size, false)
+  GrowingStatus(const Component& component, const std::vector<bool>& placedBeads)
+      : size(component.atoms.size()), placement(size, false), connectivity(size * size, false)
   {
-    //for (size_t index = 0; const bool& bead : placedBeads)
+    // for (size_t index = 0; const bool& bead : placedBeads)
     //{
-    //    placement[index] = true;
-    //    ++index;
-    //}
+    //     placement[index] = true;
+    //     ++index;
+    // }
 
     for (size_t i = 0; i != component.bonds.size(); ++i)
     {
-      //connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
-      //connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;
+      // connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
+      // connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;
     }
 
     for (size_t i = 0; i != placedBeads.size(); ++i)

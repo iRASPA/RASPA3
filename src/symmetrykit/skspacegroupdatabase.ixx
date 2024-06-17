@@ -16,8 +16,8 @@ import skspacegroupsetting;
 
 export struct SKSpaceGroupDataBase
 {
-    SKSpaceGroupDataBase();
+  SKSpaceGroupDataBase();
 
-    static const std::array<SKSpaceGroupSetting, 531> spaceGroupData;
-    static const std::vector<std::vector<size_t>> spaceGroupHallData;
+  static const std::array<SKSpaceGroupSetting, 531> spaceGroupData;
+  static const std::vector<std::vector<size_t>> spaceGroupHallData;
 };

@@ -24,8 +24,8 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<RunningEnergy>
-  identityChangeMove([[maybe_unused]] RandomNumber &random, [[maybe_unused]] System& system,
-                     [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule,
-                     [[maybe_unused]] std::span<Atom> atoms);
+std::optional<RunningEnergy> identityChangeMove([[maybe_unused]] RandomNumber& random, [[maybe_unused]] System& system,
+                                                [[maybe_unused]] size_t selectedComponent,
+                                                [[maybe_unused]] size_t selectedMolecule,
+                                                [[maybe_unused]] std::span<Atom> atoms);
 }

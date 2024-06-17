@@ -14,6 +14,6 @@ import json;
 
 export namespace HardwareInfo
 {
-  std::string writeInfo();
-  nlohmann::json jsonInfo();
-}
+std::string writeInfo();
+nlohmann::json jsonInfo();
+}  // namespace HardwareInfo

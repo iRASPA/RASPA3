@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
 #include <chrono>
 #include <fstream>
+#include <string>
 #endif
 
 export module mc_moves_count;
@@ -39,11 +39,11 @@ export struct MCMoveCount
         WidomMoveCBCFCMC(0),
         volumeMove(0),
         GibbsVolumeMove(0),
-        ParallelTemperingSwap(0){};
+        ParallelTemperingSwap(0) {};
 
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  bool operator==(MCMoveCount const&) const = default;
+  bool operator==(MCMoveCount const &) const = default;
 
   size_t translationMove;
   size_t randomTranslationMove;
@@ -77,7 +77,7 @@ export struct MCMoveCount
   const std::string writeAllSystemStatistics(size_t countTotal) const;
   const nlohmann::json jsonAllSystemStatistics(size_t countTotal) const;
 
-  inline MCMoveCount& operator+=(const MCMoveCount& b)
+  inline MCMoveCount &operator+=(const MCMoveCount &b)
   {
     translationMove += b.translationMove;
     randomTranslationMove += b.randomTranslationMove;
@@ -106,7 +106,7 @@ export struct MCMoveCount
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount &c);
 };
 
-export inline MCMoveCount operator+(const MCMoveCount& a, const MCMoveCount& b)
+export inline MCMoveCount operator+(const MCMoveCount &a, const MCMoveCount &b)
 {
   MCMoveCount m;
 
@@ -132,4 +132,3 @@ export inline MCMoveCount operator+(const MCMoveCount& a, const MCMoveCount& b)
 
   return m;
 }
-

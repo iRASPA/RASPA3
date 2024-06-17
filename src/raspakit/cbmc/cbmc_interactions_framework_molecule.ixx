@@ -1,16 +1,16 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <numbers>
-#include <iostream>
 #include <algorithm>
-#include <vector>
-#include <span>
 #include <cmath>
-#include <optional>
-#include <thread>
 #include <future>
+#include <iostream>
+#include <numbers>
+#include <optional>
+#include <span>
+#include <thread>
 #include <type_traits>
+#include <vector>
 #endif
 
 export module cbmc_interactions_framework_molecule;
@@ -46,10 +46,9 @@ import running_energy;
 import units;
 import threadpool;
 
-export namespace CBMC                                                                                                   
-{ 
-  [[nodiscard]] std::optional<RunningEnergy> 
-  computeFrameworkMoleculeEnergy(const ForceField &forceField, const SimulationBox &simulationBox, 
-                                 std::span<const Atom> frameworkAtoms, double cutOffVDW, double cutOffCoulomb,  
-                                 std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
+export namespace CBMC
+{
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    double cutOffVDW, double cutOffCoulomb, std::span<Atom> atoms, std::make_signed_t<std::size_t> skip = -1) noexcept;
 }

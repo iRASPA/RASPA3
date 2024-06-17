@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <tuple>
+#include <fstream>
 #include <optional>
 #include <span>
-#include <fstream>
+#include <tuple>
+#include <vector>
 #endif
 
 export module mc_moves;
@@ -30,12 +30,11 @@ import energy_status;
 import running_energy;
 import mc_moves_translation;
 
-
 export namespace MC_Moves
 {
-  void performRandomMove(RandomNumber &random, System& selectedSystem, System& selectedSecondystem, 
-                         size_t selectedComponent, size_t &fractionalMoleculeSystem);
+void performRandomMove(RandomNumber& random, System& selectedSystem, System& selectedSecondystem,
+                       size_t selectedComponent, size_t& fractionalMoleculeSystem);
 
-  void performRandomMoveProduction(RandomNumber &random, System& selectedSystem, System& selectedSecondSystem, 
-                                   size_t selectedComponent, size_t &fractionalMoleculeSystem, size_t currentBlock);
-};
+void performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                 size_t selectedComponent, size_t& fractionalMoleculeSystem, size_t currentBlock);
+};  // namespace MC_Moves

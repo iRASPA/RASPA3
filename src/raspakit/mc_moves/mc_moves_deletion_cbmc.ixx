@@ -24,7 +24,6 @@ import system;
 
 export namespace MC_Moves
 {
-  std::pair<std::optional<RunningEnergy>, double3>
-  deletionMoveCBMC(RandomNumber &random, System& system, size_t selectedComponent, size_t selectedMolecule);
+std::pair<std::optional<RunningEnergy>, double3> deletionMoveCBMC(RandomNumber& random, System& system,
+                                                                  size_t selectedComponent, size_t selectedMolecule);
 }
-

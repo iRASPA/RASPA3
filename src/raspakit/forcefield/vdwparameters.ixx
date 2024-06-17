@@ -1,13 +1,13 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <string>
 #include <algorithm>
-#include <iostream>
-#include <ostream>
 #include <fstream>
+#include <iostream>
 #include <optional>
+#include <ostream>
+#include <string>
+#include <vector>
 #endif
 
 export module vdwparameters;
@@ -38,24 +38,25 @@ export struct VDWParameters
     BornHugginsMeyer = 5
   };
 
-  double4 parameters;      // for LJ: epsilon, sigma, for Buckingham: 3 parameters
+  double4 parameters;  // for LJ: epsilon, sigma, for Buckingham: 3 parameters
   double shift;
   double tailCorrectionEnergy;
-  Type type{ 0 };
+  Type type{0};
 
-  VDWParameters(): parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
+  VDWParameters() : parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
 
   /// Creates a Lennard-Jones VDWParameter structure.
   ///
   /// - Parameters:
   ///   - epsilon: the strength parameter of the potential in units of Kelvin.
   ///   - sigma: the size parameter of the potential in units of Angstrom.
-  VDWParameters(double epsilon, double sigma) : 
-    parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)), 
-    shift(0.0), 
-    tailCorrectionEnergy(0.0), 
-    type(Type::LennardJones)
-  {}
+  VDWParameters(double epsilon, double sigma)
+      : parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)),
+        shift(0.0),
+        tailCorrectionEnergy(0.0),
+        type(Type::LennardJones)
+  {
+  }
 
   void computeShiftAtCutOff(double cutOff)
   {
@@ -73,4 +74,3 @@ export struct VDWParameters
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameters &p);
 };
-

@@ -24,5 +24,5 @@ import system;
 
 export namespace MC_Moves
 {
-  std::optional<double> WidomMove(RandomNumber &random, System& system, size_t selectedComponent);
+std::optional<double> WidomMove(RandomNumber& random, System& system, size_t selectedComponent);
 }

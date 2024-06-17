@@ -1,24 +1,23 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <vector>
-#include <map>
-#include <array>
-#include <iostream>
-#include <cmath>
-#include <string>
-#include <sstream>
-#include <format>
 #include <algorithm>
-#include <numeric>
+#include <array>
 #include <cmath>
-#include <numbers>
-#include <optional>
-#include <fstream>
-#include <exception>
-#include <source_location>
 #include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <numbers>
+#include <numeric>
+#include <optional>
 #include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <vector>
 #endif
 
 module property_widom;
@@ -44,19 +43,15 @@ import <complex>;
 import <print>;
 #endif
 
-
 import archive;
 import units;
 import averages;
 import stringutils;
 
+PropertyWidom::PropertyWidom() {}
 
-PropertyWidom::PropertyWidom()
-{
-}
-
-
-std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential, std::optional<double> imposedFugacity) const
+std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential,
+                                                   std::optional<double> imposedFugacity) const
 {
   std::ostringstream stream;
 
@@ -64,17 +59,16 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
 
   std::print(stream, "    Widom insertion Rosenbluth weight  statistics:\n");
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  for (size_t blockIndex = 0; blockIndex <numberOfBlocks; ++blockIndex)
+  for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     double blockAverage = averagedRosenbluthWeight(blockIndex);
     std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
   std::pair<double, double> averageRosenbluthWeightValue = averageRosenbluthWeight();
-  std::print(stream, "    Average Rosenbluth weight:   {: .6e} +/- {: .6e} [-]\n",
-    averageRosenbluthWeightValue.first, averageRosenbluthWeightValue.second);
+  std::print(stream, "    Average Rosenbluth weight:   {: .6e} +/- {: .6e} [-]\n", averageRosenbluthWeightValue.first,
+             averageRosenbluthWeightValue.second);
   std::print(stream, "\n\n");
-
 
   std::print(stream, "    Widom insertion chemical potential  statistics:\n");
   std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -89,40 +83,43 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
   std::pair<double, double> averageTotalWidomChemicalPotential = averageTotalChemicalPotential(beta);
   std::pair<double, double> averageWidomFugacity = averageFugacity(beta);
   std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [K]\n",
-    Units::EnergyToKelvin * averageExcessWidomChemicalPotential.first,
-    Units::EnergyToKelvin * averageExcessWidomChemicalPotential.second);
+             Units::EnergyToKelvin * averageExcessWidomChemicalPotential.first,
+             Units::EnergyToKelvin * averageExcessWidomChemicalPotential.second);
   std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [K]\n",
-    Units::EnergyToKelvin * averageIdealGasWidomChemicalPotential.first,
-    Units::EnergyToKelvin * averageIdealGasWidomChemicalPotential.second);
+             Units::EnergyToKelvin * averageIdealGasWidomChemicalPotential.first,
+             Units::EnergyToKelvin * averageIdealGasWidomChemicalPotential.second);
   std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [K]\n",
-    Units::EnergyToKelvin * averageTotalWidomChemicalPotential.first,
-    Units::EnergyToKelvin * averageTotalWidomChemicalPotential.second);
+             Units::EnergyToKelvin * averageTotalWidomChemicalPotential.first,
+             Units::EnergyToKelvin * averageTotalWidomChemicalPotential.second);
   if (imposedChemicalPotential)
   {
-    std::print(stream, "    Imposed chemical potential:  {: .6e} [K]\n", Units::EnergyToKelvin * imposedChemicalPotential.value());
+    std::print(stream, "    Imposed chemical potential:  {: .6e} [K]\n",
+               Units::EnergyToKelvin * imposedChemicalPotential.value());
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
   std::print(stream, "    Excess chemical potential:   {: .6e} +/- {: .6e} [kJ/mol]\n",
-    Units::EnergyToKJPerMol * averageExcessWidomChemicalPotential.first,
-    Units::EnergyToKJPerMol * averageExcessWidomChemicalPotential.second);
+             Units::EnergyToKJPerMol * averageExcessWidomChemicalPotential.first,
+             Units::EnergyToKJPerMol * averageExcessWidomChemicalPotential.second);
   std::print(stream, "    Ideal chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
-    Units::EnergyToKJPerMol * averageIdealGasWidomChemicalPotential.first,
-    Units::EnergyToKJPerMol * averageIdealGasWidomChemicalPotential.second);
+             Units::EnergyToKJPerMol * averageIdealGasWidomChemicalPotential.first,
+             Units::EnergyToKJPerMol * averageIdealGasWidomChemicalPotential.second);
   std::print(stream, "    Total chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
-    Units::EnergyToKJPerMol * averageTotalWidomChemicalPotential.first,
-    Units::EnergyToKJPerMol * averageTotalWidomChemicalPotential.second);
+             Units::EnergyToKJPerMol * averageTotalWidomChemicalPotential.first,
+             Units::EnergyToKJPerMol * averageTotalWidomChemicalPotential.second);
   if (imposedChemicalPotential)
   {
-    std::print(stream, "    Imposed chemical potential:  {: .6e} [kJ/mol]\n", Units::EnergyToKJPerMol * imposedChemicalPotential.value());
+    std::print(stream, "    Imposed chemical potential:  {: .6e} [kJ/mol]\n",
+               Units::EnergyToKJPerMol * imposedChemicalPotential.value());
     std::print(stream, "    ---------------------------------------------------------------------------\n");
   }
   if (imposedFugacity)
   {
-    std::print(stream, "    Imposed fugacity:            {: .6e} [Pa]\n", Units::PressureConversionFactor * imposedFugacity.value());
+    std::print(stream, "    Imposed fugacity:            {: .6e} [Pa]\n",
+               Units::PressureConversionFactor * imposedFugacity.value());
 
     std::print(stream, "    Measured fugacity:           {: .6e} +/- {: .6e} [Pa]\n",
-      Units::PressureConversionFactor * averageWidomFugacity.first,
-      Units::PressureConversionFactor * averageWidomFugacity.second);
+               Units::PressureConversionFactor * averageWidomFugacity.first,
+               Units::PressureConversionFactor * averageWidomFugacity.second);
   }
 
   std::print(stream, "\n\n");
@@ -145,9 +142,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWido
 {
   uint64_t versionNumber;
   archive >> versionNumber;
-  if(versionNumber > w.versionNumber)
+  if (versionNumber > w.versionNumber)
   {
-    const std::source_location& location = std::source_location::current();
+    const std::source_location &location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'PropertyWidom' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }
@@ -158,4 +155,3 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWido
 
   return archive;
 }
-
