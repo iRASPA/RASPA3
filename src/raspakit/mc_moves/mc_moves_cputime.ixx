@@ -20,11 +20,7 @@ import json;
 
 export struct MCMoveCpuTime
 {
-<<<<<<< HEAD
   MCMoveCpuTime(){};
-=======
-  MCMoveCpuTime(){};
->>>>>>> 0df18b6cf497572d0e6e8215a6df597fb940c5d9
 
   uint64_t versionNumber{1};
 
