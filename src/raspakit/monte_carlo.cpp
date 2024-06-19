@@ -141,7 +141,7 @@ void MonteCarlo::createOutputFiles()
     streams.emplace_back(fileNameString, std::ios::out);
     fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
-    outputJsonFiles.emplace_back(fileNameString, std::ios::out);
+    outputJsonFileNames.emplace_back(fileNameString);
   }
 }
 
@@ -186,17 +186,15 @@ void MonteCarlo::initialize()
     outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
 
-    // system.writeOutputHeader(outputJsons[system.systemId]);
     outputJsons[system.systemId]["seed"] = random.seed;
-    outputJsons[system.systemId]["hardwareInfo"] = HardwareInfo::jsonInfo();
-    outputJsons[system.systemId]["units"] = Units::jsonStatus();
-    outputJsons[system.systemId]["initialConditions"] = system.jsonSystemStatus();
-    outputJsons[system.systemId]["forceField"] = system.forceField.jsonForceFieldStatus();
-    outputJsons[system.systemId]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
-    outputJsons[system.systemId]["components"] = system.jsonComponentStatus();
-    outputJsons[system.systemId]["reactions"] = system.reactions.jsonStatus();
+    outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+    outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
+    outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+    outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+    outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
+    outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
+    outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
-    std::cout << outputJsons[system.systemId].dump(4) << std::endl;
   }
 
   for (System& system : systems)
@@ -293,7 +291,8 @@ void MonteCarlo::initialize()
 
   for (System& system : systems)
   {
-    outputJsonFiles[system.systemId] << outputJsons[system.systemId].dump(4);
+    std::ofstream json(outputJsonFileNames[system.systemId]);
+    json << outputJsons[system.systemId].dump(4);
   }
 }
 
@@ -614,16 +613,10 @@ void MonteCarlo::output()
 
     std::print(stream, "\n\n");
 
-    outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
-
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");
 
     std::print(stream, "{}", system.writeMCMoveStatistics());
-
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["total"] = system.jsonMCMoveStatistics();
 
     std::print(stream, "Production run counting of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
@@ -633,8 +626,6 @@ void MonteCarlo::output()
       std::print(
           stream, "{}",
           component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, component.componentId, component.name));
-      outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name] =
-          component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
     }
     // std::print(stream, "{}", system.mc_moves_statistics.writeSystemStatistics(numberOfSteps));
 
@@ -642,8 +633,6 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
 
     std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
-    outputJsons[system.systemId]["output"]["MCMoveStatisticsAllSystems"] =
-        countTotal.jsonAllSystemStatistics(numberOfSteps);
 
     std::print(stream, "\n\n");
 
@@ -654,21 +643,12 @@ void MonteCarlo::output()
     {
       std::print(stream, "{}",
                  component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
-      outputJsons[system.systemId]["cpuTimings"][component.name] =
-          component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
-    outputJsons[system.systemId]["cpuTimings"]["system"] = system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    outputJsons[system.systemId]["cpuTimings"]["summedSystemsAndComponents"] =
-        total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
-    outputJsons[system.systemId]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
-    outputJsons[system.systemId]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
-    outputJsons[system.systemId]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
-    outputJsons[system.systemId]["cpuTimings"]["total"] = totalSimulationTime.count();
 
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
     std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
@@ -685,11 +665,39 @@ void MonteCarlo::output()
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
     std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass));
+
+
+    // json statistics
+    outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
+    outputJsons[system.systemId]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
+    outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
+    
+    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
+        countTotal.jsonAllSystemStatistics(numberOfSteps);
+    
+    outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
+        total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
+    outputJsons[system.systemId]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
+    outputJsons[system.systemId]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
+    outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
+    outputJsons[system.systemId]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
+    outputJsons[system.systemId]["output"]["cpuTimings"]["system"] = system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
+
+
+    for (const Component& component : system.components)
+    {
+      outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
+          component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
+      outputJsons[system.systemId]["output"]["cpuTimings"][component.name] =
+          component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
+    }
   }
 
   for (System& system : systems)
   {
-    outputJsonFiles[system.systemId] << outputJsons[system.systemId].dump(4);
+    std::ofstream json(outputJsonFileNames[system.systemId]);
+    json << outputJsons[system.systemId].dump(4);
   }
 }
 

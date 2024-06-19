@@ -26,6 +26,7 @@ import archive;
 import double3;
 import simd_quatd;
 import int3x3;
+import json;
 
 export union double3x3
 {
@@ -227,6 +228,9 @@ export union double3x3
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3x3& vec);
+  
+  friend void to_json(nlohmann::json&, const double3x3&);
+  friend void from_json(const nlohmann::json&, double3x3&);
 };
 
 /*
@@ -425,3 +429,7 @@ export inline double3x3 sqrt(const double3x3& b)
   r.m33 = std::sqrt(b.m33);
   return r;
 }
+
+void to_json(nlohmann::json& j, const double3x3& a) { j = nlohmann::json{{a.ax, a.ay, a.az},{a.bx, a.by, a.bz}, {a.cx, a.cy, a.cz}}; }
+
+void from_json(const nlohmann::json& j, double3x3& a) { j.get_to(a); }

@@ -192,7 +192,7 @@ std::string SimulationBox::printStatus() const
 nlohmann::json SimulationBox::jsonStatus() const
 {
   nlohmann::json box;
-  box["box"] = {{cell.ax, cell.bx, cell.cx}, {cell.ay, cell.by, cell.cy}, {cell.az, cell.bz, cell.cz}};
+  box["box"] = cell;
   box["boxLengths"] = {lengthA, lengthB, lengthC};
   double conv = 180.0 / std::numbers::pi;
   box["boxAngles"] = {conv * angleAlpha, conv * angleBeta, conv * angleGamma};

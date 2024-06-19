@@ -550,7 +550,7 @@ nlohmann::json Component::jsonStatus() const
   status["mass"] = totalMass;
   status["n_atoms"] = atoms.size();
   status["cbmcStartingBead"] = startingBead;
-  status["diagonalizedInertiaVector"] = {inertiaVector.x, inertiaVector.y, inertiaVector.z};
+  status["diagonalizedInertiaVector"] = inertiaVector;
   status["translationalDOF"] = translationalDegreesOfFreedom;
   status["rotationalDOF"] = rotationalDegreesOfFreedom;
   status["netCharge"] = netCharge;
