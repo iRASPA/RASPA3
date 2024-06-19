@@ -1,14 +1,20 @@
 
 if(BUILD_MAC_PACKAGE)
 
-set(CPACK_PACKAGE_VERSION ${VERSION})
-set(CPACK_GENERATOR "DragNDrop")
-set(CPACK_DMG_DISABLE_APPLICATIONS_SYMLINK ON)
+
+set(CPACK_PACKAGE_VERSION ${CMAKE_PROJECT_VERSION})
+set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGE_NAME "raspa")
-set(CPACK_PACKAGE_LICENSE "MIT")
+set(CPACK_PRODUCTBUILD_IDENTIFIER nl.darkwing.raspa)
+set(CPACK_PACKAGING_INSTALL_PREFIX /usr/local)
 set(CPACK_PACKAGE_DESCRIPTION "Molecular simulation code for adsorption and diffusion in nanoporours materials.")
 set(CPACK_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
 set(CPACK_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
+set(CPACK_PACKAGE_FILE_NAME "raspa-${CMAKE_PROJECT_VERSION}-${CMAKE_OSX_ARCHITECTURES}")
+set(CPACK_PKGBUILD_IDENTITY_NAME "3rd Party Mac Developer Installer: David Dubbeldam (24U2ZRZ6SC)")
+set(CPACK_RESOURCE_FILE_WELCOME ${CMAKE_SOURCE_DIR}/packaging/welcome.txt)
+set(CPACK_RESOURCE_FILE_README ${CMAKE_SOURCE_DIR}/packaging/readme.txt)
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/packaging/license.txt)
 
 include(CPack)
 

@@ -41,15 +41,20 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
 endif()
 
-# -stdlib=libc++
-set(CMAKE_CXX_FLAGS_DEBUG "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined")
-set(CMAKE_CXX_FLAGS_RELEASE "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
-set(CMAKE_CXX_FLAGS_MINSIZEREL "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-stdlib=libc++ -fvisibility=hidden -fexperimental-library ${OpenMP_CXX_FLAGS} -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math")
+execute_process (
+  COMMAND bash -c "llvm-config --libdir"
+  OUTPUT_VARIABLE LLVM_LIBS
+)
+
+execute_process (
+  COMMAND bash -c "llvm-config --version"
+  OUTPUT_VARIABLE LLVM_VERSION
+)
 
 add_subdirectory(src)
 add_subdirectory(app)
 add_subdirectory(data)
+add_subdirectory(examples)
 
 if(BUILD_DOXYGEN)
   add_subdirectory(docs)

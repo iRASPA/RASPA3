@@ -6,9 +6,9 @@
 #include <bit>
 #include <complex>
 
-import archive;
 
 /*
+import archive;
 struct teststruct
 {
   size_t a{0};

@@ -36,12 +36,17 @@ elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
         libs::raspakit
-        -lpthread
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
-        OpenMP::OpenMP_CXX
+        -nostdlib++
+        ${LLVM_LIBS}/c++/libc++experimental.a
+        ${LLVM_LIBS}/c++/libc++.a
+        ${LLVM_LIBS}/c++/libc++abi.a
+        ${LLVM_LIBS}/libunwind.a
+        ${LLVM_LIBS}/../../../libomp/${LLVM_VERSION}/lib/libomp.a
+        -lpthread
 )
 endif()
 
 
-install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin COMPONENT app)

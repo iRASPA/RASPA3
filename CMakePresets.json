@@ -1,167 +1,123 @@
 {
-    "version": 2,
-    "cmakeMinimumRequired": {
-      "major": 3,
-      "minor": 20,
-      "patch": 0
+    "version" : 2,
+    "cmakeMinimumRequired" : {
+      "major" : 3,
+      "minor" : 28,
+      "patch" : 0
     },
     "configurePresets": [
       {
-        "name": "base",
-        "description": "Sets generator, build and install directory, vcpkg",
-        "hidden": true,
-        "generator": "Ninja",
-        "binaryDir": "${sourceDir}/build/${presetName}"
+        "name" : "base",
+        "description" : "Sets generator, build and install directory, vcpkg",
+        "hidden" : true,
+        "generator" : "Ninja",
+        "binaryDir" : "${sourceDir}/build/${presetName}"
       },
       {
-        "name": "windows-base",
-        "generator" : "Visual Studio 17 2022",
-        "description": "Sets x64 arch, compilers, build type",
-        "inherits": [
-          "base"
-        ],
-        "architecture": {
-          "value": "x64",
-          "strategy": "external"
+        "name" : "macos-intel",
+        "description" : "Sets compilers, build type",
+        "inherits" : [ "base" ],
+        "cacheVariables" : {
+          "CMAKE_OSX_ARCHITECTURES" : "x86_64", 
+          "CMAKE_BUILD_TYPE" : "Release",
+          "CMAKE_CXX_COMPILER" : "clang++",
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
+          "CMAKE_INSTALL_PREFIX" : "/usr/local",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
+          "OpenMP_libomp_LIBRARY" : "/usr/local/Cellar/libomp/18.1.7/lib/libomp.a",
+          "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "BUILD_MAC_PACKAGE" : true,
+          "BUILD_TESTING" : true
         },
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "CMAKE_CXX_COMPILER": "cl"
-        },
-        "vendor": {
-          "microsoft.com/VisualStudioSettings/CMake/1.0": {
-            "hostOS": [
-              "Windows"
-            ]
-          }
-        }
-      },
-      {
-        "name": "windows-clang",
-        "inherits": [ 
-          "base" 
-        ],
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "CMAKE_CXX_COMPILER": "clang++"
-        },
-        "architecture": {
-          "value": "x64",
-          "strategy": "external"
-        }
-      },
-      {
-        "name": "macos-base",
-        "description": "Sets compilers, build type",
-        "inherits": [ "base" ],
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "CMAKE_CXX_COMPILER": "clang++-17"
-        },
-        "vendor": {
-            "microsoft.com/VisualStudioSettings/CMake/1.0": {
-              "hostOS": [ "macOS" ]
+        "vendor" : {
+            "microsoft.com/VisualStudioSettings/CMake/1.0" : {
+              "hostOS" : [ "macOS" ]
             }
           }
       },
       {
-        "name": "linux-base",
-        "description": "Sets compilers, build type",
-        "inherits": "base",
-        "cacheVariables": {
-          "CMAKE_BUILD_TYPE": "Debug",
-          "CMAKE_CXX_COMPILER": "clang++-17"
+        "name" : "macos-intel-debug",
+        "description" : "Sets compilers, build type",
+        "inherits" : [ "base" ],
+        "cacheVariables" : {
+          "CMAKE_OSX_ARCHITECTURES" : "x86_64", 
+          "CMAKE_BUILD_TYPE" : "Debug",
+          "CMAKE_CXX_COMPILER" : "clang++",
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
+          "CMAKE_INSTALL_PREFIX" : "/usr/local",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
+          "OpenMP_libomp_LIBRARY" : "/usr/local/Cellar/libomp/18.1.7/lib/libomp.a",
+          "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "BUILD_MAC_PACKAGE" : true,
+          "BUILD_TESTING" : true
         },
-        "vendor": {
-          "microsoft.com/VisualStudioSettings/CMake/1.0": {
-            "hostOS": [ "Linux" ]
+        "vendor" : {
+            "microsoft.com/VisualStudioSettings/CMake/1.0" : {
+              "hostOS" : [ "macOS" ]
+            }
+          }
+      },
+      {
+        "name" : "macos-apple-silicon",
+        "description" : "Sets compilers, build type",
+        "inherits" : [ "base" ],
+        "cacheVariables" : {
+          "CMAKE_OSX_ARCHITECTURES" : "arm64", 
+          "CMAKE_BUILD_TYPE" : "Release",
+          "CMAKE_CXX_COMPILER" : "clang++",
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
+          "CMAKE_INSTALL_PREFIX" : "/usr/local",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
+          "OpenMP_libomp_LIBRARY" : "/opt/homebrew/Cellar/libomp/18.1.7/lib/libomp.a",
+          "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "BUILD_MAC_PACKAGE" : true,
+          "BUILD_TESTING" : true
+        },
+        "vendor" : {
+            "microsoft.com/VisualStudioSettings/CMake/1.0" : {
+              "hostOS" : [ "macOS" ]
+            }
+          }
+      },
+      {
+        "name" : "macos-apple-silicon-debug",
+        "description" : "Sets compilers, build type",
+        "inherits" : [ "base" ],
+        "cacheVariables" : {
+          "CMAKE_OSX_ARCHITECTURES" : "arm64", 
+          "CMAKE_BUILD_TYPE" : "Debug",
+          "CMAKE_CXX_COMPILER" : "clang++",
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
+          "CMAKE_INSTALL_PREFIX" : "/usr/local",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
+          "OpenMP_libomp_LIBRARY" : "/opt/homebrew/Cellar/libomp/18.1.7/lib/libomp.a",
+          "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "BUILD_MAC_PACKAGE" : true,
+          "BUILD_TESTING" : true
+        },
+        "vendor" : {
+            "microsoft.com/VisualStudioSettings/CMake/1.0" : {
+              "hostOS" : [ "macOS" ]
+            }
+          }
+      },
+      {
+        "name" : "linux-base",
+        "description" : "Sets compilers, build type",
+        "inherits" : "base",
+        "cacheVariables" : {
+          "CMAKE_BUILD_TYPE" : "Release",
+          "CMAKE_CXX_COMPILER" : "clang++"
+        },
+        "vendor" : {
+          "microsoft.com/VisualStudioSettings/CMake/1.0" : {
+            "hostOS" : [ "Linux" ]
           }
         }
-      },
-      {
-        "name": "linux-warnings",
-        "description": "Enables dev warnings (-wdev)",
-        "inherits": "linux-base",
-        "warnings": {
-          "dev": true
-        }
-      }
-    ],
-    "buildPresets": [
-      {
-        "name": "core-build",
-        "description": "Inherits environment from base configurePreset",
-        "configurePreset": "base",
-        "hidden": true,
-        "inheritConfigureEnvironment": true
-      },
-      {
-        "name": "windows-clean-build",
-        "description": "Clean before build (--clean-first)",
-        "configurePreset": "windows-base",
-        "inherits": "core-build",
-        "cleanFirst": true
-      },
-      {
-        "name": "windows-verbose-build",
-        "description": "Passes -v to Ninja",
-        "configurePreset": "windows-base",
-        "inherits": "core-build",
-        "nativeToolOptions": [ "-v" ]
-      },
-      {
-        "name": "macos-clean-build",
-        "description": "Clean before build (--clean-first)",
-        "configurePreset": "macos-base",
-        "inherits": "core-build",
-        "cleanFirst": true
-      },
-      {
-        "name": "macos-verbose-build",
-        "description": "Passes -v to Ninja",
-        "configurePreset": "macos-base",
-        "inherits": "core-build",
-        "nativeToolOptions": [ "-v" ]
-      },
-      {
-        "name": "linux-clean-build",
-        "description": "Clean before build (--clean-first)",
-        "configurePreset": "linux-base",
-        "inherits": "core-build",
-        "cleanFirst": true
-      },
-      {
-        "name": "linux-verbose-build",
-        "description": "Passes -v to Ninja",
-        "configurePreset": "linux-base",
-        "inherits": "core-build",
-        "nativeToolOptions": [ "-v" ]
-      }
-    ],
-    "testPresets": [
-      {
-        "name": "core-test",
-        "description": "Enable output on failure",
-        "configurePreset": "base",
-        "hidden": false,
-        "output": {
-          "outputOnFailure": true
-        }
-      },
-      {
-        "name": "macos-core-test",
-        "configurePreset": "macos-base",
-        "inherits": "core-test"
-      },
-      {
-        "name": "windows-core-test",
-        "configurePreset": "windows-base",
-        "inherits": "core-test"
-      },
-      {
-        "name": "linux-core-test",
-        "configurePreset": "linux-base",
-        "inherits": "core-test"
       }
     ]
   }
