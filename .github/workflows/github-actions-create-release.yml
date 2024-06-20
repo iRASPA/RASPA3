@@ -44,7 +44,7 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_RPM_PACKAGE=ON -DBLA_SIZEOF_INTEGER=8 .
+          cmake -B ${{github.workspace}}/build --preset linux-rpm
       - name: create raspa rpm package
         shell: bash
         run: |

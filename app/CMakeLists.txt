@@ -13,6 +13,7 @@ if (LINUX)
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         OpenMP::OpenMP_CXX
+        -nostdlib++
         -l:libc++.a
         -l:libc++abi.a
         -lm
@@ -27,6 +28,7 @@ elseif (Win32)
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         OpenMP::OpenMP_CXX
+        -nostdlib++
         -l:libc++.a
         -l:libc++abi.a
         -lm

@@ -12,6 +12,11 @@ if (LINUX)
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
+                        GTest::gtest
+                        GTest::gtest_main
+                        GTest::gmock
+                        GTest::gmock_main
+                        -nostdlib++
                         -l:libc++.a
                         -l:libc++abi.a
                         -lm

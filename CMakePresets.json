@@ -24,8 +24,7 @@
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr/local",
           "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
-          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
-          "OpenMP_libomp_LIBRARY" : "/usr/local/Cellar/libomp/18.1.7/lib/libomp.a",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp=libomp",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
           "BUILD_MAC_PACKAGE" : true,
           "BUILD_TESTING" : true
@@ -46,7 +45,7 @@
           "CMAKE_CXX_COMPILER" : "clang++",
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr/local",
-          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+          "CMAKE_CXX_FLAGS_DEBUG" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
           "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
           "OpenMP_libomp_LIBRARY" : "/usr/local/Cellar/libomp/18.1.7/lib/libomp.a",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
@@ -92,7 +91,7 @@
           "CMAKE_CXX_COMPILER" : "clang++",
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr/local",
-          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+          "CMAKE_CXX_FLAGS_DEBUG" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -DDEBUG -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
           "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
           "OpenMP_libomp_LIBRARY" : "/opt/homebrew/Cellar/libomp/18.1.7/lib/libomp.a",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
@@ -106,17 +105,86 @@
           }
       },
       {
-        "name" : "linux-base",
+        "name" : "linux",
         "description" : "Sets compilers, build type",
         "inherits" : "base",
         "cacheVariables" : {
+          "CMAKE_OSX_ARCHITECTURES" : "x86_64",
           "CMAKE_BUILD_TYPE" : "Release",
-          "CMAKE_CXX_COMPILER" : "clang++"
+          "CMAKE_CXX_COMPILER" : "clang++",
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
+          "CMAKE_INSTALL_PREFIX" : "/usr",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+          "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "BUILD_TESTING" : true
         },
         "vendor" : {
           "microsoft.com/VisualStudioSettings/CMake/1.0" : {
             "hostOS" : [ "Linux" ]
           }
+        }
+      },
+      {
+        "name" : "linux-rpm",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-redhat-6",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_CENTOS6_PACKAGE" : true,
+          "OpenMP_CXX_FLAGS" : "-fopenmp=libgomp"
+        }
+      },
+      {
+        "name" : "linux-redhat-7",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
+        }
+      },
+      {
+        "name" : "linux-redhat-8",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLAS_LIBRARIES" : "/usr/lib64/libblas64_.so.3",
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64_.so.3"
+        }
+      },
+      {
+        "name" : "linux-deb",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_DEB_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-ubuntu-22",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux-deb",
+        "cacheVariables" : {
+          "CMAKE_CXX_COMPILER" : "clang++-18"
+        }
+      },
+      {
+        "name" : "linux-ubuntu-20",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux-deb",
+        "cacheVariables" : {
+          "CMAKE_CXX_COMPILER" : "clang++-18"
         }
       }
     ]
