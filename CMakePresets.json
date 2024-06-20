@@ -114,7 +114,7 @@
           "CMAKE_CXX_COMPILER" : "clang++",
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr",
-          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
           "BUILD_TESTING" : true
         },
@@ -139,7 +139,9 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_CENTOS6_PACKAGE" : true,
-          "OpenMP_CXX_FLAGS" : "-fopenmp=libgomp"
+          "OpenMP_CXX_FLAGS" : "-fopenmp=libgomp",
+          "OpenMP_CXX_LIB_NAMES" : "libgomp",
+          "OpenMP_libgomp_LIBRARY" : "/usr/lib64/libgomp.a"
         }
       },
       {
@@ -148,6 +150,7 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
+          "OpenMP_CXX_FLAGS" : "-fopenmp=libomp",
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
           "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
         }
