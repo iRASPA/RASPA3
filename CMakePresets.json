@@ -111,6 +111,7 @@
         "cacheVariables" : {
           "CMAKE_OSX_ARCHITECTURES" : "x86_64",
           "CMAKE_BUILD_TYPE" : "Release",
+          "CMAKE_C_COMPILER" : "clang",
           "CMAKE_CXX_COMPILER" : "clang++",
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr",
@@ -150,7 +151,9 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "OpenMP_CXX_FLAGS" : "-fopenmp=libomp",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp=libomp",
+          "OpenMP_CXX_LIB_NAMES" : "libomp",
+          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
           "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
         }
