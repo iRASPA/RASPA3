@@ -44,11 +44,11 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
+          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-rpm
       - name: create raspa rpm package
         shell: bash
         run: |
-          yum install -y git
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.el9.x86_64.rpm .
       - name: Upload Release Asset
@@ -171,14 +171,13 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
-          apt-get install -y --no-install-recommends llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
           cmake -B ${{github.workspace}}/build --preset linux-deb
       - name: create raspa deb package
         shell: bash
         run: |
-          apt install -y git
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
       - name: Upload Release Asset
