@@ -68,9 +68,6 @@ std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, 
   Component::GrowType growType = system.components[selectedComponent].growType;
 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  // std::vector<Atom> atoms =
-  //   system.components[selectedComponent].recenteredCopy(1.0,
-  //   system.numberOfMoleculesPerComponent[selectedComponent]);
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.hasExternalField, system.components, system.forceField, system.simulationBox,
       system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType, cutOffVDW, cutOffCoulomb,

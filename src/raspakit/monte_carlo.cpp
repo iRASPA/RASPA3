@@ -243,7 +243,7 @@ void MonteCarlo::initialize()
     }
 
     // for (System& system : systems)
-    //{
+    // {
     //   system.checkCartesianPositions();
     //   system.checkMoleculeIds();
     // }
@@ -353,7 +353,7 @@ void MonteCarlo::equilibrate()
     }
 
     // for (System& system : systems)
-    //{
+    // {
     //   system.checkCartesianPositions();
     //   system.checkMoleculeIds();
     // }
@@ -498,7 +498,7 @@ void MonteCarlo::production()
     }
 
     // for (System& system : systems)
-    //{
+    // {
     //   system.checkCartesianPositions();
     //   system.checkMoleculeIds();
     // }

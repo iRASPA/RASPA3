@@ -225,11 +225,8 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
   double l = 0.0;
   for (Atom& atom : atoms)
   {
-    if (components[selectedComponent].lambdaGC.computeDUdlambda)
-    {
-      atom.moleculeId = static_cast<uint16_t>(moleculeId);
-      atom.groupId = uint8_t{1};
-    }
+    atom.moleculeId = static_cast<uint16_t>(moleculeId);
+    atom.groupId = uint8_t{components[selectedComponent].lambdaGC.computeDUdlambda};
     atom.setScaling(l);
   }
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
@@ -340,8 +337,10 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
   }
 }
 
-bool System::checkMoleculeIds()
+void System::checkMoleculeIds()
 {
+  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+
   size_t index = 0;  // indexOfFirstMolecule(selectedComponent);
   for (size_t componentId = 0; componentId < components.size(); componentId++)
   {
@@ -349,13 +348,47 @@ bool System::checkMoleculeIds()
     {
       for (size_t j = 0; j < components[componentId].atoms.size(); ++j)
       {
-        if (atomPositions[index].moleculeId != static_cast<uint32_t>(i)) return false;
-        if (atomPositions[index].componentId != static_cast<uint8_t>(componentId)) return false;
+        if (moleculeAtoms[index].moleculeId != static_cast<uint32_t>(i))
+        {
+          throw std::runtime_error(std::format("Wrong molecule-id detected {} for component {} molecule {}\n",
+                moleculeAtoms[index].moleculeId, componentId, i));
+        }
+        if (moleculeAtoms[index].componentId != static_cast<uint8_t>(componentId))
+        {
+          throw std::runtime_error(std::format("Wrong component-id detected {} for component {} molecule {}\n",
+                moleculeAtoms[index].componentId, componentId, i));
+        }
         ++index;
       }
     }
   }
-  return true;
+
+  for (size_t componentId = 0; componentId < components.size(); componentId++)
+  {
+    if(numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+    {
+      size_t indexFractionalMolecule = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
+      std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, indexFractionalMolecule);
+
+      for (const Atom &atom: fractionalMolecule)
+      {
+        if(components[componentId].lambdaGC.computeDUdlambda)
+        {
+          if (static_cast<size_t>(atom.groupId) == 0)
+          {
+            throw std::runtime_error(std::format("Wrong group-id detected! (0 where it should be 1)\n"));
+          }
+        }
+        else
+        {
+          if (static_cast<size_t>(atom.groupId) == 1)
+          {
+            throw std::runtime_error(std::format("Wrong group-id detected! (1 where it should be 0)\n"));
+          }
+        }
+      }
+    }
+  }
 }
 
 void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
@@ -2213,7 +2246,7 @@ void System::writeRestartFile()
   j["moleculePositions"] = moleculePositions;
 
   // use pretty print and indent of 2
-  std::cout << std::setw(2) << j << std::endl;
+  //std::cout << std::setw(2) << j << std::endl;
 }
 
 void System::readRestartFile()

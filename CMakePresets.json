@@ -126,11 +126,14 @@
         }
       },
       {
-        "name" : "linux-rpm",
+        "name" : "linux-carbon",
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true,
+          "CMAKE_INSTALL_PREFIX" : "$env{HOME}/raspa3",
+          "CMAKE_CC_COMPILER" : "$env{HOME}/software/bin/clang",
+          "CMAKE_CXX_COMPILER" : "$env{HOME}/software/bin/clang++",
+          "CMAKE_MAKE_PROGRAM" : "$env{HOME}/software/bin/ninja",
           "BLA_SIZEOF_INTEGER" : "8"
         }
       },
