@@ -134,6 +134,10 @@
           "CMAKE_CC_COMPILER" : "$env{HOME}/software/bin/clang",
           "CMAKE_CXX_COMPILER" : "$env{HOME}/software/bin/clang++",
           "CMAKE_MAKE_PROGRAM" : "$env{HOME}/software/bin/ninja",
+          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp",
+          "OpenMP_CXX_LIB_NAMES" : "libomp",
+          "OpenMP_libomp_INCLUDES" : "$env{HOME}/software/lib/clang/18/include/",
+          "OpenMP_libomp_LIBRARY" : "$env{HOME}/software/lib/libomp.so",
           "BLA_SIZEOF_INTEGER" : "8"
         }
       },
