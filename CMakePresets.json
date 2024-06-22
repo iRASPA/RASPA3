@@ -194,7 +194,6 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "CMAKE_CXX_COMPILER" : "clang++-18",
           "BUILD_DEB_PACKAGE" : true,
           "BLA_SIZEOF_INTEGER" : "8"
         }
@@ -204,7 +203,6 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "CMAKE_CXX_COMPILER" : "clang++-18",
           "BUILD_DEB_PACKAGE" : true,
           "BLA_SIZEOF_INTEGER" : "8"
         }
