@@ -115,7 +115,7 @@
           "CMAKE_CXX_COMPILER" : "clang++",
           "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=lld",
           "CMAKE_INSTALL_PREFIX" : "/usr",
-          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+          "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
           "BUILD_TESTING" : true
         },
@@ -158,9 +158,6 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "OpenMP_CXX_FLAGS" : "-Xclang -fopenmp=libomp",
-          "OpenMP_CXX_LIB_NAMES" : "libomp",
-          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
           "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
         }
@@ -176,7 +173,15 @@
         }
       },
       {
-        "name" : "linux-deb",
+        "name" : "linux-redhat-9",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
+        "name" : "linux-ubuntu-24",
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
@@ -187,17 +192,75 @@
       {
         "name" : "linux-ubuntu-22",
         "description" : "Sets compilers, build type",
-        "inherits" : "linux-deb",
+        "inherits" : "linux",
         "cacheVariables" : {
-          "CMAKE_CXX_COMPILER" : "clang++-18"
+          "CMAKE_CXX_COMPILER" : "clang++-18",
+          "BUILD_DEB_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
         }
       },
       {
         "name" : "linux-ubuntu-20",
         "description" : "Sets compilers, build type",
-        "inherits" : "linux-deb",
+        "inherits" : "linux",
         "cacheVariables" : {
-          "CMAKE_CXX_COMPILER" : "clang++-18"
+          "CMAKE_CXX_COMPILER" : "clang++-18",
+          "BUILD_DEB_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-35",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-36",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-37",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-38",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-39",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-fedora-40",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
         }
       }
     ]

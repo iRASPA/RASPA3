@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-redhat-9
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -174,11 +174,11 @@ jobs:
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
-          cmake -B ${{github.workspace}}/build --preset linux-deb
+          cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24
       - name: create raspa deb package
         shell: bash
         run: |
-          ninja -C ${{github.workspace}}/build package
+          ninja -C ${{github.workspace}}/build package --preset linux-ubuntu-24
           mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
       - name: Upload Release Asset
         id: upload-release-asset
@@ -310,7 +310,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False  lapack-devel lapack64 blas64
           dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11
           dnf install -y --setopt=install_weak_deps=False pybind11-devel
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-40
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -342,7 +342,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-39
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -374,7 +374,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-38
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -406,7 +406,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-37
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -438,7 +438,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-36
       - name: create raspa rpm package
         shell: bash
         run: |
@@ -470,7 +470,7 @@ jobs:
         shell: bash
         run: |
           yum install -y git
-          cmake -B ${{github.workspace}}/build --preset linux-rpm
+          cmake -B ${{github.workspace}}/build --preset linux-fedora-35
       - name: create raspa rpm package
         shell: bash
         run: |
