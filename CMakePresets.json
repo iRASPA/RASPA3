@@ -117,6 +117,7 @@
           "CMAKE_INSTALL_PREFIX" : "/usr",
           "CMAKE_CXX_FLAGS_RELEASE" : "-stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
           "CMAKE_BUILD_WITH_INSTALL_RPATH" : true,
+          "INSTALL_GTEST" : false,
           "BUILD_TESTING" : true
         },
         "vendor" : {
@@ -147,9 +148,9 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_CENTOS6_PACKAGE" : true,
-          "OpenMP_CXX_FLAGS" : "-fopenmp=libgomp",
-          "OpenMP_CXX_LIB_NAMES" : "libgomp",
-          "OpenMP_libgomp_LIBRARY" : "/usr/lib64/libgomp.a"
+          "OpenMP_CXX_FLAGS" : "-fopenmp",
+          "OpenMP_CXX_LIB_NAMES" : "libomp",
+          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a"
         }
       },
       {

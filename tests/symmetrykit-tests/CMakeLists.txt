@@ -13,7 +13,6 @@ if (LINUX)
   target_link_libraries(unit_tests_symmetrykit
                         PUBLIC
                         libs::raspakit
-                        -static-libstdc++
                         -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
@@ -26,6 +25,7 @@ if (LINUX)
                         -l:libc++.a
                         -l:libc++abi.a
                         -lm
+                        -ldl
                         -lpthread
 )
 elseif (Win32)

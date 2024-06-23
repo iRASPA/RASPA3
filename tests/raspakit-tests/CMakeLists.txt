@@ -18,7 +18,6 @@ if (LINUX)
   target_link_libraries(unit_tests_raspakit
                         PUBLIC
                         libs::raspakit
-                        -static-libstdc++
                         -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
@@ -31,6 +30,7 @@ if (LINUX)
                         -l:libc++.a
                         -l:libc++abi.a
                         -lm
+                        -ldl
                         -lpthread
 )
 elseif (Win32)
