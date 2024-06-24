@@ -12,7 +12,7 @@ source=(raspa3.tar.gz)
 md5sums=('SKIP')
 
 build() {
-  cmake -B build --preset linux-archlinux
+  cmake -B build --preset linux-archlinux -DCMAKE_INSTALL_PREFIX=${pkgdir}
   cmake --build build
 }
 
