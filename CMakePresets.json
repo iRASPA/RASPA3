@@ -159,6 +159,9 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
+          "OpenMP_CXX_FLAGS" : "-fopenmp",
+          "OpenMP_CXX_LIB_NAMES" : "libomp",
+          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
           "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
         }

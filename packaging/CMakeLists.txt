@@ -1,7 +1,6 @@
 
 if(BUILD_MAC_PACKAGE)
 
-
 set(CPACK_PACKAGE_VERSION ${CMAKE_PROJECT_VERSION})
 set(CPACK_GENERATOR "productbuild")
 set(CPACK_PACKAGE_NAME "raspa")
@@ -15,6 +14,7 @@ set(CPACK_PKGBUILD_IDENTITY_NAME "3rd Party Mac Developer Installer: David Dubbe
 set(CPACK_RESOURCE_FILE_WELCOME ${CMAKE_SOURCE_DIR}/packaging/welcome.txt)
 set(CPACK_RESOURCE_FILE_README ${CMAKE_SOURCE_DIR}/packaging/readme.txt)
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/packaging/license.txt)
+set(CPACK_STRIP_FILES ON)
 
 include(CPack)
 
@@ -34,6 +34,7 @@ set(CPACK_RPM_PACKAGE_RELEASE 1)
 set(CPACK_RPM_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
 set(CPACK_RPM_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
 set(CPACK_RPM_PACKAGE_DEPENDS "blas, lapack, libgfortran, libquadmath, libgomp, glibc, libgcc")
+set(CPACK_STRIP_FILES ON)
 
 include(CPack)
 
@@ -53,6 +54,7 @@ set(CPACK_RPM_PACKAGE_RELEASE 1)
 set(CPACK_RPM_PACKAGE_CONTACT "David Dubbeldam (d.dubbeldam@uva.nl)")
 set(CPACK_RPM_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
 set(CPACK_RPM_PACKAGE_DEPENDS "blas, lapack, libgfortran, libquadmath, libomp, glibc, libgcc")
+set(CPACK_STRIP_FILES ON)
 
 include(CPack)
 
@@ -73,6 +75,7 @@ set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libblas64-3, liblapack64-3, libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6")
 set(CPACK_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
+set(CPACK_STRIP_FILES ON)
 
 include(CPack)
 
