@@ -143,6 +143,15 @@
         }
       },
       {
+        "name" : "linux-archlinux",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
+        }
+      },
+      {
         "name" : "linux-redhat-6",
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
