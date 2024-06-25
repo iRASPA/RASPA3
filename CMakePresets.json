@@ -143,6 +143,46 @@
         }
       },
       {
+        "name" : "linux-opensuse-leap-15.2",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
+        "name" : "linux-opensuse-leap-15.3",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
+        "name" : "linux-opensuse-leap-15.4",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
+        "name" : "linux-opensuse-leap-15.5",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
+        "name" : "linux-opensuse-tumbleweed",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_RPM_PACKAGE" : true
+        }
+      },
+      {
         "name" : "linux-archlinux",
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
