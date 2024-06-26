@@ -234,6 +234,32 @@
         }
       },
       {
+        "name" : "linux-debian-12",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_DEB_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-debian-11",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_DEB_PACKAGE" : true,
+          "BLA_SIZEOF_INTEGER" : "8"
+        }
+      },
+      {
+        "name" : "linux-debian-10",
+        "description" : "Sets compilers, build type",
+        "inherits" : "linux",
+        "cacheVariables" : {
+          "BUILD_DEB_PACKAGE" : true
+        }
+      },
+      {
         "name" : "linux-ubuntu-24",
         "description" : "Sets compilers, build type",
         "inherits" : "linux",

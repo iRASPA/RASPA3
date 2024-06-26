@@ -487,7 +487,7 @@ jobs:
           asset_name: raspa-3.0.0-1.fc35.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-tumbleweed-job:
+  opensuse-tumbleweed-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -549,7 +549,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.5.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15-4-job:
+  opensuse-leap-15-4-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -580,7 +580,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.4.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15-3-job:
+  opensuse-leap-15-3-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -611,7 +611,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.3.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15-2-job:
+  opensuse-leap-15-2-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -640,4 +640,97 @@ jobs:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-3.0.0-1.x86_64.rpm
           asset_name: raspa-3.0.0-1.opensuse-leap-15.2.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  debian-12-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-12-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-debian-12
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-debian-12.deb
+          asset_content_type: application/octet-stream
+
+  debian-11-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-11-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-debian-11
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-debian-11.deb
+          asset_content_type: application/octet-stream
+
+  debian-10-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-10-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-debian-10
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_3.0.0_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_3.0.0_amd64.deb
+          asset_name: raspa_3.0.0_amd64-debian-10.deb
           asset_content_type: application/octet-stream
