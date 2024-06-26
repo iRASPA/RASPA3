@@ -519,7 +519,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-tumbleweed.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15.5-job:
+  opensuse-leap-15-5-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -551,7 +551,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.5.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15.4-job:
+  openuse-leap-15-4-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -583,7 +583,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.4.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15.3-job:
+  openuse-leap-15-3-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
@@ -615,7 +615,7 @@ jobs:
           asset_name: raspa-3.0.0-1.opensuse-leap-15.3.x86_64.rpm
           asset_content_type: application/octet-stream
 
-  openuse-leap-15.2-job:
+  openuse-leap-15-2-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
