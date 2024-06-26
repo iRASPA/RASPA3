@@ -501,7 +501,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-opensuse-tumbleweed
       - name: create raspa rpm package
         shell: bash
@@ -533,7 +532,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-opensuse-leap-15.5
       - name: create raspa rpm package
         shell: bash
@@ -565,7 +563,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-opensuse-leap-15.4
       - name: create raspa rpm package
         shell: bash
@@ -597,7 +594,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-opensuse-leap-15.3
       - name: create raspa rpm package
         shell: bash
@@ -629,7 +625,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-opensuse-leap-15.2
       - name: create raspa rpm package
         shell: bash
