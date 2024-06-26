@@ -621,7 +621,7 @@ jobs:
          password: ${{ secrets.github_token }}
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
       - name: configure cmake raspa
         shell: bash
         run: |
