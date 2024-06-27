@@ -1,4 +1,4 @@
-name: Test RASPA3 C++ Unit Tests
+name: test raspa3 c++ unit tests
 on:
   workflow_dispatch:
     branches: [ "main" ]
@@ -15,25 +15,34 @@ jobs:
         uses: actions/checkout@v4
 
       - name: install packages
-        run: sudo apt-get install -y build-essential git cmake ninja-build llvm clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev pybind11-dev python3-pybind11 libblas3 libblas-dev liblapack3 liblapack-dev doxygen graphviz
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          sudo apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
+          sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
+          sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
+          sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          sudo apt-get install -y --no-install-recommends doxygen graphviz
 
       - name: configure cmake raspa3 
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -GNinja -DCMAKE_INSTALL_PREFIX=${HOME}/raspa3 -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON -DBUILD_TESTING=ON .
+          cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24 -DBUILD_TESTING=ON .
 
       - name: build raspa3 and tests
         shell: bash
         run: |
-          cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+          cmake --build ${{github.workspace}}/build
 
       - name: run tests
         shell: bash
         run: |
-          ctest -C ${{env.BUILD_TYPE}} --test-dir ${{github.workspace}}/build/tests --verbose
+          ctest -C ${{env.BUILD_TYPE}} --test-dir ${{github.workspace}}/tests --output-junit ${{github.workspace}}/build/testRestuls.xml
 
-      - name: Generate documentation
-        working-directory: ${{github.workspace}}/build
-        # this is defined in the repo docs/CMakeLists.txt file
-        run: |
-          cmake --build ${{github.workspace}}/build -t documentation
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    
+        with:
+          name: RASPA Tests            
+          path: ${{github.workspace}}/build/testRestuls.xml 
+          reporter: java-junit
