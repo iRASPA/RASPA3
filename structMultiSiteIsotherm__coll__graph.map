@@ -1,0 +1,13 @@
+<map id="MultiSiteIsotherm" name="MultiSiteIsotherm">
+<area shape="rect" id="Node000001" title=" " alt="" coords="851,65,989,90"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="492,7,671,33"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="685,31,827,55,863,62,862,67,826,60,684,37"/>
+<area shape="rect" id="Node000003" href="$structIsotherm.html" title=" " alt="" coords="299,7,379,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="393,17,492,17,492,23,393,23"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,7,171,33"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="185,17,298,17,298,23,185,23"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="502,57,661,97"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="674,75,850,75,850,80,674,80"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="502,122,661,147"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="674,119,826,95,862,87,863,93,827,100,675,125"/>
+</map>
