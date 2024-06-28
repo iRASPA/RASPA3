@@ -37,13 +37,12 @@ jobs:
       - name: run tests
         shell: bash
         run: |
-          ctest -C ${{env.BUILD_TYPE}} --test-dir ${{github.workspace}}/build/tests/raspakit-tests --output-junit ${{github.workspace}}/build/testResults.xml
-          sed -i.bak 's/(empty)/(raspakit)/g' ${{github.workspace}}/build/tests/raspakit-tests/test.xml
+          ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:testResults.xml
 
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()    
         with:
           name: RASPA Tests            
-          path: ${{github.workspace}}/build/testResults.xml 
+          path: ${{github.workspace}}/testResults.xml 
           reporter: java-junit
