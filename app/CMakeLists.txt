@@ -24,7 +24,6 @@ elseif (Win32)
         PUBLIC
         libs::raspakit
         -static-libstdc++
-        -static-libgcc
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         OpenMP::OpenMP_CXX

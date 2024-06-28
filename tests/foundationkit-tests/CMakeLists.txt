@@ -7,7 +7,6 @@ if (LINUX)
   target_link_libraries(unit_tests_foundationkit
                         PUBLIC
                         libs::raspakit
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -27,7 +26,6 @@ elseif (Win32)
                         PUBLIC
                         libs::raspakit
                         -static-libstdc++
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -56,4 +54,4 @@ target_link_libraries(unit_tests_foundationkit PRIVATE
 )
 endif()
 
-add_test(NAME FoundationKit COMMAND unit_tests_foundationkit)
+gtest_discover_tests(unit_tests_foundationkit)

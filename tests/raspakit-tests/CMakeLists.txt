@@ -18,7 +18,6 @@ if (LINUX)
   target_link_libraries(unit_tests_raspakit
                         PUBLIC
                         libs::raspakit
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -38,7 +37,6 @@ elseif (Win32)
                         PUBLIC
                         libs::raspakit
                         -static-libstdc++
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -67,6 +65,6 @@ target_link_libraries(unit_tests_raspakit PRIVATE
 )
 endif()
 
-add_test(NAME RaspaKit COMMAND unit_tests_raspakit)
+gtest_discover_tests(unit_tests_raspakit)
 
 install(TARGETS unit_tests_raspakit DESTINATION share/raspa3/tests COMPONENT unit_tests_raspakit)

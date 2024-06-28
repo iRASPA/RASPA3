@@ -13,7 +13,6 @@ if (LINUX)
   target_link_libraries(unit_tests_symmetrykit
                         PUBLIC
                         libs::raspakit
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -33,7 +32,6 @@ elseif (Win32)
                         PUBLIC
                         libs::raspakit
                         -static-libstdc++
-                        -static-libgcc
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         OpenMP::OpenMP_CXX
@@ -66,4 +64,4 @@ endif()
 
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-add_test(NAME SymmetryKit COMMAND unit_tests_symmetrykit)
+gtest_discover_tests(unit_tests_symmetrykit)
