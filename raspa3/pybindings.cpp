@@ -36,7 +36,7 @@ import framework;
 import component;
 import system;
 
-PYBIND11_MODULE(raspakit, m)
+PYBIND11_MODULE(raspalib, m)
 {
   pybind11::class_<int3>(m, "int3")
         .def(pybind11::init<int32_t, int32_t, int32_t>());

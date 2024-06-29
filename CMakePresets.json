@@ -265,7 +265,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_DEB_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {

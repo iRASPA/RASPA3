@@ -39,6 +39,12 @@ Set your compiler, e.g.<br>
 or<br>
   CXX=clang++-17<br>
 
+Python
+======
+export PYTHONPATH=$PYTHONPATH:/usr/share/raspa3/lib:/usr/local/share/raspa3/lib
+cd python
+python3 script.py
+
 LLVM general
 ============
 wget https://apt.llvm.org/llvm.sh<br>

@@ -1,4 +1,4 @@
-from raspakit import *
+from raspalib import *
 
 atomTypes = [PseudoAtom("Si",    28.0855,   2.05,  14, False), \
              PseudoAtom("O",     15.999,   -1.025,  8, False), \
