@@ -25,7 +25,7 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 
-TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
+TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -80,7 +80,7 @@ TEST(StaticEnergy, Test_2_CO2_in_ITQ_29_1x1x1)
   EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 154.11883595, 1e-6);
 }
 
-TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
+TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -169,7 +169,7 @@ TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_shifted)
   EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 154.11883595, 1e-6);
 }
 
-TEST(StaticEnergy, Test_2_CO2_in_MFI_2x2x2_truncated)
+TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),

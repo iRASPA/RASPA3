@@ -23,7 +23,7 @@ import simulationbox;
 import mc_moves_probabilities_particles;
 import mc_moves_probabilities_system;
 
-TEST(mc, translation)
+TEST(MC, translation)
 {
   ForceField forceField = ForceField(
   { PseudoAtom("Si",    28.0855,   2.05,  14, false),

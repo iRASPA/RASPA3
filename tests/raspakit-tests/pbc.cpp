@@ -11,7 +11,7 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 
-TEST(pdb, triclinic)
+TEST(pbc, triclinic)
 {
   //double3x3 m{ double3{25.0, 2.5e-6, 0.0}, double3{0.0, 25.0, 0.0}, double3{0.0, 0.0, 25.0} };
   //SimulationBox rect_box = SimulationBox(m, SimulationBox::Type::Rectangular);

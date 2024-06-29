@@ -27,7 +27,7 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
-TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
+TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -128,7 +128,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   EXPECT_NEAR(atomPositions[5].gradient.z, -17.938271420558, 1e-6);
 }
 
-TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
+TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -229,7 +229,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   EXPECT_NEAR(atomPositions[5].gradient.z,   90.888952502176, 1e-6);
 }
 
-TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
+TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -341,7 +341,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   EXPECT_NEAR(atomPositions[5].gradient.z,  -223.065047349755, 1e-6);
 }
 
-TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
+TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -451,7 +451,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   EXPECT_NEAR(atomPositions[5].gradient.z,   241.771707768619, 1e-4);
 }
 
-TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
+TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -563,7 +563,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 }
 
 /*
-TEST(Gradients, Test_2_CO2_in_ITQ_29_1x1x1_numerical)
+TEST(gradients, Test_2_CO2_in_ITQ_29_1x1x1_numerical)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -697,7 +697,7 @@ TEST(Gradients, Test_2_CO2_in_ITQ_29_1x1x1_numerical)
 }
 */
 
-TEST(Gradients, Test_CO2_in_ITQ_29_1x1x1)
+TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -806,7 +806,7 @@ TEST(Gradients, Test_CO2_in_ITQ_29_1x1x1)
   }
 }
 
-TEST(Gradients, Test_CH4_in_Box_25x25x25)
+TEST(gradients, Test_CH4_in_Box_25x25x25)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
@@ -887,7 +887,7 @@ TEST(Gradients, Test_CH4_in_Box_25x25x25)
 }
 
 
-TEST(Gradients, Test_CO2_in_MFI_2x2x2)
+TEST(gradients, Test_CO2_in_MFI_2x2x2)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -1022,7 +1022,7 @@ TEST(Gradients, Test_CO2_in_MFI_2x2x2)
   }
 }
 
-TEST(Gradients, Test_20_Na_Cl_in_Box_25x25x25)
+TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",   28.0855,   2.05,  14, false),

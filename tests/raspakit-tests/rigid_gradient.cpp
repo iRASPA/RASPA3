@@ -28,7 +28,7 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
-TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2)
+TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -126,7 +126,7 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2)
   EXPECT_NEAR(system.moleculePositions[1].orientationGradient.r,      0.000000000000, 1e-6);
 }
 
-TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
+TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),
@@ -224,7 +224,7 @@ TEST(RigidGradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
   EXPECT_NEAR(system.moleculePositions[1].orientationGradient.r,   -107.07297003, 1e-4);
 }
 
-TEST(RigidGradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
+TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si",    28.0855,   2.05,  14, false),

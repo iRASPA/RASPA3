@@ -25,7 +25,7 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 
-TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
+TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("CH4", 16.04246, 0.0, 6, false) },
@@ -49,7 +49,7 @@ TEST(SpaceGroup, TestLennardJonesVDWTwoMethanes)
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -158.5, 1e-12);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
+TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
@@ -156,7 +156,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_P1)
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
+TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
@@ -263,7 +263,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -602.89568378, 1e-6);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
+TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
@@ -302,7 +302,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInITQ_29)
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
+TEST(spacegroup, TestLennardJonesVDWMethaneInMFI)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
@@ -375,7 +375,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI)
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1784.82292180, 1e-6);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
+TEST(spacegroup, TestLennardJonesVDWMethaneInMFI2x2x2)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
@@ -448,7 +448,7 @@ TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI2x2x2)
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1828.89015075, 1e-6);
 }
 
-TEST(SpaceGroup, TestLennardJonesVDWMethaneInMFI_P1)
+TEST(spacegroup, TestLennardJonesVDWMethaneInMFI_P1)
 {
   ForceField forceField = ForceField(
     { PseudoAtom("Si", 28.0855, 2.05, 14, false),
