@@ -44,7 +44,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-redhat-9
       - name: create raspa rpm package
         shell: bash
@@ -76,8 +75,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
-          yum install -y blas64
           cmake -B ${{github.workspace}}/build --preset linux-redhat-8
       - name: create raspa rpm package
         shell: bash
@@ -114,7 +111,6 @@ jobs:
       - name: create raspa rpm package
         shell: bash
         run: |
-          yum install -y git
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-3.0.0-1.el7.x86_64.rpm .
       - name: Upload Release Asset
@@ -138,7 +134,6 @@ jobs:
           image: ghcr.io/iraspa/centos-6-llvm-18:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
-            yum install -y git
             yum install -y rpm-build
             git clone https://github.com/iraspa/raspa3
             cd raspa3
@@ -205,7 +200,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          apt install -y git
           cmake -B ${{github.workspace}}/build --preset linux-ubuntu-22
       - name: create raspa deb package
         shell: bash
@@ -341,7 +335,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-fedora-39
       - name: create raspa rpm package
         shell: bash
@@ -373,7 +366,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-fedora-38
       - name: create raspa rpm package
         shell: bash
@@ -405,7 +397,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-fedora-37
       - name: create raspa rpm package
         shell: bash
@@ -437,7 +428,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-fedora-36
       - name: create raspa rpm package
         shell: bash
@@ -469,7 +459,6 @@ jobs:
       - name: configure cmake raspa
         shell: bash
         run: |
-          yum install -y git
           cmake -B ${{github.workspace}}/build --preset linux-fedora-35
       - name: create raspa rpm package
         shell: bash

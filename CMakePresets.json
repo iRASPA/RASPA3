@@ -147,7 +147,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -155,7 +156,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -163,7 +165,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -171,7 +174,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -179,7 +183,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -188,7 +193,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
-          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -199,7 +205,8 @@
           "BUILD_CENTOS6_PACKAGE" : true,
           "OpenMP_CXX_FLAGS" : "-fopenmp",
           "OpenMP_CXX_LIB_NAMES" : "libomp",
-          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a"
+          "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -212,7 +219,8 @@
           "OpenMP_CXX_LIB_NAMES" : "libomp",
           "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64.so.3",
-          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3"
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64.so.3",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -222,7 +230,8 @@
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64_.so.3",
-          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64_.so.3"
+          "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64_.so.3",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -230,7 +239,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_RPM_PACKAGE" : true
+          "BUILD_RPM_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -239,7 +249,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_DEB_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -248,7 +259,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_DEB_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -256,7 +268,8 @@
         "description" : "Sets compilers, build type",
         "inherits" : "linux",
         "cacheVariables" : {
-          "BUILD_DEB_PACKAGE" : true
+          "BUILD_DEB_PACKAGE" : true,
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -275,7 +288,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_DEB_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -284,7 +298,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_DEB_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -293,7 +308,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -302,7 +318,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -311,7 +328,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -320,7 +338,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -329,7 +348,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       },
       {
@@ -338,7 +358,8 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_RPM_PACKAGE" : true,
-          "BLA_SIZEOF_INTEGER" : "8"
+          "BLA_SIZEOF_INTEGER" : "8",
+          "BUILD_PYTHON": true
         }
       }
     ]
