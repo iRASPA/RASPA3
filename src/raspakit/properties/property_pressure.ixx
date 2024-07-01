@@ -34,6 +34,7 @@ import archive;
 import double3x3;
 import averages;
 import units;
+import json;
 
 inline std::pair<double, double> pair_acc(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
@@ -335,6 +336,7 @@ export struct PropertyPressure
   }
 
   std::string writeAveragesStatistics() const;
+  nlohmann::json jsonAveragesStatistics() const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e);

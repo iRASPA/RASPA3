@@ -41,6 +41,7 @@ import double3;
 import double3x3;
 import stringutils;
 import units;
+import json;
 
 std::string PropertyPressure::writeAveragesStatistics() const
 {
@@ -103,6 +104,46 @@ std::string PropertyPressure::writeAveragesStatistics() const
   std::print(stream, "\n\n");
 
   return stream.str();
+}
+
+nlohmann::json PropertyPressure::jsonAveragesStatistics() const
+{
+  nlohmann::json status;
+  double conv = Units::PressureConversionFactor;
+
+  std::pair<double3x3, double3x3> currentPressureTensor = averagePressureTensor();
+  status["averagePressureTensor"]["mean"] = conv * currentPressureTensor.first;
+  status["averagePressureTensor"]["confidence"] = conv * currentPressureTensor.second;
+
+  std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
+
+  std::vector<double> blocksIdealGasPressure(numberOfBlocks);
+  std::transform(bookKeepingIdealGasPressure.begin(), bookKeepingIdealGasPressure.end(), blocksIdealGasPressure.begin(),
+                 [conv](const std::pair<double, double> &book) { return conv * book.first / book.second; });
+  status["idealGasPressure"]["block"] = blocksIdealGasPressure;
+  status["idealGasPressure"]["mean"] = conv * pressureIdealGasAverage.first;
+  status["idealGasPressure"]["confidence"] = conv * pressureIdealGasAverage.second;
+
+  std::pair<double, double> pressureExcessAverage = averageExcessPressure();
+  std::vector<double> blocksExcessPressure(numberOfBlocks);
+  std::transform(bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(), blocksExcessPressure.begin(),
+                 [conv](const std::pair<double3x3, double> &book)
+                 { return conv * book.first.trace() / (3.0 * book.second); });
+  status["excessPressure"]["block"] = blocksExcessPressure;
+  status["excessPressure"]["mean"] = conv * pressureExcessAverage.first;
+  status["excessPressure"]["confidence"] = conv * pressureExcessAverage.second;
+
+  std::pair<double, double> pressureTotalAverage = averagePressure();
+  std::vector<double> blocksPressure(numberOfBlocks);
+  std::transform(bookKeepingIdealGasPressure.begin(), bookKeepingIdealGasPressure.end(),
+                 bookKeepingExcessPressure.begin(), blocksPressure.begin(),
+                 [conv](const std::pair<double, double> ideal, const std::pair<double3x3, double> excess)
+                 { return conv * ((ideal.first / ideal.second) + (excess.first.trace() / (3.0 * excess.second))); });
+  status["pressure"]["block"] = blocksPressure;
+  status["pressure"]["mean"] = conv * pressureTotalAverage.first;
+  status["pressure"]["confidence"] = conv * pressureTotalAverage.second;
+
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e)
