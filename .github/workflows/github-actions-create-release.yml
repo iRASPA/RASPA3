@@ -166,7 +166,7 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
           apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
-          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
           cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24
