@@ -43,6 +43,7 @@ import component;
 import energy_status_intra;
 import energy_status_inter;
 import energy_factor;
+import json;
 
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &components, const std::string &label)
 {
@@ -105,6 +106,7 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
   std::print(stream, "\n");
   return stream.str();
 }
+
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyStatus &e)
 {

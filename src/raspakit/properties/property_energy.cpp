@@ -44,6 +44,7 @@ import energy_status_intra;
 import energy_status_inter;
 import averages;
 import units;
+import json;
 
 std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
                                                     std::vector<Component> &components) const
@@ -555,6 +556,169 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
   std::print(stream, "\n");
 
   return stream.str();
+}
+
+nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
+                                                      std::vector<Component> &components) const
+{
+  nlohmann::json status;
+
+  std::pair<EnergyStatus, EnergyStatus> computedAverage = averageEnergy();
+  std::vector<EnergyStatus> blockEnergies = blockEnergy();
+
+  for (size_t k = 0; k < components.size(); k++)
+  {
+    if (externalField)
+    {
+      size_t l = 0;
+      std::string pair = std::format("{}", components[k].name);
+      double prefactor = Units::EnergyToKelvin;
+
+      std::vector<double> tmp(numberOfBlocks);
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.externalFieldComponentEnergy(l, k).totalInter.energy; });
+      status["ExternalField-Molecule"][pair]["total"]["block"] = tmp;
+      status["ExternalField-Molecule"][pair]["total"]["mean"] =
+          prefactor * computedAverage.first.externalFieldComponentEnergy(l, k).totalInter.energy;
+      status["ExternalField-Molecule"][pair]["total"]["confidence"] =
+          prefactor * computedAverage.second.externalFieldComponentEnergy(l, k).totalInter.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.externalFieldComponentEnergy(l, k).VanDerWaals.energy; });
+      status["ExternalField-Molecule"][pair]["vanDerWaals"]["block"] = tmp;
+      status["ExternalField-Molecule"][pair]["vanDerWaals"]["mean"] =
+          prefactor * computedAverage.first.externalFieldComponentEnergy(l, k).VanDerWaals.energy;
+      status["ExternalField-Molecule"][pair]["vanDerWaals"]["confidence"] =
+          prefactor * computedAverage.second.externalFieldComponentEnergy(l, k).VanDerWaals.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.externalFieldComponentEnergy(l, k).VanDerWaalsTailCorrection.energy; });
+      status["ExternalField-Molecule"][pair]["tailCorrection"]["block"] = tmp;
+      status["ExternalField-Molecule"][pair]["tailCorrection"]["mean"] =
+          prefactor * computedAverage.first.externalFieldComponentEnergy(l, k).VanDerWaalsTailCorrection.energy;
+      status["ExternalField-Molecule"][pair]["tailCorrection"]["confidence"] =
+          prefactor * computedAverage.second.externalFieldComponentEnergy(l, k).VanDerWaalsTailCorrection.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.externalFieldComponentEnergy(l, k).CoulombicReal.energy; });
+      status["ExternalField-Molecule"][pair]["coulombReal"]["block"] = tmp;
+      status["ExternalField-Molecule"][pair]["coulombReal"]["mean"] =
+          prefactor * computedAverage.first.externalFieldComponentEnergy(l, k).CoulombicReal.energy;
+      status["ExternalField-Molecule"][pair]["coulombReal"]["confidence"] =
+          prefactor * computedAverage.second.externalFieldComponentEnergy(l, k).CoulombicReal.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.externalFieldComponentEnergy(l, k).CoulombicFourier.energy; });
+      status["ExternalField-Molecule"][pair]["coulombFourier"]["block"] = tmp;
+      status["ExternalField-Molecule"][pair]["coulombFourier"]["mean"] =
+          prefactor * computedAverage.first.externalFieldComponentEnergy(l, k).CoulombicFourier.energy;
+      status["ExternalField-Molecule"][pair]["coulombFourier"]["confidence"] =
+          prefactor * computedAverage.second.externalFieldComponentEnergy(l, k).CoulombicFourier.energy;
+    }
+
+    for (size_t l = 0; l < frameworkComponents.size(); l++)
+    {
+      double prefactor = Units::EnergyToKelvin;
+      std::string pair = std::format("{}-{}", components[k].name, frameworkComponents[l].name);
+      std::vector<double> tmp(numberOfBlocks);
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.frameworkComponentEnergy(l, k).totalInter.energy; });
+      status["Framework-Molecule"][pair]["total"]["block"] = tmp;
+      status["Framework-Molecule"][pair]["total"]["mean"] =
+          prefactor * computedAverage.first.frameworkComponentEnergy(k, l).totalInter.energy;
+      status["Framework-Molecule"][pair]["total"]["confidence"] =
+          prefactor * computedAverage.second.frameworkComponentEnergy(k, l).totalInter.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.frameworkComponentEnergy(l, k).VanDerWaals.energy; });
+      status["Framework-Molecule"][pair]["vanDerWaals"]["block"] = tmp;
+      status["Framework-Molecule"][pair]["vanDerWaals"]["mean"] =
+          prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaals.energy;
+      status["Framework-Molecule"][pair]["vanDerWaals"]["confidence"] =
+          prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaals.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.frameworkComponentEnergy(l, k).VanDerWaalsTailCorrection.energy; });
+      status["Framework-Molecule"][pair]["tailCorrection"]["block"] = tmp;
+      status["Framework-Molecule"][pair]["tailCorrection"]["mean"] =
+          prefactor * computedAverage.first.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+      status["Framework-Molecule"][pair]["tailCorrection"]["confidence"] =
+          prefactor * computedAverage.second.frameworkComponentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.frameworkComponentEnergy(l, k).CoulombicReal.energy; });
+      status["Framework-Molecule"][pair]["coulombReal"]["block"] = tmp;
+      status["Framework-Molecule"][pair]["coulombReal"]["mean"] =
+          prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicReal.energy;
+      status["Framework-Molecule"][pair]["coulombReal"]["confidence"] =
+          prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicReal.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.frameworkComponentEnergy(l, k).CoulombicFourier.energy; });
+      status["Framework-Molecule"][pair]["coulombFourier"]["block"] = tmp;
+      status["Framework-Molecule"][pair]["coulombFourier"]["mean"] =
+          prefactor * computedAverage.first.frameworkComponentEnergy(k, l).CoulombicFourier.energy;
+      status["Framework-Molecule"][pair]["coulombFourier"]["confidence"] =
+          prefactor * computedAverage.second.frameworkComponentEnergy(k, l).CoulombicFourier.energy;
+    }
+    for (size_t l = k; l < components.size(); l++)
+    {
+      double prefactor = (k == l) ? 2 * Units::EnergyToKelvin : Units::EnergyToKelvin;
+      std::string pair = std::format("{}-{}", components[k].name, components[l].name);
+
+      std::vector<double> tmp(numberOfBlocks);
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.componentEnergy(l, k).totalInter.energy; });
+      status["Molecule-Molecule"][pair]["total"]["block"] = tmp;
+      status["Molecule-Molecule"][pair]["total"]["mean"] =
+          prefactor * computedAverage.first.componentEnergy(k, l).totalInter.energy;
+      status["Molecule-Molecule"][pair]["total"]["confidence"] =
+          prefactor * computedAverage.second.componentEnergy(k, l).totalInter.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.componentEnergy(l, k).VanDerWaals.energy; });
+      status["Molecule-Molecule"][pair]["vanDerWaals"]["block"] = tmp;
+      status["Molecule-Molecule"][pair]["vanDerWaals"]["mean"] =
+          prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaals.energy;
+      status["Molecule-Molecule"][pair]["vanDerWaals"]["confidence"] =
+          prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaals.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.componentEnergy(l, k).VanDerWaalsTailCorrection.energy; });
+      status["Molecule-Molecule"][pair]["tailCorrection"]["block"] = tmp;
+      status["Molecule-Molecule"][pair]["tailCorrection"]["mean"] =
+          prefactor * computedAverage.first.componentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+      status["Molecule-Molecule"][pair]["tailCorrection"]["confidence"] =
+          prefactor * computedAverage.second.componentEnergy(k, l).VanDerWaalsTailCorrection.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.componentEnergy(l, k).CoulombicReal.energy; });
+      status["Molecule-Molecule"][pair]["coulombReal"]["block"] = tmp;
+      status["Molecule-Molecule"][pair]["coulombReal"]["mean"] =
+          prefactor * computedAverage.first.componentEnergy(k, l).CoulombicReal.energy;
+      status["Molecule-Molecule"][pair]["coulombReal"]["confidence"] =
+          prefactor * computedAverage.second.componentEnergy(k, l).CoulombicReal.energy;
+
+      std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(), [prefactor, k, l](EnergyStatus &block)
+                     { return prefactor * block.componentEnergy(l, k).CoulombicFourier.energy; });
+      status["Molecule-Molecule"][pair]["coulombFourier"]["block"] = tmp;
+      status["Molecule-Molecule"][pair]["coulombFourier"]["mean"] =
+          prefactor * computedAverage.first.componentEnergy(k, l).CoulombicFourier.energy;
+      status["Molecule-Molecule"][pair]["coulombFourier"]["confidence"] =
+          prefactor * computedAverage.second.componentEnergy(k, l).CoulombicFourier.energy;
+    }
+  }
+
+  double prefactor = Units::EnergyToKelvin;
+  std::vector<double> tmp(numberOfBlocks);
+  std::transform(blockEnergies.begin(), blockEnergies.end(), tmp.begin(),
+                 [prefactor](EnergyStatus &block) { return prefactor * block.totalEnergy.energy; });
+  status["totalEnergy"]["block"] = tmp;
+  status["totalEnergy"]["mean"] = prefactor * computedAverage.first.totalEnergy.energy;
+  status["totalEnergy"]["confidence"] = prefactor * computedAverage.second.totalEnergy.energy;
+
+  return status;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e)

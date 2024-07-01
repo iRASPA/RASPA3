@@ -37,6 +37,7 @@ import energy_status_inter;
 import energy_status_intra;
 import framework;
 import component;
+import json;
 
 inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, double> &lhs,
                                                 const std::pair<EnergyStatus, double> &rhs)
@@ -123,7 +124,16 @@ export struct PropertyEnergy
     return std::make_pair(average, confidenceIntervalError);
   }
 
+  std::vector<EnergyStatus> blockEnergy() const
+  {
+    std::vector<EnergyStatus> blockEnergies(numberOfBlocks);
+    std::transform(bookKeepingEnergyStatus.begin(), bookKeepingEnergyStatus.end(), blockEnergies.begin(), [](std::pair<EnergyStatus, double> block){return block.first / block.second;});
+    return blockEnergies;
+  }
+
   std::string writeAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
+                                      std::vector<Component> &components) const;
+  nlohmann::json jsonAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
                                       std::vector<Component> &components) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);

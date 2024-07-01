@@ -683,7 +683,8 @@ void MonteCarlo::output()
     outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
     outputJsons[system.systemId]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
     outputJsons[system.systemId]["output"]["cpuTimings"]["system"] = system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
-
+    outputJsons[system.systemId]["output"]["averageEnergies"] = system.averageEnergies.jsonAveragesStatistics(
+        system.hasExternalField, system.frameworkComponents, system.components);
 
     for (const Component& component : system.components)
     {

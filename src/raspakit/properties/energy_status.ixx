@@ -30,6 +30,7 @@ import energy_factor;
 import energy_status_intra;
 import energy_status_inter;
 import component;
+import json;
 
 export struct EnergyStatus
 {
@@ -77,7 +78,7 @@ export struct EnergyStatus
     }
     return sum;
   }
-
+  
   void zero()
   {
     totalEnergy = EnergyFactor(0.0, 0.0);
