@@ -1,7 +1,19 @@
 project(raspalib)
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development)
-find_package(pybind11 CONFIG REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+
+include(FetchContent)
+FetchContent_Declare(
+    pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11
+    GIT_TAG        v2.13.1
+)
+
+FetchContent_GetProperties(pybind11)
+if(NOT pybind11_POPULATED)
+    FetchContent_Populate(pybind11)
+    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+endif()
 
 pybind11_add_module(${PROJECT_NAME} MODULE)
 target_sources(${PROJECT_NAME} PUBLIC pybindings.cpp)
