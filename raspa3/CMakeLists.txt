@@ -55,6 +55,4 @@ endif()
 target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
-pybind11_extension(${PROJECT_NAME})
-
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION share/raspa3/lib COMPONENT python)
