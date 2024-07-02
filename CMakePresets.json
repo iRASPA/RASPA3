@@ -231,6 +231,7 @@
           "BUILD_RPM_PACKAGE" : true,
           "BLAS_LIBRARIES" : "/usr/lib64/libblas64_.so.3",
           "LAPACK_LIBRARIES" : "/usr/lib64/liblapack64_.so.3",
+          "Python3_EXECUTABLE" : "/usr/bin/python3",
           "BUILD_PYTHON": true
         }
       },
