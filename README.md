@@ -91,7 +91,7 @@
 * Requried
 
    ```bash
-   sudo apt install pybind11-dev python3-pybind11 doxygen graphviz
+   sudo apt install pybind11-dev python3-pybind11 doxygen graphviz git cmake ninja-build
    ```
 
 * For BLAS and LAPACK (optional but **RECOMMEND**）
