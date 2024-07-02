@@ -73,7 +73,7 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.md")
 set(CPACK_DEBIAN_PACKAGE_VERSION ${PACKAGE_VERSION})
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libblas64-3, liblapack64-3, libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libblas64-3, liblapack64-3, libquadmath0, libgfortran5, libgcc-s1, libomp5 | libomp5-18 | libomp5-17, libc6")
 set(CPACK_PACKAGE_VENDOR "David Dubbeldam, Sofia Calero, Thijs J.H. Vlugt, R.Q. Snurr")
 set(CPACK_STRIP_FILES ON)
 
