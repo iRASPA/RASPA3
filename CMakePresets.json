@@ -203,6 +203,7 @@
         "inherits" : "linux",
         "cacheVariables" : {
           "BUILD_CENTOS6_PACKAGE" : true,
+          "CMAKE_EXE_LINKER_FLAGS" : "-fuse-ld=/usr/bin/ld.lld",
           "OpenMP_CXX_FLAGS" : "-fopenmp",
           "OpenMP_CXX_LIB_NAMES" : "libomp",
           "OpenMP_libomp_LIBRARY" : "/usr/lib/libomp.a",
