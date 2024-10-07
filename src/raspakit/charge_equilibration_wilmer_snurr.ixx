@@ -5,6 +5,7 @@ module;
 #include <vector>
 #include <span>
 #include <cmath>
+#include <string>
 #endif
 
 export module charge_equilibration_wilmer_snurr;
@@ -14,6 +15,7 @@ import <tuple>;
 import <vector>;
 import <span>;
 import <cmath>;
+import <string>;
 #endif
 
 import atom;
