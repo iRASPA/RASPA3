@@ -1,0 +1,730 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 28,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "description": "Sets generator, build and install directory, vcpkg",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "python",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "INSTALL_GTEST": false,
+        "SKIP_EXECUTABLE": true
+      }
+    },
+    {
+      "name": "windows-arm64",
+      "description": "Sets compilers, build type",
+      "environment": {
+        "PATH": "C:/Program Files/LLVM/bin;$penv{PATH}"
+      },
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang.exe",
+        "CMAKE_CXX_COMPILER": "clang++.exe",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "C:/Program Files",
+        "PACKAGE_INSTALL_PREFIX": "C:/Program Files/Raspa",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BLAS_LIBRARIES": "C:/vcpkg/installed/arm64-windows-static/lib/openblas.lib",
+        "LAPACK_LIBRARIES": "C:/vcpkg/installed/arm64-windows/lib/lapack.lib",
+        "HDF5_USE_STATIC_LIBRARIES": false,
+        "HDF5_ROOT": "C:/vcpkg/installed/arm64-windows",
+        "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/arm64-windows-static/include",
+        "ZLIB_LIBRARY": "C:/vcpkg/installed/arm64-windows-static/lib/zlib.lib",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_WINDOWS_PACKAGE": true,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "windows"
+          ]
+        }
+      }
+    },
+    {
+      "name": "windows-x64",
+      "description": "Sets compilers, build type",
+      "environment": {
+        "PATH": "C:/vcpkg/installed/x64-windows/tools/llvm;$penv{PATH}"
+      },
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang.exe",
+        "CMAKE_CXX_COMPILER": "clang++.exe",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "C:/Program Files",
+        "PACKAGE_INSTALL_PREFIX": "C:/Program Files/Raspa",
+        "LLVM_DIR": "C:/vcpkg/installed/x64-windows/share/llvm",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fvisibility=hidden -fexperimental-library -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BLAS_LIBRARIES": "C:/vcpkg/installed/x64-windows-static/lib/blas.dll.a",
+        "LAPACK_LIBRARIES": "C:/vcpkg/installed/x64-windows-static/lib/lapack.dll.a",
+        "HDF5_USE_STATIC_LIBRARIES": false,
+        "HDF5_ROOT": "C:/vcpkg/installed/x64-windows",
+        "zstd_DIR": "C:/vcpkg/installed/x64-windows-static/share/zstd",
+        "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/x64-windows-static/include",
+        "ZLIB_LIBRARY": "C:/vcpkg/installed/x64-windows-static/lib/zlib.lib",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_WINDOWS_PACKAGE": true,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "windows"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-universal",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target fat-apple-macos10.9 -arch x86_64 -arch arm64 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-universal-package",
+      "description": "Mac create installer",
+      "inherits": [
+        "macos-universal"
+      ],
+      "cacheVariables": {
+        "BUILD_MAC_PACKAGE": true
+      }
+    },
+    {
+      "name": "macos-x64",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-x64-package",
+      "description": "Mac create installer",
+      "inherits": [
+        "macos-x64"
+      ],
+      "cacheVariables": {
+        "BUILD_MAC_PACKAGE": true
+      }
+    },
+    {
+      "name": "macos-x64-debug",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target x86_64-apple-macos10.9 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-x64-profile",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target x86_64-apple-macos10.9 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp=libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp=libomp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-apple-silicon",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-apple-silicon-package",
+      "description": "Mac create installer",
+      "inherits": [
+        "macos-apple-silicon"
+      ],
+      "cacheVariables": {
+        "BUILD_MAC_PACKAGE": true
+      }
+    },
+    {
+      "name": "macos-apple-silicon-profile",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -fprofile-instr-generate -fcoverage-mapping -target arm64-apple-macos11.7 -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "macos-apple-silicon-debug",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr/local",
+        "PACKAGE_INSTALL_PREFIX": "/usr/local",
+        "CMAKE_CXX_FLAGS_DEBUG": "-D_LIBCPP_DEBUG -DDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g3 -O0 -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=address -fsanitize=leak -fsanitize=undefined",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "HDF5_USE_STATIC_LIBRARIES": true,
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "BUILD_MAC_PACKAGE": true,
+        "BUILD_TESTING": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "linux-x86_64",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr",
+        "PACKAGE_INSTALL_PREFIX": "/usr",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "INSTALL_GTEST": false,
+        "BUILD_TESTING": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Linux"
+          ]
+        }
+      }
+    },
+    {
+      "name": "linux-x86_64-carbon",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "$env{HOME}/raspa3",
+        "CMAKE_C_COMPILER": "$env{HOME}/software/bin/clang",
+        "CMAKE_CXX_COMPILER": "$env{HOME}/software/bin/clang++",
+        "CMAKE_MAKE_PROGRAM": "$env{HOME}/software/bin/ninja",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_INCLUDES": "$env{HOME}/software/lib/clang/18/include/",
+        "BLA_SIZEOF_INTEGER": "8"
+      }
+    },
+    {
+      "name": "linux-x86_64-opensuse-leap-15.2",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-opensuse-leap-15.3",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-opensuse-leap-15.4",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-opensuse-leap-15.5",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-opensuse-tumbleweed",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-archlinux",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-redhat-6",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas, lapack, libgfortran, glibc, zlib",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=/usr/bin/ld.lld",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-redhat-7",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  glibc, libgcc, zlib",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-redhat-8",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath, libomp, glibc, libgcc, zlib",
+        "BLAS_LIBRARIES": "/usr/lib64/libblas64_.so.3",
+        "LAPACK_LIBRARIES": "/usr/lib64/liblapack64_.so.3",
+        "Python3_EXECUTABLE": "/usr/bin/python3",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-redhat-9",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-debian-12",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-debian-11",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-11/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-debian-10",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas3, liblapack3 , libquadmath0, libgfortran5, libgcc1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-7/lib/libomp.so.5",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-ubuntu-24",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-ubuntu-22",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-ubuntu-20",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-10/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-35",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-36",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-37",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-38",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-39",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-fedora-40",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-aarch64",
+      "description": "Sets compilers, build type",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_OSX_ARCHITECTURES": "aarch64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld",
+        "CMAKE_INSTALL_PREFIX": "/usr",
+        "PACKAGE_INSTALL_PREFIX": "/usr",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "INSTALL_GTEST": false,
+        "BUILD_TESTING": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Linux"
+          ]
+        }
+      }
+    },
+    {
+      "name": "linux-aarch64-ubuntu-22",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-aarch64-ubuntu-24",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "BUILD_DEB_PACKAGE": true,
+        "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "BLA_SIZEOF_INTEGER": "8",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-18/lib/libomp.so.5",
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-aarch64-redhat-9",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-aarch64",
+      "cacheVariables": {
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
+        "BUILD_PYTHON": true
+      }
+    }
+  ]
+}

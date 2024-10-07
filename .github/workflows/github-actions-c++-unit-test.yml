@@ -1,0 +1,48 @@
+name: test raspa3 c++ unit tests
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          sudo apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
+          sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
+          sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
+          sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          sudo apt-get install -y --no-install-recommends doxygen graphviz
+
+      - name: configure cmake raspa3 
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24 -DBUILD_TESTING=ON .
+
+      - name: build raspa3 and tests
+        shell: bash
+        run: |
+          cmake --build ${{github.workspace}}/build
+
+      - name: run tests
+        shell: bash
+        run: |
+          ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:testResults.xml
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    
+        with:
+          name: RASPA Tests            
+          path: ${{github.workspace}}/testResults.xml 
+          reporter: java-junit

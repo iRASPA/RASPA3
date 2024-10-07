@@ -1,0 +1,838 @@
+name: create release
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+    inputs:
+      tag-name:
+        description: 'Name of the tag that will be used for this release'
+        required: true
+      version:
+        description: 'Code version passed to cmake.'
+        required: true
+
+jobs:
+  release-job:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.step_upload_url.outputs.upload_url }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Conventional Changelog Action
+      uses: TriPSs/conventional-changelog-action@v5
+      id: changelog
+      with:
+        create-summary: 'true'
+        skip-bump: 'true'
+        skip-commit: 'true'
+        skip-tag: 'true'
+        output-file: 'false'
+        github-token: ${{ secrets.github_token }}
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.tag-name }}
+        release_name: Release ${{ github.event.inputs.tag-name }}
+        body: ${{ steps.changelog.outputs.clean_changelog }}
+        draft: false
+        prerelease: false
+    - name: set upload_url output
+      id: step_upload_url
+      run: echo "upload_url=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
+
+  linux-x86_64-rocky-9-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-9-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-9
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-almalinux-9-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/almalinux-9-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-9
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el9.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-rocky-8-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/rocky-8-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-8
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-almalinux-8-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/almalinux-8-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-8
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el8.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-rocky-7-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    steps:
+      - name: configure cmake raspa
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/iraspa/rocky-7-llvm-18:latest
+          options: -v ${{ github.workspace }}:/tmp2
+          run: |
+            git clone https://github.com/iraspa/raspa3
+            cd raspa3
+            cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-7
+            ninja -C ${{github.workspace}}/build package
+            cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm /tmp2
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-centos-6-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    steps:
+      - name: configure cmake raspa
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/iraspa/centos-6-llvm-18:latest
+          options: -v ${{ github.workspace }}:/tmp2
+          run: |
+            git clone https://github.com/iraspa/raspa3
+            cd raspa3
+            cmake -B ${{github.workspace}}/build --preset linux-x86_64-redhat-6
+            ninja -C ${{github.workspace}}/build package
+            cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm /tmp2
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+
+  linux-x86_64-ubuntu-24-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ubuntu:24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
+          apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxvf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-ubuntu-24.deb
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-ubuntu-22-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/ubuntu-22-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-22
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-ubuntu-22.deb
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-ubuntu-20-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/ubuntu-20-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-20
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-ubuntu-20.deb
+          asset_content_type: application/octet-stream
+
+
+  linux-x86_64-archlinux-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/archlinux-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: src
+      - name: create package
+        shell: bash
+        run: |
+          cp -r src /tmp/src
+          cd /tmp/
+          chown -R nobody src
+          cp src/packaging/PKGBUILD .
+          sudo -u nobody makepkg -e
+          cd -
+          cp /tmp/raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst
+          asset_name: raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst
+          asset_content_type: application/octet-stream
+
+
+  linux-x86_64-fedora-40-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: fedora:40
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          dnf update -y
+          dnf install -y 'dnf-command(config-manager)'
+          dnf install -y --setopt=install_weak_deps=False wget git rpm-build
+          dnf install -y --setopt=install_weak_deps=False llvm lld cmake clang clang-tools-extra ninja-build
+          dnf install -y --setopt=install_weak_deps=False libomp-devel libcxx libcxxabi libcxx-devel libcxxabi-devel libcxx-static libcxxabi-static
+          dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 pybind11-devel
+          dnf install -y --setopt=install_weak_deps=False zlib-ng zlib-ng-devel zlib-ng-compat zlib-ng-compat-devel zlib-ng-compat-static
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxvf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib64/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-40
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm .
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-fedora-39-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/fedora-39-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-39
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-fedora-38-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/fedora-38-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-38
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-fedora-37-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/fedora-37-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-37
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-fedora-36-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/fedora-36-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-36
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-fedora-35-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/fedora-35-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-fedora-35
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-opensuse-tumbleweed-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/opensuse-tumbleweed-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-opensuse-tumbleweed
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-tumbleweed.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-opensuse-leap-15-5-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/opensuse-leap-15.5-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-opensuse-leap-15.5
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.5.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-opensuse-leap-15-4-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/opensuse-leap-15.4-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-opensuse-leap-15.4
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.4.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-opensuse-leap-15-3-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/opensuse-leap-15.3-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-opensuse-leap-15.3
+      - name: create raspa rpm package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.3.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-opensuse-leap-15-2-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    steps:
+      - name: configure cmake raspa
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-18:latest
+          options: -v ${{ github.workspace }}:/tmp2
+          run: |
+            git clone https://github.com/iraspa/raspa3
+            cd raspa3
+            cmake -B ${{github.workspace}}/build --preset linux-x86_64-opensuse-leap-15.2
+            ninja -C ${{github.workspace}}/build package
+            cp ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm /tmp2
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
+          asset_name:  raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.2.x86_64.rpm
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-debian-12-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-12-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-debian-12
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-debian-12.deb
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-debian-11-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-11-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-debian-11
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-debian-11.deb
+          asset_content_type: application/octet-stream
+
+  linux-x86_64-debian-10-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: ghcr.io/iraspa/debian-10-llvm-18:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+      - name: configure cmake raspa
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-debian-10
+      - name: create raspa deb package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
+      - name: upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64-debian-10.deb
+          asset_content_type: application/octet-stream
+
+            #  linux-aarch64-ubuntu-22-job:
+            #    runs-on: ubuntu-24-arm64
+            #    needs: release-job
+            #    container:
+            #      image: ghcr.io/iraspa/ubuntu-22-llvm-18-aarch64:latest
+            #      credentials:
+            #         username: ${{ github.actor }}
+            #         password: ${{ secrets.github_token }}
+            #    steps:
+            #      - name: checkout repository
+            #        uses: actions/checkout@v4
+            #      - name: configure cmake raspa
+            #        shell: bash
+            #        run: |
+            #          cmake -B ${{github.workspace}}/build --preset linux-aarch-ubuntu-22
+            #      - name: create raspa deb package
+            #        shell: bash
+            #        run: |
+            #          ninja -C ${{github.workspace}}/build package
+            #          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64.deb .
+            #      - name: Upload Release Asset
+            #        id: upload-release-asset
+            #        uses: actions/upload-release-asset@v1
+            #        env:
+            #          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            #        with:
+            #          upload_url: ${{ needs.release-job.outputs.upload_url }}
+            #          asset_path: ./raspa_${{ github.event.inputs.version }}_aarch64.deb
+            #          asset_name: raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-22.deb
+            #          asset_content_type: application/octet-stream
+            #

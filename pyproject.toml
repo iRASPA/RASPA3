@@ -1,0 +1,35 @@
+[build-system]
+requires = ["wheel", "scikit-build-core"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "raspa"
+version = "3.0.0"
+description = "A general purpose classical simulation package"
+authors = [
+    { name = "Drs. Youri Ran, University of Amsterdam" },
+    { name = "Drs. Shrinjay Sharma, Delft University of Technology" },
+    { name = "Drs. Zhao Li, Northwestern University" },
+    { name = "Prof. Sofia Calero, Eindhoven University of Technology" },
+    { name = "Prof. Thijs Vlugt, Delft University of Technology" },
+    { name = "Prof. Randall Q. Snurr, Northwestern University" },
+    { name = "Dr. David Dubbeldam, University of Amsterdam", email = "d.dubbeldam@uva.nl" },
+]
+dependencies = ["pybind11", "numpy"]
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+readme = "README.md"
+
+
+[tool.scikit-build]
+cmake.version = ">=3.28"
+cmake.build-type = "Release"
+cmake.args = [
+    "--preset=python",
+    "-DBUILD_TESTING=0",
+    "-DBUILD_PYTHON=1",
+    "-DSKIP_EXECUTABLE=1",
+]
+wheel.cmake = true
+build-dir = "build/python"
+sdist.exclude = ["*.cpp", "*.ixx", "*.pcm", "CMakeLists.txt"]

@@ -1,0 +1,73 @@
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfCycles" : 250000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "LTA4A",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ExternalTemperature" : 600.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "Ewald",
+      "ComputeMSD" : true,
+      "SampleMSDEvery" : 10,
+      "WriteMSDEvery" : 5000
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "sodium",
+      "Type" : "Cation",
+      "TranslationProbability" : 0.5,
+      "RandomTranslationProbability" : 0.5,
+      "CreateNuMberofmolecules" : 96
+    },
+    {
+      "Name" : "CO2",
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "blockingPockets" : [
+           [0.0,       0.0,        0.0,       4.0],
+           [0.5,       0.0,        0.0,       4.0],
+           [0.0,       0.5,        0.0,       4.0],
+           [0.5,       0.5,        0.0,       4.0],
+           [0.0,       0.0,        0.5,       4.0],
+           [0.5,       0.0,        0.5,       4.0],
+           [0.0,       0.5,        0.5,       4.0],
+           [0.5,       0.5,        0.5,       4.0],
+           [0.25,      0.0,        0.0,       1.0],
+           [0.75,      0.0,        0.0,       1.0],
+           [0.25,      0.5,        0.0,       1.0],
+           [0.75,      0.5,        0.0,       1.0],
+           [0.0,       0.25,       0.0,       1.0],
+           [0.0,       0.75,       0.0,       1.0],
+           [0.5,       0.25,       0.0,       1.0],
+           [0.5,       0.75,       0.0,       1.0],
+           [0.0,       0.0,        0.25,      1.0],
+           [0.0,       0.0,        0.75,      1.0],
+           [0.0,       0.5,        0.25,      1.0],
+           [0.0,       0.5,        0.75,      1.0],
+           [0.25,      0.0,        0.5,       1.0],
+           [0.75,      0.0,        0.5,       1.0],
+           [0.25,      0.5,        0.5,       1.0],
+           [0.75,      0.5,        0.5,       1.0],
+           [0.0,       0.25,       0.5,       1.0],
+           [0.0,       0.75,       0.5,       1.0],
+           [0.5,       0.25,       0.5,       1.0],
+           [0.5,       0.75,       0.5,       1.0],
+           [0.5,       0.0,        0.25,      1.0],
+           [0.5,       0.0,        0.75,      1.0],
+           [0.5,       0.5,        0.25,      1.0],
+           [0.5,       0.5,        0.75,      1.0]
+         ],
+      "CreateNuMberofmolecules" : 64
+    }
+  ]
+}

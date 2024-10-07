@@ -1,0 +1,27 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 20000,
+  "NumberOfInitializationCycles" : 0,
+  "PrintEvery" : 1000,
+
+  "ForceField" : ".",
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "MFI_SI",
+      "NumberOfUnitCells" : [2, 2, 2],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1.0e5,
+      "ChargeMethod" : "None"
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "methane",
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

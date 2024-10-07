@@ -1,0 +1,144 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.39299,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Oa",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.41384,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Si",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Si",
+      "print_as" : "Si",
+      "mass" : 28.0855,
+      "charge" :  0.78598,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Al",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Al",
+      "print_as" : "Al",
+      "mass" : 26.981539,
+      "charge" :  0.48598,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "Na",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "Na",
+      "print_as" : "Na",
+      "mass" : 22.98977,
+      "charge" :  0.3834,
+      "source" : "P. Bai, M. Tsapatsis, J. I. Siepmann, J. Phys. Chem. C 2013, 117, 24375-24387"
+    },
+    {
+      "name" : "C_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" :  0.6512,
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "O_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.3256,
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ],
+  "SelfInteractions" :
+  [
+    {
+      "name" : "O_co2",
+      "type" : "lennard-jones",
+      "parameters" : [85.671, 3.017],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "C_co2",
+      "type" : "lennard-jones",
+      "parameters" : [29.933, 2.745],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ],
+  "BinaryInteractions" : 
+  [
+    {
+      "names" : ["O", "Na"],
+      "type" : "lennard-jones",    
+      "parameters" : [23.0, 3.4],
+      "source" : "S. Calero et al., J. Phys. Chem. B 2003, 107(44), 12088-12096."
+    },
+    {
+      "names" : ["Oa", "Na"],
+      "type" : "lennard-jones",    
+      "parameters" : [23.0, 3.4],
+      "source" : "S. Calero et al., J. Phys. Chem. B 2003, 107(44), 12088-12096."
+    },
+    {
+      "names" : ["Na", "C_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [362.292, 3.320],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    },
+    {
+      "names" : ["Na", "O_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [200.831, 2.758],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    },
+    {
+      "names" : ["O", "C_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [37.595, 3.511],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    },
+    {
+      "names" : ["O", "O_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [78.980, 3.237],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    },
+    {
+      "names" : ["Oa", "C_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [37.595, 3.511],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    },
+    {
+      "names" : ["Oa", "O_co2"],
+      "type" : "lennard-jones",    
+      "parameters" : [78.980, 3.237],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113(20), 8814-8820."
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

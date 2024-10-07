@@ -1,0 +1,145 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Zn1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Zn",
+      "print_as" : "Zn",
+      "mass" : 65.37,
+      "charge" :  1.275
+    },
+    {
+      "name" : "O1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -1.5},
+    {
+      "name" : "O2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.6
+    },
+    {
+      "name" : "C1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" :  0.475
+    },
+    {
+      "name" : "C2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" :  0.125
+    },
+    {
+      "name" : "C3",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" : -0.15
+    },
+    {
+      "name" : "H1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" :  0.15
+    },
+    {
+      "name" : "C_benz",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" : -0.095
+    },
+    {
+      "name" : "H_benz",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" : -0.085
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "Zn1",
+      "type" : "lennard-jones",    
+      "parameters" : [0.42, 2.7],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "O1",
+      "type" : "lennard-jones",    
+      "parameters" : [700.0, 2.98],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "O2",
+      "type" : "lennard-jones",    
+      "parameters" : [70.5, 3.11],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C1",
+      "type" : "lennard-jones",    
+      "parameters" : [47.0, 3.74],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C2",
+      "type" : "lennard-jones",    
+      "parameters" : [47.86, 3.47],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C3",
+      "type" : "lennard-jones",    
+      "parameters" : [47.86, 3.47],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "H1",
+      "type" : "lennard-jones",    
+      "parameters" : [10.9, 2.64],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C_benz",
+      "type" : "lennard-jones",
+      "parameters" : [30.70, 3.60],
+      "source" : "N. Rai and J.I. Siepmann, J. Phys. Chem. B 2007, 111, 10790-10799."
+    },
+    {
+      "name" : "H_benz",
+      "type" : "lennard-jones",
+      "parameters" : [25.45, 2.36],
+      "source" : "N. Rai and J.I. Siepmann, J. Phys. Chem. B 2007, 111, 10790-10799."
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

@@ -1,0 +1,21 @@
+RASPA3 is a molecular simulation code for computing adsorption and 
+diffusion in nanoporous materials, and thermodynamic and transport 
+properties of fluids. It implements force field based classical 
+Monte Carlo/Molecular Dynamics in various ensembles. RASPA3 can be 
+used for the simulation of molecules in gases, fluids, zeolites, 
+aluminosilicates, metal-organic frameworks, and carbon nanotubes.
+
+One of the main applications of RASPA3 is to compute adsorption 
+isotherms and to understand the atomic-level mechanism of adsorption 
+and separations.
+
+Authors:
+=======
+Drs. Youri Ran, University of Amsterdam
+Drs. Shrinjay Sharma, Delft University of Technology
+Dr. Salvador R.G. Balestra, Universidad Pablo de Olavide
+Drs. Zhao Li, Northwestern University
+Prof. Sofia Calero,  Eindhoven University of Technology
+Prof. Thijs Vlugt, Delft University of Technology
+Prof. Randall Q. Snurr, Northwestern University
+Dr. David Dubbeldam, University of Amsterdam

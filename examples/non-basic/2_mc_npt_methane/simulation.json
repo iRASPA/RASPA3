@@ -1,0 +1,29 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 50000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 1000,
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1e6,
+      "ChargeMethod" : "None",
+      "VolumeMoveProbability" : 0.05
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "methane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 256
+    }
+  ]
+}

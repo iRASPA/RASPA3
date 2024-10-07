@@ -1,0 +1,42 @@
+name: create doxygen documentation
+on:
+  workflow_dispatch:
+    branches: [ "main" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install packages
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          sudo apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
+          sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
+          sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
+          sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          sudo apt-get install -y --no-install-recommends doxygen graphviz
+
+      - name: configure cmake raspa3 
+        shell: bash
+        run: |
+          cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24 -DBUILD_DOXYGEN=ON .
+
+      - name: Generate documentation
+        working-directory: ${{github.workspace}}/build
+        run: |
+          cmake --build ${{github.workspace}}/build -t documentation
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/html

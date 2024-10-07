@@ -1,0 +1,32 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 500000,
+  "NumberOfInitializationCycles" : 1000,
+  "NumberOfEquilibrationCycles" : 100000,
+  "PrintEvery" : 5000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "IRMOF-1",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ChargeMethod" : "Ewald",
+      "CutOff" : 12.0,
+      "ExternalTemperature" : 300.0,
+      "Ensemble" : "NVT",
+      "ComputeMSD" : true,
+      "SampleMSDEvery" : 10,
+      "WriteMSDEvery" : 5000
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "benzene",
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "CreateNumberOfMolecules" : 16
+    }
+  ]
+}

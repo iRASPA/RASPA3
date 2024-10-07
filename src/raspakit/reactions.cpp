@@ -1,0 +1,92 @@
+module;
+
+#ifdef USE_LEGACY_HEADERS
+#include <complex>
+#include <exception>
+#include <format>
+#include <fstream>
+#include <map>
+#include <ostream>
+#include <print>
+#include <source_location>
+#include <sstream>
+#include <string>
+#include <vector>
+#endif
+
+module reactions;
+
+#ifndef USE_LEGACY_HEADERS
+import <string>;
+import <sstream>;
+import <ostream>;
+import <vector>;
+import <map>;
+import <format>;
+import <exception>;
+import <source_location>;
+import <fstream>;
+import <complex>;
+import <print>;
+#endif
+
+import archive;
+import stringutils;
+import reaction;
+import json;
+
+std::string Reactions::printStatus() const
+{
+  std::ostringstream stream;
+
+  if (list.empty()) return stream.str();
+
+  std::print(stream, "Reactions:\n");
+  std::print(stream, "===============================================================================\n");
+
+  std::print(stream, "{} reactions\n", list.size());
+  for (const Reaction &reaction : list)
+  {
+    std::print(stream, "{}", reaction.printStatus());
+  }
+  std::print(stream, "\n\n");
+
+  return stream.str();
+}
+
+nlohmann::json Reactions::jsonStatus() const
+{
+  nlohmann::json status;
+
+  if (list.empty()) return status;
+  status["n_reactions"] = list.size();
+
+  nlohmann::json reactions(list.size());
+  for (size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
+  status["reactions"] = reactions;
+  return status;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reactions &r)
+{
+  archive << r.versionNumber;
+  archive << r.list;
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reactions &r)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > r.versionNumber)
+  {
+    const std::source_location &location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'Reactions' at line {} in file {}\n", location.line(),
+                                         location.file_name()));
+  }
+
+  archive >> r.list;
+
+  return archive;
+}

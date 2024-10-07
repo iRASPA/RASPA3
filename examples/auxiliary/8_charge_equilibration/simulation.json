@@ -1,0 +1,26 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 0,
+  "NumberOfInitializationCycles" : 0,
+  "NumberOfEquilibrationCycles" : 0,
+  "PrintEvery" : 5000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "IRMOF-1",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "UseChargesFrom" : "ChargeEquilibration",
+      "ChargeMethod" : "Ewald",
+      "ExternalTemperature" : 300.0
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "methane",
+      "TranslationProbability" : 1.0,
+      "CreateNumberOfMolecules" :0 
+    }
+  ]
+}

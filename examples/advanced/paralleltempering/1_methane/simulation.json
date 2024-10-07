@@ -1,0 +1,64 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfCycles": 10000,
+  "NumberOfInitializationCycles": 10000,
+  "PrintEvery": 100,
+  "NumberOfThreads": 1,
+  "Systems": [
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 200.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.001,
+      "OutputPDBMovie": true
+    },
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 300.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.001,
+      "OutputPDBMovie": true
+    },
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 400.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.001,
+      "OutputPDBMovie": true
+    },
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "ExternalTemperature": 500.0,
+      "ChargeMethod": "None",
+      "ParallelTemperingSwapProbability": 0.001
+    }
+  ],
+  "Components": [
+    {
+      "Name": "methane",
+      "MoleculeDefinition": "ExampleDefinitions",
+      "TranslationProbability": 0.95,
+      "CreateNumberOfMolecules": 100
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 50000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 1000,
+  
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "IRMOF-1",
+      "NumberOfUnitCells" : [1, 1, 1],
+      "HeliumVoidFraction" : 0.81,
+      "ChargeMethod" : "Ewald",
+      "CutOff" : 12.0,
+      "ExternalTemperature" : 300.0,
+      "ExternalPressure" : 1e6
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "CO2",
+      "MolFraction" : 0.5,
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    },
+    {
+      "Name" : "methane",
+      "MolFraction" : 0.5,
+      "FugacityCoefficient" : 1.0,
+      "TranslationProbability" : 0.5,
+      "RotationProbability" : 0.5,
+      "ReinsertionProbability" : 0.5,
+      "SwapProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}

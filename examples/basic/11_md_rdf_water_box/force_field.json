@@ -1,0 +1,43 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Ow",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9996,
+      "charge" :  0.0
+    },
+    {
+      "name" : "Hw",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.0008,
+      "charge" :  0.241
+    },
+    {
+      "name" : "Lw",
+      "framework" : false,
+      "print_to_output" : false,
+      "element" : "",
+      "print_as" : "",
+      "mass" : 0.0,
+      "charge" : -0.241
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "Ow",
+      "type" : "lennard-jones",    
+      "parameters" : [89.633, 3.097]
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

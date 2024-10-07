@@ -1,0 +1,137 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Cu1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Cu",
+      "print_as" : "Cu",
+      "mass" : 63.546039732,
+      "charge" :  1.248
+    },
+    {
+      "name" : "O1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.999404927,
+      "charge" : -0.624
+    },
+    {
+      "name" : "C1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" :  0.494
+    },
+    {
+      "name" : "C2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" :  0.13
+    },
+    {
+      "name" : "C3",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.010735897,
+      "charge" : -0.156
+    },
+    {
+      "name" : "H1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.007940754,
+      "charge" :  0.156
+    },
+    {
+      "name" : "C_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" :  0.6512
+    },
+    {
+      "name" : "O_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.3256
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "Cu1",
+      "type" : "lennard-jones",    
+      "parameters" : [2.5161, 3.11369],
+      "source" : "UFF"
+    },
+    {
+      "name" : "O1",
+      "type" : "lennard-jones",    
+      "parameters" : [48.1581, 3.03315],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C1",
+      "type" : "lennard-jones",    
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C2",
+      "type" : "lennard-jones",    
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "C3",
+      "type" : "lennard-jones",    
+      "parameters" : [47.8562, 3.47299],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "H1",
+      "type" : "lennard-jones",    
+      "parameters" : [7.64893, 2.84642],
+      "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",    
+      "parameters" : [158.5, 3.72],
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
+    },
+    {
+      "name" : "O_co2",
+      "type" : "lennard-jones",    
+      "parameters" : [85.671, 3.017],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "C_co2",
+      "type" : "lennard-jones",    
+      "parameters" : [29.933, 2.745],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false
+}

@@ -1,0 +1,36 @@
+// potential.c
+void CalculateTailCorrection(void)                                                                                      
+{                                                                                                                       
+  int i,j;                                                                                                              
+  REAL energy,pressure;                                                                                                 
+                                                                                                                        
+  energy=pressure=0.0;                                                                                                  
+  for(i=0;i<NumberOfPseudoAtoms;i++)                                                                                    
+  {                                                                                                                     
+    for(j=0;j<NumberOfPseudoAtoms;j++)                                                                                  
+    {                                                                                                                   
+      if(TailCorrection[i][j])                                                                                          
+      {                                                                                                                 
+        if(!(PseudoAtoms[i].FrameworkAtom && PseudoAtoms[j].FrameworkAtom))                                             
+        {                                                                                                               
+        energy+=2.0*M_PI*(NumberOfPseudoAtomsType[CurrentSystem][i]-NumberOfFractionalPseudoAtomsType[CurrentSystem][i])*
+                         (NumberOfPseudoAtomsType[CurrentSystem][j]-NumberOfFractionalPseudoAtomsType[CurrentSystem][j])*
+                         PotentialCorrection(i,j,CutOffVDW);                                                            
+        pressure-=(2.0/3.0)*M_PI*(NumberOfPseudoAtomsType[CurrentSystem][i]-NumberOfFractionalPseudoAtomsType[CurrentSystem][i])*
+                                 (NumberOfPseudoAtomsType[CurrentSystem][j]-NumberOfFractionalPseudoAtomsType[CurrentSystem][j])*
+                                 PotentialCorrectionPressure(i,j,CutOffVDW);                                            
+        }                                                                                                               
+      }                                                                                                                 
+      else if(!ShiftPotential[i][j])                                                                                    
+      {                                                                                                                 
+        // impulsive correction                                                                                         
+        pressure+=(2.0/3.0)*M_PI*(NumberOfPseudoAtomsType[CurrentSystem][i]-NumberOfFractionalPseudoAtomsType[CurrentSystem][i])*
+                                 (NumberOfPseudoAtomsType[CurrentSystem][j]-NumberOfFractionalPseudoAtomsType[CurrentSystem][j])*
+                                 CUBE(CutOffVDW)*PotentialValue(i,j,CutOffVDWSquared,1.0);                              
+      }                                                                                                                 
+    }                                                                                                                   
+  }                                                                                                                     
+                                                                                                                        
+  StrainDerivativeTailCorrection[CurrentSystem]=pressure/Volume[CurrentSystem];                                         
+  UTailCorrection[CurrentSystem]=energy/Volume[CurrentSystem];                                                          
+}                  
