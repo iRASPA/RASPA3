@@ -70,8 +70,10 @@ import cbmc_multiple_first_bead;
 
   if (molecule_atoms.size() == 1)
   {
-    return ChainData(Molecule(firstBeadData->atom.position, simd_quatd()), {firstBeadData->atom},
-                     firstBeadData->energies, firstBeadData->RosenbluthWeight, firstBeadData->storedR);
+    return ChainData(Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass, component.componentId,
+                              component.definedAtoms.size()),
+                     {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight,
+                     firstBeadData->storedR);
   }
 
   std::optional<ChainData> rigidRotationData = growRigidMoleculeChainReinsertion(
@@ -114,7 +116,9 @@ import cbmc_multiple_first_bead;
       randomlyRotatedAtoms[j].groupId = molecule_atoms[j].groupId;
     }
 
-    trialPositions.push_back({Molecule(shift, orientation), randomlyRotatedAtoms});
+    trialPositions.push_back(
+        {Molecule(shift, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+         randomlyRotatedAtoms});
   };
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =

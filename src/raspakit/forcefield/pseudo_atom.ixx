@@ -38,15 +38,14 @@ export struct PseudoAtom
         atomicNumber(atomicNumber),
         printToPDB(printToPDB),
         source(source) {};
-  uint64_t versionNumber{ 1 };
+  uint64_t versionNumber{1};
 
-  std::string name{ "C" };
-  bool framework{ false };
-  double mass{ 1.0 };
-  double charge{ 0.0 };
-  double polarizability{ 0.0 };
-  size_t atomicNumber{ 8 };
-  size_t oxidationState{ 0 };
+  std::string name{"C"};
+  bool framework{false};
+  double mass{1.0};
+  double charge{0.0};
+  double polarizability{0.0};
+  size_t atomicNumber{8};
   bool printToPDB{true};
   std::string source{};
 

@@ -87,6 +87,7 @@ import mc_moves_reaction;
 import mc_moves_reaction_cfcmc_cbmc;
 import mc_moves_widom;
 import mc_moves_parallel_tempering_swap;
+import mc_moves_hybridmc;
 
 void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, System &selectedSecondSystem,
                                  size_t selectedComponent, size_t &fractionalMoleculeSystem)
@@ -357,6 +358,14 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
     {
       selectedSystem.runningEnergies = energy.value().first;
       selectedSecondSystem.runningEnergies = energy.value().second;
+    }
+  }
+  else if (randomNumber < mc_moves_probabilities.accumulatedHybridMCProbability)
+  {
+    std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
+    if (energy)
+    {
+      selectedSystem.runningEnergies = energy.value();
     }
   }
 }
@@ -854,5 +863,20 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
     selectedSystem.mc_moves_cputime.ParallelTemperingSwap += (t2 - t1);
     selectedSystem.mc_moves_count.ParallelTemperingSwap++;
+  }
+  else if (randomNumber < mc_moves_probabilities.accumulatedHybridMCProbability)
+  {
+    selectedSystem.mc_moves_statistics.hybridMC.allCounts += 1uz;
+
+    std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
+    if (energy)
+    {
+      selectedSystem.runningEnergies = energy.value();
+    }
+    std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+
+    selectedSystem.mc_moves_cputime.hybridMC += (t2 - t1);
+    selectedSystem.mc_moves_count.hybridMC++;
   }
 }

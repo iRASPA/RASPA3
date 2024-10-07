@@ -32,7 +32,7 @@ export struct MCMoveProbabilitiesParticles
                                double gibbsSwapCBMCProbability = 0.0, double gibbsSwapCFCMCProbability = 0.0,
                                double gibbsSwapCBCFCMCProbability = 0.0, double widomProbability = 0.0,
                                double widomCFCMCProbability = 0.0, double widomCBCFCMCProbability = 0.0,
-                               double parallelTemperingProbability = 0.0);
+                               double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
 
   double translationProbability;
   double randomTranslationProbability;
@@ -53,6 +53,7 @@ export struct MCMoveProbabilitiesParticles
   double widomCFCMCProbability;
   double widomCBCFCMCProbability;
   double parallelTemperingProbability;
+  double hybridMCProbability;
 
   double accumulatedTranslationProbability{0.0};
   double accumulatedRandomTranslationProbability{0.0};
@@ -73,6 +74,7 @@ export struct MCMoveProbabilitiesParticles
   double accumulatedWidomCFCMCProbability{0.0};
   double accumulatedWidomCBCFCMCProbability{0.0};
   double accumulatedParallelTemperingProbability{0.0};
+  double accumulatedHybridMCProbability{0.0};
 
   void normalizeMoveProbabilities();
 

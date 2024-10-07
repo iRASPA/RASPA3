@@ -28,6 +28,7 @@ export struct MCMoveStatisticsSystem
   MoveStatistics<double> volumeMove{.maxChange = 0.1};
   MoveStatistics<double> GibbsVolumeMove{.maxChange = 0.1};
   MoveStatistics<double> ParallelTemperingSwap{.maxChange = 0.1};
+  MoveStatistics<double> hybridMC{.maxChange = 0.1};
 
   void optimizeAcceptance();
   void clear();

@@ -39,8 +39,13 @@ export struct Molecule
   simd_quatd orientation;
   simd_quatd orientationMomentum;
   simd_quatd orientationGradient;
+  double mass;
+  size_t componentId;
+  size_t numberOfAtoms;
+  double invMass;
 
   Molecule() noexcept = default;
+
   Molecule(double3 centerOfMassPosition, simd_quatd orientation)
       : centerOfMassPosition(centerOfMassPosition),
         velocity(0.0, 0.0, 0.0),
@@ -48,6 +53,18 @@ export struct Molecule
         orientation(orientation),
         orientationMomentum(0.0, 0.0, 0.0, 0.0),
         orientationGradient(0.0, 0.0, 0.0, 0.0) {};
+
+  Molecule(double3 centerOfMassPosition, simd_quatd orientation, double mass, size_t componentId, size_t numberOfAtoms)
+      : centerOfMassPosition(centerOfMassPosition),
+        velocity(0.0, 0.0, 0.0),
+        gradient(0.0, 0.0, 0.0),
+        orientation(orientation),
+        orientationMomentum(0.0, 0.0, 0.0, 0.0),
+        orientationGradient(0.0, 0.0, 0.0, 0.0),
+        mass(mass),
+        componentId(componentId),
+        numberOfAtoms(numberOfAtoms),
+        invMass(1 / mass) {};
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &molecule);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &molecule);
@@ -73,7 +90,10 @@ void to_json(nlohmann::json &j, const Molecule &a)
                      {"gradient", a.gradient},
                      {"orientation", a.orientation},
                      {"orientationMomentum", a.orientationMomentum},
-                     {"orientationGradient", a.orientationGradient}};
+                     {"orientationGradient", a.orientationGradient},
+                     {"mass", a.mass},
+                     {"componentId", a.componentId},
+                     {"numberOfAtoms", a.numberOfAtoms}};
 }
 
 void from_json(const nlohmann::json &j, Molecule &a)
@@ -84,4 +104,7 @@ void from_json(const nlohmann::json &j, Molecule &a)
   j.at("orientation").get_to(a.orientation);
   j.at("orientationMomentum").get_to(a.orientationMomentum);
   j.at("orientationGradient").get_to(a.orientationGradient);
+  j.at("mass").get_to(a.mass);
+  j.at("componentId").get_to(a.componentId);
+  j.at("numberOfAtoms").get_to(a.numberOfAtoms);
 }

@@ -54,22 +54,14 @@ import json;
 
 export struct Framework
 {
-  enum class UseChargesFrom : size_t
-  {
-    PseudoAtoms = 0,
-    CIF_File = 1,
-    ChargeEquilibration
-  };
-
   Framework();
   Framework(size_t currentComponent, const ForceField &forceField, const std::string &componentName,
             std::optional<const std::string> fileName, int3 numberOfUnitCells,
-            Framework::UseChargesFrom useChargesFrom) noexcept(false);
+            bool useChargesFromCIFFile) noexcept(false);
   Framework(size_t componentId, const ForceField &forceField, std::string componentName, SimulationBox simulationBox,
             size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
   uint64_t versionNumber{1};
-
 
   SimulationBox simulationBox;
   size_t spaceGroupHallNumber{1};
@@ -85,7 +77,7 @@ export struct Framework
   double mass{0.0};
   double unitCellMass{0.0};
 
-  UseChargesFrom useChargesFrom{UseChargesFrom::PseudoAtoms};
+  bool useChargesFromCIFFile{true};
   double netCharge{0.0};
   double smallestCharge{0.0};
   double largestCharge{0.0};

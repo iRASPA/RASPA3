@@ -174,6 +174,8 @@ void MCMoveCpuTime::clearTimingStatistics()
   ParallelTemperingSwap = std::chrono::duration<double>::zero();
   ParallelTemperingSwapEnergy = std::chrono::duration<double>::zero();
   ParallelTemperingSwapFugacity = std::chrono::duration<double>::zero();
+
+  hybridMC = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -201,6 +203,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
     std::print(stream, "    Overhead:                    {:14f} [s]\n",
                GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() - GibbsVolumeMoveEwald.count() -
                    GibbsVolumeMoveTail.count());
+  }
+  if (hybridMC > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "\n");
+    std::print(stream, "Hybrid MC:                       {:14f} [s]\n", hybridMC.count());
   }
 
   std::print(stream, "\n");
@@ -781,6 +788,11 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "    Overhead:                   {:14f} [s]\n",
                ParallelTemperingSwap.count() - ParallelTemperingSwapEnergy.count());
   }
+  if (hybridMC > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "\n");
+    std::print(stream, "Hybrid MC:                       {:14f} [s]\n", hybridMC.count());
+  }
 
   std::print(stream, "\n");
   std::print(stream, "Property sampling:              {:14f} [s]\n", propertySampling.count());
@@ -1050,6 +1062,10 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
                                          WidomMoveCBCFCMCFramework.count() - WidomMoveCBCFCMCMolecule.count() -
                                          WidomMoveCBCFCMCEwald.count() - WidomMoveCBCFCMCTail.count();
   }
+  if (hybridMC > std::chrono::duration<double>::zero())
+  {
+    status["hybridMC"]["total"] = hybridMC.count();
+  }
 
   return status;
 }
@@ -1221,6 +1237,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << t.ParallelTemperingSwapEnergy;
   archive << t.ParallelTemperingSwapFugacity;
 
+  archive << t.hybridMC;
+
   return archive;
 }
 
@@ -1375,6 +1393,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
   archive >> t.ParallelTemperingSwap;
   archive >> t.ParallelTemperingSwapEnergy;
   archive >> t.ParallelTemperingSwapFugacity;
+
+  archive >> t.hybridMC;
 
   return archive;
 }

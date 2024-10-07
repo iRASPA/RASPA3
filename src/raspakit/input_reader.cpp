@@ -868,25 +868,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      Framework::UseChargesFrom useChargesFrom{ Framework::UseChargesFrom::PseudoAtoms };
-      if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
-      {
-        std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
-
-        if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
-        {
-          useChargesFrom =  Framework::UseChargesFrom::PseudoAtoms;
-        }
-        if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
-        {
-          useChargesFrom =  Framework::UseChargesFrom::CIF_File;
-        }
-        if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
-        {
-          useChargesFrom =  Framework::UseChargesFrom::ChargeEquilibration;
-        }
-      }
-
       if (value.contains("VolumeMoveProbability") && value["VolumeMoveProbability"].is_number_float())
       {
         mc_moves_probabilities.volumeChangeProbability = value["VolumeMoveProbability"].get<double>();
@@ -901,6 +882,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           value["ParallelTemperingSwapProbability"].is_number_float())
       {
         mc_moves_probabilities.parallelTemperingProbability = value["ParallelTemperingSwapProbability"].get<double>();
+      }
+      if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.hybridMCProbability = value["HybridMCProbability"].get<double>();
       }
 
       if (!value.contains("Type"))
@@ -920,6 +905,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalTemperature"))
       {
         T = value["ExternalTemperature"].get<double>();
+      }
+
+      bool useChargesFromCIFFile = false;
+      if (value.contains("UseChargesFromCIFFile"))
+      {
+        useChargesFromCIFFile = value["UseChargesFromCIFFile"].get<bool>();
       }
 
       std::optional<double> P{};
@@ -957,7 +948,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(), frameworkNameString,
                                                                  frameworkNameString, jsonNumberOfUnitCells,
-                                                                 useChargesFrom)};
+                                                                 useChargesFromCIFFile)};
 
         // create system
         systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
@@ -1291,6 +1282,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].timeStep = value["TimeStep"].get<double>();
       }
 
+      if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
+      {
+        systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<size_t>();
+      }
+
       systemId++;
     }
   }
@@ -1469,10 +1465,11 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "VolumeMoveProbability",
     "GibbsVolumeMoveProbability",
     "ParallelTemperingSwapProbability",
+    "HybridMCProbability",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
-    "UseChargesFrom",
+    "UseChargesFromCIFFile",
     "Framework",
     "Name",
     "NumberOfUnitCells",
@@ -1518,7 +1515,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OutputPDBMovie",
     "SampleMovieEvery",
     "Ensemble",
-    "TimeStep"};
+    "TimeStep"
+    "HybridMCMoveNumberOfSteps"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

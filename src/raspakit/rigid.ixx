@@ -23,10 +23,6 @@ export namespace Rigid
 {
 std::pair<simd_quatd, simd_quatd> NoSquishFreeRotorOrderTwo(double dt, std::pair<simd_quatd, simd_quatd> q,
                                                             double3 inverseInertiaVector);
-}
-
-namespace Rigid
-{
 std::pair<simd_quatd, simd_quatd> NoSquishRotate(size_t k, double dt, std::pair<simd_quatd, simd_quatd> q,
                                                  double3 inverseInertiaVector);
-}
+}  // namespace Rigid
