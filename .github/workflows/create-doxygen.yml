@@ -9,7 +9,9 @@ env:
 jobs:
   build:
     permissions: write-all
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu-24.04
 
     steps:
       - name: checkout repository
