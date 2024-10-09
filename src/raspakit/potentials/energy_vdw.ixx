@@ -18,6 +18,27 @@ import energy_factor;
 
 import double4;
 
+/**
+ * \brief Calculates the van der Waals potential energy between two atoms.
+ *
+ * This function computes the van der Waals (VDW) potential energy based on the specified
+ * force field parameters, group identifiers, scaling factors, distance between atoms,
+ * and their respective types. It supports multiple VDW potential types including
+ * Lennard-Jones, Bucking-Ham, Morse, Feynmann-Hibbs, MM3, and Born-Huggins-Meyer.
+ *
+ * The scaling is linear: it first activates Lennard-Jones interactions from 0 to 0.5,
+ * then activates electrostatic interactions from 0.5 to 1.0.
+ *
+ * \param forcefield The force field parameters used for the calculation.
+ * \param groupIdA Boolean indicating if the first atom is part of a specific group.
+ * \param groupIdB Boolean indicating if the second atom is part of a specific group.
+ * \param scalingA Scaling factor for the first atom's interactions.
+ * \param scalingB Scaling factor for the second atom's interactions.
+ * \param rr The distance between the two atoms.
+ * \param typeA The type identifier for the first atom.
+ * \param typeB The type identifier for the second atom.
+ * \return An EnergyFactor object containing the calculated potential energy and lambda derivative.
+ */
 export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield,
                                                                        const bool& groupIdA, const bool& groupIdB,
                                                                        const double& scalingA, const double& scalingB,

@@ -17,7 +17,23 @@ import energy_factor;
 import units;
 
 import double4;
-
+/**
+ * \brief Calculates the Coulomb potential energy factor between two atoms.
+ *
+ * This function computes the Coulombic energy between two atoms based on the specified
+ * force field's charge method. It accounts for scaling factors and the distance between
+ * atoms. Supported charge methods include Ewald, Coulomb, Wolf, and ModifiedWolf.
+ *
+ * \param forcefield The force field parameters, including charge method and Ewald alpha.
+ * \param groupIdA Indicates if atom A belongs to a group affecting the scaling.
+ * \param groupIdB Indicates if atom B belongs to a group affecting the scaling.
+ * \param scalingA Scaling factor for atom A.
+ * \param scalingB Scaling factor for atom B.
+ * \param r Distance between the two atoms.
+ * \param chargeA Electric charge of atom A.
+ * \param chargeB Electric charge of atom B.
+ * \return An EnergyFactor object containing the computed Coulomb energy and any group-related scaling.
+ */
 export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield,
                                                                            const bool& groupIdA, const bool& groupIdB,
                                                                            const double& scalingA,
@@ -25,6 +41,7 @@ export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const
                                                                            const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;
+  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   switch (forcefield.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:

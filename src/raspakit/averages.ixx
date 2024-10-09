@@ -32,15 +32,26 @@ import <string>;
 
 import archive;
 
+/**
+ * \enum confidenceLevel
+ * \brief Represents the different confidence levels for statistical calculations.
+ */
 export enum class confidenceLevel : int {
-  percent_80 = 0,
-  percent_90 = 1,
-  percent_95 = 2,
-  percent_98 = 3,
-  percent_99 = 4
+  percent_80 = 0,  ///< 80% confidence level.
+  percent_90 = 1,  ///< 90% confidence level.
+  percent_95 = 2,  ///< 95% confidence level.
+  percent_98 = 3,  ///< 98% confidence level.
+  percent_99 = 4   ///< 99% confidence level.
 };
 
-// https://sphweb.bumc.bu.edu/otlt/MPH-Modules/PH717-QuantCore/PH717-Module6-RandomError/PH717-Module6-RandomError11.html
+/**
+ * \brief Table of standard normal deviates for different confidence levels and degrees of freedom.
+ *
+ * The table is indexed by degrees of freedom (number of bins - 1) and confidence level.
+ * Values are sourced from the t-distribution critical values.
+ * \see
+ * https://sphweb.bumc.bu.edu/otlt/MPH-Modules/PH717-QuantCore/PH717-Module6-RandomError/PH717-Module6-RandomError11.html
+ */
 export constexpr inline std::array<std::array<double, 5>, 21> standardNormalDeviates{
     {{0.0, 0.0, 0.0, 0.0, 0.0},           {3.078, 6.314, 12.71, 31.82, 63.66}, {1.886, 2.920, 4.303, 6.965, 9.925},
      {1.638, 2.353, 3.182, 4.541, 5.841}, {1.533, 2.132, 2.776, 3.747, 4.604}, {1.476, 2.015, 2.571, 3.365, 4.032},
@@ -50,12 +61,29 @@ export constexpr inline std::array<std::array<double, 5>, 21> standardNormalDevi
      {1.341, 1.753, 2.131, 2.602, 2.947}, {1.337, 1.746, 2.120, 2.583, 2.921}, {1.333, 1.740, 2.110, 2.567, 2.898},
      {1.330, 1.734, 2.101, 2.552, 2.878}, {1.328, 1.729, 2.093, 2.539, 2.861}, {1.325, 1.725, 2.086, 2.528, 2.845}}};
 
-// The following two settings can be modified (keep numberOfBins smaller than 22)
+/**
+ * \brief Number of bins to use in block error estimation (must be less than 22).
+ */
 const int numberOfBins = 5;
+
+/**
+ * \brief Chosen confidence level for statistical calculations.
+ */
 export const int chosenConfidenceLevel = int(confidenceLevel::percent_95);
 
+/**
+ * \brief Standard normal deviate corresponding to the chosen confidence level and number of bins.
+ */
 constexpr double standardNormalDeviate = standardNormalDeviates[numberOfBins - 1][chosenConfidenceLevel];
 
+/**
+ * \brief Calculates the mean and confidence interval of a dataset.
+ *
+ * Computes the mean and the confidence interval based on the standard error and the standard normal deviate.
+ *
+ * \param data Reference to a vector containing the data samples.
+ * \return A pair where the first element is the mean and the second is the confidence interval.
+ */
 export inline std::pair<double, double> meanConfidence(std::vector<double> &data)
 {
   double size = static_cast<double>(data.size());
@@ -68,17 +96,36 @@ export inline std::pair<double, double> meanConfidence(std::vector<double> &data
   return {mean, standardError * standardNormalDeviate};
 }
 
+/**
+ * \brief Manages block error estimation for statistical analysis.
+ *
+ * The BlockErrorEstimation struct keeps track of the sampling process for block error analysis.
+ * It divides the total number of samples into bins and updates the current bin as samples are processed.
+ */
 export struct BlockErrorEstimation
 {
-  size_t numberOfBins;
-  size_t currentSample{0};
-  size_t numberOfSamples;
-  size_t currentBin{0};
-  double binSize{};
-  std::vector<size_t> nextBin;
+  size_t numberOfBins;          ///< Total number of bins.
+  size_t currentSample{0};      ///< Current sample index.
+  size_t numberOfSamples;       ///< Total number of samples.
+  size_t currentBin{0};         ///< Current bin index.
+  double binSize{};             ///< Size of each bin.
+  std::vector<size_t> nextBin;  ///< Indices of the next bin boundaries.
 
+  /**
+   * \brief Default constructor.
+   *
+   * Initializes a BlockErrorEstimation object with default values.
+   */
   BlockErrorEstimation() {};
 
+  /**
+   * \brief Constructs a BlockErrorEstimation with specified parameters.
+   *
+   * Initializes the BlockErrorEstimation with the given number of bins and samples, and calculates the bin sizes.
+   *
+   * \param size Number of bins.
+   * \param numberOfSamples Total number of samples.
+   */
   BlockErrorEstimation(size_t size, size_t numberOfSamples)
       : numberOfBins(size), numberOfSamples(numberOfSamples), nextBin(size)
   {
@@ -89,13 +136,20 @@ export struct BlockErrorEstimation
     }
   }
 
-  bool operator==(BlockErrorEstimation const &) const = default;
-
+  /**
+   * \brief Updates the current sample and bin index.
+   *
+   * Sets the current sample index and updates the current bin index if the sample reaches the next bin boundary.
+   *
+   * \param sample The current sample index.
+   */
   void setCurrentSample(size_t sample)
   {
     currentSample = sample;
     if (currentSample == nextBin[currentBin]) ++currentBin;
   }
+
+  bool operator==(BlockErrorEstimation const &) const = default;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BlockErrorEstimation &blockerror);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BlockErrorEstimation &blockerror);

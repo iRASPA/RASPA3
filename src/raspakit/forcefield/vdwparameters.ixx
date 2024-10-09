@@ -26,8 +26,19 @@ import archive;
 import double4;
 import units;
 
+/**
+ * \brief Represents the van der Waals parameters for particle interactions.
+ *
+ * The VDWParameters struct encapsulates parameters for different types of van der Waals potentials,
+ * including Lennard-Jones, Buckingham, Morse, Feynmann-Hibbs, MM3, and Born-Huggins-Meyer potentials.
+ * It includes the potential parameters, a shift value calculated at the cutoff distance,
+ * tail correction energy, and the type of potential.
+ */
 export struct VDWParameters
 {
+  /**
+   * \brief Enumeration of van der Waals potential types.
+   */
   enum class Type : int
   {
     LennardJones = 0,
@@ -38,18 +49,26 @@ export struct VDWParameters
     BornHugginsMeyer = 5
   };
 
-  double4 parameters;  // for LJ: epsilon, sigma, for Buckingham: 3 parameters
-  double shift;
-  double tailCorrectionEnergy;
-  Type type{0};
+  double4 parameters;           ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
+  double shift;                 ///< The potential energy shift calculated at the cutoff distance.
+  double tailCorrectionEnergy;  ///< The tail correction energy for the potential.
+  Type type{0};                 ///< The type of van der Waals potential.
 
+  /**
+   * \brief Default constructor for VDWParameters.
+   *
+   * Initializes the parameters with zero values.
+   */
   VDWParameters() : parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
 
-  /// Creates a Lennard-Jones VDWParameter structure.
-  ///
-  /// - Parameters:
-  ///   - epsilon: the strength parameter of the potential in units of Kelvin.
-  ///   - sigma: the size parameter of the potential in units of Angstrom.
+  /**
+   * \brief Constructs a Lennard-Jones VDWParameter structure.
+   *
+   * Initializes the VDWParameters with the given epsilon and sigma values for a Lennard-Jones potential.
+   *
+   * \param epsilon The strength parameter of the potential in units of Kelvin.
+   * \param sigma The size parameter of the potential in units of Angstrom.
+   */
   VDWParameters(double epsilon, double sigma)
       : parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)),
         shift(0.0),
@@ -58,6 +77,14 @@ export struct VDWParameters
   {
   }
 
+  /**
+   * \brief Computes the potential energy shift at the cutoff distance.
+   *
+   * Calculates the shift in potential energy at the specified cutoff distance to ensure continuity
+   * of the potential.
+   *
+   * \param cutOff The cutoff distance at which to compute the shift.
+   */
   void computeShiftAtCutOff(double cutOff)
   {
     shift = 0.0;

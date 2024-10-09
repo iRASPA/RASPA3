@@ -35,8 +35,21 @@ import archive;
 import scaling;
 import json;
 
+/**
+ * \brief Accumulates energy components during simulation.
+ *
+ * The RunningEnergy struct stores various components of energy calculated during a simulation run, including potential
+ * and kinetic energies, as well as contributions from various interactions such as van der Waals and Coulomb forces. It
+ * provides methods to calculate total energies, perform arithmetic operations, and output energy information.
+ */
 export struct RunningEnergy
 {
+  /**
+   * \brief Default constructor initializing all energy components to zero.
+   *
+   * Initializes all the energy components and related terms to zero, preparing the RunningEnergy object for
+   * accumulation during simulation.
+   */
   RunningEnergy()
       : externalFieldVDW(0.0),
         frameworkMoleculeVDW(0.0),
@@ -60,16 +73,102 @@ export struct RunningEnergy
   {
   }
 
+  /**
+   * \brief Generates a formatted string of Monte Carlo energy components.
+   *
+   * Returns a string containing the total potential energy and individual energy components relevant for Monte Carlo
+   * simulations, formatted for display.
+   *
+   * \return A string representing the energy components in Monte Carlo simulations.
+   */
   std::string printMC() const;
+
+  /**
+   * \brief Generates a formatted string of molecular dynamics energy components.
+   *
+   * Returns a string containing the total potential and kinetic energies, as well as individual energy components
+   * relevant for molecular dynamics simulations, formatted for display.
+   *
+   * \return A string representing the energy components in molecular dynamics simulations.
+   */
   std::string printMD() const;
+
+  /**
+   * \brief Generates a formatted string comparing energy components between two Monte Carlo states.
+   *
+   * Computes the difference between the current RunningEnergy and another instance, and returns a string that shows the
+   * comparison of energy components, highlighting any drifts or discrepancies.
+   *
+   * \param other Another RunningEnergy instance to compare with.
+   * \return A string representing the differences in energy components between two Monte Carlo states.
+   */
   std::string printMCDiff(RunningEnergy& other) const;
+
+  /**
+   * \brief Generates a formatted string comparing energy components between two molecular dynamics states.
+   *
+   * Computes the difference between the current RunningEnergy and another instance, and returns a string that shows the
+   * comparison of energy components, highlighting any drifts or discrepancies in molecular dynamics simulations.
+   *
+   * \param other Another RunningEnergy instance to compare with.
+   * \return A string representing the differences in energy components between two molecular dynamics states.
+   */
   std::string printMDDiff(RunningEnergy& other) const;
+
+  /**
+   * \brief Generates a labeled formatted string of Monte Carlo energy components.
+   *
+   * Returns a string containing the total potential energy and individual energy components relevant for Monte Carlo
+   * simulations, with an additional label for identification.
+   *
+   * \param label A string label to include in the output.
+   * \return A labeled string representing the energy components in Monte Carlo simulations.
+   */
   std::string printMC(const std::string& label) const;
+
+  /**
+   * \brief Generates a labeled formatted string of molecular dynamics energy components, including conserved energy and
+   * drift.
+   *
+   * Returns a string containing the total potential and kinetic energies, conserved energy, drift from a reference
+   * energy, and individual energy components relevant for molecular dynamics simulations, with an additional label for
+   * identification.
+   *
+   * \param label A string label to include in the output.
+   * \param referenceEnergy The reference energy to compute the drift.
+   * \return A labeled string representing the energy components in molecular dynamics simulations.
+   */
   std::string printMD(const std::string& label, double referenceEnergy) const;
 
+  /**
+   * \brief Generates a JSON object of Monte Carlo energy components.
+   *
+   * Returns a JSON object containing the total potential energy and individual energy components relevant for Monte
+   * Carlo simulations.
+   *
+   * \return A JSON object representing the energy components in Monte Carlo simulations.
+   */
   nlohmann::json jsonMC() const;
+
+  /**
+   * \brief Generates a JSON object of molecular dynamics energy components.
+   *
+   * Returns a JSON object containing the total potential and kinetic energies, as well as individual energy components
+   * relevant for molecular dynamics simulations.
+   *
+   * \return A JSON object representing the energy components in molecular dynamics simulations.
+   */
   nlohmann::json jsonMD() const;
 
+  /**
+   * \brief Computes the total potential energy.
+   *
+   * Sums up all the potential energy components, including interactions with external fields, framework-molecule
+   * interactions, molecule-molecule interactions, Ewald sums, intramolecular energies, tail corrections, and
+   * polarization.
+   *
+   * \return The total potential energy.
+   */
   inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
@@ -77,15 +176,46 @@ export struct RunningEnergy
            intraCoul + tail + polarization;
   }
 
+  /**
+   * \brief Computes the total Coulombic energy.
+   *
+   * Sums up the Coulombic energy components, including framework-molecule Coulomb interactions, molecule-molecule
+   * Coulomb interactions, and Ewald sums.
+   *
+   * \return The total Coulombic energy.
+   */
   inline double CoulombEnergy() const
   {
     return frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion;
   }
 
+  /**
+   * \brief Computes the total kinetic energy.
+   *
+   * Sums up the translational and rotational kinetic energies.
+   *
+   * \return The total kinetic energy.
+   */
   inline double kineticEnergy() const { return translationalKineticEnergy + rotationalKineticEnergy; }
 
+  /**
+   * \brief Computes the total Ewald Fourier energy.
+   *
+   * Sums up the Fourier components of the Ewald sum, including the Fourier term, self-interaction correction, and
+   * exclusion term.
+   *
+   * \return The total Ewald Fourier energy.
+   */
   inline double ewaldFourier() const { return ewald_fourier + ewald_self + ewald_exclusion; }
 
+  /**
+   * \brief Computes the conserved energy in molecular dynamics simulations.
+   *
+   * Sums up the total potential energy, kinetic energy, and energy associated with the Nose-Hoover thermostat/barostat
+   * to compute the conserved energy in molecular dynamics simulations.
+   *
+   * \return The conserved energy.
+   */
   inline double conservedEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
@@ -93,12 +223,26 @@ export struct RunningEnergy
            intraCoul + tail + polarization + translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
   }
 
+  /**
+   * \brief Computes the derivative of the potential energy with respect to lambda.
+   *
+   * Calculates the derivative of the potential energy with respect to the scaling parameter lambda, considering both
+   * van der Waals and Coulombic interactions.
+   *
+   * \param lambda The scaling parameter.
+   * \return The derivative of the potential energy with respect to lambda.
+   */
   inline double dudlambda(double lambda) const
   {
     return Scaling::scalingVDWDerivative(lambda) * dudlambdaVDW +
            Scaling::scalingCoulombDerivative(lambda) * (dudlambdaCharge + dudlambdaEwald);
   }
 
+  /**
+   * \brief Resets all energy components to zero.
+   *
+   * Sets all the energy components and related terms to zero, effectively clearing the accumulated energies.
+   */
   inline void zero()
   {
     externalFieldVDW = 0.0;
@@ -198,27 +342,27 @@ export struct RunningEnergy
     return v;
   }
 
-  uint64_t versionNumber{1};
+  uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  double externalFieldVDW;
-  double frameworkMoleculeVDW;
-  double moleculeMoleculeVDW;
-  double externalFieldCharge;
-  double frameworkMoleculeCharge;
-  double moleculeMoleculeCharge;
-  double ewald_fourier;
-  double ewald_self;
-  double ewald_exclusion;
-  double intraVDW;
-  double intraCoul;
-  double tail;
-  double polarization;
-  double dudlambdaVDW;
-  double dudlambdaCharge;
-  double dudlambdaEwald;
-  double translationalKineticEnergy;
-  double rotationalKineticEnergy;
-  double NoseHooverEnergy;
+  double externalFieldVDW;            ///< Energy from van der Waals interactions with external field.
+  double frameworkMoleculeVDW;        ///< Energy from van der Waals interactions between framework and molecules.
+  double moleculeMoleculeVDW;         ///< Energy from van der Waals interactions between molecules.
+  double externalFieldCharge;         ///< Energy from Coulomb interactions with external field.
+  double frameworkMoleculeCharge;     ///< Energy from Coulomb interactions between framework and molecules.
+  double moleculeMoleculeCharge;      ///< Energy from Coulomb interactions between molecules.
+  double ewald_fourier;               ///< Fourier component of Ewald sum for Coulomb interactions.
+  double ewald_self;                  ///< Self-interaction correction in Ewald sum.
+  double ewald_exclusion;             ///< Exclusion term in Ewald sum for Coulomb interactions.
+  double intraVDW;                    ///< Intramolecular van der Waals energy.
+  double intraCoul;                   ///< Intramolecular Coulomb energy.
+  double tail;                        ///< Tail correction energy for van der Waals interactions.
+  double polarization;                ///< Energy contribution from polarization effects.
+  double dudlambdaVDW;                ///< Derivative of van der Waals energy with respect to lambda.
+  double dudlambdaCharge;             ///< Derivative of Coulomb energy with respect to lambda (real space).
+  double dudlambdaEwald;              ///< Derivative of Coulomb energy with respect to lambda (Ewald sum).
+  double translationalKineticEnergy;  ///< Translational kinetic energy.
+  double rotationalKineticEnergy;     ///< Rotational kinetic energy.
+  double NoseHooverEnergy;            ///< Energy associated with Nose-Hoover thermostat/barostat.
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const RunningEnergy& c);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, RunningEnergy& c);

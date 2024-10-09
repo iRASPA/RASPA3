@@ -56,9 +56,6 @@ import force_factor;
 import framework;
 import component;
 
-// Used to compute the total framework-molecule energy
-//
-
 RunningEnergy Interactions::computeFrameworkMoleculeEnergy(const ForceField &forceField,
                                                            const SimulationBox &simulationBox,
                                                            std::span<const Atom> frameworkAtoms,

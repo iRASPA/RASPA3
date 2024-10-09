@@ -31,16 +31,42 @@ import stringutils;
 import json;
 
 // Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
+
+/**
+ * \brief Represents a molecule in the simulation system.
+ *
+ * The Molecule struct encapsulates the properties and behaviors of a molecule
+ * within the simulation. It includes the center of mass position, velocity,
+ * gradient, orientation (as a quaternion), orientation momentum, and orientation
+ * gradient. The struct provides constructors for initializing molecules and
+ * methods for serialization and deserialization. Molecule class type should
+ * have exactly a size of 192 bytes (6 times double4).
+ */
 export struct Molecule
 {
-  double3 centerOfMassPosition;
-  double3 velocity;
-  double3 gradient;
-  simd_quatd orientation;
-  simd_quatd orientationMomentum;
-  simd_quatd orientationGradient;
+  double3 centerOfMassPosition;    ///< The center of mass position of the molecule in 3D space.
+  double3 velocity;                ///< The velocity of the molecule.
+  double3 gradient;                ///< The gradient (force) acting on the molecule.
+  simd_quatd orientation;          ///< The orientation of the molecule represented as a quaternion.
+  simd_quatd orientationMomentum;  ///< The angular momentum of the molecule's orientation.
+  simd_quatd orientationGradient;  ///< The gradient (torque) acting on the molecule's orientation.
 
+  /**
+   * \brief Default constructor for the Molecule struct.
+   *
+   * Initializes a Molecule object with default values.
+   */
   Molecule() noexcept = default;
+
+  /**
+   * \brief Constructs a Molecule with specified center of mass position and orientation.
+   *
+   * Initializes a Molecule with the provided center of mass position and orientation.
+   * Other members are initialized to zero.
+   *
+   * \param centerOfMassPosition The initial center of mass position of the molecule.
+   * \param orientation The initial orientation of the molecule represented as a quaternion.
+   */
   Molecule(double3 centerOfMassPosition, simd_quatd orientation)
       : centerOfMassPosition(centerOfMassPosition),
         velocity(0.0, 0.0, 0.0),
@@ -51,10 +77,16 @@ export struct Molecule
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &molecule);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &molecule);
+  friend void to_json(nlohmann::json &j, const Molecule &a);
+  friend void from_json(const nlohmann::json &j, Molecule &a);
 
-  friend void to_json(nlohmann::json &, const Molecule &);
-  friend void from_json(const nlohmann::json &, Molecule &);
-
+  /**
+   * \brief Returns a string representation of the Molecule.
+   *
+   * Generates a string that includes the properties of the molecule.
+   *
+   * \return A string representing the Molecule.
+   */
   inline std::string repr() const
   {
     std::ostringstream stream;
@@ -62,9 +94,6 @@ export struct Molecule
     return stream.str();
   }
 };
-
-// should be 6 times double4 = 6x(8x4) = 6x32 = 192 bytes
-// static_assert(sizeof(Molecule) == 192, "struct Molecule size is not 192");
 
 void to_json(nlohmann::json &j, const Molecule &a)
 {

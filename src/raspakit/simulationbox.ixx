@@ -87,12 +87,12 @@ export struct SimulationBox
   /**
    * \brief Constructs a rectangular SimulationBox with given lengths.
    *
-   * Initializes a SimulationBox with the specified lengths for the sides.
+   * Initializes a rectangular SimulationBox with the specified lengths for the sides.
+   * Sets the angles to 90 degrees and computes the cell matrices and volume.
    *
    * \param a Length of side A.
    * \param b Length of side B.
    * \param c Length of side C.
-   * \param type The type of the simulation box (default is Rectangular).
    */
   explicit SimulationBox(double a, double b, double c);
 
@@ -100,29 +100,62 @@ export struct SimulationBox
    * \brief Constructs a SimulationBox with given lengths and angles.
    *
    * Initializes a SimulationBox with the specified lengths for the sides and angles.
+   * Computes the cell matrices and volume based on the provided dimensions.
    *
    * \param a Length of side A.
    * \param b Length of side B.
    * \param c Length of side C.
-   * \param alpha Angle between sides B and C.
-   * \param beta Angle between sides A and C.
-   * \param gamma Angle between sides A and B.
-   * \param type The type of the simulation box (default is Rectangular).
+   * \param alpha Angle between sides B and C (in radians).
+   * \param beta Angle between sides A and C (in radians).
+   * \param gamma Angle between sides A and B (in radians).
    */
   explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma);
+  /**
+   * \brief Constructs a SimulationBox with given lengths, angles, and type.
+   *
+   * Initializes a SimulationBox with the specified lengths, angles, and box type.
+   * Computes the cell matrices and volume based on the provided dimensions.
+   *
+   * \param a Length of side A.
+   * \param b Length of side B.
+   * \param c Length of side C.
+   * \param alpha Angle between sides B and C (in radians).
+   * \param beta Angle between sides A and C (in radians).
+   * \param gamma Angle between sides A and B (in radians).
+   * \param type The type of the simulation box (Rectangular or Triclinic).
+   */
   explicit SimulationBox(double a, double b, double c, double alpha, double beta, double gamma, Type type);
 
   /**
    * \brief Constructs a SimulationBox with a given cell matrix.
    *
    * Initializes a SimulationBox with the specified cell matrix.
+   * Computes the lengths and angles from the cell matrix, as well as the inverse cell matrix and volume.
    *
    * \param m The cell matrix defining the box dimensions and angles.
-   * \param type The type of the simulation box (default is Rectangular).
    */
   explicit SimulationBox(double3x3 m);
+  /**
+   * \brief Constructs a SimulationBox with a given cell matrix and type.
+   *
+   * Initializes a SimulationBox with the specified cell matrix and box type.
+   * Computes the lengths and angles from the cell matrix, as well as the inverse cell matrix and volume.
+   *
+   * \param m The cell matrix defining the box dimensions and angles.
+   * \param type The type of the simulation box (Rectangular or Triclinic).
+   */
   explicit SimulationBox(double3x3 m, Type type);
 
+  /**
+   * \brief Applies periodic boundary conditions to a displacement vector.
+   *
+   * Adjusts the displacement vector \p dr to account for periodic boundary conditions,
+   * ensuring that it lies within the primary simulation cell.
+   * For rectangular boxes, the method is optimized for performance.
+   *
+   * \param dr The displacement vector to be adjusted.
+   * \return The adjusted displacement vector within the primary simulation cell.
+   */
   ALWAYS_INLINE inline double3 applyPeriodicBoundaryConditions(const double3& dr) const
   {
     switch (type)
@@ -160,16 +193,86 @@ export struct SimulationBox
     }
   }
 
+  /**
+   * \brief Sets the lengths of the simulation box.
+   *
+   * Updates the lengths of the box and recalculates the cell matrix,
+   * inverse cell matrix, and volume based on the new lengths.
+   *
+   * \param lengths A double3 containing the new lengths (lengthA, lengthB, lengthC).
+   */
   void setBoxLengths(double3 lengths);
+  /**
+   * \brief Sets the angles of the simulation box.
+   *
+   * Updates the angles of the box and recalculates the cell matrix,
+   * inverse cell matrix, and volume based on the new angles.
+   * Angles are provided in radians.
+   *
+   * \param angles A double3 containing the new angles (angleAlpha, angleBeta, angleGamma).
+   */
   void setBoxAngles(double3 angles);
+  /**
+   * \brief Retrieves the lengths of the simulation box.
+   *
+   * Returns the lengths of the sides of the simulation box.
+   *
+   * \return A double3 containing the lengths (lengthA, lengthB, lengthC).
+   */
   double3 lengths();
+  /**
+   * \brief Retrieves the angles of the simulation box.
+   *
+   * Returns the angles between the sides of the simulation box.
+   *
+   * \return A double3 containing the angles (angleAlpha, angleBeta, angleGamma) in radians.
+   */
   double3 angles();
+  /**
+   * \brief Generates a random position within the simulation box.
+   *
+   * Generates a random position within the simulation box using the provided random number generator.
+   *
+   * \param random A random number generator.
+   * \return A double3 representing a random position within the box.
+   */
   double3 randomPosition(RandomNumber& random) const;
+  /**
+   * \brief Calculates the perpendicular widths of the simulation box.
+   *
+   * Computes the perpendicular widths (shortest distances) along each axis of the box.
+   *
+   * \return A double3 containing the perpendicular widths along x, y, and z axes.
+   */
   double3 perpendicularWidths() const;
 
+  /**
+   * \brief Returns a string representation of the simulation box.
+   *
+   * Generates a string that includes the cell matrix, lengths, angles, and boundary conditions type.
+   *
+   * \return A string representing the simulation box.
+   */
   std::string printStatus() const;
+  /**
+   * \brief Returns a string representation of the simulation box with averages and errors.
+   *
+   * Generates a string that includes the cell matrix, lengths, angles, and boundary conditions type,
+   * along with average values and errors for comparison.
+   *
+   * \param average The average simulation box for comparison.
+   * \param error The error simulation box for comparison.
+   * \return A string representing the simulation box with averages and errors.
+   */
   std::string printStatus(const SimulationBox& average, const SimulationBox& error) const;
 
+  /**
+   * \brief Returns a JSON representation of the simulation box.
+   *
+   * Generates a JSON object containing the cell matrix, lengths, and angles of the box.
+   *
+   * \return A JSON object representing the simulation box.
+   */
   nlohmann::json jsonStatus() const;
 
   uint64_t versionNumber{1};
@@ -198,6 +301,14 @@ export struct SimulationBox
     return *this;
   }
 
+  /**
+   * \brief Scales the simulation box by a scalar factor.
+   *
+   * Multiplies the lengths of the box by the given scalar and recalculates
+   * the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale The scalar factor to scale the box by.
+   */
   void scale(double scale)
   {
     lengthA *= scale;
@@ -214,6 +325,14 @@ export struct SimulationBox
     volume = cell.determinant();
   }
 
+  /**
+   * \brief Scales the simulation box by integer factors along each axis.
+   *
+   * Multiplies the lengths of the box by the given integer factors along x, y, and z axes,
+   * and recalculates the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale An int3 containing the scaling factors along each axis.
+   */
   void scale(int3 scale)
   {
     lengthA *= static_cast<double>(scale.x);
@@ -230,6 +349,15 @@ export struct SimulationBox
     volume = cell.determinant();
   }
 
+  /**
+   * \brief Returns a new SimulationBox scaled by a scalar factor.
+   *
+   * Creates a new SimulationBox with lengths multiplied by the given scalar,
+   * and recalculates the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale The scalar factor to scale the box by.
+   * \return A new scaled SimulationBox.
+   */
   SimulationBox scaled(double scale)
   {
     SimulationBox v;
@@ -254,6 +382,15 @@ export struct SimulationBox
     return v;
   }
 
+  /**
+   * \brief Returns a new SimulationBox scaled by integer factors along each axis.
+   *
+   * Creates a new SimulationBox with lengths multiplied by the given integer factors,
+   * and recalculates the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale An int3 containing the scaling factors along each axis.
+   * \return A new scaled SimulationBox.
+   */
   SimulationBox scaled(int3 scale)
   {
     SimulationBox v;
@@ -280,7 +417,6 @@ export struct SimulationBox
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SimulationBox& box);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, SimulationBox& box);
-
   friend void to_json(nlohmann::json&, const SimulationBox&);
   friend void from_json(const nlohmann::json&, SimulationBox&);
 };
@@ -363,6 +499,14 @@ export inline SimulationBox operator/(const SimulationBox& a, const double& b)
   return m;
 }
 
+/**
+ * \brief Computes the square root of each component of a SimulationBox.
+ *
+ * Returns a new SimulationBox where each component is the square root of the corresponding component of \p a.
+ *
+ * \param a The SimulationBox.
+ * \return A new SimulationBox with square-rooted components.
+ */
 export inline SimulationBox sqrt(const SimulationBox& a)
 {
   SimulationBox m;
@@ -379,6 +523,15 @@ export inline SimulationBox sqrt(const SimulationBox& a)
   return m;
 }
 
+/**
+ * \brief Computes the component-wise maximum of two SimulationBoxes.
+ *
+ * Returns a new SimulationBox where each component is the maximum of the corresponding components of \p a and \p b.
+ *
+ * \param a The first SimulationBox.
+ * \param b The second SimulationBox.
+ * \return A new SimulationBox with maximum components.
+ */
 export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
 {
   SimulationBox c = SimulationBox(std::max(a.lengthA, b.lengthA), std::max(a.lengthB, b.lengthB),

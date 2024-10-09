@@ -117,12 +117,6 @@ import equation_of_states;
 import thermostat;
 import json;
 
-// construct System programmatically
-/*! \brief Brief description.
- *         Brief description continued.
- *
- *  Detailed description starts here.
- */
 System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
                double heliumVoidFraction, std::vector<Framework> f, std::vector<Component> c,
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,

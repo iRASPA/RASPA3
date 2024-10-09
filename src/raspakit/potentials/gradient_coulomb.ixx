@@ -20,13 +20,31 @@ import units;
 import forcefield;
 import force_factor;
 
-// return D[U[r],r] / r
-
+/**
+ * \brief Computes the gradient of the Coulomb potential.
+ *
+ * This function calculates the gradient of the Coulomb potential based on the specified
+ * charge method in the provided force field. It handles different charge calculation
+ * methods such as Ewald, Coulomb, Wolf, and ModifiedWolf.
+ *
+ * \param forcefield The force field configuration containing charge method and parameters.
+ * \param groupIdA Boolean indicating if the first group ID is active.
+ * \param groupIdB Boolean indicating if the second group ID is active.
+ * \param scalingA Scaling factor for the first interaction.
+ * \param scalingB Scaling factor for the second interaction.
+ * \param r The distance between the two charges.
+ * \param chargeA The charge of the first particle.
+ * \param chargeB The charge of the second particle.
+ * \return A ForceFactor object representing the computed force factors.
+ *
+ * \note This function returns D[U[r], r] / r, where U[r] is the potential energy.
+ */
 export [[clang::always_inline]] inline ForceFactor potentialCoulombGradient(
     const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA,
     const double& scalingB, const double& r, const double& chargeA, const double& chargeB)
 {
-  double scaling = scalingA * scalingB;
+  double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
+
   switch (forcefield.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
@@ -56,4 +74,7 @@ export [[clang::always_inline]] inline ForceFactor potentialCoulombGradient(
     default:
       break;
   }
+
+  // In case of an unsupported charge method, return a default ForceFactor.
+  return ForceFactor(0.0, 0.0, 0.0);
 };
