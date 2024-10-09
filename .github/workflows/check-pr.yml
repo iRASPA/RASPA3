@@ -1,14 +1,15 @@
-name: create doxygen documentation
-on:
-  workflow_dispatch:
-    branches: [ "main" ]
+name: check pr
 
-env:
-  BUILD_TYPE: Release
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
+  check-build:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu-24.04
 
     steps:
       - name: checkout repository
@@ -28,15 +29,4 @@ jobs:
       - name: configure cmake raspa3 
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24 -DBUILD_DOXYGEN=ON .
-
-      - name: Generate documentation
-        working-directory: ${{github.workspace}}/build
-        run: |
-          cmake --build ${{github.workspace}}/build -t documentation
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build/html
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24 .

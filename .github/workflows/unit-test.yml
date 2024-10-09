@@ -27,7 +27,7 @@ jobs:
       - name: configure cmake raspa3 
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build --preset linux-ubuntu-24 -DBUILD_TESTING=ON .
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24 -DBUILD_TESTING=ON .
 
       - name: build raspa3 and tests
         shell: bash
