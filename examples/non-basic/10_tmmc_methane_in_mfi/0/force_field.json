@@ -1,0 +1,97 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Zn",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Zn",
+      "print_as" : "Zn",
+      "mass" :  65.390,
+      "charge" : 0.0
+    },
+    {
+      "name" : "N",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "N",
+      "print_as" : "N",
+      "mass" :  14.0,
+      "charge" : 0.0
+    },
+    {
+      "name" : "O",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" :  12.0,
+      "charge" : 0.0
+    },
+    {
+      "name" : "C",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" :  12.0,
+      "charge" : 0.0
+    },
+    {
+      "name" : "H",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" :  1.0,
+      "charge" : 0.0
+    },
+    {
+      "name" : "CH4",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 16.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "Zn",
+      "type" : "lennard-jones",    
+      "parameters" : [62.39, 2.46]
+    },
+    {
+      "name" : "N",
+      "type" : "lennard-jones",    
+      "parameters" : [34.72, 3.26]
+    },
+    {
+      "name" : "O",
+      "type" : "lennard-jones",    
+      "parameters" : [30.19, 3.12]
+    },
+    {
+      "name" : "C",
+      "type" : "lennard-jones",    
+      "parameters" : [52.83, 3.43]
+    },
+    {
+      "name" : "H",
+      "type" : "lennard-jones",    
+      "parameters" : [22.14, 2.57]
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",    
+      "parameters" : [148.0, 3.73],
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : false
+}

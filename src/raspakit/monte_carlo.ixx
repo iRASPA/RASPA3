@@ -139,7 +139,7 @@ export struct MonteCarlo
    * Executes a number of Monte Carlo steps, updates system properties,
    * and handles output generation and restart file writing.
    */
-  void cycle();
+  void performCycle();
 
   /**
    * \brief Performs the initialization stage of the simulation.

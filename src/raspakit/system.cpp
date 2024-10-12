@@ -923,7 +923,7 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
 {
   std::ostringstream stream;
 
-  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "[Initialization] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -966,11 +966,11 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMC(std::string label, size_t currentCycle, size_t numberOfCycles) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "[{}] Current cycle: {} out of {}\n", label, currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -1019,7 +1019,7 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "[Equilibration] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -1105,7 +1105,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 {
   std::ostringstream stream;
 
-  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "[Production] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
@@ -1226,7 +1226,7 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "[Production] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();

@@ -997,7 +997,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
       }
 
-      if (value.contains("ExternalField"))
+      if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
+      {
+        systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
+      }
+
+      if (value.contains("MacroStateMinimumNumberOfMolecules") && value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
+      {
+        systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<size_t>();
+      }
+
+      if (value.contains("MacroStateMaximumNumberOfMolecules") && value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
+      {
+        systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<size_t>();
+      }
+
+      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
       {
         systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
       }
@@ -1315,6 +1330,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
+      systems[i].tmmc.useBias = true;
+      systems[i].tmmc.useTMBias = true;
     }
   }
 
@@ -1518,7 +1535,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OutputPDBMovie",
     "SampleMovieEvery",
     "Ensemble",
-    "TimeStep"};
+    "TimeStep",
+    "MacroStateUseBias",
+    "MacroStateMinimumNumberOfMolecules",
+    "MacroStateMaximumNumberOfMolecules"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

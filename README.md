@@ -60,6 +60,7 @@ cd examples/basic/1_mc_methane_in_box<br>
 - grand canonical ensemble (CBMC, CFCMC, and CB/CFCMC)
 - Gibbs ensemble (CBMC, CFCMC, and CB/CFCMC)
 - Monte Carlo NPT ensemble
+- transition matrix Monte Carlo
 - Molecular Dynamics NVT ensemble (Nose-Hoover thermostat)
 - binary restart
 - blocking pockets

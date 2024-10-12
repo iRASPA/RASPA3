@@ -4,6 +4,7 @@ module;
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <vector>
 #endif
 
@@ -14,6 +15,7 @@ import <vector>;
 import <iostream>;
 import <fstream>;
 import <chrono>;
+import <optional>;
 #endif
 
 import randomnumbers;
@@ -24,103 +26,166 @@ import system;
 import mc_moves;
 import input_reader;
 import energy_status;
+import archive;
+import json;
 
 /**
- * \brief Class that implements the Monte Carlo Transition Matrix method.
+ * \brief Performs Monte Carlo simulations for molecular systems.
  *
- * Manages the simulation workflow, including initialization, equilibration,
- * production, output, and cleanup phases of a Monte Carlo simulation using
- * the Transition Matrix method.
+ * The MonteCarloTransitionMatrix struct orchestrates the execution of Monte Carlo simulations,
+ * including initialization, equilibration, and production stages. It manages multiple systems,
+ * random number generation, simulation parameters, and output generation.
  */
 export struct MonteCarloTransitionMatrix
 {
   /**
-   * \enum WeightingMethod
-   * \brief Specifies the weighting method for the Transition Matrix.
+   * \brief Enumeration of weighting methods for sampling.
    */
   enum class WeightingMethod : size_t
   {
-    LambdaZero = 0,  ///< Use only the zero value of lambda for weighting.
-    AllLambdas = 1   ///< Use all lambda values for weighting.
+    LambdaZero = 0,  ///< Use only lambda = 0 in sampling.
+    AllLambdas = 1   ///< Use all lambda values in sampling.
   };
 
   /**
-   * \brief Constructs a MonteCarloTransitionMatrix object.
-   *
-   * Initializes simulation parameters using the provided InputReader.
-   *
-   * \param reader Reference to an InputReader object containing simulation parameters.
+   * \brief Enumeration of simulation stages.
    */
-  MonteCarloTransitionMatrix(InputReader& reader) noexcept;
+  enum class SimulationStage : size_t
+  {
+    Uninitialized = 0,   ///< Simulation not initialized.
+    Initialization = 1,  ///< Initialization stage.
+    Equilibration = 2,   ///< Equilibration stage.
+    Production = 3       ///< Production stage.
+  };
 
   /**
-   * \brief Runs the entire Monte Carlo Transition Matrix simulation.
+   * \brief Default constructor for the MonteCarloTransitionMatrix class.
    *
-   * Executes the simulation by calling initialization, equilibration,
-   * production, output, and cleanup methods in sequence.
+   * Initializes a MonteCarloTransitionMatrix object with default parameters.
+   */
+  MonteCarloTransitionMatrix();
+
+  /**
+   * \brief Constructs a MonteCarloTransitionMatrix object with simulation parameters from an InputReader.
+   *
+   * \param reader InputReader containing simulation parameters.
+   */
+  MonteCarloTransitionMatrix(InputReader &reader) noexcept;
+
+  /**
+   * \brief Constructs a MonteCarloTransitionMatrix object with specified simulation parameters.
+   *
+   * \param numberOfCycles Number of production cycles.
+   * \param numberOfInitializationCycles Number of initialization cycles.
+   * \param numberOfEquilibrationCycles Number of equilibration cycles.
+   * \param printEvery Frequency of printing status reports.
+   * \param writeBinaryRestartEvery Frequency of writing binary restart files.
+   * \param rescaleWangLandauEvery Frequency of rescaling Wang-Landau factors.
+   * \param optimizeMCMovesEvery Frequency of optimizing MC moves.
+   * \param systems Vector of System objects to simulate.
+   * \param randomSeed Random number generator seed.
+   * \param numberOfBlocks Number of blocks for error estimation.
+   */
+  MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
+             size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
+             size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed,
+             size_t numberOfBlocks);
+
+  uint64_t versionNumber{1};  ///< Version number for serialization.
+
+  size_t numberOfCycles;                ///< Number of production cycles.
+  size_t numberOfSteps;                 ///< Total number of steps performed.
+  size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
+  size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  size_t printEvery;                    ///< Frequency of printing status reports.
+  size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
+  size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
+  size_t optimizeMCMovesEvery;          ///< Frequency of optimizing MC moves.
+
+  size_t currentCycle{0};                                           ///< Current cycle number.
+  SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
+
+  std::vector<System> systems;         ///< Vector of systems to simulate.
+  RandomNumber random;                 ///< Random number generator.
+  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
+
+  std::vector<std::ofstream> streams;            ///< Output streams for writing data.
+  std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.
+  std::vector<nlohmann::json> outputJsons;       ///< Output data in JSON format.
+
+  BlockErrorEstimation estimation;  ///< Block error estimation object.
+
+  std::chrono::duration<double> totalInitializationSimulationTime{0};  ///< Total time for initialization stage.
+  std::chrono::duration<double> totalEquilibrationSimulationTime{0};   ///< Total time for equilibration stage.
+  std::chrono::duration<double> totalProductionSimulationTime{0};      ///< Total time for production stage.
+  std::chrono::duration<double> totalSimulationTime{0};                ///< Total simulation time.
+
+  /**
+   * \brief Creates output files for writing simulation data.
+   */
+  void createOutputFiles();
+
+  /**
+   * \brief Runs the Monte Carlo simulation.
+   *
+   * Orchestrates the simulation by executing initialization, equilibration,
+   * and production stages sequentially.
    */
   void run();
 
   /**
-   * \brief Initializes the simulation systems and parameters.
+   * \brief Performs a single Monte Carlo cycle.
    *
-   * Sets up the systems, initializes histograms, creates output directories,
-   * and performs initial Monte Carlo moves for system preparation.
+   * Executes a number of Monte Carlo steps, updates system properties,
+   * and handles output generation and restart file writing.
+   */
+  void performCycle();
+
+  /**
+   * \brief Performs the initialization stage of the simulation.
+   *
+   * Sets up the simulation systems, writes initial output, and runs
+   * the specified number of initialization cycles.
    */
   void initialize();
 
   /**
-   * \brief Equilibrates the simulation systems.
+   * \brief Performs the equilibration stage of the simulation.
    *
-   * Performs equilibration cycles to adjust the systems before production.
-   * Updates histograms, adjusts biasing factors, and optimizes Monte Carlo moves.
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
    */
   void equilibrate();
 
   /**
-   * \brief Runs the production phase of the simulation.
+   * \brief Performs the production stage of the simulation.
    *
-   * Performs the main Monte Carlo sampling, collects statistics,
-   * and computes averages during the production cycles.
+   * Runs the main simulation cycles, collects statistics, and samples properties.
    */
   void production();
 
   /**
-   * \brief Outputs the simulation results and statistics.
+   * \brief Generates the final output of the simulation.
    *
-   * Writes energy drifts, move statistics, timing information,
-   * and other relevant data to the output files.
+   * Writes energy statistics, move statistics, CPU timings, and
+   * other properties to output files.
    */
   void output();
 
   /**
-   * \brief Cleans up resources after the simulation.
-   *
-   * Performs any necessary cleanup operations after the simulation is complete.
-   */
-  void cleanup();
-
-  /**
-   * \brief Selects and returns a random system from the list of systems.
+   * \brief Selects a random system from the list of systems.
    *
    * \return Reference to a randomly selected System object.
    */
-  System& randomSystem();
+  System &randomSystem();
 
-  size_t numberOfCycles;                ///< Number of cycles in the production phase.
-  size_t numberOfInitializationCycles;  ///< Number of cycles in the initialization phase.
-  size_t numberOfEquilibrationCycles;   ///< Number of cycles in the equilibration phase.
-  size_t optimizeMCMovesEvery{5000};    ///< Frequency at which Monte Carlo moves are optimized.
-  size_t printEvery;                    ///< Frequency at which status is printed to output.
+  /**
+   * \brief Returns a string representation of the MonteCarloTransitionMatrix object.
+   *
+   * \return A string describing the MonteCarloTransitionMatrix object.
+   */
+  std::string repr() const;
 
-  std::vector<System> systems;         ///< Vector of simulation systems.
-  RandomNumber random;                 ///< Random number generator used in the simulation.
-  size_t fractionalMoleculeSystem{0};  ///< The system where the fractional molecule is located
-
-  std::vector<std::ofstream> streams;  ///< Output file streams for writing simulation data.
-
-  BlockErrorEstimation estimation;  ///< Object for block error estimation during the simulation.
-
-  std::chrono::system_clock::time_point t1;  ///< Time point marking the start of the production phase.
-  std::chrono::system_clock::time_point t2;  ///< Time point marking the end of the production phase.
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MonteCarloTransitionMatrix &mc);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MonteCarloTransitionMatrix &mc);
 };

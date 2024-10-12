@@ -1,0 +1,32 @@
+{
+  "SimulationType" : "MonteCarloTransitionMatrix",
+  "NumberOfCycles" : 200000,
+  "NumberOfInitializationCycles" : 100000,
+  "PrintEvery" : 5000,
+
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "667",
+      "HeliumVoidFraction" : 0.29,
+      "NumberOfUnitCells" : [1, 1, 1],
+      "ExternalTemperature" : 111.58,
+      "ExternalPressure" : 36000,
+      "ChargeMethod" : "None",
+      "MacroStateUseBias" : true,
+      "MacroStateMinimumNumberOfMolecules" : 84,
+      "MacroStateMaximumNumberOfMolecules" : 168
+    }
+  ],
+
+  "Components" : [ 
+    {
+      "Name" : "methane",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "SwapProbability" : 1.0,
+      "CreateNuMberofmolecules" : 120
+    }
+  ]
+}

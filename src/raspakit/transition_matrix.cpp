@@ -179,9 +179,8 @@ void TransitionMatrix::writeStatistics()
   std::ofstream textTMMCFile{};
   std::filesystem::path cwd = std::filesystem::current_path();
 
-  std::string dirname = "TMMC/";
-  // std::string dirname=std::print("TMMC/System_{}/", systemId);
-  std::string fname = dirname + "/" + "TMMC_Statistics.txt";
+  std::string dirname = "tmmc/";
+  std::string fname = dirname + "/" + "tmmc_statistics.txt";
 
   std::filesystem::path directoryName = cwd / dirname;
   std::filesystem::path fileName = cwd / fname;
@@ -190,17 +189,26 @@ void TransitionMatrix::writeStatistics()
 
   if (doTMMC)
   {
-    textTMMCFile << "Performed " << numberOfSteps << " Steps\n";
-    textTMMCFile << "Collection Matrix Updated " << numberOfUpdates << " Times\n";
-    textTMMCFile << "Min Macrostate : " << minMacrostate << '\n';
-    textTMMCFile << "Max Macrostate : " << maxMacrostate << '\n';
-    textTMMCFile << "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram" << '\n';
+    std::print(textTMMCFile, "# performed: {} steps\n", numberOfSteps);
+    std::print(textTMMCFile, "# collection matrix updated: {} times\n", numberOfUpdates);
+    std::print(textTMMCFile, "# minimum microstate: {}\n", minMacrostate);
+    std::print(textTMMCFile, "# maximum microstate: {}\n", maxMacrostate);
+    std::print(textTMMCFile, "# column 1: N\n");
+    std::print(textTMMCFile, "# column 2: CM[-1]\n");
+    std::print(textTMMCFile, "# column 3: CM[ 0]0n");
+    std::print(textTMMCFile, "# column 4: CM[+1]\n");
+    std::print(textTMMCFile, "# column 5: bias\n");
+    std::print(textTMMCFile, "# column 6: lnpi\n");
+    std::print(textTMMCFile, "# column 7: forward lnpi\n");
+    std::print(textTMMCFile, "# column 8: reverse lnpi\n");
+    std::print(textTMMCFile, "# column 9: histogram\n");
+    std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
     for (size_t j = minMacrostate; j < maxMacrostate + 1; j++)
     {
       size_t newj = j - minMacrostate;
-      textTMMCFile << j << " " << cmatrix[newj].x << " " << cmatrix[newj].y << " " << cmatrix[newj].z << " "
-                   << bias[newj] << " " << lnpi[newj] << " " << forward_lnpi[newj] << " " << reverse_lnpi[newj] << " "
-                   << histogram[newj] << '\n';
+      std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n",
+                               j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z, bias[newj],
+                               lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
     }
   }
 };
