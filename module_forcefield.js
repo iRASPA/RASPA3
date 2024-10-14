@@ -1,4 +1,4 @@
 var module_forcefield =
 [
-    [ "ForceField", "structForceField.html", null ]
+    [ "ForceField", "structForceField.html", "structForceField" ]
 ];

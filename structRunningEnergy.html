@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: RunningEnergy Struct Reference</title>
+<title>RASPA3: RunningEnergy Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,41 +107,59 @@ $(document).ready(function(){initNavTree('structRunningEnergy.html',''); initRes
   <div class="headertitle"><div class="title">RunningEnergy Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_running__energy.html">running_energy</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Accumulates energy components during simulation.  
+ <a href="structRunningEnergy.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aa96564ef370b7924b7bfdf9989a5608f" id="r_aa96564ef370b7924b7bfdf9989a5608f"><td class="memItemLeft" align="right" valign="top"><a id="aa96564ef370b7924b7bfdf9989a5608f" name="aa96564ef370b7924b7bfdf9989a5608f"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printMC</b> () const</td></tr>
+<tr class="memitem:af1c7c23a728c65fa03e6e7c3cb902a15" id="r_af1c7c23a728c65fa03e6e7c3cb902a15"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#af1c7c23a728c65fa03e6e7c3cb902a15">RunningEnergy</a> ()</td></tr>
+<tr class="memdesc:af1c7c23a728c65fa03e6e7c3cb902a15"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor initializing all energy components to zero.  <br /></td></tr>
+<tr class="separator:af1c7c23a728c65fa03e6e7c3cb902a15"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa96564ef370b7924b7bfdf9989a5608f" id="r_aa96564ef370b7924b7bfdf9989a5608f"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#aa96564ef370b7924b7bfdf9989a5608f">printMC</a> () const</td></tr>
+<tr class="memdesc:aa96564ef370b7924b7bfdf9989a5608f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a formatted string of Monte Carlo energy components.  <br /></td></tr>
 <tr class="separator:aa96564ef370b7924b7bfdf9989a5608f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a52f9767a7d3773bcbd84b47096e26348" id="r_a52f9767a7d3773bcbd84b47096e26348"><td class="memItemLeft" align="right" valign="top"><a id="a52f9767a7d3773bcbd84b47096e26348" name="a52f9767a7d3773bcbd84b47096e26348"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printMD</b> () const</td></tr>
+<tr class="memitem:a52f9767a7d3773bcbd84b47096e26348" id="r_a52f9767a7d3773bcbd84b47096e26348"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a52f9767a7d3773bcbd84b47096e26348">printMD</a> () const</td></tr>
+<tr class="memdesc:a52f9767a7d3773bcbd84b47096e26348"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a formatted string of molecular dynamics energy components.  <br /></td></tr>
 <tr class="separator:a52f9767a7d3773bcbd84b47096e26348"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f8bdfaaf16924ca7879d0e926ad7dd6" id="r_a4f8bdfaaf16924ca7879d0e926ad7dd6"><td class="memItemLeft" align="right" valign="top"><a id="a4f8bdfaaf16924ca7879d0e926ad7dd6" name="a4f8bdfaaf16924ca7879d0e926ad7dd6"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printMC</b> (const std::string &amp;label) const</td></tr>
+<tr class="memitem:aacca19ab20a4fd2cf554dd70fe4eb109" id="r_aacca19ab20a4fd2cf554dd70fe4eb109"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#aacca19ab20a4fd2cf554dd70fe4eb109">printMCDiff</a> (<a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;other) const</td></tr>
+<tr class="memdesc:aacca19ab20a4fd2cf554dd70fe4eb109"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a formatted string comparing energy components between two Monte Carlo states.  <br /></td></tr>
+<tr class="separator:aacca19ab20a4fd2cf554dd70fe4eb109"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa7d2ce9b5839955946ad6d70273274bd" id="r_aa7d2ce9b5839955946ad6d70273274bd"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#aa7d2ce9b5839955946ad6d70273274bd">printMDDiff</a> (<a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;other) const</td></tr>
+<tr class="memdesc:aa7d2ce9b5839955946ad6d70273274bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a formatted string comparing energy components between two molecular dynamics states.  <br /></td></tr>
+<tr class="separator:aa7d2ce9b5839955946ad6d70273274bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4f8bdfaaf16924ca7879d0e926ad7dd6" id="r_a4f8bdfaaf16924ca7879d0e926ad7dd6"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a4f8bdfaaf16924ca7879d0e926ad7dd6">printMC</a> (const std::string &amp;label) const</td></tr>
+<tr class="memdesc:a4f8bdfaaf16924ca7879d0e926ad7dd6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a labeled formatted string of Monte Carlo energy components.  <br /></td></tr>
 <tr class="separator:a4f8bdfaaf16924ca7879d0e926ad7dd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5cd6c2b59bfb9ff693bf4108d3dd4a67" id="r_a5cd6c2b59bfb9ff693bf4108d3dd4a67"><td class="memItemLeft" align="right" valign="top"><a id="a5cd6c2b59bfb9ff693bf4108d3dd4a67" name="a5cd6c2b59bfb9ff693bf4108d3dd4a67"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printMD</b> (const std::string &amp;label, double referenceEnergy) const</td></tr>
+<tr class="memitem:a5cd6c2b59bfb9ff693bf4108d3dd4a67" id="r_a5cd6c2b59bfb9ff693bf4108d3dd4a67"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a5cd6c2b59bfb9ff693bf4108d3dd4a67">printMD</a> (const std::string &amp;label, double referenceEnergy) const</td></tr>
+<tr class="memdesc:a5cd6c2b59bfb9ff693bf4108d3dd4a67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a labeled formatted string of molecular dynamics energy components, including conserved energy and drift.  <br /></td></tr>
 <tr class="separator:a5cd6c2b59bfb9ff693bf4108d3dd4a67"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72cda46f52be0795fe083d181ca4ea41" id="r_a72cda46f52be0795fe083d181ca4ea41"><td class="memItemLeft" align="right" valign="top"><a id="a72cda46f52be0795fe083d181ca4ea41" name="a72cda46f52be0795fe083d181ca4ea41"></a>
-nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonMC</b> () const</td></tr>
+<tr class="memitem:a72cda46f52be0795fe083d181ca4ea41" id="r_a72cda46f52be0795fe083d181ca4ea41"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a72cda46f52be0795fe083d181ca4ea41">jsonMC</a> () const</td></tr>
+<tr class="memdesc:a72cda46f52be0795fe083d181ca4ea41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a JSON object of Monte Carlo energy components.  <br /></td></tr>
 <tr class="separator:a72cda46f52be0795fe083d181ca4ea41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1e46d5db532a67063ea5fc5e579d8aa2" id="r_a1e46d5db532a67063ea5fc5e579d8aa2"><td class="memItemLeft" align="right" valign="top"><a id="a1e46d5db532a67063ea5fc5e579d8aa2" name="a1e46d5db532a67063ea5fc5e579d8aa2"></a>
-nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonMD</b> () const</td></tr>
+<tr class="memitem:a1e46d5db532a67063ea5fc5e579d8aa2" id="r_a1e46d5db532a67063ea5fc5e579d8aa2"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a1e46d5db532a67063ea5fc5e579d8aa2">jsonMD</a> () const</td></tr>
+<tr class="memdesc:a1e46d5db532a67063ea5fc5e579d8aa2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a JSON object of molecular dynamics energy components.  <br /></td></tr>
 <tr class="separator:a1e46d5db532a67063ea5fc5e579d8aa2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8649e563d585afaf3c43c78c0354711e" id="r_a8649e563d585afaf3c43c78c0354711e"><td class="memItemLeft" align="right" valign="top"><a id="a8649e563d585afaf3c43c78c0354711e" name="a8649e563d585afaf3c43c78c0354711e"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>potentialEnergy</b> () const</td></tr>
+<tr class="memitem:a8649e563d585afaf3c43c78c0354711e" id="r_a8649e563d585afaf3c43c78c0354711e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a8649e563d585afaf3c43c78c0354711e">potentialEnergy</a> () const</td></tr>
+<tr class="memdesc:a8649e563d585afaf3c43c78c0354711e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total potential energy.  <br /></td></tr>
 <tr class="separator:a8649e563d585afaf3c43c78c0354711e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab6127cd5554d2a74c31536d5f235e641" id="r_ab6127cd5554d2a74c31536d5f235e641"><td class="memItemLeft" align="right" valign="top"><a id="ab6127cd5554d2a74c31536d5f235e641" name="ab6127cd5554d2a74c31536d5f235e641"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>kineticEnergy</b> () const</td></tr>
+<tr class="memitem:ae7295096bf560c09dccc3d76f83772b1" id="r_ae7295096bf560c09dccc3d76f83772b1"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#ae7295096bf560c09dccc3d76f83772b1">CoulombEnergy</a> () const</td></tr>
+<tr class="memdesc:ae7295096bf560c09dccc3d76f83772b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total Coulombic energy.  <br /></td></tr>
+<tr class="separator:ae7295096bf560c09dccc3d76f83772b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab6127cd5554d2a74c31536d5f235e641" id="r_ab6127cd5554d2a74c31536d5f235e641"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#ab6127cd5554d2a74c31536d5f235e641">kineticEnergy</a> () const</td></tr>
+<tr class="memdesc:ab6127cd5554d2a74c31536d5f235e641"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total kinetic energy.  <br /></td></tr>
 <tr class="separator:ab6127cd5554d2a74c31536d5f235e641"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a037c4889410d27de67265b7007d6cdc7" id="r_a037c4889410d27de67265b7007d6cdc7"><td class="memItemLeft" align="right" valign="top"><a id="a037c4889410d27de67265b7007d6cdc7" name="a037c4889410d27de67265b7007d6cdc7"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>conservedEnergy</b> () const</td></tr>
+<tr class="memitem:a11b8beaf8eaa250603b85e573f99ce4f" id="r_a11b8beaf8eaa250603b85e573f99ce4f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a11b8beaf8eaa250603b85e573f99ce4f">ewaldFourier</a> () const</td></tr>
+<tr class="memdesc:a11b8beaf8eaa250603b85e573f99ce4f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total Ewald Fourier energy.  <br /></td></tr>
+<tr class="separator:a11b8beaf8eaa250603b85e573f99ce4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a037c4889410d27de67265b7007d6cdc7" id="r_a037c4889410d27de67265b7007d6cdc7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#a037c4889410d27de67265b7007d6cdc7">conservedEnergy</a> () const</td></tr>
+<tr class="memdesc:a037c4889410d27de67265b7007d6cdc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the conserved energy in molecular dynamics simulations.  <br /></td></tr>
 <tr class="separator:a037c4889410d27de67265b7007d6cdc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af629e873d054f7e6822cab247712b04c" id="r_af629e873d054f7e6822cab247712b04c"><td class="memItemLeft" align="right" valign="top"><a id="af629e873d054f7e6822cab247712b04c" name="af629e873d054f7e6822cab247712b04c"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>dudlambda</b> (double lambda) const</td></tr>
+<tr class="memitem:af629e873d054f7e6822cab247712b04c" id="r_af629e873d054f7e6822cab247712b04c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#af629e873d054f7e6822cab247712b04c">dudlambda</a> (double lambda) const</td></tr>
+<tr class="memdesc:af629e873d054f7e6822cab247712b04c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the derivative of the potential energy with respect to lambda.  <br /></td></tr>
 <tr class="separator:af629e873d054f7e6822cab247712b04c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed826b3a07ca686e707f602f14273a5a" id="r_aed826b3a07ca686e707f602f14273a5a"><td class="memItemLeft" align="right" valign="top"><a id="aed826b3a07ca686e707f602f14273a5a" name="aed826b3a07ca686e707f602f14273a5a"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>zero</b> ()</td></tr>
+<tr class="memitem:aed826b3a07ca686e707f602f14273a5a" id="r_aed826b3a07ca686e707f602f14273a5a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRunningEnergy.html#aed826b3a07ca686e707f602f14273a5a">zero</a> ()</td></tr>
+<tr class="memdesc:aed826b3a07ca686e707f602f14273a5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets all energy components to zero.  <br /></td></tr>
 <tr class="separator:aed826b3a07ca686e707f602f14273a5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9bf3020f13e8a907a4c84bbd5c14cda7" id="r_a9bf3020f13e8a907a4c84bbd5c14cda7"><td class="memItemLeft" align="right" valign="top"><a id="a9bf3020f13e8a907a4c84bbd5c14cda7" name="a9bf3020f13e8a907a4c84bbd5c14cda7"></a>
 <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator+=</b> (const <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;b)</td></tr>
@@ -150,55 +175,84 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>zero</b> ()</td></tr>
 Public Attributes</h2></td></tr>
 <tr class="memitem:aa8bc344d1d51e2dcbb66b7bbfdd69e67" id="r_aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="memItemLeft" align="right" valign="top"><a id="aa8bc344d1d51e2dcbb66b7bbfdd69e67" name="aa8bc344d1d51e2dcbb66b7bbfdd69e67"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
 <tr class="separator:aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8f50572c04bc302d0f14b2867e0ecb95" id="r_a8f50572c04bc302d0f14b2867e0ecb95"><td class="memItemLeft" align="right" valign="top"><a id="a8f50572c04bc302d0f14b2867e0ecb95" name="a8f50572c04bc302d0f14b2867e0ecb95"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>externalFieldVDW</b></td></tr>
+<tr class="memdesc:a8f50572c04bc302d0f14b2867e0ecb95"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from van der Waals interactions with external field. <br /></td></tr>
 <tr class="separator:a8f50572c04bc302d0f14b2867e0ecb95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b6f6f7c0b10f08d3f30aa9b133826a5" id="r_a3b6f6f7c0b10f08d3f30aa9b133826a5"><td class="memItemLeft" align="right" valign="top"><a id="a3b6f6f7c0b10f08d3f30aa9b133826a5" name="a3b6f6f7c0b10f08d3f30aa9b133826a5"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>frameworkMoleculeVDW</b></td></tr>
+<tr class="memdesc:a3b6f6f7c0b10f08d3f30aa9b133826a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from van der Waals interactions between framework and molecules. <br /></td></tr>
 <tr class="separator:a3b6f6f7c0b10f08d3f30aa9b133826a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad8e9dfaee91f6bce83a72a5f107f5ba1" id="r_ad8e9dfaee91f6bce83a72a5f107f5ba1"><td class="memItemLeft" align="right" valign="top"><a id="ad8e9dfaee91f6bce83a72a5f107f5ba1" name="ad8e9dfaee91f6bce83a72a5f107f5ba1"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>moleculeMoleculeVDW</b></td></tr>
+<tr class="memdesc:ad8e9dfaee91f6bce83a72a5f107f5ba1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from van der Waals interactions between molecules. <br /></td></tr>
 <tr class="separator:ad8e9dfaee91f6bce83a72a5f107f5ba1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81c9a92f8b5c449dd1da819eb404207f" id="r_a81c9a92f8b5c449dd1da819eb404207f"><td class="memItemLeft" align="right" valign="top"><a id="a81c9a92f8b5c449dd1da819eb404207f" name="a81c9a92f8b5c449dd1da819eb404207f"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>externalFieldCharge</b></td></tr>
+<tr class="memdesc:a81c9a92f8b5c449dd1da819eb404207f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from Coulomb interactions with external field. <br /></td></tr>
 <tr class="separator:a81c9a92f8b5c449dd1da819eb404207f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5267c85a15991347a4c5f3353dcbfa44" id="r_a5267c85a15991347a4c5f3353dcbfa44"><td class="memItemLeft" align="right" valign="top"><a id="a5267c85a15991347a4c5f3353dcbfa44" name="a5267c85a15991347a4c5f3353dcbfa44"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>frameworkMoleculeCharge</b></td></tr>
+<tr class="memdesc:a5267c85a15991347a4c5f3353dcbfa44"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from Coulomb interactions between framework and molecules. <br /></td></tr>
 <tr class="separator:a5267c85a15991347a4c5f3353dcbfa44"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b56a12d949e2b5266e5e1178a33ebcf" id="r_a3b56a12d949e2b5266e5e1178a33ebcf"><td class="memItemLeft" align="right" valign="top"><a id="a3b56a12d949e2b5266e5e1178a33ebcf" name="a3b56a12d949e2b5266e5e1178a33ebcf"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>moleculeMoleculeCharge</b></td></tr>
+<tr class="memdesc:a3b56a12d949e2b5266e5e1178a33ebcf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from Coulomb interactions between molecules. <br /></td></tr>
 <tr class="separator:a3b56a12d949e2b5266e5e1178a33ebcf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2e81b0eb050511d90fa595ac32ae2f88" id="r_a2e81b0eb050511d90fa595ac32ae2f88"><td class="memItemLeft" align="right" valign="top"><a id="a2e81b0eb050511d90fa595ac32ae2f88" name="a2e81b0eb050511d90fa595ac32ae2f88"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald</b></td></tr>
-<tr class="separator:a2e81b0eb050511d90fa595ac32ae2f88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0aa210c5412497097cfcf51984172d97" id="r_a0aa210c5412497097cfcf51984172d97"><td class="memItemLeft" align="right" valign="top"><a id="a0aa210c5412497097cfcf51984172d97" name="a0aa210c5412497097cfcf51984172d97"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald_fourier</b></td></tr>
+<tr class="memdesc:a0aa210c5412497097cfcf51984172d97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fourier component of Ewald sum for Coulomb interactions. <br /></td></tr>
+<tr class="separator:a0aa210c5412497097cfcf51984172d97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad1742a91c5a77ab8fb8b03800459f9d6" id="r_ad1742a91c5a77ab8fb8b03800459f9d6"><td class="memItemLeft" align="right" valign="top"><a id="ad1742a91c5a77ab8fb8b03800459f9d6" name="ad1742a91c5a77ab8fb8b03800459f9d6"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald_self</b></td></tr>
+<tr class="memdesc:ad1742a91c5a77ab8fb8b03800459f9d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Self-interaction correction in Ewald sum. <br /></td></tr>
+<tr class="separator:ad1742a91c5a77ab8fb8b03800459f9d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d9f3b4cae89901cf24ed95a44ffca5a" id="r_a1d9f3b4cae89901cf24ed95a44ffca5a"><td class="memItemLeft" align="right" valign="top"><a id="a1d9f3b4cae89901cf24ed95a44ffca5a" name="a1d9f3b4cae89901cf24ed95a44ffca5a"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald_exclusion</b></td></tr>
+<tr class="memdesc:a1d9f3b4cae89901cf24ed95a44ffca5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Exclusion term in Ewald sum for Coulomb interactions. <br /></td></tr>
+<tr class="separator:a1d9f3b4cae89901cf24ed95a44ffca5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e4b1176212f678c23bd5bc7f8d3d3af" id="r_a6e4b1176212f678c23bd5bc7f8d3d3af"><td class="memItemLeft" align="right" valign="top"><a id="a6e4b1176212f678c23bd5bc7f8d3d3af" name="a6e4b1176212f678c23bd5bc7f8d3d3af"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>intraVDW</b></td></tr>
+<tr class="memdesc:a6e4b1176212f678c23bd5bc7f8d3d3af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Intramolecular van der Waals energy. <br /></td></tr>
 <tr class="separator:a6e4b1176212f678c23bd5bc7f8d3d3af"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a30b1ec533ad027497b2d4d9bed936ddd" id="r_a30b1ec533ad027497b2d4d9bed936ddd"><td class="memItemLeft" align="right" valign="top"><a id="a30b1ec533ad027497b2d4d9bed936ddd" name="a30b1ec533ad027497b2d4d9bed936ddd"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>intraCoul</b></td></tr>
+<tr class="memdesc:a30b1ec533ad027497b2d4d9bed936ddd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Intramolecular Coulomb energy. <br /></td></tr>
 <tr class="separator:a30b1ec533ad027497b2d4d9bed936ddd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3d78e3c9d3c1ec203ee3028b3f4290df" id="r_a3d78e3c9d3c1ec203ee3028b3f4290df"><td class="memItemLeft" align="right" valign="top"><a id="a3d78e3c9d3c1ec203ee3028b3f4290df" name="a3d78e3c9d3c1ec203ee3028b3f4290df"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>tail</b></td></tr>
+<tr class="memdesc:a3d78e3c9d3c1ec203ee3028b3f4290df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tail correction energy for van der Waals interactions. <br /></td></tr>
 <tr class="separator:a3d78e3c9d3c1ec203ee3028b3f4290df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2dc812bf029458ec7eadc8930397b939" id="r_a2dc812bf029458ec7eadc8930397b939"><td class="memItemLeft" align="right" valign="top"><a id="a2dc812bf029458ec7eadc8930397b939" name="a2dc812bf029458ec7eadc8930397b939"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>polarization</b></td></tr>
+<tr class="memdesc:a2dc812bf029458ec7eadc8930397b939"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy contribution from polarization effects. <br /></td></tr>
 <tr class="separator:a2dc812bf029458ec7eadc8930397b939"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8813986a5dd5992e1b67fc8510deccf8" id="r_a8813986a5dd5992e1b67fc8510deccf8"><td class="memItemLeft" align="right" valign="top"><a id="a8813986a5dd5992e1b67fc8510deccf8" name="a8813986a5dd5992e1b67fc8510deccf8"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dudlambdaVDW</b></td></tr>
+<tr class="memdesc:a8813986a5dd5992e1b67fc8510deccf8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of van der Waals energy with respect to lambda. <br /></td></tr>
 <tr class="separator:a8813986a5dd5992e1b67fc8510deccf8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cc715bfc56160b57c739d7e8d04d132" id="r_a6cc715bfc56160b57c739d7e8d04d132"><td class="memItemLeft" align="right" valign="top"><a id="a6cc715bfc56160b57c739d7e8d04d132" name="a6cc715bfc56160b57c739d7e8d04d132"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dudlambdaCharge</b></td></tr>
+<tr class="memdesc:a6cc715bfc56160b57c739d7e8d04d132"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of Coulomb energy with respect to lambda (real space). <br /></td></tr>
 <tr class="separator:a6cc715bfc56160b57c739d7e8d04d132"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a18f7d611150882e27bbef3fed40c6bf4" id="r_a18f7d611150882e27bbef3fed40c6bf4"><td class="memItemLeft" align="right" valign="top"><a id="a18f7d611150882e27bbef3fed40c6bf4" name="a18f7d611150882e27bbef3fed40c6bf4"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dudlambdaEwald</b></td></tr>
+<tr class="memdesc:a18f7d611150882e27bbef3fed40c6bf4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Derivative of Coulomb energy with respect to lambda (Ewald sum). <br /></td></tr>
 <tr class="separator:a18f7d611150882e27bbef3fed40c6bf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a28f3273ae836dcad36c9490be5e16398" id="r_a28f3273ae836dcad36c9490be5e16398"><td class="memItemLeft" align="right" valign="top"><a id="a28f3273ae836dcad36c9490be5e16398" name="a28f3273ae836dcad36c9490be5e16398"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>translationalKineticEnergy</b></td></tr>
+<tr class="memdesc:a28f3273ae836dcad36c9490be5e16398"><td class="mdescLeft">&#160;</td><td class="mdescRight">Translational kinetic energy. <br /></td></tr>
 <tr class="separator:a28f3273ae836dcad36c9490be5e16398"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a52e9488faa6805d564a6969f4f575162" id="r_a52e9488faa6805d564a6969f4f575162"><td class="memItemLeft" align="right" valign="top"><a id="a52e9488faa6805d564a6969f4f575162" name="a52e9488faa6805d564a6969f4f575162"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>rotationalKineticEnergy</b></td></tr>
+<tr class="memdesc:a52e9488faa6805d564a6969f4f575162"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotational kinetic energy. <br /></td></tr>
 <tr class="separator:a52e9488faa6805d564a6969f4f575162"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acee34d61a746c2f818d668f815244bbb" id="r_acee34d61a746c2f818d668f815244bbb"><td class="memItemLeft" align="right" valign="top"><a id="acee34d61a746c2f818d668f815244bbb" name="acee34d61a746c2f818d668f815244bbb"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>NoseHooverEnergy</b></td></tr>
+<tr class="memdesc:acee34d61a746c2f818d668f815244bbb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy associated with Nose-Hoover thermostat/barostat. <br /></td></tr>
+<tr class="separator:acee34d61a746c2f818d668f815244bbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -209,6 +263,455 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;c)</td></tr>
 <tr class="separator:a48311eac95927d9caf3af0d4459ae408"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Accumulates energy components during simulation. </p>
+<p>The <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> struct stores various components of energy calculated during a simulation run, including potential and kinetic energies, as well as contributions from various interactions such as van der Waals and Coulomb forces. It provides methods to calculate total energies, perform arithmetic operations, and output energy information. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="af1c7c23a728c65fa03e6e7c3cb902a15" name="af1c7c23a728c65fa03e6e7c3cb902a15"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af1c7c23a728c65fa03e6e7c3cb902a15">&#9670;&#160;</a></span>RunningEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">RunningEnergy::RunningEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor initializing all energy components to zero. </p>
+<p>Initializes all the energy components and related terms to zero, preparing the <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> object for accumulation during simulation. </p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a037c4889410d27de67265b7007d6cdc7" name="a037c4889410d27de67265b7007d6cdc7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a037c4889410d27de67265b7007d6cdc7">&#9670;&#160;</a></span>conservedEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::conservedEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the conserved energy in molecular dynamics simulations. </p>
+<p>Sums up the total potential energy, kinetic energy, and energy associated with the Nose-Hoover thermostat/barostat to compute the conserved energy in molecular dynamics simulations.</p>
+<dl class="section return"><dt>Returns</dt><dd>The conserved energy. </dd></dl>
+
+</div>
+</div>
+<a id="ae7295096bf560c09dccc3d76f83772b1" name="ae7295096bf560c09dccc3d76f83772b1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae7295096bf560c09dccc3d76f83772b1">&#9670;&#160;</a></span>CoulombEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::CoulombEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the total Coulombic energy. </p>
+<p>Sums up the Coulombic energy components, including framework-molecule Coulomb interactions, molecule-molecule Coulomb interactions, and Ewald sums.</p>
+<dl class="section return"><dt>Returns</dt><dd>The total Coulombic energy. </dd></dl>
+
+</div>
+</div>
+<a id="af629e873d054f7e6822cab247712b04c" name="af629e873d054f7e6822cab247712b04c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af629e873d054f7e6822cab247712b04c">&#9670;&#160;</a></span>dudlambda()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::dudlambda </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>lambda</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the derivative of the potential energy with respect to lambda. </p>
+<p>Calculates the derivative of the potential energy with respect to the scaling parameter lambda, considering both van der Waals and Coulombic interactions.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lambda</td><td>The scaling parameter. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The derivative of the potential energy with respect to lambda. </dd></dl>
+
+</div>
+</div>
+<a id="a11b8beaf8eaa250603b85e573f99ce4f" name="a11b8beaf8eaa250603b85e573f99ce4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11b8beaf8eaa250603b85e573f99ce4f">&#9670;&#160;</a></span>ewaldFourier()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::ewaldFourier </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the total Ewald Fourier energy. </p>
+<p>Sums up the Fourier components of the Ewald sum, including the Fourier term, self-interaction correction, and exclusion term.</p>
+<dl class="section return"><dt>Returns</dt><dd>The total Ewald Fourier energy. </dd></dl>
+
+</div>
+</div>
+<a id="a72cda46f52be0795fe083d181ca4ea41" name="a72cda46f52be0795fe083d181ca4ea41"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a72cda46f52be0795fe083d181ca4ea41">&#9670;&#160;</a></span>jsonMC()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">nlohmann::json RunningEnergy::jsonMC </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a JSON object of Monte Carlo energy components. </p>
+<p>Returns a JSON object containing the total potential energy and individual energy components relevant for Monte Carlo simulations.</p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object representing the energy components in Monte Carlo simulations. </dd></dl>
+
+</div>
+</div>
+<a id="a1e46d5db532a67063ea5fc5e579d8aa2" name="a1e46d5db532a67063ea5fc5e579d8aa2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e46d5db532a67063ea5fc5e579d8aa2">&#9670;&#160;</a></span>jsonMD()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">nlohmann::json RunningEnergy::jsonMD </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a JSON object of molecular dynamics energy components. </p>
+<p>Returns a JSON object containing the total potential and kinetic energies, as well as individual energy components relevant for molecular dynamics simulations.</p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object representing the energy components in molecular dynamics simulations. </dd></dl>
+
+</div>
+</div>
+<a id="ab6127cd5554d2a74c31536d5f235e641" name="ab6127cd5554d2a74c31536d5f235e641"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab6127cd5554d2a74c31536d5f235e641">&#9670;&#160;</a></span>kineticEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::kineticEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the total kinetic energy. </p>
+<p>Sums up the translational and rotational kinetic energies.</p>
+<dl class="section return"><dt>Returns</dt><dd>The total kinetic energy. </dd></dl>
+
+</div>
+</div>
+<a id="a8649e563d585afaf3c43c78c0354711e" name="a8649e563d585afaf3c43c78c0354711e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8649e563d585afaf3c43c78c0354711e">&#9670;&#160;</a></span>potentialEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">double RunningEnergy::potentialEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the total potential energy. </p>
+<p>Sums up all the potential energy components, including interactions with external fields, framework-molecule interactions, molecule-molecule interactions, Ewald sums, intramolecular energies, tail corrections, and polarization.</p>
+<dl class="section return"><dt>Returns</dt><dd>The total potential energy. </dd></dl>
+
+</div>
+</div>
+<a id="aa96564ef370b7924b7bfdf9989a5608f" name="aa96564ef370b7924b7bfdf9989a5608f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa96564ef370b7924b7bfdf9989a5608f">&#9670;&#160;</a></span>printMC() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMC </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a formatted string of Monte Carlo energy components. </p>
+<p>Returns a string containing the total potential energy and individual energy components relevant for Monte Carlo simulations, formatted for display.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the energy components in Monte Carlo simulations. </dd></dl>
+
+</div>
+</div>
+<a id="a4f8bdfaaf16924ca7879d0e926ad7dd6" name="a4f8bdfaaf16924ca7879d0e926ad7dd6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4f8bdfaaf16924ca7879d0e926ad7dd6">&#9670;&#160;</a></span>printMC() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMC </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>label</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a labeled formatted string of Monte Carlo energy components. </p>
+<p>Returns a string containing the total potential energy and individual energy components relevant for Monte Carlo simulations, with an additional label for identification.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">label</td><td>A string label to include in the output. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A labeled string representing the energy components in Monte Carlo simulations. </dd></dl>
+
+</div>
+</div>
+<a id="aacca19ab20a4fd2cf554dd70fe4eb109" name="aacca19ab20a4fd2cf554dd70fe4eb109"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aacca19ab20a4fd2cf554dd70fe4eb109">&#9670;&#160;</a></span>printMCDiff()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMCDiff </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;&#160;</td>
+          <td class="paramname"><em>other</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a formatted string comparing energy components between two Monte Carlo states. </p>
+<p>Computes the difference between the current <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> and another instance, and returns a string that shows the comparison of energy components, highlighting any drifts or discrepancies.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">other</td><td>Another <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> instance to compare with. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the differences in energy components between two Monte Carlo states. </dd></dl>
+
+</div>
+</div>
+<a id="a52f9767a7d3773bcbd84b47096e26348" name="a52f9767a7d3773bcbd84b47096e26348"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a52f9767a7d3773bcbd84b47096e26348">&#9670;&#160;</a></span>printMD() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMD </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a formatted string of molecular dynamics energy components. </p>
+<p>Returns a string containing the total potential and kinetic energies, as well as individual energy components relevant for molecular dynamics simulations, formatted for display.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the energy components in molecular dynamics simulations. </dd></dl>
+
+</div>
+</div>
+<a id="a5cd6c2b59bfb9ff693bf4108d3dd4a67" name="a5cd6c2b59bfb9ff693bf4108d3dd4a67"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5cd6c2b59bfb9ff693bf4108d3dd4a67">&#9670;&#160;</a></span>printMD() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMD </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>label</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>referenceEnergy</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a labeled formatted string of molecular dynamics energy components, including conserved energy and drift. </p>
+<p>Returns a string containing the total potential and kinetic energies, conserved energy, drift from a reference energy, and individual energy components relevant for molecular dynamics simulations, with an additional label for identification.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">label</td><td>A string label to include in the output. </td></tr>
+    <tr><td class="paramname">referenceEnergy</td><td>The reference energy to compute the drift. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A labeled string representing the energy components in molecular dynamics simulations. </dd></dl>
+
+</div>
+</div>
+<a id="aa7d2ce9b5839955946ad6d70273274bd" name="aa7d2ce9b5839955946ad6d70273274bd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa7d2ce9b5839955946ad6d70273274bd">&#9670;&#160;</a></span>printMDDiff()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string RunningEnergy::printMDDiff </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;&#160;</td>
+          <td class="paramname"><em>other</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a formatted string comparing energy components between two molecular dynamics states. </p>
+<p>Computes the difference between the current <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> and another instance, and returns a string that shows the comparison of energy components, highlighting any drifts or discrepancies in molecular dynamics simulations.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">other</td><td>Another <a class="el" href="structRunningEnergy.html" title="Accumulates energy components during simulation.">RunningEnergy</a> instance to compare with. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the differences in energy components between two molecular dynamics states. </dd></dl>
+
+</div>
+</div>
+<a id="aed826b3a07ca686e707f602f14273a5a" name="aed826b3a07ca686e707f602f14273a5a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aed826b3a07ca686e707f602f14273a5a">&#9670;&#160;</a></span>zero()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void RunningEnergy::zero </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Resets all energy components to zero. </p>
+<p>Sets all the energy components and related terms to zero, effectively clearing the accumulated energies. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>running_energy.ixx</b></li>
 </ul>

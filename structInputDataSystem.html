@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: InputDataSystem Struct Reference</title>
+<title>RASPA3: InputDataSystem Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -98,52 +105,90 @@ $(document).ready(function(){initNavTree('structInputDataSystem.html',''); initR
   <div class="headertitle"><div class="title">InputDataSystem Struct Reference<div class="ingroups">module <a class="el" href="module_input__reader.html">input_reader</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Structure to hold system-specific input data for simulations.  
+ <a href="structInputDataSystem.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ac01a36a42b8c7f095f38d3d65e043d78" id="r_ac01a36a42b8c7f095f38d3d65e043d78"><td class="memItemLeft" align="right" valign="top"><a id="ac01a36a42b8c7f095f38d3d65e043d78" name="ac01a36a42b8c7f095f38d3d65e043d78"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>computeConventionalRadialDistributionFunction</b> {false}</td></tr>
+<tr class="memdesc:ac01a36a42b8c7f095f38d3d65e043d78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enable computation of conventional RDF. <br /></td></tr>
 <tr class="separator:ac01a36a42b8c7f095f38d3d65e043d78"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a797601673eabaf316c9cf55bfb051523" id="r_a797601673eabaf316c9cf55bfb051523"><td class="memItemLeft" align="right" valign="top"><a id="a797601673eabaf316c9cf55bfb051523" name="a797601673eabaf316c9cf55bfb051523"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleConventionalRadialDistributionFunctionEvery</b> {10}</td></tr>
+<tr class="memdesc:a797601673eabaf316c9cf55bfb051523"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for sampling conventional RDF. <br /></td></tr>
 <tr class="separator:a797601673eabaf316c9cf55bfb051523"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0cdb03508586ce12d29831109269ed1a" id="r_a0cdb03508586ce12d29831109269ed1a"><td class="memItemLeft" align="right" valign="top"><a id="a0cdb03508586ce12d29831109269ed1a" name="a0cdb03508586ce12d29831109269ed1a"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeConventionalRadialDistributionFunctionEvery</b> {5000}</td></tr>
+<tr class="memdesc:a0cdb03508586ce12d29831109269ed1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for writing conventional RDF data. <br /></td></tr>
 <tr class="separator:a0cdb03508586ce12d29831109269ed1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afa86dd4a60b4840d0870917875bbea73" id="r_afa86dd4a60b4840d0870917875bbea73"><td class="memItemLeft" align="right" valign="top"><a id="afa86dd4a60b4840d0870917875bbea73" name="afa86dd4a60b4840d0870917875bbea73"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>conventionalRadialDistributionFunctionHistogramSize</b> {128}</td></tr>
+<tr class="memitem:afa86dd4a60b4840d0870917875bbea73" id="r_afa86dd4a60b4840d0870917875bbea73"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structInputDataSystem.html#afa86dd4a60b4840d0870917875bbea73">conventionalRadialDistributionFunctionHistogramSize</a></td></tr>
+<tr class="memdesc:afa86dd4a60b4840d0870917875bbea73"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of bins in the conventional RDF histogram.  <br /></td></tr>
 <tr class="separator:afa86dd4a60b4840d0870917875bbea73"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ee7260f7be7cdd067760df90a74a4a0" id="r_a7ee7260f7be7cdd067760df90a74a4a0"><td class="memItemLeft" align="right" valign="top"><a id="a7ee7260f7be7cdd067760df90a74a4a0" name="a7ee7260f7be7cdd067760df90a74a4a0"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>conventionalRadialDistributionFunctionRange</b> {12}</td></tr>
+<tr class="memdesc:a7ee7260f7be7cdd067760df90a74a4a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Range (in appropriate units) for the conventional RDF. <br /></td></tr>
 <tr class="separator:a7ee7260f7be7cdd067760df90a74a4a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae11b9790eaccd6862b4e21b0cf1e5d8f" id="r_ae11b9790eaccd6862b4e21b0cf1e5d8f"><td class="memItemLeft" align="right" valign="top"><a id="ae11b9790eaccd6862b4e21b0cf1e5d8f" name="ae11b9790eaccd6862b4e21b0cf1e5d8f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>computeRadialDistributionFunction</b> {false}</td></tr>
+<tr class="memdesc:ae11b9790eaccd6862b4e21b0cf1e5d8f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enable computation of RDF. <br /></td></tr>
 <tr class="separator:ae11b9790eaccd6862b4e21b0cf1e5d8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab01add8f621a5c6a4fd28530eb578631" id="r_ab01add8f621a5c6a4fd28530eb578631"><td class="memItemLeft" align="right" valign="top"><a id="ab01add8f621a5c6a4fd28530eb578631" name="ab01add8f621a5c6a4fd28530eb578631"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleRadialDistributionFunctionEvery</b> {10}</td></tr>
+<tr class="memdesc:ab01add8f621a5c6a4fd28530eb578631"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for sampling RDF. <br /></td></tr>
 <tr class="separator:ab01add8f621a5c6a4fd28530eb578631"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04727d666f6796bf4cca7a7ad79d71ba" id="r_a04727d666f6796bf4cca7a7ad79d71ba"><td class="memItemLeft" align="right" valign="top"><a id="a04727d666f6796bf4cca7a7ad79d71ba" name="a04727d666f6796bf4cca7a7ad79d71ba"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeRadialDistributionFunctionEvery</b> {5000}</td></tr>
+<tr class="memdesc:a04727d666f6796bf4cca7a7ad79d71ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for writing RDF data. <br /></td></tr>
 <tr class="separator:a04727d666f6796bf4cca7a7ad79d71ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b60f4dd6deb871dfad3f81fc1e5741d" id="r_a8b60f4dd6deb871dfad3f81fc1e5741d"><td class="memItemLeft" align="right" valign="top"><a id="a8b60f4dd6deb871dfad3f81fc1e5741d" name="a8b60f4dd6deb871dfad3f81fc1e5741d"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>radialDistributionFunctionHistogramSize</b> {128}</td></tr>
+<tr class="memdesc:a8b60f4dd6deb871dfad3f81fc1e5741d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of bins in the RDF histogram. <br /></td></tr>
 <tr class="separator:a8b60f4dd6deb871dfad3f81fc1e5741d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd8d5a5ed7f2098ae496a85930f1c9f4" id="r_acd8d5a5ed7f2098ae496a85930f1c9f4"><td class="memItemLeft" align="right" valign="top"><a id="acd8d5a5ed7f2098ae496a85930f1c9f4" name="acd8d5a5ed7f2098ae496a85930f1c9f4"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>radialDistributionFunctionRange</b> {15.0}</td></tr>
+<tr class="memdesc:acd8d5a5ed7f2098ae496a85930f1c9f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Range (in appropriate units) for the RDF. <br /></td></tr>
 <tr class="separator:acd8d5a5ed7f2098ae496a85930f1c9f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6ec92ca52a9aedaf55cb51d2fe2f405f" id="r_a6ec92ca52a9aedaf55cb51d2fe2f405f"><td class="memItemLeft" align="right" valign="top"><a id="a6ec92ca52a9aedaf55cb51d2fe2f405f" name="a6ec92ca52a9aedaf55cb51d2fe2f405f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>computeDensityGrid</b> {false}</td></tr>
+<tr class="memdesc:a6ec92ca52a9aedaf55cb51d2fe2f405f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag to enable computation of the density grid. <br /></td></tr>
 <tr class="separator:a6ec92ca52a9aedaf55cb51d2fe2f405f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2da529de62eb49454eddeb94c7166a7c" id="r_a2da529de62eb49454eddeb94c7166a7c"><td class="memItemLeft" align="right" valign="top"><a id="a2da529de62eb49454eddeb94c7166a7c" name="a2da529de62eb49454eddeb94c7166a7c"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleDensityGridEvery</b> {1}</td></tr>
+<tr class="memdesc:a2da529de62eb49454eddeb94c7166a7c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for sampling the density grid. <br /></td></tr>
 <tr class="separator:a2da529de62eb49454eddeb94c7166a7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a036c24b2c705f381ae3c31754b570c08" id="r_a036c24b2c705f381ae3c31754b570c08"><td class="memItemLeft" align="right" valign="top"><a id="a036c24b2c705f381ae3c31754b570c08" name="a036c24b2c705f381ae3c31754b570c08"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeDensityGridEvery</b> {5000}</td></tr>
+<tr class="memdesc:a036c24b2c705f381ae3c31754b570c08"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interval for writing density grid data. <br /></td></tr>
 <tr class="separator:a036c24b2c705f381ae3c31754b570c08"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2fc794e4d72eb1e0fc27a9277c44bddc" id="r_a2fc794e4d72eb1e0fc27a9277c44bddc"><td class="memItemLeft" align="right" valign="top"><a id="a2fc794e4d72eb1e0fc27a9277c44bddc" name="a2fc794e4d72eb1e0fc27a9277c44bddc"></a>
 int3&#160;</td><td class="memItemRight" valign="bottom"><b>densityGridSize</b> {128, 128, 128}</td></tr>
+<tr class="memdesc:a2fc794e4d72eb1e0fc27a9277c44bddc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dimensions of the density grid (x, y, z). <br /></td></tr>
 <tr class="separator:a2fc794e4d72eb1e0fc27a9277c44bddc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Structure to hold system-specific input data for simulations. </p>
+<p>This structure contains configuration parameters for sampling various statistical properties such as radial distribution functions (RDF) and density grids within a simulation system. </p>
+</div><h2 class="groupheader">Member Data Documentation</h2>
+<a id="afa86dd4a60b4840d0870917875bbea73" name="afa86dd4a60b4840d0870917875bbea73"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afa86dd4a60b4840d0870917875bbea73">&#9670;&#160;</a></span>conventionalRadialDistributionFunctionHistogramSize</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t InputDataSystem::conventionalRadialDistributionFunctionHistogramSize</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{</div>
+<div class="line">      128}</div>
+</div><!-- fragment -->
+<p>Number of bins in the conventional RDF histogram. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>input_reader.ixx</b></li>
 </ul>

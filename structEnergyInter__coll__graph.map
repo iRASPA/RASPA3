@@ -1,5 +1,0 @@
-<map id="EnergyInter" name="EnergyInter">
-<area shape="rect" id="Node000001" title=" " alt="" coords="10,152,107,177"/>
-<area shape="rect" id="Node000002" href="$structEnergyFactor.html" title=" " alt="" coords="5,5,112,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="61,45,61,152,56,152,56,45"/>
-</map>

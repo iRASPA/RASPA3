@@ -1,4 +1,4 @@
 var module_monte__carlo__transition__matrix =
 [
-    [ "MonteCarloTransitionMatrix", "structMonteCarloTransitionMatrix.html", null ]
+    [ "MonteCarloTransitionMatrix", "structMonteCarloTransitionMatrix.html", "structMonteCarloTransitionMatrix" ]
 ];

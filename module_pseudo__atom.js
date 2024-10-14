@@ -1,4 +1,4 @@
 var module_pseudo__atom =
 [
-    [ "PseudoAtom", "structPseudoAtom.html", null ]
+    [ "PseudoAtom", "structPseudoAtom.html", "structPseudoAtom" ]
 ];

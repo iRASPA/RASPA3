@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: cbmc_multiple_first_bead Module Reference</title>
+<title>RASPA3: cbmc_multiple_first_bead Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,23 +108,23 @@ $(document).ready(function(){initNavTree('module_cbmc__multiple__first__bead.htm
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a04bbeadad6151a9b3249fed119586bba" id="r_a04bbeadad6151a9b3249fed119586bba"><td class="memItemLeft" align="right" valign="top"><a id="a04bbeadad6151a9b3249fed119586bba" name="a04bbeadad6151a9b3249fed119586bba"></a>
-std::optional&lt; <a class="el" href="structFirstBeadData.html">FirstBeadData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growMoleculeMultipleFirstBeadSwapInsertion</b> (RandomNumber &amp;random, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, size_t numberOfTrialDirections) noexcept</td></tr>
-<tr class="separator:a04bbeadad6151a9b3249fed119586bba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af2f992e06b892044f59d81f9872b823b" id="r_af2f992e06b892044f59d81f9872b823b"><td class="memItemLeft" align="right" valign="top"><a id="af2f992e06b892044f59d81f9872b823b" name="af2f992e06b892044f59d81f9872b823b"></a>
-<a class="el" href="structFirstBeadData.html">FirstBeadData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMultipleFirstBeadSwapDeletion</b> (RandomNumber &amp;random, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forcefield, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> atom, double scaling, size_t numberOfTrialDirections) noexcept</td></tr>
-<tr class="separator:af2f992e06b892044f59d81f9872b823b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a585df6a2c8776a40870db01f6125e7f5" id="r_a585df6a2c8776a40870db01f6125e7f5"><td class="memItemLeft" align="right" valign="top"><a id="a585df6a2c8776a40870db01f6125e7f5" name="a585df6a2c8776a40870db01f6125e7f5"></a>
-std::optional&lt; <a class="el" href="structFirstBeadData.html">FirstBeadData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMultipleFirstBeadReinsertion</b> (RandomNumber &amp;random, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, size_t numberOfTrialDirections) noexcept</td></tr>
-<tr class="separator:a585df6a2c8776a40870db01f6125e7f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e9ac3f30379790162807a732bbb65d5" id="r_a7e9ac3f30379790162807a732bbb65d5"><td class="memItemLeft" align="right" valign="top"><a id="a7e9ac3f30379790162807a732bbb65d5" name="a7e9ac3f30379790162807a732bbb65d5"></a>
-<a class="el" href="structFirstBeadData.html">FirstBeadData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMultipleFirstBeadReinsertion</b> (RandomNumber &amp;random, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, double storedR, size_t numberOfTrialDirections)</td></tr>
-<tr class="separator:a7e9ac3f30379790162807a732bbb65d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac28c938a54cdf3fcf0d6fa1f45f7f98f" id="r_ac28c938a54cdf3fcf0d6fa1f45f7f98f"><td class="memItemLeft" align="right" valign="top"><a id="ac28c938a54cdf3fcf0d6fa1f45f7f98f" name="ac28c938a54cdf3fcf0d6fa1f45f7f98f"></a>
+std::optional&lt; <a class="el" href="structFirstBeadData.html">FirstBeadData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growMoleculeMultipleFirstBeadSwapInsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, size_t numberOfTrialDirections) noexcept</td></tr>
+<tr class="separator:ac28c938a54cdf3fcf0d6fa1f45f7f98f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2a7f0b84993415dffb64c1f32c8a2033" id="r_a2a7f0b84993415dffb64c1f32c8a2033"><td class="memItemLeft" align="right" valign="top"><a id="a2a7f0b84993415dffb64c1f32c8a2033" name="a2a7f0b84993415dffb64c1f32c8a2033"></a>
+<a class="el" href="structFirstBeadData.html">FirstBeadData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMultipleFirstBeadSwapDeletion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forcefield, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> atom, double scaling, size_t numberOfTrialDirections) noexcept</td></tr>
+<tr class="separator:a2a7f0b84993415dffb64c1f32c8a2033"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a309ac33d17774aeaab45e185e92cfb3b" id="r_a309ac33d17774aeaab45e185e92cfb3b"><td class="memItemLeft" align="right" valign="top"><a id="a309ac33d17774aeaab45e185e92cfb3b" name="a309ac33d17774aeaab45e185e92cfb3b"></a>
+std::optional&lt; <a class="el" href="structFirstBeadData.html">FirstBeadData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMultipleFirstBeadReinsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, size_t numberOfTrialDirections) noexcept</td></tr>
+<tr class="separator:a309ac33d17774aeaab45e185e92cfb3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab0b83ee434a2fd767ca01b868c8cc879" id="r_ab0b83ee434a2fd767ca01b868c8cc879"><td class="memItemLeft" align="right" valign="top"><a id="ab0b83ee434a2fd767ca01b868c8cc879" name="ab0b83ee434a2fd767ca01b868c8cc879"></a>
+<a class="el" href="structFirstBeadData.html">FirstBeadData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMultipleFirstBeadReinsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, const <a class="el" href="structAtom.html">Atom</a> &amp;atom, double storedR, size_t numberOfTrialDirections)</td></tr>
+<tr class="separator:ab0b83ee434a2fd767ca01b868c8cc879"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:cbmc__multiple__first__bead_8ixx" id="r_cbmc__multiple__first__bead_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>cbmc_multiple_first_bead.ixx</b></td></tr>
+<tr class="memitem:multiple__first__bead_8ixx" id="r_multiple__first__bead_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>multiple_first_bead.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

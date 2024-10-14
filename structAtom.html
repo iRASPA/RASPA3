@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Atom Struct Reference</title>
+<title>RASPA3: Atom Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,62 +107,78 @@ $(document).ready(function(){initNavTree('structAtom.html',''); initResizable();
   <div class="headertitle"><div class="title">Atom Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_atom.html">atom</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents an atom in the simulation system.  
+ <a href="structAtom.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a470cf024bf1f92c62b8262cc4a3c9cc8" id="r_a470cf024bf1f92c62b8262cc4a3c9cc8"><td class="memItemLeft" align="right" valign="top"><a id="a470cf024bf1f92c62b8262cc4a3c9cc8" name="a470cf024bf1f92c62b8262cc4a3c9cc8"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Atom</b> (double3 position, double charge, double scalingVDW, double scalingCoulomb, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId)</td></tr>
+<tr class="memitem:a08bce8e02378489d3f1d3f4bafbe5bca" id="r_a08bce8e02378489d3f1d3f4bafbe5bca"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a08bce8e02378489d3f1d3f4bafbe5bca">Atom</a> () noexcept=default</td></tr>
+<tr class="memdesc:a08bce8e02378489d3f1d3f4bafbe5bca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> struct.  <br /></td></tr>
+<tr class="separator:a08bce8e02378489d3f1d3f4bafbe5bca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a470cf024bf1f92c62b8262cc4a3c9cc8" id="r_a470cf024bf1f92c62b8262cc4a3c9cc8"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a470cf024bf1f92c62b8262cc4a3c9cc8">Atom</a> (double3 <a class="el" href="structAtom.html#ad2db0ee7efe8f440dbbf39b57711d32e">position</a>, double <a class="el" href="structAtom.html#ab7fa10034d4d2a16b5288fd58430155f">charge</a>, double <a class="el" href="structAtom.html#aeedceee21f5bff240a2545d8b77e8450">scalingVDW</a>, double <a class="el" href="structAtom.html#a141b1ee614e3130280ae1e613a09ae90">scalingCoulomb</a>, uint32_t <a class="el" href="structAtom.html#a4136e014d7bc00ca264ec94254acf55e">moleculeId</a>, uint16_t <a class="el" href="structAtom.html#a5d939e031ebd53af6ac736b99fb7305e">type</a>, uint8_t <a class="el" href="structAtom.html#a41e64002fd50c62e97665619a0aa95ad">componentId</a>, uint8_t <a class="el" href="structAtom.html#a8135795c45429297bcf31252a50e76ee">groupId</a>)</td></tr>
+<tr class="memdesc:a470cf024bf1f92c62b8262cc4a3c9cc8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with specified parameters.  <br /></td></tr>
 <tr class="separator:a470cf024bf1f92c62b8262cc4a3c9cc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a066e69d8d25a014c60cef9a58b157c19" id="r_a066e69d8d25a014c60cef9a58b157c19"><td class="memItemLeft" align="right" valign="top"><a id="a066e69d8d25a014c60cef9a58b157c19" name="a066e69d8d25a014c60cef9a58b157c19"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Atom</b> (double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId)</td></tr>
+<tr class="memitem:a066e69d8d25a014c60cef9a58b157c19" id="r_a066e69d8d25a014c60cef9a58b157c19"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a066e69d8d25a014c60cef9a58b157c19">Atom</a> (double3 <a class="el" href="structAtom.html#ad2db0ee7efe8f440dbbf39b57711d32e">position</a>, double <a class="el" href="structAtom.html#ab7fa10034d4d2a16b5288fd58430155f">charge</a>, double lambda, uint32_t <a class="el" href="structAtom.html#a4136e014d7bc00ca264ec94254acf55e">moleculeId</a>, uint16_t <a class="el" href="structAtom.html#a5d939e031ebd53af6ac736b99fb7305e">type</a>, uint8_t <a class="el" href="structAtom.html#a41e64002fd50c62e97665619a0aa95ad">componentId</a>, uint8_t <a class="el" href="structAtom.html#a8135795c45429297bcf31252a50e76ee">groupId</a>)</td></tr>
+<tr class="memdesc:a066e69d8d25a014c60cef9a58b157c19"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with lambda-dependent scaling.  <br /></td></tr>
 <tr class="separator:a066e69d8d25a014c60cef9a58b157c19"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a12edd9a06ce7e1de712294fe60f31c35" id="r_a12edd9a06ce7e1de712294fe60f31c35"><td class="memItemLeft" align="right" valign="top"><a id="a12edd9a06ce7e1de712294fe60f31c35" name="a12edd9a06ce7e1de712294fe60f31c35"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setScaling</b> (double lambda)</td></tr>
+<tr class="memitem:a12edd9a06ce7e1de712294fe60f31c35" id="r_a12edd9a06ce7e1de712294fe60f31c35"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a12edd9a06ce7e1de712294fe60f31c35">setScaling</a> (double lambda)</td></tr>
+<tr class="memdesc:a12edd9a06ce7e1de712294fe60f31c35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the scaling factors based on lambda.  <br /></td></tr>
 <tr class="separator:a12edd9a06ce7e1de712294fe60f31c35"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae330edb90a127ffe2d9da329d59f6b99" id="r_ae330edb90a127ffe2d9da329d59f6b99"><td class="memItemLeft" align="right" valign="top"><a id="ae330edb90a127ffe2d9da329d59f6b99" name="ae330edb90a127ffe2d9da329d59f6b99"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setScalingFullyOn</b> ()</td></tr>
+<tr class="memitem:ae330edb90a127ffe2d9da329d59f6b99" id="r_ae330edb90a127ffe2d9da329d59f6b99"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#ae330edb90a127ffe2d9da329d59f6b99">setScalingFullyOn</a> ()</td></tr>
+<tr class="memdesc:ae330edb90a127ffe2d9da329d59f6b99"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fully activates scaling factors.  <br /></td></tr>
 <tr class="separator:ae330edb90a127ffe2d9da329d59f6b99"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7b4162f6e202ba02e1b5009e826785eb" id="r_a7b4162f6e202ba02e1b5009e826785eb"><td class="memItemLeft" align="right" valign="top"><a id="a7b4162f6e202ba02e1b5009e826785eb" name="a7b4162f6e202ba02e1b5009e826785eb"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setScalingFullyOff</b> ()</td></tr>
+<tr class="memitem:a7b4162f6e202ba02e1b5009e826785eb" id="r_a7b4162f6e202ba02e1b5009e826785eb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a7b4162f6e202ba02e1b5009e826785eb">setScalingFullyOff</a> ()</td></tr>
+<tr class="memdesc:a7b4162f6e202ba02e1b5009e826785eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fully deactivates scaling factors.  <br /></td></tr>
 <tr class="separator:a7b4162f6e202ba02e1b5009e826785eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab23ef53928d46f89412819865d200d77" id="r_ab23ef53928d46f89412819865d200d77"><td class="memItemLeft" align="right" valign="top"><a id="ab23ef53928d46f89412819865d200d77" name="ab23ef53928d46f89412819865d200d77"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setScalingToInteger</b> ()</td></tr>
+<tr class="memitem:ab23ef53928d46f89412819865d200d77" id="r_ab23ef53928d46f89412819865d200d77"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#ab23ef53928d46f89412819865d200d77">setScalingToInteger</a> ()</td></tr>
+<tr class="memdesc:ab23ef53928d46f89412819865d200d77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets scaling factors to integer values.  <br /></td></tr>
 <tr class="separator:ab23ef53928d46f89412819865d200d77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8a9844a3ebd954c379f280af41a0ec6d" id="r_a8a9844a3ebd954c379f280af41a0ec6d"><td class="memItemLeft" align="right" valign="top"><a id="a8a9844a3ebd954c379f280af41a0ec6d" name="a8a9844a3ebd954c379f280af41a0ec6d"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>repr</b> () const</td></tr>
+<tr class="memitem:a8a9844a3ebd954c379f280af41a0ec6d" id="r_a8a9844a3ebd954c379f280af41a0ec6d"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structAtom.html#a8a9844a3ebd954c379f280af41a0ec6d">repr</a> () const</td></tr>
+<tr class="memdesc:a8a9844a3ebd954c379f280af41a0ec6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a>.  <br /></td></tr>
 <tr class="separator:a8a9844a3ebd954c379f280af41a0ec6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ad2db0ee7efe8f440dbbf39b57711d32e" id="r_ad2db0ee7efe8f440dbbf39b57711d32e"><td class="memItemLeft" align="right" valign="top"><a id="ad2db0ee7efe8f440dbbf39b57711d32e" name="ad2db0ee7efe8f440dbbf39b57711d32e"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>position</b></td></tr>
+<tr class="memdesc:ad2db0ee7efe8f440dbbf39b57711d32e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The position of the atom in 3D space. <br /></td></tr>
 <tr class="separator:ad2db0ee7efe8f440dbbf39b57711d32e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9224657c3bf70b298905cd2170dbeff4" id="r_a9224657c3bf70b298905cd2170dbeff4"><td class="memItemLeft" align="right" valign="top"><a id="a9224657c3bf70b298905cd2170dbeff4" name="a9224657c3bf70b298905cd2170dbeff4"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>velocity</b> {}</td></tr>
+<tr class="memdesc:a9224657c3bf70b298905cd2170dbeff4"><td class="mdescLeft">&#160;</td><td class="mdescRight">The velocity of the atom. <br /></td></tr>
 <tr class="separator:a9224657c3bf70b298905cd2170dbeff4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeb8d8772382196cdc4697ed58d64912f" id="r_aeb8d8772382196cdc4697ed58d64912f"><td class="memItemLeft" align="right" valign="top"><a id="aeb8d8772382196cdc4697ed58d64912f" name="aeb8d8772382196cdc4697ed58d64912f"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>gradient</b> {}</td></tr>
+<tr class="memdesc:aeb8d8772382196cdc4697ed58d64912f"><td class="mdescLeft">&#160;</td><td class="mdescRight">The gradient acting on the atom. <br /></td></tr>
 <tr class="separator:aeb8d8772382196cdc4697ed58d64912f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab7fa10034d4d2a16b5288fd58430155f" id="r_ab7fa10034d4d2a16b5288fd58430155f"><td class="memItemLeft" align="right" valign="top"><a id="ab7fa10034d4d2a16b5288fd58430155f" name="ab7fa10034d4d2a16b5288fd58430155f"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>charge</b></td></tr>
+<tr class="memdesc:ab7fa10034d4d2a16b5288fd58430155f"><td class="mdescLeft">&#160;</td><td class="mdescRight">The electric charge of the atom. <br /></td></tr>
 <tr class="separator:ab7fa10034d4d2a16b5288fd58430155f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeedceee21f5bff240a2545d8b77e8450" id="r_aeedceee21f5bff240a2545d8b77e8450"><td class="memItemLeft" align="right" valign="top"><a id="aeedceee21f5bff240a2545d8b77e8450" name="aeedceee21f5bff240a2545d8b77e8450"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>scalingVDW</b> {1.0}</td></tr>
+<tr class="memdesc:aeedceee21f5bff240a2545d8b77e8450"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scaling factor for van der Waals interactions. <br /></td></tr>
 <tr class="separator:aeedceee21f5bff240a2545d8b77e8450"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a141b1ee614e3130280ae1e613a09ae90" id="r_a141b1ee614e3130280ae1e613a09ae90"><td class="memItemLeft" align="right" valign="top"><a id="a141b1ee614e3130280ae1e613a09ae90" name="a141b1ee614e3130280ae1e613a09ae90"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>scalingCoulomb</b> {1.0}</td></tr>
+<tr class="memdesc:a141b1ee614e3130280ae1e613a09ae90"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scaling factor for Coulomb interactions. <br /></td></tr>
 <tr class="separator:a141b1ee614e3130280ae1e613a09ae90"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4136e014d7bc00ca264ec94254acf55e" id="r_a4136e014d7bc00ca264ec94254acf55e"><td class="memItemLeft" align="right" valign="top"><a id="a4136e014d7bc00ca264ec94254acf55e" name="a4136e014d7bc00ca264ec94254acf55e"></a>
 uint32_t&#160;</td><td class="memItemRight" valign="bottom"><b>moleculeId</b> {0}</td></tr>
+<tr class="memdesc:a4136e014d7bc00ca264ec94254acf55e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Identifier for the molecule this atom belongs to. <br /></td></tr>
 <tr class="separator:a4136e014d7bc00ca264ec94254acf55e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5d939e031ebd53af6ac736b99fb7305e" id="r_a5d939e031ebd53af6ac736b99fb7305e"><td class="memItemLeft" align="right" valign="top"><a id="a5d939e031ebd53af6ac736b99fb7305e" name="a5d939e031ebd53af6ac736b99fb7305e"></a>
 uint16_t&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> {0}</td></tr>
+<tr class="memdesc:a5d939e031ebd53af6ac736b99fb7305e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type identifier of the atom. <br /></td></tr>
 <tr class="separator:a5d939e031ebd53af6ac736b99fb7305e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a41e64002fd50c62e97665619a0aa95ad" id="r_a41e64002fd50c62e97665619a0aa95ad"><td class="memItemLeft" align="right" valign="top"><a id="a41e64002fd50c62e97665619a0aa95ad" name="a41e64002fd50c62e97665619a0aa95ad"></a>
 uint8_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b> {0}</td></tr>
+<tr class="memdesc:a41e64002fd50c62e97665619a0aa95ad"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> identifier within the system. <br /></td></tr>
 <tr class="separator:a41e64002fd50c62e97665619a0aa95ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8135795c45429297bcf31252a50e76ee" id="r_a8135795c45429297bcf31252a50e76ee"><td class="memItemLeft" align="right" valign="top"><a id="a8135795c45429297bcf31252a50e76ee" name="a8135795c45429297bcf31252a50e76ee"></a>
 uint8_t&#160;</td><td class="memItemRight" valign="bottom"><b>groupId</b> {0}</td></tr>
+<tr class="memdesc:a8135795c45429297bcf31252a50e76ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Group identifier, defaults to false. <br /></td></tr>
 <tr class="separator:a8135795c45429297bcf31252a50e76ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -173,6 +196,356 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>to_json</b> (nlohmann
 void&#160;</td><td class="memItemRight" valign="bottom"><b>from_json</b> (const nlohmann::json &amp;, <a class="el" href="structAtom.html">Atom</a> &amp;)</td></tr>
 <tr class="separator:a6181783604ae06968860ec94b16af3fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents an atom in the simulation system. </p>
+<p>The <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> struct encapsulates the properties and behaviors of an individual atom within the simulation. It includes positional data, velocity, gradient, charge, scaling factors for van der Waals and Coulomb interactions, and identifiers for molecule, type, component, and group associations. The struct provides constructors for initializing atoms and methods to adjust scaling parameters dynamically. <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> class type should have exactly a size of 128 bytes (4 times double4). </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a08bce8e02378489d3f1d3f4bafbe5bca" name="a08bce8e02378489d3f1d3f4bafbe5bca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08bce8e02378489d3f1d3f4bafbe5bca">&#9670;&#160;</a></span>Atom() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Atom::Atom </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">default</span><span class="mlabel">noexcept</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> struct. </p>
+<p>Initializes an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> object with default values. </p>
+
+</div>
+</div>
+<a id="a470cf024bf1f92c62b8262cc4a3c9cc8" name="a470cf024bf1f92c62b8262cc4a3c9cc8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a470cf024bf1f92c62b8262cc4a3c9cc8">&#9670;&#160;</a></span>Atom() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Atom::Atom </td>
+          <td>(</td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>position</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>charge</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>scalingVDW</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>scalingCoulomb</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>moleculeId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint16_t&#160;</td>
+          <td class="paramname"><em>type</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>componentId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>groupId</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with specified parameters. </p>
+<p>Initializes an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with the provided position, charge, scaling factors, molecule ID, type, component ID, and group ID.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">position</td><td>The initial position of the atom. </td></tr>
+    <tr><td class="paramname">charge</td><td>The electric charge of the atom. </td></tr>
+    <tr><td class="paramname">scalingVDW</td><td>Scaling factor for van der Waals interactions. </td></tr>
+    <tr><td class="paramname">scalingCoulomb</td><td>Scaling factor for Coulomb interactions. </td></tr>
+    <tr><td class="paramname">moleculeId</td><td>Identifier for the molecule. </td></tr>
+    <tr><td class="paramname">type</td><td>Type identifier of the atom. </td></tr>
+    <tr><td class="paramname">componentId</td><td><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> identifier within the system. </td></tr>
+    <tr><td class="paramname">groupId</td><td>Group identifier, defaults to false. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a066e69d8d25a014c60cef9a58b157c19" name="a066e69d8d25a014c60cef9a58b157c19"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a066e69d8d25a014c60cef9a58b157c19">&#9670;&#160;</a></span>Atom() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Atom::Atom </td>
+          <td>(</td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>position</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>charge</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>lambda</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint32_t&#160;</td>
+          <td class="paramname"><em>moleculeId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint16_t&#160;</td>
+          <td class="paramname"><em>type</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>componentId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>groupId</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with lambda-dependent scaling. </p>
+<p>Initializes an <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a> with position, charge, and scaling factors determined by the provided lambda value. Also sets molecule ID, type, component ID, and group ID.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">position</td><td>The initial position of the atom. </td></tr>
+    <tr><td class="paramname">charge</td><td>The electric charge of the atom. </td></tr>
+    <tr><td class="paramname">lambda</td><td>The scaling parameter for interactions. </td></tr>
+    <tr><td class="paramname">moleculeId</td><td>Identifier for the molecule. </td></tr>
+    <tr><td class="paramname">type</td><td>Type identifier of the atom. </td></tr>
+    <tr><td class="paramname">componentId</td><td><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> identifier within the system. </td></tr>
+    <tr><td class="paramname">groupId</td><td>Group identifier, defaults to false. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a8a9844a3ebd954c379f280af41a0ec6d" name="a8a9844a3ebd954c379f280af41a0ec6d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8a9844a3ebd954c379f280af41a0ec6d">&#9670;&#160;</a></span>repr()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Atom::repr </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a>. </p>
+<p>Generates a string that includes the position coordinates and identifiers associated with the atom.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a>. </dd></dl>
+
+</div>
+</div>
+<a id="a12edd9a06ce7e1de712294fe60f31c35" name="a12edd9a06ce7e1de712294fe60f31c35"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a12edd9a06ce7e1de712294fe60f31c35">&#9670;&#160;</a></span>setScaling()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Atom::setScaling </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>lambda</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Sets the scaling factors based on lambda. </p>
+<p>Adjusts the scaling factors for van der Waals and Coulomb interactions linearly based on the provided lambda value. Scaling for van der Waals is active from 0 to 0.5, and Coulomb scaling is active from 0.5 to 1.0.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lambda</td><td>The scaling parameter. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a7b4162f6e202ba02e1b5009e826785eb" name="a7b4162f6e202ba02e1b5009e826785eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7b4162f6e202ba02e1b5009e826785eb">&#9670;&#160;</a></span>setScalingFullyOff()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Atom::setScalingFullyOff </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Fully deactivates scaling factors. </p>
+<p>Sets both van der Waals and Coulomb scaling factors to 0.0, fully deactivating the interactions. </p>
+
+</div>
+</div>
+<a id="ae330edb90a127ffe2d9da329d59f6b99" name="ae330edb90a127ffe2d9da329d59f6b99"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae330edb90a127ffe2d9da329d59f6b99">&#9670;&#160;</a></span>setScalingFullyOn()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Atom::setScalingFullyOn </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Fully activates scaling factors. </p>
+<p>Sets both van der Waals and Coulomb scaling factors to 1.0, fully activating the interactions. </p>
+
+</div>
+</div>
+<a id="ab23ef53928d46f89412819865d200d77" name="ab23ef53928d46f89412819865d200d77"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab23ef53928d46f89412819865d200d77">&#9670;&#160;</a></span>setScalingToInteger()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Atom::setScalingToInteger </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Sets scaling factors to integer values. </p>
+<p>Sets both van der Waals and Coulomb scaling factors to 1.0 and resets the group ID to 0. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>atom.ixx</b></li>
 </ul>

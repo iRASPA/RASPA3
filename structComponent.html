@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Component Struct Reference</title>
+<title>RASPA3: Component Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,362 +108,356 @@ $(document).ready(function(){initNavTree('structComponent.html',''); initResizab
   <div class="headertitle"><div class="title">Component Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_component.html">component</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents a component within the simulation system.  
+ <a href="structComponent.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for Component:</div>
 <div class="dyncontent">
 <div class="center"><img src="structComponent__coll__graph.png" border="0" usemap="#aComponent_coll__map" alt="Collaboration graph"/></div>
-<map name="aComponent_coll__map" id="aComponent_coll__map">
-<area shape="rect" title=" " alt="" coords="1852,581,1949,606"/>
-<area shape="rect" title=" " alt="" coords="233,55,319,81"/>
-<area shape="poly" title=" " alt="" coords="333,57,466,41,546,34,627,32,1534,32,1580,29,1621,23,1694,9,1728,7,1761,12,1795,27,1830,54,1844,72,1856,96,1875,158,1889,235,1897,318,1903,478,1902,581,1897,581,1898,478,1891,319,1883,235,1870,160,1851,98,1840,75,1826,58,1792,32,1760,17,1727,12,1695,14,1622,28,1581,35,1534,37,627,37,547,40,467,46,333,62"/>
-<area shape="rect" title=" " alt="" coords="534,137,722,191"/>
-<area shape="poly" title=" " alt="" coords="333,81,535,136,533,141,332,86"/>
-<area shape="rect" title=" " alt="" coords="5,48,144,88"/>
-<area shape="poly" title=" " alt="" coords="158,65,232,65,232,71,158,71"/>
-<area shape="rect" title=" " alt="" coords="1453,72,1612,112"/>
-<area shape="poly" title=" " alt="" coords="1626,75,1678,74,1732,80,1785,97,1808,110,1830,127,1842,143,1853,163,1870,217,1882,282,1891,353,1900,490,1902,580,1897,580,1895,490,1886,354,1877,283,1865,218,1848,166,1838,146,1826,131,1805,114,1782,101,1731,85,1678,79,1626,80"/>
-<area shape="rect" title=" " alt="" coords="1455,137,1611,162"/>
-<area shape="poly" title=" " alt="" coords="1625,145,1684,147,1744,152,1795,162,1815,170,1830,179,1851,211,1867,258,1879,315,1888,378,1898,499,1902,580,1896,581,1893,499,1883,378,1874,316,1862,259,1846,213,1826,183,1813,175,1794,167,1743,157,1684,152,1625,150"/>
-<area shape="rect" href="structAtom.html" title=" " alt="" coords="1066,137,1123,162"/>
-<area shape="poly" title=" " alt="" coords="1137,147,1455,147,1455,152,1137,152"/>
-<area shape="rect" href="structPropertyLambdaProbabilityHistogram.html" title=" " alt="" coords="995,772,1194,812"/>
-<area shape="poly" title=" " alt="" coords="1208,801,1368,813,1551,817,1638,813,1717,804,1781,789,1806,778,1826,766,1844,749,1858,729,1879,683,1891,639,1896,606,1901,607,1896,640,1884,685,1863,731,1848,752,1830,770,1809,783,1783,794,1718,809,1639,819,1551,822,1368,818,1208,806"/>
-<area shape="rect" title=" " alt="" coords="193,657,359,682"/>
-<area shape="poly" title=" " alt="" coords="372,664,494,665,645,674,809,695,892,711,971,732,1018,749,1059,769,1056,774,1015,754,970,737,891,717,809,700,645,680,494,671,372,669"/>
-<area shape="rect" title=" " alt="" coords="541,781,715,821"/>
-<area shape="poly" title=" " alt="" coords="313,686,392,727,488,767,541,782,540,787,486,772,390,731,311,691"/>
-<area shape="rect" href="structIsotherm.html" title=" " alt="" coords="588,502,668,527"/>
-<area shape="poly" title=" " alt="" coords="318,648,597,525,599,530,320,653"/>
-<area shape="poly" title=" " alt="" coords="729,797,995,791,995,797,729,802"/>
-<area shape="rect" title=" " alt="" coords="547,865,709,905"/>
-<area shape="poly" title=" " alt="" coords="722,865,970,816,1002,809,1003,815,971,821,723,870"/>
-<area shape="rect" href="structPropertyWidom.html" title=" " alt="" coords="1249,885,1371,910"/>
-<area shape="poly" title=" " alt="" coords="723,885,793,887,1248,894,1248,899,793,892,723,890"/>
-<area shape="rect" title=" " alt="" coords="501,717,755,757"/>
-<area shape="poly" title=" " alt="" coords="769,749,971,772,995,775,995,780,970,777,769,754"/>
-<area shape="rect" title=" " alt="" coords="549,237,707,262"/>
-<area shape="poly" title=" " alt="" coords="721,244,994,238,1343,238,1512,244,1658,254,1768,270,1806,281,1830,294,1846,316,1859,349,1880,433,1894,519,1901,580,1896,581,1889,520,1875,434,1854,350,1841,319,1826,298,1804,286,1767,275,1657,259,1512,249,1343,244,995,243,721,249"/>
-<area shape="rect" href="structBondPotential.html" title=" " alt="" coords="1038,186,1151,211"/>
-<area shape="poly" title=" " alt="" coords="721,237,1038,202,1038,207,721,242"/>
-<area shape="rect" href="structMultiSiteIsotherm.html" title=" " alt="" coords="1463,287,1602,313"/>
-<area shape="poly" title=" " alt="" coords="722,258,794,265,983,280,1172,289,1463,297,1463,302,1171,294,983,285,793,271,721,263"/>
-<area shape="rect" title=" " alt="" coords="1427,186,1639,211"/>
-<area shape="poly" title=" " alt="" coords="1652,195,1757,203,1801,213,1830,229,1849,256,1864,297,1885,401,1897,508,1901,580,1896,581,1891,508,1880,402,1858,298,1844,258,1826,233,1799,218,1756,209,1652,200"/>
-<area shape="poly" title=" " alt="" coords="1165,196,1427,196,1427,201,1165,201"/>
-<area shape="rect" title=" " alt="" coords="487,72,769,112"/>
-<area shape="poly" title=" " alt="" coords="784,106,878,125,972,155,996,171,1039,185,1037,190,993,176,970,160,877,130,782,111"/>
-<area shape="poly" title=" " alt="" coords="736,169,971,187,1038,192,1038,197,970,192,735,174"/>
-<area shape="rect" title=" " alt="" coords="1015,403,1174,443"/>
-<area shape="poly" title=" " alt="" coords="1187,416,1358,410,1557,407,1732,412,1794,419,1829,430,1848,445,1863,464,1884,506,1896,548,1901,580,1896,581,1890,549,1879,508,1858,467,1844,449,1827,434,1793,424,1732,417,1557,412,1358,415,1188,421"/>
-<area shape="poly" title=" " alt="" coords="1187,408,1323,389,1400,374,1408,364,1411,354,1414,342,1424,330,1442,318,1462,310,1464,315,1444,323,1427,334,1419,344,1416,355,1413,367,1403,378,1324,394,1188,413"/>
-<area shape="rect" title=" " alt="" coords="1434,459,1631,499"/>
-<area shape="poly" title=" " alt="" coords="1645,477,1751,484,1797,491,1829,502,1852,518,1871,539,1895,579,1891,582,1867,543,1849,522,1827,506,1796,496,1751,489,1645,482"/>
-<area shape="rect" title=" " alt="" coords="1449,523,1616,578"/>
-<area shape="poly" title=" " alt="" coords="1620,579,1664,589,1764,597,1852,595,1852,600,1764,602,1664,595,1619,585"/>
-<area shape="rect" title=" " alt="" coords="1453,602,1612,657"/>
-<area shape="poly" title=" " alt="" coords="1626,643,1724,649,1777,645,1827,635,1858,621,1883,604,1886,608,1860,626,1829,640,1777,650,1724,654,1626,648"/>
-<area shape="rect" title=" " alt="" coords="1458,681,1607,706"/>
-<area shape="poly" title=" " alt="" coords="1621,701,1670,702,1723,698,1776,688,1827,670,1847,656,1865,639,1890,605,1894,608,1869,642,1851,660,1829,674,1778,693,1723,703,1670,707,1621,706"/>
-<area shape="rect" href="structMCMoveProbabilitiesParticles.html" title=" " alt="" coords="1425,730,1640,755"/>
-<area shape="poly" title=" " alt="" coords="1609,755,1661,759,1718,757,1775,746,1801,737,1826,723,1854,697,1874,665,1887,632,1894,606,1899,607,1892,633,1879,667,1858,701,1830,728,1804,741,1776,752,1718,763,1661,764,1609,760"/>
-<area shape="rect" href="structMCMoveStatisticsParticles.html" title=" " alt="" coords="1435,1037,1630,1062"/>
-<area shape="poly" title=" " alt="" coords="1644,1059,1692,1057,1741,1049,1787,1032,1826,1003,1845,973,1861,927,1873,870,1882,808,1893,687,1896,606,1902,606,1898,687,1888,808,1879,871,1866,928,1850,975,1830,1007,1789,1036,1742,1054,1692,1063,1644,1065"/>
-<area shape="rect" href="structMoveStatistics.html" title=" " alt="" coords="995,1037,1195,1062"/>
-<area shape="poly" title=" " alt="" coords="1209,1050,1219,1051,1401,1051,1435,1050,1435,1055,1401,1056,1219,1056,1208,1056"/>
-<area shape="rect" href="structMoveStatistics.html" title=" " alt="" coords="999,1243,1191,1269"/>
-<area shape="poly" title=" " alt="" coords="1193,1267,1243,1268,1297,1265,1350,1253,1400,1232,1425,1215,1447,1194,1484,1145,1509,1097,1524,1061,1529,1063,1514,1099,1488,1148,1451,1197,1428,1219,1403,1237,1352,1258,1298,1270,1243,1274,1193,1272"/>
-<area shape="rect" href="structMCMoveCpuTime.html" title=" " alt="" coords="1464,858,1601,883"/>
-<area shape="poly" title=" " alt="" coords="1610,883,1663,886,1721,883,1777,869,1803,857,1826,841,1839,824,1851,798,1872,729,1895,606,1900,607,1877,731,1856,800,1844,827,1830,845,1805,861,1779,874,1721,888,1663,892,1610,888"/>
-<area shape="rect" href="structMCMoveCount.html" title=" " alt="" coords="1474,907,1591,933"/>
-<area shape="poly" title=" " alt="" coords="1589,933,1644,943,1708,947,1740,944,1771,936,1800,925,1826,907,1842,886,1856,852,1877,763,1890,670,1896,606,1901,606,1895,671,1882,763,1861,854,1847,888,1830,911,1802,929,1772,942,1740,949,1708,952,1644,949,1588,939"/>
-<area shape="poly" title=" " alt="" coords="1386,904,1403,914,1412,925,1415,937,1418,948,1427,956,1453,963,1500,969,1628,973,1756,967,1802,960,1826,951,1844,926,1859,887,1871,838,1880,784,1892,679,1896,606,1902,606,1897,679,1886,785,1876,839,1864,889,1849,929,1830,955,1803,965,1756,972,1628,978,1500,974,1452,969,1424,961,1414,951,1410,939,1407,928,1400,918,1383,909"/>
-<area shape="poly" title=" " alt="" coords="1616,303,1669,313,1726,329,1781,354,1830,390,1849,412,1864,438,1886,492,1897,543,1901,580,1896,581,1892,544,1880,494,1860,440,1845,416,1826,394,1779,359,1724,334,1668,318,1615,308"/>
-<area shape="rect" title=" " alt="" coords="1005,351,1184,377"/>
-<area shape="poly" title=" " alt="" coords="1198,354,1297,344,1401,329,1485,310,1487,315,1402,335,1297,350,1198,359"/>
-<area shape="poly" title=" " alt="" coords="676,495,818,445,994,388,1043,374,1045,379,995,393,820,450,678,500"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:ad144fa22f6ad69d8a2f2e09ad247eac2" id="r_ad144fa22f6ad69d8a2f2e09ad247eac2"><td class="memItemLeft" align="right" valign="top"><a id="ad144fa22f6ad69d8a2f2e09ad247eac2" name="ad144fa22f6ad69d8a2f2e09ad247eac2"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : size_t { <b>Framework</b> = 0
-, <b>Adsorbate</b> = 1
-, <b>Cation</b> = 2
+<tr class="memitem:ad144fa22f6ad69d8a2f2e09ad247eac2" id="r_ad144fa22f6ad69d8a2f2e09ad247eac2"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">Type</a> : size_t { <a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2a8261db595fcbf7b7f96ce4323ba5d6a4">Adsorbate</a> = 0
+, <a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2ac5d27658781538ced67eb80aeb01df97">Cation</a> = 1
  }</td></tr>
+<tr class="memdesc:ad144fa22f6ad69d8a2f2e09ad247eac2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of component types.  <a href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">More...</a><br /></td></tr>
 <tr class="separator:ad144fa22f6ad69d8a2f2e09ad247eac2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a66eca735e0715b2592dececdd30021fc" id="r_a66eca735e0715b2592dececdd30021fc"><td class="memItemLeft" align="right" valign="top"><a id="a66eca735e0715b2592dececdd30021fc" name="a66eca735e0715b2592dececdd30021fc"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>GrowType</b> : size_t { <b>Rigid</b> = 0
-, <b>Flexible</b> = 1
+<tr class="memitem:a66eca735e0715b2592dececdd30021fc" id="r_a66eca735e0715b2592dececdd30021fc"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a66eca735e0715b2592dececdd30021fc">GrowType</a> : size_t { <a class="el" href="structComponent.html#a66eca735e0715b2592dececdd30021fcac7207657aba5dfd2e5b0ca3f35cd8c26">Rigid</a> = 0
+, <a class="el" href="structComponent.html#a66eca735e0715b2592dececdd30021fca13b303a6c0d90897b5375ce901acc445">Flexible</a> = 1
  }</td></tr>
+<tr class="memdesc:a66eca735e0715b2592dececdd30021fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of growth types for the component.  <a href="structComponent.html#a66eca735e0715b2592dececdd30021fc">More...</a><br /></td></tr>
 <tr class="separator:a66eca735e0715b2592dececdd30021fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7c9ac1ec9274cbe653017e42455c62b2" id="r_a7c9ac1ec9274cbe653017e42455c62b2"><td class="memItemLeft" align="right" valign="top"><a id="a7c9ac1ec9274cbe653017e42455c62b2" name="a7c9ac1ec9274cbe653017e42455c62b2"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Shape</b> : size_t { <b>NonLinear</b> = 0
-, <b>Linear</b> = 1
-, <b>Point</b> = 2
+<tr class="memitem:a7c9ac1ec9274cbe653017e42455c62b2" id="r_a7c9ac1ec9274cbe653017e42455c62b2"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2">Shape</a> : size_t { <a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a47e3d35ab4249db25f1467971d8aba21">NonLinear</a> = 0
+, <a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a32a843da6ea40ab3b17a3421ccdf671b">Linear</a> = 1
+, <a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a2a3cd5946cfd317eb99c3d32e35e2d4c">Point</a> = 2
  }</td></tr>
+<tr class="memdesc:a7c9ac1ec9274cbe653017e42455c62b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of molecular shapes.  <a href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2">More...</a><br /></td></tr>
 <tr class="separator:a7c9ac1ec9274cbe653017e42455c62b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aedcf68ac03a4febf84ad0760caefe94a" id="r_aedcf68ac03a4febf84ad0760caefe94a"><td class="memItemLeft" align="right" valign="top"><a id="aedcf68ac03a4febf84ad0760caefe94a" name="aedcf68ac03a4febf84ad0760caefe94a"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>PressureScale</b> { <b>Log</b> = 0
-, <b>Normal</b> = 1
+<tr class="memitem:aedcf68ac03a4febf84ad0760caefe94a" id="r_aedcf68ac03a4febf84ad0760caefe94a"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94a">PressureScale</a> { <a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b">Log</a> = 0
+, <a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94aa960b44c579bc2f6818d2daaf9e4c16f0">Normal</a> = 1
  }</td></tr>
+<tr class="memdesc:aedcf68ac03a4febf84ad0760caefe94a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of pressure scaling types.  <a href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94a">More...</a><br /></td></tr>
 <tr class="separator:aedcf68ac03a4febf84ad0760caefe94a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a32be8b1376ae8d0d6082b20d0f230860" id="r_a32be8b1376ae8d0d6082b20d0f230860"><td class="memItemLeft" align="right" valign="top"><a id="a32be8b1376ae8d0d6082b20d0f230860" name="a32be8b1376ae8d0d6082b20d0f230860"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Component</b> (Component::Type type, size_t currentComponent, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::string &amp;componentName, std::optional&lt; const std::string &gt; fileName, size_t numberOfBlocks, size_t numberOfLambdaBins, const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>()) noexcept(false)</td></tr>
-<tr class="separator:a32be8b1376ae8d0d6082b20d0f230860"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4f8e15201b0a583066fe064ac2bdc2a3" id="r_a4f8e15201b0a583066fe064ac2bdc2a3"><td class="memItemLeft" align="right" valign="top"><a id="a4f8e15201b0a583066fe064ac2bdc2a3" name="a4f8e15201b0a583066fe064ac2bdc2a3"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Component</b> (size_t componentId, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::string componentName, double T_c, double P_c, double w, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; definedAtoms, size_t numberOfBlocks, size_t numberOfLambdaBins, const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>()) noexcept(false)</td></tr>
-<tr class="separator:a4f8e15201b0a583066fe064ac2bdc2a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7001a8d5f258f478a5edb7529fb0400f" id="r_a7001a8d5f258f478a5edb7529fb0400f"><td class="memItemLeft" align="right" valign="top"><a id="a7001a8d5f258f478a5edb7529fb0400f" name="a7001a8d5f258f478a5edb7529fb0400f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>readComponent</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::string &amp;fileName)</td></tr>
+<tr class="memitem:a8775db6d1a2c1afc2e77cd3c8f39da6f" id="r_a8775db6d1a2c1afc2e77cd3c8f39da6f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a8775db6d1a2c1afc2e77cd3c8f39da6f">Component</a> ()</td></tr>
+<tr class="memdesc:a8775db6d1a2c1afc2e77cd3c8f39da6f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> struct.  <br /></td></tr>
+<tr class="separator:a8775db6d1a2c1afc2e77cd3c8f39da6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8f68fbfaccf7b84a376ca4ea02357902" id="r_a8f68fbfaccf7b84a376ca4ea02357902"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a8f68fbfaccf7b84a376ca4ea02357902">Component</a> (<a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">Component::Type</a> <a class="el" href="structComponent.html#a18de93d5a176aa3cd6dc6724788dfacb">type</a>, size_t currentComponent, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::string &amp;componentName, std::optional&lt; const std::string &gt; fileName, size_t numberOfBlocks, size_t numberOfLambdaBins, const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>(), std::optional&lt; double &gt; <a class="el" href="structComponent.html#a8b31256ad8b46242cf8dc757b22f0dc7">fugacityCoefficient</a>=std::nullopt, bool thermodynamicIntegration=false) noexcept(false)</td></tr>
+<tr class="memdesc:a8f68fbfaccf7b84a376ca4ea02357902"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> from a file.  <br /></td></tr>
+<tr class="separator:a8f68fbfaccf7b84a376ca4ea02357902"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac51f6862bf885df8f86e55e2d82d2935" id="r_ac51f6862bf885df8f86e55e2d82d2935"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ac51f6862bf885df8f86e55e2d82d2935">Component</a> (size_t <a class="el" href="structComponent.html#a805338431c177411b378f02d46773f67">componentId</a>, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::string componentName, double T_c, double P_c, double w, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; <a class="el" href="structComponent.html#a68598c4b3262a35fa3c4247c681a3862">definedAtoms</a>, size_t numberOfBlocks, size_t numberOfLambdaBins, const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>(), std::optional&lt; double &gt; <a class="el" href="structComponent.html#a8b31256ad8b46242cf8dc757b22f0dc7">fugacityCoefficient</a>=std::nullopt, bool thermodynamicIntegration=false) noexcept(false)</td></tr>
+<tr class="memdesc:ac51f6862bf885df8f86e55e2d82d2935"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> programmatically.  <br /></td></tr>
+<tr class="separator:ac51f6862bf885df8f86e55e2d82d2935"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7001a8d5f258f478a5edb7529fb0400f" id="r_a7001a8d5f258f478a5edb7529fb0400f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a7001a8d5f258f478a5edb7529fb0400f">readComponent</a> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::string &amp;fileName)</td></tr>
+<tr class="memdesc:a7001a8d5f258f478a5edb7529fb0400f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads component data from a file.  <br /></td></tr>
 <tr class="separator:a7001a8d5f258f478a5edb7529fb0400f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5f0095fcd3a913c818271df3ed7f0440" id="r_a5f0095fcd3a913c818271df3ed7f0440"><td class="memItemLeft" align="right" valign="top"><a id="a5f0095fcd3a913c818271df3ed7f0440" name="a5f0095fcd3a913c818271df3ed7f0440"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printStatus</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField) const</td></tr>
+<tr class="memitem:a5f0095fcd3a913c818271df3ed7f0440" id="r_a5f0095fcd3a913c818271df3ed7f0440"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a5f0095fcd3a913c818271df3ed7f0440">printStatus</a> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField) const</td></tr>
+<tr class="memdesc:a5f0095fcd3a913c818271df3ed7f0440"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a string representing the component's current status.  <br /></td></tr>
 <tr class="separator:a5f0095fcd3a913c818271df3ed7f0440"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc614c7859e76eff266d145cc8bec02d" id="r_acc614c7859e76eff266d145cc8bec02d"><td class="memItemLeft" align="right" valign="top"><a id="acc614c7859e76eff266d145cc8bec02d" name="acc614c7859e76eff266d145cc8bec02d"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printBreakthroughStatus</b> () const</td></tr>
+<tr class="memitem:acc614c7859e76eff266d145cc8bec02d" id="r_acc614c7859e76eff266d145cc8bec02d"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#acc614c7859e76eff266d145cc8bec02d">printBreakthroughStatus</a> () const</td></tr>
+<tr class="memdesc:acc614c7859e76eff266d145cc8bec02d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a string representing the breakthrough status of the component.  <br /></td></tr>
 <tr class="separator:acc614c7859e76eff266d145cc8bec02d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f397ff72c70880b66625e93114e464a" id="r_a1f397ff72c70880b66625e93114e464a"><td class="memItemLeft" align="right" valign="top"><a id="a1f397ff72c70880b66625e93114e464a" name="a1f397ff72c70880b66625e93114e464a"></a>
-nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonStatus</b> () const</td></tr>
+<tr class="memitem:a1f397ff72c70880b66625e93114e464a" id="r_a1f397ff72c70880b66625e93114e464a"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a1f397ff72c70880b66625e93114e464a">jsonStatus</a> () const</td></tr>
+<tr class="memdesc:a1f397ff72c70880b66625e93114e464a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serializes the component's status to JSON.  <br /></td></tr>
 <tr class="separator:a1f397ff72c70880b66625e93114e464a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab675ce04de824243180efef21a37627f" id="r_ab675ce04de824243180efef21a37627f"><td class="memItemLeft" align="right" valign="top"><a id="ab675ce04de824243180efef21a37627f" name="ab675ce04de824243180efef21a37627f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>computeRigidProperties</b> ()</td></tr>
+<tr class="memitem:ab675ce04de824243180efef21a37627f" id="r_ab675ce04de824243180efef21a37627f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ab675ce04de824243180efef21a37627f">computeRigidProperties</a> ()</td></tr>
+<tr class="memdesc:ab675ce04de824243180efef21a37627f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes rigid body properties of the component.  <br /></td></tr>
 <tr class="separator:ab675ce04de824243180efef21a37627f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb30d7b6098a231880a3accfe421eea8" id="r_afb30d7b6098a231880a3accfe421eea8"><td class="memItemLeft" align="right" valign="top"><a id="afb30d7b6098a231880a3accfe421eea8" name="afb30d7b6098a231880a3accfe421eea8"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>computeCenterOfMass</b> (std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atom_list) const</td></tr>
+<tr class="memitem:afb30d7b6098a231880a3accfe421eea8" id="r_afb30d7b6098a231880a3accfe421eea8"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#afb30d7b6098a231880a3accfe421eea8">computeCenterOfMass</a> (std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atom_list) const</td></tr>
+<tr class="memdesc:afb30d7b6098a231880a3accfe421eea8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the center of mass for a given list of atoms.  <br /></td></tr>
 <tr class="separator:afb30d7b6098a231880a3accfe421eea8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4844eea9d6cb81693bf406896cb4b212" id="r_a4844eea9d6cb81693bf406896cb4b212"><td class="memItemLeft" align="right" valign="top"><a id="a4844eea9d6cb81693bf406896cb4b212" name="a4844eea9d6cb81693bf406896cb4b212"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotatePositions</b> (const simd_quatd &amp;q) const</td></tr>
+<tr class="memitem:a4844eea9d6cb81693bf406896cb4b212" id="r_a4844eea9d6cb81693bf406896cb4b212"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a4844eea9d6cb81693bf406896cb4b212">rotatePositions</a> (const simd_quatd &amp;q) const</td></tr>
+<tr class="memdesc:a4844eea9d6cb81693bf406896cb4b212"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotates the positions of all atoms using a given quaternion.  <br /></td></tr>
 <tr class="separator:a4844eea9d6cb81693bf406896cb4b212"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab58a356702842a80af9080ba5b1a9829" id="r_ab58a356702842a80af9080ba5b1a9829"><td class="memItemLeft" align="right" valign="top"><a id="ab58a356702842a80af9080ba5b1a9829" name="ab58a356702842a80af9080ba5b1a9829"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotateRandomlyAroundCenterOfMass</b> (const simd_quatd &amp;q)</td></tr>
-<tr class="separator:ab58a356702842a80af9080ba5b1a9829"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a81b0032307cf7a339168cd4cc8333de6" id="r_a81b0032307cf7a339168cd4cc8333de6"><td class="memItemLeft" align="right" valign="top"><a id="a81b0032307cf7a339168cd4cc8333de6" name="a81b0032307cf7a339168cd4cc8333de6"></a>
-std::vector&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomlyRotatedPositionsAroundStartingBead</b> (RandomNumber &amp;random) const</td></tr>
-<tr class="separator:a81b0032307cf7a339168cd4cc8333de6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af10a748315091c9aec4d83bca7e84123" id="r_af10a748315091c9aec4d83bca7e84123"><td class="memItemLeft" align="right" valign="top"><a id="af10a748315091c9aec4d83bca7e84123" name="af10a748315091c9aec4d83bca7e84123"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>recenteredCopy</b> (double scaling, size_t moleculeId) const</td></tr>
-<tr class="separator:af10a748315091c9aec4d83bca7e84123"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6ab64f39a5d26c1eaefea38760db953c" id="r_a6ab64f39a5d26c1eaefea38760db953c"><td class="memItemLeft" align="right" valign="top"><a id="a6ab64f39a5d26c1eaefea38760db953c" name="a6ab64f39a5d26c1eaefea38760db953c"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>copyAtoms</b> (std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule, double scaling, size_t moleculeId) const</td></tr>
-<tr class="separator:a6ab64f39a5d26c1eaefea38760db953c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a240f1292c87cc17a877877ccccbf49aa" id="r_a240f1292c87cc17a877877ccccbf49aa"><td class="memItemLeft" align="right" valign="top"><a id="a240f1292c87cc17a877877ccccbf49aa" name="a240f1292c87cc17a877877ccccbf49aa"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>copyAtomsRandomlyRotatedAt</b> (RandomNumber &amp;random, double3 position, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule, double scaling, size_t moleculeId) const</td></tr>
-<tr class="separator:a240f1292c87cc17a877877ccccbf49aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e6e2f26a4289a8d65e419b7051d6028" id="r_a6e6e2f26a4289a8d65e419b7051d6028"><td class="memItemLeft" align="right" valign="top"><a id="a6e6e2f26a4289a8d65e419b7051d6028" name="a6e6e2f26a4289a8d65e419b7051d6028"></a>
-std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>copiedAtoms</b> (std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule) const</td></tr>
+<tr class="memitem:a6e6e2f26a4289a8d65e419b7051d6028" id="r_a6e6e2f26a4289a8d65e419b7051d6028"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#a6e6e2f26a4289a8d65e419b7051d6028">copiedAtoms</a> (std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule) const</td></tr>
+<tr class="memdesc:a6e6e2f26a4289a8d65e419b7051d6028"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a copy of the component's atoms based on a molecule span.  <br /></td></tr>
 <tr class="separator:a6e6e2f26a4289a8d65e419b7051d6028"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac9996efbabfef1236d2fbb1b866e8f26" id="r_ac9996efbabfef1236d2fbb1b866e8f26"><td class="memItemLeft" align="right" valign="top"><a id="ac9996efbabfef1236d2fbb1b866e8f26" name="ac9996efbabfef1236d2fbb1b866e8f26"></a>
-std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>equilibratedMoleculeRandomInBox</b> (RandomNumber &amp;random, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox) const</td></tr>
+<tr class="memitem:ac9996efbabfef1236d2fbb1b866e8f26" id="r_ac9996efbabfef1236d2fbb1b866e8f26"><td class="memItemLeft" align="right" valign="top">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ac9996efbabfef1236d2fbb1b866e8f26">equilibratedMoleculeRandomInBox</a> (RandomNumber &amp;random, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox) const</td></tr>
+<tr class="memdesc:ac9996efbabfef1236d2fbb1b866e8f26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates an equilibrated molecule randomly placed within a simulation box.  <br /></td></tr>
 <tr class="separator:ac9996efbabfef1236d2fbb1b866e8f26"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abe85d133a5ddbb2b68fe44499cb2e9d7" id="r_abe85d133a5ddbb2b68fe44499cb2e9d7"><td class="memItemLeft" align="right" valign="top"><a id="abe85d133a5ddbb2b68fe44499cb2e9d7" name="abe85d133a5ddbb2b68fe44499cb2e9d7"></a>
-std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translate</b> (const <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, double3 displacement) const</td></tr>
+<tr class="memitem:abe85d133a5ddbb2b68fe44499cb2e9d7" id="r_abe85d133a5ddbb2b68fe44499cb2e9d7"><td class="memItemLeft" align="right" valign="top">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#abe85d133a5ddbb2b68fe44499cb2e9d7">translate</a> (const <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, double3 displacement) const</td></tr>
+<tr class="memdesc:abe85d133a5ddbb2b68fe44499cb2e9d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Translates a molecule by a specified displacement.  <br /></td></tr>
 <tr class="separator:abe85d133a5ddbb2b68fe44499cb2e9d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab80dadfd183a4b54c7d63a4309169c1f" id="r_ab80dadfd183a4b54c7d63a4309169c1f"><td class="memItemLeft" align="right" valign="top"><a id="ab80dadfd183a4b54c7d63a4309169c1f" name="ab80dadfd183a4b54c7d63a4309169c1f"></a>
-std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotate</b> (const <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, simd_quatd rotation) const</td></tr>
+<tr class="memitem:ab80dadfd183a4b54c7d63a4309169c1f" id="r_ab80dadfd183a4b54c7d63a4309169c1f"><td class="memItemLeft" align="right" valign="top">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#ab80dadfd183a4b54c7d63a4309169c1f">rotate</a> (const <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, simd_quatd rotation) const</td></tr>
+<tr class="memdesc:ab80dadfd183a4b54c7d63a4309169c1f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rotates a molecule using a specified rotation quaternion.  <br /></td></tr>
 <tr class="separator:ab80dadfd183a4b54c7d63a4309169c1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aeeda438752491b095b04b162f1d539ff" id="r_aeeda438752491b095b04b162f1d539ff"><td class="memItemLeft" align="right" valign="top"><a id="aeeda438752491b095b04b162f1d539ff" name="aeeda438752491b095b04b162f1d539ff"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>repr</b> () const</td></tr>
+<tr class="memitem:aeeda438752491b095b04b162f1d539ff" id="r_aeeda438752491b095b04b162f1d539ff"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structComponent.html#aeeda438752491b095b04b162f1d539ff">repr</a> () const</td></tr>
+<tr class="memdesc:aeeda438752491b095b04b162f1d539ff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a>.  <br /></td></tr>
 <tr class="separator:aeeda438752491b095b04b162f1d539ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a87e68e579bfc285675ea1b2f965aadbe" id="r_a87e68e579bfc285675ea1b2f965aadbe"><td class="memItemLeft" align="right" valign="top"><a id="a87e68e579bfc285675ea1b2f965aadbe" name="a87e68e579bfc285675ea1b2f965aadbe"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:a87e68e579bfc285675ea1b2f965aadbe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
 <tr class="separator:a87e68e579bfc285675ea1b2f965aadbe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a18de93d5a176aa3cd6dc6724788dfacb" id="r_a18de93d5a176aa3cd6dc6724788dfacb"><td class="memItemLeft" align="right" valign="top"><a id="a18de93d5a176aa3cd6dc6724788dfacb" name="a18de93d5a176aa3cd6dc6724788dfacb"></a>
-Type&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> {0}</td></tr>
+<a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">Type</a>&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> {0}</td></tr>
+<tr class="memdesc:a18de93d5a176aa3cd6dc6724788dfacb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of the component (Adsorbate or Cation). <br /></td></tr>
 <tr class="separator:a18de93d5a176aa3cd6dc6724788dfacb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8a29ab25a9a8386008c8ca965cfbf520" id="r_a8a29ab25a9a8386008c8ca965cfbf520"><td class="memItemLeft" align="right" valign="top"><a id="a8a29ab25a9a8386008c8ca965cfbf520" name="a8a29ab25a9a8386008c8ca965cfbf520"></a>
-GrowType&#160;</td><td class="memItemRight" valign="bottom"><b>growType</b> {0}</td></tr>
+<a class="el" href="structComponent.html#a66eca735e0715b2592dececdd30021fc">GrowType</a>&#160;</td><td class="memItemRight" valign="bottom"><b>growType</b> {0}</td></tr>
+<tr class="memdesc:a8a29ab25a9a8386008c8ca965cfbf520"><td class="mdescLeft">&#160;</td><td class="mdescRight">Growth type of the component. <br /></td></tr>
 <tr class="separator:a8a29ab25a9a8386008c8ca965cfbf520"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a805338431c177411b378f02d46773f67" id="r_a805338431c177411b378f02d46773f67"><td class="memItemLeft" align="right" valign="top"><a id="a805338431c177411b378f02d46773f67" name="a805338431c177411b378f02d46773f67"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b> {0}</td></tr>
+<tr class="memdesc:a805338431c177411b378f02d46773f67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Unique identifier for the component. <br /></td></tr>
 <tr class="separator:a805338431c177411b378f02d46773f67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a46343549452bda5ee9752f7a9bc15efb" id="r_a46343549452bda5ee9752f7a9bc15efb"><td class="memItemLeft" align="right" valign="top"><a id="a46343549452bda5ee9752f7a9bc15efb" name="a46343549452bda5ee9752f7a9bc15efb"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>name</b> {}</td></tr>
+<tr class="memdesc:a46343549452bda5ee9752f7a9bc15efb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Name of the component. <br /></td></tr>
 <tr class="separator:a46343549452bda5ee9752f7a9bc15efb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1679a72383b9109a977c11a4408e263b" id="r_a1679a72383b9109a977c11a4408e263b"><td class="memItemLeft" align="right" valign="top"><a id="a1679a72383b9109a977c11a4408e263b" name="a1679a72383b9109a977c11a4408e263b"></a>
 std::optional&lt; std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>filenameData</b> {}</td></tr>
+<tr class="memdesc:a1679a72383b9109a977c11a4408e263b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional filename containing component data. <br /></td></tr>
 <tr class="separator:a1679a72383b9109a977c11a4408e263b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a29a3884d280b0c88e1971e3df5788260" id="r_a29a3884d280b0c88e1971e3df5788260"><td class="memItemLeft" align="right" valign="top"><a id="a29a3884d280b0c88e1971e3df5788260" name="a29a3884d280b0c88e1971e3df5788260"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>filename</b> {}</td></tr>
+<tr class="memdesc:a29a3884d280b0c88e1971e3df5788260"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filename associated with the component. <br /></td></tr>
 <tr class="separator:a29a3884d280b0c88e1971e3df5788260"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a39f8c86c497cdac90c3c047f569e2033" id="r_a39f8c86c497cdac90c3c047f569e2033"><td class="memItemLeft" align="right" valign="top"><a id="a39f8c86c497cdac90c3c047f569e2033" name="a39f8c86c497cdac90c3c047f569e2033"></a>
+std::vector&lt; double4 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>blockingPockets</b> {}</td></tr>
+<tr class="memdesc:a39f8c86c497cdac90c3c047f569e2033"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of blocking pockets defined by position and radius. <br /></td></tr>
+<tr class="separator:a39f8c86c497cdac90c3c047f569e2033"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a205d5610646701fbcb47d58cee3848be" id="r_a205d5610646701fbcb47d58cee3848be"><td class="memItemLeft" align="right" valign="top"><a id="a205d5610646701fbcb47d58cee3848be" name="a205d5610646701fbcb47d58cee3848be"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>rigid</b> {true}</td></tr>
+<tr class="memdesc:a205d5610646701fbcb47d58cee3848be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag indicating if the component is rigid. <br /></td></tr>
 <tr class="separator:a205d5610646701fbcb47d58cee3848be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abb724333fd3186bb3ea604da25e7f6d6" id="r_abb724333fd3186bb3ea604da25e7f6d6"><td class="memItemLeft" align="right" valign="top"><a id="abb724333fd3186bb3ea604da25e7f6d6" name="abb724333fd3186bb3ea604da25e7f6d6"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>translationalDegreesOfFreedom</b> {}</td></tr>
+<tr class="memdesc:abb724333fd3186bb3ea604da25e7f6d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of translational degrees of freedom. <br /></td></tr>
 <tr class="separator:abb724333fd3186bb3ea604da25e7f6d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b31cf8f59aae9bf70af6fb59692ff8e" id="r_a1b31cf8f59aae9bf70af6fb59692ff8e"><td class="memItemLeft" align="right" valign="top"><a id="a1b31cf8f59aae9bf70af6fb59692ff8e" name="a1b31cf8f59aae9bf70af6fb59692ff8e"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>rotationalDegreesOfFreedom</b> {}</td></tr>
+<tr class="memdesc:a1b31cf8f59aae9bf70af6fb59692ff8e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of rotational degrees of freedom. <br /></td></tr>
 <tr class="separator:a1b31cf8f59aae9bf70af6fb59692ff8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ca3964add1374a6ed7fe37745a746cf" id="r_a1ca3964add1374a6ed7fe37745a746cf"><td class="memItemLeft" align="right" valign="top"><a id="a1ca3964add1374a6ed7fe37745a746cf" name="a1ca3964add1374a6ed7fe37745a746cf"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>criticalTemperature</b> {0.0}</td></tr>
+<tr class="memdesc:a1ca3964add1374a6ed7fe37745a746cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Critical temperature of the component [K]. <br /></td></tr>
 <tr class="separator:a1ca3964add1374a6ed7fe37745a746cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a09b85d2b2d2b9d63abb83695d6f93efa" id="r_a09b85d2b2d2b9d63abb83695d6f93efa"><td class="memItemLeft" align="right" valign="top"><a id="a09b85d2b2d2b9d63abb83695d6f93efa" name="a09b85d2b2d2b9d63abb83695d6f93efa"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>criticalPressure</b> {0.0}</td></tr>
+<tr class="memdesc:a09b85d2b2d2b9d63abb83695d6f93efa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Critical pressure of the component [Pa]. <br /></td></tr>
 <tr class="separator:a09b85d2b2d2b9d63abb83695d6f93efa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a61be6b113448c6c1e5a5763528a8dcdb" id="r_a61be6b113448c6c1e5a5763528a8dcdb"><td class="memItemLeft" align="right" valign="top"><a id="a61be6b113448c6c1e5a5763528a8dcdb" name="a61be6b113448c6c1e5a5763528a8dcdb"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>acentricFactor</b> {0.0}</td></tr>
+<tr class="memdesc:a61be6b113448c6c1e5a5763528a8dcdb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Acentric factor of the component [-]. <br /></td></tr>
 <tr class="separator:a61be6b113448c6c1e5a5763528a8dcdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4502814e5726eeb4fe02e933ef9fc559" id="r_a4502814e5726eeb4fe02e933ef9fc559"><td class="memItemLeft" align="right" valign="top"><a id="a4502814e5726eeb4fe02e933ef9fc559" name="a4502814e5726eeb4fe02e933ef9fc559"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>molFraction</b> {1.0}</td></tr>
+<tr class="memdesc:a4502814e5726eeb4fe02e933ef9fc559"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mole fraction of the component [-]. <br /></td></tr>
 <tr class="separator:a4502814e5726eeb4fe02e933ef9fc559"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9bb694a5b3664bafded82337fb57a1e8" id="r_a9bb694a5b3664bafded82337fb57a1e8"><td class="memItemLeft" align="right" valign="top"><a id="a9bb694a5b3664bafded82337fb57a1e8" name="a9bb694a5b3664bafded82337fb57a1e8"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>swappable</b> {false}</td></tr>
+<tr class="memdesc:a9bb694a5b3664bafded82337fb57a1e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag indicating if the component is swappable. <br /></td></tr>
 <tr class="separator:a9bb694a5b3664bafded82337fb57a1e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a28f0b7e53bc0d9d3087e03ee9001c90b" id="r_a28f0b7e53bc0d9d3087e03ee9001c90b"><td class="memItemLeft" align="right" valign="top"><a id="a28f0b7e53bc0d9d3087e03ee9001c90b" name="a28f0b7e53bc0d9d3087e03ee9001c90b"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>partialPressure</b> {0.0}</td></tr>
+<tr class="memdesc:a28f0b7e53bc0d9d3087e03ee9001c90b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Partial pressure of the component [Pa]. <br /></td></tr>
 <tr class="separator:a28f0b7e53bc0d9d3087e03ee9001c90b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad6590f82ba2ccb1b16ec8987bef669be" id="r_ad6590f82ba2ccb1b16ec8987bef669be"><td class="memItemLeft" align="right" valign="top"><a id="ad6590f82ba2ccb1b16ec8987bef669be" name="ad6590f82ba2ccb1b16ec8987bef669be"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>totalMass</b> {0.0}</td></tr>
+<tr class="memdesc:ad6590f82ba2ccb1b16ec8987bef669be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total mass of the component [kg]. <br /></td></tr>
 <tr class="separator:ad6590f82ba2ccb1b16ec8987bef669be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b31256ad8b46242cf8dc757b22f0dc7" id="r_a8b31256ad8b46242cf8dc757b22f0dc7"><td class="memItemLeft" align="right" valign="top"><a id="a8b31256ad8b46242cf8dc757b22f0dc7" name="a8b31256ad8b46242cf8dc757b22f0dc7"></a>
 std::optional&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>fugacityCoefficient</b> {}</td></tr>
+<tr class="memdesc:a8b31256ad8b46242cf8dc757b22f0dc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional fugacity coefficient [-]. <br /></td></tr>
 <tr class="separator:a8b31256ad8b46242cf8dc757b22f0dc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8057a8d75af4e0a5ec9091a4be153ec0" id="r_a8057a8d75af4e0a5ec9091a4be153ec0"><td class="memItemLeft" align="right" valign="top"><a id="a8057a8d75af4e0a5ec9091a4be153ec0" name="a8057a8d75af4e0a5ec9091a4be153ec0"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>amountOfExcessMolecules</b> {0.0}</td></tr>
+<tr class="memdesc:a8057a8d75af4e0a5ec9091a4be153ec0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Amount of excess molecules [-]. <br /></td></tr>
 <tr class="separator:a8057a8d75af4e0a5ec9091a4be153ec0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a01bdb072f5515d253b962421dca78487" id="r_a01bdb072f5515d253b962421dca78487"><td class="memItemLeft" align="right" valign="top"><a id="a01bdb072f5515d253b962421dca78487" name="a01bdb072f5515d253b962421dca78487"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>bulkFluidDensity</b> {0.0}</td></tr>
+<tr class="memdesc:a01bdb072f5515d253b962421dca78487"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bulk fluid density [kg/m³]. <br /></td></tr>
 <tr class="separator:a01bdb072f5515d253b962421dca78487"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace0191604306277b2543a9877f7d52ee" id="r_ace0191604306277b2543a9877f7d52ee"><td class="memItemLeft" align="right" valign="top"><a id="ace0191604306277b2543a9877f7d52ee" name="ace0191604306277b2543a9877f7d52ee"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>compressibility</b> {0.0}</td></tr>
+<tr class="memdesc:ace0191604306277b2543a9877f7d52ee"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compressibility of the component [-]. <br /></td></tr>
 <tr class="separator:ace0191604306277b2543a9877f7d52ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aabb30dcbf69b0ed5ea3df3189d137039" id="r_aabb30dcbf69b0ed5ea3df3189d137039"><td class="memItemLeft" align="right" valign="top"><a id="aabb30dcbf69b0ed5ea3df3189d137039" name="aabb30dcbf69b0ed5ea3df3189d137039"></a>
 std::optional&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>idealGasRosenbluthWeight</b> {}</td></tr>
+<tr class="memdesc:aabb30dcbf69b0ed5ea3df3189d137039"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional ideal gas Rosenbluth weight [-]. <br /></td></tr>
 <tr class="separator:aabb30dcbf69b0ed5ea3df3189d137039"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a516b8ead93f363496dcdcc7859aac59e" id="r_a516b8ead93f363496dcdcc7859aac59e"><td class="memItemLeft" align="right" valign="top"><a id="a516b8ead93f363496dcdcc7859aac59e" name="a516b8ead93f363496dcdcc7859aac59e"></a>
 std::optional&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>idealGasEnergy</b> {}</td></tr>
+<tr class="memdesc:a516b8ead93f363496dcdcc7859aac59e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional ideal gas energy [J]. <br /></td></tr>
 <tr class="separator:a516b8ead93f363496dcdcc7859aac59e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7efedb423298f60a893d875fb348de9d" id="r_a7efedb423298f60a893d875fb348de9d"><td class="memItemLeft" align="right" valign="top"><a id="a7efedb423298f60a893d875fb348de9d" name="a7efedb423298f60a893d875fb348de9d"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>netCharge</b> {0.0}</td></tr>
+<tr class="memdesc:a7efedb423298f60a893d875fb348de9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Net charge of the component [e]. <br /></td></tr>
 <tr class="separator:a7efedb423298f60a893d875fb348de9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a510855c10a7e77cbb0476a758585f10c" id="r_a510855c10a7e77cbb0476a758585f10c"><td class="memItemLeft" align="right" valign="top"><a id="a510855c10a7e77cbb0476a758585f10c" name="a510855c10a7e77cbb0476a758585f10c"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>startingBead</b> {0}</td></tr>
+<tr class="memdesc:a510855c10a7e77cbb0476a758585f10c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starting bead index for simulations. <br /></td></tr>
 <tr class="separator:a510855c10a7e77cbb0476a758585f10c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a68598c4b3262a35fa3c4247c681a3862" id="r_a68598c4b3262a35fa3c4247c681a3862"><td class="memItemLeft" align="right" valign="top"><a id="a68598c4b3262a35fa3c4247c681a3862" name="a68598c4b3262a35fa3c4247c681a3862"></a>
 std::vector&lt; std::pair&lt; <a class="el" href="structAtom.html">Atom</a>, double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>definedAtoms</b> {}</td></tr>
+<tr class="memdesc:a68598c4b3262a35fa3c4247c681a3862"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of defined atoms and their masses. <br /></td></tr>
 <tr class="separator:a68598c4b3262a35fa3c4247c681a3862"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0203b634c556adb6f461e56b4ccc3af1" id="r_a0203b634c556adb6f461e56b4ccc3af1"><td class="memItemLeft" align="right" valign="top"><a id="a0203b634c556adb6f461e56b4ccc3af1" name="a0203b634c556adb6f461e56b4ccc3af1"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>inertiaVector</b> {}</td></tr>
+<tr class="memdesc:a0203b634c556adb6f461e56b4ccc3af1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inertia vector of the component. <br /></td></tr>
 <tr class="separator:a0203b634c556adb6f461e56b4ccc3af1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a968417688263e19e11c6ebafb80d54c0" id="r_a968417688263e19e11c6ebafb80d54c0"><td class="memItemLeft" align="right" valign="top"><a id="a968417688263e19e11c6ebafb80d54c0" name="a968417688263e19e11c6ebafb80d54c0"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>inverseInertiaVector</b> {}</td></tr>
+<tr class="memdesc:a968417688263e19e11c6ebafb80d54c0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inverse of the inertia vector. <br /></td></tr>
 <tr class="separator:a968417688263e19e11c6ebafb80d54c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f5b913b1f2bee3995b081d03d119498" id="r_a7f5b913b1f2bee3995b081d03d119498"><td class="memItemLeft" align="right" valign="top"><a id="a7f5b913b1f2bee3995b081d03d119498" name="a7f5b913b1f2bee3995b081d03d119498"></a>
-Shape&#160;</td><td class="memItemRight" valign="bottom"><b>shapeType</b></td></tr>
+<a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2">Shape</a>&#160;</td><td class="memItemRight" valign="bottom"><b>shapeType</b></td></tr>
+<tr class="memdesc:a7f5b913b1f2bee3995b081d03d119498"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shape type of the molecule. <br /></td></tr>
 <tr class="separator:a7f5b913b1f2bee3995b081d03d119498"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af7ca684104452c143bb5be2d91654de3" id="r_af7ca684104452c143bb5be2d91654de3"><td class="memItemLeft" align="right" valign="top"><a id="af7ca684104452c143bb5be2d91654de3" name="af7ca684104452c143bb5be2d91654de3"></a>
 std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>atoms</b> {}</td></tr>
+<tr class="memdesc:af7ca684104452c143bb5be2d91654de3"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of atoms in the component. <br /></td></tr>
 <tr class="separator:af7ca684104452c143bb5be2d91654de3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae61c189255075e2e2dd6607ece850179" id="r_ae61c189255075e2e2dd6607ece850179"><td class="memItemLeft" align="right" valign="top"><a id="ae61c189255075e2e2dd6607ece850179" name="ae61c189255075e2e2dd6607ece850179"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>initialNumberOfMolecules</b> {0}</td></tr>
+<tr class="memdesc:ae61c189255075e2e2dd6607ece850179"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initial number of molecules in the component. <br /></td></tr>
 <tr class="separator:ae61c189255075e2e2dd6607ece850179"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a87d07f60122d516125088573d89ec511" id="r_a87d07f60122d516125088573d89ec511"><td class="memItemLeft" align="right" valign="top"><a id="a87d07f60122d516125088573d89ec511" name="a87d07f60122d516125088573d89ec511"></a>
 <a class="el" href="structPropertyLambdaProbabilityHistogram.html">PropertyLambdaProbabilityHistogram</a>&#160;</td><td class="memItemRight" valign="bottom"><b>lambdaGC</b></td></tr>
+<tr class="memdesc:a87d07f60122d516125088573d89ec511"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Gibbs-Chebyshev integration. <br /></td></tr>
 <tr class="separator:a87d07f60122d516125088573d89ec511"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a66b253ffc96d0e71f8bbf7af1c120722" id="r_a66b253ffc96d0e71f8bbf7af1c120722"><td class="memItemLeft" align="right" valign="top"><a id="a66b253ffc96d0e71f8bbf7af1c120722" name="a66b253ffc96d0e71f8bbf7af1c120722"></a>
 <a class="el" href="structPropertyLambdaProbabilityHistogram.html">PropertyLambdaProbabilityHistogram</a>&#160;</td><td class="memItemRight" valign="bottom"><b>lambdaGibbs</b></td></tr>
+<tr class="memdesc:a66b253ffc96d0e71f8bbf7af1c120722"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lambda probability histogram for Gibbs integration. <br /></td></tr>
 <tr class="separator:a66b253ffc96d0e71f8bbf7af1c120722"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32fe825d2bb33fc17242e6ddd5ae6d37" id="r_a32fe825d2bb33fc17242e6ddd5ae6d37"><td class="memItemLeft" align="right" valign="top"><a id="a32fe825d2bb33fc17242e6ddd5ae6d37" name="a32fe825d2bb33fc17242e6ddd5ae6d37"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>hasFractionalMolecule</b> {false}</td></tr>
+<tr class="memdesc:a32fe825d2bb33fc17242e6ddd5ae6d37"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag indicating if the component has fractional molecules. <br /></td></tr>
 <tr class="separator:a32fe825d2bb33fc17242e6ddd5ae6d37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad65c123bf183691bb92a67b865a75b65" id="r_ad65c123bf183691bb92a67b865a75b65"><td class="memItemLeft" align="right" valign="top"><a id="ad65c123bf183691bb92a67b865a75b65" name="ad65c123bf183691bb92a67b865a75b65"></a>
 std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>chiralCenters</b> {}</td></tr>
+<tr class="memdesc:ad65c123bf183691bb92a67b865a75b65"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of chiral centers in the component. <br /></td></tr>
 <tr class="separator:ad65c123bf183691bb92a67b865a75b65"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4dae239b458ccad307f6117dfcd76e4d" id="r_a4dae239b458ccad307f6117dfcd76e4d"><td class="memItemLeft" align="right" valign="top"><a id="a4dae239b458ccad307f6117dfcd76e4d" name="a4dae239b458ccad307f6117dfcd76e4d"></a>
 std::vector&lt; <a class="el" href="structBondPotential.html">BondPotential</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bonds</b> {}</td></tr>
+<tr class="memdesc:a4dae239b458ccad307f6117dfcd76e4d"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bond potentials. <br /></td></tr>
 <tr class="separator:a4dae239b458ccad307f6117dfcd76e4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1ff2eab6f4bc64e8941f4369ad7326cc" id="r_a1ff2eab6f4bc64e8941f4369ad7326cc"><td class="memItemLeft" align="right" valign="top"><a id="a1ff2eab6f4bc64e8941f4369ad7326cc" name="a1ff2eab6f4bc64e8941f4369ad7326cc"></a>
 std::vector&lt; std::pair&lt; size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bondDipoles</b> {}</td></tr>
+<tr class="memdesc:a1ff2eab6f4bc64e8941f4369ad7326cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bond dipoles. <br /></td></tr>
 <tr class="separator:a1ff2eab6f4bc64e8941f4369ad7326cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae7d8fc0600af72d76f1f74701e2a459a" id="r_ae7d8fc0600af72d76f1f74701e2a459a"><td class="memItemLeft" align="right" valign="top"><a id="ae7d8fc0600af72d76f1f74701e2a459a" name="ae7d8fc0600af72d76f1f74701e2a459a"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bends</b> {}</td></tr>
+<tr class="memdesc:ae7d8fc0600af72d76f1f74701e2a459a"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bending potentials. <br /></td></tr>
 <tr class="separator:ae7d8fc0600af72d76f1f74701e2a459a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac83e3a6f89b4cbce454b1de31b70f3c7" id="r_ac83e3a6f89b4cbce454b1de31b70f3c7"><td class="memItemLeft" align="right" valign="top"><a id="ac83e3a6f89b4cbce454b1de31b70f3c7" name="ac83e3a6f89b4cbce454b1de31b70f3c7"></a>
 std::vector&lt; std::pair&lt; size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>UreyBradley</b> {}</td></tr>
+<tr class="memdesc:ac83e3a6f89b4cbce454b1de31b70f3c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of Urey-Bradley potentials. <br /></td></tr>
 <tr class="separator:ac83e3a6f89b4cbce454b1de31b70f3c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab3bb6511536c94da913d7223db9e7bd" id="r_aab3bb6511536c94da913d7223db9e7bd"><td class="memItemLeft" align="right" valign="top"><a id="aab3bb6511536c94da913d7223db9e7bd" name="aab3bb6511536c94da913d7223db9e7bd"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>inversionBends</b> {}</td></tr>
+<tr class="memdesc:aab3bb6511536c94da913d7223db9e7bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of inversion bends. <br /></td></tr>
 <tr class="separator:aab3bb6511536c94da913d7223db9e7bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abd70470773c06a2236522f4475da734e" id="r_abd70470773c06a2236522f4475da734e"><td class="memItemLeft" align="right" valign="top"><a id="abd70470773c06a2236522f4475da734e" name="abd70470773c06a2236522f4475da734e"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Torsion</b> {}</td></tr>
+<tr class="memdesc:abd70470773c06a2236522f4475da734e"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of torsion potentials. <br /></td></tr>
 <tr class="separator:abd70470773c06a2236522f4475da734e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9d62e3cb52b4d9280b604611c3c84f0a" id="r_a9d62e3cb52b4d9280b604611c3c84f0a"><td class="memItemLeft" align="right" valign="top"><a id="a9d62e3cb52b4d9280b604611c3c84f0a" name="a9d62e3cb52b4d9280b604611c3c84f0a"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ImproperTorsions</b> {}</td></tr>
+<tr class="memdesc:a9d62e3cb52b4d9280b604611c3c84f0a"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of improper torsions. <br /></td></tr>
 <tr class="separator:a9d62e3cb52b4d9280b604611c3c84f0a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa75ed1f5f8a64bd4b2bc39dcdf84e070" id="r_aa75ed1f5f8a64bd4b2bc39dcdf84e070"><td class="memItemLeft" align="right" valign="top"><a id="aa75ed1f5f8a64bd4b2bc39dcdf84e070" name="aa75ed1f5f8a64bd4b2bc39dcdf84e070"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bondBonds</b> {}</td></tr>
+<tr class="memdesc:aa75ed1f5f8a64bd4b2bc39dcdf84e070"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bond-bond interactions. <br /></td></tr>
 <tr class="separator:aa75ed1f5f8a64bd4b2bc39dcdf84e070"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a515f5f90ce6d142c6a16304a26a45806" id="r_a515f5f90ce6d142c6a16304a26a45806"><td class="memItemLeft" align="right" valign="top"><a id="a515f5f90ce6d142c6a16304a26a45806" name="a515f5f90ce6d142c6a16304a26a45806"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>stretchBends</b> {}</td></tr>
+<tr class="memdesc:a515f5f90ce6d142c6a16304a26a45806"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of stretch-bend interactions. <br /></td></tr>
 <tr class="separator:a515f5f90ce6d142c6a16304a26a45806"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac6b0b1c7542fc80f30ad985a5ff1c522" id="r_ac6b0b1c7542fc80f30ad985a5ff1c522"><td class="memItemLeft" align="right" valign="top"><a id="ac6b0b1c7542fc80f30ad985a5ff1c522" name="ac6b0b1c7542fc80f30ad985a5ff1c522"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bendBends</b> {}</td></tr>
+<tr class="memdesc:ac6b0b1c7542fc80f30ad985a5ff1c522"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bend-bend interactions. <br /></td></tr>
 <tr class="separator:ac6b0b1c7542fc80f30ad985a5ff1c522"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a715c7337cf56101e0acbbe4055177a3a" id="r_a715c7337cf56101e0acbbe4055177a3a"><td class="memItemLeft" align="right" valign="top"><a id="a715c7337cf56101e0acbbe4055177a3a" name="a715c7337cf56101e0acbbe4055177a3a"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>stretchTorsions</b> {}</td></tr>
+<tr class="memdesc:a715c7337cf56101e0acbbe4055177a3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of stretch-torsion interactions. <br /></td></tr>
 <tr class="separator:a715c7337cf56101e0acbbe4055177a3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2a92da34c680ca708672aea5e5adce36" id="r_a2a92da34c680ca708672aea5e5adce36"><td class="memItemLeft" align="right" valign="top"><a id="a2a92da34c680ca708672aea5e5adce36" name="a2a92da34c680ca708672aea5e5adce36"></a>
 std::vector&lt; std::tuple&lt; size_t, size_t, size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bendTorsions</b> {}</td></tr>
+<tr class="memdesc:a2a92da34c680ca708672aea5e5adce36"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of bend-torsion interactions. <br /></td></tr>
 <tr class="separator:a2a92da34c680ca708672aea5e5adce36"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0dead5a2e3dbdbeb0bbdbfbfd1546bcb" id="r_a0dead5a2e3dbdbeb0bbdbfbfd1546bcb"><td class="memItemLeft" align="right" valign="top"><a id="a0dead5a2e3dbdbeb0bbdbfbfd1546bcb" name="a0dead5a2e3dbdbeb0bbdbfbfd1546bcb"></a>
 std::vector&lt; std::pair&lt; size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>intraVDW</b> {}</td></tr>
+<tr class="memdesc:a0dead5a2e3dbdbeb0bbdbfbfd1546bcb"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of intra-molecular van der Waals interactions. <br /></td></tr>
 <tr class="separator:a0dead5a2e3dbdbeb0bbdbfbfd1546bcb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7b15b1623983677fca6493eaef6c43b1" id="r_a7b15b1623983677fca6493eaef6c43b1"><td class="memItemLeft" align="right" valign="top"><a id="a7b15b1623983677fca6493eaef6c43b1" name="a7b15b1623983677fca6493eaef6c43b1"></a>
 std::vector&lt; std::pair&lt; size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>intraCoulomb</b> {}</td></tr>
+<tr class="memdesc:a7b15b1623983677fca6493eaef6c43b1"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of intra-molecular Coulomb interactions. <br /></td></tr>
 <tr class="separator:a7b15b1623983677fca6493eaef6c43b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a80156b6311a538f13b3423ac277794f5" id="r_a80156b6311a538f13b3423ac277794f5"><td class="memItemLeft" align="right" valign="top"><a id="a80156b6311a538f13b3423ac277794f5" name="a80156b6311a538f13b3423ac277794f5"></a>
 std::vector&lt; std::pair&lt; size_t, size_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>excludedIntraCoulomb</b> {}</td></tr>
+<tr class="memdesc:a80156b6311a538f13b3423ac277794f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of excluded intra-molecular Coulomb interactions. <br /></td></tr>
 <tr class="separator:a80156b6311a538f13b3423ac277794f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac1e4fba930b76d64a61c32c8fd30052f" id="r_ac1e4fba930b76d64a61c32c8fd30052f"><td class="memItemLeft" align="right" valign="top"><a id="ac1e4fba930b76d64a61c32c8fd30052f" name="ac1e4fba930b76d64a61c32c8fd30052f"></a>
 std::vector&lt; std::pair&lt; size_t, std::vector&lt; size_t &gt; &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>configMoves</b> {}</td></tr>
+<tr class="memdesc:ac1e4fba930b76d64a61c32c8fd30052f"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of configuration moves. <br /></td></tr>
 <tr class="separator:ac1e4fba930b76d64a61c32c8fd30052f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad0c5664f522ae2e6d045161a2a01c5f4" id="r_ad0c5664f522ae2e6d045161a2a01c5f4"><td class="memItemLeft" align="right" valign="top"><a id="ad0c5664f522ae2e6d045161a2a01c5f4" name="ad0c5664f522ae2e6d045161a2a01c5f4"></a>
 std::vector&lt; bool &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>connectivityTable</b> {}</td></tr>
+<tr class="memdesc:ad0c5664f522ae2e6d045161a2a01c5f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Connectivity table for the component. <br /></td></tr>
 <tr class="separator:ad0c5664f522ae2e6d045161a2a01c5f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51cd26140a927b5d462a7ae50bb13719" id="r_a51cd26140a927b5d462a7ae50bb13719"><td class="memItemLeft" align="right" valign="top"><a id="a51cd26140a927b5d462a7ae50bb13719" name="a51cd26140a927b5d462a7ae50bb13719"></a>
 <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mc_moves_probabilities</b></td></tr>
+<tr class="memdesc:a51cd26140a927b5d462a7ae50bb13719"><td class="mdescLeft">&#160;</td><td class="mdescRight">Move probabilities for Monte Carlo simulations. <br /></td></tr>
 <tr class="separator:a51cd26140a927b5d462a7ae50bb13719"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5d804eb441bee2a78dcd9fc299689bf3" id="r_a5d804eb441bee2a78dcd9fc299689bf3"><td class="memItemLeft" align="right" valign="top"><a id="a5d804eb441bee2a78dcd9fc299689bf3" name="a5d804eb441bee2a78dcd9fc299689bf3"></a>
 <a class="el" href="structMCMoveStatisticsParticles.html">MCMoveStatisticsParticles</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mc_moves_statistics</b></td></tr>
+<tr class="memdesc:a5d804eb441bee2a78dcd9fc299689bf3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Move statistics for Monte Carlo simulations. <br /></td></tr>
 <tr class="separator:a5d804eb441bee2a78dcd9fc299689bf3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b86c3beac1d3485c38693658410a242" id="r_a8b86c3beac1d3485c38693658410a242"><td class="memItemLeft" align="right" valign="top"><a id="a8b86c3beac1d3485c38693658410a242" name="a8b86c3beac1d3485c38693658410a242"></a>
 <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mc_moves_cputime</b></td></tr>
+<tr class="memdesc:a8b86c3beac1d3485c38693658410a242"><td class="mdescLeft">&#160;</td><td class="mdescRight">CPU time statistics for Monte Carlo moves. <br /></td></tr>
 <tr class="separator:a8b86c3beac1d3485c38693658410a242"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adbbd42f8cf4e2bd8b3cef5aa777ff1bd" id="r_adbbd42f8cf4e2bd8b3cef5aa777ff1bd"><td class="memItemLeft" align="right" valign="top"><a id="adbbd42f8cf4e2bd8b3cef5aa777ff1bd" name="adbbd42f8cf4e2bd8b3cef5aa777ff1bd"></a>
 <a class="el" href="structMCMoveCount.html">MCMoveCount</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mc_moves_count</b></td></tr>
+<tr class="memdesc:adbbd42f8cf4e2bd8b3cef5aa777ff1bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Move counts for Monte Carlo simulations. <br /></td></tr>
 <tr class="separator:adbbd42f8cf4e2bd8b3cef5aa777ff1bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a371290e41662794fbd284fe60bf2745a" id="r_a371290e41662794fbd284fe60bf2745a"><td class="memItemLeft" align="right" valign="top"><a id="a371290e41662794fbd284fe60bf2745a" name="a371290e41662794fbd284fe60bf2745a"></a>
 <a class="el" href="structPropertyWidom.html">PropertyWidom</a>&#160;</td><td class="memItemRight" valign="bottom"><b>averageRosenbluthWeights</b></td></tr>
+<tr class="memdesc:a371290e41662794fbd284fe60bf2745a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Average Rosenbluth weights for Widom insertion. <br /></td></tr>
 <tr class="separator:a371290e41662794fbd284fe60bf2745a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5078016b338c5ce128074445efcf8e32" id="r_a5078016b338c5ce128074445efcf8e32"><td class="memItemLeft" align="right" valign="top"><a id="a5078016b338c5ce128074445efcf8e32" name="a5078016b338c5ce128074445efcf8e32"></a>
 <a class="el" href="structMultiSiteIsotherm.html">MultiSiteIsotherm</a>&#160;</td><td class="memItemRight" valign="bottom"><b>isotherm</b> {}</td></tr>
+<tr class="memdesc:a5078016b338c5ce128074445efcf8e32"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="structIsotherm.html">Isotherm</a> information for the component. <br /></td></tr>
 <tr class="separator:a5078016b338c5ce128074445efcf8e32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9f296b3ab1acc3881961630022f8c142" id="r_a9f296b3ab1acc3881961630022f8c142"><td class="memItemLeft" align="right" valign="top"><a id="a9f296b3ab1acc3881961630022f8c142" name="a9f296b3ab1acc3881961630022f8c142"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>massTransferCoefficient</b> {0.0}</td></tr>
+<tr class="memdesc:a9f296b3ab1acc3881961630022f8c142"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mass transfer coefficient [1/s]. <br /></td></tr>
 <tr class="separator:a9f296b3ab1acc3881961630022f8c142"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a94286dab5dd62994168deb8993467449" id="r_a94286dab5dd62994168deb8993467449"><td class="memItemLeft" align="right" valign="top"><a id="a94286dab5dd62994168deb8993467449" name="a94286dab5dd62994168deb8993467449"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>axialDispersionCoefficient</b> {0.0}</td></tr>
+<tr class="memdesc:a94286dab5dd62994168deb8993467449"><td class="mdescLeft">&#160;</td><td class="mdescRight">Axial dispersion coefficient [m²/s]. <br /></td></tr>
 <tr class="separator:a94286dab5dd62994168deb8993467449"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab3ffea792d45bdeb913c7fbec63f272f" id="r_ab3ffea792d45bdeb913c7fbec63f272f"><td class="memItemLeft" align="right" valign="top"><a id="ab3ffea792d45bdeb913c7fbec63f272f" name="ab3ffea792d45bdeb913c7fbec63f272f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isCarrierGas</b> {false}</td></tr>
+<tr class="memdesc:ab3ffea792d45bdeb913c7fbec63f272f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag indicating if the component is a carrier gas. <br /></td></tr>
 <tr class="separator:ab3ffea792d45bdeb913c7fbec63f272f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a19f24687dc9b3a1be7c0ce1f75265f38" id="r_a19f24687dc9b3a1be7c0ce1f75265f38"><td class="memItemLeft" align="right" valign="top"><a id="a19f24687dc9b3a1be7c0ce1f75265f38" name="a19f24687dc9b3a1be7c0ce1f75265f38"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>columnPressure</b> {0}</td></tr>
+<tr class="memdesc:a19f24687dc9b3a1be7c0ce1f75265f38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column index for pressure data. <br /></td></tr>
 <tr class="separator:a19f24687dc9b3a1be7c0ce1f75265f38"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af6ab76fce04d4cd3656a30cbac3118c8" id="r_af6ab76fce04d4cd3656a30cbac3118c8"><td class="memItemLeft" align="right" valign="top"><a id="af6ab76fce04d4cd3656a30cbac3118c8" name="af6ab76fce04d4cd3656a30cbac3118c8"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>columnLoading</b> {1}</td></tr>
+<tr class="memdesc:af6ab76fce04d4cd3656a30cbac3118c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column index for loading data. <br /></td></tr>
 <tr class="separator:af6ab76fce04d4cd3656a30cbac3118c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6137c7e57bc422c5397e1b0df6dfd38" id="r_aa6137c7e57bc422c5397e1b0df6dfd38"><td class="memItemLeft" align="right" valign="top"><a id="aa6137c7e57bc422c5397e1b0df6dfd38" name="aa6137c7e57bc422c5397e1b0df6dfd38"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>columnError</b> {2}</td></tr>
+<tr class="memdesc:aa6137c7e57bc422c5397e1b0df6dfd38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column index for error data. <br /></td></tr>
 <tr class="separator:aa6137c7e57bc422c5397e1b0df6dfd38"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7fe47bf4a440c2c8bd04bd20c04ba686" id="r_a7fe47bf4a440c2c8bd04bd20c04ba686"><td class="memItemLeft" align="right" valign="top"><a id="a7fe47bf4a440c2c8bd04bd20c04ba686" name="a7fe47bf4a440c2c8bd04bd20c04ba686"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>lnPartitionFunction</b> {0}</td></tr>
+<tr class="memdesc:a7fe47bf4a440c2c8bd04bd20c04ba686"><td class="mdescLeft">&#160;</td><td class="mdescRight">Natural logarithm of the partition function [-]. <br /></td></tr>
 <tr class="separator:a7fe47bf4a440c2c8bd04bd20c04ba686"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaf086b2b53265bb215bf37236c8a463d" id="r_aaf086b2b53265bb215bf37236c8a463d"><td class="memItemLeft" align="right" valign="top"><a id="aaf086b2b53265bb215bf37236c8a463d" name="aaf086b2b53265bb215bf37236c8a463d"></a>
-PressureScale&#160;</td><td class="memItemRight" valign="bottom"><b>pressureScale</b> {PressureScale::Log}</td></tr>
+<a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94a">PressureScale</a>&#160;</td><td class="memItemRight" valign="bottom"><b>pressureScale</b> {<a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b">PressureScale::Log</a>}</td></tr>
+<tr class="memdesc:aaf086b2b53265bb215bf37236c8a463d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pressure scaling type. <br /></td></tr>
 <tr class="separator:aaf086b2b53265bb215bf37236c8a463d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -468,6 +469,738 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structComponent.html">Component</a> &amp;c)</td></tr>
 <tr class="separator:a19315b7faa713f6f38d9362deee3aabc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents a component within the simulation system. </p>
+<p>The <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> struct encapsulates all properties and behaviors associated with a simulation component, such as adsorbates or cations. It includes various physical properties, molecular structures, and simulation parameters necessary for conducting simulations. The struct provides constructors for initializing components from files or programmatically and includes methods for computing physical properties and manipulating molecular positions. </p>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a66eca735e0715b2592dececdd30021fc" name="a66eca735e0715b2592dececdd30021fc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a66eca735e0715b2592dececdd30021fc">&#9670;&#160;</a></span>GrowType</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structComponent.html#a66eca735e0715b2592dececdd30021fc">Component::GrowType</a> : size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of growth types for the component. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a66eca735e0715b2592dececdd30021fcac7207657aba5dfd2e5b0ca3f35cd8c26" name="a66eca735e0715b2592dececdd30021fcac7207657aba5dfd2e5b0ca3f35cd8c26"></a>Rigid&#160;</td><td class="fielddoc"><p>Rigid growth type. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a66eca735e0715b2592dececdd30021fca13b303a6c0d90897b5375ce901acc445" name="a66eca735e0715b2592dececdd30021fca13b303a6c0d90897b5375ce901acc445"></a>Flexible&#160;</td><td class="fielddoc"><p>Flexible growth type. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="aedcf68ac03a4febf84ad0760caefe94a" name="aedcf68ac03a4febf84ad0760caefe94a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedcf68ac03a4febf84ad0760caefe94a">&#9670;&#160;</a></span>PressureScale</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structComponent.html#aedcf68ac03a4febf84ad0760caefe94a">Component::PressureScale</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of pressure scaling types. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b" name="aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b"></a>Log&#160;</td><td class="fielddoc"><p>Logarithmic pressure scaling. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aedcf68ac03a4febf84ad0760caefe94aa960b44c579bc2f6818d2daaf9e4c16f0" name="aedcf68ac03a4febf84ad0760caefe94aa960b44c579bc2f6818d2daaf9e4c16f0"></a>Normal&#160;</td><td class="fielddoc"><p>Normal pressure scaling. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="a7c9ac1ec9274cbe653017e42455c62b2" name="a7c9ac1ec9274cbe653017e42455c62b2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7c9ac1ec9274cbe653017e42455c62b2">&#9670;&#160;</a></span>Shape</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2">Component::Shape</a> : size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of molecular shapes. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a7c9ac1ec9274cbe653017e42455c62b2a47e3d35ab4249db25f1467971d8aba21" name="a7c9ac1ec9274cbe653017e42455c62b2a47e3d35ab4249db25f1467971d8aba21"></a>NonLinear&#160;</td><td class="fielddoc"><p>Non-linear molecular shape. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a7c9ac1ec9274cbe653017e42455c62b2a32a843da6ea40ab3b17a3421ccdf671b" name="a7c9ac1ec9274cbe653017e42455c62b2a32a843da6ea40ab3b17a3421ccdf671b"></a>Linear&#160;</td><td class="fielddoc"><p>Linear molecular shape. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a7c9ac1ec9274cbe653017e42455c62b2a2a3cd5946cfd317eb99c3d32e35e2d4c" name="a7c9ac1ec9274cbe653017e42455c62b2a2a3cd5946cfd317eb99c3d32e35e2d4c"></a>Point&#160;</td><td class="fielddoc"><p>Point-particle molecular shape. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="ad144fa22f6ad69d8a2f2e09ad247eac2" name="ad144fa22f6ad69d8a2f2e09ad247eac2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad144fa22f6ad69d8a2f2e09ad247eac2">&#9670;&#160;</a></span>Type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">Component::Type</a> : size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of component types. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ad144fa22f6ad69d8a2f2e09ad247eac2a8261db595fcbf7b7f96ce4323ba5d6a4" name="ad144fa22f6ad69d8a2f2e09ad247eac2a8261db595fcbf7b7f96ce4323ba5d6a4"></a>Adsorbate&#160;</td><td class="fielddoc"><p>Represents an adsorbate component. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ad144fa22f6ad69d8a2f2e09ad247eac2ac5d27658781538ced67eb80aeb01df97" name="ad144fa22f6ad69d8a2f2e09ad247eac2ac5d27658781538ced67eb80aeb01df97"></a>Cation&#160;</td><td class="fielddoc"><p>Represents a cation component. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a8775db6d1a2c1afc2e77cd3c8f39da6f" name="a8775db6d1a2c1afc2e77cd3c8f39da6f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8775db6d1a2c1afc2e77cd3c8f39da6f">&#9670;&#160;</a></span>Component() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Component::Component </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> struct. </p>
+<p>Initializes a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> object with default values. </p>
+
+</div>
+</div>
+<a id="a8f68fbfaccf7b84a376ca4ea02357902" name="a8f68fbfaccf7b84a376ca4ea02357902"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8f68fbfaccf7b84a376ca4ea02357902">&#9670;&#160;</a></span>Component() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Component::Component </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2">Component::Type</a>&#160;</td>
+          <td class="paramname"><em>type</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>currentComponent</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
+          <td class="paramname"><em>forceField</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>componentName</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::optional&lt; const std::string &gt;&#160;</td>
+          <td class="paramname"><em>fileName</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfBlocks</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfLambdaBins</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;&#160;</td>
+          <td class="paramname"><em>systemProbabilities</em> = <code><a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>()</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::optional&lt; double &gt;&#160;</td>
+          <td class="paramname"><em>fugacityCoefficient</em> = <code>std::nullopt</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>thermodynamicIntegration</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> from a file. </p>
+<p>Initializes a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> by reading data from a specified file, using the provided force field and simulation parameters.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">type</td><td>The type of the component (Adsorbate or Cation). </td></tr>
+    <tr><td class="paramname">currentComponent</td><td>The current component ID. </td></tr>
+    <tr><td class="paramname">forceField</td><td>The force field used for parsing atom types and interactions. </td></tr>
+    <tr><td class="paramname">componentName</td><td>The name of the component. </td></tr>
+    <tr><td class="paramname">fileName</td><td>Optional filename containing component data. </td></tr>
+    <tr><td class="paramname">numberOfBlocks</td><td>The number of simulation blocks. </td></tr>
+    <tr><td class="paramname">numberOfLambdaBins</td><td>The number of lambda bins for scaling. </td></tr>
+    <tr><td class="paramname">systemProbabilities</td><td>Move probabilities for the Monte Carlo simulation. </td></tr>
+    <tr><td class="paramname">fugacityCoefficient</td><td>Optional fugacity coefficient. </td></tr>
+    <tr><td class="paramname">thermodynamicIntegration</td><td>Flag indicating if thermodynamic integration is used.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>If the component file cannot be read or parsed. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="ac51f6862bf885df8f86e55e2d82d2935" name="ac51f6862bf885df8f86e55e2d82d2935"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac51f6862bf885df8f86e55e2d82d2935">&#9670;&#160;</a></span>Component() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Component::Component </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>componentId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
+          <td class="paramname"><em>forceField</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>componentName</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>T_c</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>P_c</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>w</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>definedAtoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfBlocks</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfLambdaBins</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> &amp;&#160;</td>
+          <td class="paramname"><em>systemProbabilities</em> = <code><a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>()</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::optional&lt; double &gt;&#160;</td>
+          <td class="paramname"><em>fugacityCoefficient</em> = <code>std::nullopt</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>thermodynamicIntegration</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> programmatically. </p>
+<p>Initializes a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> with specified physical properties and molecular structure.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">componentId</td><td>The unique identifier for the component. </td></tr>
+    <tr><td class="paramname">forceField</td><td>The force field used for defining atom properties. </td></tr>
+    <tr><td class="paramname">componentName</td><td>The name of the component. </td></tr>
+    <tr><td class="paramname">T_c</td><td>The critical temperature of the component. </td></tr>
+    <tr><td class="paramname">P_c</td><td>The critical pressure of the component. </td></tr>
+    <tr><td class="paramname">w</td><td>The acentric factor of the component. </td></tr>
+    <tr><td class="paramname">atomList</td><td>A list of atoms defining the component's molecular structure. </td></tr>
+    <tr><td class="paramname">numberOfBlocks</td><td>The number of simulation blocks. </td></tr>
+    <tr><td class="paramname">numberOfLambdaBins</td><td>The number of lambda bins for scaling. </td></tr>
+    <tr><td class="paramname">systemProbabilities</td><td>Move probabilities for the Monte Carlo simulation. </td></tr>
+    <tr><td class="paramname">fugacityCoefficient</td><td>Optional fugacity coefficient. </td></tr>
+    <tr><td class="paramname">thermodynamicIntegration</td><td>Flag indicating if thermodynamic integration is used.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>If pseudo-atoms are not recognized or data is invalid. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="afb30d7b6098a231880a3accfe421eea8" name="afb30d7b6098a231880a3accfe421eea8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afb30d7b6098a231880a3accfe421eea8">&#9670;&#160;</a></span>computeCenterOfMass()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double3 Component::computeCenterOfMass </td>
+          <td>(</td>
+          <td class="paramtype">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>atom_list</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Computes the center of mass for a given list of atoms. </p>
+<p>Calculates the center of mass position based on the provided atom list.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">atom_list</td><td>The list of atoms to compute the center of mass for. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The center of mass position as a double3 vector. </dd></dl>
+
+</div>
+</div>
+<a id="ab675ce04de824243180efef21a37627f" name="ab675ce04de824243180efef21a37627f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab675ce04de824243180efef21a37627f">&#9670;&#160;</a></span>computeRigidProperties()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Component::computeRigidProperties </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Computes rigid body properties of the component. </p>
+<p>Calculates properties such as the center of mass, inertia tensor, and degrees of freedom based on the defined atoms. </p>
+
+</div>
+</div>
+<a id="a6e6e2f26a4289a8d65e419b7051d6028" name="a6e6e2f26a4289a8d65e419b7051d6028"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e6e2f26a4289a8d65e419b7051d6028">&#9670;&#160;</a></span>copiedAtoms()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; Component::copiedAtoms </td>
+          <td>(</td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>molecule</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Creates a copy of the component's atoms based on a molecule span. </p>
+<p>Copies and adjusts the positions of atoms relative to a given molecule.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">molecule</td><td>A span representing the molecule to copy atoms from. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A vector of copied atoms with adjusted positions. </dd></dl>
+
+</div>
+</div>
+<a id="ac9996efbabfef1236d2fbb1b866e8f26" name="ac9996efbabfef1236d2fbb1b866e8f26"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac9996efbabfef1236d2fbb1b866e8f26">&#9670;&#160;</a></span>equilibratedMoleculeRandomInBox()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; Component::equilibratedMoleculeRandomInBox </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;&#160;</td>
+          <td class="paramname"><em>simulationBox</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates an equilibrated molecule randomly placed within a simulation box. </p>
+<p>Rotates and translates the molecule randomly to ensure equilibration within the simulation box.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>A random number generator instance. </td></tr>
+    <tr><td class="paramname">simulationBox</td><td>The simulation box within which to place the molecule. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A pair containing the equilibrated molecule and its corresponding atoms. </dd></dl>
+
+</div>
+</div>
+<a id="a1f397ff72c70880b66625e93114e464a" name="a1f397ff72c70880b66625e93114e464a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1f397ff72c70880b66625e93114e464a">&#9670;&#160;</a></span>jsonStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">nlohmann::json Component::jsonStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Serializes the component's status to JSON. </p>
+<p>Converts the component's current status and properties into a JSON object.</p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object representing the component's status. </dd></dl>
+
+</div>
+</div>
+<a id="acc614c7859e76eff266d145cc8bec02d" name="acc614c7859e76eff266d145cc8bec02d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acc614c7859e76eff266d145cc8bec02d">&#9670;&#160;</a></span>printBreakthroughStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Component::printBreakthroughStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a string representing the breakthrough status of the component. </p>
+<p>Compiles breakthrough-related properties and parameters of the component into a formatted string.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string detailing the breakthrough status of the component. </dd></dl>
+
+</div>
+</div>
+<a id="a5f0095fcd3a913c818271df3ed7f0440" name="a5f0095fcd3a913c818271df3ed7f0440"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5f0095fcd3a913c818271df3ed7f0440">&#9670;&#160;</a></span>printStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Component::printStatus </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
+          <td class="paramname"><em>forceField</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a string representing the component's current status. </p>
+<p>Compiles various properties and parameters of the component into a formatted string.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">forceField</td><td>The force field used for interpreting atom types. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string detailing the component's status. </dd></dl>
+
+</div>
+</div>
+<a id="a7001a8d5f258f478a5edb7529fb0400f" name="a7001a8d5f258f478a5edb7529fb0400f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7001a8d5f258f478a5edb7529fb0400f">&#9670;&#160;</a></span>readComponent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Component::readComponent </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structForceField.html">ForceField</a> &amp;&#160;</td>
+          <td class="paramname"><em>forceField</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>fileName</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reads component data from a file. </p>
+<p>Parses component information from the specified file using the provided force field.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">forceField</td><td>The force field used for parsing atom types and interactions. </td></tr>
+    <tr><td class="paramname">fileName</td><td>The name of the file containing component data.</td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="exception"><dt>Exceptions</dt><dd>
+  <table class="exception">
+    <tr><td class="paramname">std::runtime_error</td><td>If the file cannot be found, opened, or parsed correctly. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aeeda438752491b095b04b162f1d539ff" name="aeeda438752491b095b04b162f1d539ff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeeda438752491b095b04b162f1d539ff">&#9670;&#160;</a></span>repr()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Component::repr </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a>. </p>
+<p>Generates a simple string indicating a test representation of the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a>.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a>. </dd></dl>
+
+</div>
+</div>
+<a id="ab80dadfd183a4b54c7d63a4309169c1f" name="ab80dadfd183a4b54c7d63a4309169c1f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab80dadfd183a4b54c7d63a4309169c1f">&#9670;&#160;</a></span>rotate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; Component::rotate </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMolecule.html">Molecule</a> &amp;&#160;</td>
+          <td class="paramname"><em>molecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>molecule_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">simd_quatd&#160;</td>
+          <td class="paramname"><em>rotation</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Rotates a molecule using a specified rotation quaternion. </p>
+<p>Applies a rotation to the entire molecule based on the provided quaternion.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">molecule</td><td>The molecule to rotate. </td></tr>
+    <tr><td class="paramname">molecule_atoms</td><td>A span representing the atoms of the molecule. </td></tr>
+    <tr><td class="paramname">rotation</td><td>The quaternion representing the rotation to apply. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A pair containing the rotated molecule and its corresponding atoms. </dd></dl>
+
+</div>
+</div>
+<a id="a4844eea9d6cb81693bf406896cb4b212" name="a4844eea9d6cb81693bf406896cb4b212"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4844eea9d6cb81693bf406896cb4b212">&#9670;&#160;</a></span>rotatePositions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; Component::rotatePositions </td>
+          <td>(</td>
+          <td class="paramtype">const simd_quatd &amp;&#160;</td>
+          <td class="paramname"><em>q</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Rotates the positions of all atoms using a given quaternion. </p>
+<p>Applies a rotation to the atom positions based on the provided quaternion.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">q</td><td>The quaternion representing the rotation. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A vector of atoms with updated positions after rotation. </dd></dl>
+
+</div>
+</div>
+<a id="abe85d133a5ddbb2b68fe44499cb2e9d7" name="abe85d133a5ddbb2b68fe44499cb2e9d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abe85d133a5ddbb2b68fe44499cb2e9d7">&#9670;&#160;</a></span>translate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; Component::translate </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMolecule.html">Molecule</a> &amp;&#160;</td>
+          <td class="paramname"><em>molecule</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td>
+          <td class="paramname"><em>molecule_atoms</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>displacement</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Translates a molecule by a specified displacement. </p>
+<p>Moves the entire molecule by the given displacement vector.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">molecule</td><td>The molecule to translate. </td></tr>
+    <tr><td class="paramname">molecule_atoms</td><td>A span representing the atoms of the molecule. </td></tr>
+    <tr><td class="paramname">displacement</td><td>The displacement vector to apply. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A pair containing the translated molecule and its corresponding atoms. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>component.ixx</b></li>
 </ul>

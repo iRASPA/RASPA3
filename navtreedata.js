@@ -24,7 +24,18 @@
 */
 var NAVTREE =
 [
-  [ "Raspa3", "index.html", [
+  [ "RASPA3", "index.html", [
+    [ "Examples", "md_docs_2examples.html", [
+      [ "Monte Carlo of Methane in a box", "basic1.html", null ]
+    ] ],
+    [ "User Manual", "md_docs_2manual.html", [
+      [ "Manual", "manual_main.html", null ],
+      [ "Installing", "installing.html", null ],
+      [ "Compiling", "compiling.html", null ],
+      [ "Running", "running.html", null ],
+      [ "Units", "units.html", null ],
+      [ "Commands", "commands.html", null ]
+    ] ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -35,8 +46,11 @@ var NAVTREE =
       [ "Class List", "annotated.html", "annotated_dup" ],
       [ "Class Index", "classes.html", null ],
       [ "Class Members", "functions.html", [
-        [ "All", "functions.html", null ],
-        [ "Functions", "functions_func.html", null ]
+        [ "All", "functions.html", "functions_dup" ],
+        [ "Functions", "functions_func.html", null ],
+        [ "Variables", "functions_vars.html", "functions_vars" ],
+        [ "Enumerations", "functions_enum.html", null ],
+        [ "Related Symbols", "functions_rela.html", null ]
       ] ]
     ] ]
   ] ]
@@ -45,7 +59,11 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"structSystem.html#a7c9839c934fcad13b8143b8a301e1775"
+"structBondPotential.html#ac37e77270bf59af5e4b1d5d764e833d5",
+"structComponent.html#aedcf68ac03a4febf84ad0760caefe94a",
+"structFramework.html#aa3079de3f2f2bb15eea31fca562c8fdb",
+"structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3",
+"structRunningEnergy.html#a52f9767a7d3773bcbd84b47096e26348"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

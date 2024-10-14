@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: VDWParameters Struct Reference</title>
+<title>RASPA3: VDWParameters Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,10 +108,13 @@ $(document).ready(function(){initNavTree('structVDWParameters.html',''); initRes
   <div class="headertitle"><div class="title">VDWParameters Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_vdwparameters.html">vdwparameters</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents the van der Waals parameters for particle interactions.  
+ <a href="structVDWParameters.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:ab4bd656b14ec830a9be118cf5a88af09" id="r_ab4bd656b14ec830a9be118cf5a88af09"><td class="memItemLeft" align="right" valign="top"><a id="ab4bd656b14ec830a9be118cf5a88af09" name="ab4bd656b14ec830a9be118cf5a88af09"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : int { <br />
+<tr class="memitem:ab4bd656b14ec830a9be118cf5a88af09" id="r_ab4bd656b14ec830a9be118cf5a88af09"><td class="memItemLeft" align="right" valign="top"><a id="ab4bd656b14ec830a9be118cf5a88af09" name="ab4bd656b14ec830a9be118cf5a88af09"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVDWParameters.html#ab4bd656b14ec830a9be118cf5a88af09">Type</a> : int { <br />
 &#160;&#160;<b>LennardJones</b> = 0
 , <b>BuckingHam</b> = 1
 , <b>Morse</b> = 2
@@ -114,14 +124,19 @@ Public Types</h2></td></tr>
 , <b>BornHugginsMeyer</b> = 5
 <br />
  }</td></tr>
+<tr class="memdesc:ab4bd656b14ec830a9be118cf5a88af09"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of van der Waals potential types. <br /></td></tr>
 <tr class="separator:ab4bd656b14ec830a9be118cf5a88af09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:aa1083faddfaf32d3fd6162558559dee4" id="r_aa1083faddfaf32d3fd6162558559dee4"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVDWParameters.html#aa1083faddfaf32d3fd6162558559dee4">VDWParameters</a> ()</td></tr>
+<tr class="memdesc:aa1083faddfaf32d3fd6162558559dee4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for <a class="el" href="structVDWParameters.html" title="Represents the van der Waals parameters for particle interactions.">VDWParameters</a>.  <br /></td></tr>
+<tr class="separator:aa1083faddfaf32d3fd6162558559dee4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a79da6a5e4487589e697a4365a68d7bba" id="r_a79da6a5e4487589e697a4365a68d7bba"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVDWParameters.html#a79da6a5e4487589e697a4365a68d7bba">VDWParameters</a> (double epsilon, double sigma)</td></tr>
+<tr class="memdesc:a79da6a5e4487589e697a4365a68d7bba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a Lennard-Jones VDWParameter structure.  <br /></td></tr>
 <tr class="separator:a79da6a5e4487589e697a4365a68d7bba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a51c2fdd5337469f900c68283ff80b0db" id="r_a51c2fdd5337469f900c68283ff80b0db"><td class="memItemLeft" align="right" valign="top"><a id="a51c2fdd5337469f900c68283ff80b0db" name="a51c2fdd5337469f900c68283ff80b0db"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>computeShiftAtCutOff</b> (double cutOff)</td></tr>
+<tr class="memitem:a51c2fdd5337469f900c68283ff80b0db" id="r_a51c2fdd5337469f900c68283ff80b0db"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structVDWParameters.html#a51c2fdd5337469f900c68283ff80b0db">computeShiftAtCutOff</a> (double cutOff)</td></tr>
+<tr class="memdesc:a51c2fdd5337469f900c68283ff80b0db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the potential energy shift at the cutoff distance.  <br /></td></tr>
 <tr class="separator:a51c2fdd5337469f900c68283ff80b0db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c4706e5cf85fa0c5d5a1a566f4f6ea6" id="r_a1c4706e5cf85fa0c5d5a1a566f4f6ea6"><td class="memItemLeft" align="right" valign="top"><a id="a1c4706e5cf85fa0c5d5a1a566f4f6ea6" name="a1c4706e5cf85fa0c5d5a1a566f4f6ea6"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;other) const</td></tr>
@@ -131,15 +146,19 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const
 Public Attributes</h2></td></tr>
 <tr class="memitem:a05e3e11308300108efba38e3f4253cca" id="r_a05e3e11308300108efba38e3f4253cca"><td class="memItemLeft" align="right" valign="top"><a id="a05e3e11308300108efba38e3f4253cca" name="a05e3e11308300108efba38e3f4253cca"></a>
 double4&#160;</td><td class="memItemRight" valign="bottom"><b>parameters</b></td></tr>
+<tr class="memdesc:a05e3e11308300108efba38e3f4253cca"><td class="mdescLeft">&#160;</td><td class="mdescRight">The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters. <br /></td></tr>
 <tr class="separator:a05e3e11308300108efba38e3f4253cca"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a81e69d7fa0202408c0a6f4b7b0eb14e1" id="r_a81e69d7fa0202408c0a6f4b7b0eb14e1"><td class="memItemLeft" align="right" valign="top"><a id="a81e69d7fa0202408c0a6f4b7b0eb14e1" name="a81e69d7fa0202408c0a6f4b7b0eb14e1"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>shift</b></td></tr>
+<tr class="memdesc:a81e69d7fa0202408c0a6f4b7b0eb14e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">The potential energy shift calculated at the cutoff distance. <br /></td></tr>
 <tr class="separator:a81e69d7fa0202408c0a6f4b7b0eb14e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a34d08cbdb5374a58575ed614b87b8959" id="r_a34d08cbdb5374a58575ed614b87b8959"><td class="memItemLeft" align="right" valign="top"><a id="a34d08cbdb5374a58575ed614b87b8959" name="a34d08cbdb5374a58575ed614b87b8959"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>tailCorrectionEnergy</b></td></tr>
+<tr class="memdesc:a34d08cbdb5374a58575ed614b87b8959"><td class="mdescLeft">&#160;</td><td class="mdescRight">The tail correction energy for the potential. <br /></td></tr>
 <tr class="separator:a34d08cbdb5374a58575ed614b87b8959"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a167050a393d859b40ff3e14aaa929c57" id="r_a167050a393d859b40ff3e14aaa929c57"><td class="memItemLeft" align="right" valign="top"><a id="a167050a393d859b40ff3e14aaa929c57" name="a167050a393d859b40ff3e14aaa929c57"></a>
-Type&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> {0}</td></tr>
+<a class="el" href="structVDWParameters.html#ab4bd656b14ec830a9be118cf5a88af09">Type</a>&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> {0}</td></tr>
+<tr class="memdesc:a167050a393d859b40ff3e14aaa929c57"><td class="mdescLeft">&#160;</td><td class="mdescRight">The type of van der Waals potential. <br /></td></tr>
 <tr class="separator:a167050a393d859b40ff3e14aaa929c57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -151,9 +170,40 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;p)</td></tr>
 <tr class="separator:ad8c561f0657fb10ef7486bdf75cd537d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents the van der Waals parameters for particle interactions. </p>
+<p>The <a class="el" href="structVDWParameters.html" title="Represents the van der Waals parameters for particle interactions.">VDWParameters</a> struct encapsulates parameters for different types of van der Waals potentials, including Lennard-Jones, Buckingham, Morse, Feynmann-Hibbs, MM3, and Born-Huggins-Meyer potentials. It includes the potential parameters, a shift value calculated at the cutoff distance, tail correction energy, and the type of potential. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="aa1083faddfaf32d3fd6162558559dee4" name="aa1083faddfaf32d3fd6162558559dee4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1083faddfaf32d3fd6162558559dee4">&#9670;&#160;</a></span>VDWParameters() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">VDWParameters::VDWParameters </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for <a class="el" href="structVDWParameters.html" title="Represents the van der Waals parameters for particle interactions.">VDWParameters</a>. </p>
+<p>Initializes the parameters with zero values. </p>
+
+</div>
+</div>
 <a id="a79da6a5e4487589e697a4365a68d7bba" name="a79da6a5e4487589e697a4365a68d7bba"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a79da6a5e4487589e697a4365a68d7bba">&#9670;&#160;</a></span>VDWParameters()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a79da6a5e4487589e697a4365a68d7bba">&#9670;&#160;</a></span>VDWParameters() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -185,14 +235,52 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Creates a Lennard-Jones VDWParameter structure.</p>
-<ul>
-<li>Parameters:<ul>
-<li>epsilon: the strength parameter of the potential in units of Kelvin.</li>
-<li>sigma: the size parameter of the potential in units of Angstrom. </li>
-</ul>
-</li>
-</ul>
+
+<p>Constructs a Lennard-Jones VDWParameter structure. </p>
+<p>Initializes the <a class="el" href="structVDWParameters.html" title="Represents the van der Waals parameters for particle interactions.">VDWParameters</a> with the given epsilon and sigma values for a Lennard-Jones potential.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">epsilon</td><td>The strength parameter of the potential in units of Kelvin. </td></tr>
+    <tr><td class="paramname">sigma</td><td>The size parameter of the potential in units of Angstrom. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a51c2fdd5337469f900c68283ff80b0db" name="a51c2fdd5337469f900c68283ff80b0db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51c2fdd5337469f900c68283ff80b0db">&#9670;&#160;</a></span>computeShiftAtCutOff()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void VDWParameters::computeShiftAtCutOff </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>cutOff</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Computes the potential energy shift at the cutoff distance. </p>
+<p>Calculates the shift in potential energy at the specified cutoff distance to ensure continuity of the potential.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">cutOff</td><td>The cutoff distance at which to compute the shift. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

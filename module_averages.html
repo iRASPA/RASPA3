@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: averages Module Reference</title>
+<title>RASPA3: averages Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -95,6 +102,7 @@ $(document).ready(function(){initNavTree('module_averages.html',''); initResizab
   <div class="summary">
 <a href="#classes">Classes</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
+<a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a> &#124;
 <a href="#files">Files</a>  </div>
   <div class="headertitle"><div class="title">averages Module Reference</div></div>
@@ -104,27 +112,37 @@ $(document).ready(function(){initNavTree('module_averages.html',''); initResizab
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBlockErrorEstimation.html">BlockErrorEstimation</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Manages block error estimation for statistical analysis.  <a href="structBlockErrorEstimation.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
 <tr class="memitem:a74e31a03892352160a865e5df25c8229" id="r_a74e31a03892352160a865e5df25c8229"><td class="memItemLeft" align="right" valign="top"><a id="a74e31a03892352160a865e5df25c8229" name="a74e31a03892352160a865e5df25c8229"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>confidenceLevel</b> : int { <br />
-&#160;&#160;<b>percent_80</b> = 0
-, <b>percent_90</b> = 1
-, <b>percent_95</b> = 2
-, <b>percent_98</b> = 3
+&#160;&#160;<a class="el" href="averages_8ixx.html#a74e31a03892352160a865e5df25c8229a1df494eaaff974590576449e3629697e">percent_80</a> = 0
+, <a class="el" href="averages_8ixx.html#a74e31a03892352160a865e5df25c8229acd48e217d07e06a49cc7bc85cc8ccdb3">percent_90</a> = 1
+, <a class="el" href="averages_8ixx.html#a74e31a03892352160a865e5df25c8229a2f4a0285bbc34e40aae3dde8285b419a">percent_95</a> = 2
+, <a class="el" href="averages_8ixx.html#a74e31a03892352160a865e5df25c8229aafb09378c8493e26de0ee581a0b6fd65">percent_98</a> = 3
 , <br />
-&#160;&#160;<b>percent_99</b> = 4
+&#160;&#160;<a class="el" href="averages_8ixx.html#a74e31a03892352160a865e5df25c8229ad9d81005b1f2fa5e7eada14cafaf18d5">percent_99</a> = 4
 <br />
  }</td></tr>
+<tr class="memdesc:a74e31a03892352160a865e5df25c8229"><td class="mdescLeft">&#160;</td><td class="mdescRight">Represents the different confidence levels for statistical calculations. <br /></td></tr>
 <tr class="separator:a74e31a03892352160a865e5df25c8229"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:afbee24edd5753aed103bebf0dbdc3641" id="r_afbee24edd5753aed103bebf0dbdc3641"><td class="memItemLeft" align="right" valign="top">std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="averages_8ixx.html#afbee24edd5753aed103bebf0dbdc3641">meanConfidence</a> (std::vector&lt; double &gt; &amp;data)</td></tr>
+<tr class="memdesc:afbee24edd5753aed103bebf0dbdc3641"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the mean and confidence interval of a dataset.  <br /></td></tr>
+<tr class="separator:afbee24edd5753aed103bebf0dbdc3641"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
 <tr class="memitem:ac72d4fe32b107693eea82f1be9dc06bd" id="r_ac72d4fe32b107693eea82f1be9dc06bd"><td class="memItemLeft" align="right" valign="top">constexpr std::array&lt; std::array&lt; double, 5 &gt;, 21 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="averages_8ixx.html#ac72d4fe32b107693eea82f1be9dc06bd">standardNormalDeviates</a></td></tr>
+<tr class="memdesc:ac72d4fe32b107693eea82f1be9dc06bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Table of standard normal deviates for different confidence levels and degrees of freedom.  <br /></td></tr>
 <tr class="separator:ac72d4fe32b107693eea82f1be9dc06bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0a05ea167e2dd7b2089227e3c5065da3" id="r_a0a05ea167e2dd7b2089227e3c5065da3"><td class="memItemLeft" align="right" valign="top"><a id="a0a05ea167e2dd7b2089227e3c5065da3" name="a0a05ea167e2dd7b2089227e3c5065da3"></a>
 const int&#160;</td><td class="memItemRight" valign="bottom"><b>chosenConfidenceLevel</b> = int(confidenceLevel::percent_95)</td></tr>
+<tr class="memdesc:a0a05ea167e2dd7b2089227e3c5065da3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Chosen confidence level for statistical calculations. <br /></td></tr>
 <tr class="separator:a0a05ea167e2dd7b2089227e3c5065da3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">

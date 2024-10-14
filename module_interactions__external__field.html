@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: interactions_external_field Module Reference</title>
+<title>RASPA3: interactions_external_field Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,20 +108,20 @@ $(document).ready(function(){initNavTree('module_interactions__external__field.h
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a6f23e0723b9b06594c82110e2d38b78d" id="r_a6f23e0723b9b06594c82110e2d38b78d"><td class="memItemLeft" align="right" valign="top"><a id="a6f23e0723b9b06594c82110e2d38b78d" name="a6f23e0723b9b06594c82110e2d38b78d"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::computeExternalFieldEnergy</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;energyStatus) noexcept</td></tr>
+<tr class="memitem:a6f23e0723b9b06594c82110e2d38b78d" id="r_a6f23e0723b9b06594c82110e2d38b78d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="external__field_8ixx.html#a6f23e0723b9b06594c82110e2d38b78d">Interactions::computeExternalFieldEnergy</a> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;energyStatus) noexcept</td></tr>
+<tr class="memdesc:a6f23e0723b9b06594c82110e2d38b78d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the external field energy contribution for the system.  <br /></td></tr>
 <tr class="separator:a6f23e0723b9b06594c82110e2d38b78d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa5314ff6e69f39311892e7af03b79351" id="r_aa5314ff6e69f39311892e7af03b79351"><td class="memItemLeft" align="right" valign="top"><a id="aa5314ff6e69f39311892e7af03b79351" name="aa5314ff6e69f39311892e7af03b79351"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::computeExternalFieldTailEnergy</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;energyStatus) noexcept</td></tr>
+<tr class="memitem:aa5314ff6e69f39311892e7af03b79351" id="r_aa5314ff6e69f39311892e7af03b79351"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="external__field_8ixx.html#aa5314ff6e69f39311892e7af03b79351">Interactions::computeExternalFieldTailEnergy</a> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &amp;energyStatus) noexcept</td></tr>
+<tr class="memdesc:aa5314ff6e69f39311892e7af03b79351"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the tail correction for the external field energy.  <br /></td></tr>
 <tr class="separator:aa5314ff6e69f39311892e7af03b79351"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af46dfeb3960abf3e592620a39881edd0" id="r_af46dfeb3960abf3e592620a39881edd0"><td class="memItemLeft" align="right" valign="top"><a id="af46dfeb3960abf3e592620a39881edd0" name="af46dfeb3960abf3e592620a39881edd0"></a>
-std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::computeExternalFieldEnergyDifference</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; newatoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; oldatoms) noexcept</td></tr>
+<tr class="memitem:af46dfeb3960abf3e592620a39881edd0" id="r_af46dfeb3960abf3e592620a39881edd0"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="external__field_8ixx.html#af46dfeb3960abf3e592620a39881edd0">Interactions::computeExternalFieldEnergyDifference</a> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; newatoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; oldatoms) noexcept</td></tr>
+<tr class="memdesc:af46dfeb3960abf3e592620a39881edd0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the difference in external field energy between two states.  <br /></td></tr>
 <tr class="separator:af46dfeb3960abf3e592620a39881edd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:interactions__external__field_8ixx" id="r_interactions__external__field_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/interactions/<b>interactions_external_field.ixx</b></td></tr>
+<tr class="memitem:external__field_8ixx" id="r_external__field_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/interactions/<b>external_field.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

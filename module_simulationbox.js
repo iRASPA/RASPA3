@@ -1,4 +1,4 @@
 var module_simulationbox =
 [
-    [ "SimulationBox", "structSimulationBox.html", null ]
+    [ "SimulationBox", "structSimulationBox.html", "structSimulationBox" ]
 ];

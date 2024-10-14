@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Member List</title>
+<title>RASPA3: Member List</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -98,28 +105,28 @@ $(document).ready(function(){initNavTree('structAtom.html',''); initResizable();
 
 <p>This is the complete list of members for <a class="el" href="structAtom.html">Atom</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>Atom</b>() noexcept=default (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>Atom</b>(double3 position, double charge, double scalingVDW, double scalingCoulomb, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>Atom</b>(double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId) (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>charge</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>componentId</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a08bce8e02378489d3f1d3f4bafbe5bca">Atom</a>() noexcept=default</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#a470cf024bf1f92c62b8262cc4a3c9cc8">Atom</a>(double3 position, double charge, double scalingVDW, double scalingCoulomb, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a066e69d8d25a014c60cef9a58b157c19">Atom</a>(double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId, uint8_t groupId)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#ab7fa10034d4d2a16b5288fd58430155f">charge</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a41e64002fd50c62e97665619a0aa95ad">componentId</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>from_json</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>gradient</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>groupId</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>moleculeId</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#aeb8d8772382196cdc4697ed58d64912f">gradient</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#a8135795c45429297bcf31252a50e76ee">groupId</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a4136e014d7bc00ca264ec94254acf55e">moleculeId</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>operator&lt;&lt;</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
   <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>operator&gt;&gt;</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>position</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>repr</b>() const (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>scalingCoulomb</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>scalingVDW</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>setScaling</b>(double lambda) (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>setScalingFullyOff</b>() (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>setScalingFullyOn</b>() (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>setScalingToInteger</b>() (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#ad2db0ee7efe8f440dbbf39b57711d32e">position</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a8a9844a3ebd954c379f280af41a0ec6d">repr</a>() const</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#a141b1ee614e3130280ae1e613a09ae90">scalingCoulomb</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#aeedceee21f5bff240a2545d8b77e8450">scalingVDW</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#a12edd9a06ce7e1de712294fe60f31c35">setScaling</a>(double lambda)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a7b4162f6e202ba02e1b5009e826785eb">setScalingFullyOff</a>()</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#ae330edb90a127ffe2d9da329d59f6b99">setScalingFullyOn</a>()</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#ab23ef53928d46f89412819865d200d77">setScalingToInteger</a>()</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>to_json</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>type</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>velocity</b> (defined in <a class="el" href="structAtom.html">Atom</a>)</td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structAtom.html#a5d939e031ebd53af6ac736b99fb7305e">type</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structAtom.html#a9224657c3bf70b298905cd2170dbeff4">velocity</a></td><td class="entry"><a class="el" href="structAtom.html">Atom</a></td><td class="entry"></td></tr>
 </table></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

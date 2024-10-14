@@ -1,4 +1,4 @@
 var module_reaction =
 [
-    [ "Reaction", "structReaction.html", null ]
+    [ "Reaction", "structReaction.html", "structReaction" ]
 ];

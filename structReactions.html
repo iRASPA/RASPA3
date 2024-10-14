@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Reactions Struct Reference</title>
+<title>RASPA3: Reactions Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,48 +107,33 @@ $(document).ready(function(){initNavTree('structReactions.html',''); initResizab
   <div class="headertitle"><div class="title">Reactions Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_reactions.html">reactions</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Manages a collection of reactions within the simulation system.  
+ <a href="structReactions.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for Reactions:</div>
 <div class="dyncontent">
 <div class="center"><img src="structReactions__coll__graph.png" border="0" usemap="#aReactions_coll__map" alt="Collaboration graph"/></div>
-<map name="aReactions_coll__map" id="aReactions_coll__map">
-<area shape="rect" title=" " alt="" coords="1588,67,1675,93"/>
-<area shape="rect" title=" " alt="" coords="1336,67,1515,93"/>
-<area shape="poly" title=" " alt="" coords="1528,77,1588,77,1588,83,1528,83"/>
-<area shape="rect" href="structReaction.html" title=" " alt="" coords="1144,67,1223,93"/>
-<area shape="poly" title=" " alt="" coords="1237,77,1336,77,1336,83,1237,83"/>
-<area shape="rect" title=" " alt="" coords="772,39,931,65"/>
-<area shape="poly" title=" " alt="" coords="944,57,1144,74,1144,79,944,62"/>
-<area shape="rect" href="structPropertyLambdaProbabilityHistogram.html" title=" " alt="" coords="752,89,951,129"/>
-<area shape="poly" title=" " alt="" coords="964,104,1120,91,1143,87,1144,92,1120,96,964,109"/>
-<area shape="rect" title=" " alt="" coords="5,30,171,55"/>
-<area shape="poly" title=" " alt="" coords="184,32,195,32,260,32,496,31,599,39,729,65,753,75,787,87,786,92,751,80,727,71,598,45,496,37,260,37,195,37,185,38"/>
-<area shape="rect" title=" " alt="" coords="324,57,499,97"/>
-<area shape="poly" title=" " alt="" coords="185,50,324,65,324,71,184,56"/>
-<area shape="poly" title=" " alt="" coords="513,82,752,99,752,105,512,87"/>
-<area shape="rect" title=" " alt="" coords="330,121,493,161"/>
-<area shape="poly" title=" " alt="" coords="506,132,728,116,751,114,752,120,728,121,507,137"/>
-<area shape="rect" title=" " alt="" coords="284,185,539,225"/>
-<area shape="poly" title=" " alt="" coords="552,182,639,166,727,147,793,127,795,132,729,152,640,172,553,187"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ab77d2d1f43eb6bf53137bf6bdbd788cf" id="r_ab77d2d1f43eb6bf53137bf6bdbd788cf"><td class="memItemLeft" align="right" valign="top"><a id="ab77d2d1f43eb6bf53137bf6bdbd788cf" name="ab77d2d1f43eb6bf53137bf6bdbd788cf"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structReactions.html">Reactions</a> const &amp;) const =default</td></tr>
+<tr class="memdesc:ab77d2d1f43eb6bf53137bf6bdbd788cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">A list of <a class="el" href="structReaction.html" title="Represents a chemical reaction within the simulation.">Reaction</a> objects managed by this struct. <br /></td></tr>
 <tr class="separator:ab77d2d1f43eb6bf53137bf6bdbd788cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a934ed18358c1f59d788652fed2ace4cc" id="r_a934ed18358c1f59d788652fed2ace4cc"><td class="memItemLeft" align="right" valign="top"><a id="a934ed18358c1f59d788652fed2ace4cc" name="a934ed18358c1f59d788652fed2ace4cc"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printStatus</b> () const</td></tr>
+<tr class="memitem:a934ed18358c1f59d788652fed2ace4cc" id="r_a934ed18358c1f59d788652fed2ace4cc"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structReactions.html#a934ed18358c1f59d788652fed2ace4cc">printStatus</a> () const</td></tr>
+<tr class="memdesc:a934ed18358c1f59d788652fed2ace4cc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the current status of all reactions as a string.  <br /></td></tr>
 <tr class="separator:a934ed18358c1f59d788652fed2ace4cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a55628fd3514e9fde97fa31d49b7258c3" id="r_a55628fd3514e9fde97fa31d49b7258c3"><td class="memItemLeft" align="right" valign="top"><a id="a55628fd3514e9fde97fa31d49b7258c3" name="a55628fd3514e9fde97fa31d49b7258c3"></a>
-nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonStatus</b> () const</td></tr>
+<tr class="memitem:a55628fd3514e9fde97fa31d49b7258c3" id="r_a55628fd3514e9fde97fa31d49b7258c3"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structReactions.html#a55628fd3514e9fde97fa31d49b7258c3">jsonStatus</a> () const</td></tr>
+<tr class="memdesc:a55628fd3514e9fde97fa31d49b7258c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the current status of all reactions in JSON format.  <br /></td></tr>
 <tr class="separator:a55628fd3514e9fde97fa31d49b7258c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ae35c59ab283d7c9ad13842273fed08ce" id="r_ae35c59ab283d7c9ad13842273fed08ce"><td class="memItemLeft" align="right" valign="top"><a id="ae35c59ab283d7c9ad13842273fed08ce" name="ae35c59ab283d7c9ad13842273fed08ce"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:ae35c59ab283d7c9ad13842273fed08ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">&lt; The version number of the <a class="el" href="structReactions.html" title="Manages a collection of reactions within the simulation system.">Reactions</a> data structure. <br /></td></tr>
 <tr class="separator:ae35c59ab283d7c9ad13842273fed08ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8321aa0a15e291ef81eb151871a5d50" id="r_ac8321aa0a15e291ef81eb151871a5d50"><td class="memItemLeft" align="right" valign="top"><a id="ac8321aa0a15e291ef81eb151871a5d50" name="ac8321aa0a15e291ef81eb151871a5d50"></a>
 std::vector&lt; <a class="el" href="structReaction.html">Reaction</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>list</b></td></tr>
@@ -156,6 +148,52 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structReactions.html">Reactions</a> &amp;r)</td></tr>
 <tr class="separator:aff3448ec30b728b0fff0c8c2f11674e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Manages a collection of reactions within the simulation system. </p>
+<p>The <a class="el" href="structReactions.html" title="Manages a collection of reactions within the simulation system.">Reactions</a> struct encapsulates a list of <a class="el" href="structReaction.html" title="Represents a chemical reaction within the simulation.">Reaction</a> objects and provides methods to retrieve the current status in both string and JSON formats. It also includes serialization operators for reading from and writing to archives. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="a55628fd3514e9fde97fa31d49b7258c3" name="a55628fd3514e9fde97fa31d49b7258c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55628fd3514e9fde97fa31d49b7258c3">&#9670;&#160;</a></span>jsonStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">nlohmann::json Reactions::jsonStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieves the current status of all reactions in JSON format. </p>
+<p>Constructs a JSON object containing the number of reactions and an array representing each reaction's status.</p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object representing the current reactions status. </dd></dl>
+
+</div>
+</div>
+<a id="a934ed18358c1f59d788652fed2ace4cc" name="a934ed18358c1f59d788652fed2ace4cc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a934ed18358c1f59d788652fed2ace4cc">&#9670;&#160;</a></span>printStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Reactions::printStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieves the current status of all reactions as a string. </p>
+<p>Generates a formatted string that includes the number of reactions and the status of each individual reaction in the list.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representation of the current reactions status. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>reactions.ixx</b></li>
 </ul>

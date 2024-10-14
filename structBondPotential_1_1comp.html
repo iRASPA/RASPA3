@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: BondPotential::comp Struct Reference</title>
+<title>RASPA3: BondPotential::comp Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -98,13 +105,66 @@ $(document).ready(function(){initNavTree('structBondPotential_1_1comp.html','');
   <div class="headertitle"><div class="title">BondPotential::comp Struct Reference<div class="ingroups">module <a class="el" href="module_bond__potential.html">bond_potential</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Comparator struct for case-insensitive string comparison.  
+ <a href="structBondPotential_1_1comp.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2d09956ac1bef1eac6438bf642fb8fcb" id="r_a2d09956ac1bef1eac6438bf642fb8fcb"><td class="memItemLeft" align="right" valign="top"><a id="a2d09956ac1bef1eac6438bf642fb8fcb" name="a2d09956ac1bef1eac6438bf642fb8fcb"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator()</b> (const std::string &amp;lhs, const std::string &amp;rhs) const</td></tr>
+<tr class="memitem:a2d09956ac1bef1eac6438bf642fb8fcb" id="r_a2d09956ac1bef1eac6438bf642fb8fcb"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBondPotential_1_1comp.html#a2d09956ac1bef1eac6438bf642fb8fcb">operator()</a> (const std::string &amp;lhs, const std::string &amp;rhs) const</td></tr>
+<tr class="memdesc:a2d09956ac1bef1eac6438bf642fb8fcb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compares two strings case-insensitively.  <br /></td></tr>
 <tr class="separator:a2d09956ac1bef1eac6438bf642fb8fcb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Comparator struct for case-insensitive string comparison. </p>
+<p>Used for comparing bond type strings in a case-insensitive manner. </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="a2d09956ac1bef1eac6438bf642fb8fcb" name="a2d09956ac1bef1eac6438bf642fb8fcb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2d09956ac1bef1eac6438bf642fb8fcb">&#9670;&#160;</a></span>operator()()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool BondPotential::comp::operator() </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>lhs</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>rhs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Compares two strings case-insensitively. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lhs</td><td>Left-hand side string. </td></tr>
+    <tr><td class="paramname">rhs</td><td>Right-hand side string. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if lhs is less than rhs. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>bond_potential.ixx</b></li>
 </ul>

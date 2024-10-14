@@ -1,7 +1,0 @@
-<map id="MCMoveStatisticsParticles" name="MCMoveStatisticsParticles">
-<area shape="rect" id="Node000001" title=" " alt="" coords="117,255,312,280"/>
-<area shape="rect" id="Node000002" href="$structMoveStatistics.html" title=" " alt="" coords="5,5,205,31"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="103,45,98,84,97,133,105,184,114,207,127,229,142,243,160,252,158,257,139,247,123,232,110,210,100,185,92,133,92,84,97,44"/>
-<area shape="rect" id="Node000003" href="$structMoveStatistics.html" title=" " alt="" coords="229,5,421,31"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="332,44,335,84,333,133,322,185,312,210,298,232,282,247,264,257,261,252,279,243,294,229,307,207,317,183,328,133,329,84,326,45"/>
-</map>

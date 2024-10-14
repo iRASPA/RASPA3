@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Main Page</title>
+<title>RASPA3: RASPA3</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -91,10 +98,181 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 </div>
 </div>
 
-<div class="header">
-  <div class="headertitle"><div class="title">Raspa3 Documentation</div></div>
+<div><div class="header">
+  <div class="headertitle"><div class="title">RASPA3 </div></div>
 </div><!--header-->
 <div class="contents">
+<div class="textblock"><p><a class="anchor" id="md_README"></a> </p><h1 align="center"><br  />
+ <a href="https://github.com/iRASPA/raspa3"><img src="https://avatars.githubusercontent.com/u/46400041?s=200&amp;v=4" alt="Markdownify" width="200" class="inline"/></a> <br  />
+ RASPA3 <br  />
+ </h1>
+<h4 align="center">This software is a general purpose classical simulation package.</h4>
+<p align="center"></p>
+<p>It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2024 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).</p>
+<p align="center"></p>
+<p><a href="https://github.com/iRASPA/raspa3/releases"><img src="https://img.shields.io/github/actions/workflow/status/iRASPA/raspa3/github-actions-create-release.yml" alt="GitHub Actions Workflow Status" class="inline"/> </a> <a href="https://github.com/iRASPA/raspa3/issues"><img src="https://img.shields.io/github/issues/iRASPA/raspa3" alt="GitHub Issues or Pull Requests" class="inline"/> </a> </p>
+<p align="center"></p>
+<p>• <a href="#authors">Authors</a> • <a href="#contributors">Contributors</a> • <a href="#running">Running</a> • <a href="#python">Python</a> • <a href="#dependencies">Dependencies</a> • <a href="#installation-guide">Installation Guide</a> • </p>
+<h1>Authors</h1>
+<p>Drs. Youri Ran, University of Amsterdam<br  />
+ Drs. Shrinjay Sharma, Delft University of Technology<br  />
+ Dr. Salvador R.G. Balestra, Universidad Pablo de Olavide<br  />
+ Drs. Zhao Li, Northwestern University<br  />
+ Prof. Sofia Calero, Eindhoven University of Technology<br  />
+ Prof. Thijs Vlugt, Delft University of Technology<br  />
+ Prof. Randall Q. Snurr, Northwestern University<br  />
+ Dr. David Dubbeldam, University of Amsterdam</p>
+<h1>Contributors</h1>
+<p>Alvaro Vazquez Mayagoitia, Argonne National Lab, contribution to openmp-implementation discussion<br  />
+ Anserme, better README.md and packaging</p>
+<h1>Citing RASPA3</h1>
+<p>Y.A. Ran, S. Sharma, S.R.G. Balestra, Z. Li, S. Calero, T.J.H. Vlugt, R.Q. Snurr, D. Dubbeldam, _"RASPA3: A Monte Carlo code for computing adsorption and diffusion in nanoporous materials and thermodynamics properties of fluids"_, <b>2024</b>, J. Chem. Phys., 161, 114106, <a href="https://doi.org/10.1063/5.0226249">DOI</a></p>
+<h1>Running</h1>
+<p>cd examples/basic/1_mc_methane_in_box<br  />
+ ./run</p>
+<h1>Implemented so far</h1>
+<ul>
+<li>rigid molecules and rigid framework</li>
+<li>multiple systems, box or framework</li>
+<li>grand canonical ensemble (CBMC, CFCMC, and CB/CFCMC)</li>
+<li>Gibbs ensemble (CBMC, CFCMC, and CB/CFCMC)</li>
+<li>Monte Carlo NPT ensemble</li>
+<li>Molecular Dynamics NVT ensemble (Nose-Hoover thermostat)</li>
+<li>binary restart</li>
+<li>blocking pockets</li>
+<li>PDB-movies, energy histograms, number of molecule histograms</li>
+<li>RDF, MSD-order-N, VACF, density grids (cube files)</li>
+<li>charge equilibration</li>
+</ul>
+<h1>Todo-list</h1>
+<ul>
+<li>tail-corrections for CFCMC</li>
+<li>restart-file</li>
+<li>MC/MD hybrid move</li>
+<li>grids for rigid frameworks</li>
+<li>flexible molecules</li>
+<li>flexible frameworks</li>
+<li>reaction ensemble</li>
+<li>identity change</li>
+<li>polarization</li>
+<li>cell-lists for rigid frameworks</li>
+<li>partial molar volumes</li>
+<li>zeo++-type calculations</li>
+<li>partial molar enthalpies/volumes</li>
+<li>optimization</li>
+<li>elastic constants</li>
+<li>HDF5 property writing</li>
+</ul>
+<h1>Installation Guide</h1>
+<p>RASPA3 makes use of modern C++ and requires C++ version 23. This is only included with later versions of compilers and the code is only tested using LLVM &amp; Clang version 18. All prebuilt versions are built with static linking, making it unnecessary for users to install dependencies.</p>
+<p>For contributors or others who need to build from scratch, we recommend loading the supplied Dockerfiles, which include all the dependencies.</p>
+<p>For python users we currently only offer installation via pip, that includes building from source, requiring users to have installed all dependencies.</p>
+<ul>
+<li>Prebuilt installation</li>
+<li>Building from source<ul>
+<li>Presets</li>
+<li>Linux<ul>
+<li>Ubuntu 24</li>
+<li>Fedora 40</li>
+</ul>
+</li>
+<li>macOS</li>
+<li>Python</li>
+</ul>
+</li>
+</ul>
+<h2>Download prebuilt installation</h2>
+<p>In Github, on the right side of the page, you will find the releases section. Select your OS and use the installer to install RASPA3.</p>
+<h2>Build from source</h2>
+<h3>Dependencies</h3>
+<ul>
+<li>cmake 3.28 or higher<br  />
+</li>
+<li>ninja 1.11 or higher<br  />
+</li>
+<li>llvm-18 or higher<br  />
+</li>
+<li>python3 and pybind11<br  />
+</li>
+<li>blas and lapack (64-bit integers)</li>
+<li>openmp</li>
+<li>hfd5</li>
+</ul>
+<h3>presets</h3>
+<p>cmake &ndash;list-presets<br  />
+ Available configure presets:<br  />
+ </p><blockquote class="doxtable">
+<p>&zwj;"macos-x64"<br  />
+ "macos-x64-debug"<br  />
+ "macos-x64-profile"<br  />
+ "macos-apple-silicon"<br  />
+ "macos-apple-silicon-debug"<br  />
+ "macos-apple-silicon-profile"<br  />
+ "windows-x64"<br  />
+ "windows-arm64"<br  />
+ "linux-x86_64-"<br  />
+ "linux-x86_64-carbon"<br  />
+ "linux-x86_64-opensuse-leap-15.2"<br  />
+ "linux-x86_64-opensuse-leap-15.3"<br  />
+ "linux-x86_64-opensuse-leap-15.4"<br  />
+ "linux-x86_64-opensuse-leap-15.5"<br  />
+ "linux-x86_64-opensuse-tumbleweed"<br  />
+ "linux-x86_64-archlinux"<br  />
+ "linux-x86_64-redhat-6"<br  />
+ "linux-x86_64-redhat-7"<br  />
+ "linux-x86_64-redhat-8"<br  />
+ "linux-x86_64-redhat-9"<br  />
+ "linux-x86_64-debian-12"<br  />
+ "linux-x86_64-debian-11"<br  />
+ "linux-x86_64-debian-10"<br  />
+ "linux-x86_64-ubuntu-24"<br  />
+ "linux-x86_64-ubuntu-22"<br  />
+ "linux-x86_64-ubuntu-20"<br  />
+ "linux-x86_64-fedora-35"<br  />
+ "linux-x86_64-fedora-36"<br  />
+ "linux-x86_64-fedora-37"<br  />
+ "linux-x86_64-fedora-38"<br  />
+ "linux-x86_64-fedora-39"<br  />
+ "linux-x86_64-fedora-40" </p>
+</blockquote>
+<h3>linux</h3>
+<h4>Ubuntu 24</h4>
+<p>apt-get install -y &ndash;no-install-recommends git ca-certificates cmake ninja-build<br  />
+ apt-get install -y &ndash;no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev<br  />
+ apt-get install -y &ndash;no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev<br  />
+ apt-get install -y &ndash;no-install-recommends liblapack64-dev libblas64-dev<br  />
+ cmake -B build &ndash;preset=linux-ubuntu-24<br  />
+ ninja -C build<br  />
+ ninja -C build install<br  />
+ ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
+<h4>Fedora 40</h4>
+<p>dnf install -y wget git rpm-build<br  />
+ dnf install -y llvm lld cmake clang clang-tools-extra ninja-build<br  />
+ dnf install -y libomp-devel libcxx libcxxabi libcxx-devel libcxxabi-devel libcxx-static libcxxabi-static<br  />
+ dnf install -y lapack-devel lapack64 blas64<br  />
+ dnf install -y python3 python3-devel python3-pybind11<br  />
+ dnf install -y pybind11-devel<br  />
+ cmake -B &ndash;preset linux-fedora-40<br  />
+ ninja -C build<br  />
+ ninja -C build install<br  />
+ ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
+<h3>macOS</h3>
+<p>brew install llvm lld libomp hdf5 libaec ninja cmake doxygen graphviz lapack pybind11<br  />
+ (make sure '`brew &ndash;prefix hdf5`/bin' for hdf5 is in your path)<br  />
+ cmake -B &ndash;preset macos-apple-silicon<br  />
+ (or cmake -B &ndash;preset macos-x64)<br  />
+ ninja -C build<br  />
+ ninja -C build install<br  />
+ ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
+<h3>python</h3>
+<p>This package can also be built as a library for python. To build the python package the pip packaging system can be used. Note that due to compilation of the full package this might take a few minutes. To install, run the following command:</p>
+<div class="fragment"><div class="line">export CMAKE_PRESET=&quot;--preset=python&quot;</div>
+<div class="line">pip install .</div>
+</div><!-- fragment --><p>This will install the package to the current python environment.</p>
+<p>We strongly advise users to use the CMakePresets.json preset for their given system. For building the python package with a given preset change the following line to reflect the given preset:</p>
+<div class="fragment"><div class="line">export CMAKE_PRESET=&quot;--preset=macos-apple-silicon&quot;</div>
+<div class="line">pip install .</div>
+</div><!-- fragment --> </div></div><!-- PageDoc -->
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

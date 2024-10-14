@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Member List</title>
+<title>RASPA3: Member List</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -98,18 +105,18 @@ $(document).ready(function(){initNavTree('structEquationOfState.html',''); initR
 
 <p>This is the complete list of members for <a class="el" href="structEquationOfState.html">EquationOfState</a>, including all inherited members.</p>
 <table class="directory">
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>computeComponentFluidProperties</b>(EquationOfState::Type equationOfState, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double HeliumVoidFraction, std::vector&lt; Component &gt; &amp;components) (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>equationOfState</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>EquationOfState</b>()=default (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>EquationOfState</b>(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double HeliumVoidFraction, std::vector&lt; Component &gt; &amp;components) (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>FluidState</b> enum name (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>fluidState</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>MultiComponentMixingRules</b> enum name (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>multiComponentMixingRules</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>operator&lt;&lt;</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>operator&gt;&gt;</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>Type</b> enum name (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>versionNumber</b> (defined in <a class="el" href="structEquationOfState.html">EquationOfState</a>)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#acd32e4e08e0efb2944a129abd398380e">computeComponentFluidProperties</a>(EquationOfState::Type equationOfState, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double heliumVoidFraction, std::vector&lt; Component &gt; &amp;components)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#a3ba390021f69b0511144725495a96f6b">equationOfState</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#a03dc3da0d5bc8498d2799783577e64d3">EquationOfState</a>()=default</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#a83a67132f77dded8cc99c6e0024a5dd4">EquationOfState</a>(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules, double temperature, double pressure, const SimulationBox &amp;simulationBox, double heliumVoidFraction, std::vector&lt; Component &gt; &amp;components)</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#ad24dde64769d920de844de46c3426af5">FluidState</a> enum name</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#a947e8b1f2134610789ce6f26e7f9e5a7">fluidState</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#af82f7c7f61c624be3fb4577f1bf889f7">MultiComponentMixingRules</a> enum name</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242">multiComponentMixingRules</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#a192dcf97782371f3a68978a82ff742b6">operator&lt;&lt;</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#a0ef3b79a19d279c6228006b65ba7cf03">operator&gt;&gt;</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structEquationOfState.html#a51c8277dc27fa95e25e99f5cd682156f">Type</a> enum name</td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structEquationOfState.html#a74e088a0fa528970709a0e72a7ab5b06">versionNumber</a></td><td class="entry"><a class="el" href="structEquationOfState.html">EquationOfState</a></td><td class="entry"></td></tr>
 </table></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

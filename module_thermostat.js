@@ -1,4 +1,4 @@
 var module_thermostat =
 [
-    [ "Thermostat", "structThermostat.html", null ]
+    [ "Thermostat", "structThermostat.html", "structThermostat" ]
 ];

@@ -1,4 +1,4 @@
 var module_input__reader =
 [
-    [ "InputReader", "structInputReader.html", null ]
+    [ "InputReader", "structInputReader.html", "structInputReader" ]
 ];

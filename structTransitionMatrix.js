@@ -1,0 +1,27 @@
+var structTransitionMatrix =
+[
+    [ "adjustBias", "structTransitionMatrix.html#ac58ab554139e766556a05265ba529d33", null ],
+    [ "biasFactor", "structTransitionMatrix.html#a6e82de61d604ada815beeaabdd01db09", null ],
+    [ "clearCMatrix", "structTransitionMatrix.html#aee862fe0ae56f0d464954bd428f9d06d", null ],
+    [ "initialize", "structTransitionMatrix.html#a9a2b98bec1b4fd7c7776a564c372f469", null ],
+    [ "updateHistogram", "structTransitionMatrix.html#a68ff4dd34c9e12e404b64276fd2bd913", null ],
+    [ "updateMatrix", "structTransitionMatrix.html#a9767fecfe0973d0bb6b25beed413ecdb", null ],
+    [ "writeStatistics", "structTransitionMatrix.html#a93c2fd5a0108fc6fbd796731279a9358", null ],
+    [ "bias", "structTransitionMatrix.html#a845ce8195aea5bd7d2450fb31311c8a7", null ],
+    [ "cmatrix", "structTransitionMatrix.html#ae7ada65031b63eab58f15b0908a1c1c2", null ],
+    [ "doTMMC", "structTransitionMatrix.html#abbf3e1a5222534517e235b28abada545", null ],
+    [ "forward_lnpi", "structTransitionMatrix.html#ae936ea2f5161ba4735810885254876b2", null ],
+    [ "histogram", "structTransitionMatrix.html#a7d80a256bbd3967dbf2e4b42c9c9f1b6", null ],
+    [ "lnpi", "structTransitionMatrix.html#a9d052c97d0963b37ffdc3a0f4605405e", null ],
+    [ "maxMacrostate", "structTransitionMatrix.html#aa97a232f44c02eda56b0fe4b534b6c40", null ],
+    [ "minMacrostate", "structTransitionMatrix.html#a50948c061cd98ee8b0acb6a9828e2050", null ],
+    [ "numberOfSteps", "structTransitionMatrix.html#a05911234737520f785c23585e3dd3e96", null ],
+    [ "numberOfUpdates", "structTransitionMatrix.html#a41d6324e322702831cf5ec0315008b56", null ],
+    [ "rejectOutofBound", "structTransitionMatrix.html#a8386a4b54930d1648490e1a380460bfe", null ],
+    [ "reverse_lnpi", "structTransitionMatrix.html#a5fc3239b0df1dc3818c7d4754e1c6c77", null ],
+    [ "rezeroAfterInitialization", "structTransitionMatrix.html#a22fb6652938f1ca85b2eea68b251fcb3", null ],
+    [ "updateTMEvery", "structTransitionMatrix.html#a8242f35b99dc4cafca1ede518a33d0cf", null ],
+    [ "useBias", "structTransitionMatrix.html#ac513c7e4297099fe499d0a45966cd62e", null ],
+    [ "useTMBias", "structTransitionMatrix.html#a2492d39f9199ec216051940a0a67a9d9", null ],
+    [ "versionNumber", "structTransitionMatrix.html#a9ad3a3f4719ffd1c1da3991ea9904cf0", null ]
+];

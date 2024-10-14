@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: System Struct Reference</title>
+<title>RASPA3: System Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,134 +107,29 @@ $(document).ready(function(){initNavTree('structSystem.html',''); initResizable(
   <div class="headertitle"><div class="title">System Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_system.html">system</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents the central system for simulations.  
+ <a href="structSystem.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for System:</div>
 <div class="dyncontent">
 <div class="center"><img src="structSystem__coll__graph.png" border="0" usemap="#aSystem_coll__map" alt="Collaboration graph"/></div>
-<map name="aSystem_coll__map" id="aSystem_coll__map">
-<area shape="rect" title=" " alt="" coords="1852,1066,1923,1091"/>
-<area shape="rect" title=" " alt="" coords="1371,161,1566,186"/>
-<area shape="poly" title=" " alt="" coords="1530,155,1600,144,1681,143,1722,149,1761,160,1798,178,1830,204,1841,223,1851,256,1866,352,1877,478,1884,620,1889,896,1889,1065,1883,1065,1884,896,1878,620,1872,478,1861,352,1846,257,1837,225,1826,207,1795,182,1760,165,1721,154,1681,149,1601,150,1531,160"/>
-<area shape="rect" href="structFramework.html" title=" " alt="" coords="811,161,905,186"/>
-<area shape="poly" title=" " alt="" coords="919,171,1371,171,1371,176,919,176"/>
-<area shape="rect" href="structSimulationBox.html" title=" " alt="" coords="391,75,508,101"/>
-<area shape="poly" title=" " alt="" coords="521,75,807,43,998,28,1200,18,1400,19,1494,25,1581,34,1660,48,1729,67,1787,92,1830,124,1837,140,1843,171,1854,271,1872,566,1888,1066,1883,1066,1867,567,1849,271,1838,171,1832,141,1826,127,1784,97,1728,72,1659,53,1580,39,1493,30,1400,25,1200,24,998,33,807,48,522,81"/>
-<area shape="poly" title=" " alt="" coords="522,99,723,140,811,160,810,165,722,145,521,104"/>
-<area shape="rect" title=" " alt="" coords="371,211,527,237"/>
-<area shape="poly" title=" " alt="" coords="541,216,692,211,889,212,997,217,1109,226,1220,240,1328,259,1411,273,1485,282,1551,291,1612,302,1669,319,1723,348,1777,391,1830,452,1844,490,1855,558,1873,746,1884,941,1888,1066,1883,1066,1878,941,1868,747,1850,559,1839,491,1826,455,1773,395,1721,352,1667,324,1611,307,1550,296,1484,288,1410,278,1328,264,1219,245,1108,231,997,223,889,218,692,216,541,221"/>
-<area shape="poly" title=" " alt="" coords="541,210,810,176,811,182,541,215"/>
-<area shape="rect" href="structComponent.html" title=" " alt="" coords="809,861,907,886"/>
-<area shape="poly" title=" " alt="" coords="467,247,583,437,749,705,850,859,846,862,744,708,578,440,463,250"/>
-<area shape="rect" href="structAtom.html" title=" " alt="" coords="30,211,87,237"/>
-<area shape="poly" title=" " alt="" coords="101,221,371,221,371,227,101,227"/>
-<area shape="rect" title=" " alt="" coords="370,530,529,555"/>
-<area shape="poly" title=" " alt="" coords="499,523,611,490,678,474,746,463,944,456,1304,454,1655,461,1775,468,1811,473,1830,479,1838,493,1846,514,1858,578,1876,757,1885,945,1888,1065,1883,1066,1880,945,1870,758,1853,579,1841,515,1834,495,1826,483,1810,478,1774,473,1655,466,1304,460,944,461,747,468,679,480,612,495,501,528"/>
-<area shape="poly" title=" " alt="" coords="462,516,511,438,546,393,585,350,649,296,718,248,830,184,832,188,721,253,653,300,589,354,550,396,516,441,467,519"/>
-<area shape="poly" title=" " alt="" coords="461,567,478,612,505,668,542,725,564,752,588,775,628,797,686,820,810,858,808,863,685,825,625,802,585,779,560,756,538,729,501,670,474,614,456,569"/>
-<area shape="rect" title=" " alt="" coords="1073,761,1248,801"/>
-<area shape="poly" title=" " alt="" coords="481,561,595,632,669,671,748,704,832,730,919,749,1073,771,1073,777,918,754,831,735,746,709,667,676,592,636,478,565"/>
-<area shape="rect" href="structTransitionMatrix.html" title=" " alt="" coords="1405,514,1532,539"/>
-<area shape="poly" title=" " alt="" coords="542,539,1405,525,1405,530,542,544"/>
-<area shape="rect" title=" " alt="" coords="1371,885,1567,910"/>
-<area shape="poly" title=" " alt="" coords="1581,892,1652,894,1724,899,1787,909,1811,917,1830,927,1845,942,1858,959,1875,998,1884,1036,1888,1065,1883,1066,1879,1037,1870,1000,1853,962,1841,945,1826,931,1809,922,1785,915,1724,904,1652,899,1581,897"/>
-<area shape="poly" title=" " alt="" coords="921,873,1370,891,1370,896,920,878"/>
-<area shape="rect" title=" " alt="" coords="375,986,524,1011"/>
-<area shape="poly" title=" " alt="" coords="526,980,620,958,722,928,780,906,829,884,832,888,782,911,724,933,622,963,527,986"/>
-<area shape="rect" href="structForceField.html" title=" " alt="" coords="814,1046,902,1071"/>
-<area shape="poly" title=" " alt="" coords="498,1013,587,1037,710,1052,814,1056,814,1061,710,1057,586,1043,497,1018"/>
-<area shape="rect" href="structMCMoveCpuTime.html" title=" " alt="" coords="381,805,518,830"/>
-<area shape="poly" title=" " alt="" coords="531,800,586,793,655,790,723,793,799,800,858,808,994,825,1153,828,1418,831,1557,835,1680,843,1776,855,1809,863,1830,874,1850,895,1865,919,1876,946,1883,974,1889,1027,1890,1066,1884,1066,1884,1027,1878,975,1871,948,1860,922,1846,898,1826,878,1807,868,1775,860,1680,848,1556,840,1418,836,1153,833,993,831,858,813,799,805,722,799,655,796,587,799,532,805"/>
-<area shape="poly" title=" " alt="" coords="501,832,587,853,707,867,809,871,809,876,706,872,586,859,500,837"/>
-<area shape="rect" href="structMCMoveCount.html" title=" " alt="" coords="391,917,508,942"/>
-<area shape="poly" title=" " alt="" coords="522,925,823,918,1233,917,1436,921,1615,930,1751,945,1799,955,1829,967,1853,989,1869,1016,1886,1065,1881,1067,1864,1018,1849,992,1827,972,1797,960,1750,950,1614,935,1436,926,1233,922,823,924,522,930"/>
-<area shape="poly" title=" " alt="" coords="521,917,809,877,810,883,522,922"/>
-<area shape="rect" href="structEquationOfState.html" title=" " alt="" coords="1405,691,1533,717"/>
-<area shape="poly" title=" " alt="" coords="1547,692,1615,690,1691,698,1729,708,1765,721,1800,740,1830,765,1845,789,1858,823,1875,912,1884,1003,1888,1066,1883,1066,1879,1003,1870,913,1852,825,1840,791,1826,768,1797,745,1763,726,1727,713,1690,704,1614,696,1547,697"/>
-<area shape="rect" href="structLoadings.html" title=" " alt="" coords="1429,563,1509,589"/>
-<area shape="poly" title=" " alt="" coords="1522,573,1602,575,1693,581,1776,596,1808,607,1830,622,1841,637,1851,658,1867,710,1878,774,1884,844,1890,977,1889,1066,1884,1066,1884,978,1879,844,1872,775,1862,711,1846,660,1837,640,1826,626,1805,612,1774,601,1692,587,1602,580,1522,578"/>
-<area shape="rect" title=" " alt="" coords="775,670,941,695"/>
-<area shape="poly" title=" " alt="" coords="917,696,994,711,1090,727,1167,743,1203,745,1240,742,1281,731,1327,711,1334,704,1338,695,1341,685,1351,676,1386,660,1418,653,1448,651,1476,654,1535,664,1570,669,1609,671,1643,668,1674,661,1727,646,1752,642,1777,644,1803,653,1830,671,1850,702,1866,747,1876,804,1883,866,1889,985,1889,1066,1884,1066,1884,985,1878,866,1871,804,1860,749,1846,704,1826,675,1800,657,1776,649,1752,648,1728,652,1675,667,1644,673,1609,676,1569,674,1535,670,1475,659,1447,656,1419,658,1388,665,1353,681,1346,688,1343,697,1339,707,1329,716,1283,736,1241,747,1203,751,1166,748,1089,733,993,716,916,701"/>
-<area shape="poly" title=" " alt="" coords="954,694,1055,705,1165,710,1262,706,1300,697,1326,684,1334,677,1338,668,1339,649,1339,628,1342,617,1350,606,1368,593,1388,584,1428,575,1429,580,1389,589,1370,598,1354,610,1347,619,1344,628,1344,649,1343,669,1339,680,1330,689,1301,702,1263,711,1165,716,1055,710,954,699"/>
-<area shape="poly" title=" " alt="" coords="907,663,993,640,1068,636,1166,636,1260,631,1299,623,1326,610,1336,597,1338,582,1340,565,1350,549,1376,534,1404,526,1406,531,1378,539,1354,553,1345,567,1343,582,1341,599,1330,614,1300,628,1261,636,1166,642,1068,641,994,645,909,668"/>
-<area shape="poly" title=" " alt="" coords="1262,779,1419,782,1595,790,1747,803,1800,813,1830,826,1843,844,1855,871,1872,941,1882,1013,1888,1066,1882,1066,1877,1014,1866,942,1849,873,1839,847,1826,830,1798,818,1746,809,1595,795,1418,788,1262,785"/>
-<area shape="poly" title=" " alt="" coords="916,1060,1109,1073,1352,1084,1469,1086,1585,1084,1852,1077,1852,1083,1585,1089,1469,1091,1352,1089,1108,1078,915,1066"/>
-<area shape="rect" title=" " alt="" coords="336,1122,563,1147"/>
-<area shape="poly" title=" " alt="" coords="576,1141,650,1132,687,1123,721,1108,729,1103,733,1096,737,1088,745,1080,779,1066,813,1059,814,1064,780,1071,748,1085,741,1091,737,1098,733,1106,724,1113,689,1128,651,1138,577,1146"/>
-<area shape="rect" title=" " alt="" coords="348,1073,551,1098"/>
-<area shape="poly" title=" " alt="" coords="565,1088,642,1087,722,1083,813,1067,814,1072,723,1088,643,1093,565,1093"/>
-<area shape="rect" title=" " alt="" coords="1379,986,1559,1011"/>
-<area shape="poly" title=" " alt="" coords="1572,986,1632,986,1698,990,1765,1002,1829,1023,1858,1042,1878,1064,1875,1068,1854,1046,1827,1028,1764,1007,1697,995,1632,991,1572,992"/>
-<area shape="rect" href="structMolecule.html" title=" " alt="" coords="817,986,899,1011"/>
-<area shape="poly" title=" " alt="" coords="913,996,1378,996,1378,1001,913,1001"/>
-<area shape="rect" href="structRunningEnergy.html" title=" " alt="" coords="1409,1035,1529,1061"/>
-<area shape="poly" title=" " alt="" coords="1542,1051,1852,1073,1852,1079,1542,1056"/>
-<area shape="rect" href="structEnergyStatus.html" title=" " alt="" coords="1415,1149,1523,1174"/>
-<area shape="poly" title=" " alt="" coords="1536,1166,1600,1169,1674,1166,1752,1155,1791,1145,1827,1131,1854,1112,1875,1090,1879,1093,1858,1116,1829,1136,1792,1150,1753,1160,1675,1172,1600,1174,1536,1172"/>
-<area shape="rect" href="structEnergyFactor.html" title=" " alt="" coords="5,1315,112,1341"/>
-<area shape="poly" title=" " alt="" coords="125,1330,405,1349,785,1366,972,1368,1136,1364,1260,1352,1301,1341,1326,1329,1339,1313,1344,1296,1339,1260,1333,1222,1338,1202,1350,1184,1364,1172,1380,1165,1414,1157,1415,1162,1382,1170,1367,1177,1354,1187,1342,1204,1339,1222,1344,1259,1349,1297,1344,1315,1330,1333,1303,1346,1261,1357,1136,1370,972,1374,785,1371,404,1354,125,1336"/>
-<area shape="rect" href="structEnergyInter.html" title=" " alt="" coords="401,1209,498,1234"/>
-<area shape="poly" title=" " alt="" coords="119,1309,401,1232,402,1237,120,1314"/>
-<area shape="rect" href="structEnergyIntra.html" title=" " alt="" coords="401,1279,498,1305"/>
-<area shape="poly" title=" " alt="" coords="512,1284,960,1240,1193,1214,1327,1193,1351,1183,1414,1167,1415,1172,1353,1188,1329,1199,1194,1219,961,1245,512,1289"/>
-<area shape="rect" title=" " alt="" coords="760,1301,956,1326"/>
-<area shape="poly" title=" " alt="" coords="512,1293,760,1306,760,1311,511,1298"/>
-<area shape="poly" title=" " alt="" coords="512,1215,1328,1168,1414,1162,1415,1168,1328,1173,512,1221"/>
-<area shape="rect" title=" " alt="" coords="760,1095,956,1121"/>
-<area shape="poly" title=" " alt="" coords="511,1210,629,1189,683,1176,721,1162,733,1150,745,1138,792,1118,794,1123,748,1142,737,1154,724,1166,685,1181,630,1194,512,1215"/>
-<area shape="poly" title=" " alt="" coords="970,1319,1069,1322,1174,1319,1266,1308,1301,1297,1326,1283,1335,1273,1339,1261,1338,1236,1337,1210,1341,1196,1350,1183,1380,1165,1414,1158,1415,1163,1382,1170,1354,1187,1345,1199,1342,1211,1343,1236,1345,1262,1340,1275,1330,1287,1304,1302,1267,1313,1175,1325,1069,1327,969,1324"/>
-<area shape="poly" title=" " alt="" coords="911,1122,994,1141,1111,1154,1228,1160,1414,1161,1414,1166,1228,1166,1110,1160,993,1147,910,1127"/>
-<area shape="rect" title=" " alt="" coords="1373,1344,1564,1384"/>
-<area shape="poly" title=" " alt="" coords="1578,1374,1650,1379,1723,1380,1786,1373,1809,1366,1826,1357,1840,1338,1852,1309,1869,1231,1879,1150,1883,1091,1888,1092,1884,1150,1874,1231,1857,1310,1845,1341,1830,1361,1811,1371,1787,1378,1724,1385,1650,1384,1578,1379"/>
-<area shape="rect" title=" " alt="" coords="768,1402,948,1427"/>
-<area shape="poly" title=" " alt="" coords="962,1411,1133,1406,1328,1389,1377,1381,1378,1387,1328,1395,1134,1411,962,1417"/>
-<area shape="rect" title=" " alt="" coords="1352,1198,1585,1253"/>
-<area shape="poly" title=" " alt="" coords="1600,1236,1667,1239,1733,1239,1789,1233,1810,1227,1827,1219,1841,1206,1853,1191,1870,1155,1879,1119,1883,1091,1888,1092,1884,1120,1875,1157,1858,1194,1845,1210,1829,1224,1812,1232,1790,1238,1733,1244,1667,1245,1599,1241"/>
-<area shape="rect" href="structMCMoveProbabilitiesSystem.html" title=" " alt="" coords="1364,1277,1573,1302"/>
-<area shape="poly" title=" " alt="" coords="1587,1292,1658,1291,1728,1287,1787,1277,1810,1270,1826,1261,1844,1243,1858,1221,1875,1173,1882,1126,1884,1091,1889,1092,1888,1127,1880,1175,1862,1224,1848,1246,1830,1265,1812,1275,1788,1283,1728,1292,1658,1297,1587,1297"/>
-<area shape="rect" href="structMCMoveStatisticsSystem.html" title=" " alt="" coords="1375,1409,1563,1434"/>
-<area shape="poly" title=" " alt="" coords="1576,1427,1649,1429,1723,1427,1786,1418,1809,1411,1826,1401,1842,1378,1854,1343,1872,1252,1880,1157,1883,1092,1888,1092,1885,1158,1877,1252,1860,1345,1846,1381,1830,1405,1812,1416,1787,1424,1723,1433,1649,1435,1576,1432"/>
-<area shape="rect" href="structMoveStatistics.html" title=" " alt="" coords="762,1451,954,1477"/>
-<area shape="poly" title=" " alt="" coords="968,1471,1065,1477,1168,1480,1261,1476,1299,1472,1327,1464,1338,1455,1351,1443,1380,1432,1382,1437,1353,1448,1342,1458,1329,1469,1300,1477,1262,1482,1168,1485,1065,1482,968,1476"/>
-<area shape="rect" href="structReactions.html" title=" " alt="" coords="1425,1458,1512,1483"/>
-<area shape="poly" title=" " alt="" coords="1526,1474,1605,1479,1694,1479,1775,1472,1805,1463,1826,1451,1844,1425,1858,1384,1868,1333,1875,1276,1882,1167,1883,1092,1889,1092,1887,1167,1880,1277,1873,1333,1863,1385,1849,1427,1830,1455,1807,1468,1776,1477,1695,1485,1605,1484,1526,1479"/>
-<area shape="rect" title=" " alt="" coords="769,1501,947,1526"/>
-<area shape="poly" title=" " alt="" coords="962,1517,1134,1518,1231,1512,1327,1500,1351,1492,1424,1476,1425,1481,1353,1497,1329,1505,1232,1518,1134,1523,961,1522"/>
-<area shape="poly" title=" " alt="" coords="1535,509,1604,500,1684,501,1724,507,1762,518,1798,536,1830,561,1844,591,1855,646,1872,799,1888,1066,1883,1066,1867,800,1850,646,1838,593,1826,564,1795,540,1760,523,1723,512,1683,506,1605,505,1536,514"/>
-<area shape="rect" title=" " alt="" coords="771,478,945,503"/>
-<area shape="poly" title=" " alt="" coords="959,494,1405,520,1405,526,958,499"/>
-<area shape="rect" href="structPressureRange.html" title=" " alt="" coords="1409,1507,1528,1533"/>
-<area shape="poly" title=" " alt="" coords="1542,1524,1620,1529,1704,1529,1779,1520,1807,1512,1826,1501,1846,1470,1861,1423,1872,1364,1878,1300,1884,1175,1884,1092,1889,1092,1889,1175,1884,1300,1877,1365,1866,1424,1851,1472,1830,1505,1809,1517,1780,1526,1705,1534,1620,1534,1542,1530"/>
-<area shape="rect" href="structPropertyEnergy.html" title=" " alt="" coords="1407,1557,1530,1582"/>
-<area shape="poly" title=" " alt="" coords="1544,1574,1622,1579,1706,1579,1779,1571,1807,1563,1826,1552,1838,1526,1849,1477,1866,1337,1883,1091,1888,1092,1871,1338,1854,1478,1843,1528,1830,1555,1809,1568,1780,1576,1706,1584,1622,1584,1544,1579"/>
-<area shape="rect" title=" " alt="" coords="755,1551,961,1591"/>
-<area shape="poly" title=" " alt="" coords="974,1568,1407,1567,1407,1572,974,1573"/>
-<area shape="rect" href="structPropertyLoading.html" title=" " alt="" coords="1405,1609,1533,1634"/>
-<area shape="poly" title=" " alt="" coords="1547,1626,1624,1630,1707,1629,1780,1621,1807,1612,1826,1601,1839,1573,1850,1518,1867,1362,1878,1199,1883,1092,1888,1092,1883,1199,1873,1363,1855,1519,1844,1574,1830,1604,1810,1617,1781,1626,1708,1635,1624,1635,1547,1631"/>
-<area shape="rect" title=" " alt="" coords="769,1615,947,1655"/>
-<area shape="poly" title=" " alt="" coords="961,1630,1405,1620,1405,1625,961,1635"/>
-<area shape="rect" href="structPropertyEnthalpy.html" title=" " alt="" coords="1401,1665,1536,1690"/>
-<area shape="poly" title=" " alt="" coords="1550,1675,1719,1669,1790,1662,1814,1657,1826,1651,1833,1640,1840,1620,1852,1560,1869,1388,1879,1208,1883,1092,1888,1092,1884,1209,1874,1388,1857,1560,1845,1622,1838,1642,1830,1655,1815,1662,1791,1668,1719,1675,1550,1680"/>
-<area shape="rect" title=" " alt="" coords="747,1679,969,1734"/>
-<area shape="poly" title=" " alt="" coords="983,1698,1401,1678,1401,1683,983,1703"/>
-<area shape="rect" href="structPropertyTemperature.html" title=" " alt="" coords="1389,1721,1548,1746"/>
-<area shape="poly" title=" " alt="" coords="1562,1742,1637,1748,1716,1750,1783,1743,1809,1735,1826,1725,1834,1712,1842,1689,1855,1620,1865,1529,1872,1425,1880,1222,1883,1092,1889,1092,1886,1222,1877,1425,1870,1529,1860,1621,1847,1691,1839,1714,1830,1729,1811,1740,1784,1748,1716,1755,1637,1754,1561,1748"/>
-<area shape="rect" title=" " alt="" coords="777,1759,939,1799"/>
-<area shape="poly" title=" " alt="" coords="953,1768,993,1765,1389,1736,1390,1742,994,1771,953,1774"/>
-<area shape="rect" href="structPropertyPressure.html" title=" " alt="" coords="1402,1771,1535,1797"/>
-<area shape="poly" title=" " alt="" coords="953,1779,993,1780,1402,1782,1402,1787,993,1785,953,1784"/>
-<area shape="poly" title=" " alt="" coords="1549,1791,1627,1796,1709,1798,1781,1791,1808,1783,1826,1771,1835,1758,1843,1733,1856,1659,1866,1560,1873,1448,1881,1229,1883,1091,1889,1092,1887,1230,1879,1448,1871,1560,1861,1659,1848,1734,1840,1760,1830,1775,1810,1788,1782,1796,1709,1803,1626,1802,1549,1796"/>
-<area shape="rect" title=" " alt="" coords="765,1823,951,1863"/>
-<area shape="poly" title=" " alt="" coords="965,1834,1135,1821,1328,1803,1402,1792,1402,1798,1328,1808,1136,1827,965,1839"/>
-<area shape="rect" href="structPropertySimulationBox.html" title=" " alt="" coords="1383,1821,1555,1846"/>
-<area shape="poly" title=" " alt="" coords="1521,1847,1590,1863,1672,1871,1714,1868,1755,1860,1793,1844,1826,1820,1835,1804,1844,1778,1858,1698,1868,1592,1875,1472,1882,1238,1883,1092,1889,1092,1887,1239,1880,1473,1873,1593,1863,1699,1849,1779,1840,1807,1830,1823,1796,1848,1757,1865,1715,1874,1672,1876,1589,1869,1519,1853"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a4891d751199d2e9c49e3699a42d28002" id="r_a4891d751199d2e9c49e3699a42d28002"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSystem.html#a4891d751199d2e9c49e3699a42d28002">System</a> (size_t id, std::optional&lt; <a class="el" href="structSimulationBox.html">SimulationBox</a> &gt; box, double T, std::optional&lt; double &gt; P, <a class="el" href="structForceField.html">ForceField</a> forcefield, std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; frameworkComponents, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; components, std::vector&lt; size_t &gt; initialNumberOfMolecules, size_t numberOfBlocks, const <a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a>())</td></tr>
-<tr class="memdesc:a4891d751199d2e9c49e3699a42d28002"><td class="mdescLeft">&#160;</td><td class="mdescRight">Brief description. Brief description continued.  <br /></td></tr>
-<tr class="separator:a4891d751199d2e9c49e3699a42d28002"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ffb94a5a2db03014de0a8440f0cee3a" id="r_a7ffb94a5a2db03014de0a8440f0cee3a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSystem.html#a7ffb94a5a2db03014de0a8440f0cee3a">System</a> ()=default</td></tr>
+<tr class="memdesc:a7ffb94a5a2db03014de0a8440f0cee3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> class.  <br /></td></tr>
+<tr class="separator:a7ffb94a5a2db03014de0a8440f0cee3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2226cf4cf4e26d21d74ebd9604f8d953" id="r_a2226cf4cf4e26d21d74ebd9604f8d953"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSystem.html#a2226cf4cf4e26d21d74ebd9604f8d953">System</a> (size_t id, <a class="el" href="structForceField.html">ForceField</a> forcefield, std::optional&lt; <a class="el" href="structSimulationBox.html">SimulationBox</a> &gt; box, double T, std::optional&lt; double &gt; P, double heliumVoidFraction, std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; frameworkComponents, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; components, std::vector&lt; size_t &gt; initialNumberOfMolecules, size_t numberOfBlocks, const <a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a> &amp;systemProbabilities=<a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a>(), std::optional&lt; size_t &gt; sampleMoviesEvery=std::nullopt)</td></tr>
+<tr class="memdesc:a2226cf4cf4e26d21d74ebd9604f8d953"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object programmatically.  <br /></td></tr>
+<tr class="separator:a2226cf4cf4e26d21d74ebd9604f8d953"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a081268c346089c3eb748d32809674357" id="r_a081268c346089c3eb748d32809674357"><td class="memItemLeft" align="right" valign="top"><a id="a081268c346089c3eb748d32809674357" name="a081268c346089c3eb748d32809674357"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>System</b> (size_t id, double T, std::optional&lt; double &gt; P, double heliumVoidFraction, std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; frameworkComponents, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; components)</td></tr>
+<tr class="separator:a081268c346089c3eb748d32809674357"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a937cabc43d8574cd116bd32dc660c3d4" id="r_a937cabc43d8574cd116bd32dc660c3d4"><td class="memItemLeft" align="right" valign="top"><a id="a937cabc43d8574cd116bd32dc660c3d4" name="a937cabc43d8574cd116bd32dc660c3d4"></a>
+std::optional&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>frameworkMass</b> () const</td></tr>
+<tr class="separator:a937cabc43d8574cd116bd32dc660c3d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c9839c934fcad13b8143b8a301e1775" id="r_a7c9839c934fcad13b8143b8a301e1775"><td class="memItemLeft" align="right" valign="top"><a id="a7c9839c934fcad13b8143b8a301e1775" name="a7c9839c934fcad13b8143b8a301e1775"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>indexOfGCFractionalMoleculesPerComponent_CFCMC</b> (size_t selectedComponent)</td></tr>
 <tr class="memdesc:a7c9839c934fcad13b8143b8a301e1775"><td class="mdescLeft">&#160;</td><td class="mdescRight">The fractional molecule for grand-canonical is stored first. <br /></td></tr>
@@ -255,6 +157,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>determineSimulationBo
 <tr class="memitem:adf9b6f686f1c2c74159780aa7c3f5b04" id="r_adf9b6f686f1c2c74159780aa7c3f5b04"><td class="memItemLeft" align="right" valign="top"><a id="adf9b6f686f1c2c74159780aa7c3f5b04" name="adf9b6f686f1c2c74159780aa7c3f5b04"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>initializeVelocities</b> (RandomNumber &amp;random)</td></tr>
 <tr class="separator:adf9b6f686f1c2c74159780aa7c3f5b04"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2821ec40a15f15a21d5163f15b20fccd" id="r_a2821ec40a15f15a21d5163f15b20fccd"><td class="memItemLeft" align="right" valign="top"><a id="a2821ec40a15f15a21d5163f15b20fccd" name="a2821ec40a15f15a21d5163f15b20fccd"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>removeCenterOfMassVelocityDrift</b> ()</td></tr>
+<tr class="separator:a2821ec40a15f15a21d5163f15b20fccd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d86f1dbe9343a8c3588949f1dde9f4a" id="r_a2d86f1dbe9343a8c3588949f1dde9f4a"><td class="memItemLeft" align="right" valign="top"><a id="a2d86f1dbe9343a8c3588949f1dde9f4a" name="a2d86f1dbe9343a8c3588949f1dde9f4a"></a>
+double3&#160;</td><td class="memItemRight" valign="bottom"><b>computeCenterOfMass</b> () const</td></tr>
+<tr class="separator:a2d86f1dbe9343a8c3588949f1dde9f4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae62183019b166b0992a902f267a47546" id="r_ae62183019b166b0992a902f267a47546"><td class="memItemLeft" align="right" valign="top"><a id="ae62183019b166b0992a902f267a47546" name="ae62183019b166b0992a902f267a47546"></a>
+double3&#160;</td><td class="memItemRight" valign="bottom"><b>computeCenterOfMassVelocity</b> () const</td></tr>
+<tr class="separator:ae62183019b166b0992a902f267a47546"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada8432ab54f512392d94f54285d7962e" id="r_ada8432ab54f512392d94f54285d7962e"><td class="memItemLeft" align="right" valign="top"><a id="ada8432ab54f512392d94f54285d7962e" name="ada8432ab54f512392d94f54285d7962e"></a>
+double3&#160;</td><td class="memItemRight" valign="bottom"><b>computeLinearMomentum</b> () const</td></tr>
+<tr class="separator:ada8432ab54f512392d94f54285d7962e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab5d9b0b4a74fa804bd61d3fe9d2008d" id="r_aab5d9b0b4a74fa804bd61d3fe9d2008d"><td class="memItemLeft" align="right" valign="top"><a id="aab5d9b0b4a74fa804bd61d3fe9d2008d" name="aab5d9b0b4a74fa804bd61d3fe9d2008d"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>computeTranslationalKineticEnergy</b> () const</td></tr>
 <tr class="separator:aab5d9b0b4a74fa804bd61d3fe9d2008d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -264,6 +178,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>computeRotationalKi
 <tr class="memitem:af2d62e7747e4668e245510328e22be48" id="r_af2d62e7747e4668e245510328e22be48"><td class="memItemLeft" align="right" valign="top"><a id="af2d62e7747e4668e245510328e22be48" name="af2d62e7747e4668e245510328e22be48"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>integrate</b> ()</td></tr>
 <tr class="separator:af2d62e7747e4668e245510328e22be48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a55a5e7193ec2f6f0dab9f88b125b58d7" id="r_a55a5e7193ec2f6f0dab9f88b125b58d7"><td class="memItemLeft" align="right" valign="top"><a id="a55a5e7193ec2f6f0dab9f88b125b58d7" name="a55a5e7193ec2f6f0dab9f88b125b58d7"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>scaleVelocities</b> (std::pair&lt; double, double &gt; scaling)</td></tr>
+<tr class="separator:a55a5e7193ec2f6f0dab9f88b125b58d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aabf1adbb351ea134fcc3352ee66dc98b" id="r_aabf1adbb351ea134fcc3352ee66dc98b"><td class="memItemLeft" align="right" valign="top"><a id="aabf1adbb351ea134fcc3352ee66dc98b" name="aabf1adbb351ea134fcc3352ee66dc98b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>updatePositions</b> ()</td></tr>
 <tr class="separator:aabf1adbb351ea134fcc3352ee66dc98b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -294,9 +211,18 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>precomputeTotalRigidE
 <tr class="memitem:a4f3090e5ae1af48b5ac0bc1dd416cb14" id="r_a4f3090e5ae1af48b5ac0bc1dd416cb14"><td class="memItemLeft" align="right" valign="top"><a id="a4f3090e5ae1af48b5ac0bc1dd416cb14" name="a4f3090e5ae1af48b5ac0bc1dd416cb14"></a>
 <a class="el" href="structRunningEnergy.html">RunningEnergy</a>&#160;</td><td class="memItemRight" valign="bottom"><b>computeTotalEnergies</b> () noexcept</td></tr>
 <tr class="separator:a4f3090e5ae1af48b5ac0bc1dd416cb14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef55dd089fb34c9ebc8adcf15d79607b" id="r_aef55dd089fb34c9ebc8adcf15d79607b"><td class="memItemLeft" align="right" valign="top"><a id="aef55dd089fb34c9ebc8adcf15d79607b" name="aef55dd089fb34c9ebc8adcf15d79607b"></a>
+<a class="el" href="structRunningEnergy.html">RunningEnergy</a>&#160;</td><td class="memItemRight" valign="bottom"><b>computePolarizationEnergy</b> () noexcept</td></tr>
+<tr class="separator:aef55dd089fb34c9ebc8adcf15d79607b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a22dec7a56662fa0665b8f0617171a233" id="r_a22dec7a56662fa0665b8f0617171a233"><td class="memItemLeft" align="right" valign="top"><a id="a22dec7a56662fa0665b8f0617171a233" name="a22dec7a56662fa0665b8f0617171a233"></a>
 <a class="el" href="structRunningEnergy.html">RunningEnergy</a>&#160;</td><td class="memItemRight" valign="bottom"><b>computeTotalGradients</b> () noexcept</td></tr>
 <tr class="separator:a22dec7a56662fa0665b8f0617171a233"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3ef1ecdc51fd6ca08fb55571793fcf6" id="r_af3ef1ecdc51fd6ca08fb55571793fcf6"><td class="memItemLeft" align="right" valign="top"><a id="af3ef1ecdc51fd6ca08fb55571793fcf6" name="af3ef1ecdc51fd6ca08fb55571793fcf6"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>computeTotalElectricPotential</b> () noexcept</td></tr>
+<tr class="separator:af3ef1ecdc51fd6ca08fb55571793fcf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a814d3595cce0b935f0ab5116280c07fb" id="r_a814d3595cce0b935f0ab5116280c07fb"><td class="memItemLeft" align="right" valign="top"><a id="a814d3595cce0b935f0ab5116280c07fb" name="a814d3595cce0b935f0ab5116280c07fb"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>computeTotalElectricField</b> () noexcept</td></tr>
+<tr class="separator:a814d3595cce0b935f0ab5116280c07fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a683ed1cc18b3a818d653cc3aaf109cd1" id="r_a683ed1cc18b3a818d653cc3aaf109cd1"><td class="memItemLeft" align="right" valign="top"><a id="a683ed1cc18b3a818d653cc3aaf109cd1" name="a683ed1cc18b3a818d653cc3aaf109cd1"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>randomFramework</b> (RandomNumber &amp;random)</td></tr>
 <tr class="separator:a683ed1cc18b3a818d653cc3aaf109cd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -348,6 +274,21 @@ std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td
 <tr class="memitem:a0d9c71f68f756fe3ba58775eb0c16805" id="r_a0d9c71f68f756fe3ba58775eb0c16805"><td class="memItemLeft" align="right" valign="top"><a id="a0d9c71f68f756fe3ba58775eb0c16805" name="a0d9c71f68f756fe3ba58775eb0c16805"></a>
 std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanOfMoleculeAtoms</b> ()</td></tr>
 <tr class="separator:a0d9c71f68f756fe3ba58775eb0c16805"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69b885c82727870fbb7dab66c7de9f4e" id="r_a69b885c82727870fbb7dab66c7de9f4e"><td class="memItemLeft" align="right" valign="top"><a id="a69b885c82727870fbb7dab66c7de9f4e" name="a69b885c82727870fbb7dab66c7de9f4e"></a>
+std::span&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanOfMoleculeElectricPotential</b> ()</td></tr>
+<tr class="separator:a69b885c82727870fbb7dab66c7de9f4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c9bfd32479b8356b555f2b0b9ab3fc8" id="r_a1c9bfd32479b8356b555f2b0b9ab3fc8"><td class="memItemLeft" align="right" valign="top"><a id="a1c9bfd32479b8356b555f2b0b9ab3fc8" name="a1c9bfd32479b8356b555f2b0b9ab3fc8"></a>
+std::span&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanOfMoleculeElectricField</b> ()</td></tr>
+<tr class="separator:a1c9bfd32479b8356b555f2b0b9ab3fc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a222e7496ca1e5e574754d4c110fedccc" id="r_a222e7496ca1e5e574754d4c110fedccc"><td class="memItemLeft" align="right" valign="top"><a id="a222e7496ca1e5e574754d4c110fedccc" name="a222e7496ca1e5e574754d4c110fedccc"></a>
+std::span&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanOfMoleculeElectricFieldNew</b> ()</td></tr>
+<tr class="separator:a222e7496ca1e5e574754d4c110fedccc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adad0fe6cbc26987692dd33dcb69f1c43" id="r_adad0fe6cbc26987692dd33dcb69f1c43"><td class="memItemLeft" align="right" valign="top"><a id="adad0fe6cbc26987692dd33dcb69f1c43" name="adad0fe6cbc26987692dd33dcb69f1c43"></a>
+std::span&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanElectricFieldNew</b> (size_t selectedComponent, size_t selectedMolecule)</td></tr>
+<tr class="separator:adad0fe6cbc26987692dd33dcb69f1c43"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adcfaf5cf3370d21a7097654a9f02bd4a" id="r_adcfaf5cf3370d21a7097654a9f02bd4a"><td class="memItemLeft" align="right" valign="top"><a id="adcfaf5cf3370d21a7097654a9f02bd4a" name="adcfaf5cf3370d21a7097654a9f02bd4a"></a>
+const std::span&lt; const double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>spanElectricFieldNew</b> (size_t selectedComponent, size_t selectedMolecule) const</td></tr>
+<tr class="separator:adcfaf5cf3370d21a7097654a9f02bd4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7d6a31438a7431772502b15f7e98a85e" id="r_a7d6a31438a7431772502b15f7e98a85e"><td class="memItemLeft" align="right" valign="top"><a id="a7d6a31438a7431772502b15f7e98a85e" name="a7d6a31438a7431772502b15f7e98a85e"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfMolecules</b> () const</td></tr>
 <tr class="separator:a7d6a31438a7431772502b15f7e98a85e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -375,9 +316,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>rescaleMolarFractions
 <tr class="memitem:a88eada389046b7f4853e3b87520250b0" id="r_a88eada389046b7f4853e3b87520250b0"><td class="memItemLeft" align="right" valign="top"><a id="a88eada389046b7f4853e3b87520250b0" name="a88eada389046b7f4853e3b87520250b0"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>computeComponentFluidProperties</b> ()</td></tr>
 <tr class="separator:a88eada389046b7f4853e3b87520250b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a17ba1d20c1ecc443ac7d3e380e180a50" id="r_a17ba1d20c1ecc443ac7d3e380e180a50"><td class="memItemLeft" align="right" valign="top"><a id="a17ba1d20c1ecc443ac7d3e380e180a50" name="a17ba1d20c1ecc443ac7d3e380e180a50"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>computeFrameworkDensity</b> ()</td></tr>
-<tr class="separator:a17ba1d20c1ecc443ac7d3e380e180a50"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a439a37411a385bb7433b923ec1cfd9c4" id="r_a439a37411a385bb7433b923ec1cfd9c4"><td class="memItemLeft" align="right" valign="top"><a id="a439a37411a385bb7433b923ec1cfd9c4" name="a439a37411a385bb7433b923ec1cfd9c4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>computeNumberOfPseudoAtoms</b> ()</td></tr>
 <tr class="separator:a439a37411a385bb7433b923ec1cfd9c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -420,9 +358,6 @@ nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonCompone
 <tr class="memitem:a28da3fe3a6d91ac79d9875b6b48e87c6" id="r_a28da3fe3a6d91ac79d9875b6b48e87c6"><td class="memItemLeft" align="right" valign="top"><a id="a28da3fe3a6d91ac79d9875b6b48e87c6" name="a28da3fe3a6d91ac79d9875b6b48e87c6"></a>
 nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonMCMoveStatistics</b> () const</td></tr>
 <tr class="separator:a28da3fe3a6d91ac79d9875b6b48e87c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc9cc2e6c0c31d77576f07e052a6ab24" id="r_afc9cc2e6c0c31d77576f07e052a6ab24"><td class="memItemLeft" align="right" valign="top"><a id="afc9cc2e6c0c31d77576f07e052a6ab24" name="afc9cc2e6c0c31d77576f07e052a6ab24"></a>
-std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nonFrameworkComponents</b> ()</td></tr>
-<tr class="separator:afc9cc2e6c0c31d77576f07e052a6ab24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab62d5df728d96ca7fbfa94a3e50190b" id="r_aab62d5df728d96ca7fbfa94a3e50190b"><td class="memItemLeft" align="right" valign="top"><a id="aab62d5df728d96ca7fbfa94a3e50190b" name="aab62d5df728d96ca7fbfa94a3e50190b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>insertMolecule</b> (size_t selectedComponent, const <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; atoms)</td></tr>
 <tr class="separator:aab62d5df728d96ca7fbfa94a3e50190b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -438,6 +373,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>checkMoleculeIds</b> 
 <tr class="memitem:af8cd9a7d0cba418d5dc3e9aaf28d76ff" id="r_af8cd9a7d0cba418d5dc3e9aaf28d76ff"><td class="memItemLeft" align="right" valign="top"><a id="af8cd9a7d0cba418d5dc3e9aaf28d76ff" name="af8cd9a7d0cba418d5dc3e9aaf28d76ff"></a>
 std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomConfiguration</b> (RandomNumber &amp;random, size_t selectedComponent, const std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; atoms)</td></tr>
 <tr class="separator:af8cd9a7d0cba418d5dc3e9aaf28d76ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab86f64bdfd22244f07590d8d3001657b" id="r_ab86f64bdfd22244f07590d8d3001657b"><td class="memItemLeft" align="right" valign="top"><a id="ab86f64bdfd22244f07590d8d3001657b" name="ab86f64bdfd22244f07590d8d3001657b"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>insideBlockedPockets</b> (const <a class="el" href="structComponent.html">Component</a> &amp;component, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms) const</td></tr>
+<tr class="separator:ab86f64bdfd22244f07590d8d3001657b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6db7d09e512cd2ef74ad0b6ad7712d66" id="r_a6db7d09e512cd2ef74ad0b6ad7712d66"><td class="memItemLeft" align="right" valign="top"><a id="a6db7d09e512cd2ef74ad0b6ad7712d66" name="a6db7d09e512cd2ef74ad0b6ad7712d66"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>sampleProperties</b> (size_t currentBlock, size_t currentCycle)</td></tr>
 <tr class="separator:a6db7d09e512cd2ef74ad0b6ad7712d66"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -486,9 +424,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>input_pressure</b> 
 <tr class="memitem:ab40e1d570e3010a7baa1ed2a41342b60" id="r_ab40e1d570e3010a7baa1ed2a41342b60"><td class="memItemLeft" align="right" valign="top"><a id="ab40e1d570e3010a7baa1ed2a41342b60" name="ab40e1d570e3010a7baa1ed2a41342b60"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>beta</b> {1.0 / (Units::KB * 300.0)}</td></tr>
 <tr class="separator:ab40e1d570e3010a7baa1ed2a41342b60"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a2af45a5b462b20207fd65e056745bd" id="r_a1a2af45a5b462b20207fd65e056745bd"><td class="memItemLeft" align="right" valign="top"><a id="a1a2af45a5b462b20207fd65e056745bd" name="a1a2af45a5b462b20207fd65e056745bd"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>HeliumVoidFraction</b> {0.29}</td></tr>
-<tr class="separator:a1a2af45a5b462b20207fd65e056745bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a03ecd1b730796811572a6fcdacac7f95" id="r_a03ecd1b730796811572a6fcdacac7f95"><td class="memItemLeft" align="right" valign="top"><a id="a03ecd1b730796811572a6fcdacac7f95" name="a03ecd1b730796811572a6fcdacac7f95"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>heliumVoidFraction</b> {0.29}</td></tr>
+<tr class="separator:a03ecd1b730796811572a6fcdacac7f95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af1adee3810400f8859a6996eb5a5afe8" id="r_af1adee3810400f8859a6996eb5a5afe8"><td class="memItemLeft" align="right" valign="top"><a id="af1adee3810400f8859a6996eb5a5afe8" name="af1adee3810400f8859a6996eb5a5afe8"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfFrameworks</b> {0}</td></tr>
 <tr class="separator:af1adee3810400f8859a6996eb5a5afe8"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -507,6 +445,9 @@ std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt;&#16
 <tr class="memitem:a53d27fd6cf269c9a78722eed70b52ae6" id="r_a53d27fd6cf269c9a78722eed70b52ae6"><td class="memItemLeft" align="right" valign="top"><a id="a53d27fd6cf269c9a78722eed70b52ae6" name="a53d27fd6cf269c9a78722eed70b52ae6"></a>
 <a class="el" href="structEquationOfState.html">EquationOfState</a>&#160;</td><td class="memItemRight" valign="bottom"><b>equationOfState</b></td></tr>
 <tr class="separator:a53d27fd6cf269c9a78722eed70b52ae6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8778db36f8e1b8ce6acf6a5f4cb579ab" id="r_a8778db36f8e1b8ce6acf6a5f4cb579ab"><td class="memItemLeft" align="right" valign="top"><a id="a8778db36f8e1b8ce6acf6a5f4cb579ab" name="a8778db36f8e1b8ce6acf6a5f4cb579ab"></a>
+std::optional&lt; <a class="el" href="structThermostat.html">Thermostat</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostat</b></td></tr>
+<tr class="separator:a8778db36f8e1b8ce6acf6a5f4cb579ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aea260184dae8e09ade90dc47ad9f36ec" id="r_aea260184dae8e09ade90dc47ad9f36ec"><td class="memItemLeft" align="right" valign="top"><a id="aea260184dae8e09ade90dc47ad9f36ec" name="aea260184dae8e09ade90dc47ad9f36ec"></a>
 <a class="el" href="structLoadings.html">Loadings</a>&#160;</td><td class="memItemRight" valign="bottom"><b>loadings</b></td></tr>
 <tr class="separator:aea260184dae8e09ade90dc47ad9f36ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -552,15 +493,15 @@ std::vector&lt; std::vector&lt; size_t &gt; &gt;&#160;</td><td class="memItemRig
 <tr class="memitem:a64badfcc51369ad6d246d5e1de85aed8" id="r_a64badfcc51369ad6d246d5e1de85aed8"><td class="memItemLeft" align="right" valign="top"><a id="a64badfcc51369ad6d246d5e1de85aed8" name="a64badfcc51369ad6d246d5e1de85aed8"></a>
 std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>totalNumberOfPseudoAtoms</b></td></tr>
 <tr class="separator:a64badfcc51369ad6d246d5e1de85aed8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acc0aeeac155528dc3e3bcbdc4baba129" id="r_acc0aeeac155528dc3e3bcbdc4baba129"><td class="memItemLeft" align="right" valign="top"><a id="acc0aeeac155528dc3e3bcbdc4baba129" name="acc0aeeac155528dc3e3bcbdc4baba129"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>translationalCenterOfMassConstraint</b> {}</td></tr>
+<tr class="separator:acc0aeeac155528dc3e3bcbdc4baba129"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f4fe5103748162f20acab65df00f035" id="r_a1f4fe5103748162f20acab65df00f035"><td class="memItemLeft" align="right" valign="top"><a id="a1f4fe5103748162f20acab65df00f035" name="a1f4fe5103748162f20acab65df00f035"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>translationalDegreesOfFreedom</b> {}</td></tr>
 <tr class="separator:a1f4fe5103748162f20acab65df00f035"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a931606c33c210807f0b44f9a236f6431" id="r_a931606c33c210807f0b44f9a236f6431"><td class="memItemLeft" align="right" valign="top"><a id="a931606c33c210807f0b44f9a236f6431" name="a931606c33c210807f0b44f9a236f6431"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>rotationalDegreesOfFreedom</b> {}</td></tr>
 <tr class="separator:a931606c33c210807f0b44f9a236f6431"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb04c185d922adf7777624bfaebef36b" id="r_adb04c185d922adf7777624bfaebef36b"><td class="memItemLeft" align="right" valign="top"><a id="adb04c185d922adf7777624bfaebef36b" name="adb04c185d922adf7777624bfaebef36b"></a>
-std::optional&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>frameworkMass</b> {}</td></tr>
-<tr class="separator:adb04c185d922adf7777624bfaebef36b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e1759705f3c02b11d481178b72470e5" id="r_a3e1759705f3c02b11d481178b72470e5"><td class="memItemLeft" align="right" valign="top"><a id="a3e1759705f3c02b11d481178b72470e5" name="a3e1759705f3c02b11d481178b72470e5"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>timeStep</b> {0.0005}</td></tr>
 <tr class="separator:a3e1759705f3c02b11d481178b72470e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -573,6 +514,15 @@ std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;&#160;</td><td
 <tr class="memitem:a64e378a3a589eb78e6742abe809967a9" id="r_a64e378a3a589eb78e6742abe809967a9"><td class="memItemLeft" align="right" valign="top"><a id="a64e378a3a589eb78e6742abe809967a9" name="a64e378a3a589eb78e6742abe809967a9"></a>
 std::vector&lt; <a class="el" href="structMolecule.html">Molecule</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>moleculePositions</b></td></tr>
 <tr class="separator:a64e378a3a589eb78e6742abe809967a9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3edf3c372ec516a26fbc4cde5281d478" id="r_a3edf3c372ec516a26fbc4cde5281d478"><td class="memItemLeft" align="right" valign="top"><a id="a3edf3c372ec516a26fbc4cde5281d478" name="a3edf3c372ec516a26fbc4cde5281d478"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>electricPotential</b></td></tr>
+<tr class="separator:a3edf3c372ec516a26fbc4cde5281d478"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8147bfcb26e340c2b0ca170d00a57902" id="r_a8147bfcb26e340c2b0ca170d00a57902"><td class="memItemLeft" align="right" valign="top"><a id="a8147bfcb26e340c2b0ca170d00a57902" name="a8147bfcb26e340c2b0ca170d00a57902"></a>
+std::vector&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>electricField</b></td></tr>
+<tr class="separator:a8147bfcb26e340c2b0ca170d00a57902"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4ed0cf79550bd378ef1d1563f3c0b3b5" id="r_a4ed0cf79550bd378ef1d1563f3c0b3b5"><td class="memItemLeft" align="right" valign="top"><a id="a4ed0cf79550bd378ef1d1563f3c0b3b5" name="a4ed0cf79550bd378ef1d1563f3c0b3b5"></a>
+std::vector&lt; double3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>electricFieldNew</b></td></tr>
+<tr class="separator:a4ed0cf79550bd378ef1d1563f3c0b3b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:accc5c51837a5ab9aaf9e99f75933f188" id="r_accc5c51837a5ab9aaf9e99f75933f188"><td class="memItemLeft" align="right" valign="top"><a id="accc5c51837a5ab9aaf9e99f75933f188" name="accc5c51837a5ab9aaf9e99f75933f188"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>conservedEnergy</b> {}</td></tr>
 <tr class="separator:accc5c51837a5ab9aaf9e99f75933f188"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -621,9 +571,18 @@ std::vector&lt; std::pair&lt; std::complex&lt; double &gt;, std::complex&lt; dou
 <tr class="memitem:a4977d77190b95b433bdb0c94f6beaec0" id="r_a4977d77190b95b433bdb0c94f6beaec0"><td class="memItemLeft" align="right" valign="top"><a id="a4977d77190b95b433bdb0c94f6beaec0" name="a4977d77190b95b433bdb0c94f6beaec0"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>CoulombicFourierEnergySingleIon</b> {0.0}</td></tr>
 <tr class="separator:a4977d77190b95b433bdb0c94f6beaec0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a861072f208b301219fa75166d2a2549b" id="r_a861072f208b301219fa75166d2a2549b"><td class="memItemLeft" align="right" valign="top"><a id="a861072f208b301219fa75166d2a2549b" name="a861072f208b301219fa75166d2a2549b"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>netCharge</b></td></tr>
-<tr class="separator:a861072f208b301219fa75166d2a2549b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9bc6fae2e7a4a73004a46ebf9cd6c2e" id="r_af9bc6fae2e7a4a73004a46ebf9cd6c2e"><td class="memItemLeft" align="right" valign="top"><a id="af9bc6fae2e7a4a73004a46ebf9cd6c2e" name="af9bc6fae2e7a4a73004a46ebf9cd6c2e"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>netCharge</b> {0.0}</td></tr>
+<tr class="separator:af9bc6fae2e7a4a73004a46ebf9cd6c2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afa3dc5234e9f06fec961dcc6f15b30de" id="r_afa3dc5234e9f06fec961dcc6f15b30de"><td class="memItemLeft" align="right" valign="top"><a id="afa3dc5234e9f06fec961dcc6f15b30de" name="afa3dc5234e9f06fec961dcc6f15b30de"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>netChargeFramework</b> {0.0}</td></tr>
+<tr class="separator:afa3dc5234e9f06fec961dcc6f15b30de"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01f25bd94f2a3e12af88f5c5716b6a01" id="r_a01f25bd94f2a3e12af88f5c5716b6a01"><td class="memItemLeft" align="right" valign="top"><a id="a01f25bd94f2a3e12af88f5c5716b6a01" name="a01f25bd94f2a3e12af88f5c5716b6a01"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>netChargeAdsorbates</b> {0.0}</td></tr>
+<tr class="separator:a01f25bd94f2a3e12af88f5c5716b6a01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bb90e391f70187e60edfe4d1d93955c" id="r_a0bb90e391f70187e60edfe4d1d93955c"><td class="memItemLeft" align="right" valign="top"><a id="a0bb90e391f70187e60edfe4d1d93955c" name="a0bb90e391f70187e60edfe4d1d93955c"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>netChargePerComponent</b></td></tr>
+<tr class="separator:a0bb90e391f70187e60edfe4d1d93955c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6fbdff712e2b154cb21a38be4781af43" id="r_a6fbdff712e2b154cb21a38be4781af43"><td class="memItemLeft" align="right" valign="top"><a id="a6fbdff712e2b154cb21a38be4781af43" name="a6fbdff712e2b154cb21a38be4781af43"></a>
 <a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a>&#160;</td><td class="memItemRight" valign="bottom"><b>mc_moves_probabilities</b></td></tr>
 <tr class="separator:a6fbdff712e2b154cb21a38be4781af43"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -726,6 +685,18 @@ std::optional&lt; <a class="el" href="structPropertyRadialDistributionFunction.h
 <tr class="memitem:a6a8518af70594b490cc37c0596de4107" id="r_a6a8518af70594b490cc37c0596de4107"><td class="memItemLeft" align="right" valign="top"><a id="a6a8518af70594b490cc37c0596de4107" name="a6a8518af70594b490cc37c0596de4107"></a>
 std::optional&lt; <a class="el" href="structPropertyDensityGrid.html">PropertyDensityGrid</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>propertyDensityGrid</b></td></tr>
 <tr class="separator:a6a8518af70594b490cc37c0596de4107"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8a4d5d82b92952ea5ba4aa7300ce5eb2" id="r_a8a4d5d82b92952ea5ba4aa7300ce5eb2"><td class="memItemLeft" align="right" valign="top"><a id="a8a4d5d82b92952ea5ba4aa7300ce5eb2" name="a8a4d5d82b92952ea5ba4aa7300ce5eb2"></a>
+std::optional&lt; <a class="el" href="structPropertyEnergyHistogram.html">PropertyEnergyHistogram</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageEnergyHistogram</b></td></tr>
+<tr class="separator:a8a4d5d82b92952ea5ba4aa7300ce5eb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1846dcf847faf7b38716ac601d623402" id="r_a1846dcf847faf7b38716ac601d623402"><td class="memItemLeft" align="right" valign="top"><a id="a1846dcf847faf7b38716ac601d623402" name="a1846dcf847faf7b38716ac601d623402"></a>
+std::optional&lt; <a class="el" href="structPropertyNumberOfMoleculesHistogram.html">PropertyNumberOfMoleculesHistogram</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageNumberOfMoleculesHistogram</b></td></tr>
+<tr class="separator:a1846dcf847faf7b38716ac601d623402"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a951d7a57f1dc907d7b73c8c15dfc8ff9" id="r_a951d7a57f1dc907d7b73c8c15dfc8ff9"><td class="memItemLeft" align="right" valign="top"><a id="a951d7a57f1dc907d7b73c8c15dfc8ff9" name="a951d7a57f1dc907d7b73c8c15dfc8ff9"></a>
+std::optional&lt; <a class="el" href="structPropertyMeanSquaredDisplacement.html">PropertyMeanSquaredDisplacement</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>propertyMSD</b></td></tr>
+<tr class="separator:a951d7a57f1dc907d7b73c8c15dfc8ff9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a16db4498fedd38ca7f08c065ae0421c3" id="r_a16db4498fedd38ca7f08c065ae0421c3"><td class="memItemLeft" align="right" valign="top"><a id="a16db4498fedd38ca7f08c065ae0421c3" name="a16db4498fedd38ca7f08c065ae0421c3"></a>
+std::optional&lt; <a class="el" href="structPropertyVelocityAutoCorrelationFunction.html">PropertyVelocityAutoCorrelationFunction</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>propertyVACF</b></td></tr>
+<tr class="separator:a16db4498fedd38ca7f08c065ae0421c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -736,9 +707,40 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structSystem.html">System</a> &amp;s)</td></tr>
 <tr class="separator:a0b68e0e529c13bead4d4c4ee276f657a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="a4891d751199d2e9c49e3699a42d28002" name="a4891d751199d2e9c49e3699a42d28002"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4891d751199d2e9c49e3699a42d28002">&#9670;&#160;</a></span>System()</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents the central system for simulations. </p>
+<p>The <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> struct holds all objects required for simulations, such as atom lists, frameworks, and simulation boxes. It is passed to various simulation methods, like <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a>, to conduct simulations. The system can contain frameworks (zeolite/MOF) or a simulation box, and it manages various simulation parameters and states. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a7ffb94a5a2db03014de0a8440f0cee3a" name="a7ffb94a5a2db03014de0a8440f0cee3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7ffb94a5a2db03014de0a8440f0cee3a">&#9670;&#160;</a></span>System() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">System::System </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">default</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> class. </p>
+<p>Initializes a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object with default values. </p>
+
+</div>
+</div>
+<a id="a2226cf4cf4e26d21d74ebd9604f8d953" name="a2226cf4cf4e26d21d74ebd9604f8d953"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2226cf4cf4e26d21d74ebd9604f8d953">&#9670;&#160;</a></span>System() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -748,6 +750,12 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
           <td>(</td>
           <td class="paramtype">size_t&#160;</td>
           <td class="paramname"><em>id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structForceField.html">ForceField</a>&#160;</td>
+          <td class="paramname"><em>forcefield</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -770,8 +778,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structForceField.html">ForceField</a>&#160;</td>
-          <td class="paramname"><em>forcefield</em>, </td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>heliumVoidFraction</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -801,7 +809,13 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">const <a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a> &amp;&#160;</td>
-          <td class="paramname"><em>systemProbabilities</em> = <code><a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a>()</code>&#160;</td>
+          <td class="paramname"><em>systemProbabilities</em> = <code><a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a>()</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::optional&lt; size_t &gt;&#160;</td>
+          <td class="paramname"><em>sampleMoviesEvery</em> = <code>std::nullopt</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -811,8 +825,24 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
       </table>
 </div><div class="memdoc">
 
-<p>Brief description. Brief description continued. </p>
-<p>Detailed description starts here. </p>
+<p>Constructs a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object programmatically. </p>
+<p>Initializes a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> with the provided parameters, including system ID, simulation box, temperature, pressure, force field, framework components, and other simulation-related configurations.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">id</td><td>The identifier for the system. </td></tr>
+    <tr><td class="paramname">box</td><td>The optional simulation box for the system. </td></tr>
+    <tr><td class="paramname">T</td><td>The temperature of the system. </td></tr>
+    <tr><td class="paramname">P</td><td>The optional pressure of the system. </td></tr>
+    <tr><td class="paramname">forcefield</td><td>The force field used in the simulation. </td></tr>
+    <tr><td class="paramname">frameworkComponents</td><td>The list of framework components in the system. </td></tr>
+    <tr><td class="paramname">components</td><td>The list of components in the system. </td></tr>
+    <tr><td class="paramname">initialNumberOfMolecules</td><td>The initial number of molecules per component. </td></tr>
+    <tr><td class="paramname">numberOfBlocks</td><td>The number of blocks in the simulation. </td></tr>
+    <tr><td class="paramname">systemProbabilities</td><td>The move probabilities for the Monte Carlo simulation. </td></tr>
+    <tr><td class="paramname">sampleMoviesEvery</td><td>Interval in which movies are written to PDB. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: EnergyFactor Struct Reference</title>
+<title>RASPA3: EnergyFactor Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,11 +107,14 @@ $(document).ready(function(){initNavTree('structEnergyFactor.html',''); initResi
   <div class="headertitle"><div class="title">EnergyFactor Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_energy__factor.html">energy_factor</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents an energy factor with energy and its derivative with respect to lambda.  
+ <a href="structEnergyFactor.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a413cd0e652c855fd1ad27e901789e437" id="r_a413cd0e652c855fd1ad27e901789e437"><td class="memItemLeft" align="right" valign="top"><a id="a413cd0e652c855fd1ad27e901789e437" name="a413cd0e652c855fd1ad27e901789e437"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>EnergyFactor</b> (double energy, double dUdlambda)</td></tr>
+<tr class="memitem:a413cd0e652c855fd1ad27e901789e437" id="r_a413cd0e652c855fd1ad27e901789e437"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structEnergyFactor.html#a413cd0e652c855fd1ad27e901789e437">EnergyFactor</a> (double <a class="el" href="structEnergyFactor.html#ae3dac20f1c031314dd203eeffb2b0950">energy</a>, double <a class="el" href="structEnergyFactor.html#afc8ed57103aa1091b0dbb2ee38501792">dUdlambda</a>)</td></tr>
+<tr class="memdesc:a413cd0e652c855fd1ad27e901789e437"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs an <a class="el" href="structEnergyFactor.html" title="Represents an energy factor with energy and its derivative with respect to lambda.">EnergyFactor</a> with specified energy and derivative.  <br /></td></tr>
 <tr class="separator:a413cd0e652c855fd1ad27e901789e437"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abf7e3de060ef2db885ebac52d833c452" id="r_abf7e3de060ef2db885ebac52d833c452"><td class="memItemLeft" align="right" valign="top"><a id="abf7e3de060ef2db885ebac52d833c452" name="abf7e3de060ef2db885ebac52d833c452"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structEnergyFactor.html">EnergyFactor</a> const &amp;) const =default</td></tr>
@@ -123,9 +133,11 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a cl
 Public Attributes</h2></td></tr>
 <tr class="memitem:ae3dac20f1c031314dd203eeffb2b0950" id="r_ae3dac20f1c031314dd203eeffb2b0950"><td class="memItemLeft" align="right" valign="top"><a id="ae3dac20f1c031314dd203eeffb2b0950" name="ae3dac20f1c031314dd203eeffb2b0950"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>energy</b></td></tr>
+<tr class="memdesc:ae3dac20f1c031314dd203eeffb2b0950"><td class="mdescLeft">&#160;</td><td class="mdescRight">The energy value. <br /></td></tr>
 <tr class="separator:ae3dac20f1c031314dd203eeffb2b0950"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afc8ed57103aa1091b0dbb2ee38501792" id="r_afc8ed57103aa1091b0dbb2ee38501792"><td class="memItemLeft" align="right" valign="top"><a id="afc8ed57103aa1091b0dbb2ee38501792" name="afc8ed57103aa1091b0dbb2ee38501792"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dUdlambda</b></td></tr>
+<tr class="memdesc:afc8ed57103aa1091b0dbb2ee38501792"><td class="mdescLeft">&#160;</td><td class="mdescRight">The derivative of energy with respect to lambda. <br /></td></tr>
 <tr class="separator:afc8ed57103aa1091b0dbb2ee38501792"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -137,6 +149,55 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structEnergyFactor.html">EnergyFactor</a> &amp;e)</td></tr>
 <tr class="separator:af982972fb3c6e5d09666968f33e628c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents an energy factor with energy and its derivative with respect to lambda. </p>
+<p>The <a class="el" href="structEnergyFactor.html" title="Represents an energy factor with energy and its derivative with respect to lambda.">EnergyFactor</a> struct holds the energy value and its derivative with respect to the scaling parameter lambda. It provides constructors and operator overloads for arithmetic operations. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a413cd0e652c855fd1ad27e901789e437" name="a413cd0e652c855fd1ad27e901789e437"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a413cd0e652c855fd1ad27e901789e437">&#9670;&#160;</a></span>EnergyFactor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">EnergyFactor::EnergyFactor </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>energy</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>dUdlambda</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs an <a class="el" href="structEnergyFactor.html" title="Represents an energy factor with energy and its derivative with respect to lambda.">EnergyFactor</a> with specified energy and derivative. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">energy</td><td>The energy value. </td></tr>
+    <tr><td class="paramname">dUdlambda</td><td>The derivative of energy with respect to lambda. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/potentials/<b>energy_factor.ixx</b></li>
 </ul>

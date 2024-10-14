@@ -1,4 +1,4 @@
 var module_molecule =
 [
-    [ "Molecule", "structMolecule.html", null ]
+    [ "Molecule", "structMolecule.html", "structMolecule" ]
 ];

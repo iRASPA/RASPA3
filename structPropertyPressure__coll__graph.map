@@ -1,7 +1,0 @@
-<map id="PropertyPressure" name="PropertyPressure">
-<area shape="rect" id="Node000001" title=" " alt="" coords="441,45,575,70"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,192,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="206,31,441,49,441,55,206,36"/>
-<area shape="rect" id="Node000003" title=" " alt="" coords="17,69,180,109"/>
-<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="194,83,417,68,441,65,441,70,418,73,194,89"/>
-</map>

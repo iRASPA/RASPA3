@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Thermostat Struct Reference</title>
+<title>RASPA3: Thermostat Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -95,81 +102,320 @@ $(document).ready(function(){initNavTree('structThermostat.html',''); initResiza
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#friends">Friends</a> &#124;
 <a href="structThermostat-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">Thermostat Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_thermostat.html">thermostat</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents a Nose-Hoover thermostat for molecular dynamics simulations.  
+ <a href="structThermostat.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for Thermostat:</div>
 <div class="dyncontent">
 <div class="center"><img src="structThermostat__coll__graph.png" border="0" usemap="#aThermostat_coll__map" alt="Collaboration graph"/></div>
-<map name="aThermostat_coll__map" id="aThermostat_coll__map">
-<area shape="rect" title=" " alt="" coords="39,269,137,295"/>
-<area shape="rect" title=" " alt="" coords="5,5,171,31"/>
-<area shape="poly" title=" " alt="" coords="91,44,91,269,85,269,85,44"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:aa68fd056a2c6e3806baf88ce16bf5bf0" id="r_aa68fd056a2c6e3806baf88ce16bf5bf0"><td class="memItemLeft" align="right" valign="top"><a id="aa68fd056a2c6e3806baf88ce16bf5bf0" name="aa68fd056a2c6e3806baf88ce16bf5bf0"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Thermostat</b> (double temperature, size_t thermostatChainLength, size_t numberOfYoshidaSuzukiSteps)</td></tr>
-<tr class="separator:aa68fd056a2c6e3806baf88ce16bf5bf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab151e2d0a2b008087240d5eacc74b1c8" id="r_ab151e2d0a2b008087240d5eacc74b1c8"><td class="memItemLeft" align="right" valign="top"><a id="ab151e2d0a2b008087240d5eacc74b1c8" name="ab151e2d0a2b008087240d5eacc74b1c8"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>initialize</b> (RandomNumber &amp;random, size_t translation_degrees_of_freedom, size_t rotational_degrees_of_freedom)</td></tr>
-<tr class="separator:ab151e2d0a2b008087240d5eacc74b1c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:addf1982afce3c1243665db2d56e92fa7" id="r_addf1982afce3c1243665db2d56e92fa7"><td class="memItemLeft" align="right" valign="top"><a id="addf1982afce3c1243665db2d56e92fa7" name="addf1982afce3c1243665db2d56e92fa7"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>NoseHooverNVT</b> ()</td></tr>
-<tr class="separator:addf1982afce3c1243665db2d56e92fa7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67cfc54f1cff43f4cd92c58e3be01919" id="r_a67cfc54f1cff43f4cd92c58e3be01919"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structThermostat.html#a67cfc54f1cff43f4cd92c58e3be01919">Thermostat</a> ()</td></tr>
+<tr class="memdesc:a67cfc54f1cff43f4cd92c58e3be01919"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> struct.  <br /></td></tr>
+<tr class="separator:a67cfc54f1cff43f4cd92c58e3be01919"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7b544f987b2c5411d3df58c802fd4cf" id="r_ae7b544f987b2c5411d3df58c802fd4cf"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structThermostat.html#ae7b544f987b2c5411d3df58c802fd4cf">Thermostat</a> (double <a class="el" href="structThermostat.html#a564b06899d415e5eccff754baf90befb">temperature</a>, size_t <a class="el" href="structThermostat.html#ad5545e7265380253421d932d16bece5a">thermostatChainLength</a>, size_t <a class="el" href="structThermostat.html#a6ac3558389551feb7adcad4baa5d572f">numberOfYoshidaSuzukiSteps</a>, double <a class="el" href="structThermostat.html#a6f4c036f36ff5dab39631d338d972532">deltaT</a>, size_t <a class="el" href="structThermostat.html#aee65fc9d76fd7ea54938a31164508bad">translationalDegreesOfFreedom</a>, size_t <a class="el" href="structThermostat.html#ab358212e5ec392466d49e1aa15dd3ae4">rotationalDgreesOfFreedom</a>)</td></tr>
+<tr class="memdesc:ae7b544f987b2c5411d3df58c802fd4cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> with specified parameters.  <br /></td></tr>
+<tr class="separator:ae7b544f987b2c5411d3df58c802fd4cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5911a729d2c24011148809df03e87f1b" id="r_a5911a729d2c24011148809df03e87f1b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structThermostat.html#a5911a729d2c24011148809df03e87f1b">initialize</a> (RandomNumber &amp;random)</td></tr>
+<tr class="memdesc:a5911a729d2c24011148809df03e87f1b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the thermostat with random velocities.  <br /></td></tr>
+<tr class="separator:a5911a729d2c24011148809df03e87f1b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9491d6875c72853601f4b1596130414" id="r_af9491d6875c72853601f4b1596130414"><td class="memItemLeft" align="right" valign="top">std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structThermostat.html#af9491d6875c72853601f4b1596130414">NoseHooverNVT</a> (double UKineticTranslation, double UKineticRotation)</td></tr>
+<tr class="memdesc:af9491d6875c72853601f4b1596130414"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a Nose-Hoover NVT integration step.  <br /></td></tr>
+<tr class="separator:af9491d6875c72853601f4b1596130414"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a37e05fbe868be237f4c7716314fa7554" id="r_a37e05fbe868be237f4c7716314fa7554"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structThermostat.html#a37e05fbe868be237f4c7716314fa7554">getEnergy</a> ()</td></tr>
+<tr class="memdesc:a37e05fbe868be237f4c7716314fa7554"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the total energy of the thermostat.  <br /></td></tr>
+<tr class="separator:a37e05fbe868be237f4c7716314fa7554"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
+<tr class="memitem:a20a5d64eca3e51f42ef2d8ad632b6a8f" id="r_a20a5d64eca3e51f42ef2d8ad632b6a8f"><td class="memItemLeft" align="right" valign="top"><a id="a20a5d64eca3e51f42ef2d8ad632b6a8f" name="a20a5d64eca3e51f42ef2d8ad632b6a8f"></a>
+uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:a20a5d64eca3e51f42ef2d8ad632b6a8f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
+<tr class="separator:a20a5d64eca3e51f42ef2d8ad632b6a8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a564b06899d415e5eccff754baf90befb" id="r_a564b06899d415e5eccff754baf90befb"><td class="memItemLeft" align="right" valign="top"><a id="a564b06899d415e5eccff754baf90befb" name="a564b06899d415e5eccff754baf90befb"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>temperature</b></td></tr>
+<tr class="memdesc:a564b06899d415e5eccff754baf90befb"><td class="mdescLeft">&#160;</td><td class="mdescRight">The target temperature for the thermostat. <br /></td></tr>
 <tr class="separator:a564b06899d415e5eccff754baf90befb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad5545e7265380253421d932d16bece5a" id="r_ad5545e7265380253421d932d16bece5a"><td class="memItemLeft" align="right" valign="top"><a id="ad5545e7265380253421d932d16bece5a" name="ad5545e7265380253421d932d16bece5a"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatChainLength</b></td></tr>
+<tr class="memdesc:ad5545e7265380253421d932d16bece5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">The length of the thermostat chain. <br /></td></tr>
 <tr class="separator:ad5545e7265380253421d932d16bece5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad57f98f69a2cdb26d5a60cd15ac060f5" id="r_ad57f98f69a2cdb26d5a60cd15ac060f5"><td class="memItemLeft" align="right" valign="top"><a id="ad57f98f69a2cdb26d5a60cd15ac060f5" name="ad57f98f69a2cdb26d5a60cd15ac060f5"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>timeScaleParameterThermostat</b> {0.15}</td></tr>
+<tr class="memdesc:ad57f98f69a2cdb26d5a60cd15ac060f5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time scale parameter for the thermostat. <br /></td></tr>
 <tr class="separator:ad57f98f69a2cdb26d5a60cd15ac060f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2263f489c13902dd7c65cd0400c46d81" id="r_a2263f489c13902dd7c65cd0400c46d81"><td class="memItemLeft" align="right" valign="top"><a id="a2263f489c13902dd7c65cd0400c46d81" name="a2263f489c13902dd7c65cd0400c46d81"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfRespaSteps</b> {5}</td></tr>
+<tr class="memdesc:a2263f489c13902dd7c65cd0400c46d81"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of RESPA steps. <br /></td></tr>
+<tr class="separator:a2263f489c13902dd7c65cd0400c46d81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6ac3558389551feb7adcad4baa5d572f" id="r_a6ac3558389551feb7adcad4baa5d572f"><td class="memItemLeft" align="right" valign="top"><a id="a6ac3558389551feb7adcad4baa5d572f" name="a6ac3558389551feb7adcad4baa5d572f"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfYoshidaSuzukiSteps</b> {5}</td></tr>
+<tr class="memdesc:a6ac3558389551feb7adcad4baa5d572f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of Yoshida-Suzuki steps for integration. <br /></td></tr>
 <tr class="separator:a6ac3558389551feb7adcad4baa5d572f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f4c036f36ff5dab39631d338d972532" id="r_a6f4c036f36ff5dab39631d338d972532"><td class="memItemLeft" align="right" valign="top"><a id="a6f4c036f36ff5dab39631d338d972532" name="a6f4c036f36ff5dab39631d338d972532"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>deltaT</b> {}</td></tr>
+<tr class="memdesc:a6f4c036f36ff5dab39631d338d972532"><td class="mdescLeft">&#160;</td><td class="mdescRight">The simulation time step. <br /></td></tr>
+<tr class="separator:a6f4c036f36ff5dab39631d338d972532"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb662b3ae770966eeb6f3e44b26c1fde" id="r_adb662b3ae770966eeb6f3e44b26c1fde"><td class="memItemLeft" align="right" valign="top"><a id="adb662b3ae770966eeb6f3e44b26c1fde" name="adb662b3ae770966eeb6f3e44b26c1fde"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>translationalCenterOfMassConstraint</b> {}</td></tr>
+<tr class="memdesc:adb662b3ae770966eeb6f3e44b26c1fde"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constraint on translational center of mass degrees of freedom. <br /></td></tr>
+<tr class="separator:adb662b3ae770966eeb6f3e44b26c1fde"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee65fc9d76fd7ea54938a31164508bad" id="r_aee65fc9d76fd7ea54938a31164508bad"><td class="memItemLeft" align="right" valign="top"><a id="aee65fc9d76fd7ea54938a31164508bad" name="aee65fc9d76fd7ea54938a31164508bad"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>translationalDegreesOfFreedom</b></td></tr>
+<tr class="memdesc:aee65fc9d76fd7ea54938a31164508bad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of translational degrees of freedom. <br /></td></tr>
+<tr class="separator:aee65fc9d76fd7ea54938a31164508bad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab358212e5ec392466d49e1aa15dd3ae4" id="r_ab358212e5ec392466d49e1aa15dd3ae4"><td class="memItemLeft" align="right" valign="top"><a id="ab358212e5ec392466d49e1aa15dd3ae4" name="ab358212e5ec392466d49e1aa15dd3ae4"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>rotationalDgreesOfFreedom</b></td></tr>
+<tr class="memdesc:ab358212e5ec392466d49e1aa15dd3ae4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of rotational degrees of freedom. <br /></td></tr>
+<tr class="separator:ab358212e5ec392466d49e1aa15dd3ae4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab6e8b1130ba44b56bb9b026a49653f1b" id="r_ab6e8b1130ba44b56bb9b026a49653f1b"><td class="memItemLeft" align="right" valign="top"><a id="ab6e8b1130ba44b56bb9b026a49653f1b" name="ab6e8b1130ba44b56bb9b026a49653f1b"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatDegreesOfFreedomTranslation</b></td></tr>
+<tr class="memdesc:ab6e8b1130ba44b56bb9b026a49653f1b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Degrees of freedom for the translational thermostat chain. <br /></td></tr>
 <tr class="separator:ab6e8b1130ba44b56bb9b026a49653f1b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa7eaf507ec65184066fe7265877f065f" id="r_aa7eaf507ec65184066fe7265877f065f"><td class="memItemLeft" align="right" valign="top"><a id="aa7eaf507ec65184066fe7265877f065f" name="aa7eaf507ec65184066fe7265877f065f"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatForceTranslation</b></td></tr>
+<tr class="memdesc:aa7eaf507ec65184066fe7265877f065f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Forces for the translational thermostat chain. <br /></td></tr>
 <tr class="separator:aa7eaf507ec65184066fe7265877f065f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0dba9fe9c012a76ff9778322b6a5097e" id="r_a0dba9fe9c012a76ff9778322b6a5097e"><td class="memItemLeft" align="right" valign="top"><a id="a0dba9fe9c012a76ff9778322b6a5097e" name="a0dba9fe9c012a76ff9778322b6a5097e"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatVelocityTranslation</b></td></tr>
+<tr class="memdesc:a0dba9fe9c012a76ff9778322b6a5097e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Velocities for the translational thermostat chain. <br /></td></tr>
 <tr class="separator:a0dba9fe9c012a76ff9778322b6a5097e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9c03568b0e41e63051ac3c6fa7932e0d" id="r_a9c03568b0e41e63051ac3c6fa7932e0d"><td class="memItemLeft" align="right" valign="top"><a id="a9c03568b0e41e63051ac3c6fa7932e0d" name="a9c03568b0e41e63051ac3c6fa7932e0d"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatPositionTranslation</b></td></tr>
+<tr class="memdesc:a9c03568b0e41e63051ac3c6fa7932e0d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Positions for the translational thermostat chain. <br /></td></tr>
 <tr class="separator:a9c03568b0e41e63051ac3c6fa7932e0d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3a031f4ca84502566ea75d1906a6fc85" id="r_a3a031f4ca84502566ea75d1906a6fc85"><td class="memItemLeft" align="right" valign="top"><a id="a3a031f4ca84502566ea75d1906a6fc85" name="a3a031f4ca84502566ea75d1906a6fc85"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatMassTranslation</b></td></tr>
+<tr class="memdesc:a3a031f4ca84502566ea75d1906a6fc85"><td class="mdescLeft">&#160;</td><td class="mdescRight">Masses for the translational thermostat chain. <br /></td></tr>
 <tr class="separator:a3a031f4ca84502566ea75d1906a6fc85"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa738cd9b37cfec0c6e55112c8aa9c737" id="r_aa738cd9b37cfec0c6e55112c8aa9c737"><td class="memItemLeft" align="right" valign="top"><a id="aa738cd9b37cfec0c6e55112c8aa9c737" name="aa738cd9b37cfec0c6e55112c8aa9c737"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatDegreesOfFreedomRotation</b></td></tr>
+<tr class="memdesc:aa738cd9b37cfec0c6e55112c8aa9c737"><td class="mdescLeft">&#160;</td><td class="mdescRight">Degrees of freedom for the rotational thermostat chain. <br /></td></tr>
 <tr class="separator:aa738cd9b37cfec0c6e55112c8aa9c737"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a800de3925450967b3f797544f89e4c94" id="r_a800de3925450967b3f797544f89e4c94"><td class="memItemLeft" align="right" valign="top"><a id="a800de3925450967b3f797544f89e4c94" name="a800de3925450967b3f797544f89e4c94"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatForceRotation</b></td></tr>
+<tr class="memdesc:a800de3925450967b3f797544f89e4c94"><td class="mdescLeft">&#160;</td><td class="mdescRight">Forces for the rotational thermostat chain. <br /></td></tr>
 <tr class="separator:a800de3925450967b3f797544f89e4c94"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88af01e4bd1de74f22e6dbc8e69e76c5" id="r_a88af01e4bd1de74f22e6dbc8e69e76c5"><td class="memItemLeft" align="right" valign="top"><a id="a88af01e4bd1de74f22e6dbc8e69e76c5" name="a88af01e4bd1de74f22e6dbc8e69e76c5"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatVelocityRotation</b></td></tr>
+<tr class="memdesc:a88af01e4bd1de74f22e6dbc8e69e76c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Velocities for the rotational thermostat chain. <br /></td></tr>
 <tr class="separator:a88af01e4bd1de74f22e6dbc8e69e76c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac2afca4a57a1e61382f4689c06f53e46" id="r_ac2afca4a57a1e61382f4689c06f53e46"><td class="memItemLeft" align="right" valign="top"><a id="ac2afca4a57a1e61382f4689c06f53e46" name="ac2afca4a57a1e61382f4689c06f53e46"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatPositionRotation</b></td></tr>
+<tr class="memdesc:ac2afca4a57a1e61382f4689c06f53e46"><td class="mdescLeft">&#160;</td><td class="mdescRight">Positions for the rotational thermostat chain. <br /></td></tr>
 <tr class="separator:ac2afca4a57a1e61382f4689c06f53e46"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5e10f9ba7f2321df7403851de9447e42" id="r_a5e10f9ba7f2321df7403851de9447e42"><td class="memItemLeft" align="right" valign="top"><a id="a5e10f9ba7f2321df7403851de9447e42" name="a5e10f9ba7f2321df7403851de9447e42"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>thermostatMassRotation</b></td></tr>
+<tr class="memdesc:a5e10f9ba7f2321df7403851de9447e42"><td class="mdescLeft">&#160;</td><td class="mdescRight">Masses for the rotational thermostat chain. <br /></td></tr>
 <tr class="separator:a5e10f9ba7f2321df7403851de9447e42"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a221afa2d6bb540e2c53731cb66cfae8a" id="r_a221afa2d6bb540e2c53731cb66cfae8a"><td class="memItemLeft" align="right" valign="top"><a id="a221afa2d6bb540e2c53731cb66cfae8a" name="a221afa2d6bb540e2c53731cb66cfae8a"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>w</b></td></tr>
+<tr class="memdesc:a221afa2d6bb540e2c53731cb66cfae8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Weights for Yoshida-Suzuki integration steps. <br /></td></tr>
 <tr class="separator:a221afa2d6bb540e2c53731cb66cfae8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
+Friends</h2></td></tr>
+<tr class="memitem:ab30fd81ae0dd2bd3d06b191ac202571f" id="r_ab30fd81ae0dd2bd3d06b191ac202571f"><td class="memItemLeft" align="right" valign="top"><a id="ab30fd81ae0dd2bd3d06b191ac202571f" name="ab30fd81ae0dd2bd3d06b191ac202571f"></a>
+Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&lt;&lt;</b> (Archive&lt; std::ofstream &gt; &amp;archive, const <a class="el" href="structThermostat.html">Thermostat</a> &amp;s)</td></tr>
+<tr class="separator:ab30fd81ae0dd2bd3d06b191ac202571f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a00d0d79b51c11cafc42f0e24217d9c9e" id="r_a00d0d79b51c11cafc42f0e24217d9c9e"><td class="memItemLeft" align="right" valign="top"><a id="a00d0d79b51c11cafc42f0e24217d9c9e" name="a00d0d79b51c11cafc42f0e24217d9c9e"></a>
+Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structThermostat.html">Thermostat</a> &amp;s)</td></tr>
+<tr class="separator:a00d0d79b51c11cafc42f0e24217d9c9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents a Nose-Hoover thermostat for molecular dynamics simulations. </p>
+<p>The <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> struct encapsulates the properties and methods required to implement a Nose-Hoover thermostat for temperature control in molecular dynamics simulations. It includes parameters for temperature, thermostat chain length, Yoshida-Suzuki steps, and degrees of freedom. The struct provides methods to initialize the thermostat, perform Nose-Hoover NVT integration steps, and compute the thermostat's energy contribution. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a67cfc54f1cff43f4cd92c58e3be01919" name="a67cfc54f1cff43f4cd92c58e3be01919"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a67cfc54f1cff43f4cd92c58e3be01919">&#9670;&#160;</a></span>Thermostat() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Thermostat::Thermostat </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> struct. </p>
+<p>Initializes a <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> object with default values. </p>
+
+</div>
+</div>
+<a id="ae7b544f987b2c5411d3df58c802fd4cf" name="ae7b544f987b2c5411d3df58c802fd4cf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae7b544f987b2c5411d3df58c802fd4cf">&#9670;&#160;</a></span>Thermostat() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Thermostat::Thermostat </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>temperature</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>thermostatChainLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfYoshidaSuzukiSteps</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>deltaT</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>translationalDegreesOfFreedom</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>rotationalDgreesOfFreedom</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> with specified parameters. </p>
+<p>Initializes a <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a> with the provided temperature, thermostat chain length, number of Yoshida-Suzuki steps, time step deltaT, and degrees of freedom for translation and rotation.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">temperature</td><td>The target temperature for the thermostat. </td></tr>
+    <tr><td class="paramname">thermostatChainLength</td><td>The length of the thermostat chain. </td></tr>
+    <tr><td class="paramname">numberOfYoshidaSuzukiSteps</td><td>The number of Yoshida-Suzuki steps for integration. </td></tr>
+    <tr><td class="paramname">deltaT</td><td>The simulation time step. </td></tr>
+    <tr><td class="paramname">translationalDegreesOfFreedom</td><td>The number of translational degrees of freedom. </td></tr>
+    <tr><td class="paramname">rotationalDgreesOfFreedom</td><td>The number of rotational degrees of freedom. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a37e05fbe868be237f4c7716314fa7554" name="a37e05fbe868be237f4c7716314fa7554"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a37e05fbe868be237f4c7716314fa7554">&#9670;&#160;</a></span>getEnergy()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double Thermostat::getEnergy </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Computes the total energy of the thermostat. </p>
+<p>Calculates the energy contribution from both translational and rotational thermostat chains.</p>
+<dl class="section return"><dt>Returns</dt><dd>The total energy of the thermostat. </dd></dl>
+
+</div>
+</div>
+<a id="a5911a729d2c24011148809df03e87f1b" name="a5911a729d2c24011148809df03e87f1b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5911a729d2c24011148809df03e87f1b">&#9670;&#160;</a></span>initialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Thermostat::initialize </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Initializes the thermostat with random velocities. </p>
+<p>Sets up the thermostat chain by initializing velocities using a random number generator.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>A reference to a RandomNumber generator. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="af9491d6875c72853601f4b1596130414" name="af9491d6875c72853601f4b1596130414"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af9491d6875c72853601f4b1596130414">&#9670;&#160;</a></span>NoseHooverNVT()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::pair&lt; double, double &gt; Thermostat::NoseHooverNVT </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>UKineticTranslation</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>UKineticRotation</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs a Nose-Hoover NVT integration step. </p>
+<p>Updates the thermostat variables and computes scaling factors for translational and rotational degrees of freedom based on the provided kinetic energies.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">UKineticTranslation</td><td>The kinetic energy of translation. </td></tr>
+    <tr><td class="paramname">UKineticRotation</td><td>The kinetic energy of rotation. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A pair of scaling factors for translation and rotation. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>thermostat.ixx</b></li>
 </ul>

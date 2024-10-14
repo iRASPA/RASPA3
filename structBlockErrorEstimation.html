@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: BlockErrorEstimation Struct Reference</title>
+<title>RASPA3: BlockErrorEstimation Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,48 +107,55 @@ $(document).ready(function(){initNavTree('structBlockErrorEstimation.html',''); 
   <div class="headertitle"><div class="title">BlockErrorEstimation Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_averages.html">averages</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Manages block error estimation for statistical analysis.  
+ <a href="structBlockErrorEstimation.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for BlockErrorEstimation:</div>
 <div class="dyncontent">
 <div class="center"><img src="structBlockErrorEstimation__coll__graph.png" border="0" usemap="#aBlockErrorEstimation_coll__map" alt="Collaboration graph"/></div>
-<map name="aBlockErrorEstimation_coll__map" id="aBlockErrorEstimation_coll__map">
-<area shape="rect" title=" " alt="" coords="5,93,164,119"/>
-<area shape="rect" title=" " alt="" coords="5,5,164,31"/>
-<area shape="poly" title=" " alt="" coords="87,45,87,93,82,93,82,45"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:af422171f36038efa86fb070899c00187" id="r_af422171f36038efa86fb070899c00187"><td class="memItemLeft" align="right" valign="top"><a id="af422171f36038efa86fb070899c00187" name="af422171f36038efa86fb070899c00187"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>BlockErrorEstimation</b> (size_t size, size_t numberOfSamples)</td></tr>
+<tr class="memitem:a0a5d7806a23daaecf49840492bdaac48" id="r_a0a5d7806a23daaecf49840492bdaac48"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBlockErrorEstimation.html#a0a5d7806a23daaecf49840492bdaac48">BlockErrorEstimation</a> ()</td></tr>
+<tr class="memdesc:a0a5d7806a23daaecf49840492bdaac48"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor.  <br /></td></tr>
+<tr class="separator:a0a5d7806a23daaecf49840492bdaac48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af422171f36038efa86fb070899c00187" id="r_af422171f36038efa86fb070899c00187"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBlockErrorEstimation.html#af422171f36038efa86fb070899c00187">BlockErrorEstimation</a> (size_t size, size_t <a class="el" href="structBlockErrorEstimation.html#a5f61f16120a929c5609326aa4bd4f8c6">numberOfSamples</a>)</td></tr>
+<tr class="memdesc:af422171f36038efa86fb070899c00187"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structBlockErrorEstimation.html" title="Manages block error estimation for statistical analysis.">BlockErrorEstimation</a> with specified parameters.  <br /></td></tr>
 <tr class="separator:af422171f36038efa86fb070899c00187"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a371d5cdffffe2bd486cc887d5eb78f0e" id="r_a371d5cdffffe2bd486cc887d5eb78f0e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBlockErrorEstimation.html#a371d5cdffffe2bd486cc887d5eb78f0e">setCurrentSample</a> (size_t sample)</td></tr>
+<tr class="memdesc:a371d5cdffffe2bd486cc887d5eb78f0e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates the current sample and bin index.  <br /></td></tr>
+<tr class="separator:a371d5cdffffe2bd486cc887d5eb78f0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa8fa3b513d369a58dd81794a1cc09b96" id="r_aa8fa3b513d369a58dd81794a1cc09b96"><td class="memItemLeft" align="right" valign="top"><a id="aa8fa3b513d369a58dd81794a1cc09b96" name="aa8fa3b513d369a58dd81794a1cc09b96"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structBlockErrorEstimation.html">BlockErrorEstimation</a> const &amp;) const =default</td></tr>
 <tr class="separator:aa8fa3b513d369a58dd81794a1cc09b96"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a371d5cdffffe2bd486cc887d5eb78f0e" id="r_a371d5cdffffe2bd486cc887d5eb78f0e"><td class="memItemLeft" align="right" valign="top"><a id="a371d5cdffffe2bd486cc887d5eb78f0e" name="a371d5cdffffe2bd486cc887d5eb78f0e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setCurrentSample</b> (size_t sample)</td></tr>
-<tr class="separator:a371d5cdffffe2bd486cc887d5eb78f0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a63d2f524ae4f6156cb8a0d877217331a" id="r_a63d2f524ae4f6156cb8a0d877217331a"><td class="memItemLeft" align="right" valign="top"><a id="a63d2f524ae4f6156cb8a0d877217331a" name="a63d2f524ae4f6156cb8a0d877217331a"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
+<tr class="memdesc:a63d2f524ae4f6156cb8a0d877217331a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of bins. <br /></td></tr>
 <tr class="separator:a63d2f524ae4f6156cb8a0d877217331a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e2564a6f1652450574b9c9190f42fd1" id="r_a9e2564a6f1652450574b9c9190f42fd1"><td class="memItemLeft" align="right" valign="top"><a id="a9e2564a6f1652450574b9c9190f42fd1" name="a9e2564a6f1652450574b9c9190f42fd1"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>currentSample</b> {0}</td></tr>
+<tr class="memdesc:a9e2564a6f1652450574b9c9190f42fd1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current sample index. <br /></td></tr>
 <tr class="separator:a9e2564a6f1652450574b9c9190f42fd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5f61f16120a929c5609326aa4bd4f8c6" id="r_a5f61f16120a929c5609326aa4bd4f8c6"><td class="memItemLeft" align="right" valign="top"><a id="a5f61f16120a929c5609326aa4bd4f8c6" name="a5f61f16120a929c5609326aa4bd4f8c6"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfSamples</b></td></tr>
+<tr class="memdesc:a5f61f16120a929c5609326aa4bd4f8c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of samples. <br /></td></tr>
 <tr class="separator:a5f61f16120a929c5609326aa4bd4f8c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a08f1fc5c63ef150ec3ccd8720ea5b971" id="r_a08f1fc5c63ef150ec3ccd8720ea5b971"><td class="memItemLeft" align="right" valign="top"><a id="a08f1fc5c63ef150ec3ccd8720ea5b971" name="a08f1fc5c63ef150ec3ccd8720ea5b971"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>currentBin</b> {0}</td></tr>
+<tr class="memdesc:a08f1fc5c63ef150ec3ccd8720ea5b971"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current bin index. <br /></td></tr>
 <tr class="separator:a08f1fc5c63ef150ec3ccd8720ea5b971"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a604ec67e8b389efa7f3713f080884ffd" id="r_a604ec67e8b389efa7f3713f080884ffd"><td class="memItemLeft" align="right" valign="top"><a id="a604ec67e8b389efa7f3713f080884ffd" name="a604ec67e8b389efa7f3713f080884ffd"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>binSize</b> {}</td></tr>
+<tr class="memdesc:a604ec67e8b389efa7f3713f080884ffd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Size of each bin. <br /></td></tr>
 <tr class="separator:a604ec67e8b389efa7f3713f080884ffd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a47f25c1235ea4b619869b44f27d210ae" id="r_a47f25c1235ea4b619869b44f27d210ae"><td class="memItemLeft" align="right" valign="top"><a id="a47f25c1235ea4b619869b44f27d210ae" name="a47f25c1235ea4b619869b44f27d210ae"></a>
 std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>nextBin</b></td></tr>
+<tr class="memdesc:a47f25c1235ea4b619869b44f27d210ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indices of the next bin boundaries. <br /></td></tr>
 <tr class="separator:a47f25c1235ea4b619869b44f27d210ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -153,6 +167,120 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structBlockErrorEstimation.html">BlockErrorEstimation</a> &amp;blockerror)</td></tr>
 <tr class="separator:a2554cdd9a1e88389070f8404ce4b3d83"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Manages block error estimation for statistical analysis. </p>
+<p>The <a class="el" href="structBlockErrorEstimation.html" title="Manages block error estimation for statistical analysis.">BlockErrorEstimation</a> struct keeps track of the sampling process for block error analysis. It divides the total number of samples into bins and updates the current bin as samples are processed. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a0a5d7806a23daaecf49840492bdaac48" name="a0a5d7806a23daaecf49840492bdaac48"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0a5d7806a23daaecf49840492bdaac48">&#9670;&#160;</a></span>BlockErrorEstimation() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">BlockErrorEstimation::BlockErrorEstimation </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor. </p>
+<p>Initializes a <a class="el" href="structBlockErrorEstimation.html" title="Manages block error estimation for statistical analysis.">BlockErrorEstimation</a> object with default values. </p>
+
+</div>
+</div>
+<a id="af422171f36038efa86fb070899c00187" name="af422171f36038efa86fb070899c00187"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af422171f36038efa86fb070899c00187">&#9670;&#160;</a></span>BlockErrorEstimation() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">BlockErrorEstimation::BlockErrorEstimation </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>size</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfSamples</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structBlockErrorEstimation.html" title="Manages block error estimation for statistical analysis.">BlockErrorEstimation</a> with specified parameters. </p>
+<p>Initializes the <a class="el" href="structBlockErrorEstimation.html" title="Manages block error estimation for statistical analysis.">BlockErrorEstimation</a> with the given number of bins and samples, and calculates the bin sizes.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">size</td><td>Number of bins. </td></tr>
+    <tr><td class="paramname">numberOfSamples</td><td>Total number of samples. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a371d5cdffffe2bd486cc887d5eb78f0e" name="a371d5cdffffe2bd486cc887d5eb78f0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a371d5cdffffe2bd486cc887d5eb78f0e">&#9670;&#160;</a></span>setCurrentSample()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void BlockErrorEstimation::setCurrentSample </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>sample</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Updates the current sample and bin index. </p>
+<p>Sets the current sample index and updates the current bin index if the sample reaches the next bin boundary.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">sample</td><td>The current sample index. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>averages.ixx</b></li>
 </ul>

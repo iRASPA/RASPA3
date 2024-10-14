@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: MCMoveProbabilitiesSystem Struct Reference</title>
+<title>RASPA3: MCMoveProbabilitiesSystem Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -106,6 +113,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a13b5bb1d34bc356a1e52b8320bc188c3" id="r_a13b5bb1d34bc356a1e52b8320bc188c3"><td class="memItemLeft" align="right" valign="top"><a id="a13b5bb1d34bc356a1e52b8320bc188c3" name="a13b5bb1d34bc356a1e52b8320bc188c3"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structMCMoveProbabilitiesSystem.html">MCMoveProbabilitiesSystem</a> const &amp;) const =default</td></tr>
 <tr class="separator:a13b5bb1d34bc356a1e52b8320bc188c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa55ecf1b5707aa32793cc98e7e6849c8" id="r_aa55ecf1b5707aa32793cc98e7e6849c8"><td class="memItemLeft" align="right" valign="top"><a id="aa55ecf1b5707aa32793cc98e7e6849c8" name="aa55ecf1b5707aa32793cc98e7e6849c8"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>MCMoveProbabilitiesSystem</b> (double volumeChangeProbability=0.0, double gibbsVolumeChangeProbability=0.0, double parallelTemperingProbability=0.0)</td></tr>
+<tr class="separator:aa55ecf1b5707aa32793cc98e7e6849c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b5d4c015aff4d4a73f9a2019c660c15" id="r_a2b5d4c015aff4d4a73f9a2019c660c15"><td class="memItemLeft" align="right" valign="top"><a id="a2b5d4c015aff4d4a73f9a2019c660c15" name="a2b5d4c015aff4d4a73f9a2019c660c15"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>optimizeAcceptance</b> ()</td></tr>
 <tr class="separator:a2b5d4c015aff4d4a73f9a2019c660c15"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -115,15 +125,15 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a51af47ce3f1925e9a79a5d1bd9e9a0d8" id="r_a51af47ce3f1925e9a79a5d1bd9e9a0d8"><td class="memItemLeft" align="right" valign="top"><a id="a51af47ce3f1925e9a79a5d1bd9e9a0d8" name="a51af47ce3f1925e9a79a5d1bd9e9a0d8"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
 <tr class="separator:a51af47ce3f1925e9a79a5d1bd9e9a0d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a54b7f6df574859d0e7ab399aeac110bb" id="r_a54b7f6df574859d0e7ab399aeac110bb"><td class="memItemLeft" align="right" valign="top"><a id="a54b7f6df574859d0e7ab399aeac110bb" name="a54b7f6df574859d0e7ab399aeac110bb"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>probabilityVolumeMove</b> {0.0}</td></tr>
-<tr class="separator:a54b7f6df574859d0e7ab399aeac110bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b9eba9f7b9d3f8150b1157b83e9f584" id="r_a5b9eba9f7b9d3f8150b1157b83e9f584"><td class="memItemLeft" align="right" valign="top"><a id="a5b9eba9f7b9d3f8150b1157b83e9f584" name="a5b9eba9f7b9d3f8150b1157b83e9f584"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>probabilityGibbsVolumeMove</b> {0.0}</td></tr>
-<tr class="separator:a5b9eba9f7b9d3f8150b1157b83e9f584"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa2936fcbccbca923af9418f5bdf6f254" id="r_aa2936fcbccbca923af9418f5bdf6f254"><td class="memItemLeft" align="right" valign="top"><a id="aa2936fcbccbca923af9418f5bdf6f254" name="aa2936fcbccbca923af9418f5bdf6f254"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>probabilityParallelTemperingSwap</b> {0.0}</td></tr>
-<tr class="separator:aa2936fcbccbca923af9418f5bdf6f254"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a71fe0de8f48069799b1451bb4f1527ff" id="r_a71fe0de8f48069799b1451bb4f1527ff"><td class="memItemLeft" align="right" valign="top"><a id="a71fe0de8f48069799b1451bb4f1527ff" name="a71fe0de8f48069799b1451bb4f1527ff"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>volumeChangeProbability</b></td></tr>
+<tr class="separator:a71fe0de8f48069799b1451bb4f1527ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1363ea4931fa19a5e242eb760f587d0c" id="r_a1363ea4931fa19a5e242eb760f587d0c"><td class="memItemLeft" align="right" valign="top"><a id="a1363ea4931fa19a5e242eb760f587d0c" name="a1363ea4931fa19a5e242eb760f587d0c"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>gibbsVolumeChangeProbability</b></td></tr>
+<tr class="separator:a1363ea4931fa19a5e242eb760f587d0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a752bebcc6f2d2b7f4c5dd6e6e7a5196a" id="r_a752bebcc6f2d2b7f4c5dd6e6e7a5196a"><td class="memItemLeft" align="right" valign="top"><a id="a752bebcc6f2d2b7f4c5dd6e6e7a5196a" name="a752bebcc6f2d2b7f4c5dd6e6e7a5196a"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>parallelTemperingProbability</b></td></tr>
+<tr class="separator:a752bebcc6f2d2b7f4c5dd6e6e7a5196a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -135,7 +145,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 <tr class="separator:ac3ba9598b98eb8db28303371d6568008"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
-<li>src/raspakit/mc_moves/<b>mc_moves_probabilities_system.ixx</b></li>
+<li>src/raspakit/mc_moves/<b>probabilities_system.ixx</b></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

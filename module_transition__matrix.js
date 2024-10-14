@@ -1,4 +1,4 @@
 var module_transition__matrix =
 [
-    [ "TransitionMatrix", "structTransitionMatrix.html", null ]
+    [ "TransitionMatrix", "structTransitionMatrix.html", "structTransitionMatrix" ]
 ];

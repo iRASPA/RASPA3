@@ -1,4 +1,4 @@
 var module_component =
 [
-    [ "Component", "structComponent.html", null ]
+    [ "Component", "structComponent.html", "structComponent" ]
 ];

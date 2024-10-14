@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: PropertyPressure Struct Reference</title>
+<title>RASPA3: PropertyPressure Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -104,13 +111,6 @@ $(document).ready(function(){initNavTree('structPropertyPressure.html',''); init
 Collaboration diagram for PropertyPressure:</div>
 <div class="dyncontent">
 <div class="center"><img src="structPropertyPressure__coll__graph.png" border="0" usemap="#aPropertyPressure_coll__map" alt="Collaboration graph"/></div>
-<map name="aPropertyPressure_coll__map" id="aPropertyPressure_coll__map">
-<area shape="rect" title=" " alt="" coords="441,45,575,70"/>
-<area shape="rect" title=" " alt="" coords="5,5,192,45"/>
-<area shape="poly" title=" " alt="" coords="206,31,441,49,441,55,206,36"/>
-<area shape="rect" title=" " alt="" coords="17,69,180,109"/>
-<area shape="poly" title=" " alt="" coords="194,83,417,68,441,65,441,70,418,73,194,89"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
@@ -175,6 +175,9 @@ std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bot
 <tr class="memitem:a95a8ba6f3770345155e2960611137b12" id="r_a95a8ba6f3770345155e2960611137b12"><td class="memItemLeft" align="right" valign="top"><a id="a95a8ba6f3770345155e2960611137b12" name="a95a8ba6f3770345155e2960611137b12"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeAveragesStatistics</b> () const</td></tr>
 <tr class="separator:a95a8ba6f3770345155e2960611137b12"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1cd1895ebce7f2ecdf69faaf451f5e9a" id="r_a1cd1895ebce7f2ecdf69faaf451f5e9a"><td class="memItemLeft" align="right" valign="top"><a id="a1cd1895ebce7f2ecdf69faaf451f5e9a" name="a1cd1895ebce7f2ecdf69faaf451f5e9a"></a>
+nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonAveragesStatistics</b> () const</td></tr>
+<tr class="separator:a1cd1895ebce7f2ecdf69faaf451f5e9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -201,7 +204,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 <tr class="separator:af4dd2776a8405a5d40b036c242b05169"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
-<li>src/raspakit/properties/<b>property_pressure.ixx</b></li>
+<li>src/raspakit/properties/<b>pressure.ixx</b></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

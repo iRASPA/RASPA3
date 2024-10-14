@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: PropertyEnthalpy Struct Reference</title>
+<title>RASPA3: PropertyEnthalpy Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -104,11 +111,6 @@ $(document).ready(function(){initNavTree('structPropertyEnthalpy.html',''); init
 Collaboration diagram for PropertyEnthalpy:</div>
 <div class="dyncontent">
 <div class="center"><img src="structPropertyEnthalpy__coll__graph.png" border="0" usemap="#aPropertyEnthalpy_coll__map" alt="Collaboration graph"/></div>
-<map name="aPropertyEnthalpy_coll__map" id="aPropertyEnthalpy_coll__map">
-<area shape="rect" title=" " alt="" coords="49,137,184,163"/>
-<area shape="rect" title=" " alt="" coords="5,5,228,60"/>
-<area shape="poly" title=" " alt="" coords="119,74,119,137,114,137,114,74"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
@@ -134,9 +136,15 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>addSample</b> (size_t
 <tr class="memitem:aebeedba0b9bb5539ce89e0d068b84c56" id="r_aebeedba0b9bb5539ce89e0d068b84c56"><td class="memItemLeft" align="right" valign="top"><a id="aebeedba0b9bb5539ce89e0d068b84c56" name="aebeedba0b9bb5539ce89e0d068b84c56"></a>
 std::pair&lt; <a class="el" href="structEnthalpyOfAdsorption.html">EnthalpyOfAdsorption</a>, <a class="el" href="structEnthalpyOfAdsorption.html">EnthalpyOfAdsorption</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageEnthalpy</b> () const</td></tr>
 <tr class="separator:aebeedba0b9bb5539ce89e0d068b84c56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b492ea176e8ebf06b8e9b3d05784c39" id="r_a9b492ea176e8ebf06b8e9b3d05784c39"><td class="memItemLeft" align="right" valign="top"><a id="a9b492ea176e8ebf06b8e9b3d05784c39" name="a9b492ea176e8ebf06b8e9b3d05784c39"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>blockEnthalpies</b> (size_t &amp;k, double &amp;idealGasTerm) const</td></tr>
+<tr class="separator:a9b492ea176e8ebf06b8e9b3d05784c39"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a512dfce77225a970dacde1dd60633623" id="r_a512dfce77225a970dacde1dd60633623"><td class="memItemLeft" align="right" valign="top"><a id="a512dfce77225a970dacde1dd60633623" name="a512dfce77225a970dacde1dd60633623"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeAveragesStatistics</b> (std::vector&lt; size_t &gt; &amp;swappableComponents, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components) const</td></tr>
 <tr class="separator:a512dfce77225a970dacde1dd60633623"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afa2383033259607bba82091c649c0f1a" id="r_afa2383033259607bba82091c649c0f1a"><td class="memItemLeft" align="right" valign="top"><a id="afa2383033259607bba82091c649c0f1a" name="afa2383033259607bba82091c649c0f1a"></a>
+nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonAveragesStatistics</b> (std::vector&lt; size_t &gt; &amp;swappableComponents, std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components) const</td></tr>
+<tr class="separator:afa2383033259607bba82091c649c0f1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -163,7 +171,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 <tr class="separator:a245dbd59bed4bf848f5f4e9c428d3dd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
-<li>src/raspakit/properties/<b>property_enthalpy.ixx</b></li>
+<li>src/raspakit/properties/<b>enthalpy.ixx</b></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

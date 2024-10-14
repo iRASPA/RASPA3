@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: cbmc_rigid_reinsertion Module Reference</title>
+<title>RASPA3: cbmc_rigid_reinsertion Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,17 +108,17 @@ $(document).ready(function(){initNavTree('module_cbmc__rigid__reinsertion.html',
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:abea6bfee72a66bf0d56dafc351d25fdf" id="r_abea6bfee72a66bf0d56dafc351d25fdf"><td class="memItemLeft" align="right" valign="top"><a id="abea6bfee72a66bf0d56dafc351d25fdf" name="abea6bfee72a66bf0d56dafc351d25fdf"></a>
-std::optional&lt; <a class="el" href="structChainData.html">ChainData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMoleculeReinsertion</b> (RandomNumber &amp;random, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, size_t numberOfTrialDirections) noexcept</td></tr>
-<tr class="separator:abea6bfee72a66bf0d56dafc351d25fdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab2aaf1e66101f3f5e79296201e744bc0" id="r_ab2aaf1e66101f3f5e79296201e744bc0"><td class="memItemLeft" align="right" valign="top"><a id="ab2aaf1e66101f3f5e79296201e744bc0" name="ab2aaf1e66101f3f5e79296201e744bc0"></a>
-<a class="el" href="structChainData.html">ChainData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMoleculeReinsertion</b> (RandomNumber &amp;random, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, double storedR, size_t numberOfTrialDirections)</td></tr>
-<tr class="separator:ab2aaf1e66101f3f5e79296201e744bc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a489bebf725ec3cc0c969f44b6770dafa" id="r_a489bebf725ec3cc0c969f44b6770dafa"><td class="memItemLeft" align="right" valign="top"><a id="a489bebf725ec3cc0c969f44b6770dafa" name="a489bebf725ec3cc0c969f44b6770dafa"></a>
+std::optional&lt; <a class="el" href="structChainData.html">ChainData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMoleculeReinsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, size_t numberOfTrialDirections) noexcept</td></tr>
+<tr class="separator:a489bebf725ec3cc0c969f44b6770dafa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7af7f77bbc8764d07a7a5d3446ec1967" id="r_a7af7f77bbc8764d07a7a5d3446ec1967"><td class="memItemLeft" align="right" valign="top"><a id="a7af7f77bbc8764d07a7a5d3446ec1967" name="a7af7f77bbc8764d07a7a5d3446ec1967"></a>
+<a class="el" href="structChainData.html">ChainData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::retraceRigidMoleculeReinsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms, double storedR, size_t numberOfTrialDirections)</td></tr>
+<tr class="separator:a7af7f77bbc8764d07a7a5d3446ec1967"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:cbmc__rigid__reinsertion_8ixx" id="r_cbmc__rigid__reinsertion_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>cbmc_rigid_reinsertion.ixx</b></td></tr>
+<tr class="memitem:rigid__reinsertion_8ixx" id="r_rigid__reinsertion_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>rigid_reinsertion.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

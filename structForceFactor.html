@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: ForceFactor Struct Reference</title>
+<title>RASPA3: ForceFactor Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,11 +107,14 @@ $(document).ready(function(){initNavTree('structForceFactor.html',''); initResiz
   <div class="headertitle"><div class="title">ForceFactor Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_force__factor.html">force_factor</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents the force factors associated with an energy component.  
+ <a href="structForceFactor.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a7b13de447e4ba6e947940e0f6f2f84c7" id="r_a7b13de447e4ba6e947940e0f6f2f84c7"><td class="memItemLeft" align="right" valign="top"><a id="a7b13de447e4ba6e947940e0f6f2f84c7" name="a7b13de447e4ba6e947940e0f6f2f84c7"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>ForceFactor</b> (double energy, double forceFactor, double dUdlambda)</td></tr>
+<tr class="memitem:a7b13de447e4ba6e947940e0f6f2f84c7" id="r_a7b13de447e4ba6e947940e0f6f2f84c7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceFactor.html#a7b13de447e4ba6e947940e0f6f2f84c7">ForceFactor</a> (double <a class="el" href="structForceFactor.html#acf2b29c3aace103c7cf42e01688fe2f6">energy</a>, double <a class="el" href="structForceFactor.html#a9841bf9da35cf47f6607cdc922c0fb14">forceFactor</a>, double <a class="el" href="structForceFactor.html#a70f81d5ab8f7d1db61e3c0d216735e4b">dUdlambda</a>)</td></tr>
+<tr class="memdesc:a7b13de447e4ba6e947940e0f6f2f84c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structForceFactor.html" title="Represents the force factors associated with an energy component.">ForceFactor</a> with specified energy, force factor, and dUdlambda.  <br /></td></tr>
 <tr class="separator:a7b13de447e4ba6e947940e0f6f2f84c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7488ee05d3ea9d70ab3019487073c389" id="r_a7488ee05d3ea9d70ab3019487073c389"><td class="memItemLeft" align="right" valign="top"><a id="a7488ee05d3ea9d70ab3019487073c389" name="a7488ee05d3ea9d70ab3019487073c389"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structForceFactor.html">ForceFactor</a> const &amp;) const =default</td></tr>
@@ -123,12 +133,15 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a cl
 Public Attributes</h2></td></tr>
 <tr class="memitem:acf2b29c3aace103c7cf42e01688fe2f6" id="r_acf2b29c3aace103c7cf42e01688fe2f6"><td class="memItemLeft" align="right" valign="top"><a id="acf2b29c3aace103c7cf42e01688fe2f6" name="acf2b29c3aace103c7cf42e01688fe2f6"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>energy</b></td></tr>
+<tr class="memdesc:acf2b29c3aace103c7cf42e01688fe2f6"><td class="mdescLeft">&#160;</td><td class="mdescRight">The energy component. <br /></td></tr>
 <tr class="separator:acf2b29c3aace103c7cf42e01688fe2f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9841bf9da35cf47f6607cdc922c0fb14" id="r_a9841bf9da35cf47f6607cdc922c0fb14"><td class="memItemLeft" align="right" valign="top"><a id="a9841bf9da35cf47f6607cdc922c0fb14" name="a9841bf9da35cf47f6607cdc922c0fb14"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>forceFactor</b></td></tr>
+<tr class="memdesc:a9841bf9da35cf47f6607cdc922c0fb14"><td class="mdescLeft">&#160;</td><td class="mdescRight">The scaling factor for forces. <br /></td></tr>
 <tr class="separator:a9841bf9da35cf47f6607cdc922c0fb14"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a70f81d5ab8f7d1db61e3c0d216735e4b" id="r_a70f81d5ab8f7d1db61e3c0d216735e4b"><td class="memItemLeft" align="right" valign="top"><a id="a70f81d5ab8f7d1db61e3c0d216735e4b" name="a70f81d5ab8f7d1db61e3c0d216735e4b"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dUdlambda</b></td></tr>
+<tr class="memdesc:a70f81d5ab8f7d1db61e3c0d216735e4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">The derivative of the potential energy with respect to lambda. <br /></td></tr>
 <tr class="separator:a70f81d5ab8f7d1db61e3c0d216735e4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -140,6 +153,62 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structForceFactor.html">ForceFactor</a> &amp;e)</td></tr>
 <tr class="separator:a859c26d0a35e4759b82d19cb5ce1419e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents the force factors associated with an energy component. </p>
+<p>The <a class="el" href="structForceFactor.html" title="Represents the force factors associated with an energy component.">ForceFactor</a> struct encapsulates the energy, force scaling factor, and the derivative of the potential energy with respect to lambda. It provides constructors for initializing these values and overloaded operators for arithmetic operations. Scaling is linear, first switching Lennard-Jones (LJ) interactions on in the range [0, 0.5], then electrostatic interactions from [0.5, 1.0]. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a7b13de447e4ba6e947940e0f6f2f84c7" name="a7b13de447e4ba6e947940e0f6f2f84c7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7b13de447e4ba6e947940e0f6f2f84c7">&#9670;&#160;</a></span>ForceFactor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">ForceFactor::ForceFactor </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>energy</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>forceFactor</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>dUdlambda</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structForceFactor.html" title="Represents the force factors associated with an energy component.">ForceFactor</a> with specified energy, force factor, and dUdlambda. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">energy</td><td>The energy value. </td></tr>
+    <tr><td class="paramname">forceFactor</td><td>The force scaling factor. </td></tr>
+    <tr><td class="paramname">dUdlambda</td><td>The derivative of the potential energy with respect to lambda. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/potentials/<b>force_factor.ixx</b></li>
 </ul>

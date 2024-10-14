@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: cbmc_interactions Module Reference</title>
+<title>RASPA3: cbmc_interactions Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,23 +108,26 @@ $(document).ready(function(){initNavTree('module_cbmc__interactions.html',''); i
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:ab929f3821b18ae9e96de04f700ad9cce" id="r_ab929f3821b18ae9e96de04f700ad9cce"><td class="memItemLeft" align="right" valign="top"><a id="ab929f3821b18ae9e96de04f700ad9cce" name="ab929f3821b18ae9e96de04f700ad9cce"></a>
-const std::vector&lt; std::pair&lt; <a class="el" href="structAtom.html">Atom</a>, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &amp;trialPositions) noexcept</td></tr>
-<tr class="separator:ab929f3821b18ae9e96de04f700ad9cce"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6135d6cbe7c3abfbb6c812d7a3d7628d" id="r_a6135d6cbe7c3abfbb6c812d7a3d7628d"><td class="memItemLeft" align="right" valign="top"><a id="a6135d6cbe7c3abfbb6c812d7a3d7628d" name="a6135d6cbe7c3abfbb6c812d7a3d7628d"></a>
-const std::vector&lt; std::pair&lt; std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::vector&lt; std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; &amp;trialPositionSets, std::make_signed_t&lt; std::size_t &gt; skip=-1) noexcept</td></tr>
-<tr class="separator:a6135d6cbe7c3abfbb6c812d7a3d7628d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aacec4d0a42504d9371e7cc038875b049" id="r_aacec4d0a42504d9371e7cc038875b049"><td class="memItemLeft" align="right" valign="top"><a id="aacec4d0a42504d9371e7cc038875b049" name="aacec4d0a42504d9371e7cc038875b049"></a>
-const std::vector&lt; std::tuple&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::vector&lt; std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; &gt; &amp;trialPositionSets, std::make_signed_t&lt; std::size_t &gt; skip=-1) noexcept</td></tr>
-<tr class="separator:aacec4d0a42504d9371e7cc038875b049"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13adab65e3517e8aee6e8fce449414b6" id="r_a13adab65e3517e8aee6e8fce449414b6"><td class="memItemLeft" align="right" valign="top"><a id="a13adab65e3517e8aee6e8fce449414b6" name="a13adab65e3517e8aee6e8fce449414b6"></a>
-const std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergyDualCutOff</b> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffVDW, double cutOffCoulomb, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &amp;trialPositionSet) noexcept</td></tr>
-<tr class="separator:a13adab65e3517e8aee6e8fce449414b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b978d19056dca46286149a7fa66d40a" id="r_a9b978d19056dca46286149a7fa66d40a"><td class="memItemLeft" align="right" valign="top"><a id="a9b978d19056dca46286149a7fa66d40a" name="a9b978d19056dca46286149a7fa66d40a"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::insideBlockedPockets</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structComponent.html">Component</a> &amp;component, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
+<tr class="separator:a9b978d19056dca46286149a7fa66d40a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d97ff6a7241224895a28de1f51d2a5f" id="r_a2d97ff6a7241224895a28de1f51d2a5f"><td class="memItemLeft" align="right" valign="top"><a id="a2d97ff6a7241224895a28de1f51d2a5f" name="a2d97ff6a7241224895a28de1f51d2a5f"></a>
+const std::vector&lt; std::pair&lt; <a class="el" href="structAtom.html">Atom</a>, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &amp;trialPositions) noexcept</td></tr>
+<tr class="separator:a2d97ff6a7241224895a28de1f51d2a5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a576ea5197042db5470548f8fa6ef0c24" id="r_a576ea5197042db5470548f8fa6ef0c24"><td class="memItemLeft" align="right" valign="top"><a id="a576ea5197042db5470548f8fa6ef0c24" name="a576ea5197042db5470548f8fa6ef0c24"></a>
+const std::vector&lt; std::pair&lt; std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::vector&lt; std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; &amp;trialPositionSets, std::make_signed_t&lt; std::size_t &gt; skip=-1) noexcept</td></tr>
+<tr class="separator:a576ea5197042db5470548f8fa6ef0c24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af0febb0969b511dbef1eb97b3cefed93" id="r_af0febb0969b511dbef1eb97b3cefed93"><td class="memItemLeft" align="right" valign="top"><a id="af0febb0969b511dbef1eb97b3cefed93" name="af0febb0969b511dbef1eb97b3cefed93"></a>
+const std::vector&lt; std::tuple&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt;, <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergies</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::vector&lt; std::pair&lt; <a class="el" href="structMolecule.html">Molecule</a>, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &gt; &gt; &amp;trialPositionSets, std::make_signed_t&lt; std::size_t &gt; skip=-1) noexcept</td></tr>
+<tr class="separator:af0febb0969b511dbef1eb97b3cefed93"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5a8346684d41f2ed38ca4345f703bc9" id="r_af5a8346684d41f2ed38ca4345f703bc9"><td class="memItemLeft" align="right" valign="top"><a id="af5a8346684d41f2ed38ca4345f703bc9" name="af5a8346684d41f2ed38ca4345f703bc9"></a>
+const std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::computeExternalNonOverlappingEnergyDualCutOff</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::vector&lt; <a class="el" href="structAtom.html">Atom</a> &gt; &amp;trialPositionSet) noexcept</td></tr>
+<tr class="separator:af5a8346684d41f2ed38ca4345f703bc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:cbmc__interactions_8ixx" id="r_cbmc__interactions_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>cbmc_interactions.ixx</b></td></tr>
+<tr class="memitem:interactions_8ixx" id="r_interactions_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>interactions.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: cbmc_rigid_insertion Module Reference</title>
+<title>RASPA3: cbmc_rigid_insertion Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,14 +108,14 @@ $(document).ready(function(){initNavTree('module_cbmc__rigid__insertion.html',''
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:af7aa9acb892d4c3b69910094e9195ee3" id="r_af7aa9acb892d4c3b69910094e9195ee3"><td class="memItemLeft" align="right" valign="top"><a id="af7aa9acb892d4c3b69910094e9195ee3" name="af7aa9acb892d4c3b69910094e9195ee3"></a>
-std::optional&lt; <a class="el" href="structChainData.html">ChainData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMoleculeSwapInsertion</b> (RandomNumber &amp;random, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOff, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId, size_t numberOfTrialDirections) noexcept</td></tr>
-<tr class="separator:af7aa9acb892d4c3b69910094e9195ee3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae90e33243da9e98478e71700ce12b05d" id="r_ae90e33243da9e98478e71700ce12b05d"><td class="memItemLeft" align="right" valign="top"><a id="ae90e33243da9e98478e71700ce12b05d" name="ae90e33243da9e98478e71700ce12b05d"></a>
+std::optional&lt; <a class="el" href="structChainData.html">ChainData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>CBMC::growRigidMoleculeSwapInsertion</b> (RandomNumber &amp;random, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const <a class="el" href="structComponent.html">Component</a> &amp;component, bool hasExternalField, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId, size_t numberOfTrialDirections) noexcept</td></tr>
+<tr class="separator:ae90e33243da9e98478e71700ce12b05d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:cbmc__rigid__insertion_8ixx" id="r_cbmc__rigid__insertion_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>cbmc_rigid_insertion.ixx</b></td></tr>
+<tr class="memitem:rigid__insertion_8ixx" id="r_rigid__insertion_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/cbmc/<b>rigid_insertion.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->

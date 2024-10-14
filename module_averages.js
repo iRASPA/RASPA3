@@ -1,4 +1,4 @@
 var module_averages =
 [
-    [ "BlockErrorEstimation", "structBlockErrorEstimation.html", null ]
+    [ "BlockErrorEstimation", "structBlockErrorEstimation.html", "structBlockErrorEstimation" ]
 ];

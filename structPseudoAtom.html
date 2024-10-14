@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: PseudoAtom Struct Reference</title>
+<title>RASPA3: PseudoAtom Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,24 +107,23 @@ $(document).ready(function(){initNavTree('structPseudoAtom.html',''); initResiza
   <div class="headertitle"><div class="title">PseudoAtom Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_pseudo__atom.html">pseudo_atom</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents a pseudo-atom in the simulation system.  
+ <a href="structPseudoAtom.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for PseudoAtom:</div>
 <div class="dyncontent">
 <div class="center"><img src="structPseudoAtom__coll__graph.png" border="0" usemap="#aPseudoAtom_coll__map" alt="Collaboration graph"/></div>
-<map name="aPseudoAtom_coll__map" id="aPseudoAtom_coll__map">
-<area shape="rect" title=" " alt="" coords="23,197,127,223"/>
-<area shape="rect" title=" " alt="" coords="31,95,118,120"/>
-<area shape="poly" title=" " alt="" coords="77,134,77,197,72,197,72,134"/>
-<area shape="rect" title=" " alt="" coords="5,5,144,45"/>
-<area shape="poly" title=" " alt="" coords="77,59,77,94,72,94,72,59"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ad7b9372c6f4c249610c0b122492520b9" id="r_ad7b9372c6f4c249610c0b122492520b9"><td class="memItemLeft" align="right" valign="top"><a id="ad7b9372c6f4c249610c0b122492520b9" name="ad7b9372c6f4c249610c0b122492520b9"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PseudoAtom</b> (std::string name, double mass, double charge, size_t atomicNumber, bool printToPDB, std::string source=&quot;&quot;)</td></tr>
-<tr class="separator:ad7b9372c6f4c249610c0b122492520b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a07854420da2603e3529d7f5a6ddd4b44" id="r_a07854420da2603e3529d7f5a6ddd4b44"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPseudoAtom.html#a07854420da2603e3529d7f5a6ddd4b44">PseudoAtom</a> ()</td></tr>
+<tr class="memdesc:a07854420da2603e3529d7f5a6ddd4b44"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> struct.  <br /></td></tr>
+<tr class="separator:a07854420da2603e3529d7f5a6ddd4b44"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a90993d787e2e4460b4d3a186317c4186" id="r_a90993d787e2e4460b4d3a186317c4186"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPseudoAtom.html#a90993d787e2e4460b4d3a186317c4186">PseudoAtom</a> (std::string <a class="el" href="structPseudoAtom.html#ad0a8f413b0c7a7a7ac188952671b9dda">name</a>, bool <a class="el" href="structPseudoAtom.html#acf4996286ed58a462d4edb3051c604b6">framework</a>, double <a class="el" href="structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd">mass</a>, double <a class="el" href="structPseudoAtom.html#add1a7306a2f04d335780690d9e1fb3ce">charge</a>, double <a class="el" href="structPseudoAtom.html#a475d75a1c4b39e934956e69064776ad1">polarizability</a>, size_t <a class="el" href="structPseudoAtom.html#ac7b97d89495b6e4d36522d0e7f51c35e">atomicNumber</a>, bool <a class="el" href="structPseudoAtom.html#a32b06a068667e118e13a1d2d51fe439a">printToPDB</a>, std::string <a class="el" href="structPseudoAtom.html#a532f144150cd44507a0307be6f4989eb">source</a>=&quot;&quot;)</td></tr>
+<tr class="memdesc:a90993d787e2e4460b4d3a186317c4186"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> with specified parameters.  <br /></td></tr>
+<tr class="separator:a90993d787e2e4460b4d3a186317c4186"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adcfe7cdd4044128c08af8d91d861110f" id="r_adcfe7cdd4044128c08af8d91d861110f"><td class="memItemLeft" align="right" valign="top"><a id="adcfe7cdd4044128c08af8d91d861110f" name="adcfe7cdd4044128c08af8d91d861110f"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &amp;other) const</td></tr>
 <tr class="separator:adcfe7cdd4044128c08af8d91d861110f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -126,24 +132,43 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const
 Public Attributes</h2></td></tr>
 <tr class="memitem:a0a1e312f75f81dc54719595b4a22dfd8" id="r_a0a1e312f75f81dc54719595b4a22dfd8"><td class="memItemLeft" align="right" valign="top"><a id="a0a1e312f75f81dc54719595b4a22dfd8" name="a0a1e312f75f81dc54719595b4a22dfd8"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:a0a1e312f75f81dc54719595b4a22dfd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization compatibility. <br /></td></tr>
 <tr class="separator:a0a1e312f75f81dc54719595b4a22dfd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad0a8f413b0c7a7a7ac188952671b9dda" id="r_ad0a8f413b0c7a7a7ac188952671b9dda"><td class="memItemLeft" align="right" valign="top"><a id="ad0a8f413b0c7a7a7ac188952671b9dda" name="ad0a8f413b0c7a7a7ac188952671b9dda"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>name</b> {&quot;C&quot;}</td></tr>
+<tr class="memdesc:ad0a8f413b0c7a7a7ac188952671b9dda"><td class="mdescLeft">&#160;</td><td class="mdescRight">The name of the pseudo-atom. <br /></td></tr>
 <tr class="separator:ad0a8f413b0c7a7a7ac188952671b9dda"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acf4996286ed58a462d4edb3051c604b6" id="r_acf4996286ed58a462d4edb3051c604b6"><td class="memItemLeft" align="right" valign="top"><a id="acf4996286ed58a462d4edb3051c604b6" name="acf4996286ed58a462d4edb3051c604b6"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>framework</b> {false}</td></tr>
+<tr class="memdesc:acf4996286ed58a462d4edb3051c604b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indicates if the atom is part of the framework. <br /></td></tr>
+<tr class="separator:acf4996286ed58a462d4edb3051c604b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5218c7fe6e842840fb782fb3916ddffd" id="r_a5218c7fe6e842840fb782fb3916ddffd"><td class="memItemLeft" align="right" valign="top"><a id="a5218c7fe6e842840fb782fb3916ddffd" name="a5218c7fe6e842840fb782fb3916ddffd"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>mass</b> {1.0}</td></tr>
+<tr class="memdesc:a5218c7fe6e842840fb782fb3916ddffd"><td class="mdescLeft">&#160;</td><td class="mdescRight">The mass of the pseudo-atom. <br /></td></tr>
 <tr class="separator:a5218c7fe6e842840fb782fb3916ddffd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:add1a7306a2f04d335780690d9e1fb3ce" id="r_add1a7306a2f04d335780690d9e1fb3ce"><td class="memItemLeft" align="right" valign="top"><a id="add1a7306a2f04d335780690d9e1fb3ce" name="add1a7306a2f04d335780690d9e1fb3ce"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>charge</b> {0.0}</td></tr>
+<tr class="memdesc:add1a7306a2f04d335780690d9e1fb3ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">The electric charge of the pseudo-atom. <br /></td></tr>
 <tr class="separator:add1a7306a2f04d335780690d9e1fb3ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a475d75a1c4b39e934956e69064776ad1" id="r_a475d75a1c4b39e934956e69064776ad1"><td class="memItemLeft" align="right" valign="top"><a id="a475d75a1c4b39e934956e69064776ad1" name="a475d75a1c4b39e934956e69064776ad1"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>polarizability</b> {0.0}</td></tr>
+<tr class="memdesc:a475d75a1c4b39e934956e69064776ad1"><td class="mdescLeft">&#160;</td><td class="mdescRight">The polarizability of the pseudo-atom. <br /></td></tr>
+<tr class="separator:a475d75a1c4b39e934956e69064776ad1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac7b97d89495b6e4d36522d0e7f51c35e" id="r_ac7b97d89495b6e4d36522d0e7f51c35e"><td class="memItemLeft" align="right" valign="top"><a id="ac7b97d89495b6e4d36522d0e7f51c35e" name="ac7b97d89495b6e4d36522d0e7f51c35e"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>atomicNumber</b> {8}</td></tr>
+<tr class="memdesc:ac7b97d89495b6e4d36522d0e7f51c35e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The atomic number of the pseudo-atom. <br /></td></tr>
 <tr class="separator:ac7b97d89495b6e4d36522d0e7f51c35e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e2699fc5c9cc03dff3d11867f911f95" id="r_a0e2699fc5c9cc03dff3d11867f911f95"><td class="memItemLeft" align="right" valign="top"><a id="a0e2699fc5c9cc03dff3d11867f911f95" name="a0e2699fc5c9cc03dff3d11867f911f95"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>oxidationState</b> {0}</td></tr>
+<tr class="memdesc:a0e2699fc5c9cc03dff3d11867f911f95"><td class="mdescLeft">&#160;</td><td class="mdescRight">The oxidation state of the pseudo-atom. <br /></td></tr>
+<tr class="separator:a0e2699fc5c9cc03dff3d11867f911f95"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32b06a068667e118e13a1d2d51fe439a" id="r_a32b06a068667e118e13a1d2d51fe439a"><td class="memItemLeft" align="right" valign="top"><a id="a32b06a068667e118e13a1d2d51fe439a" name="a32b06a068667e118e13a1d2d51fe439a"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>printToPDB</b> {true}</td></tr>
+<tr class="memdesc:a32b06a068667e118e13a1d2d51fe439a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flag indicating whether to include the atom in PDB output. <br /></td></tr>
 <tr class="separator:a32b06a068667e118e13a1d2d51fe439a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a532f144150cd44507a0307be6f4989eb" id="r_a532f144150cd44507a0307be6f4989eb"><td class="memItemLeft" align="right" valign="top"><a id="a532f144150cd44507a0307be6f4989eb" name="a532f144150cd44507a0307be6f4989eb"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>source</b> {}</td></tr>
+<tr class="memdesc:a532f144150cd44507a0307be6f4989eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">The source of the pseudo-atom data. <br /></td></tr>
 <tr class="separator:a532f144150cd44507a0307be6f4989eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -155,6 +180,126 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &amp;a)</td></tr>
 <tr class="separator:afb3622379b60fabff0aa4e4482f03f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents a pseudo-atom in the simulation system. </p>
+<p>The <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> struct encapsulates the properties of an atom used in simulations, including name, mass, charge, polarizability, atomic number, oxidation state, and other attributes. It provides constructors for initializing pseudo-atoms and methods for serialization and comparison. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a07854420da2603e3529d7f5a6ddd4b44" name="a07854420da2603e3529d7f5a6ddd4b44"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a07854420da2603e3529d7f5a6ddd4b44">&#9670;&#160;</a></span>PseudoAtom() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PseudoAtom::PseudoAtom </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> struct. </p>
+<p>Initializes a <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> object with default values. </p>
+
+</div>
+</div>
+<a id="a90993d787e2e4460b4d3a186317c4186" name="a90993d787e2e4460b4d3a186317c4186"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a90993d787e2e4460b4d3a186317c4186">&#9670;&#160;</a></span>PseudoAtom() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">PseudoAtom::PseudoAtom </td>
+          <td>(</td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>name</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>framework</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>mass</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>charge</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>polarizability</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>atomicNumber</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>printToPDB</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string&#160;</td>
+          <td class="paramname"><em>source</em> = <code>&quot;&quot;</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> with specified parameters. </p>
+<p>Initializes a <a class="el" href="structPseudoAtom.html" title="Represents a pseudo-atom in the simulation system.">PseudoAtom</a> with the provided name, framework flag, mass, charge, polarizability, atomic number, printToPDB flag, and source.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">name</td><td>The name of the pseudo-atom. </td></tr>
+    <tr><td class="paramname">framework</td><td>Indicates if the atom is part of the framework. </td></tr>
+    <tr><td class="paramname">mass</td><td>The mass of the pseudo-atom. </td></tr>
+    <tr><td class="paramname">charge</td><td>The electric charge of the pseudo-atom. </td></tr>
+    <tr><td class="paramname">polarizability</td><td>The polarizability of the pseudo-atom. </td></tr>
+    <tr><td class="paramname">atomicNumber</td><td>The atomic number of the pseudo-atom. </td></tr>
+    <tr><td class="paramname">printToPDB</td><td>Flag indicating whether to include the atom in PDB output. </td></tr>
+    <tr><td class="paramname">source</td><td>The source of the pseudo-atom data. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/forcefield/<b>pseudo_atom.ixx</b></li>
 </ul>

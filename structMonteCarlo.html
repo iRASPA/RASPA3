@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: MonteCarlo Struct Reference</title>
+<title>RASPA3: MonteCarlo Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,237 +108,158 @@ $(document).ready(function(){initNavTree('structMonteCarlo.html',''); initResiza
   <div class="headertitle"><div class="title">MonteCarlo Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_monte__carlo.html">monte_carlo</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Performs Monte Carlo simulations for molecular systems.  
+ <a href="structMonteCarlo.html#details">More...</a></p>
 <div class="dynheader">
 Collaboration diagram for MonteCarlo:</div>
 <div class="dyncontent">
 <div class="center"><img src="structMonteCarlo__coll__graph.png" border="0" usemap="#aMonteCarlo_coll__map" alt="Collaboration graph"/></div>
-<map name="aMonteCarlo_coll__map" id="aMonteCarlo_coll__map">
-<area shape="rect" title=" " alt="" coords="2468,810,2565,835"/>
-<area shape="rect" title=" " alt="" coords="2149,810,2320,835"/>
-<area shape="poly" title=" " alt="" coords="2334,820,2468,820,2468,825,2334,825"/>
-<area shape="rect" href="structSystem.html" title=" " alt="" coords="1806,1187,1877,1213"/>
-<area shape="poly" title=" " alt="" coords="1853,1174,1891,1108,1952,1018,1990,971,2033,925,2079,882,2129,846,2156,833,2159,838,2132,850,2082,886,2036,929,1994,974,1957,1022,1896,1110,1858,1177"/>
-<area shape="rect" title=" " alt="" coords="1306,279,1501,305"/>
-<area shape="poly" title=" " alt="" coords="1465,274,1535,263,1615,262,1656,268,1696,279,1732,297,1765,322,1776,342,1787,375,1804,471,1817,598,1827,741,1839,1018,1843,1187,1837,1187,1834,1018,1822,741,1812,598,1799,472,1782,376,1772,344,1761,326,1730,301,1694,284,1655,273,1615,268,1535,269,1466,279"/>
-<area shape="rect" href="structFramework.html" title=" " alt="" coords="759,279,853,305"/>
-<area shape="poly" title=" " alt="" coords="867,289,1306,289,1306,295,867,295"/>
-<area shape="rect" href="structSimulationBox.html" title=" " alt="" coords="312,138,429,163"/>
-<area shape="poly" title=" " alt="" coords="422,131,523,102,665,67,837,37,931,26,1029,19,1128,17,1229,22,1328,34,1425,54,1519,84,1608,125,1690,177,1765,242,1777,264,1788,300,1806,406,1820,545,1830,701,1840,1004,1843,1187,1837,1187,1835,1004,1824,702,1815,545,1801,406,1783,301,1772,266,1761,246,1687,181,1605,129,1517,89,1424,59,1327,39,1228,27,1128,22,1029,24,932,31,838,42,666,73,524,107,424,136"/>
-<area shape="poly" title=" " alt="" coords="442,164,557,194,685,235,781,277,779,282,683,240,555,199,440,169"/>
-<area shape="rect" title=" " alt="" coords="327,249,414,274"/>
-<area shape="poly" title=" " alt="" coords="428,263,759,286,758,291,428,268"/>
-<area shape="rect" href="structComponent.html" title=" " alt="" coords="757,963,855,989"/>
-<area shape="poly" title=" " alt="" coords="411,277,457,298,509,316,536,321,560,322,605,318,625,318,646,321,666,331,686,349,696,378,702,429,706,569,706,711,711,795,729,846,753,893,798,962,793,965,749,896,724,848,705,797,701,712,701,569,697,429,691,379,682,352,663,335,644,326,625,323,605,323,560,328,535,327,507,321,455,303,409,282"/>
-<area shape="rect" title=" " alt="" coords="1920,307,2107,333"/>
-<area shape="poly" title=" " alt="" coords="427,248,508,235,656,216,721,211,805,209,1655,209,1704,212,1754,220,1850,246,1931,278,1989,305,1987,310,1929,283,1848,251,1753,225,1704,218,1655,215,805,215,721,216,656,221,508,240,428,253"/>
-<area shape="rect" title=" " alt="" coords="5,241,144,281"/>
-<area shape="poly" title=" " alt="" coords="158,259,327,259,327,264,158,264"/>
-<area shape="rect" title=" " alt="" coords="293,427,449,453"/>
-<area shape="poly" title=" " alt="" coords="462,435,569,430,684,419,752,407,805,393,858,380,928,369,1184,340,1296,332,1399,334,1448,341,1495,353,1542,369,1587,392,1632,421,1676,457,1720,500,1765,552,1779,575,1792,606,1812,684,1826,777,1835,878,1843,1068,1843,1187,1838,1187,1837,1068,1830,878,1821,778,1807,685,1787,608,1775,578,1761,555,1717,504,1673,461,1629,425,1584,397,1540,374,1494,358,1447,347,1398,340,1296,337,1185,345,928,375,859,385,807,398,753,412,684,424,569,435,463,441"/>
-<area shape="poly" title=" " alt="" coords="462,427,597,409,652,400,683,392,695,383,706,370,787,303,790,307,710,374,699,387,685,397,654,405,598,415,462,432"/>
-<area shape="poly" title=" " alt="" coords="434,453,508,471,601,478,651,485,672,492,686,502,699,527,706,561,708,645,705,731,706,767,711,795,730,846,754,893,798,962,793,965,749,896,725,848,705,797,701,768,700,731,703,645,701,561,694,529,682,506,669,497,650,491,600,483,508,476,433,459"/>
-<area shape="rect" href="structAtom.html" title=" " alt="" coords="46,427,103,453"/>
-<area shape="poly" title=" " alt="" coords="117,437,292,437,292,443,117,443"/>
-<area shape="rect" title=" " alt="" coords="291,634,450,659"/>
-<area shape="poly" title=" " alt="" coords="463,632,508,628,748,604,1148,568,1356,555,1542,552,1620,554,1685,560,1734,571,1764,586,1774,599,1782,621,1796,687,1820,871,1835,1063,1842,1187,1837,1187,1830,1064,1814,872,1791,688,1777,623,1769,602,1761,590,1732,576,1684,566,1620,559,1542,557,1356,561,1148,573,748,609,508,633,464,638"/>
-<area shape="poly" title=" " alt="" coords="394,623,443,583,474,563,507,547,533,539,557,535,599,537,639,536,660,530,682,517,709,493,731,466,766,405,788,346,799,304,805,306,793,348,771,407,736,469,713,497,686,521,662,535,640,541,599,543,557,541,535,544,509,552,477,568,447,588,397,627"/>
-<area shape="poly" title=" " alt="" coords="382,672,399,717,426,773,463,831,485,857,510,881,539,901,570,918,637,944,702,960,757,969,757,974,701,965,636,949,568,923,536,905,506,885,481,861,458,834,421,776,394,719,377,674"/>
-<area shape="rect" title=" " alt="" coords="1008,881,1183,921"/>
-<area shape="poly" title=" " alt="" coords="411,663,509,710,624,761,715,798,808,829,929,863,1009,882,1007,887,927,868,806,834,713,803,622,766,507,714,408,668"/>
-<area shape="rect" href="structTransitionMatrix.html" title=" " alt="" coords="1340,643,1467,669"/>
-<area shape="poly" title=" " alt="" coords="464,645,1340,653,1340,658,464,650"/>
-<area shape="rect" href="structBlockErrorEstimation.html" title=" " alt="" coords="1574,601,1733,626"/>
-<area shape="poly" title=" " alt="" coords="464,653,708,669,806,673,904,669,928,665,1107,643,1286,628,1574,613,1574,618,1287,633,1107,648,928,671,904,675,806,679,708,675,464,658"/>
-<area shape="rect" title=" " alt="" coords="1305,963,1501,989"/>
-<area shape="poly" title=" " alt="" coords="1472,958,1539,950,1616,950,1655,955,1694,964,1730,979,1764,999,1786,1019,1803,1043,1826,1097,1838,1149,1842,1187,1837,1187,1833,1150,1821,1099,1798,1046,1782,1023,1761,1003,1728,984,1692,970,1654,960,1615,956,1539,956,1473,964"/>
-<area shape="poly" title=" " alt="" coords="869,973,1305,973,1305,979,869,979"/>
-<area shape="rect" title=" " alt="" coords="296,994,445,1019"/>
-<area shape="poly" title=" " alt="" coords="459,998,757,977,757,982,459,1003"/>
-<area shape="rect" href="structForceField.html" title=" " alt="" coords="762,1690,850,1715"/>
-<area shape="poly" title=" " alt="" coords="456,1019,685,1063,703,1085,718,1114,744,1190,764,1282,780,1381,800,1571,807,1690,801,1690,794,1571,775,1382,759,1283,739,1191,713,1116,698,1088,683,1068,455,1024"/>
-<area shape="rect" href="structMCMoveCpuTime.html" title=" " alt="" coords="302,1091,439,1117"/>
-<area shape="poly" title=" " alt="" coords="453,1103,1213,1121,1763,1137,1802,1159,1830,1185,1827,1189,1799,1164,1762,1143,1213,1126,453,1108"/>
-<area shape="poly" title=" " alt="" coords="453,1105,518,1106,586,1102,644,1094,666,1087,682,1078,690,1070,693,1061,694,1042,695,1021,698,1010,706,999,730,984,756,976,758,981,732,989,710,1003,703,1012,700,1022,699,1042,699,1062,694,1073,686,1082,669,1092,645,1099,586,1108,518,1111,453,1110"/>
-<area shape="rect" href="structMCMoveCount.html" title=" " alt="" coords="312,1367,429,1393"/>
-<area shape="poly" title=" " alt="" coords="443,1386,748,1417,1164,1452,1369,1463,1549,1467,1686,1459,1732,1450,1761,1438,1786,1414,1804,1386,1818,1354,1828,1320,1837,1258,1838,1213,1843,1213,1842,1258,1833,1322,1823,1355,1809,1388,1790,1418,1764,1442,1734,1455,1687,1464,1549,1472,1369,1469,1163,1458,747,1423,443,1391"/>
-<area shape="poly" title=" " alt="" coords="409,1359,470,1323,545,1271,620,1205,653,1167,682,1127,689,1109,692,1093,690,1062,689,1031,695,1016,706,999,729,983,756,975,758,981,732,988,710,1003,699,1018,695,1032,695,1062,697,1093,694,1111,686,1129,658,1171,624,1209,549,1276,473,1328,412,1363"/>
-<area shape="rect" href="structEquationOfState.html" title=" " alt="" coords="1339,693,1467,718"/>
-<area shape="poly" title=" " alt="" coords="1482,703,1559,706,1643,713,1716,728,1744,738,1765,751,1787,786,1804,837,1818,900,1827,968,1839,1099,1842,1187,1837,1187,1833,1100,1822,969,1812,901,1799,839,1782,788,1761,755,1742,743,1715,733,1642,719,1559,711,1481,708"/>
-<area shape="rect" href="structLoadings.html" title=" " alt="" coords="1363,821,1443,846"/>
-<area shape="poly" title=" " alt="" coords="1457,824,1526,821,1608,827,1650,835,1691,849,1730,868,1765,894,1781,917,1795,951,1818,1037,1833,1125,1841,1187,1836,1188,1828,1126,1812,1038,1790,952,1776,919,1761,898,1727,873,1689,854,1649,840,1607,832,1526,826,1457,829"/>
-<area shape="rect" title=" " alt="" coords="723,759,889,785"/>
-<area shape="poly" title=" " alt="" coords="902,766,1124,761,1394,760,1523,764,1634,772,1717,784,1746,792,1764,802,1786,831,1802,876,1815,931,1825,991,1838,1108,1842,1187,1837,1187,1832,1108,1820,992,1810,932,1797,878,1781,834,1761,806,1744,797,1716,789,1633,777,1522,769,1394,766,1125,766,903,771"/>
-<area shape="poly" title=" " alt="" coords="848,788,905,818,917,826,929,832,989,845,1050,853,1173,856,1282,849,1363,838,1363,843,1282,854,1173,862,1050,859,988,851,927,837,914,831,903,822,846,793"/>
-<area shape="poly" title=" " alt="" coords="902,758,928,755,1003,752,1100,752,1194,745,1233,737,1261,725,1270,715,1272,703,1275,690,1285,678,1311,664,1339,656,1340,661,1313,669,1288,682,1280,693,1278,704,1274,717,1264,729,1234,742,1195,751,1100,757,1003,758,928,760,903,763"/>
-<area shape="poly" title=" " alt="" coords="1197,900,1539,910,1691,919,1740,925,1764,931,1780,950,1794,979,1816,1054,1832,1131,1841,1187,1836,1188,1827,1132,1811,1055,1789,981,1775,953,1761,936,1739,930,1690,925,1539,916,1197,906"/>
-<area shape="poly" title=" " alt="" coords="840,1720,916,1765,1024,1821,1152,1876,1220,1898,1287,1916,1335,1922,1396,1925,1466,1922,1539,1915,1611,1903,1675,1886,1727,1863,1746,1849,1760,1835,1769,1810,1774,1765,1780,1639,1781,1512,1784,1436,1810,1305,1834,1212,1839,1214,1815,1306,1789,1436,1787,1512,1785,1639,1780,1765,1774,1811,1765,1837,1749,1853,1729,1867,1676,1891,1612,1908,1540,1920,1466,1928,1396,1930,1334,1928,1286,1921,1218,1904,1150,1881,1022,1826,914,1770,838,1725"/>
-<area shape="rect" title=" " alt="" coords="257,1665,484,1690"/>
-<area shape="poly" title=" " alt="" coords="498,1682,762,1697,762,1703,498,1687"/>
-<area shape="rect" title=" " alt="" coords="269,1714,472,1739"/>
-<area shape="poly" title=" " alt="" coords="486,1726,582,1724,684,1719,761,1708,762,1713,684,1724,583,1730,486,1731"/>
-<area shape="rect" title=" " alt="" coords="1313,1013,1493,1038"/>
-<area shape="poly" title=" " alt="" coords="1507,1018,1580,1017,1654,1020,1719,1028,1745,1035,1764,1044,1782,1059,1797,1077,1820,1117,1833,1156,1841,1187,1835,1188,1828,1158,1815,1119,1793,1080,1778,1063,1761,1049,1743,1040,1718,1034,1654,1025,1580,1022,1507,1023"/>
-<area shape="rect" href="structMolecule.html" title=" " alt="" coords="765,1013,847,1038"/>
-<area shape="poly" title=" " alt="" coords="860,1023,1313,1023,1313,1028,860,1028"/>
-<area shape="rect" href="structRunningEnergy.html" title=" " alt="" coords="1343,1062,1463,1087"/>
-<area shape="poly" title=" " alt="" coords="1477,1072,1636,1079,1711,1089,1764,1104,1789,1122,1809,1144,1836,1186,1832,1189,1805,1148,1785,1126,1761,1109,1710,1094,1635,1084,1477,1077"/>
-<area shape="rect" href="structEnergyStatus.html" title=" " alt="" coords="1349,2026,1457,2051"/>
-<area shape="poly" title=" " alt="" coords="1471,2044,1542,2045,1621,2036,1660,2026,1698,2011,1732,1990,1760,1963,1772,1930,1779,1871,1783,1705,1782,1537,1784,1436,1809,1305,1834,1212,1839,1214,1815,1306,1789,1436,1788,1537,1789,1705,1784,1871,1777,1931,1765,1965,1735,1994,1700,2015,1662,2031,1622,2041,1542,2051,1471,2049"/>
-<area shape="rect" href="structEnergyFactor.html" title=" " alt="" coords="317,2002,424,2027"/>
-<area shape="poly" title=" " alt="" coords="438,2015,708,2024,1349,2035,1349,2041,708,2029,438,2020"/>
-<area shape="rect" href="structEnergyInter.html" title=" " alt="" coords="757,1974,855,1999"/>
-<area shape="poly" title=" " alt="" coords="438,2008,757,1987,757,1992,438,2013"/>
-<area shape="rect" href="structEnergyIntra.html" title=" " alt="" coords="322,2113,419,2138"/>
-<area shape="poly" title=" " alt="" coords="433,2118,1349,2040,1349,2046,434,2123"/>
-<area shape="rect" title=" " alt="" coords="708,2150,904,2175"/>
-<area shape="poly" title=" " alt="" coords="433,2128,708,2152,708,2157,433,2133"/>
-<area shape="poly" title=" " alt="" coords="869,1989,1263,2021,1349,2030,1349,2035,1262,2027,868,1994"/>
-<area shape="poly" title=" " alt="" coords="918,2169,996,2171,1083,2167,1174,2155,1262,2132,1300,2115,1335,2092,1387,2050,1390,2054,1338,2097,1302,2119,1264,2137,1175,2160,1084,2172,996,2176,918,2175"/>
-<area shape="rect" title=" " alt="" coords="1308,1163,1499,1203"/>
-<area shape="poly" title=" " alt="" coords="1513,1194,1544,1196,1690,1200,1806,1198,1806,1204,1690,1205,1544,1201,1512,1199"/>
-<area shape="rect" title=" " alt="" coords="1287,1227,1520,1282"/>
-<area shape="poly" title=" " alt="" coords="1534,1268,1588,1270,1646,1268,1705,1261,1762,1248,1797,1231,1824,1211,1827,1215,1799,1236,1764,1253,1706,1266,1647,1273,1588,1275,1534,1273"/>
-<area shape="rect" href="structMCMoveProbabilitiesSystem.html" title=" " alt="" coords="1299,1306,1508,1331"/>
-<area shape="poly" title=" " alt="" coords="1519,1329,1577,1330,1640,1325,1703,1312,1761,1290,1785,1273,1805,1252,1831,1211,1836,1214,1809,1255,1788,1277,1764,1294,1704,1318,1640,1330,1577,1335,1519,1335"/>
-<area shape="rect" href="structMCMoveStatisticsSystem.html" title=" " alt="" coords="1309,1355,1497,1381"/>
-<area shape="poly" title=" " alt="" coords="1470,1381,1535,1390,1612,1392,1651,1388,1690,1380,1727,1368,1761,1350,1778,1336,1793,1319,1815,1281,1828,1242,1835,1212,1840,1214,1833,1244,1819,1283,1797,1322,1782,1340,1764,1354,1729,1373,1691,1386,1652,1393,1612,1397,1535,1395,1469,1386"/>
-<area shape="rect" href="structReactions.html" title=" " alt="" coords="1360,1405,1447,1430"/>
-<area shape="poly" title=" " alt="" coords="1461,1422,1538,1429,1627,1433,1708,1429,1739,1423,1761,1412,1784,1392,1801,1367,1814,1339,1824,1310,1835,1254,1837,1213,1843,1213,1840,1254,1829,1311,1819,1341,1806,1370,1788,1395,1764,1417,1741,1428,1708,1434,1627,1438,1538,1434,1460,1427"/>
-<area shape="poly" title=" " alt="" coords="1480,655,1651,664,1724,673,1750,679,1764,686,1778,703,1790,726,1809,785,1823,857,1832,936,1841,1088,1843,1187,1837,1187,1836,1088,1827,937,1818,858,1804,786,1785,728,1774,706,1761,690,1748,684,1724,678,1651,670,1480,661"/>
-<area shape="rect" href="structPressureRange.html" title=" " alt="" coords="1344,1506,1463,1531"/>
-<area shape="poly" title=" " alt="" coords="1477,1522,1554,1526,1638,1526,1713,1518,1741,1510,1761,1500,1775,1459,1797,1374,1835,1212,1840,1213,1802,1375,1780,1461,1765,1503,1743,1515,1714,1523,1638,1531,1554,1531,1476,1528"/>
-<area shape="rect" href="structPropertyEnergy.html" title=" " alt="" coords="1342,1555,1465,1581"/>
-<area shape="poly" title=" " alt="" coords="1479,1571,1556,1575,1640,1574,1713,1565,1741,1557,1761,1546,1772,1534,1779,1523,1782,1498,1781,1470,1784,1436,1834,1212,1840,1213,1789,1436,1786,1470,1788,1498,1784,1524,1776,1537,1764,1550,1743,1562,1714,1570,1640,1579,1556,1580,1478,1577"/>
-<area shape="rect" href="structPropertyLoading.html" title=" " alt="" coords="1339,1605,1467,1630"/>
-<area shape="poly" title=" " alt="" coords="1481,1621,1559,1625,1642,1624,1714,1615,1742,1607,1761,1595,1769,1584,1774,1566,1780,1521,1784,1436,1812,1305,1834,1212,1839,1213,1817,1306,1789,1436,1785,1521,1779,1567,1774,1586,1764,1599,1744,1612,1716,1620,1642,1629,1559,1630,1481,1627"/>
-<area shape="rect" href="structPropertyEnthalpy.html" title=" " alt="" coords="1336,1654,1471,1679"/>
-<area shape="poly" title=" " alt="" coords="1484,1665,1653,1662,1724,1655,1748,1650,1761,1645,1771,1629,1777,1606,1782,1547,1782,1484,1784,1436,1811,1305,1834,1212,1839,1213,1816,1306,1789,1436,1787,1484,1787,1547,1782,1607,1776,1631,1764,1649,1750,1655,1725,1660,1653,1667,1484,1670"/>
-<area shape="rect" href="structPropertyTemperature.html" title=" " alt="" coords="1324,1703,1483,1729"/>
-<area shape="poly" title=" " alt="" coords="1496,1727,1572,1734,1650,1737,1718,1732,1743,1724,1761,1714,1768,1698,1773,1667,1779,1580,1784,1436,1810,1305,1834,1212,1839,1213,1816,1306,1789,1436,1784,1580,1778,1668,1773,1700,1765,1718,1745,1729,1719,1737,1650,1743,1572,1740,1496,1732"/>
-<area shape="rect" href="structPropertyPressure.html" title=" " alt="" coords="1337,1753,1470,1778"/>
-<area shape="poly" title=" " alt="" coords="1484,1773,1561,1780,1643,1782,1715,1776,1742,1768,1761,1757,1768,1738,1774,1703,1780,1601,1784,1436,1810,1305,1834,1213,1839,1214,1815,1306,1789,1436,1785,1602,1779,1703,1774,1740,1765,1760,1744,1773,1716,1781,1644,1787,1561,1785,1483,1778"/>
-<area shape="rect" href="structPropertySimulationBox.html" title=" " alt="" coords="1317,1802,1489,1827"/>
-<area shape="poly" title=" " alt="" coords="1503,1823,1578,1828,1654,1828,1720,1821,1744,1813,1761,1802,1769,1781,1775,1740,1781,1624,1784,1436,1810,1305,1834,1213,1839,1214,1815,1306,1789,1436,1786,1625,1781,1740,1774,1782,1765,1806,1746,1818,1721,1826,1655,1834,1578,1833,1503,1829"/>
-<area shape="rect" title=" " alt="" coords="2131,1090,2339,1115"/>
-<area shape="poly" title=" " alt="" coords="2256,1078,2501,834,2504,837,2260,1082"/>
-<area shape="rect" title=" " alt="" coords="1787,1447,1896,1473"/>
-<area shape="poly" title=" " alt="" coords="1865,1436,2217,1114,2221,1118,1868,1440"/>
-<area shape="rect" title=" " alt="" coords="1328,1852,1479,1892"/>
-<area shape="poly" title=" " alt="" coords="1493,1889,1559,1896,1630,1894,1666,1888,1700,1878,1732,1863,1761,1842,1780,1815,1796,1772,1809,1720,1819,1662,1832,1549,1837,1473,1842,1473,1837,1550,1824,1663,1814,1721,1801,1774,1785,1817,1765,1846,1735,1867,1702,1883,1667,1893,1631,1900,1558,1902,1492,1895"/>
-<area shape="poly" title=" " alt="" coords="2048,338,2126,389,2231,467,2343,564,2397,619,2446,676,2470,711,2489,749,2513,809,2509,811,2484,751,2465,714,2442,679,2393,622,2340,568,2227,471,2123,394,2046,342"/>
-<area shape="rect" title=" " alt="" coords="2149,860,2320,900"/>
-<area shape="poly" title=" " alt="" coords="2333,862,2443,840,2472,833,2473,838,2445,845,2334,867"/>
-<area shape="poly" title=" " alt="" coords="1725,626,2037,699,2445,800,2472,807,2470,812,2443,805,2036,704,1723,632"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:a8860089105fed1e661c1221aa5eab78b" id="r_a8860089105fed1e661c1221aa5eab78b"><td class="memItemLeft" align="right" valign="top"><a id="a8860089105fed1e661c1221aa5eab78b" name="a8860089105fed1e661c1221aa5eab78b"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>WeightingMethod</b> : size_t { <b>LambdaZero</b> = 0
-, <b>AllLambdas</b> = 1
+<tr class="memitem:a8860089105fed1e661c1221aa5eab78b" id="r_a8860089105fed1e661c1221aa5eab78b"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a8860089105fed1e661c1221aa5eab78b">WeightingMethod</a> : size_t { <a class="el" href="structMonteCarlo.html#a8860089105fed1e661c1221aa5eab78ba6ffe065db3c2dd7b1d0593d313b71ca6">LambdaZero</a> = 0
+, <a class="el" href="structMonteCarlo.html#a8860089105fed1e661c1221aa5eab78bae9014f71985913179dc0f969c602833e">AllLambdas</a> = 1
  }</td></tr>
+<tr class="memdesc:a8860089105fed1e661c1221aa5eab78b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of weighting methods for sampling.  <a href="structMonteCarlo.html#a8860089105fed1e661c1221aa5eab78b">More...</a><br /></td></tr>
 <tr class="separator:a8860089105fed1e661c1221aa5eab78b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13d1f1f592e841680c2d85c9fbf349d3" id="r_a13d1f1f592e841680c2d85c9fbf349d3"><td class="memItemLeft" align="right" valign="top"><a id="a13d1f1f592e841680c2d85c9fbf349d3" name="a13d1f1f592e841680c2d85c9fbf349d3"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>SimulationStage</b> : size_t { <b>Uninitialized</b> = 0
-, <b>Initialization</b> = 1
-, <b>Equilibration</b> = 2
-, <b>Production</b> = 3
+<tr class="memitem:a13d1f1f592e841680c2d85c9fbf349d3" id="r_a13d1f1f592e841680c2d85c9fbf349d3"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3">SimulationStage</a> : size_t { <a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3af704f57ea420275ad51bf55b7dec2c96">Uninitialized</a> = 0
+, <a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3a61bcd96a2c1f8026527cbf2019d6e9a4">Initialization</a> = 1
+, <a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3afa541803322f896bd1d80476d131350f">Equilibration</a> = 2
+, <a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3a756d97bb256b8580d4d71ee0c547804e">Production</a> = 3
  }</td></tr>
+<tr class="memdesc:a13d1f1f592e841680c2d85c9fbf349d3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of simulation stages.  <a href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3">More...</a><br /></td></tr>
 <tr class="separator:a13d1f1f592e841680c2d85c9fbf349d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a92cb53d86687ec03d2c5d649e064c486" id="r_a92cb53d86687ec03d2c5d649e064c486"><td class="memItemLeft" align="right" valign="top"><a id="a92cb53d86687ec03d2c5d649e064c486" name="a92cb53d86687ec03d2c5d649e064c486"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>MonteCarlo</b> (<a class="el" href="structInputReader.html">InputReader</a> &amp;reader) noexcept</td></tr>
+<tr class="memitem:ab59a7679e86d34701f8e2a063bccc93e" id="r_ab59a7679e86d34701f8e2a063bccc93e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#ab59a7679e86d34701f8e2a063bccc93e">MonteCarlo</a> ()</td></tr>
+<tr class="memdesc:ab59a7679e86d34701f8e2a063bccc93e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> class.  <br /></td></tr>
+<tr class="separator:ab59a7679e86d34701f8e2a063bccc93e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a92cb53d86687ec03d2c5d649e064c486" id="r_a92cb53d86687ec03d2c5d649e064c486"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a92cb53d86687ec03d2c5d649e064c486">MonteCarlo</a> (<a class="el" href="structInputReader.html">InputReader</a> &amp;reader) noexcept</td></tr>
+<tr class="memdesc:a92cb53d86687ec03d2c5d649e064c486"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object with simulation parameters from an <a class="el" href="structInputReader.html" title="Class responsible for reading and parsing simulation input files.">InputReader</a>.  <br /></td></tr>
 <tr class="separator:a92cb53d86687ec03d2c5d649e064c486"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ade06f763d5b91358d044e9bd71df91d7" id="r_ade06f763d5b91358d044e9bd71df91d7"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#ade06f763d5b91358d044e9bd71df91d7">MonteCarlo</a> (size_t <a class="el" href="structMonteCarlo.html#a178b590fae507edeabe60af509bb156b">numberOfCycles</a>, size_t <a class="el" href="structMonteCarlo.html#a10cc1512737750edcef67257fa70a101">numberOfInitializationCycles</a>, size_t <a class="el" href="structMonteCarlo.html#adc491cffb0ab4417a521f7f0777bb9d5">numberOfEquilibrationCycles</a>, size_t <a class="el" href="structMonteCarlo.html#a489e51c6c2bd8e8505532e5f45b4a5f4">printEvery</a>, size_t <a class="el" href="structMonteCarlo.html#ad78e183b2338cbc754f2bfa3d4907adf">writeBinaryRestartEvery</a>, size_t <a class="el" href="structMonteCarlo.html#af17cc5559c3d104b9e19ca55dbdb59d1">rescaleWangLandauEvery</a>, size_t <a class="el" href="structMonteCarlo.html#ad4119c66c7e0ce764a17951dce1279e7">optimizeMCMovesEvery</a>, std::vector&lt; <a class="el" href="structSystem.html">System</a> &gt; &amp;<a class="el" href="structMonteCarlo.html#a442ddf389a1777c6b8a5f2fc38a14390">systems</a>, RandomNumber &amp;randomSeed, size_t numberOfBlocks)</td></tr>
+<tr class="memdesc:ade06f763d5b91358d044e9bd71df91d7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object with specified simulation parameters.  <br /></td></tr>
+<tr class="separator:ade06f763d5b91358d044e9bd71df91d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8da7646cccaee7b2e5b914f42ea81fed" id="r_a8da7646cccaee7b2e5b914f42ea81fed"><td class="memItemLeft" align="right" valign="top"><a id="a8da7646cccaee7b2e5b914f42ea81fed" name="a8da7646cccaee7b2e5b914f42ea81fed"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>createOutputFiles</b> ()</td></tr>
+<tr class="memdesc:a8da7646cccaee7b2e5b914f42ea81fed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates output files for writing simulation data. <br /></td></tr>
 <tr class="separator:a8da7646cccaee7b2e5b914f42ea81fed"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab35b1dd4d6273a1eaf09057585b83f34" id="r_ab35b1dd4d6273a1eaf09057585b83f34"><td class="memItemLeft" align="right" valign="top"><a id="ab35b1dd4d6273a1eaf09057585b83f34" name="ab35b1dd4d6273a1eaf09057585b83f34"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>run</b> ()</td></tr>
+<tr class="memitem:ab35b1dd4d6273a1eaf09057585b83f34" id="r_ab35b1dd4d6273a1eaf09057585b83f34"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#ab35b1dd4d6273a1eaf09057585b83f34">run</a> ()</td></tr>
+<tr class="memdesc:ab35b1dd4d6273a1eaf09057585b83f34"><td class="mdescLeft">&#160;</td><td class="mdescRight">Runs the Monte Carlo simulation.  <br /></td></tr>
 <tr class="separator:ab35b1dd4d6273a1eaf09057585b83f34"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9aba3b6e256709cc50814e6c85be5a02" id="r_a9aba3b6e256709cc50814e6c85be5a02"><td class="memItemLeft" align="right" valign="top"><a id="a9aba3b6e256709cc50814e6c85be5a02" name="a9aba3b6e256709cc50814e6c85be5a02"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>initialize</b> ()</td></tr>
+<tr class="memitem:aedcabcb1e3abcb46b678230fb58d52bf" id="r_aedcabcb1e3abcb46b678230fb58d52bf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#aedcabcb1e3abcb46b678230fb58d52bf">cycle</a> ()</td></tr>
+<tr class="memdesc:aedcabcb1e3abcb46b678230fb58d52bf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs a single Monte Carlo cycle.  <br /></td></tr>
+<tr class="separator:aedcabcb1e3abcb46b678230fb58d52bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9aba3b6e256709cc50814e6c85be5a02" id="r_a9aba3b6e256709cc50814e6c85be5a02"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a9aba3b6e256709cc50814e6c85be5a02">initialize</a> ()</td></tr>
+<tr class="memdesc:a9aba3b6e256709cc50814e6c85be5a02"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs the initialization stage of the simulation.  <br /></td></tr>
 <tr class="separator:a9aba3b6e256709cc50814e6c85be5a02"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47465c9d5e14bfd9109c4adc177dc8b9" id="r_a47465c9d5e14bfd9109c4adc177dc8b9"><td class="memItemLeft" align="right" valign="top"><a id="a47465c9d5e14bfd9109c4adc177dc8b9" name="a47465c9d5e14bfd9109c4adc177dc8b9"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>equilibrate</b> ()</td></tr>
+<tr class="memitem:a47465c9d5e14bfd9109c4adc177dc8b9" id="r_a47465c9d5e14bfd9109c4adc177dc8b9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a47465c9d5e14bfd9109c4adc177dc8b9">equilibrate</a> ()</td></tr>
+<tr class="memdesc:a47465c9d5e14bfd9109c4adc177dc8b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs the equilibration stage of the simulation.  <br /></td></tr>
 <tr class="separator:a47465c9d5e14bfd9109c4adc177dc8b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa8d54514d1b1ce8ab12cd2d1d81b4615" id="r_aa8d54514d1b1ce8ab12cd2d1d81b4615"><td class="memItemLeft" align="right" valign="top"><a id="aa8d54514d1b1ce8ab12cd2d1d81b4615" name="aa8d54514d1b1ce8ab12cd2d1d81b4615"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>production</b> ()</td></tr>
+<tr class="memitem:aa8d54514d1b1ce8ab12cd2d1d81b4615" id="r_aa8d54514d1b1ce8ab12cd2d1d81b4615"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#aa8d54514d1b1ce8ab12cd2d1d81b4615">production</a> ()</td></tr>
+<tr class="memdesc:aa8d54514d1b1ce8ab12cd2d1d81b4615"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs the production stage of the simulation.  <br /></td></tr>
 <tr class="separator:aa8d54514d1b1ce8ab12cd2d1d81b4615"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5e987c51e635e8109585e46ac9aa769" id="r_ac5e987c51e635e8109585e46ac9aa769"><td class="memItemLeft" align="right" valign="top"><a id="ac5e987c51e635e8109585e46ac9aa769" name="ac5e987c51e635e8109585e46ac9aa769"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>output</b> ()</td></tr>
+<tr class="memitem:ac5e987c51e635e8109585e46ac9aa769" id="r_ac5e987c51e635e8109585e46ac9aa769"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#ac5e987c51e635e8109585e46ac9aa769">output</a> ()</td></tr>
+<tr class="memdesc:ac5e987c51e635e8109585e46ac9aa769"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates the final output of the simulation.  <br /></td></tr>
 <tr class="separator:ac5e987c51e635e8109585e46ac9aa769"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab75cd19b07050a3bd2ed5f70962614c6" id="r_ab75cd19b07050a3bd2ed5f70962614c6"><td class="memItemLeft" align="right" valign="top"><a id="ab75cd19b07050a3bd2ed5f70962614c6" name="ab75cd19b07050a3bd2ed5f70962614c6"></a>
-<a class="el" href="structSystem.html">System</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>randomSystem</b> ()</td></tr>
+<tr class="memitem:ab75cd19b07050a3bd2ed5f70962614c6" id="r_ab75cd19b07050a3bd2ed5f70962614c6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSystem.html">System</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#ab75cd19b07050a3bd2ed5f70962614c6">randomSystem</a> ()</td></tr>
+<tr class="memdesc:ab75cd19b07050a3bd2ed5f70962614c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Selects a random system from the list of systems.  <br /></td></tr>
 <tr class="separator:ab75cd19b07050a3bd2ed5f70962614c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a75ffe3d9c51f4c9522eaa3da3969df45" id="r_a75ffe3d9c51f4c9522eaa3da3969df45"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMonteCarlo.html#a75ffe3d9c51f4c9522eaa3da3969df45">repr</a> () const</td></tr>
+<tr class="memdesc:a75ffe3d9c51f4c9522eaa3da3969df45"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object.  <br /></td></tr>
+<tr class="separator:a75ffe3d9c51f4c9522eaa3da3969df45"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ad6bc88cf97557eb2b89ed29d9469bb68" id="r_ad6bc88cf97557eb2b89ed29d9469bb68"><td class="memItemLeft" align="right" valign="top"><a id="ad6bc88cf97557eb2b89ed29d9469bb68" name="ad6bc88cf97557eb2b89ed29d9469bb68"></a>
 uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:ad6bc88cf97557eb2b89ed29d9469bb68"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
 <tr class="separator:ad6bc88cf97557eb2b89ed29d9469bb68"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a178b590fae507edeabe60af509bb156b" id="r_a178b590fae507edeabe60af509bb156b"><td class="memItemLeft" align="right" valign="top"><a id="a178b590fae507edeabe60af509bb156b" name="a178b590fae507edeabe60af509bb156b"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCycles</b></td></tr>
+<tr class="memdesc:a178b590fae507edeabe60af509bb156b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of production cycles. <br /></td></tr>
 <tr class="separator:a178b590fae507edeabe60af509bb156b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae4efdabf2af7c9324898dc2dafd75dd9" id="r_ae4efdabf2af7c9324898dc2dafd75dd9"><td class="memItemLeft" align="right" valign="top"><a id="ae4efdabf2af7c9324898dc2dafd75dd9" name="ae4efdabf2af7c9324898dc2dafd75dd9"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfSteps</b></td></tr>
+<tr class="memdesc:ae4efdabf2af7c9324898dc2dafd75dd9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of steps performed. <br /></td></tr>
 <tr class="separator:ae4efdabf2af7c9324898dc2dafd75dd9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10cc1512737750edcef67257fa70a101" id="r_a10cc1512737750edcef67257fa70a101"><td class="memItemLeft" align="right" valign="top"><a id="a10cc1512737750edcef67257fa70a101" name="a10cc1512737750edcef67257fa70a101"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfInitializationCycles</b></td></tr>
+<tr class="memdesc:a10cc1512737750edcef67257fa70a101"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of initialization cycles. <br /></td></tr>
 <tr class="separator:a10cc1512737750edcef67257fa70a101"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adc491cffb0ab4417a521f7f0777bb9d5" id="r_adc491cffb0ab4417a521f7f0777bb9d5"><td class="memItemLeft" align="right" valign="top"><a id="adc491cffb0ab4417a521f7f0777bb9d5" name="adc491cffb0ab4417a521f7f0777bb9d5"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfEquilibrationCycles</b></td></tr>
+<tr class="memdesc:adc491cffb0ab4417a521f7f0777bb9d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of equilibration cycles. <br /></td></tr>
 <tr class="separator:adc491cffb0ab4417a521f7f0777bb9d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a489e51c6c2bd8e8505532e5f45b4a5f4" id="r_a489e51c6c2bd8e8505532e5f45b4a5f4"><td class="memItemLeft" align="right" valign="top"><a id="a489e51c6c2bd8e8505532e5f45b4a5f4" name="a489e51c6c2bd8e8505532e5f45b4a5f4"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>printEvery</b></td></tr>
+<tr class="memdesc:a489e51c6c2bd8e8505532e5f45b4a5f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency of printing status reports. <br /></td></tr>
 <tr class="separator:a489e51c6c2bd8e8505532e5f45b4a5f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad78e183b2338cbc754f2bfa3d4907adf" id="r_ad78e183b2338cbc754f2bfa3d4907adf"><td class="memItemLeft" align="right" valign="top"><a id="ad78e183b2338cbc754f2bfa3d4907adf" name="ad78e183b2338cbc754f2bfa3d4907adf"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeBinaryRestartEvery</b></td></tr>
+<tr class="memdesc:ad78e183b2338cbc754f2bfa3d4907adf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency of writing binary restart files. <br /></td></tr>
 <tr class="separator:ad78e183b2338cbc754f2bfa3d4907adf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af17cc5559c3d104b9e19ca55dbdb59d1" id="r_af17cc5559c3d104b9e19ca55dbdb59d1"><td class="memItemLeft" align="right" valign="top"><a id="af17cc5559c3d104b9e19ca55dbdb59d1" name="af17cc5559c3d104b9e19ca55dbdb59d1"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>rescaleWangLandauEvery</b></td></tr>
+<tr class="memdesc:af17cc5559c3d104b9e19ca55dbdb59d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency of rescaling Wang-Landau factors. <br /></td></tr>
 <tr class="separator:af17cc5559c3d104b9e19ca55dbdb59d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad4119c66c7e0ce764a17951dce1279e7" id="r_ad4119c66c7e0ce764a17951dce1279e7"><td class="memItemLeft" align="right" valign="top"><a id="ad4119c66c7e0ce764a17951dce1279e7" name="ad4119c66c7e0ce764a17951dce1279e7"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>optimizeMCMovesEvery</b></td></tr>
+<tr class="memdesc:ad4119c66c7e0ce764a17951dce1279e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Frequency of optimizing MC moves. <br /></td></tr>
 <tr class="separator:ad4119c66c7e0ce764a17951dce1279e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a00e891b5b8d920c8eb1e53affde1887b" id="r_a00e891b5b8d920c8eb1e53affde1887b"><td class="memItemLeft" align="right" valign="top"><a id="a00e891b5b8d920c8eb1e53affde1887b" name="a00e891b5b8d920c8eb1e53affde1887b"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>currentCycle</b> {0}</td></tr>
+<tr class="memdesc:a00e891b5b8d920c8eb1e53affde1887b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current cycle number. <br /></td></tr>
 <tr class="separator:a00e891b5b8d920c8eb1e53affde1887b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a76ad739bb694d62fea00fe53193ac0ef" id="r_a76ad739bb694d62fea00fe53193ac0ef"><td class="memItemLeft" align="right" valign="top"><a id="a76ad739bb694d62fea00fe53193ac0ef" name="a76ad739bb694d62fea00fe53193ac0ef"></a>
-SimulationStage&#160;</td><td class="memItemRight" valign="bottom"><b>simulationStage</b> {SimulationStage::Uninitialized}</td></tr>
+<a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3">SimulationStage</a>&#160;</td><td class="memItemRight" valign="bottom"><b>simulationStage</b> {<a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3af704f57ea420275ad51bf55b7dec2c96">SimulationStage::Uninitialized</a>}</td></tr>
+<tr class="memdesc:a76ad739bb694d62fea00fe53193ac0ef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Current simulation stage. <br /></td></tr>
 <tr class="separator:a76ad739bb694d62fea00fe53193ac0ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a442ddf389a1777c6b8a5f2fc38a14390" id="r_a442ddf389a1777c6b8a5f2fc38a14390"><td class="memItemLeft" align="right" valign="top"><a id="a442ddf389a1777c6b8a5f2fc38a14390" name="a442ddf389a1777c6b8a5f2fc38a14390"></a>
 std::vector&lt; <a class="el" href="structSystem.html">System</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>systems</b></td></tr>
+<tr class="memdesc:a442ddf389a1777c6b8a5f2fc38a14390"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vector of systems to simulate. <br /></td></tr>
 <tr class="separator:a442ddf389a1777c6b8a5f2fc38a14390"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae3c5f824fb3e58d5834c91d06acffb88" id="r_ae3c5f824fb3e58d5834c91d06acffb88"><td class="memItemLeft" align="right" valign="top"><a id="ae3c5f824fb3e58d5834c91d06acffb88" name="ae3c5f824fb3e58d5834c91d06acffb88"></a>
 RandomNumber&#160;</td><td class="memItemRight" valign="bottom"><b>random</b></td></tr>
+<tr class="memdesc:ae3c5f824fb3e58d5834c91d06acffb88"><td class="mdescLeft">&#160;</td><td class="mdescRight">Random number generator. <br /></td></tr>
 <tr class="separator:ae3c5f824fb3e58d5834c91d06acffb88"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aedf9e2d9344f6804f20a5ee5eb0ce8ba" id="r_aedf9e2d9344f6804f20a5ee5eb0ce8ba"><td class="memItemLeft" align="right" valign="top"><a id="aedf9e2d9344f6804f20a5ee5eb0ce8ba" name="aedf9e2d9344f6804f20a5ee5eb0ce8ba"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>fractionalMoleculeSystem</b> {0}</td></tr>
 <tr class="separator:aedf9e2d9344f6804f20a5ee5eb0ce8ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a382d23470ea572fdf1fe77f034fd7866" id="r_a382d23470ea572fdf1fe77f034fd7866"><td class="memItemLeft" align="right" valign="top"><a id="a382d23470ea572fdf1fe77f034fd7866" name="a382d23470ea572fdf1fe77f034fd7866"></a>
 std::vector&lt; std::ofstream &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>streams</b></td></tr>
+<tr class="memdesc:a382d23470ea572fdf1fe77f034fd7866"><td class="mdescLeft">&#160;</td><td class="mdescRight">Output streams for writing data. <br /></td></tr>
 <tr class="separator:a382d23470ea572fdf1fe77f034fd7866"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1601036a196c622afe9aa215648458df" id="r_a1601036a196c622afe9aa215648458df"><td class="memItemLeft" align="right" valign="top"><a id="a1601036a196c622afe9aa215648458df" name="a1601036a196c622afe9aa215648458df"></a>
 std::vector&lt; std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>outputJsonFileNames</b></td></tr>
+<tr class="memdesc:a1601036a196c622afe9aa215648458df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Filenames for output JSON files. <br /></td></tr>
 <tr class="separator:a1601036a196c622afe9aa215648458df"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a31d4e8e878b9a10f08bfa7a29f345d56" id="r_a31d4e8e878b9a10f08bfa7a29f345d56"><td class="memItemLeft" align="right" valign="top"><a id="a31d4e8e878b9a10f08bfa7a29f345d56" name="a31d4e8e878b9a10f08bfa7a29f345d56"></a>
 std::vector&lt; nlohmann::json &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>outputJsons</b></td></tr>
+<tr class="memdesc:a31d4e8e878b9a10f08bfa7a29f345d56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Output data in JSON format. <br /></td></tr>
 <tr class="separator:a31d4e8e878b9a10f08bfa7a29f345d56"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a51ab0b9d8286781620be48c38d5e036a" id="r_a51ab0b9d8286781620be48c38d5e036a"><td class="memItemLeft" align="right" valign="top"><a id="a51ab0b9d8286781620be48c38d5e036a" name="a51ab0b9d8286781620be48c38d5e036a"></a>
 <a class="el" href="structBlockErrorEstimation.html">BlockErrorEstimation</a>&#160;</td><td class="memItemRight" valign="bottom"><b>estimation</b></td></tr>
+<tr class="memdesc:a51ab0b9d8286781620be48c38d5e036a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Block error estimation object. <br /></td></tr>
 <tr class="separator:a51ab0b9d8286781620be48c38d5e036a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cca740ba4a8786c4a3841de4fe6294c" id="r_a6cca740ba4a8786c4a3841de4fe6294c"><td class="memItemLeft" align="right" valign="top"><a id="a6cca740ba4a8786c4a3841de4fe6294c" name="a6cca740ba4a8786c4a3841de4fe6294c"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>totalInitializationSimulationTime</b> {0}</td></tr>
+<tr class="memdesc:a6cca740ba4a8786c4a3841de4fe6294c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total time for initialization stage. <br /></td></tr>
 <tr class="separator:a6cca740ba4a8786c4a3841de4fe6294c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af894d30b7d7fc5f01d6982ed2e12453b" id="r_af894d30b7d7fc5f01d6982ed2e12453b"><td class="memItemLeft" align="right" valign="top"><a id="af894d30b7d7fc5f01d6982ed2e12453b" name="af894d30b7d7fc5f01d6982ed2e12453b"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>totalEquilibrationSimulationTime</b> {0}</td></tr>
+<tr class="memdesc:af894d30b7d7fc5f01d6982ed2e12453b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total time for equilibration stage. <br /></td></tr>
 <tr class="separator:af894d30b7d7fc5f01d6982ed2e12453b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeea012f6e5c4d139569583a4536362d4" id="r_aeea012f6e5c4d139569583a4536362d4"><td class="memItemLeft" align="right" valign="top"><a id="aeea012f6e5c4d139569583a4536362d4" name="aeea012f6e5c4d139569583a4536362d4"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>totalProductionSimulationTime</b> {0}</td></tr>
+<tr class="memdesc:aeea012f6e5c4d139569583a4536362d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total time for production stage. <br /></td></tr>
 <tr class="separator:aeea012f6e5c4d139569583a4536362d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a862bfa674ce0bf50fc7b79e1df324938" id="r_a862bfa674ce0bf50fc7b79e1df324938"><td class="memItemLeft" align="right" valign="top"><a id="a862bfa674ce0bf50fc7b79e1df324938" name="a862bfa674ce0bf50fc7b79e1df324938"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>totalSimulationTime</b> {0}</td></tr>
+<tr class="memdesc:a862bfa674ce0bf50fc7b79e1df324938"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total simulation time. <br /></td></tr>
 <tr class="separator:a862bfa674ce0bf50fc7b79e1df324938"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -343,6 +271,383 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structMonteCarlo.html">MonteCarlo</a> &amp;mc)</td></tr>
 <tr class="separator:a5d6e96c3fe554ec46f6e1fae223aee60"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Performs Monte Carlo simulations for molecular systems. </p>
+<p>The <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> struct orchestrates the execution of Monte Carlo simulations, including initialization, equilibration, and production stages. It manages multiple systems, random number generation, simulation parameters, and output generation. </p>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a13d1f1f592e841680c2d85c9fbf349d3" name="a13d1f1f592e841680c2d85c9fbf349d3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a13d1f1f592e841680c2d85c9fbf349d3">&#9670;&#160;</a></span>SimulationStage</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3">MonteCarlo::SimulationStage</a> : size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of simulation stages. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a13d1f1f592e841680c2d85c9fbf349d3af704f57ea420275ad51bf55b7dec2c96" name="a13d1f1f592e841680c2d85c9fbf349d3af704f57ea420275ad51bf55b7dec2c96"></a>Uninitialized&#160;</td><td class="fielddoc"><p>Simulation not initialized. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a13d1f1f592e841680c2d85c9fbf349d3a61bcd96a2c1f8026527cbf2019d6e9a4" name="a13d1f1f592e841680c2d85c9fbf349d3a61bcd96a2c1f8026527cbf2019d6e9a4"></a>Initialization&#160;</td><td class="fielddoc"><p>Initialization stage. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a13d1f1f592e841680c2d85c9fbf349d3afa541803322f896bd1d80476d131350f" name="a13d1f1f592e841680c2d85c9fbf349d3afa541803322f896bd1d80476d131350f"></a>Equilibration&#160;</td><td class="fielddoc"><p>Equilibration stage. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a13d1f1f592e841680c2d85c9fbf349d3a756d97bb256b8580d4d71ee0c547804e" name="a13d1f1f592e841680c2d85c9fbf349d3a756d97bb256b8580d4d71ee0c547804e"></a>Production&#160;</td><td class="fielddoc"><p>Production stage. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="a8860089105fed1e661c1221aa5eab78b" name="a8860089105fed1e661c1221aa5eab78b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8860089105fed1e661c1221aa5eab78b">&#9670;&#160;</a></span>WeightingMethod</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="structMonteCarlo.html#a8860089105fed1e661c1221aa5eab78b">MonteCarlo::WeightingMethod</a> : size_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Enumeration of weighting methods for sampling. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8860089105fed1e661c1221aa5eab78ba6ffe065db3c2dd7b1d0593d313b71ca6" name="a8860089105fed1e661c1221aa5eab78ba6ffe065db3c2dd7b1d0593d313b71ca6"></a>LambdaZero&#160;</td><td class="fielddoc"><p>Use only lambda = 0 in sampling. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a8860089105fed1e661c1221aa5eab78bae9014f71985913179dc0f969c602833e" name="a8860089105fed1e661c1221aa5eab78bae9014f71985913179dc0f969c602833e"></a>AllLambdas&#160;</td><td class="fielddoc"><p>Use all lambda values in sampling. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ab59a7679e86d34701f8e2a063bccc93e" name="ab59a7679e86d34701f8e2a063bccc93e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab59a7679e86d34701f8e2a063bccc93e">&#9670;&#160;</a></span>MonteCarlo() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MonteCarlo::MonteCarlo </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> class. </p>
+<p>Initializes a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object with default parameters. </p>
+
+</div>
+</div>
+<a id="a92cb53d86687ec03d2c5d649e064c486" name="a92cb53d86687ec03d2c5d649e064c486"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a92cb53d86687ec03d2c5d649e064c486">&#9670;&#160;</a></span>MonteCarlo() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">MonteCarlo::MonteCarlo </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structInputReader.html">InputReader</a> &amp;&#160;</td>
+          <td class="paramname"><em>reader</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">noexcept</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object with simulation parameters from an <a class="el" href="structInputReader.html" title="Class responsible for reading and parsing simulation input files.">InputReader</a>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">reader</td><td><a class="el" href="structInputReader.html" title="Class responsible for reading and parsing simulation input files.">InputReader</a> containing simulation parameters. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="ade06f763d5b91358d044e9bd71df91d7" name="ade06f763d5b91358d044e9bd71df91d7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ade06f763d5b91358d044e9bd71df91d7">&#9670;&#160;</a></span>MonteCarlo() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MonteCarlo::MonteCarlo </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfCycles</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfInitializationCycles</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfEquilibrationCycles</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>printEvery</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>writeBinaryRestartEvery</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>rescaleWangLandauEvery</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>optimizeMCMovesEvery</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; <a class="el" href="structSystem.html">System</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>systems</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>randomSeed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>numberOfBlocks</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object with specified simulation parameters. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">numberOfCycles</td><td>Number of production cycles. </td></tr>
+    <tr><td class="paramname">numberOfInitializationCycles</td><td>Number of initialization cycles. </td></tr>
+    <tr><td class="paramname">numberOfEquilibrationCycles</td><td>Number of equilibration cycles. </td></tr>
+    <tr><td class="paramname">printEvery</td><td>Frequency of printing status reports. </td></tr>
+    <tr><td class="paramname">writeBinaryRestartEvery</td><td>Frequency of writing binary restart files. </td></tr>
+    <tr><td class="paramname">rescaleWangLandauEvery</td><td>Frequency of rescaling Wang-Landau factors. </td></tr>
+    <tr><td class="paramname">optimizeMCMovesEvery</td><td>Frequency of optimizing MC moves. </td></tr>
+    <tr><td class="paramname">systems</td><td>Vector of <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> objects to simulate. </td></tr>
+    <tr><td class="paramname">randomSeed</td><td>Random number generator seed. </td></tr>
+    <tr><td class="paramname">numberOfBlocks</td><td>Number of blocks for error estimation. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="aedcabcb1e3abcb46b678230fb58d52bf" name="aedcabcb1e3abcb46b678230fb58d52bf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedcabcb1e3abcb46b678230fb58d52bf">&#9670;&#160;</a></span>cycle()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::cycle </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs a single Monte Carlo cycle. </p>
+<p>Executes a number of Monte Carlo steps, updates system properties, and handles output generation and restart file writing. </p>
+
+</div>
+</div>
+<a id="a47465c9d5e14bfd9109c4adc177dc8b9" name="a47465c9d5e14bfd9109c4adc177dc8b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a47465c9d5e14bfd9109c4adc177dc8b9">&#9670;&#160;</a></span>equilibrate()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::equilibrate </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs the equilibration stage of the simulation. </p>
+<p>Equilibrates the systems by running the specified number of equilibration cycles, and adjusts Wang-Landau biasing factors. </p>
+
+</div>
+</div>
+<a id="a9aba3b6e256709cc50814e6c85be5a02" name="a9aba3b6e256709cc50814e6c85be5a02"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9aba3b6e256709cc50814e6c85be5a02">&#9670;&#160;</a></span>initialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::initialize </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs the initialization stage of the simulation. </p>
+<p>Sets up the simulation systems, writes initial output, and runs the specified number of initialization cycles. </p>
+
+</div>
+</div>
+<a id="ac5e987c51e635e8109585e46ac9aa769" name="ac5e987c51e635e8109585e46ac9aa769"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac5e987c51e635e8109585e46ac9aa769">&#9670;&#160;</a></span>output()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::output </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates the final output of the simulation. </p>
+<p>Writes energy statistics, move statistics, CPU timings, and other properties to output files. </p>
+
+</div>
+</div>
+<a id="aa8d54514d1b1ce8ab12cd2d1d81b4615" name="aa8d54514d1b1ce8ab12cd2d1d81b4615"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa8d54514d1b1ce8ab12cd2d1d81b4615">&#9670;&#160;</a></span>production()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::production </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Performs the production stage of the simulation. </p>
+<p>Runs the main simulation cycles, collects statistics, and samples properties. </p>
+
+</div>
+</div>
+<a id="ab75cd19b07050a3bd2ed5f70962614c6" name="ab75cd19b07050a3bd2ed5f70962614c6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab75cd19b07050a3bd2ed5f70962614c6">&#9670;&#160;</a></span>randomSystem()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSystem.html">System</a> &amp; MonteCarlo::randomSystem </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Selects a random system from the list of systems. </p>
+<dl class="section return"><dt>Returns</dt><dd>Reference to a randomly selected <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object. </dd></dl>
+
+</div>
+</div>
+<a id="a75ffe3d9c51f4c9522eaa3da3969df45" name="a75ffe3d9c51f4c9522eaa3da3969df45"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a75ffe3d9c51f4c9522eaa3da3969df45">&#9670;&#160;</a></span>repr()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string MonteCarlo::repr </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object. </p>
+<dl class="section return"><dt>Returns</dt><dd>A string describing the <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object. </dd></dl>
+
+</div>
+</div>
+<a id="ab35b1dd4d6273a1eaf09057585b83f34" name="ab35b1dd4d6273a1eaf09057585b83f34"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab35b1dd4d6273a1eaf09057585b83f34">&#9670;&#160;</a></span>run()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MonteCarlo::run </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Runs the Monte Carlo simulation. </p>
+<p>Orchestrates the simulation by executing initialization, equilibration, and production stages sequentially. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>monte_carlo.ixx</b></li>
 </ul>

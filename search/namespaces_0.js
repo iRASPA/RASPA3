@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['std_0',['std',['../namespacestd.html',1,'']]]
+  ['hardwareinfo_0',['HardwareInfo',['../namespaceHardwareInfo.html',1,'']]]
 ];

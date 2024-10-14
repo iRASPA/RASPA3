@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: SimulationBox Struct Reference</title>
+<title>RASPA3: SimulationBox Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,72 +108,85 @@ $(document).ready(function(){initNavTree('structSimulationBox.html',''); initRes
   <div class="headertitle"><div class="title">SimulationBox Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_simulationbox.html">simulationbox</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents a simulation box used in simulations.  
+ <a href="structSimulationBox.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
 Public Types</h2></td></tr>
-<tr class="memitem:a0b5d2bc5482a5f210c432f06d00f258b" id="r_a0b5d2bc5482a5f210c432f06d00f258b"><td class="memItemLeft" align="right" valign="top"><a id="a0b5d2bc5482a5f210c432f06d00f258b" name="a0b5d2bc5482a5f210c432f06d00f258b"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Type</b> : int { <b>Rectangular</b> = 0
+<tr class="memitem:a0b5d2bc5482a5f210c432f06d00f258b" id="r_a0b5d2bc5482a5f210c432f06d00f258b"><td class="memItemLeft" align="right" valign="top"><a id="a0b5d2bc5482a5f210c432f06d00f258b" name="a0b5d2bc5482a5f210c432f06d00f258b"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a> : int { <b>Rectangular</b> = 0
 , <b>Triclinic</b> = 1
  }</td></tr>
+<tr class="memdesc:a0b5d2bc5482a5f210c432f06d00f258b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration for the type of the simulation box. <br /></td></tr>
 <tr class="separator:a0b5d2bc5482a5f210c432f06d00f258b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a17abbed119eba7feaec55ca61e9e9407" id="r_a17abbed119eba7feaec55ca61e9e9407"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a17abbed119eba7feaec55ca61e9e9407">SimulationBox</a> ()</td></tr>
+<tr class="memdesc:a17abbed119eba7feaec55ca61e9e9407"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> class.  <br /></td></tr>
+<tr class="separator:a17abbed119eba7feaec55ca61e9e9407"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a98f63b0e816bdc72832287dc60b8cea4" id="r_a98f63b0e816bdc72832287dc60b8cea4"><td class="memItemLeft" align="right" valign="top"><a id="a98f63b0e816bdc72832287dc60b8cea4" name="a98f63b0e816bdc72832287dc60b8cea4"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structSimulationBox.html">SimulationBox</a> const &amp;) const =default</td></tr>
 <tr class="separator:a98f63b0e816bdc72832287dc60b8cea4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adf59e46a80fb2d4786d335bcc6aad226" id="r_adf59e46a80fb2d4786d335bcc6aad226"><td class="memItemLeft" align="right" valign="top"><a id="adf59e46a80fb2d4786d335bcc6aad226" name="adf59e46a80fb2d4786d335bcc6aad226"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>SimulationBox</b> (double a, double b, double c, Type type=Type::Rectangular)</td></tr>
-<tr class="separator:adf59e46a80fb2d4786d335bcc6aad226"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0280ef9831c1808bd3b9497a69ac322" id="r_aa0280ef9831c1808bd3b9497a69ac322"><td class="memItemLeft" align="right" valign="top"><a id="aa0280ef9831c1808bd3b9497a69ac322" name="aa0280ef9831c1808bd3b9497a69ac322"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>SimulationBox</b> (double a, double b, double c, double alpha, double beta, double gamma, Type type=Type::Rectangular)</td></tr>
-<tr class="separator:aa0280ef9831c1808bd3b9497a69ac322"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a56aeaa5dd024b26f648cef7f69dc7ca1" id="r_a56aeaa5dd024b26f648cef7f69dc7ca1"><td class="memItemLeft" align="right" valign="top"><a id="a56aeaa5dd024b26f648cef7f69dc7ca1" name="a56aeaa5dd024b26f648cef7f69dc7ca1"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>SimulationBox</b> (double3x3 m, Type type=Type::Rectangular)</td></tr>
-<tr class="separator:a56aeaa5dd024b26f648cef7f69dc7ca1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a08dbd19c4b6c104165dd8551063d9729" id="r_a08dbd19c4b6c104165dd8551063d9729"><td class="memItemLeft" align="right" valign="top"><a id="a08dbd19c4b6c104165dd8551063d9729" name="a08dbd19c4b6c104165dd8551063d9729"></a>
-ALWAYS_INLINE double3&#160;</td><td class="memItemRight" valign="bottom"><b>applyPeriodicBoundaryConditions</b> (const double3 &amp;dr) const</td></tr>
+<tr class="memitem:ad8a3988c890992ab1ec207d03509f38e" id="r_ad8a3988c890992ab1ec207d03509f38e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#ad8a3988c890992ab1ec207d03509f38e">SimulationBox</a> (double a, double b, double c)</td></tr>
+<tr class="memdesc:ad8a3988c890992ab1ec207d03509f38e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a rectangular <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths.  <br /></td></tr>
+<tr class="separator:ad8a3988c890992ab1ec207d03509f38e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42371f2f0c60856d2749788afab02d8a" id="r_a42371f2f0c60856d2749788afab02d8a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a42371f2f0c60856d2749788afab02d8a">SimulationBox</a> (double a, double b, double c, double alpha, double beta, double gamma)</td></tr>
+<tr class="memdesc:a42371f2f0c60856d2749788afab02d8a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths and angles.  <br /></td></tr>
+<tr class="separator:a42371f2f0c60856d2749788afab02d8a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada93ac48615d5bf6d3062194ef342b0e" id="r_ada93ac48615d5bf6d3062194ef342b0e"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#ada93ac48615d5bf6d3062194ef342b0e">SimulationBox</a> (double a, double b, double c, double alpha, double beta, double gamma, <a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a> type)</td></tr>
+<tr class="memdesc:ada93ac48615d5bf6d3062194ef342b0e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths, angles, and type.  <br /></td></tr>
+<tr class="separator:ada93ac48615d5bf6d3062194ef342b0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9a150cb698613e8ea60b0c73950fb8b" id="r_aa9a150cb698613e8ea60b0c73950fb8b"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#aa9a150cb698613e8ea60b0c73950fb8b">SimulationBox</a> (double3x3 m)</td></tr>
+<tr class="memdesc:aa9a150cb698613e8ea60b0c73950fb8b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with a given cell matrix.  <br /></td></tr>
+<tr class="separator:aa9a150cb698613e8ea60b0c73950fb8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a087110db444696d3293256bac59eebe6" id="r_a087110db444696d3293256bac59eebe6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a087110db444696d3293256bac59eebe6">SimulationBox</a> (double3x3 m, <a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a> type)</td></tr>
+<tr class="memdesc:a087110db444696d3293256bac59eebe6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with a given cell matrix and type.  <br /></td></tr>
+<tr class="separator:a087110db444696d3293256bac59eebe6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08dbd19c4b6c104165dd8551063d9729" id="r_a08dbd19c4b6c104165dd8551063d9729"><td class="memItemLeft" align="right" valign="top">ALWAYS_INLINE double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a08dbd19c4b6c104165dd8551063d9729">applyPeriodicBoundaryConditions</a> (const double3 &amp;dr) const</td></tr>
+<tr class="memdesc:a08dbd19c4b6c104165dd8551063d9729"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies periodic boundary conditions to a displacement vector.  <br /></td></tr>
 <tr class="separator:a08dbd19c4b6c104165dd8551063d9729"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a018ee71b61f42715e924e5f61e157bcd" id="r_a018ee71b61f42715e924e5f61e157bcd"><td class="memItemLeft" align="right" valign="top"><a id="a018ee71b61f42715e924e5f61e157bcd" name="a018ee71b61f42715e924e5f61e157bcd"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setBoxLengths</b> (double3 lengths)</td></tr>
+<tr class="memitem:a018ee71b61f42715e924e5f61e157bcd" id="r_a018ee71b61f42715e924e5f61e157bcd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a018ee71b61f42715e924e5f61e157bcd">setBoxLengths</a> (double3 <a class="el" href="structSimulationBox.html#a5b16959c61f5a2d76fe2566cbdbaec45">lengths</a>)</td></tr>
+<tr class="memdesc:a018ee71b61f42715e924e5f61e157bcd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the lengths of the simulation box.  <br /></td></tr>
 <tr class="separator:a018ee71b61f42715e924e5f61e157bcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a18bec4a4b25603f55d404cb9993662a8" id="r_a18bec4a4b25603f55d404cb9993662a8"><td class="memItemLeft" align="right" valign="top"><a id="a18bec4a4b25603f55d404cb9993662a8" name="a18bec4a4b25603f55d404cb9993662a8"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>setBoxAngles</b> (double3 angles)</td></tr>
+<tr class="memitem:a18bec4a4b25603f55d404cb9993662a8" id="r_a18bec4a4b25603f55d404cb9993662a8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a18bec4a4b25603f55d404cb9993662a8">setBoxAngles</a> (double3 <a class="el" href="structSimulationBox.html#a55fd73966fd34450dd637d0079eea9f9">angles</a>)</td></tr>
+<tr class="memdesc:a18bec4a4b25603f55d404cb9993662a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the angles of the simulation box.  <br /></td></tr>
 <tr class="separator:a18bec4a4b25603f55d404cb9993662a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b16959c61f5a2d76fe2566cbdbaec45" id="r_a5b16959c61f5a2d76fe2566cbdbaec45"><td class="memItemLeft" align="right" valign="top"><a id="a5b16959c61f5a2d76fe2566cbdbaec45" name="a5b16959c61f5a2d76fe2566cbdbaec45"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>lengths</b> ()</td></tr>
+<tr class="memitem:a5b16959c61f5a2d76fe2566cbdbaec45" id="r_a5b16959c61f5a2d76fe2566cbdbaec45"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a5b16959c61f5a2d76fe2566cbdbaec45">lengths</a> ()</td></tr>
+<tr class="memdesc:a5b16959c61f5a2d76fe2566cbdbaec45"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the lengths of the simulation box.  <br /></td></tr>
 <tr class="separator:a5b16959c61f5a2d76fe2566cbdbaec45"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a55fd73966fd34450dd637d0079eea9f9" id="r_a55fd73966fd34450dd637d0079eea9f9"><td class="memItemLeft" align="right" valign="top"><a id="a55fd73966fd34450dd637d0079eea9f9" name="a55fd73966fd34450dd637d0079eea9f9"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>angles</b> ()</td></tr>
+<tr class="memitem:a55fd73966fd34450dd637d0079eea9f9" id="r_a55fd73966fd34450dd637d0079eea9f9"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a55fd73966fd34450dd637d0079eea9f9">angles</a> ()</td></tr>
+<tr class="memdesc:a55fd73966fd34450dd637d0079eea9f9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the angles of the simulation box.  <br /></td></tr>
 <tr class="separator:a55fd73966fd34450dd637d0079eea9f9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a74e8020fcf96b3caaeee7e1ff4c8cfd3" id="r_a74e8020fcf96b3caaeee7e1ff4c8cfd3"><td class="memItemLeft" align="right" valign="top"><a id="a74e8020fcf96b3caaeee7e1ff4c8cfd3" name="a74e8020fcf96b3caaeee7e1ff4c8cfd3"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>randomPosition</b> (RandomNumber &amp;random) const</td></tr>
+<tr class="memitem:a74e8020fcf96b3caaeee7e1ff4c8cfd3" id="r_a74e8020fcf96b3caaeee7e1ff4c8cfd3"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a74e8020fcf96b3caaeee7e1ff4c8cfd3">randomPosition</a> (RandomNumber &amp;random) const</td></tr>
+<tr class="memdesc:a74e8020fcf96b3caaeee7e1ff4c8cfd3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a random position within the simulation box.  <br /></td></tr>
 <tr class="separator:a74e8020fcf96b3caaeee7e1ff4c8cfd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aedbaf43534be9fbbd485f08be7bf71dc" id="r_aedbaf43534be9fbbd485f08be7bf71dc"><td class="memItemLeft" align="right" valign="top"><a id="aedbaf43534be9fbbd485f08be7bf71dc" name="aedbaf43534be9fbbd485f08be7bf71dc"></a>
-double3&#160;</td><td class="memItemRight" valign="bottom"><b>perpendicularWidths</b> () const</td></tr>
+<tr class="memitem:aedbaf43534be9fbbd485f08be7bf71dc" id="r_aedbaf43534be9fbbd485f08be7bf71dc"><td class="memItemLeft" align="right" valign="top">double3&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#aedbaf43534be9fbbd485f08be7bf71dc">perpendicularWidths</a> () const</td></tr>
+<tr class="memdesc:aedbaf43534be9fbbd485f08be7bf71dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the perpendicular widths of the simulation box.  <br /></td></tr>
 <tr class="separator:aedbaf43534be9fbbd485f08be7bf71dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab87435ab3567030afc9650d3d5e57058" id="r_ab87435ab3567030afc9650d3d5e57058"><td class="memItemLeft" align="right" valign="top"><a id="ab87435ab3567030afc9650d3d5e57058" name="ab87435ab3567030afc9650d3d5e57058"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printStatus</b> () const</td></tr>
+<tr class="memitem:ab87435ab3567030afc9650d3d5e57058" id="r_ab87435ab3567030afc9650d3d5e57058"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#ab87435ab3567030afc9650d3d5e57058">printStatus</a> () const</td></tr>
+<tr class="memdesc:ab87435ab3567030afc9650d3d5e57058"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the simulation box.  <br /></td></tr>
 <tr class="separator:ab87435ab3567030afc9650d3d5e57058"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6fbe9c046403bded0ca2ceac4fb78716" id="r_a6fbe9c046403bded0ca2ceac4fb78716"><td class="memItemLeft" align="right" valign="top"><a id="a6fbe9c046403bded0ca2ceac4fb78716" name="a6fbe9c046403bded0ca2ceac4fb78716"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printStatus</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;average, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;error) const</td></tr>
+<tr class="memitem:a6fbe9c046403bded0ca2ceac4fb78716" id="r_a6fbe9c046403bded0ca2ceac4fb78716"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a6fbe9c046403bded0ca2ceac4fb78716">printStatus</a> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;average, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;error) const</td></tr>
+<tr class="memdesc:a6fbe9c046403bded0ca2ceac4fb78716"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the simulation box with averages and errors.  <br /></td></tr>
 <tr class="separator:a6fbe9c046403bded0ca2ceac4fb78716"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2ccfa6e959d5444c851083417c3baa26" id="r_a2ccfa6e959d5444c851083417c3baa26"><td class="memItemLeft" align="right" valign="top"><a id="a2ccfa6e959d5444c851083417c3baa26" name="a2ccfa6e959d5444c851083417c3baa26"></a>
-nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonStatus</b> () const</td></tr>
+<tr class="memitem:a2ccfa6e959d5444c851083417c3baa26" id="r_a2ccfa6e959d5444c851083417c3baa26"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a2ccfa6e959d5444c851083417c3baa26">jsonStatus</a> () const</td></tr>
+<tr class="memdesc:a2ccfa6e959d5444c851083417c3baa26"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a JSON representation of the simulation box.  <br /></td></tr>
 <tr class="separator:a2ccfa6e959d5444c851083417c3baa26"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac7c08cd2be92bd1be838d6fde22ceaaa" id="r_ac7c08cd2be92bd1be838d6fde22ceaaa"><td class="memItemLeft" align="right" valign="top"><a id="ac7c08cd2be92bd1be838d6fde22ceaaa" name="ac7c08cd2be92bd1be838d6fde22ceaaa"></a>
 <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator+=</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;b)</td></tr>
 <tr class="separator:ac7c08cd2be92bd1be838d6fde22ceaaa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3e3a7571cf6512a3e0efb325c0283fa9" id="r_a3e3a7571cf6512a3e0efb325c0283fa9"><td class="memItemLeft" align="right" valign="top"><a id="a3e3a7571cf6512a3e0efb325c0283fa9" name="a3e3a7571cf6512a3e0efb325c0283fa9"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>scale</b> (double scale)</td></tr>
+<tr class="memitem:a3e3a7571cf6512a3e0efb325c0283fa9" id="r_a3e3a7571cf6512a3e0efb325c0283fa9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a3e3a7571cf6512a3e0efb325c0283fa9">scale</a> (double scale)</td></tr>
+<tr class="memdesc:a3e3a7571cf6512a3e0efb325c0283fa9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scales the simulation box by a scalar factor.  <br /></td></tr>
 <tr class="separator:a3e3a7571cf6512a3e0efb325c0283fa9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3709bea5d05f5c0e42e13be72529451e" id="r_a3709bea5d05f5c0e42e13be72529451e"><td class="memItemLeft" align="right" valign="top"><a id="a3709bea5d05f5c0e42e13be72529451e" name="a3709bea5d05f5c0e42e13be72529451e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>scale</b> (int3 scale)</td></tr>
+<tr class="memitem:a3709bea5d05f5c0e42e13be72529451e" id="r_a3709bea5d05f5c0e42e13be72529451e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#a3709bea5d05f5c0e42e13be72529451e">scale</a> (int3 scale)</td></tr>
+<tr class="memdesc:a3709bea5d05f5c0e42e13be72529451e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scales the simulation box by integer factors along each axis.  <br /></td></tr>
 <tr class="separator:a3709bea5d05f5c0e42e13be72529451e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad0f9c0ec316c0e1a89748d299140d1b2" id="r_ad0f9c0ec316c0e1a89748d299140d1b2"><td class="memItemLeft" align="right" valign="top"><a id="ad0f9c0ec316c0e1a89748d299140d1b2" name="ad0f9c0ec316c0e1a89748d299140d1b2"></a>
-<a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><b>scaled</b> (double scale)</td></tr>
+<tr class="memitem:ad0f9c0ec316c0e1a89748d299140d1b2" id="r_ad0f9c0ec316c0e1a89748d299140d1b2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#ad0f9c0ec316c0e1a89748d299140d1b2">scaled</a> (double <a class="el" href="structSimulationBox.html#a3e3a7571cf6512a3e0efb325c0283fa9">scale</a>)</td></tr>
+<tr class="memdesc:ad0f9c0ec316c0e1a89748d299140d1b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> scaled by a scalar factor.  <br /></td></tr>
 <tr class="separator:ad0f9c0ec316c0e1a89748d299140d1b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae0842001f6569cbd621baf666b834ed9" id="r_ae0842001f6569cbd621baf666b834ed9"><td class="memItemLeft" align="right" valign="top"><a id="ae0842001f6569cbd621baf666b834ed9" name="ae0842001f6569cbd621baf666b834ed9"></a>
-<a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><b>scaled</b> (int3 scale)</td></tr>
+<tr class="memitem:ae0842001f6569cbd621baf666b834ed9" id="r_ae0842001f6569cbd621baf666b834ed9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSimulationBox.html#ae0842001f6569cbd621baf666b834ed9">scaled</a> (int3 <a class="el" href="structSimulationBox.html#a3e3a7571cf6512a3e0efb325c0283fa9">scale</a>)</td></tr>
+<tr class="memdesc:ae0842001f6569cbd621baf666b834ed9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> scaled by integer factors along each axis.  <br /></td></tr>
 <tr class="separator:ae0842001f6569cbd621baf666b834ed9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -202,7 +222,7 @@ double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>inverseCell</b><
 double&#160;</td><td class="memItemRight" valign="bottom"><b>volume</b></td></tr>
 <tr class="separator:abdf5d1b542a54a0304221dc1a4ba0ced"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a06c5362cc5115dfcca1457bfced039d3" id="r_a06c5362cc5115dfcca1457bfced039d3"><td class="memItemLeft" align="right" valign="top"><a id="a06c5362cc5115dfcca1457bfced039d3" name="a06c5362cc5115dfcca1457bfced039d3"></a>
-Type&#160;</td><td class="memItemRight" valign="bottom"><b>type</b> = Type::Rectangular</td></tr>
+<a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a>&#160;</td><td class="memItemRight" valign="bottom"><b>type</b></td></tr>
 <tr class="separator:a06c5362cc5115dfcca1457bfced039d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -220,6 +240,757 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>to_json</b> (nlohmann
 void&#160;</td><td class="memItemRight" valign="bottom"><b>from_json</b> (const nlohmann::json &amp;, <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;)</td></tr>
 <tr class="separator:ae7aac7c0589b92825212be516e1b8bb6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents a simulation box used in simulations. </p>
+<p>The <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> struct defines the dimensions and angles of the simulation box. It supports different types, such as rectangular and triclinic, and contains information about the cell matrix and its inverse, as well as the volume of the box. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="a17abbed119eba7feaec55ca61e9e9407" name="a17abbed119eba7feaec55ca61e9e9407"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a17abbed119eba7feaec55ca61e9e9407">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[1/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> class. </p>
+<p>Initializes a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with all lengths and angles set to zero, and sets the cell matrices to zero matrices. </p>
+
+</div>
+</div>
+<a id="ad8a3988c890992ab1ec207d03509f38e" name="ad8a3988c890992ab1ec207d03509f38e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad8a3988c890992ab1ec207d03509f38e">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[2/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>b</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>c</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a rectangular <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths. </p>
+<p>Initializes a rectangular <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with the specified lengths for the sides. Sets the angles to 90 degrees and computes the cell matrices and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>Length of side A. </td></tr>
+    <tr><td class="paramname">b</td><td>Length of side B. </td></tr>
+    <tr><td class="paramname">c</td><td>Length of side C. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a42371f2f0c60856d2749788afab02d8a" name="a42371f2f0c60856d2749788afab02d8a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a42371f2f0c60856d2749788afab02d8a">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[3/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>b</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>c</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>alpha</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>beta</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>gamma</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths and angles. </p>
+<p>Initializes a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with the specified lengths for the sides and angles. Computes the cell matrices and volume based on the provided dimensions.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>Length of side A. </td></tr>
+    <tr><td class="paramname">b</td><td>Length of side B. </td></tr>
+    <tr><td class="paramname">c</td><td>Length of side C. </td></tr>
+    <tr><td class="paramname">alpha</td><td>Angle between sides B and C (in radians). </td></tr>
+    <tr><td class="paramname">beta</td><td>Angle between sides A and C (in radians). </td></tr>
+    <tr><td class="paramname">gamma</td><td>Angle between sides A and B (in radians). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="ada93ac48615d5bf6d3062194ef342b0e" name="ada93ac48615d5bf6d3062194ef342b0e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ada93ac48615d5bf6d3062194ef342b0e">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[4/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>b</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>c</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>alpha</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>beta</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>gamma</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a>&#160;</td>
+          <td class="paramname"><em>type</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with given lengths, angles, and type. </p>
+<p>Initializes a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with the specified lengths, angles, and box type. Computes the cell matrices and volume based on the provided dimensions.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">a</td><td>Length of side A. </td></tr>
+    <tr><td class="paramname">b</td><td>Length of side B. </td></tr>
+    <tr><td class="paramname">c</td><td>Length of side C. </td></tr>
+    <tr><td class="paramname">alpha</td><td>Angle between sides B and C (in radians). </td></tr>
+    <tr><td class="paramname">beta</td><td>Angle between sides A and C (in radians). </td></tr>
+    <tr><td class="paramname">gamma</td><td>Angle between sides A and B (in radians). </td></tr>
+    <tr><td class="paramname">type</td><td>The type of the simulation box (Rectangular or Triclinic). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aa9a150cb698613e8ea60b0c73950fb8b" name="aa9a150cb698613e8ea60b0c73950fb8b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa9a150cb698613e8ea60b0c73950fb8b">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[5/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramtype">double3x3&#160;</td>
+          <td class="paramname"><em>m</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with a given cell matrix. </p>
+<p>Initializes a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with the specified cell matrix. Computes the lengths and angles from the cell matrix, as well as the inverse cell matrix and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">m</td><td>The cell matrix defining the box dimensions and angles. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a087110db444696d3293256bac59eebe6" name="a087110db444696d3293256bac59eebe6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a087110db444696d3293256bac59eebe6">&#9670;&#160;</a></span>SimulationBox() <span class="overload">[6/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">SimulationBox::SimulationBox </td>
+          <td>(</td>
+          <td class="paramtype">double3x3&#160;</td>
+          <td class="paramname"><em>m</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a>&#160;</td>
+          <td class="paramname"><em>type</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">explicit</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with a given cell matrix and type. </p>
+<p>Initializes a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with the specified cell matrix and box type. Computes the lengths and angles from the cell matrix, as well as the inverse cell matrix and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">m</td><td>The cell matrix defining the box dimensions and angles. </td></tr>
+    <tr><td class="paramname">type</td><td>The type of the simulation box (Rectangular or Triclinic). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a55fd73966fd34450dd637d0079eea9f9" name="a55fd73966fd34450dd637d0079eea9f9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a55fd73966fd34450dd637d0079eea9f9">&#9670;&#160;</a></span>angles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double3 SimulationBox::angles </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieves the angles of the simulation box. </p>
+<p>Returns the angles between the sides of the simulation box.</p>
+<dl class="section return"><dt>Returns</dt><dd>A double3 containing the angles (angleAlpha, angleBeta, angleGamma) in radians. </dd></dl>
+
+</div>
+</div>
+<a id="a08dbd19c4b6c104165dd8551063d9729" name="a08dbd19c4b6c104165dd8551063d9729"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08dbd19c4b6c104165dd8551063d9729">&#9670;&#160;</a></span>applyPeriodicBoundaryConditions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">ALWAYS_INLINE double3 SimulationBox::applyPeriodicBoundaryConditions </td>
+          <td>(</td>
+          <td class="paramtype">const double3 &amp;&#160;</td>
+          <td class="paramname"><em>dr</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Applies periodic boundary conditions to a displacement vector. </p>
+<p>Adjusts the displacement vector <code>dr</code> to account for periodic boundary conditions, ensuring that it lies within the primary simulation cell. For rectangular boxes, the method is optimized for performance.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">dr</td><td>The displacement vector to be adjusted. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>The adjusted displacement vector within the primary simulation cell. </dd></dl>
+
+</div>
+</div>
+<a id="a2ccfa6e959d5444c851083417c3baa26" name="a2ccfa6e959d5444c851083417c3baa26"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ccfa6e959d5444c851083417c3baa26">&#9670;&#160;</a></span>jsonStatus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">nlohmann::json SimulationBox::jsonStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a JSON representation of the simulation box. </p>
+<p>Generates a JSON object containing the cell matrix, lengths, and angles of the box.</p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object representing the simulation box. </dd></dl>
+
+</div>
+</div>
+<a id="a5b16959c61f5a2d76fe2566cbdbaec45" name="a5b16959c61f5a2d76fe2566cbdbaec45"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5b16959c61f5a2d76fe2566cbdbaec45">&#9670;&#160;</a></span>lengths()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double3 SimulationBox::lengths </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Retrieves the lengths of the simulation box. </p>
+<p>Returns the lengths of the sides of the simulation box.</p>
+<dl class="section return"><dt>Returns</dt><dd>A double3 containing the lengths (lengthA, lengthB, lengthC). </dd></dl>
+
+</div>
+</div>
+<a id="aedbaf43534be9fbbd485f08be7bf71dc" name="aedbaf43534be9fbbd485f08be7bf71dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedbaf43534be9fbbd485f08be7bf71dc">&#9670;&#160;</a></span>perpendicularWidths()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double3 SimulationBox::perpendicularWidths </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Calculates the perpendicular widths of the simulation box. </p>
+<p>Computes the perpendicular widths (shortest distances) along each axis of the box.</p>
+<dl class="section return"><dt>Returns</dt><dd>A double3 containing the perpendicular widths along x, y, and z axes. </dd></dl>
+
+</div>
+</div>
+<a id="ab87435ab3567030afc9650d3d5e57058" name="ab87435ab3567030afc9650d3d5e57058"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab87435ab3567030afc9650d3d5e57058">&#9670;&#160;</a></span>printStatus() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string SimulationBox::printStatus </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the simulation box. </p>
+<p>Generates a string that includes the cell matrix, lengths, angles, and boundary conditions type.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the simulation box. </dd></dl>
+
+</div>
+</div>
+<a id="a6fbe9c046403bded0ca2ceac4fb78716" name="a6fbe9c046403bded0ca2ceac4fb78716"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6fbe9c046403bded0ca2ceac4fb78716">&#9670;&#160;</a></span>printStatus() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string SimulationBox::printStatus </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;&#160;</td>
+          <td class="paramname"><em>average</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;&#160;</td>
+          <td class="paramname"><em>error</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the simulation box with averages and errors. </p>
+<p>Generates a string that includes the cell matrix, lengths, angles, and boundary conditions type, along with average values and errors for comparison.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">average</td><td>The average simulation box for comparison. </td></tr>
+    <tr><td class="paramname">error</td><td>The error simulation box for comparison. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the simulation box with averages and errors. </dd></dl>
+
+</div>
+</div>
+<a id="a74e8020fcf96b3caaeee7e1ff4c8cfd3" name="a74e8020fcf96b3caaeee7e1ff4c8cfd3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a74e8020fcf96b3caaeee7e1ff4c8cfd3">&#9670;&#160;</a></span>randomPosition()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double3 SimulationBox::randomPosition </td>
+          <td>(</td>
+          <td class="paramtype">RandomNumber &amp;&#160;</td>
+          <td class="paramname"><em>random</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a random position within the simulation box. </p>
+<p>Generates a random position within the simulation box using the provided random number generator.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">random</td><td>A random number generator. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A double3 representing a random position within the box. </dd></dl>
+
+</div>
+</div>
+<a id="a3e3a7571cf6512a3e0efb325c0283fa9" name="a3e3a7571cf6512a3e0efb325c0283fa9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e3a7571cf6512a3e0efb325c0283fa9">&#9670;&#160;</a></span>scale() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void SimulationBox::scale </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>scale</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Scales the simulation box by a scalar factor. </p>
+<p>Multiplies the lengths of the box by the given scalar and recalculates the cell matrix, inverse cell matrix, and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scale</td><td>The scalar factor to scale the box by. </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structSimulationBox_a3e3a7571cf6512a3e0efb325c0283fa9_cgraph.png" border="0" usemap="#astructSimulationBox_a3e3a7571cf6512a3e0efb325c0283fa9_cgraph" alt=""/></div>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structSimulationBox_a3e3a7571cf6512a3e0efb325c0283fa9_icgraph.png" border="0" usemap="#astructSimulationBox_a3e3a7571cf6512a3e0efb325c0283fa9_icgraph" alt=""/></div>
+</div>
+
+</div>
+</div>
+<a id="a3709bea5d05f5c0e42e13be72529451e" name="a3709bea5d05f5c0e42e13be72529451e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3709bea5d05f5c0e42e13be72529451e">&#9670;&#160;</a></span>scale() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void SimulationBox::scale </td>
+          <td>(</td>
+          <td class="paramtype">int3&#160;</td>
+          <td class="paramname"><em>scale</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Scales the simulation box by integer factors along each axis. </p>
+<p>Multiplies the lengths of the box by the given integer factors along x, y, and z axes, and recalculates the cell matrix, inverse cell matrix, and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scale</td><td>An int3 containing the scaling factors along each axis. </td></tr>
+  </table>
+  </dd>
+</dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structSimulationBox_a3709bea5d05f5c0e42e13be72529451e_cgraph.png" border="0" usemap="#astructSimulationBox_a3709bea5d05f5c0e42e13be72529451e_cgraph" alt=""/></div>
+</div>
+
+</div>
+</div>
+<a id="ad0f9c0ec316c0e1a89748d299140d1b2" name="ad0f9c0ec316c0e1a89748d299140d1b2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad0f9c0ec316c0e1a89748d299140d1b2">&#9670;&#160;</a></span>scaled() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSimulationBox.html">SimulationBox</a> SimulationBox::scaled </td>
+          <td>(</td>
+          <td class="paramtype">double&#160;</td>
+          <td class="paramname"><em>scale</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> scaled by a scalar factor. </p>
+<p>Creates a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with lengths multiplied by the given scalar, and recalculates the cell matrix, inverse cell matrix, and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scale</td><td>The scalar factor to scale the box by. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A new scaled <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>. </dd></dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structSimulationBox_ad0f9c0ec316c0e1a89748d299140d1b2_cgraph.png" border="0" usemap="#astructSimulationBox_ad0f9c0ec316c0e1a89748d299140d1b2_cgraph" alt=""/></div>
+</div>
+
+</div>
+</div>
+<a id="ae0842001f6569cbd621baf666b834ed9" name="ae0842001f6569cbd621baf666b834ed9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae0842001f6569cbd621baf666b834ed9">&#9670;&#160;</a></span>scaled() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSimulationBox.html">SimulationBox</a> SimulationBox::scaled </td>
+          <td>(</td>
+          <td class="paramtype">int3&#160;</td>
+          <td class="paramname"><em>scale</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> scaled by integer factors along each axis. </p>
+<p>Creates a new <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a> with lengths multiplied by the given integer factors, and recalculates the cell matrix, inverse cell matrix, and volume.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">scale</td><td>An int3 containing the scaling factors along each axis. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A new scaled <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>. </dd></dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structSimulationBox_ae0842001f6569cbd621baf666b834ed9_cgraph.png" border="0" usemap="#astructSimulationBox_ae0842001f6569cbd621baf666b834ed9_cgraph" alt=""/></div>
+</div>
+
+</div>
+</div>
+<a id="a18bec4a4b25603f55d404cb9993662a8" name="a18bec4a4b25603f55d404cb9993662a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a18bec4a4b25603f55d404cb9993662a8">&#9670;&#160;</a></span>setBoxAngles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void SimulationBox::setBoxAngles </td>
+          <td>(</td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>angles</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets the angles of the simulation box. </p>
+<p>Updates the angles of the box and recalculates the cell matrix, inverse cell matrix, and volume based on the new angles. Angles are provided in radians.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">angles</td><td>A double3 containing the new angles (angleAlpha, angleBeta, angleGamma). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a018ee71b61f42715e924e5f61e157bcd" name="a018ee71b61f42715e924e5f61e157bcd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a018ee71b61f42715e924e5f61e157bcd">&#9670;&#160;</a></span>setBoxLengths()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void SimulationBox::setBoxLengths </td>
+          <td>(</td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>lengths</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets the lengths of the simulation box. </p>
+<p>Updates the lengths of the box and recalculates the cell matrix, inverse cell matrix, and volume based on the new lengths.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">lengths</td><td>A double3 containing the new lengths (lengthA, lengthB, lengthC). </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>simulationbox.ixx</b></li>
 </ul>

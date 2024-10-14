@@ -1,4 +1,4 @@
 var module_running__energy =
 [
-    [ "RunningEnergy", "structRunningEnergy.html", null ]
+    [ "RunningEnergy", "structRunningEnergy.html", "structRunningEnergy" ]
 ];

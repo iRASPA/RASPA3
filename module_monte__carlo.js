@@ -1,4 +1,4 @@
 var module_monte__carlo =
 [
-    [ "MonteCarlo", "structMonteCarlo.html", null ]
+    [ "MonteCarlo", "structMonteCarlo.html", "structMonteCarlo" ]
 ];

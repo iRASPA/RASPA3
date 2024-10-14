@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: Molecule Struct Reference</title>
+<title>RASPA3: Molecule Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,35 +107,47 @@ $(document).ready(function(){initNavTree('structMolecule.html',''); initResizabl
   <div class="headertitle"><div class="title">Molecule Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_molecule.html">molecule</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Represents a molecule in the simulation system.  
+ <a href="structMolecule.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a406c61170d52f6ca5074b731844dbb75" id="r_a406c61170d52f6ca5074b731844dbb75"><td class="memItemLeft" align="right" valign="top"><a id="a406c61170d52f6ca5074b731844dbb75" name="a406c61170d52f6ca5074b731844dbb75"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Molecule</b> (double3 centerOfMassPosition, simd_quatd orientation)</td></tr>
+<tr class="memitem:ac8edc753255d7488c4581c87619b7344" id="r_ac8edc753255d7488c4581c87619b7344"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMolecule.html#ac8edc753255d7488c4581c87619b7344">Molecule</a> () noexcept=default</td></tr>
+<tr class="memdesc:ac8edc753255d7488c4581c87619b7344"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor for the <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> struct.  <br /></td></tr>
+<tr class="separator:ac8edc753255d7488c4581c87619b7344"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a406c61170d52f6ca5074b731844dbb75" id="r_a406c61170d52f6ca5074b731844dbb75"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMolecule.html#a406c61170d52f6ca5074b731844dbb75">Molecule</a> (double3 <a class="el" href="structMolecule.html#ab1e2695326e1c9e4438cb34713ab9c37">centerOfMassPosition</a>, simd_quatd <a class="el" href="structMolecule.html#a25047005ac17f124901439c934802a58">orientation</a>)</td></tr>
+<tr class="memdesc:a406c61170d52f6ca5074b731844dbb75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> with specified center of mass position and orientation.  <br /></td></tr>
 <tr class="separator:a406c61170d52f6ca5074b731844dbb75"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6f874d22f325cd628aeb85bd27332a54" id="r_a6f874d22f325cd628aeb85bd27332a54"><td class="memItemLeft" align="right" valign="top"><a id="a6f874d22f325cd628aeb85bd27332a54" name="a6f874d22f325cd628aeb85bd27332a54"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>repr</b> () const</td></tr>
+<tr class="memitem:a6f874d22f325cd628aeb85bd27332a54" id="r_a6f874d22f325cd628aeb85bd27332a54"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMolecule.html#a6f874d22f325cd628aeb85bd27332a54">repr</a> () const</td></tr>
+<tr class="memdesc:a6f874d22f325cd628aeb85bd27332a54"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a string representation of the <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a>.  <br /></td></tr>
 <tr class="separator:a6f874d22f325cd628aeb85bd27332a54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ab1e2695326e1c9e4438cb34713ab9c37" id="r_ab1e2695326e1c9e4438cb34713ab9c37"><td class="memItemLeft" align="right" valign="top"><a id="ab1e2695326e1c9e4438cb34713ab9c37" name="ab1e2695326e1c9e4438cb34713ab9c37"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>centerOfMassPosition</b></td></tr>
+<tr class="memdesc:ab1e2695326e1c9e4438cb34713ab9c37"><td class="mdescLeft">&#160;</td><td class="mdescRight">The center of mass position of the molecule in 3D space. <br /></td></tr>
 <tr class="separator:ab1e2695326e1c9e4438cb34713ab9c37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a965f7fdf3f6dceda9b4e14964c5460fc" id="r_a965f7fdf3f6dceda9b4e14964c5460fc"><td class="memItemLeft" align="right" valign="top"><a id="a965f7fdf3f6dceda9b4e14964c5460fc" name="a965f7fdf3f6dceda9b4e14964c5460fc"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>velocity</b></td></tr>
+<tr class="memdesc:a965f7fdf3f6dceda9b4e14964c5460fc"><td class="mdescLeft">&#160;</td><td class="mdescRight">The velocity of the molecule. <br /></td></tr>
 <tr class="separator:a965f7fdf3f6dceda9b4e14964c5460fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a32850edc85f6b4af856e7dec0e0fef40" id="r_a32850edc85f6b4af856e7dec0e0fef40"><td class="memItemLeft" align="right" valign="top"><a id="a32850edc85f6b4af856e7dec0e0fef40" name="a32850edc85f6b4af856e7dec0e0fef40"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>gradient</b></td></tr>
+<tr class="memdesc:a32850edc85f6b4af856e7dec0e0fef40"><td class="mdescLeft">&#160;</td><td class="mdescRight">The gradient (force) acting on the molecule. <br /></td></tr>
 <tr class="separator:a32850edc85f6b4af856e7dec0e0fef40"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25047005ac17f124901439c934802a58" id="r_a25047005ac17f124901439c934802a58"><td class="memItemLeft" align="right" valign="top"><a id="a25047005ac17f124901439c934802a58" name="a25047005ac17f124901439c934802a58"></a>
 simd_quatd&#160;</td><td class="memItemRight" valign="bottom"><b>orientation</b></td></tr>
+<tr class="memdesc:a25047005ac17f124901439c934802a58"><td class="mdescLeft">&#160;</td><td class="mdescRight">The orientation of the molecule represented as a quaternion. <br /></td></tr>
 <tr class="separator:a25047005ac17f124901439c934802a58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ec3acbe8159b3a8ffc1fb80d2ac5258" id="r_a8ec3acbe8159b3a8ffc1fb80d2ac5258"><td class="memItemLeft" align="right" valign="top"><a id="a8ec3acbe8159b3a8ffc1fb80d2ac5258" name="a8ec3acbe8159b3a8ffc1fb80d2ac5258"></a>
 simd_quatd&#160;</td><td class="memItemRight" valign="bottom"><b>orientationMomentum</b></td></tr>
+<tr class="memdesc:a8ec3acbe8159b3a8ffc1fb80d2ac5258"><td class="mdescLeft">&#160;</td><td class="mdescRight">The angular momentum of the molecule's orientation. <br /></td></tr>
 <tr class="separator:a8ec3acbe8159b3a8ffc1fb80d2ac5258"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6cd35d0b8b331cde3ad46d7784b949b4" id="r_a6cd35d0b8b331cde3ad46d7784b949b4"><td class="memItemLeft" align="right" valign="top"><a id="a6cd35d0b8b331cde3ad46d7784b949b4" name="a6cd35d0b8b331cde3ad46d7784b949b4"></a>
 simd_quatd&#160;</td><td class="memItemRight" valign="bottom"><b>orientationGradient</b></td></tr>
+<tr class="memdesc:a6cd35d0b8b331cde3ad46d7784b949b4"><td class="mdescLeft">&#160;</td><td class="mdescRight">The gradient (torque) acting on the molecule's orientation. <br /></td></tr>
 <tr class="separator:a6cd35d0b8b331cde3ad46d7784b949b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -139,13 +158,121 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 <tr class="memitem:a7453657bdbab478031b94107a20050e0" id="r_a7453657bdbab478031b94107a20050e0"><td class="memItemLeft" align="right" valign="top"><a id="a7453657bdbab478031b94107a20050e0" name="a7453657bdbab478031b94107a20050e0"></a>
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule)</td></tr>
 <tr class="separator:a7453657bdbab478031b94107a20050e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a07b718bf9d3477dbe01396f5c9a2c652" id="r_a07b718bf9d3477dbe01396f5c9a2c652"><td class="memItemLeft" align="right" valign="top"><a id="a07b718bf9d3477dbe01396f5c9a2c652" name="a07b718bf9d3477dbe01396f5c9a2c652"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>to_json</b> (nlohmann::json &amp;, const <a class="el" href="structMolecule.html">Molecule</a> &amp;)</td></tr>
-<tr class="separator:a07b718bf9d3477dbe01396f5c9a2c652"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad01be6881863e4d07d5d437462d4bcc" id="r_aad01be6881863e4d07d5d437462d4bcc"><td class="memItemLeft" align="right" valign="top"><a id="aad01be6881863e4d07d5d437462d4bcc" name="aad01be6881863e4d07d5d437462d4bcc"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>from_json</b> (const nlohmann::json &amp;, <a class="el" href="structMolecule.html">Molecule</a> &amp;)</td></tr>
-<tr class="separator:aad01be6881863e4d07d5d437462d4bcc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab5379b9b58773d40f1e7936867a977a7" id="r_ab5379b9b58773d40f1e7936867a977a7"><td class="memItemLeft" align="right" valign="top"><a id="ab5379b9b58773d40f1e7936867a977a7" name="ab5379b9b58773d40f1e7936867a977a7"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>to_json</b> (nlohmann::json &amp;j, const <a class="el" href="structMolecule.html">Molecule</a> &amp;a)</td></tr>
+<tr class="separator:ab5379b9b58773d40f1e7936867a977a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1eee750ed2f619f9cb85d5a6e5ddb365" id="r_a1eee750ed2f619f9cb85d5a6e5ddb365"><td class="memItemLeft" align="right" valign="top"><a id="a1eee750ed2f619f9cb85d5a6e5ddb365" name="a1eee750ed2f619f9cb85d5a6e5ddb365"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>from_json</b> (const nlohmann::json &amp;j, <a class="el" href="structMolecule.html">Molecule</a> &amp;a)</td></tr>
+<tr class="separator:a1eee750ed2f619f9cb85d5a6e5ddb365"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Represents a molecule in the simulation system. </p>
+<p>The <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> struct encapsulates the properties and behaviors of a molecule within the simulation. It includes the center of mass position, velocity, gradient, orientation (as a quaternion), orientation momentum, and orientation gradient. The struct provides constructors for initializing molecules and methods for serialization and deserialization. <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> class type should have exactly a size of 192 bytes (6 times double4). </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="ac8edc753255d7488c4581c87619b7344" name="ac8edc753255d7488c4581c87619b7344"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac8edc753255d7488c4581c87619b7344">&#9670;&#160;</a></span>Molecule() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Molecule::Molecule </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">default</span><span class="mlabel">noexcept</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Default constructor for the <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> struct. </p>
+<p>Initializes a <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> object with default values. </p>
+
+</div>
+</div>
+<a id="a406c61170d52f6ca5074b731844dbb75" name="a406c61170d52f6ca5074b731844dbb75"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a406c61170d52f6ca5074b731844dbb75">&#9670;&#160;</a></span>Molecule() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">Molecule::Molecule </td>
+          <td>(</td>
+          <td class="paramtype">double3&#160;</td>
+          <td class="paramname"><em>centerOfMassPosition</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">simd_quatd&#160;</td>
+          <td class="paramname"><em>orientation</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Constructs a <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> with specified center of mass position and orientation. </p>
+<p>Initializes a <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a> with the provided center of mass position and orientation. Other members are initialized to zero.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">centerOfMassPosition</td><td>The initial center of mass position of the molecule. </td></tr>
+    <tr><td class="paramname">orientation</td><td>The initial orientation of the molecule represented as a quaternion. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="a6f874d22f325cd628aeb85bd27332a54" name="a6f874d22f325cd628aeb85bd27332a54"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f874d22f325cd628aeb85bd27332a54">&#9670;&#160;</a></span>repr()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string Molecule::repr </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Returns a string representation of the <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a>. </p>
+<p>Generates a string that includes the properties of the molecule.</p>
+<dl class="section return"><dt>Returns</dt><dd>A string representing the <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a>. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/<b>molecule.ixx</b></li>
 </ul>

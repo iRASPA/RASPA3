@@ -1,5 +1,20 @@
 var searchData=
 [
-  ['grid_0',['Grid',['../structGrid.html',1,'']]],
-  ['growingstatus_1',['GrowingStatus',['../structGrowingStatus.html',1,'']]]
+  ['filename_0',['filename',['../structComponent.html#a29a3884d280b0c88e1971e3df5788260',1,'Component::filename'],['../structFramework.html#af10e1803eb1c32bfa8c08a9b8b6e7fba',1,'Framework::filename']]],
+  ['filenamedata_1',['filenamedata',['../structFramework.html#a348df2598cb6c7039384a0e8cad71f7d',1,'Framework::filenameData'],['../structComponent.html#a1679a72383b9109a977c11a4408e263b',1,'Component::filenameData']]],
+  ['findpseudoatom_2',['findpseudoatom',['../structForceField.html#a051b6516d810689b94db059b0bde094e',1,'ForceField::findPseudoAtom(const std::vector&lt; PseudoAtom &gt; pseudoAtoms, const std::string &amp;name)'],['../structForceField.html#ab2359c2a131107e08535ad86c3e121ff',1,'ForceField::findPseudoAtom(const std::string &amp;name) const']]],
+  ['firstbeaddata_3',['FirstBeadData',['../structFirstBeadData.html',1,'']]],
+  ['fitting_4',['Fitting',['../structInputReader.html#a6b7ece5fc31e2c74acfc23a29496179caf87cd752a63b97e7f6f97081aca93ff9',1,'InputReader']]],
+  ['flexible_5',['Flexible',['../structComponent.html#a66eca735e0715b2592dececdd30021fca13b303a6c0d90897b5375ce901acc445',1,'Component']]],
+  ['fluidstate_6',['fluidstate',['../structEquationOfState.html#a947e8b1f2134610789ce6f26e7f9e5a7',1,'EquationOfState::fluidState'],['../structEquationOfState.html#ad24dde64769d920de844de46c3426af5',1,'EquationOfState::FluidState']]],
+  ['forcefactor_7',['forcefactor',['../structForceFactor.html',1,'ForceFactor'],['../structForceFactor.html#a7b13de447e4ba6e947940e0f6f2f84c7',1,'ForceFactor::ForceFactor(double energy, double forceFactor, double dUdlambda)'],['../structForceFactor.html#a9841bf9da35cf47f6607cdc922c0fb14',1,'ForceFactor::forceFactor']]],
+  ['forcefield_8',['forcefield',['../structForceField.html#ac1e0dcbec80868fc31381a251e0b66bd',1,'ForceField::ForceField()'],['../structInputReader.html#adb986e5f0525d6f2eef5863f23d1a6ce',1,'InputReader::forceField'],['../structForceField.html#ad2f42cb741107586dcb112da944bf077',1,'ForceField::ForceField() noexcept=default'],['../structForceField.html#a190e70239e80a9ef945518a4a226d3de',1,'ForceField::ForceField(std::vector&lt; PseudoAtom &gt; pseudoAtoms, std::vector&lt; VDWParameters &gt; parameters, MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, bool shifted, bool tailCorrections, bool useCharge=true) noexcept(false)'],['../structForceField.html',1,'ForceField']]],
+  ['forward_5flnpi_9',['forward_lnpi',['../structTransitionMatrix.html#ae936ea2f5161ba4735810885254876b2',1,'TransitionMatrix']]],
+  ['fractionalatoms_10',['fractionalAtoms',['../structCIFReader.html#a3280d0e6e6c55cffa45f595fab54c51d',1,'CIFReader']]],
+  ['fractionalmoleculesystem_11',['fractionalmoleculesystem',['../structMolecularDynamics.html#a85f766f3f2cd7188ee73541e9ae570a4',1,'MolecularDynamics::fractionalMoleculeSystem'],['../structMonteCarloTransitionMatrix.html#adc26394a758597ad6a3072f50335cac4',1,'MonteCarloTransitionMatrix::fractionalMoleculeSystem']]],
+  ['framework_12',['framework',['../structFramework.html',1,'Framework'],['../structPseudoAtom.html#acf4996286ed58a462d4edb3051c604b6',1,'PseudoAtom::framework'],['../structFramework.html#ad6e5ec2ae2d5b1309b75065911b29bb5',1,'Framework::Framework()'],['../structFramework.html#ab99b0af1d7fc3bb36f6ab383943edab9',1,'Framework::Framework(size_t currentComponent, const ForceField &amp;forceField, const std::string &amp;componentName, std::optional&lt; const std::string &gt; fileName, int3 numberOfUnitCells, Framework::UseChargesFrom useChargesFrom) noexcept(false)'],['../structFramework.html#afe5820e5de839e0a02c5e8d335d983ac',1,'Framework::Framework(size_t componentId, const ForceField &amp;forceField, std::string componentName, SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector&lt; Atom &gt; definedAtoms, int3 numberOfUnitCells) noexcept(false)']]],
+  ['frameworkid_13',['frameworkId',['../structFramework.html#a18a49c72e5553d366cd8c688bdf08737',1,'Framework']]],
+  ['frameworkmoleculecharge_14',['frameworkMoleculeCharge',['../structRunningEnergy.html#a5267c85a15991347a4c5f3353dcbfa44',1,'RunningEnergy']]],
+  ['frameworkmoleculevdw_15',['frameworkMoleculeVDW',['../structRunningEnergy.html#a3b6f6f7c0b10f08d3f30aa9b133826a5',1,'RunningEnergy']]],
+  ['fugacitycoefficient_16',['fugacityCoefficient',['../structComponent.html#a8b31256ad8b46242cf8dc757b22f0dc7',1,'Component']]]
 ];

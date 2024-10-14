@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: PropertyLambdaProbabilityHistogram Struct Reference</title>
+<title>RASPA3: PropertyLambdaProbabilityHistogram Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -105,18 +112,6 @@ $(document).ready(function(){initNavTree('structPropertyLambdaProbabilityHistogr
 Collaboration diagram for PropertyLambdaProbabilityHistogram:</div>
 <div class="dyncontent">
 <div class="center"><img src="structPropertyLambdaProbabilityHistogram__coll__graph.png" border="0" usemap="#aPropertyLambdaProbabilityHistogram_coll__map" alt="Collaboration graph"/></div>
-<map name="aPropertyLambdaProbabilityHistogram_coll__map" id="aPropertyLambdaProbabilityHistogram_coll__map">
-<area shape="rect" title=" " alt="" coords="752,88,951,128"/>
-<area shape="rect" title=" " alt="" coords="5,29,171,54"/>
-<area shape="poly" title=" " alt="" coords="184,32,195,32,260,32,496,32,599,40,729,64,799,85,798,90,727,69,598,45,496,37,260,37,195,37,185,38"/>
-<area shape="rect" title=" " alt="" coords="324,56,499,96"/>
-<area shape="poly" title=" " alt="" coords="185,49,324,64,324,69,184,54"/>
-<area shape="poly" title=" " alt="" coords="513,81,752,98,752,103,512,86"/>
-<area shape="rect" title=" " alt="" coords="330,120,493,160"/>
-<area shape="poly" title=" " alt="" coords="506,131,728,115,751,113,752,118,728,120,507,136"/>
-<area shape="rect" title=" " alt="" coords="284,184,539,224"/>
-<area shape="poly" title=" " alt="" coords="552,181,639,165,727,145,793,126,795,131,729,151,640,170,553,186"/>
-</map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
@@ -130,9 +125,9 @@ Public Types</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a96d512693e539d16631362715dd9ad10" id="r_a96d512693e539d16631362715dd9ad10"><td class="memItemLeft" align="right" valign="top"><a id="a96d512693e539d16631362715dd9ad10" name="a96d512693e539d16631362715dd9ad10"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyLambdaProbabilityHistogram</b> (size_t numberOfBlocks, size_t numberOfBins)</td></tr>
-<tr class="separator:a96d512693e539d16631362715dd9ad10"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7be55774617edf7c6f21a4898130a8d6" id="r_a7be55774617edf7c6f21a4898130a8d6"><td class="memItemLeft" align="right" valign="top"><a id="a7be55774617edf7c6f21a4898130a8d6" name="a7be55774617edf7c6f21a4898130a8d6"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyLambdaProbabilityHistogram</b> (size_t numberOfBlocks, size_t numberOfSamplePoints)</td></tr>
+<tr class="separator:a7be55774617edf7c6f21a4898130a8d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab78001b635e201aa90afab15f03e5cc7" id="r_ab78001b635e201aa90afab15f03e5cc7"><td class="memItemLeft" align="right" valign="top"><a id="ab78001b635e201aa90afab15f03e5cc7" name="ab78001b635e201aa90afab15f03e5cc7"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structPropertyLambdaProbabilityHistogram.html">PropertyLambdaProbabilityHistogram</a> const &amp;) const =default</td></tr>
 <tr class="separator:ab78001b635e201aa90afab15f03e5cc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -265,9 +260,9 @@ uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b>
 <tr class="memitem:a81c1b9ae707358f099cc0481e49bb2cc" id="r_a81c1b9ae707358f099cc0481e49bb2cc"><td class="memItemLeft" align="right" valign="top"><a id="a81c1b9ae707358f099cc0481e49bb2cc" name="a81c1b9ae707358f099cc0481e49bb2cc"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
 <tr class="separator:a81c1b9ae707358f099cc0481e49bb2cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a965bd6c5c7bdbeef4ac67a8615adb85b" id="r_a965bd6c5c7bdbeef4ac67a8615adb85b"><td class="memItemLeft" align="right" valign="top"><a id="a965bd6c5c7bdbeef4ac67a8615adb85b" name="a965bd6c5c7bdbeef4ac67a8615adb85b"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
-<tr class="separator:a965bd6c5c7bdbeef4ac67a8615adb85b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3552336f40c47705e013366327cc7226" id="r_a3552336f40c47705e013366327cc7226"><td class="memItemLeft" align="right" valign="top"><a id="a3552336f40c47705e013366327cc7226" name="a3552336f40c47705e013366327cc7226"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfSamplePoints</b></td></tr>
+<tr class="separator:a3552336f40c47705e013366327cc7226"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acfca2be750a6c1f48bb346df5653ccd0" id="r_acfca2be750a6c1f48bb346df5653ccd0"><td class="memItemLeft" align="right" valign="top"><a id="acfca2be750a6c1f48bb346df5653ccd0" name="acfca2be750a6c1f48bb346df5653ccd0"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>jump_bins</b></td></tr>
 <tr class="separator:acfca2be750a6c1f48bb346df5653ccd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -315,7 +310,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 <tr class="separator:a4a6b62e0bb0aa832f5c0d150325ef381"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
-<li>src/raspakit/properties/<b>property_lambda_probability_histogram.ixx</b></li>
+<li>src/raspakit/properties/<b>lambda_probability_histogram.ixx</b></li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.9.8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Raspa3: mc_moves_translation Module Reference</title>
+<title>RASPA3: mc_moves_translation Module Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -16,6 +16,13 @@
 <link href="search/search.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="search/searchdata.js"></script>
 <script type="text/javascript" src="search/search.js"></script>
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  extensions: ["tex2jax.js"],
+  jax: ["input/TeX","output/HTML-CSS"],
+});
+</script>
+<script type="text/javascript" async="async" src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js"></script>
 <link href="doxygen.css" rel="stylesheet" type="text/css" />
 <link href="doxygen-awesome.css" rel="stylesheet" type="text/css"/>
 <link href="doxygen-awesome-sidebar-only.css" rel="stylesheet" type="text/css"/>
@@ -27,7 +34,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">Raspa3
+   <div id="projectname">RASPA3
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -101,14 +108,14 @@ $(document).ready(function(){initNavTree('module_mc__moves__translation.html',''
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a5b766da5e8df1132494fc34a9a01700c" id="r_a5b766da5e8df1132494fc34a9a01700c"><td class="memItemLeft" align="right" valign="top"><a id="a5b766da5e8df1132494fc34a9a01700c" name="a5b766da5e8df1132494fc34a9a01700c"></a>
-std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>MC_Moves::translationMove</b> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, size_t selectedComponent, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
-<tr class="separator:a5b766da5e8df1132494fc34a9a01700c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acb852c6270b62b79d546bec90bc55a87" id="r_acb852c6270b62b79d546bec90bc55a87"><td class="memItemLeft" align="right" valign="top"><a id="acb852c6270b62b79d546bec90bc55a87" name="acb852c6270b62b79d546bec90bc55a87"></a>
+std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>MC_Moves::translationMove</b> (RandomNumber &amp;random, <a class="el" href="structSystem.html">System</a> &amp;system, size_t selectedComponent, size_t selectedMolecule, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, <a class="el" href="structMolecule.html">Molecule</a> &amp;molecule, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; molecule_atoms)</td></tr>
+<tr class="separator:acb852c6270b62b79d546bec90bc55a87"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>
 Files</h2></td></tr>
-<tr class="memitem:mc__moves__translation_8ixx" id="r_mc__moves__translation_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/mc_moves/<b>mc_moves_translation.ixx</b></td></tr>
+<tr class="memitem:translation_8ixx" id="r_translation_8ixx"><td class="memItemLeft" align="right" valign="top">file &#160;</td><td class="memItemRight" valign="bottom">src/raspakit/mc_moves/<b>translation.ixx</b></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
