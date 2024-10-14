@@ -12,10 +12,12 @@
 
 <p align="center">
   <a href="https://github.com/iRASPA/raspa3/releases">
-<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/iRASPA/raspa3/github-actions-create-release.yml">
+<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/iRASPA/RASPA3/create-release.yml">
   </a>
   <a href="https://github.com/iRASPA/raspa3/issues"><img alt="GitHub Issues or Pull Requests" src="https://img.shields.io/github/issues/iRASPA/raspa3">
 </a>
+ <a href="https://iRASPA.github.io/RASPA3"><img alt="Documentation" src="https://img.shields.io/badge/documentation-blue">
+ </a>
 </p>
 
 <p align="center">
