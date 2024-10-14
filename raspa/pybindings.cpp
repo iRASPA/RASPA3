@@ -234,7 +234,7 @@ PYBIND11_MODULE(raspalib, m)
       .def("initialize", &MonteCarlo::initialize)
       .def("equilibrate", &MonteCarlo::equilibrate)
       .def("production", &MonteCarlo::production)
-      .def("cycle", &MonteCarlo::cycle)
+      .def("cycle", &MonteCarlo::performCycle)
       .def_readwrite("simulationStage", &MonteCarlo::simulationStage);
 
   pybind11::enum_<MonteCarlo::SimulationStage>(mc, "SimulationStage")
