@@ -497,7 +497,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM9, libomp9-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -520,7 +519,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM12, libomp12-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -543,7 +541,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM15, libedit0, libomp15-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -566,7 +563,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -589,7 +585,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libhdf5_cpp103, libhdf5-103, libblas3, liblapack3, libgfortran4, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -612,7 +607,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -635,7 +629,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -670,7 +663,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -707,7 +699,6 @@
         "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -736,7 +727,6 @@
         "BLAS_LIBRARIES": "/usr/lib64/libblas64_.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64_.so.3",
         "Python3_EXECUTABLE": "/usr/bin/python3",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -759,7 +749,6 @@
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -794,7 +783,6 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -829,7 +817,6 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-11/lib/libomp.so.5",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -862,7 +849,6 @@
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-7/lib/libomp.so.5",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -887,7 +873,6 @@
         "BUILD_DEB_PACKAGE": true,
         "CPACK_DEBIAN_PACKAGE_DEPENDS": "libblas64-3, liblapack64-3 , libquadmath0, libgfortran5, libgcc-s1, libomp5, libc6, zlib1g",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -922,7 +907,6 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-14/lib/libomp.so.5",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -957,7 +941,6 @@
         "OpenMP_CXX_LIB_NAMES": "libomp",
         "OpenMP_libomp_LIBRARY": "/usr/lib/llvm-10/lib/libomp.so.5",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -982,7 +965,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -1007,7 +989,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -1032,7 +1013,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -1057,7 +1037,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -1082,7 +1061,6 @@
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },
@@ -1109,7 +1087,6 @@
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat",
         "ZLIB_LIBRARY": "/usr/lib64/libz.a",
         "BLA_SIZEOF_INTEGER": "8",
-        "BUILD_TESTING" : false,
         "BUILD_PYTHON": true
       }
     },

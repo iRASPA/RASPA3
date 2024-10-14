@@ -21,7 +21,7 @@ import sksymmetrycell;
 import skspacegroup;
 import skpointgroup;
 
-TEST(FindPointgroupNoPartialOccupancies, Triclinic)
+TEST(FindPointgroupNoPartialOccupancies, Test_Triclinic)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -64,7 +64,7 @@ TEST(FindPointgroupNoPartialOccupancies, Triclinic)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Monoclinic)
+TEST(FindPointgroupNoPartialOccupancies, Test_Monoclinic)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -133,7 +133,7 @@ TEST(FindPointgroupNoPartialOccupancies, Monoclinic)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Orthogonal)
+TEST(FindPointgroupNoPartialOccupancies, Test_Orthogonal)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -296,7 +296,7 @@ TEST(FindPointgroupNoPartialOccupancies, Orthogonal)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Tetragonal)
+TEST(FindPointgroupNoPartialOccupancies, Test_Tetragonal)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -482,7 +482,7 @@ TEST(FindPointgroupNoPartialOccupancies, Tetragonal)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Trigonal)
+TEST(FindPointgroupNoPartialOccupancies, Test_Trigonal)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -574,7 +574,7 @@ TEST(FindPointgroupNoPartialOccupancies, Trigonal)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Hexagonal)
+TEST(FindPointgroupNoPartialOccupancies, Test_Hexagonal)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -664,7 +664,7 @@ TEST(FindPointgroupNoPartialOccupancies, Hexagonal)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Cubic)
+TEST(FindPointgroupNoPartialOccupancies, Test_Cubic)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());
@@ -738,7 +738,7 @@ TEST(FindPointgroupNoPartialOccupancies, Cubic)
   }
 }
 
-TEST(FindPointgroupNoPartialOccupancies, Virtual)
+TEST(FindPointgroupNoPartialOccupancies, Test_Virtual)
 {
   std::random_device rd;
   std::mt19937_64 mt(rd());

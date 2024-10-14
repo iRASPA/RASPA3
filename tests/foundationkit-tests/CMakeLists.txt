@@ -14,8 +14,6 @@ if (LINUX)
                         OpenMP::OpenMP_CXX
                         GTest::gtest
                         GTest::gtest_main
-                        GTest::gmock
-                        GTest::gmock_main
                         -nostdlib++
                         -l:libc++.a
                         -l:libc++abi.a
@@ -60,8 +58,6 @@ elseif (APPLE)
                         ${BREW_LIBAEC_DIR}/lib/libsz.a
                         GTest::gtest
                         GTest::gtest_main
-                        GTest::gmock
-                        GTest::gmock_main
                         -nostdlib++
                         ${BREW_LLVM_DIR}/lib/c++/libc++experimental.a
                         ${BREW_LLVM_DIR}/lib/c++/libc++.a
@@ -72,4 +68,4 @@ elseif (APPLE)
   )
 endif()
 
-gtest_discover_tests(unit_tests_foundationkit)
+gtest_add_tests(TARGET unit_tests_foundationkit TEST_SUFFIX .noArgs TEST_LIST   noArgsTests)

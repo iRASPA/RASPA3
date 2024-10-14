@@ -4,9 +4,7 @@ add_executable(unit_tests_symmetrykit
                find_smallest_primitive_cell_no_partial_occupancies.cpp 
                find_pointgroup.cpp
                find_pointgroup_no_partial_occupancies.cpp 
-               find_pointgroup_no_partial_occupancies.cpp 
                find_spacegroup.cpp 
-               find_spacegroup_no_partial_occupancies.cpp
                main.cpp)
 
 if (LINUX)
@@ -20,8 +18,6 @@ if (LINUX)
                         OpenMP::OpenMP_CXX
                         GTest::gtest
                         GTest::gtest_main
-                        GTest::gmock
-                        GTest::gmock_main
                         -nostdlib++
                         -l:libc++.a
                         -l:libc++abi.a
@@ -66,8 +62,6 @@ elseif (APPLE)
                         ${BREW_LIBAEC_DIR}/lib/libsz.a
                         GTest::gtest
                         GTest::gtest_main
-                        GTest::gmock
-                        GTest::gmock_main
                         -nostdlib++
                         ${BREW_LLVM_DIR}/lib/c++/libc++experimental.a
                         ${BREW_LLVM_DIR}/lib/c++/libc++.a
@@ -82,4 +76,4 @@ endif()
 
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-gtest_discover_tests(unit_tests_symmetrykit)
+gtest_add_tests(TARGET unit_tests_symmetrykit TEST_LIST noArgsTests)

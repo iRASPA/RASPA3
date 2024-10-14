@@ -18,6 +18,8 @@
 </a>
  <a href="https://iRASPA.github.io/RASPA3"><img alt="Documentation" src="https://img.shields.io/badge/documentation-blue">
  </a>
+ <a href="https://github.com/iRASPA/RASPA3/actions/workflows/unit-test.yml"><img alt="Unittests" src="https://github.com/iraspa/raspa3/actions/workflows/unit-test.yml/badge.svg">
+ </a>
 </p>
 
 <p align="center">
