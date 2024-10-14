@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <tuple>
 #include <vector>
 #include <span>
@@ -11,6 +12,7 @@ module;
 export module charge_equilibration_wilmer_snurr;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <tuple>;
 import <vector>;
 import <span>;
@@ -156,7 +158,7 @@ inline double referenceTableX(const ForceField &forceField, size_t pseudo_atom_t
 { 
   double electron_affinity, ionization_potential;  
   
-  size_t oxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
+  size_t oxidationState = static_cast<size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if(oxidationState == 0)
   {
     ionization_potential = chargeEquilbrationElementData[index].ionizationEnergy[0];
@@ -178,7 +180,7 @@ inline double referenceTableJ(const ForceField &forceField, size_t pseudo_atom_t
 { 
   double electron_affinity, ionization_potential; 
 
-  size_t oxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
+  size_t oxidationState = static_cast<size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if(oxidationState == 0)
   {
     ionization_potential = chargeEquilbrationElementData[index].ionizationEnergy[0];
@@ -199,7 +201,7 @@ inline double referenceTableXc(const ForceField &forceField, size_t pseudo_atom_
 { 
   double electron_affinity, ionization_potential;  
   
-  size_t oxidationState = forceField.pseudoAtoms[pseudo_atom_type].oxidationState;
+  size_t oxidationState = static_cast<size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if(oxidationState == 0)
   {
     electron_affinity = chargeEquilbrationElementData[index].electronAffinity;
@@ -211,7 +213,7 @@ inline double referenceTableXc(const ForceField &forceField, size_t pseudo_atom_
     ionization_potential = chargeEquilbrationElementData[index].ionizationEnergy[oxidationState];
   }
   
-  return (ionization_potential - electron_affinity) * oxidationState;
+  return (ionization_potential - electron_affinity) * static_cast<double>(oxidationState);
 } 
 
 

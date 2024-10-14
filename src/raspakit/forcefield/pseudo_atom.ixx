@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -13,6 +14,7 @@ module;
 export module pseudo_atom;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <vector>;
 import <string>;
 import <algorithm>;
@@ -75,7 +77,7 @@ export struct PseudoAtom
   double charge{0.0};          ///< The electric charge of the pseudo-atom.
   double polarizability{0.0};  ///< The polarizability of the pseudo-atom.
   size_t atomicNumber{8};      ///< The atomic number of the pseudo-atom.
-  size_t oxidationState{0};    ///< The oxidation state of the pseudo-atom.
+  int64_t oxidationState{0};   ///< The oxidation state of the pseudo-atom.
   bool printToPDB{true};       ///< Flag indicating whether to include the atom in PDB output.
   std::string source{};        ///< The source of the pseudo-atom data.
 

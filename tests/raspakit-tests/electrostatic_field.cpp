@@ -697,12 +697,12 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_difference_Ewald)
   {
     system.precomputeTotalRigidEnergy();
   }
-  std::span<Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
+  [[maybe_unused]] std::span<Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
   std::span<double3> moleculeElectricFieldBefore = system.spanOfMoleculeElectricField();
 
   std::fill(moleculeElectricFieldBefore.begin(), moleculeElectricFieldBefore.end(), double3(0.0, 0.0, 0.0));
-  RunningEnergy energy_before = Interactions::computeEwaldFourierElectricField(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+  [[maybe_unused]] RunningEnergy energy_before = Interactions::computeEwaldFourierElectricField(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
                                                  system.fixedFrameworkStoredEik, system.storedEik,
                                                  system.forceField, system.simulationBox, moleculeElectricFieldBefore, system.components,
                                                  system.numberOfMoleculesPerComponent, moleculeAtomPositions);
@@ -721,7 +721,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_difference_Ewald)
 
   std::vector<double3> moleculeElectricFieldDiff(moleculeElectricFieldBefore.size());
   std::fill(moleculeElectricFieldDiff.begin(), moleculeElectricFieldDiff.end(), double3(0.0, 0.0, 0.0));
-  RunningEnergy energy_difference = Interactions::eletricFieldDifferenceEwaldFourier(
+  [[maybe_unused]] RunningEnergy energy_difference = Interactions::eletricFieldDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, moleculeElectricFieldDiff, newatoms, oldatoms);
 
@@ -740,7 +740,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_difference_Ewald)
 
   std::span<double3> moleculeElectricFieldAfter = system.spanOfMoleculeElectricFieldNew();
   std::fill(moleculeElectricFieldAfter.begin(), moleculeElectricFieldAfter.end(), double3(0.0, 0.0, 0.0));
-  RunningEnergy energy_after = Interactions::computeEwaldFourierElectricField(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+  [[maybe_unused]] RunningEnergy energy_after = Interactions::computeEwaldFourierElectricField(system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
                                                  system.fixedFrameworkStoredEik, system.storedEik,
                                                  system.forceField, system.simulationBox, moleculeElectricFieldAfter, system.components,
                                                  system.numberOfMoleculesPerComponent, moleculeAtomPositions);

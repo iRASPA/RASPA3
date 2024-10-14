@@ -230,9 +230,9 @@ InputReader::InputReader(const std::string inputFile)  // : inputStream(inputFil
   }
 }
 
-void InputReader::parseFitting(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
+void InputReader::parseFitting([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
-void InputReader::parseMixturePrediction(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
+void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
 void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {

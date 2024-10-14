@@ -191,6 +191,8 @@ void MonteCarloTransitionMatrix::performCycle()
 
     switch(simulationStage)
     {
+    case SimulationStage::Uninitialized:
+      break;
     case SimulationStage::Initialization:
       MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                   fractionalMoleculeSystem);

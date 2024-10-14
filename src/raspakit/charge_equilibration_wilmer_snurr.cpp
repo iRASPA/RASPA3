@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <vector>
 #include <span>
 #include <mdspan>
@@ -17,6 +18,7 @@ module;
 module charge_equilibration_wilmer_snurr;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <vector>;
 import <span>;
 import <mdspan>;

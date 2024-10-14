@@ -44,7 +44,8 @@ export class SKAtomCopy
   void setAsymmetricIndex(int64_t value) { _asymmetricIndex = value; }
 
  private:
-  int64_t _versionNumber{1};
+  [[maybe_unused]] int64_t _versionNumber{1};
+
   struct Hash
   {
     template <typename T>

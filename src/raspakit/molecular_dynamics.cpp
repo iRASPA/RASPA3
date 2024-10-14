@@ -451,6 +451,7 @@ void MolecularDynamics::production()
       system.sampleProperties(estimation.currentBin, currentCycle);
     }
 
+    /*
     for (System& system : systems)
     {
       // add the sample energy to the averages
@@ -464,7 +465,7 @@ void MolecularDynamics::production()
         // system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         // system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
-    }
+    }*/
 
     if (currentCycle % printEvery == 0uz)
     {

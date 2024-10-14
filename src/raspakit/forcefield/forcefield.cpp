@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -28,6 +29,7 @@ module;
 module forcefield;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
@@ -136,7 +138,7 @@ ForceField::ForceField(std::string filePath)
   {
     std::string jsonName = item.value("name", "");
     bool jsonFrameworkType = item.value("framework", false);
-    int oxidationState = item.value("oxidationState", 0);
+    int64_t oxidationState = item.value("oxidationState", 0);
     double jsonMass = item.value("mass", 0.0);
     std::string jsonElement = item.value("element", "C");
     double jsonCharge = item.value("charge", 0.0);

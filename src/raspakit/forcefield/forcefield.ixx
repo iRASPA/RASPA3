@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -14,6 +15,7 @@ module;
 export module forcefield;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <vector>;
 import <string>;
 import <algorithm>;

@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstdint>
 #include <algorithm>
 #include <array>
 #include <complex>
@@ -23,6 +24,7 @@ module;
 module pseudo_atom;
 
 #ifndef USE_LEGACY_HEADERS
+import <cstdint>;
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
