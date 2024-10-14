@@ -22,12 +22,13 @@ jobs:
           sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
           sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
           sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
+          sudo apt-get install -y --no-install-recommends libhdf5-cpp-103-1t64 libhdf5-103-1t64 libhdf5-dev
           sudo apt-get install -y --no-install-recommends doxygen graphviz
 
       - name: configure cmake raspa3 
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24 -DBUILD_TESTING=ON .
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-24 -DBUILD_TESTING=ON
 
       - name: build raspa3 and tests
         shell: bash
@@ -37,7 +38,7 @@ jobs:
       - name: run tests
         shell: bash
         run: |
-          ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:testResults.xml
+          ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:${{github.workspace}}/testResults.xml
 
       - name: Test Report
         uses: dorny/test-reporter@v1
