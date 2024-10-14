@@ -111,6 +111,16 @@ For python users we currently only offer installation via pip, that includes bui
 ## Download prebuilt installation
 
 In Github, on the right side of the page, you will find the releases section. Select your OS and use the installer to install RASPA3.
+We provide packages for:<br>
+- arm64<br>
+- Intel/AMD core-avx2<br>
+- Intel skylake-avx512<br>
+<br>
+Use the 'core-avx2' version for Intel and AMD cpu's that support the avx2 instruction set:<br>
+- Intel: Haswell processors 2013 and newer<br>
+- AMD: Excavator processors 2015 and newer<br>
+<br>
+The 'skylake-avx512' binary can provide a roughly 25% increase in speed compared to the 'core-avx2' on Intel cpu's that support avx512.
 
 ## Build from source
 
