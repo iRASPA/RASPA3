@@ -43,9 +43,11 @@ def main(new_version_or_part):
     python_file = "raspa/utils.py"
     pyproject_file = "pyproject.toml"
     cmake_file = "CMakeLists.txt"
-    pkgbuild_file = "packaging/PKGBUILD"
+    pkgbuild_core_file = "packaging/PKGBUILD-core-avx2"
+    pkgbuild_skyl_file = "packaging/PKGBUILD-skylake-avx512"
     makefilemanual_file = "src/makefile-manual"
     infoplist_file = "packaging/Info.plist"
+    doxy_file = "docs/Doxyfile"
 
     # Define patterns to match the current version
     python_pattern = r'RASPA_VERSION\s*=\s*"\d+\.\d+\.\d+"'
@@ -54,6 +56,7 @@ def main(new_version_or_part):
     pkgbuild_pattern = r"pkgver=\d+\.\d+\.\d+"
     makefilemanual_pattern = r"VERSION=\d+\.\d+\.\d+"
     infoplist_pattern = r"<string>\d+\.\d+\.\d+</string>"
+    doxyfile_pattern = r"PROJECT_NUMBER\s*=\s*\d\.\d\.\d+"
 
     # Read current version from pyproject.toml
     current_version_match = re.search(r'"\d+\.\d+\.\d+"', read_current_version(pyproject_file, pyproject_pattern))
@@ -74,15 +77,18 @@ def main(new_version_or_part):
     new_pkgbuild_version = f"pkgver={new_version}"
     new_makefilemanual_version = f"VERSION={new_version}"
     new_infoplist_version = f"<string>{new_version}</string>"
+    new_doxyfile_version = f"PROJECT_NUMBER         = {new_version}"
     
 
     # Bump versions in respective files
     bump_version(python_file, python_pattern, new_python_version)
     bump_version(pyproject_file, pyproject_pattern, new_pyproject_version)
     bump_version(cmake_file, cmake_pattern, new_cmake_version)
-    bump_version(pkgbuild_file, pkgbuild_pattern, new_pkgbuild_version)
+    bump_version(pkgbuild_core_file, pkgbuild_pattern, new_pkgbuild_version)
+    bump_version(pkgbuild_skyl_file, pkgbuild_pattern, new_pkgbuild_version)
     bump_version(makefilemanual_file, makefilemanual_pattern, new_makefilemanual_version)
     bump_version(infoplist_file, infoplist_pattern, new_infoplist_version)
+    bump_version(doxy_file, doxyfile_pattern, new_doxyfile_version)
 
 
 if __name__ == "__main__":

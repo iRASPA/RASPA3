@@ -261,7 +261,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-24_core-avx2.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-24-core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-ubuntu-22-job:
@@ -292,7 +292,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-22_core-avx2.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-22-core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-ubuntu-20-job:
@@ -323,7 +323,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-20_core-avx2.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-20-core-avx2.deb
           asset_content_type: application/octet-stream
 
 
