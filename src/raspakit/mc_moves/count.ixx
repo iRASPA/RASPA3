@@ -39,7 +39,7 @@ export struct MCMoveCount
         WidomMoveCBCFCMC(0),
         volumeMove(0),
         GibbsVolumeMove(0),
-        ParallelTemperingSwap(0) {};
+        ParallelTemperingSwap(0){};
 
   uint64_t versionNumber{1};
 

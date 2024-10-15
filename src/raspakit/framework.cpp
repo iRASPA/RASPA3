@@ -119,12 +119,12 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
       useChargesFrom(UseChargesFrom::PseudoAtoms),
       definedAtoms(definedAtoms)
 {
-  for(size_t i = 0; i < definedAtoms.size(); ++i)
+  for (size_t i = 0; i < definedAtoms.size(); ++i)
   {
     definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
   }
 
-  if(useChargesFrom == UseChargesFrom::PseudoAtoms)
+  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
   {
     for (Atom& atom : definedAtoms)
     {
@@ -134,22 +134,23 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
 
   expandDefinedAtomsToUnitCell();
 
-  if(useChargesFrom == UseChargesFrom::ChargeEquilibration)
+  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
   {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms, ChargeEquilibration::Type::PeriodicEwaldSum);
+    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
+                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
 
     std::vector<size_t> countCharge(definedAtoms.size());
     std::vector<double> sumCharge(definedAtoms.size());
-    for(const Atom &atom : unitCellAtoms)
+    for (const Atom& atom : unitCellAtoms)
     {
       ++countCharge[atom.moleculeId];
       sumCharge[atom.moleculeId] += atom.charge;
     }
-    for(size_t i = 0; i < definedAtoms.size(); ++i)
+    for (size_t i = 0; i < definedAtoms.size(); ++i)
     {
       definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
     }
-    for(Atom &atom : unitCellAtoms)
+    for (Atom& atom : unitCellAtoms)
     {
       atom.charge = definedAtoms[atom.moleculeId].charge;
     }
@@ -205,12 +206,12 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   definedAtoms = parser.fractionalAtoms;
   spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
 
-  for(size_t i = 0; i < definedAtoms.size(); ++i)
+  for (size_t i = 0; i < definedAtoms.size(); ++i)
   {
     definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
   }
 
-  if(useChargesFrom == UseChargesFrom::PseudoAtoms)
+  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
   {
     for (Atom& atom : definedAtoms)
     {
@@ -221,22 +222,23 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   // expand the fractional atoms based on the space-group
   expandDefinedAtomsToUnitCell();
 
-  if(useChargesFrom == UseChargesFrom::ChargeEquilibration)
+  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
   {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms, ChargeEquilibration::Type::PeriodicEwaldSum);
+    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
+                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
 
     std::vector<size_t> countCharge(definedAtoms.size());
     std::vector<double> sumCharge(definedAtoms.size());
-    for(const Atom &atom : unitCellAtoms)
+    for (const Atom& atom : unitCellAtoms)
     {
       ++countCharge[atom.moleculeId];
       sumCharge[atom.moleculeId] += atom.charge;
     }
-    for(size_t i = 0; i < definedAtoms.size(); ++i)
+    for (size_t i = 0; i < definedAtoms.size(); ++i)
     {
       definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
     }
-    for(Atom &atom : unitCellAtoms)
+    for (Atom& atom : unitCellAtoms)
     {
       atom.charge = definedAtoms[atom.moleculeId].charge;
     }
@@ -311,7 +313,6 @@ void Framework::expandDefinedAtomsToUnitCell()
   }
 }
 
-
 void Framework::makeSuperCell()
 {
   for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
@@ -350,7 +351,7 @@ std::string Framework::printStatus(const ForceField& forceField) const
                definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z,
                definedAtoms[i].charge);
   }
-  switch(useChargesFrom)
+  switch (useChargesFrom)
   {
     case UseChargesFrom::PseudoAtoms:
       std::print(stream, "    use charge from: pseudo-atoms\n");

@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <limits>

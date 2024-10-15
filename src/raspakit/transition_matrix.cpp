@@ -206,9 +206,8 @@ void TransitionMatrix::writeStatistics()
     for (size_t j = minMacrostate; j < maxMacrostate + 1; j++)
     {
       size_t newj = j - minMacrostate;
-      std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n",
-                               j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z, bias[newj],
-                               lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
+      std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z,
+                 bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
     }
   }
 };

@@ -16,7 +16,6 @@ import <vector>;
 
 import double3;
 
-
 export class SKAtomCopy
 {
  public:
@@ -77,4 +76,3 @@ SKAtomCopy::SKAtomCopy(const SKAtomCopy& atomCopy)
   this->_asymmetricIndex = atomCopy._asymmetricIndex;
   // this->_bonds = {};
 }
-

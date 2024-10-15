@@ -32,19 +32,11 @@ import cbmc_interactions_intermolecular;
 
 TEST(cbmc_interactions, framework_molecule_1)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
   Framework f = Framework(
       0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
@@ -80,19 +72,11 @@ TEST(cbmc_interactions, framework_molecule_1)
 
 TEST(cbmc_interactions, framework_molecule_2)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
   Framework f = Framework(
       0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,

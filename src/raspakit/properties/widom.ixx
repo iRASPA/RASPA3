@@ -33,7 +33,8 @@ import <fstream>;
 import archive;
 import averages;
 
-inline static std::pair<double, double> pair_acc_widom(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
+inline static std::pair<double, double> pair_acc_widom(const std::pair<double, double> &lhs,
+                                                       const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }

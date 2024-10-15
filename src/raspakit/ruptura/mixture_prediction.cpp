@@ -1218,10 +1218,7 @@ void MixturePrediction::createPureComponentsPlotScript()
   for (size_t i = 0; i < Ncomp; i++)
   {
     std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".txt";
-    stream << "    "
-           << "\"" << fileName << "\""
-           << " us ($1):($2)"
-           << " title \"" << components[i].name << "\""
+    stream << "    " << "\"" << fileName << "\"" << " us ($1):($2)" << " title \"" << components[i].name << "\""
            << " with po" << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
 }
@@ -1270,11 +1267,8 @@ void MixturePrediction::createMixturePlotScript()
   for (size_t i = 0; i < Ncomp; i++)
   {
     std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".txt";
-    stream << "    "
-           << "\"" << fileName << "\""
-           << " us ($1):($3)"
-           << " title \"" << components[i].name << " (y_i=" << components[i].molFraction << ")\""
-           << " with po" << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    " << "\"" << fileName << "\"" << " us ($1):($3)" << " title \"" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")\"" << " with po" << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
 }
 
@@ -1322,11 +1316,8 @@ void MixturePrediction::createMixtureAdsorbedMolFractionPlotScript()
   for (size_t i = 0; i < Ncomp; i++)
   {
     std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".txt";
-    stream << "    "
-           << "\"" << fileName << "\""
-           << " us ($1):($5)"
-           << " title \"" << components[i].name << " (y_i=" << components[i].molFraction << ")\""
-           << " with po" << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    " << "\"" << fileName << "\"" << " us ($1):($5)" << " title \"" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")\"" << " with po" << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
 }
 

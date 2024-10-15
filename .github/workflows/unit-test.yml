@@ -1,20 +1,60 @@
-name: test raspa3 c++ unit tests
+name: test raspa3
 on:
+  pull_request:
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
-    branches: [ "main" ]
-
-env:
-  BUILD_TYPE: Release
 
 jobs:
-  build:
-    runs-on: ubuntu-24.04
+  cpp-formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install formatting tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends git ca-certificates
+          sudo apt-get install -y --no-install-recommends clang-format
+
+      - name: Run clang-format
+        shell: bash
+        run: |
+          find src tests -name '*.cpp' -o -name '*.ixx' | xargs clang-format --dry-run --Werror
+
+  python-formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: set up python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: install black
+        run: |
+          python -m pip install --upgrade pip
+          pip install black
+
+      - name: Run black
+        shell: bash
+        run: |
+          # Check formatting of Python files in raspa/ directory
+          black -l 120 --check raspa/
+
+  test-cpp:
+    permissions: write-all
+    runs-on: ubuntu-latest
 
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
 
       - name: install packages
+        shell: bash
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
@@ -33,7 +73,7 @@ jobs:
       - name: build raspa3 and tests
         shell: bash
         run: |
-          cmake --build ${{github.workspace}}/build
+          ninja -C ${{github.workspace}}/build
 
       - name: run tests
         shell: bash
@@ -45,5 +85,5 @@ jobs:
         if: success() || failure()    
         with:
           name: RASPA Tests            
-          path: ${{github.workspace}}/testResults.xml 
+          path: ${{github.workspace}}/*Results.xml 
           reporter: java-junit

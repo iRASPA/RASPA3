@@ -232,7 +232,9 @@ InputReader::InputReader(const std::string inputFile)  // : inputStream(inputFil
 
 void InputReader::parseFitting([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
-void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
+void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
+{
+}
 
 void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -868,22 +870,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      Framework::UseChargesFrom useChargesFrom{ Framework::UseChargesFrom::PseudoAtoms };
+      Framework::UseChargesFrom useChargesFrom{Framework::UseChargesFrom::PseudoAtoms};
       if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
       {
         std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
 
         if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
         {
-          useChargesFrom =  Framework::UseChargesFrom::PseudoAtoms;
+          useChargesFrom = Framework::UseChargesFrom::PseudoAtoms;
         }
         if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
         {
-          useChargesFrom =  Framework::UseChargesFrom::CIF_File;
+          useChargesFrom = Framework::UseChargesFrom::CIF_File;
         }
         if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
         {
-          useChargesFrom =  Framework::UseChargesFrom::ChargeEquilibration;
+          useChargesFrom = Framework::UseChargesFrom::ChargeEquilibration;
         }
       }
 
@@ -1002,12 +1004,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
       }
 
-      if (value.contains("MacroStateMinimumNumberOfMolecules") && value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
+      if (value.contains("MacroStateMinimumNumberOfMolecules") &&
+          value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
       {
         systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<size_t>();
       }
 
-      if (value.contains("MacroStateMaximumNumberOfMolecules") && value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
+      if (value.contains("MacroStateMaximumNumberOfMolecules") &&
+          value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
       {
         systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<size_t>();
       }

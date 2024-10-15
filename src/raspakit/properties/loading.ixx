@@ -43,7 +43,7 @@ inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &l
 
 export struct PropertyLoading
 {
-  PropertyLoading() {};
+  PropertyLoading(){};
 
   PropertyLoading(size_t numberOfBlocks, size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),

@@ -88,7 +88,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
-MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt) {};
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt){};
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -105,10 +105,11 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noex
 {
 }
 
-MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
-                       size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
-                       size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
-                       size_t numberOfBlocks)
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles,
+                                                       size_t numberOfEquilibrationCycles, size_t printEvery,
+                                                       size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
+                                                       size_t optimizeMCMovesEvery, std::vector<System>& systems,
+                                                       RandomNumber& randomSeed, size_t numberOfBlocks)
     : numberOfCycles(numberOfCycles),
       numberOfInitializationCycles(numberOfInitializationCycles),
       numberOfEquilibrationCycles(numberOfEquilibrationCycles),
@@ -123,7 +124,10 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(size_t numberOfCycles, si
 {
 }
 
-System& MonteCarloTransitionMatrix::randomSystem() { return systems[size_t(random.uniform() * static_cast<double>(systems.size()))]; }
+System& MonteCarloTransitionMatrix::randomSystem()
+{
+  return systems[size_t(random.uniform() * static_cast<double>(systems.size()))];
+}
 
 void MonteCarloTransitionMatrix::run()
 {
@@ -189,44 +193,44 @@ void MonteCarloTransitionMatrix::performCycle()
 
     size_t selectedComponent = selectedSystem.randomComponent(random);
 
-    switch(simulationStage)
+    switch (simulationStage)
     {
-    case SimulationStage::Uninitialized:
-      break;
-    case SimulationStage::Initialization:
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
+      case SimulationStage::Uninitialized:
+        break;
+      case SimulationStage::Initialization:
+        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
 
-      N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-      selectedSystem.tmmc.updateHistogram(N);
-      selectedSystem.tmmc.numberOfSteps++;
-      break;
-    case SimulationStage::Equilibration:
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
+        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
+        break;
+      case SimulationStage::Equilibration:
+        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
 
-      N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-      selectedSystem.tmmc.updateHistogram(N);
-      selectedSystem.tmmc.numberOfSteps++;
-      selectedSystem.tmmc.adjustBias();
+        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
 
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-          selectedSecondSystem.containsTheFractionalMolecule);
-      break;
-    case SimulationStage::Production:
-      MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                            fractionalMoleculeSystem, estimation.currentBin);
+        selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSecondSystem.containsTheFractionalMolecule);
+        break;
+      case SimulationStage::Production:
+        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                              fractionalMoleculeSystem, estimation.currentBin);
 
-      N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-      selectedSystem.tmmc.updateHistogram(N);
-      selectedSystem.tmmc.numberOfSteps++;
-      selectedSystem.tmmc.adjustBias();
+        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+        selectedSystem.tmmc.updateHistogram(N);
+        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.tmmc.adjustBias();
 
-      numberOfSteps++;
-      break;
+        numberOfSteps++;
+        break;
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
@@ -346,7 +350,7 @@ void MonteCarloTransitionMatrix::initialize()
     totalInitializationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
 
-    continueInitializationStage:;
+  continueInitializationStage:;
   }
 }
 
@@ -387,7 +391,8 @@ void MonteCarloTransitionMatrix::equilibrate()
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}",
+                   system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
@@ -431,7 +436,7 @@ void MonteCarloTransitionMatrix::equilibrate()
     totalEquilibrationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
 
-    continueEquilibrationStage:;
+  continueEquilibrationStage:;
   }
 }
 
@@ -533,9 +538,8 @@ void MonteCarloTransitionMatrix::production()
     totalProductionSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
 
-    continueProductionStage:;
+  continueProductionStage:;
   }
-
 
   // Write the collection matrix
   for (System& system : systems)

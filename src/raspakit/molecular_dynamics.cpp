@@ -90,7 +90,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
-MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
+MolecularDynamics::MolecularDynamics() : random(std::nullopt){};
 
 MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),

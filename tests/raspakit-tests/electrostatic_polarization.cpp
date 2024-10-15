@@ -31,19 +31,14 @@ TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.2, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.1, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.2, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.1, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   forceField.computePolarization = true;

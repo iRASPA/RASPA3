@@ -86,10 +86,10 @@ export struct MonteCarloTransitionMatrix
    * \param randomSeed Random number generator seed.
    * \param numberOfBlocks Number of blocks for error estimation.
    */
-  MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
-             size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
-             size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed,
-             size_t numberOfBlocks);
+  MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles,
+                             size_t numberOfEquilibrationCycles, size_t printEvery, size_t writeBinaryRestartEvery,
+                             size_t rescaleWangLandauEvery, size_t optimizeMCMovesEvery, std::vector<System> &systems,
+                             RandomNumber &randomSeed, size_t numberOfBlocks);
 
   uint64_t versionNumber{1};  ///< Version number for serialization.
 

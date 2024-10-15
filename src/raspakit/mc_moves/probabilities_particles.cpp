@@ -47,9 +47,9 @@ MCMoveProbabilitiesParticles::MCMoveProbabilitiesParticles(
     double randomRotationProbability, double volumeChangeProbability, double reinsertionCBMCProbability,
     double identityChangeCBMCProbability, double swapProbability, double swapCBMCProbability,
     double swapCFCMCProbability, double swapCBCFCMCProbability, double gibbsVolumeChangeProbability,
-    double gibbsSwapCBMCProbability, double gibbsSwapCFCMCProbability,
-    double gibbsSwapCBCFCMCProbability, double widomProbability, double widomCFCMCProbability,
-    double widomCBCFCMCProbability, double parallelTemperingProbability)
+    double gibbsSwapCBMCProbability, double gibbsSwapCFCMCProbability, double gibbsSwapCBCFCMCProbability,
+    double widomProbability, double widomCFCMCProbability, double widomCBCFCMCProbability,
+    double parallelTemperingProbability)
     : translationProbability(translationProbability),
       randomTranslationProbability(randomTranslationProbability),
       rotationProbability(rotationProbability),
@@ -80,8 +80,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilities()
                             identityChangeCBMCProbability + swapProbability + swapCBMCProbability +
                             swapCFCMCProbability + swapCBCFCMCProbability + gibbsVolumeChangeProbability +
                             gibbsSwapCBMCProbability + gibbsSwapCFCMCProbability + widomProbability +
-                            widomCFCMCProbability + widomCBCFCMCProbability +
-                            parallelTemperingProbability;
+                            widomCFCMCProbability + widomCBCFCMCProbability + parallelTemperingProbability;
 
   if (totalProbability > 1e-5)
   {

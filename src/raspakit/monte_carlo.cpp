@@ -88,7 +88,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
-MonteCarlo::MonteCarlo() : random(std::nullopt) {};
+MonteCarlo::MonteCarlo() : random(std::nullopt){};
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -188,31 +188,30 @@ void MonteCarlo::performCycle()
 
     size_t selectedComponent = selectedSystem.randomComponent(random);
 
-    switch(simulationStage)
+    switch (simulationStage)
     {
-    case SimulationStage::Uninitialized:
-      break;
-    case SimulationStage::Initialization:
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
-      break;
-    case SimulationStage::Equilibration:
-      MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                  fractionalMoleculeSystem);
+      case SimulationStage::Uninitialized:
+        break;
+      case SimulationStage::Initialization:
+        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
+        break;
+      case SimulationStage::Equilibration:
+        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                    fractionalMoleculeSystem);
 
-      selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
-      selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
-          PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
-          selectedSecondSystem.containsTheFractionalMolecule);
-      break;
-    case SimulationStage::Production:
-      MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
-                                            fractionalMoleculeSystem, estimation.currentBin);
-      numberOfSteps++;
-      break;
+        selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSecondSystem.containsTheFractionalMolecule);
+        break;
+      case SimulationStage::Production:
+        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                              fractionalMoleculeSystem, estimation.currentBin);
+        numberOfSteps++;
+        break;
     }
-
 
     if (simulationStage == SimulationStage::Equilibration)
     {
@@ -227,7 +226,6 @@ void MonteCarlo::performCycle()
     selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
         selectedSecondSystem.containsTheFractionalMolecule);
   }
-
 }
 
 void MonteCarlo::initialize()
@@ -339,7 +337,7 @@ void MonteCarlo::initialize()
     totalInitializationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
 
-    continueInitializationStage:;
+  continueInitializationStage:;
   }
 }
 
@@ -378,7 +376,8 @@ void MonteCarlo::equilibrate()
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}",
+                   system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
@@ -422,7 +421,7 @@ void MonteCarlo::equilibrate()
     totalEquilibrationSimulationTime += (t2 - t1);
     totalSimulationTime += (t2 - t1);
 
-    continueEquilibrationStage:;
+  continueEquilibrationStage:;
   }
 }
 
@@ -579,7 +578,7 @@ void MonteCarlo::production()
     }
     totalSimulationTime += (t2 - t1);
 
-    continueProductionStage:;
+  continueProductionStage:;
   }
 }
 

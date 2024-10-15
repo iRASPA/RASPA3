@@ -31,19 +31,14 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   Framework f = Framework(
@@ -131,19 +126,14 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   Framework f = Framework(
@@ -232,19 +222,14 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   forceField.automaticEwald = false;
@@ -343,19 +328,14 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   forceField.automaticEwald = false;
@@ -392,7 +372,9 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.forceField,
       system.simulationBox, system.components, system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
 
-  EXPECT_NEAR((factorEwald.ewald_fourier + factorEwald.ewald_self + factorEwald.ewald_exclusion) * Units::EnergyToKelvin, -759.67572774 + 38.02930863, 1e-4);
+  EXPECT_NEAR(
+      (factorEwald.ewald_fourier + factorEwald.ewald_self + factorEwald.ewald_exclusion) * Units::EnergyToKelvin,
+      -759.67572774 + 38.02930863, 1e-4);
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, -362.766142495638, 1e-4);
@@ -422,8 +404,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.frameworkComponents, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(),
-      system.CoulombicFourierEnergySingleIon, system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
+      system.netChargeFramework, system.netChargePerComponent);
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, -362.766142495638, 1e-4);
@@ -450,19 +432,14 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   forceField.automaticEwald = false;
@@ -699,19 +676,14 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   Framework f = Framework(
@@ -818,15 +790,9 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 
 TEST(gradients, Test_CH4_in_Box_25x25x25)
 {
-  ForceField forceField = 
-    ForceField(
-        {
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-        },
-        {
-          VDWParameters(158.5, 3.72)
-        },
-        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  ForceField forceField =
+      ForceField({PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)}, {VDWParameters(158.5, 3.72)},
+                 ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
 
   Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -916,19 +882,14 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
@@ -1063,19 +1024,14 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("Na+", false, 12.0, 0.0, 0.0, 6, false),
-        PseudoAtom("Cl-", false, 15.9994, 0.0, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("Na+", false, 12.0, 0.0, 0.0, 6, false),
+          PseudoAtom("Cl-", false, 15.9994, 0.0, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(15.0966, 2.65755),
-        VDWParameters(142.562, 3.51932)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(15.0966, 2.65755),
+       VDWParameters(142.562, 3.51932)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
