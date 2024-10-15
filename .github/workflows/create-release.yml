@@ -72,7 +72,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-almalinux-9-job:
@@ -103,7 +103,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.almalinux.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el9.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-rocky-8-job:
@@ -134,7 +134,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-almalinux-8-job:
@@ -165,7 +165,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.core-avx2.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el8.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-rocky-7-job:
@@ -191,7 +191,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.el7.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el7.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-centos-6-job:
@@ -217,7 +217,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.el6.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el6.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
 
@@ -261,7 +261,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-ubuntu-24.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-24-core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-ubuntu-22-job:
@@ -292,7 +292,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-ubuntu-22.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-22-core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-ubuntu-20-job:
@@ -323,7 +323,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-ubuntu-20.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-20-core-avx2.deb
           asset_content_type: application/octet-stream
 
 
@@ -358,7 +358,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst
-          asset_name: raspa-${{ github.event.inputs.version }}-1-core-avx2-x86_64.pkg.tar.zst
+          asset_name: raspa-${{ github.event.inputs.version }}-1-x86_64-core-avx2.pkg.tar.zst
           asset_content_type: application/octet-stream
 
 
@@ -404,7 +404,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc40.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-fedora-39-job:
@@ -435,7 +435,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc39.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-fedora-38-job:
@@ -466,7 +466,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc38.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-fedora-37-job:
@@ -497,7 +497,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc37.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-fedora-36-job:
@@ -528,7 +528,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc36.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-fedora-35-job:
@@ -559,7 +559,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.fc35.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-tumbleweed-job:
@@ -590,7 +590,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-tumbleweed.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-tumbleweed.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-leap-15-6-job:
@@ -621,7 +621,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-leap-15.6.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.6.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-leap-15-5-job:
@@ -652,7 +652,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-leap-15.5.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.5.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-leap-15-4-job:
@@ -683,7 +683,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-leap-15.4.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.4.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-leap-15-3-job:
@@ -714,7 +714,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-leap-15.3.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.3.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-opensuse-leap-15-2-job:
@@ -740,7 +740,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name:  raspa-${{ github.event.inputs.version }}-1.core-avx2.opensuse-leap-15.2.x86_64.rpm
+          asset_name:  raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.2.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-debian-12-job:
@@ -771,7 +771,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-debian-12.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-12_core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-debian-11-job:
@@ -802,7 +802,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-debian-11.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-11_core-avx2.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-core-avx2-debian-10-job:
@@ -833,7 +833,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_core-avx2-debian-10.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-10_core-avx2.deb
           asset_content_type: application/octet-stream
 
 #  linux-aarch64-ubuntu-22-job:
@@ -896,7 +896,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el9.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-almalinux-9-job:
@@ -927,7 +927,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.almalinux.el9.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el9.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-rocky-8-job:
@@ -958,7 +958,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el8.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-almalinux-8-job:
@@ -989,7 +989,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.skylake-avx512.el8.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.almalinux.el8.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-rocky-7-job:
@@ -1015,7 +1015,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.el7.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el7.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-centos-6-job:
@@ -1041,7 +1041,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.el6.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.el6.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
 
@@ -1085,7 +1085,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-ubuntu-24.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-24_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-ubuntu-22-job:
@@ -1116,7 +1116,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-ubuntu-22.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-22_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-ubuntu-20-job:
@@ -1147,7 +1147,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-ubuntu-20.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_ubuntu-20_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
 
@@ -1182,7 +1182,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst
-          asset_name: raspa-${{ github.event.inputs.version }}-1-skylake-avx512-x86_64.pkg.tar.zst
+          asset_name: raspa-${{ github.event.inputs.version }}-1-x86_64-skylake-avx512.pkg.tar.zst
           asset_content_type: application/octet-stream
 
 
@@ -1228,7 +1228,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc40.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-fedora-39-job:
@@ -1259,7 +1259,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc39.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-fedora-38-job:
@@ -1290,7 +1290,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc38.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-fedora-37-job:
@@ -1321,7 +1321,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc37.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-fedora-36-job:
@@ -1352,7 +1352,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc36.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-fedora-35-job:
@@ -1383,7 +1383,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.fc35.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-opensuse-tumbleweed-job:
@@ -1414,7 +1414,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-tumbleweed.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-tumbleweed.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-opensuse-leap-15-6-job:
@@ -1445,7 +1445,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-leap-15.6.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.6.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
 
@@ -1477,7 +1477,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-leap-15.5.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.5.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-opensuse-leap-15-4-job:
@@ -1508,7 +1508,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-leap-15.4.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.4.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-opensuse-leap-15-3-job:
@@ -1539,7 +1539,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name: raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-leap-15.3.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.3.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-opensuse-leap-15-2-job:
@@ -1565,7 +1565,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
-          asset_name:  raspa-${{ github.event.inputs.version }}-1.skylake-avx512.opensuse-leap-15.2.x86_64.rpm
+          asset_name:  raspa-${{ github.event.inputs.version }}-1.opensuse-leap-15.2.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-debian-12-job:
@@ -1596,7 +1596,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-debian-12.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-12_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-debian-11-job:
@@ -1627,7 +1627,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-debian-11.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-11_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
   linux-x86_64-skylake-avx512-debian-10-job:
@@ -1658,7 +1658,7 @@ jobs:
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
           asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_amd64_skylake-avx512-debian-10.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-10_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
 
