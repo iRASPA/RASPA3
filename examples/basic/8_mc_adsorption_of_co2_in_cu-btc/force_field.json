@@ -113,12 +113,6 @@
       "source" : "DREIDING S.L. Mayo et al., J. Phys. Chem. 1990, 94, 8897-8909"
     },
     {
-      "name" : "CH4",
-      "type" : "lennard-jones",    
-      "parameters" : [158.5, 3.72],
-      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
-    },
-    {
       "name" : "O_co2",
       "type" : "lennard-jones",    
       "parameters" : [85.671, 3.017],
