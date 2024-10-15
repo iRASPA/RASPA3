@@ -7,15 +7,15 @@
   "Systems" : [
     {
       "Type" : "Framework",
-      "Name" : "667",
+      "Name" : "tobacco-667",
       "HeliumVoidFraction" : 0.29,
       "NumberOfUnitCells" : [1, 1, 1],
       "ExternalTemperature" : 111.58,
       "ExternalPressure" : 36000,
       "ChargeMethod" : "None",
       "MacroStateUseBias" : true,
-      "MacroStateMinimumNumberOfMolecules" : 84,
-      "MacroStateMaximumNumberOfMolecules" : 168
+      "MacroStateMinimumNumberOfMolecules" : 0,
+      "MacroStateMaximumNumberOfMolecules" : 84
     }
   ],
 
@@ -26,7 +26,7 @@
       "TranslationProbability" : 1.0,
       "ReinsertionProbability" : 1.0,
       "SwapProbability" : 1.0,
-      "CreateNuMberofmolecules" : 120
+      "CreateNuMberofmolecules" : 10
     }
   ]
 }
