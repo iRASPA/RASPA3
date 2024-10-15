@@ -64,7 +64,7 @@ export union double3x3
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0) {};
+        m44(0.0){};
 
   explicit double3x3(double m11, double m22, double m33)
       : m11(m11),
@@ -82,7 +82,7 @@ export union double3x3
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0) {};
+        m44(0.0){};
 
   explicit double3x3(double3 v)
       : m11(v.x),
@@ -100,7 +100,7 @@ export union double3x3
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0) {};
+        m44(0.0){};
 
   explicit double3x3(double m11, double m21, double m31, double m12, double m22, double m32, double m13, double m23,
                      double m33)
@@ -119,7 +119,7 @@ export union double3x3
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0) {
+        m44(0.0){
 
         };
 
@@ -139,7 +139,7 @@ export union double3x3
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0) {
+        m44(0.0){
 
         };
   double3x3(simd_quatd q);

@@ -32,15 +32,12 @@ TEST(electrostatic_potential, Test_reference_system_1)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("t1", false, 1.0, 0.5, 0.0, 1, false),
-        PseudoAtom("t2", false, 1.0, 1.5, 0.0, 1, false),
-        PseudoAtom("t2", false, 1.0, -0.75, 0.0, 1, false),
-        PseudoAtom("t4", false, 1.0, -1.25, 0.0, 1, false),
+          PseudoAtom("t1", false, 1.0, 0.5, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, 1.5, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, -0.75, 0.0, 1, false),
+          PseudoAtom("t4", false, 1.0, -1.25, 0.0, 1, false),
       },
-      {
-        VDWParameters(0.0, 1.0)
-      }, 
-      ForceField::MixingRule::Lorentz_Berthelot, 500.0, 500.0, 500.0, true, false, true);
+      {VDWParameters(0.0, 1.0)}, ForceField::MixingRule::Lorentz_Berthelot, 500.0, 500.0, 500.0, true, false, true);
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = false;
@@ -73,8 +70,8 @@ TEST(electrostatic_potential, Test_reference_system_1)
                            },
                            5, 21);
 
-  System system =
-      System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2, c3, c4}, {1, 1, 1, 1}, 5);
+  System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2, c3, c4},
+                         {1, 1, 1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
@@ -114,11 +111,12 @@ TEST(electrostatic_potential, Test_reference_system_1)
   EXPECT_NEAR(moleculeElectricPotential[3] / Units::CoulombicConversionFactor, 1.03921, 1e-5);
 
   EXPECT_NEAR(potentialEnergy * Units::EnergyToKelvin,
-              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + 
-               energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
+              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier +
+               energy.ewald_self + energy.ewald_exclusion) *
+                  Units::EnergyToKelvin,
               1e-5);
-  EXPECT_NEAR((energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + 
-               energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) /
+  EXPECT_NEAR((energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier +
+               energy.ewald_self + energy.ewald_exclusion) /
                   Units::CoulombicConversionFactor,
               -1.98467, 1e-5);
 }
@@ -128,15 +126,12 @@ TEST(electrostatic_potential, Test_reference_system_2)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("t1", false, 1.0, 0.5, 0.0, 1, false),
-        PseudoAtom("t2", false, 1.0, -1.25, 0.0, 1, false),
-        PseudoAtom("t2", false, 1.0, 1.5, 0.0, 1, false),
-        PseudoAtom("t4", false, 1.0, -0.75, 0.0, 1, false),
+          PseudoAtom("t1", false, 1.0, 0.5, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, -1.25, 0.0, 1, false),
+          PseudoAtom("t2", false, 1.0, 1.5, 0.0, 1, false),
+          PseudoAtom("t4", false, 1.0, -0.75, 0.0, 1, false),
       },
-      {
-        VDWParameters(0.0, 1.0)
-      }, 
-      ForceField::MixingRule::Lorentz_Berthelot, 500.0, 500.0, 500.0, true, false, true);
+      {VDWParameters(0.0, 1.0)}, ForceField::MixingRule::Lorentz_Berthelot, 500.0, 500.0, 500.0, true, false, true);
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = false;
@@ -153,7 +148,8 @@ TEST(electrostatic_potential, Test_reference_system_2)
        Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 2, 1, 0), Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 1, 3, 1, 0)},
       5, 21);
 
-  System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2}, {1, 1}, 5);
+  System system =
+      System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2}, {1, 1}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
@@ -193,13 +189,14 @@ TEST(electrostatic_potential, Test_reference_system_2)
   EXPECT_NEAR(moleculeElectricPotential[3] / Units::CoulombicConversionFactor, -0.271447, 1e-5);
 
   EXPECT_NEAR(potentialEnergy * Units::EnergyToKelvin,
-              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + 
-               energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
+              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier +
+               energy.ewald_self + energy.ewald_exclusion) *
+                  Units::EnergyToKelvin,
               1e-4);
 
   // Check again, when net charges are implemented
-  EXPECT_NEAR((energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + 
-               energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) /
+  EXPECT_NEAR((energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier +
+               energy.ewald_self + energy.ewald_exclusion) /
                   Units::CoulombicConversionFactor,
               -0.745882, 1e-2);
 }
@@ -208,19 +205,14 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.2, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.1, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.2, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.1, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
 
   forceField.computePolarization = true;
@@ -269,13 +261,12 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
     system.precomputeTotalRigidEnergy();
   }
 
-  RunningEnergy energy =
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtomPositions,
-                                                   spanOfMoleculeAtoms) +
-      Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                              system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
-                                              system.simulationBox, system.components,
-                                              system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
+  RunningEnergy energy = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
+                                                                      frameworkAtomPositions, spanOfMoleculeAtoms) +
+                         Interactions::computeEwaldFourierEnergy(
+                             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
+                             system.storedEik, system.forceField, system.simulationBox, system.components,
+                             system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
 
   system.computeTotalElectricPotential();
 
@@ -288,7 +279,8 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
   }
 
   EXPECT_NEAR(potentialEnergy * Units::EnergyToKelvin,
-              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier + 
-               energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
+              (energy.frameworkMoleculeCharge + energy.moleculeMoleculeCharge + energy.ewald_fourier +
+               energy.ewald_self + energy.ewald_exclusion) *
+                  Units::EnergyToKelvin,
               1e-5);
 }

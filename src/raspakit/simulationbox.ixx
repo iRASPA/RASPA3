@@ -80,7 +80,7 @@ export struct SimulationBox
         angleGamma(0.0),
         cell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
         inverseCell(double3x3(double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0), double3(0.0, 0.0, 0.0))),
-        volume(0.0) {};
+        volume(0.0){};
 
   bool operator==(SimulationBox const&) const = default;
 

@@ -36,7 +36,7 @@ import component;
 
 export struct PropertyMeanSquaredDisplacement
 {
-  PropertyMeanSquaredDisplacement() {};
+  PropertyMeanSquaredDisplacement(){};
 
   PropertyMeanSquaredDisplacement(size_t numberOfComponents, size_t numberOfParticles, size_t sampleEvery,
                                   size_t writeEvery, size_t numberOfBlockElementsMSD)

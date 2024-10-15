@@ -966,7 +966,8 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMC(std::string label, size_t currentCycle, size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMC(std::string label, size_t currentCycle,
+                                                     size_t numberOfCycles) const
 {
   std::ostringstream stream;
 

@@ -42,7 +42,7 @@ export class SKStructure
     Double
   };
 
-  SKStructure() : cell(std::make_shared<SKCell>()) {};
+  SKStructure() : cell(std::make_shared<SKCell>()){};
 
   enum class Kind : int64_t
   {

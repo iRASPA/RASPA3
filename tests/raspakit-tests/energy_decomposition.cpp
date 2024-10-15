@@ -31,20 +31,11 @@ import energy_status;
 TEST(energy_decomposition, CO2_Methane_in_Box)
 {
   ForceField forceField = ForceField(
-      {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)
-      },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false), PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+       PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Component methane = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -57,7 +48,8 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
       5, 21);
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {methane, co2}, {15, 30}, 5);
+  System system =
+      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {methane, co2}, {15, 30}, 5);
 
   RunningEnergy energy = system.computeTotalEnergies();
 
@@ -72,20 +64,11 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
 TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
 {
   ForceField forceField = ForceField(
-      {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)
-      },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false), PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+       PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Component methane = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
@@ -105,7 +88,8 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
       5, 21);
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {co2, co2_2}, {15, 30}, 5);
+  System system =
+      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {co2, co2_2}, {15, 30}, 5);
 
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
@@ -120,12 +104,13 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.frameworkComponents, system.components,
-      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(),
-      system.CoulombicFourierEnergySingleIon, system.netChargeFramework, system.netChargePerComponent);
+      system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
+      system.netChargeFramework, system.netChargePerComponent);
 
   strainDerivative.first.sumTotal();
 
-  EXPECT_NEAR(energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion, strainDerivative.first.totalEnergy.energy, 1e-6);
+  EXPECT_NEAR(energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion,
+              strainDerivative.first.totalEnergy.energy, 1e-6);
 }
 
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3> &lhs,
@@ -137,20 +122,11 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 TEST(energy_decomposition, CO2_Methane_in_Framework)
 {
   ForceField forceField = ForceField(
-      {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)
-      },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false), PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+       PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,

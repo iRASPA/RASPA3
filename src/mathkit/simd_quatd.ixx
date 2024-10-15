@@ -28,7 +28,7 @@ export union simd_quatd
     double ix, iy, iz, r;
   };
 
-  simd_quatd() : ix(0.0), iy(0.0), iz(0.0), r(0.0) {};
+  simd_quatd() : ix(0.0), iy(0.0), iz(0.0), r(0.0){};
   simd_quatd(double ix, double iy, double iz, double r);
   simd_quatd(double real, double3 imag);
   simd_quatd(double3 EulerAngles);

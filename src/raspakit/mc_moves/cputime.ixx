@@ -20,7 +20,7 @@ import json;
 
 export struct MCMoveCpuTime
 {
-  MCMoveCpuTime() {};
+  MCMoveCpuTime(){};
 
   uint64_t versionNumber{1};
 

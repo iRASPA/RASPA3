@@ -116,7 +116,7 @@ export struct BlockErrorEstimation
    *
    * Initializes a BlockErrorEstimation object with default values.
    */
-  BlockErrorEstimation() {};
+  BlockErrorEstimation(){};
 
   /**
    * \brief Constructs a BlockErrorEstimation with specified parameters.

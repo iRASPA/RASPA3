@@ -27,15 +27,9 @@ import interactions_ewald;
 
 TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 {
-  ForceField forceField = 
-    ForceField(
-        {
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-        }, 
-        {
-          VDWParameters(158.5, 3.72)
-        },
-        ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
+  ForceField forceField =
+      ForceField({PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)}, {VDWParameters(158.5, 3.72)},
+                 ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
 
   Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -56,19 +50,11 @@ TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -166,19 +152,11 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -276,19 +254,11 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Framework f = Framework(
       0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
@@ -318,19 +288,11 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", false, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", false, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -394,19 +356,11 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI2x2x2)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -470,19 +424,11 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI2x2x2)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI_P1)
 {
-  ForceField forceField =
-      ForceField(
-          {
-            PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), 
-            PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-            PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)
-          },
-          {
-            VDWParameters(22.0, 2.30), 
-            VDWParameters(53.0, 3.3), 
-            VDWParameters(158.5, 3.72)
-          },
-          ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = ForceField(
+      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
+      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,

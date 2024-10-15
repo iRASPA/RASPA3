@@ -34,7 +34,7 @@ import json;
 
 export struct EnergyStatus
 {
-  EnergyStatus() : totalEnergy(0.0, 0.0) {};
+  EnergyStatus() : totalEnergy(0.0, 0.0){};
 
   EnergyStatus(size_t numberOfExternalFields, size_t numberOfFrameworks, size_t numberOfComponents)
       : numberOfExternalFields(numberOfExternalFields),

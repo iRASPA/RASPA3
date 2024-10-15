@@ -73,7 +73,7 @@ export struct Molecule
         gradient(0.0, 0.0, 0.0),
         orientation(orientation),
         orientationMomentum(0.0, 0.0, 0.0, 0.0),
-        orientationGradient(0.0, 0.0, 0.0, 0.0) {};
+        orientationGradient(0.0, 0.0, 0.0, 0.0){};
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &molecule);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &molecule);

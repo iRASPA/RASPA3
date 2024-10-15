@@ -38,7 +38,8 @@ import archive;
 import double3;
 import stringutils;
 
-MCMoveProbabilitiesSystem::MCMoveProbabilitiesSystem(double volumeChangeProbability, double gibbsVolumeChangeProbability,
+MCMoveProbabilitiesSystem::MCMoveProbabilitiesSystem(double volumeChangeProbability,
+                                                     double gibbsVolumeChangeProbability,
                                                      double parallelTemperingProbability)
     : volumeChangeProbability(volumeChangeProbability),
       gibbsVolumeChangeProbability(gibbsVolumeChangeProbability),

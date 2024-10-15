@@ -28,19 +28,14 @@ TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Framework f = Framework(
@@ -85,19 +80,14 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
@@ -176,19 +166,14 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
 {
   ForceField forceField = ForceField(
       {
-        PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-        PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-        PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-        PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-        PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
       },
-      {
-        VDWParameters(22.0, 2.30), 
-        VDWParameters(53.0, 3.3), 
-        VDWParameters(158.5, 3.72), 
-        VDWParameters(29.933, 2.745),
-        VDWParameters(85.671, 3.017)
-      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
       ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, true, true);
 
   forceField.automaticEwald = false;
@@ -255,7 +240,6 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
   moleculeAtomPositions[4].position = double3(10.011, 4.97475 - 2.0, 0.0);
   moleculeAtomPositions[5].position = double3(10.011, 4.97475 - 2.0, -1.149);
 
-
   RunningEnergy energy = system.computeTotalEnergies();
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -2657.36121975, 1e-6);
@@ -264,5 +248,6 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
   EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
   // EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.81601515, 1e-6);
   EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
-  EXPECT_NEAR((energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin, -1197.23909965, 1e-6);
+  EXPECT_NEAR((energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
+              -1197.23909965, 1e-6);
 }

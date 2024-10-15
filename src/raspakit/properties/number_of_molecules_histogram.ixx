@@ -44,7 +44,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyNumberOfMoleculesHistogram
 {
-  PropertyNumberOfMoleculesHistogram() {};
+  PropertyNumberOfMoleculesHistogram(){};
 
   PropertyNumberOfMoleculesHistogram(size_t numberOfBlocks, std::pair<size_t, size_t> range, size_t size,
                                      size_t sampleEvery, size_t writeEvery)
