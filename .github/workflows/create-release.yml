@@ -1,4 +1,4 @@
-name: create release
+name: create-binary-packages
 on:
   workflow_dispatch:
     branches: [ "main" ]
@@ -17,9 +17,9 @@ jobs:
     outputs:
       upload_url: ${{ steps.step_upload_url.outputs.upload_url }}
     steps:
-    - name: Checkout code
+    - name: checkout-code
       uses: actions/checkout@v4
-    - name: Conventional Changelog Action
+    - name: conventional-changelog-action
       uses: TriPSs/conventional-changelog-action@v5
       id: changelog
       with:
@@ -29,7 +29,7 @@ jobs:
         skip-tag: 'true'
         output-file: 'false'
         github-token: ${{ secrets.github_token }}
-    - name: Create Release
+    - name: create-release
       id: create_release
       uses: actions/create-release@v1
       env:
@@ -40,7 +40,7 @@ jobs:
         body: ${{ steps.changelog.outputs.clean_changelog }}
         draft: false
         prerelease: false
-    - name: set upload_url output
+    - name: set-upload_url-output
       id: step_upload_url
       run: echo "upload_url=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
 
@@ -53,18 +53,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-9
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -84,18 +84,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-9
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -115,18 +115,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-8
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -146,18 +146,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-8
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -172,7 +172,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/rocky-7-llvm-18:latest
@@ -183,7 +183,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-7
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/centos-6-llvm-18:latest
@@ -209,7 +209,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-redhat-6
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -227,9 +227,9 @@ jobs:
     container:
       image: ubuntu:24.04
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           apt-get update
@@ -248,12 +248,12 @@ jobs:
           rm -rf hdf5-1.14.4-3
           ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-24
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -273,18 +273,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-22
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -304,18 +304,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-20
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -336,11 +336,11 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
         with:
           path: src
-      - name: create package
+      - name: create-package
         shell: bash
         run: |
           cp -r src /tmp/src
@@ -350,7 +350,7 @@ jobs:
           sudo -u nobody makepkg -e
           cd -
           cp /tmp/raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -368,9 +368,9 @@ jobs:
     container:
       image: fedora:40
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           dnf update -y
@@ -391,12 +391,12 @@ jobs:
           rm -rf hdf5-1.14.4-3
           ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-40
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -416,18 +416,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-39
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -447,18 +447,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-38
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -478,18 +478,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-37
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -509,18 +509,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-36
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -540,18 +540,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-35
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -571,18 +571,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-tumbleweed
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -602,18 +602,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-leap-15.6
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -633,18 +633,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-leap-15.5
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -664,18 +664,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-leap-15.4
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -695,18 +695,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-leap-15.3
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -721,7 +721,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-18:latest
@@ -732,7 +732,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-leap-15.2
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -752,18 +752,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-debian-12
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -783,18 +783,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-debian-11
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -814,18 +814,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-debian-10
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -845,18 +845,18 @@ jobs:
 #         username: ${{ github.actor }}
 #         password: ${{ secrets.github_token }}
 #    steps:
-#      - name: checkout repository
+#      - name: checkout-repository
 #        uses: actions/checkout@v4
-#      - name: configure cmake raspa
+#      - name: configure-cmake-raspa
 #        shell: bash
 #        run: |
 #          cmake -B ${{github.workspace}}/build --preset linux-aarch-ubuntu-22
-#      - name: create raspa deb package
+#      - name: create-raspa-deb-package
 #        shell: bash
 #        run: |
 #          ninja -C ${{github.workspace}}/build package
 #          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64.deb .
-#      - name: Upload Release Asset
+#      - name: upload-release-asset
 #        id: upload-release-asset
 #        uses: actions/upload-release-asset@v1
 #        env:
@@ -877,18 +877,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-9
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -908,18 +908,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-9
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el9.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -939,18 +939,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-8
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -970,18 +970,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-8
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.el8.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -996,7 +996,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/rocky-7-llvm-18:latest
@@ -1007,7 +1007,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-7
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el7.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1022,7 +1022,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/centos-6-llvm-18:latest
@@ -1033,7 +1033,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-redhat-6
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build//raspa-${{ github.event.inputs.version }}-1.el6.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1051,9 +1051,9 @@ jobs:
     container:
       image: ubuntu:24.04
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           apt-get update
@@ -1072,12 +1072,12 @@ jobs:
           rm -rf hdf5-1.14.4-3
           ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-ubuntu-24
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1097,18 +1097,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-ubuntu-22
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1128,18 +1128,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-ubuntu-20
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1160,11 +1160,11 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
         with:
           path: src
-      - name: create package
+      - name: create-package
         shell: bash
         run: |
           cp -r src /tmp/src
@@ -1174,7 +1174,7 @@ jobs:
           sudo -u nobody makepkg -e
           cd -
           cp /tmp/raspa-${{ github.event.inputs.version }}-1-x86_64.pkg.tar.zst .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1192,9 +1192,9 @@ jobs:
     container:
       image: fedora:40
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           dnf update -y
@@ -1215,12 +1215,12 @@ jobs:
           rm -rf hdf5-1.14.4-3
           ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-40
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc40.x86_64.rpm .
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1240,18 +1240,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-39
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc39.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1271,18 +1271,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-38
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc38.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1302,18 +1302,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-37
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc37.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1333,18 +1333,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-36
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc36.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1364,18 +1364,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-35
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1395,18 +1395,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-tumbleweed
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1426,18 +1426,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-leap-15.6
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1458,18 +1458,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-leap-15.5
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1489,18 +1489,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-leap-15.4
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1520,18 +1520,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v4
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-leap-15.3
-      - name: create raspa rpm package
+      - name: create-raspa-rpm-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1546,7 +1546,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     steps:
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
           image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-18:latest
@@ -1557,7 +1557,7 @@ jobs:
             cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-leap-15.2
             ninja -C ${{github.workspace}}/build package
             cp ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.x86_64.rpm /tmp2
-      - name: Upload Release Asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1577,18 +1577,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-debian-12
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1608,18 +1608,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-debian-11
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
@@ -1639,18 +1639,18 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
     steps:
-      - name: checkout repository
+      - name: checkout-repository
         uses: actions/checkout@v3
-      - name: configure cmake raspa
+      - name: configure-cmake-raspa
         shell: bash
         run: |
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-debian-10
-      - name: create raspa deb package
+      - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
           mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_amd64.deb .
-      - name: upload release asset
+      - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
