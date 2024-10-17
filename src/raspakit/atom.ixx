@@ -28,53 +28,24 @@ import archive;
 import double3;
 import stringutils;
 import json;
+
 import scaling;
 
-/**
- * \brief Represents an atom in the simulation system.
- *
- * The Atom struct encapsulates the properties and behaviors of an individual atom
- * within the simulation. It includes positional data, velocity, gradient, charge,
- * scaling factors for van der Waals and Coulomb interactions, and identifiers for
- * molecule, type, component, and group associations. The struct provides constructors
- * for initializing atoms and methods to adjust scaling parameters dynamically.
- * Atom class type should have exactly a size of 128 bytes (4 times double4).
- */
+// Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Atom
 {
-  double3 position;            ///< The position of the atom in 3D space.
-  double3 velocity{};          ///< The velocity of the atom.
-  double3 gradient{};          ///< The gradient acting on the atom.
-  double charge;               ///< The electric charge of the atom.
-  double scalingVDW{1.0};      ///< Scaling factor for van der Waals interactions.
-  double scalingCoulomb{1.0};  ///< Scaling factor for Coulomb interactions.
-  uint32_t moleculeId{0};      ///< Identifier for the molecule this atom belongs to.
-  uint16_t type{0};            ///< Type identifier of the atom.
-  uint8_t componentId{0};      ///< Component identifier within the system.
-  uint8_t groupId{0};          ///< Group identifier, defaults to false.
+  double3 position;
+  double3 velocity{};
+  double3 gradient{};
+  double charge;
+  double scalingVDW{1.0};
+  double scalingCoulomb{1.0};
+  uint32_t moleculeId{0};
+  uint16_t type{0};
+  uint8_t componentId{0};
+  uint8_t groupId{0};  // defaults to false
 
-  /**
-   * \brief Default constructor for the Atom struct.
-   *
-   * Initializes an Atom object with default values.
-   */
   Atom() noexcept = default;
-
-  /**
-   * \brief Constructs an Atom with specified parameters.
-   *
-   * Initializes an Atom with the provided position, charge, scaling factors,
-   * molecule ID, type, component ID, and group ID.
-   *
-   * \param position The initial position of the atom.
-   * \param charge The electric charge of the atom.
-   * \param scalingVDW Scaling factor for van der Waals interactions.
-   * \param scalingCoulomb Scaling factor for Coulomb interactions.
-   * \param moleculeId Identifier for the molecule.
-   * \param type Type identifier of the atom.
-   * \param componentId Component identifier within the system.
-   * \param groupId Group identifier, defaults to false.
-   */
   Atom(double3 position, double charge, double scalingVDW, double scalingCoulomb, uint32_t moleculeId, uint16_t type,
        uint8_t componentId, uint8_t groupId)
       : position(position),
@@ -87,22 +58,6 @@ export struct Atom
         groupId(groupId)
   {
   }
-
-  /**
-   * \brief Constructs an Atom with lambda-dependent scaling.
-   *
-   * Initializes an Atom with position, charge, and scaling factors determined
-   * by the provided lambda value. Also sets molecule ID, type, component ID,
-   * and group ID.
-   *
-   * \param position The initial position of the atom.
-   * \param charge The electric charge of the atom.
-   * \param lambda The scaling parameter for interactions.
-   * \param moleculeId Identifier for the molecule.
-   * \param type Type identifier of the atom.
-   * \param componentId Component identifier within the system.
-   * \param groupId Group identifier, defaults to false.
-   */
   Atom(double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        uint8_t groupId)
       : position(position),
@@ -116,51 +71,25 @@ export struct Atom
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
   };
 
-  /**
-   * \brief Sets the scaling factors based on lambda.
-   *
-   * Adjusts the scaling factors for van der Waals and Coulomb interactions
-   * linearly based on the provided lambda value. Scaling for van der Waals
-   * is active from 0 to 0.5, and Coulomb scaling is active from 0.5 to 1.0.
-   *
-   * \param lambda The scaling parameter.
-   */
+  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   void setScaling(double lambda)
   {
     scalingVDW = Scaling::scalingVDW(lambda);
     scalingCoulomb = Scaling::scalingCoulomb(lambda);
   }
 
-  /**
-   * \brief Fully activates scaling factors.
-   *
-   * Sets both van der Waals and Coulomb scaling factors to 1.0, fully
-   * activating the interactions.
-   */
   void setScalingFullyOn()
   {
     scalingVDW = 1.0;
     scalingCoulomb = 1.0;
   }
 
-  /**
-   * \brief Fully deactivates scaling factors.
-   *
-   * Sets both van der Waals and Coulomb scaling factors to 0.0, fully
-   * deactivating the interactions.
-   */
   void setScalingFullyOff()
   {
     scalingVDW = 0.0;
     scalingCoulomb = 0.0;
   }
 
-  /**
-   * \brief Sets scaling factors to integer values.
-   *
-   * Sets both van der Waals and Coulomb scaling factors to 1.0 and resets
-   * the group ID to 0.
-   */
   void setScalingToInteger()
   {
     scalingVDW = 1.0;
@@ -168,20 +97,12 @@ export struct Atom
     groupId = uint8_t{0};
   }
 
-  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &atom);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom);
+
   friend void to_json(nlohmann::json &, const Atom &);
   friend void from_json(const nlohmann::json &, Atom &);
 
-  /**
-   * \brief Returns a string representation of the Atom.
-   *
-   * Generates a string that includes the position coordinates and identifiers
-   * associated with the atom.
-   *
-   * \return A string representing the Atom.
-   */
   inline std::string repr() const
   {
     std::ostringstream stream;
@@ -192,6 +113,9 @@ export struct Atom
     return stream.str();
   }
 };
+
+// should be 4 times double4 = 4x(8x4) = 4x32 = 128 bytes
+// static_assert(sizeof(Atom) == 128, "struct Atom size is not 128");
 
 void to_json(nlohmann::json &j, const Atom &a)
 {

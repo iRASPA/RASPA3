@@ -20,7 +20,7 @@ export struct MCMoveProbabilitiesCrossSystem
 {
   uint64_t versionNumber{1};
 
-  MCMoveProbabilitiesCrossSystem() : probability(0.0){};
+  MCMoveProbabilitiesCrossSystem() : probability(0.0) {};
 
   void print();
 

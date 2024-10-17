@@ -175,6 +175,7 @@ export class SKAsymmetricAtom
   std::vector<std::shared_ptr<SKAtomCopy>> _copies;
 };
 
+
 SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier)
     : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {

@@ -57,7 +57,7 @@ export struct PropertyLambdaProbabilityHistogram
     Finalize = 3
   };
 
-  PropertyLambdaProbabilityHistogram(){};
+  PropertyLambdaProbabilityHistogram() {};
 
   PropertyLambdaProbabilityHistogram(size_t numberOfBlocks, size_t numberOfSamplePoints)
       : numberOfBlocks(numberOfBlocks),

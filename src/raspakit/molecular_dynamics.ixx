@@ -28,122 +28,56 @@ import input_reader;
 import energy_status;
 import archive;
 
-/**
- * \brief Represents a molecular dynamics simulation.
- *
- * The MolecularDynamics struct manages the settings and execution of a molecular dynamics simulation,
- * including initialization, equilibration, and production stages.
- * It contains parameters controlling the simulation cycles, output, systems involved, and random number generation.
- */
 export struct MolecularDynamics
 {
-  /**
-   * \brief Enumeration for the weighting methods used in the simulation.
-   */
   enum class WeightingMethod : size_t
   {
-    LambdaZero = 0,  ///< Use weighting at lambda = 0.
-    AllLambdas = 1   ///< Use weighting across all lambda values.
+    LambdaZero = 0,
+    AllLambdas = 1
   };
 
-  /**
-   * \brief Enumeration representing the stages of the simulation.
-   */
   enum class SimulationStage : size_t
   {
-    Uninitialized = 0,   ///< The simulation has not been initialized.
-    Initialization = 1,  ///< The simulation is in the initialization stage.
-    Equilibration = 2,   ///< The simulation is in the equilibration stage.
-    Production = 3       ///< The simulation is in the production stage.
+    Uninitialized = 0,
+    Initialization = 1,
+    Equilibration = 2,
+    Production = 3
   };
 
-  /**
-   * \brief Default constructor for MolecularDynamics.
-   *
-   * Initializes a MolecularDynamics object with default values.
-   */
   MolecularDynamics();
 
-  /**
-   * \brief Constructs a MolecularDynamics object with specified input parameters.
-   *
-   * Initializes the MolecularDynamics simulation with parameters read from an InputReader.
-   *
-   * \param reader The InputReader object containing simulation parameters.
-   */
   MolecularDynamics(InputReader &reader) noexcept;
 
-  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  uint64_t versionNumber{1};
 
-  size_t numberOfCycles;                ///< Total number of production cycles.
-  size_t numberOfSteps;                 ///< Total number of steps performed.
-  size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
-  size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
-  size_t printEvery;                    ///< Frequency of printing output.
-  size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
-  size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
-  size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.
+  size_t numberOfCycles;
+  size_t numberOfSteps;
+  size_t numberOfInitializationCycles;
+  size_t numberOfEquilibrationCycles;
+  size_t printEvery;
+  size_t writeBinaryRestartEvery;
+  size_t rescaleWangLandauEvery;
+  size_t optimizeMCMovesEvery;
 
-  size_t currentCycle{0};                                           ///< Current simulation cycle.
-  SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current stage of the simulation.
+  size_t currentCycle{0};
+  SimulationStage simulationStage{SimulationStage::Uninitialized};
 
-  std::vector<System> systems;         ///< Vector of systems in the simulation.
-  RandomNumber random;                 ///< Random number generator.
-  size_t fractionalMoleculeSystem{0};  ///< Index of the system where the fractional molecule is located.
+  std::vector<System> systems;
+  RandomNumber random;
+  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
-  std::vector<std::ofstream> streams;  ///< Output file streams for each system.
+  std::vector<std::ofstream> streams;
 
-  BlockErrorEstimation estimation;  ///< Object for block error estimation.
+  BlockErrorEstimation estimation;
 
-  std::chrono::duration<double> totalSimulationTime{0};  ///< Total simulation time.
+  std::chrono::duration<double> totalSimulationTime{0};
 
-  /**
-   * \brief Creates output files for each system in the simulation.
-   *
-   * Initializes output streams for writing simulation data.
-   */
   void createOutputFiles();
-
-  /**
-   * \brief Runs the molecular dynamics simulation.
-   *
-   * Manages the simulation stages: initialization, equilibration, and production.
-   */
   void run();
-
-  /**
-   * \brief Initializes the simulation.
-   *
-   * Performs the initialization stage, setting up initial conditions and variables.
-   */
   void initialize();
-
-  /**
-   * \brief Equilibrates the simulation.
-   *
-   * Performs the equilibration stage, allowing the system to reach equilibrium.
-   */
   void equilibrate();
-
-  /**
-   * \brief Runs the production stage of the simulation.
-   *
-   * Performs the main simulation cycles and collects data.
-   */
   void production();
-
-  /**
-   * \brief Outputs the simulation results.
-   *
-   * Writes final statistics and results to the output files.
-   */
   void output();
-
-  /**
-   * \brief Selects a random system from the simulation.
-   *
-   * \return A reference to a randomly selected System object.
-   */
   System &randomSystem();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MolecularDynamics &mc);

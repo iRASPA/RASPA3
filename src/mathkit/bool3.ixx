@@ -10,5 +10,5 @@ export class bool3
   };
 
   bool3();
-  bool3(bool x, bool y, bool z) : x(x), y(y), z(z){};
+  bool3(bool x, bool y, bool z) : x(x), y(y), z(z) {};
 };

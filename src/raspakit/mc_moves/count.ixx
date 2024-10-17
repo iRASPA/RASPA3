@@ -39,7 +39,8 @@ export struct MCMoveCount
         WidomMoveCBCFCMC(0),
         volumeMove(0),
         GibbsVolumeMove(0),
-        ParallelTemperingSwap(0){};
+        ParallelTemperingSwap(0),
+        hybridMC(0) {};
 
   uint64_t versionNumber{1};
 
@@ -64,13 +65,14 @@ export struct MCMoveCount
   size_t volumeMove;
   size_t GibbsVolumeMove;
   size_t ParallelTemperingSwap;
+  size_t hybridMC;
 
   inline size_t total() const
   {
     return translationMove + randomTranslationMove + rotationMove + randomRotationMove + reinsertionMoveCBMC +
            swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC + swapDeletionMoveCBMC + swapLambdaMoveCFCMC +
            swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC + GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC +
-           WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove + ParallelTemperingSwap;
+           WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove + ParallelTemperingSwap + hybridMC;
   }
 
   void clearCountStatistics();
@@ -98,6 +100,7 @@ export struct MCMoveCount
     volumeMove += b.volumeMove;
     GibbsVolumeMove += b.GibbsVolumeMove;
     ParallelTemperingSwap += b.ParallelTemperingSwap;
+    hybridMC += b.hybridMC;
 
     return *this;
   }
@@ -129,6 +132,7 @@ export inline MCMoveCount operator+(const MCMoveCount &a, const MCMoveCount &b)
   m.volumeMove = a.volumeMove + b.volumeMove;
   m.GibbsVolumeMove = a.GibbsVolumeMove + b.GibbsVolumeMove;
   m.ParallelTemperingSwap = a.ParallelTemperingSwap + b.ParallelTemperingSwap;
+  m.hybridMC = a.hybridMC + b.hybridMC;
 
   return m;
 }

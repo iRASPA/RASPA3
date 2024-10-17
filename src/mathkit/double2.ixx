@@ -8,7 +8,7 @@ export union double2
     double x, y;
   };
 
-  inline double2(double x = 0, double y = 0) : x(x), y(y){};
+  inline double2(double x = 0, double y = 0) : x(x), y(y) {};
   inline double& operator[](int i) { return v[i]; }
   inline const double& operator[](int i) const { return v[i]; }
 

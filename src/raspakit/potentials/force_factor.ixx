@@ -14,28 +14,12 @@ import <fstream>;
 
 import archive;
 
-/**
- * \brief Represents the force factors associated with an energy component.
- *
- * The ForceFactor struct encapsulates the energy, force scaling factor, and the derivative
- * of the potential energy with respect to lambda. It provides constructors for initializing
- * these values and overloaded operators for arithmetic operations. Scaling is linear,
- * first switching Lennard-Jones (LJ) interactions on in the range [0, 0.5], then
- * electrostatic interactions from [0.5, 1.0].
- */
 export struct ForceFactor
 {
-  double energy;       ///< The energy component.
-  double forceFactor;  ///< The scaling factor for forces.
-  double dUdlambda;    ///< The derivative of the potential energy with respect to lambda.
+  double energy;
+  double forceFactor;
+  double dUdlambda;
 
-  /**
-   * \brief Constructs a ForceFactor with specified energy, force factor, and dUdlambda.
-   *
-   * \param energy The energy value.
-   * \param forceFactor The force scaling factor.
-   * \param dUdlambda The derivative of the potential energy with respect to lambda.
-   */
   ForceFactor(double energy, double forceFactor, double dUdlambda)
       : energy(energy), forceFactor(forceFactor), dUdlambda(dUdlambda)
   {
@@ -72,7 +56,6 @@ export struct ForceFactor
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceFactor& e);
 };
 
-// scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
 export inline ForceFactor operator+(const ForceFactor& a, const ForceFactor& b)
 {
   ForceFactor m(0.0, 0.0, 0.0);

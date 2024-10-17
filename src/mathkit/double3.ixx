@@ -80,6 +80,7 @@ export union double3
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
     // #endif
   }
+
   inline static double3 max(const double3& v1, const double3& v2)
   {
     return double3(std::max(v1.x, v2.x), std::max(v1.y, v2.y), std::max(v1.z, v2.z));

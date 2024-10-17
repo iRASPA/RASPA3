@@ -32,7 +32,7 @@ import forcefield;
 
 export struct PropertyConventionalRadialDistributionFunction
 {
-  PropertyConventionalRadialDistributionFunction(){};
+  PropertyConventionalRadialDistributionFunction() {};
 
   PropertyConventionalRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins,
                                                  double range, size_t sampleEvery, size_t writeEvery)

@@ -20,20 +20,6 @@ import units;
 import forcefield;
 import energy_factor;
 
-/**
- * \brief Calculates the electrostatic potential based on the provided force field parameters.
- *
- * This function computes the electrostatic potential using different charge methods
- * defined in the forcefield. For the Ewald charge method, it calculates the potential
- * using the Ewald summation technique. For other charge methods like Coulomb, Wolf,
- * and ModifiedWolf, it currently returns 0.0.
- *
- * \param forcefield The force field parameters, including charge method and Ewald alpha.
- * \param scalingB Scaling factor for the electrostatic interaction.
- * \param r The distance between interacting particles.
- * \param chargeB The charge of the second particle.
- * \return The computed electrostatic potential.
- */
 export [[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forcefield,
                                                                       const double& scalingB, const double& r,
                                                                       const double& chargeB)

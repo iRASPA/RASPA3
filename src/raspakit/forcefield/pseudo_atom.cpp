@@ -4,7 +4,6 @@ module;
 #include <algorithm>
 #include <array>
 #include <complex>
-#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -24,7 +23,6 @@ module;
 module pseudo_atom;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
@@ -56,7 +54,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Pseudo
   archive << a.charge;
   archive << a.polarizability;
   archive << a.atomicNumber;
-  archive << a.oxidationState;
   archive << a.printToPDB;
 
   return archive;
@@ -79,7 +76,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PseudoAtom &
   archive >> a.charge;
   archive >> a.polarizability;
   archive >> a.atomicNumber;
-  archive >> a.oxidationState;
   archive >> a.printToPDB;
 
   return archive;

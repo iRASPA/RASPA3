@@ -36,21 +36,20 @@ import averages;
 import units;
 import json;
 
-inline std::pair<double, double> pair_acc_pressure(const std::pair<double, double> &lhs,
-                                                   const std::pair<double, double> &rhs)
+inline std::pair<double, double> pair_acc_pressure(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
 inline std::pair<double3x3, double> pair_acc_pressure2(const std::pair<double3x3, double> &lhs,
-                                                       const std::pair<double3x3, double> &rhs)
+                                              const std::pair<double3x3, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
 export struct PropertyPressure
 {
-  PropertyPressure(){};
+  PropertyPressure() {};
 
   PropertyPressure(size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks),
@@ -84,9 +83,9 @@ export struct PropertyPressure
 
   double3x3 averagedExcessPressureTensor() const
   {
-    std::pair<double3x3, double> summedBlocks = std::accumulate(
-        bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
-        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
+    std::pair<double3x3, double> summedBlocks =
+        std::accumulate(bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
+                        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
     return summedBlocks.first / summedBlocks.second;
   }
 
@@ -216,9 +215,9 @@ export struct PropertyPressure
 
   double averagedExcessPressure() const
   {
-    std::pair<double3x3, double> summedBlocks = std::accumulate(
-        bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
-        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
+    std::pair<double3x3, double> summedBlocks =
+        std::accumulate(bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
+                        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
     return summedBlocks.first.trace() / (3.0 * summedBlocks.second);
   }
 

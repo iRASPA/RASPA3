@@ -116,7 +116,16 @@ import interactions_ewald;
 import equation_of_states;
 import thermostat;
 import json;
+import integrators;
+import integrators_compute;
+import integrators_update;
 
+// construct System programmatically
+/*! \brief Brief description.
+ *         Brief description continued.
+ *
+ *  Detailed description starts here.
+ */
 System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
                double heliumVoidFraction, std::vector<Framework> f, std::vector<Component> c,
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
@@ -181,6 +190,8 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
+
+  precomputeTotalRigidEnergy();
 
   RandomNumber random(1400);
 
@@ -923,7 +934,7 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
 {
   std::ostringstream stream;
 
-  std::print(stream, "[Initialization] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -966,12 +977,11 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMC(std::string label, size_t currentCycle,
-                                                     size_t numberOfCycles) const
+std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const
 {
   std::ostringstream stream;
 
-  std::print(stream, "[{}] Current cycle: {} out of {}\n", label, currentCycle, numberOfCycles);
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
@@ -1020,26 +1030,26 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "[Equilibration] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
-  double3 linear_momentum = computeLinearMomentum();
+  double3 linear_momentum = Integrators::computeLinearMomentum(moleculePositions);
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = computeCenterOfMassVelocity();
+  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculePositions);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = computeCenterOfMass();
+  double3 com = Integrators::computeCenterOfMass(moleculePositions);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "\n");
 
-  double translationalKineticEnergy = computeTranslationalKineticEnergy();
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotationalKineticEnergy = computeRotationalKineticEnergy();
+  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
   double rotationalTemperature =
       2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   double overallTemperature =
@@ -1106,7 +1116,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 {
   std::ostringstream stream;
 
-  std::print(stream, "[Production] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
@@ -1227,30 +1237,30 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
 
   double conv = Units::EnergyToKelvin;
 
-  std::print(stream, "[Production] Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
+  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
   std::print(stream, "===============================================================================\n\n");
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
-  double3 linear_momentum = computeLinearMomentum();
+  double3 linear_momentum = Integrators::computeLinearMomentum(moleculePositions);
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = computeCenterOfMassVelocity();
+  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculePositions);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = computeCenterOfMass();
+  double3 com = Integrators::computeCenterOfMass(moleculePositions);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
              static_cast<double>(currentCycle) * timeStep / 1000.0);
 
-  double translational_kinetic_energy = computeTranslationalKineticEnergy();
+  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
   double translational_temperature =
       2.0 * translational_kinetic_energy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotational_kinetic_energy = computeRotationalKineticEnergy();
+  double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
   double rotational_temperature =
       2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   double overall_temperature =
@@ -1486,13 +1496,13 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy = computeTranslationalKineticEnergy();
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
-  double rotationalKineticEnergy = computeRotationalKineticEnergy();
+  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
   double rotationalTemperature =
       2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
@@ -1541,8 +1551,8 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   if (propertyRadialDistributionFunction.has_value())
   {
-    computeTotalGradients();
-    computeCenterOfMassAndQuaternionGradients();
+    precomputeTotalGradients();
+    Integrators::updateCenterOfMassAndQuaternionGradients(moleculePositions, spanOfMoleculeAtoms(), components);
     propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculePositions,
                                                spanOfMoleculeAtoms(), currentCycle, currentBlock);
   }
@@ -1646,6 +1656,13 @@ void System::precomputeTotalRigidEnergy() noexcept
                                             simulationBox, spanOfRigidFrameworkAtoms());
 }
 
+void System::precomputeTotalGradients() noexcept
+{
+  runningEnergies =
+      Integrators::updateGradients(spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components,
+                                   eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
+}
+
 RunningEnergy System::computeTotalEnergies() noexcept
 {
   RunningEnergy runningEnergy{};
@@ -1720,34 +1737,6 @@ RunningEnergy System::computePolarizationEnergy() noexcept
   }
 
   return energy;
-}
-
-RunningEnergy System::computeTotalGradients() noexcept
-{
-  RunningEnergy running_energy{};
-
-  if (fixedFrameworkStoredEik.empty())
-  {
-    precomputeTotalRigidEnergy();
-  }
-
-  std::span<Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
-  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-
-  for (Atom& atom : moleculeAtomPositions)
-  {
-    atom.gradient = double3(0.0, 0.0, 0.0);
-  }
-
-  RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(
-      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
-  RunningEnergy intermolecularEnergy =
-      Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
-  RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
-      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField, simulationBox, components,
-      numberOfMoleculesPerComponent, moleculeAtomPositions);
-
-  return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy;
 }
 
 void System::computeTotalElectricPotential() noexcept
@@ -1863,314 +1852,43 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
 void System::initializeVelocities(RandomNumber& random)
 {
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
+  for (Molecule& molecule : moleculePositions)
   {
-    double molecularMass = components[l].totalMass;
-    double3 I = components[l].inertiaVector;
-    double3 inverseInertiaVector = components[l].inverseInertiaVector;
+    double3 I = components[molecule.componentId].inertiaVector;
+    double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
 
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      moleculePositions[moleculeIndex].velocity.x =
-          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
-      moleculePositions[moleculeIndex].velocity.y =
-          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
-      moleculePositions[moleculeIndex].velocity.z =
-          random.Gaussian() * std::sqrt(Units::KB * temperature / molecularMass);
+    molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                        std::sqrt(Units::KB * temperature / molecule.mass);
+    double3 angularVelocity{};
+    angularVelocity.x = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.x);
+    angularVelocity.y = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.y);
+    angularVelocity.z = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.z);
 
-      double3 angularVelocity{};
-      angularVelocity.x = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.x);
-      angularVelocity.y = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.y);
-      angularVelocity.z = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.z);
+    simd_quatd q = molecule.orientation;
 
-      simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      moleculePositions[moleculeIndex].orientationMomentum.ix =
-          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iy =
-          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iz =
-          2.0 *
-          (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.r =
-          2.0 *
-          (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
-
-      ++moleculeIndex;
-    }
+    molecule.orientationMomentum.ix =
+        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iy =
+        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iz =
+        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.r =
+        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
   }
 }
 
 void System::removeCenterOfMassVelocityDrift()
 {
-  size_t moleculeIndex{};
-
   double3 sum_velocity{};
-  moleculeIndex = 0;
-  for (size_t l = 0; l != components.size(); ++l)
+  for (Molecule& molecule : moleculePositions)
   {
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      sum_velocity += moleculePositions[moleculeIndex].velocity;
-      ++moleculeIndex;
-    }
+    sum_velocity += molecule.velocity;
   }
 
-  double number_of_molecules = static_cast<double>(numberOfMolecules());
-  moleculeIndex = 0;
-  for (size_t l = 0; l != components.size(); ++l)
+  sum_velocity = sum_velocity / static_cast<double>(numberOfMolecules());
+  for (Molecule& molecule : moleculePositions)
   {
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      moleculePositions[moleculeIndex].velocity -= sum_velocity / number_of_molecules;
-
-      ++moleculeIndex;
-    }
-  }
-}
-
-double3 System::computeCenterOfMass() const
-{
-  size_t moleculeIndex{};
-
-  double3 com{};
-  double totalMass{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double molecularMass = components[l].totalMass;
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      totalMass += molecularMass;
-      com += molecularMass * moleculePositions[moleculeIndex].centerOfMassPosition;
-      ++moleculeIndex;
-    }
-  }
-  return com / totalMass;
-}
-
-// The velocity of the center of mass is the average velocity of all objects in the system weighted by their masses
-double3 System::computeCenterOfMassVelocity() const
-{
-  size_t moleculeIndex{};
-
-  double3 com_velocity{};
-  double totalMass{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double molecularMass = components[l].totalMass;
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      totalMass += molecularMass;
-      com_velocity += molecularMass * moleculePositions[moleculeIndex].velocity;
-      ++moleculeIndex;
-    }
-  }
-  return com_velocity / totalMass;
-}
-
-double3 System::computeLinearMomentum() const
-{
-  size_t moleculeIndex{};
-
-  double3 com_velocity{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double molecularMass = components[l].totalMass;
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      com_velocity += molecularMass * moleculePositions[moleculeIndex].velocity;
-      ++moleculeIndex;
-    }
-  }
-  return com_velocity;
-}
-
-double System::computeTranslationalKineticEnergy() const
-{
-  size_t moleculeIndex{};
-
-  double energy{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double molecularMass = components[l].totalMass;
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      double3 vel = moleculePositions[moleculeIndex].velocity;
-      energy += 0.5 * molecularMass * vel.x * vel.x;
-      energy += 0.5 * molecularMass * vel.y * vel.y;
-      energy += 0.5 * molecularMass * vel.z * vel.z;
-
-      ++moleculeIndex;
-    }
-  }
-  return energy;
-}
-
-double System::computeRotationalKineticEnergy() const
-{
-  size_t moleculeIndex{};
-  double3 ang_vel;
-
-  double energy{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double3 inertiaVector = components[l].inertiaVector;
-    double3 inverseInertiaVector = components[l].inverseInertiaVector;
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      simd_quatd p = moleculePositions[moleculeIndex].orientationMomentum;
-      simd_quatd q = moleculePositions[moleculeIndex].orientation;
-
-      ang_vel.x = 0.5 * (-p.r * q.ix + p.ix * q.r + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x;
-      ang_vel.y = 0.5 * (-p.r * q.iy - p.ix * q.iz + p.iy * q.r + p.iz * q.ix) * inverseInertiaVector.y;
-      ang_vel.z = 0.5 * (-p.r * q.iz + p.ix * q.iy - p.iy * q.ix + p.iz * q.r) * inverseInertiaVector.z;
-
-      energy += 0.5 * inertiaVector.x * (ang_vel.x * ang_vel.x);
-      energy += 0.5 * inertiaVector.y * (ang_vel.y * ang_vel.y);
-      energy += 0.5 * inertiaVector.z * (ang_vel.z * ang_vel.z);
-
-      ++moleculeIndex;
-    }
-  }
-  return energy;
-}
-
-void System::integrate()
-{
-  // apply thermo for temperature control
-  if (thermostat.has_value())
-  {
-    double UKineticTranslation = computeTranslationalKineticEnergy();
-    double UKineticRotation = computeRotationalKineticEnergy();
-    std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(scaling);
-  }
-
-  // evolve the positions a half timestep
-  updateVelocities();
-
-  // evolve the positions a full timestep
-  updatePositions();
-
-  // evolve the part of rigid bodies involving free rotation
-  noSquishFreeRotorOrderTwo();
-
-  // create the Cartesian position from center of mass and orientation
-  createCartesianPositions();
-
-  // compute the gradient on all the atoms
-  runningEnergies = computeTotalGradients();
-
-  // compute the gradients on the center of mass and the orientation
-  computeCenterOfMassAndQuaternionGradients();
-
-  // evolve the positions a half timestep
-  updateVelocities();
-
-  // apply thermo for temperature control
-  if (thermostat.has_value())
-  {
-    double UKineticTranslation = computeTranslationalKineticEnergy();
-    double UKineticRotation = computeRotationalKineticEnergy();
-    std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(scaling);
-  }
-
-  runningEnergies.translationalKineticEnergy = computeTranslationalKineticEnergy();
-  runningEnergies.rotationalKineticEnergy = computeRotationalKineticEnergy();
-  if (thermostat.has_value())
-  {
-    runningEnergies.NoseHooverEnergy = thermostat->getEnergy();
-  }
-}
-
-void System::scaleVelocities(std::pair<double, double> scaling)
-{
-  size_t moleculeIndex{};
-
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      moleculePositions[moleculeIndex].velocity = scaling.first * moleculePositions[moleculeIndex].velocity;
-      moleculePositions[moleculeIndex].orientationMomentum =
-          scaling.second * moleculePositions[moleculeIndex].orientationMomentum;
-
-      ++moleculeIndex;
-    }
-  }
-}
-
-void System::updatePositions()
-{
-  size_t moleculeIndex{};
-  double scaling = 1.0;
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      moleculePositions[moleculeIndex].centerOfMassPosition =
-          scaling * moleculePositions[moleculeIndex].centerOfMassPosition +
-          timeStep * moleculePositions[moleculeIndex].velocity;
-
-      ++moleculeIndex;
-    }
-  }
-}
-
-void System::updateVelocities()
-{
-  size_t moleculeIndex{};
-  double scaling = 1.0;
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double inverseMolecularMass = 1.0 / components[l].totalMass;
-
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      moleculePositions[moleculeIndex].velocity =
-          scaling * moleculePositions[moleculeIndex].velocity -
-          0.5 * timeStep * moleculePositions[moleculeIndex].gradient * inverseMolecularMass;
-
-      moleculePositions[moleculeIndex].orientationMomentum.r -=
-          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.r;
-      moleculePositions[moleculeIndex].orientationMomentum.ix -=
-          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.ix;
-      moleculePositions[moleculeIndex].orientationMomentum.iy -=
-          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iy;
-      moleculePositions[moleculeIndex].orientationMomentum.iz -=
-          0.5 * timeStep * moleculePositions[moleculeIndex].orientationGradient.iz;
-
-      ++moleculeIndex;
-    }
-  }
-}
-
-void System::createCartesianPositions()
-{
-  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-
-  size_t index{};
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    size_t size = components[l].atoms.size();
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
-
-      simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      double3x3 M = double3x3::buildRotationMatrixInverse(q);
-
-      double3 com = moleculePositions[moleculeIndex].centerOfMassPosition;
-      for (size_t i = 0; i != span.size(); i++)
-      {
-        span[i].position = com + M * components[l].atoms[i].position;
-      }
-
-      ++moleculeIndex;
-      index += size;
-    }
+    molecule.velocity -= sum_velocity;
   }
 }
 
@@ -2179,222 +1897,31 @@ void System::checkCartesianPositions()
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
   size_t index{};
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
+  for (Molecule& molecule : moleculePositions)
   {
-    size_t size = components[l].atoms.size();
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
+    if (components[molecule.componentId].rigid)
     {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+      simd_quatd q = molecule.orientation;
+      double3x3 M = double3x3::buildRotationMatrixInverse(q);
 
-      if (components[l].rigid)
+      for (size_t i = 0; i != span.size(); i++)
       {
-        simd_quatd q = moleculePositions[moleculeIndex].orientation;
-        double3x3 M = double3x3::buildRotationMatrixInverse(q);
-
-        double3 com = moleculePositions[moleculeIndex].centerOfMassPosition;
-        for (size_t i = 0; i != span.size(); i++)
+        double3 expandedPosition =
+            molecule.centerOfMassPosition + M * components[molecule.componentId].atoms[i].position;
+        if ((std::abs(span[i].position.x - expandedPosition.x) > 1e-5) ||
+            (std::abs(span[i].position.y - expandedPosition.y) > 1e-5) ||
+            (std::abs(span[i].position.z - expandedPosition.z) > 1e-5))
         {
-          double3 expandedPosition = com + M * components[l].atoms[i].position;
-          if ((std::abs(span[i].position.x - expandedPosition.x) > 1e-5) ||
-              (std::abs(span[i].position.y - expandedPosition.y) > 1e-5) ||
-              (std::abs(span[i].position.z - expandedPosition.z) > 1e-5))
-          {
-            throw std::runtime_error(
-                std::format("Difference detected between atom position ({} {} {}) and position generated from "
-                            "quaternion ({} {} {})\n",
-                            span[i].position.x, span[i].position.y, span[i].position.z, expandedPosition.x,
-                            expandedPosition.y, expandedPosition.z));
-          }
+          throw std::runtime_error(
+              std::format("Difference detected between atom position ({} {} {}) and position generated from "
+                          "quaternion ({} {} {})\n",
+                          span[i].position.x, span[i].position.y, span[i].position.z, expandedPosition.x,
+                          expandedPosition.y, expandedPosition.z));
         }
       }
-
-      ++moleculeIndex;
-      index += size;
     }
-  }
-}
-
-void System::noSquishFreeRotorOrderTwo()
-{
-  for (size_t i = 0; i != 5; ++i)
-  {
-    noSquishRotate(3, 0.5 * timeStep / 5.0);
-    noSquishRotate(2, 0.5 * timeStep / 5.0);
-    noSquishRotate(1, timeStep / 5.0);
-    noSquishRotate(2, 0.5 * timeStep / 5.0);
-    noSquishRotate(3, 0.5 * timeStep / 5.0);
-  }
-}
-
-void System::noSquishRotate(size_t k, double dt)
-{
-  double zeta{};
-  simd_quatd pn, qn;
-
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    double3 inverseInertiaVector = components[l].inverseInertiaVector;
-
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      simd_quatd p = moleculePositions[moleculeIndex].orientationMomentum;
-      simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      switch (k)
-      {
-        case 1:
-          zeta = dt * (-p.r * q.ix + p.ix * q.r + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x / 4.0;
-          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.ix;
-          pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.r;
-          pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.iz;
-          pn.iz = std::cos(zeta) * p.iz - std::sin(zeta) * p.iy;
-
-          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.ix;
-          qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.r;
-          qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.iz;
-          qn.iz = std::cos(zeta) * q.iz - std::sin(zeta) * q.iy;
-          break;
-        case 2:
-          zeta = dt * (-p.r * q.iy - p.ix * q.iz + p.iy * q.r + p.iz * q.ix) * inverseInertiaVector.y / 4.0;
-          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iy;
-          pn.ix = std::cos(zeta) * p.ix - std::sin(zeta) * p.iz;
-          pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.r;
-          pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.ix;
-
-          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iy;
-          qn.ix = std::cos(zeta) * q.ix - std::sin(zeta) * q.iz;
-          qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.r;
-          qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.ix;
-          break;
-        case 3:
-          zeta = dt * (-p.r * q.iz + p.ix * q.iy - p.iy * q.ix + p.iz * q.r) * inverseInertiaVector.z / 4.0;
-          pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iz;
-          pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.iy;
-          pn.iy = std::cos(zeta) * p.iy - std::sin(zeta) * p.ix;
-          pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.r;
-
-          qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iz;
-          qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.iy;
-          qn.iy = std::cos(zeta) * q.iy - std::sin(zeta) * q.ix;
-          qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.r;
-          break;
-        default:
-          break;
-      }
-
-      moleculePositions[moleculeIndex].orientationMomentum = pn;
-      moleculePositions[moleculeIndex].orientation = qn;
-
-      ++moleculeIndex;
-    }
-  }
-}
-
-void System::computeCenterOfMassAndQuaternionVelocities()
-{
-  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-
-  size_t index{};
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    size_t size = components[l].atoms.size();
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
-
-      double inverseMolecularMass = 1.0 / components[l].totalMass;
-
-      double3 com{};
-      for (size_t i = 0; i != span.size(); i++)
-      {
-        double mass = components[l].definedAtoms[i].second;
-        com += mass * span[i].position;
-      }
-      com = com * inverseMolecularMass;
-
-      double3 com_velocity{};
-      double3 angularMomentum{};
-      for (size_t i = 0; i != span.size(); i++)
-      {
-        double mass = components[l].definedAtoms[i].second;
-        double3 velocity = span[i].velocity;
-        com_velocity += mass * velocity;
-
-        double3 dr = span[i].position - com;
-        angularMomentum += mass * double3::cross(dr, velocity);
-      }
-      com_velocity = com_velocity * inverseMolecularMass;
-      moleculePositions[moleculeIndex].velocity = com_velocity;
-
-      double3 I = components[l].inertiaVector;
-      simd_quatd q = moleculePositions[moleculeIndex].orientation;
-      double3x3 M = double3x3::buildRotationMatrix(q);
-      double3 angularVelocity = (M * angularMomentum) * components[l].inverseInertiaVector;
-
-      moleculePositions[moleculeIndex].orientationMomentum.ix =
-          2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iy =
-          2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.iz =
-          2.0 *
-          (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-      moleculePositions[moleculeIndex].orientationMomentum.r =
-          2.0 *
-          (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
-
-      ++moleculeIndex;
-      index += size;
-    }
-  }
-}
-
-void System::computeCenterOfMassAndQuaternionGradients()
-{
-  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-
-  size_t index{};
-  size_t moleculeIndex{};
-  for (size_t l = 0; l != components.size(); ++l)
-  {
-    size_t size = components[l].atoms.size();
-    for (size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
-    {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
-      double3 com_gradient{};
-      for (size_t i = 0; i != span.size(); i++)
-      {
-        com_gradient += span[i].gradient;
-      }
-      moleculePositions[moleculeIndex].gradient = com_gradient;
-
-      double3 torque{};
-      simd_quatd orientation = moleculePositions[moleculeIndex].orientation;
-      double3x3 M = double3x3::buildRotationMatrix(orientation);
-      double inverseMoleculeMass = 1.0 / components[l].totalMass;
-      for (size_t i = 0; i != span.size(); i++)
-      {
-        double mass = components[l].definedAtoms[i].second;
-        double3 F = M * (span[i].gradient - com_gradient * mass * inverseMoleculeMass);
-        double3 dr = components[l].atoms[i].position;
-        torque += double3::cross(F, dr);
-
-        // span[i].gradient = com_gradient;
-      }
-
-      moleculePositions[moleculeIndex].orientationGradient.ix =
-          -2.0 * (orientation.r * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.iy =
-          -2.0 * (orientation.iz * torque.x + orientation.r * torque.y - orientation.ix * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.iz =
-          -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r * torque.z);
-      moleculePositions[moleculeIndex].orientationGradient.r =
-          -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
-
-      ++moleculeIndex;
-      index += size;
-    }
+    index += molecule.numberOfAtoms;
   }
 }
 

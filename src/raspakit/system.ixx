@@ -219,6 +219,7 @@ export struct System
   EnergyStatus currentEnergyStatus;
 
   size_t numberOfTrialDirections{10};
+  size_t numberOfHybridMCSteps{10};
 
   std::vector<std::complex<double>> eik_xy{};
   std::vector<std::complex<double>> eik_x{};
@@ -302,23 +303,10 @@ export struct System
 
   void initializeVelocities(RandomNumber &random);
   void removeCenterOfMassVelocityDrift();
-  double3 computeCenterOfMass() const;
-  double3 computeCenterOfMassVelocity() const;
-  double3 computeLinearMomentum() const;
-  double computeTranslationalKineticEnergy() const;
-  double computeRotationalKineticEnergy() const;
-  void integrate();
-  void scaleVelocities(std::pair<double, double> scaling);
-  void updatePositions();
-  void updateVelocities();
-  void createCartesianPositions();
   void checkCartesianPositions();
-  void noSquishFreeRotorOrderTwo();
-  void noSquishRotate(size_t k, double dt);
-  void computeCenterOfMassAndQuaternionVelocities();
-  void computeCenterOfMassAndQuaternionGradients();
 
   void precomputeTotalRigidEnergy() noexcept;
+  void precomputeTotalGradients() noexcept;
   RunningEnergy computeTotalEnergies() noexcept;
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
@@ -389,7 +377,7 @@ export struct System
 
   std::string writeOutputHeader() const;
   std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReportMC(std::string label, size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeProductionStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeProductionStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;

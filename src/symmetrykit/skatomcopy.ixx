@@ -16,6 +16,7 @@ import <vector>;
 
 import double3;
 
+
 export class SKAtomCopy
 {
  public:
@@ -43,8 +44,7 @@ export class SKAtomCopy
   void setAsymmetricIndex(int64_t value) { _asymmetricIndex = value; }
 
  private:
-  [[maybe_unused]] int64_t _versionNumber{1};
-
+  int64_t _versionNumber{1};
   struct Hash
   {
     template <typename T>
@@ -76,3 +76,4 @@ SKAtomCopy::SKAtomCopy(const SKAtomCopy& atomCopy)
   this->_asymmetricIndex = atomCopy._asymmetricIndex;
   // this->_bonds = {};
 }
+

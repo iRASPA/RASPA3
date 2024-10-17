@@ -26,7 +26,7 @@ import component;
 
 export struct Loadings
 {
-  Loadings(){};
+  Loadings() {};
 
   Loadings(size_t size)
       : size(size),

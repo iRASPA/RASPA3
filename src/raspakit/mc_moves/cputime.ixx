@@ -20,7 +20,7 @@ import json;
 
 export struct MCMoveCpuTime
 {
-  MCMoveCpuTime(){};
+  MCMoveCpuTime() {};
 
   uint64_t versionNumber{1};
 
@@ -165,13 +165,15 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> ParallelTemperingSwapEnergy{0.0};
   std::chrono::duration<double> ParallelTemperingSwapFugacity{0.0};
 
+  std::chrono::duration<double> hybridMC{0.0};
+
   inline std::chrono::duration<double> total() const
   {
     return propertySampling + energyPressureComputation + translationMove + randomTranslationMove + rotationMove +
            randomRotationMove + reinsertionMoveCBMC + swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC +
            swapDeletionMoveCBMC + swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC +
            GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove +
-           ParallelTemperingSwap;
+           ParallelTemperingSwap + hybridMC;
   }
 
   void clearTimingStatistics();
@@ -324,6 +326,8 @@ export struct MCMoveCpuTime
     ParallelTemperingSwapEnergy = b.ParallelTemperingSwapEnergy;
     ParallelTemperingSwapFugacity = b.ParallelTemperingSwapFugacity;
 
+    hybridMC = b.hybridMC;
+
     return *this;
   }
 
@@ -465,6 +469,8 @@ export struct MCMoveCpuTime
     ParallelTemperingSwap += b.ParallelTemperingSwap;
     ParallelTemperingSwapEnergy += b.ParallelTemperingSwapEnergy;
     ParallelTemperingSwapFugacity += b.ParallelTemperingSwapFugacity;
+
+    hybridMC += b.hybridMC;
 
     return *this;
   }
@@ -640,6 +646,8 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.ParallelTemperingSwap = a.ParallelTemperingSwap + b.ParallelTemperingSwap;
   m.ParallelTemperingSwapEnergy = a.ParallelTemperingSwapEnergy + b.ParallelTemperingSwapEnergy;
   m.ParallelTemperingSwapFugacity = a.ParallelTemperingSwapFugacity + b.ParallelTemperingSwapFugacity;
+
+  m.hybridMC = a.hybridMC + b.hybridMC;
 
   return m;
 }

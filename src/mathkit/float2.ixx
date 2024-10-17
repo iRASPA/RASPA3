@@ -8,7 +8,7 @@ export union float2
     float x, y;
   };
 
-  inline float2(float x = 0, float y = 0) : x(x), y(y){};
+  inline float2(float x = 0, float y = 0) : x(x), y(y) {};
 
   inline float& operator[](int i) { return v[i]; }
   inline const float& operator[](int i) const { return v[i]; }

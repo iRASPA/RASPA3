@@ -79,7 +79,6 @@ import cif_reader;
 import move_statistics;
 import bond_potential;
 import json;
-import charge_equilibration_wilmer_snurr;
 
 // default constructor, needed for binary restart-file
 Framework::Framework() {}
@@ -87,12 +86,12 @@ Framework::Framework() {}
 // create Component in 'inputreader.cpp'
 Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string& componentName,
                      std::optional<const std::string> fileName, int3 numberOfUnitCells,
-                     Framework::UseChargesFrom useChargesFrom) noexcept(false)
+                     bool useChargesFromCIFFile) noexcept(false)
     : numberOfUnitCells(numberOfUnitCells),
       frameworkId(currentFramework),
       name(componentName),
       filenameData(fileName),
-      useChargesFrom(useChargesFrom)
+      useChargesFromCIFFile(useChargesFromCIFFile)
 {
   if (filenameData.has_value())
   {
@@ -116,46 +115,10 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
       frameworkId(frameworkId),
       name(fileName),
       filenameData(fileName),
-      useChargesFrom(UseChargesFrom::PseudoAtoms),
+      useChargesFromCIFFile(true),
       definedAtoms(definedAtoms)
 {
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
-  {
-    definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
-  }
-
-  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
-  {
-    for (Atom& atom : definedAtoms)
-    {
-      atom.charge = forceField.pseudoAtoms[atom.type].charge;
-    }
-  }
-
   expandDefinedAtomsToUnitCell();
-
-  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
-  {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
-                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
-
-    std::vector<size_t> countCharge(definedAtoms.size());
-    std::vector<double> sumCharge(definedAtoms.size());
-    for (const Atom& atom : unitCellAtoms)
-    {
-      ++countCharge[atom.moleculeId];
-      sumCharge[atom.moleculeId] += atom.charge;
-    }
-    for (size_t i = 0; i < definedAtoms.size(); ++i)
-    {
-      definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
-    }
-    for (Atom& atom : unitCellAtoms)
-    {
-      atom.charge = definedAtoms[atom.moleculeId].charge;
-    }
-  }
-
   makeSuperCell();
 
   unitCellMass = 0.0;
@@ -206,13 +169,9 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   definedAtoms = parser.fractionalAtoms;
   spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
 
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  if (!useChargesFromCIFFile)
   {
-    definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
-  }
-
-  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
-  {
+    // take the charges from the defined force-field
     for (Atom& atom : definedAtoms)
     {
       atom.charge = forceField.pseudoAtoms[atom.type].charge;
@@ -221,28 +180,6 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
 
   // expand the fractional atoms based on the space-group
   expandDefinedAtomsToUnitCell();
-
-  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
-  {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
-                                                    ChargeEquilibration::Type::PeriodicEwaldSum);
-
-    std::vector<size_t> countCharge(definedAtoms.size());
-    std::vector<double> sumCharge(definedAtoms.size());
-    for (const Atom& atom : unitCellAtoms)
-    {
-      ++countCharge[atom.moleculeId];
-      sumCharge[atom.moleculeId] += atom.charge;
-    }
-    for (size_t i = 0; i < definedAtoms.size(); ++i)
-    {
-      definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
-    }
-    for (Atom& atom : unitCellAtoms)
-    {
-      atom.charge = definedAtoms[atom.moleculeId].charge;
-    }
-  }
 
   makeSuperCell();
 
@@ -269,6 +206,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   for (size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
     unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
+    unitCellAtoms[i].moleculeId = static_cast<uint8_t>(frameworkId);
   }
 }
 
@@ -340,6 +278,10 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
 
   std::print(stream, "    number Of Atoms:          {:>12d} [-]\n", unitCellAtoms.size());
+  std::print(stream, "    use charge from CIF-file: {:>12}\n", useChargesFromCIFFile);
+  std::print(stream, "    net charge:               {:>12.5f} [e]\n", netCharge);
+  std::print(stream, "    smallest charge:          {:>12.5f} [e]\n", smallestCharge);
+  std::print(stream, "    largest charge:           {:>12.5f} [e]\n", largestCharge);
   std::print(stream, "    mass:                     {:>12.5f} [amu]\n", mass);
 
   for (size_t i = 0; i != definedAtoms.size(); ++i)
@@ -351,21 +293,6 @@ std::string Framework::printStatus(const ForceField& forceField) const
                definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z,
                definedAtoms[i].charge);
   }
-  switch (useChargesFrom)
-  {
-    case UseChargesFrom::PseudoAtoms:
-      std::print(stream, "    use charge from: pseudo-atoms\n");
-      break;
-    case UseChargesFrom::CIF_File:
-      std::print(stream, "    use charge from: CIF-file\n");
-      break;
-    case UseChargesFrom::ChargeEquilibration:
-      std::print(stream, "    use charge from: charge-equilibration method\n");
-      break;
-  }
-  std::print(stream, "    net charge:                 {:>12.5f} [e]\n", netCharge);
-  std::print(stream, "    smallest charge:            {:>12.5f} [e]\n", smallestCharge);
-  std::print(stream, "    largest charge:             {:>12.5f} [e]\n", largestCharge);
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());
   for (size_t i = 0; i < bonds.size(); ++i)
@@ -414,7 +341,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
 
   archive << c.mass;
 
-  archive << c.useChargesFrom;
+  archive << c.useChargesFromCIFFile;
   archive << c.netCharge;
   archive << c.smallestCharge;
   archive << c.largestCharge;
@@ -467,7 +394,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
 
   archive >> c.mass;
 
-  archive >> c.useChargesFrom;
+  archive >> c.useChargesFromCIFFile;
   archive >> c.netCharge;
   archive >> c.smallestCharge;
   archive >> c.largestCharge;

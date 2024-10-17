@@ -42,7 +42,7 @@ inline std::pair<SimulationBox, double> pair_sum(const std::pair<SimulationBox, 
 
 export struct PropertySimulationBox
 {
-  PropertySimulationBox(){};
+  PropertySimulationBox() {};
 
   PropertySimulationBox(size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingSimulationBox(numberOfBlocks, std::make_pair(SimulationBox(), 0.0))

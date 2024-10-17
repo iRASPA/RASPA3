@@ -47,7 +47,7 @@ inline std::pair<EnergyStatus, double> pair_sum(const std::pair<EnergyStatus, do
 
 export struct PropertyEnergy
 {
-  PropertyEnergy(){};
+  PropertyEnergy() {};
 
   PropertyEnergy(size_t numberOfBlocks, size_t numberOfExternalFields, size_t numberOfFrameworks,
                  size_t numberOfComponents)

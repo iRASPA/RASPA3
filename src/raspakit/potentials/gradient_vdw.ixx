@@ -18,24 +18,9 @@ import vdwparameters;
 import forcefield;
 import force_factor;
 
-/**
- * \brief Computes the gradient of the van der Waals (VDW) potential.
- *
- * This function calculates the gradient of the VDW potential between two atom types.
- * It returns D[U[r], r] / r to avoid computing the square root for Lennard-Jones (LJ) potential,
- * as only the squared distance (rr) is required.
- *
- * \param forcefield The force field parameters defining the interaction.
- * \param groupIdA The group identifier for atom A.
- * \param groupIdB The group identifier for atom B.
- * \param scalingA Scaling factor for atom A.
- * \param scalingB Scaling factor for atom B.
- * \param rr The squared distance between the two atoms.
- * \param typeA The type identifier for atom A.
- * \param typeB The type identifier for atom B.
- *
- * \return A ForceFactor object containing the computed forces.
- */
+// return D[U[r],r] / r
+// because for LJ then sqrt is avoided (only needs rr, not r)
+
 export [[clang::always_inline]] inline ForceFactor potentialVDWGradient(const ForceField& forcefield,
                                                                         const bool& groupIdA, const bool& groupIdB,
                                                                         const double& scalingA, const double& scalingB,

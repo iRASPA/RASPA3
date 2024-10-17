@@ -416,7 +416,7 @@ class ThreadPool
   }
 
  private:
-  ThreadPool() : tasks_(){};
+  ThreadPool() : tasks_() {};
 
   size_t number_of_threads;
   ThreadingType threadingType;

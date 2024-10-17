@@ -45,7 +45,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyEnthalpy
 {
-  PropertyEnthalpy(){};
+  PropertyEnthalpy() {};
   PropertyEnthalpy(size_t numberOfBlocks, size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
         numberOfComponents(numberOfComponents),

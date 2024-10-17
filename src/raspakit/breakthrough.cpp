@@ -653,9 +653,11 @@ void Breakthrough::createPlotScript()
   for (size_t i = 0; i < Ncomp; i++)
   {
     std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".txt";
-    stream << "    " << "\"" << fileName << "\"" << " us ($1):($3) every ev" << " title \"" << components[i].name
-           << " (y_i=" << components[i].molFraction << ")\"" << " with li lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "")
-           << "\n";
+    stream << "    "
+           << "\"" << fileName << "\""
+           << " us ($1):($3) every ev"
+           << " title \"" << components[i].name << " (y_i=" << components[i].molFraction << ")\""
+           << " with li lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "set output 'breakthrough.pdf'\n";
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -667,9 +669,11 @@ void Breakthrough::createPlotScript()
   for (size_t i = 0; i < Ncomp; i++)
   {
     std::string fileName = "component_" + std::to_string(i) + "_" + components[i].name + ".txt";
-    stream << "    " << "\"" << fileName << "\"" << " us ($2):($3) every ev" << " title \"" << components[i].name
-           << " (y_i=" << components[i].molFraction << ")\"" << " with li lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "")
-           << "\n";
+    stream << "    "
+           << "\"" << fileName << "\""
+           << " us ($2):($3) every ev"
+           << " title \"" << components[i].name << " (y_i=" << components[i].molFraction << ")\""
+           << " with li lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
 }
 
@@ -745,7 +749,8 @@ std::string movieScriptTemplate(std::string s)
             "-crf %argVec[4]% -c:a aac column_movie_"
          << s + ".mp4\n";
 #else
-  stream << "rm -f " << "column_movie_" << s << ".mp4\n";
+  stream << "rm -f "
+         << "column_movie_" << s << ".mp4\n";
   stream << "every=1\n";
   stream << "format=\"-c:v libx265 -tag:v hvc1\"\n";
   stream << "width=1200\n";
@@ -830,8 +835,12 @@ void Breakthrough::createMovieScriptColumnV()
   stream << "ev=int(ARG1)\n";
   stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
   stream << "  plot \\\n";
-  stream << "    " << "'column.txt'" << " us 1:2 index ev*i notitle with li lt 1,\\\n";
-  stream << "    " << "'column.txt'" << " us 1:2 index ev*i notitle with po lt 1\n";
+  stream << "    "
+         << "'column.txt'"
+         << " us 1:2 index ev*i notitle with li lt 1,\\\n";
+  stream << "    "
+         << "'column.txt'"
+         << " us 1:2 index ev*i notitle with po lt 1\n";
   stream << "}\n";
 }
 
@@ -895,8 +904,12 @@ void Breakthrough::createMovieScriptColumnPt()
   stream << "ev=int(ARG1)\n";
   stream << "do for [i=0:int((STATS_blocks-2)/ev)] {\n";
   stream << "  plot \\\n";
-  stream << "    " << "'column.txt'" << " us 1:3 index ev*i notitle with li lt 1,\\\n";
-  stream << "    " << "'column.txt'" << " us 1:3 index ev*i notitle with po lt 1\n";
+  stream << "    "
+         << "'column.txt'"
+         << " us 1:3 index ev*i notitle with li lt 1,\\\n";
+  stream << "    "
+         << "'column.txt'"
+         << " us 1:3 index ev*i notitle with po lt 1\n";
   stream << "}\n";
 }
 
@@ -968,14 +981,18 @@ void Breakthrough::createMovieScriptColumnQ()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(4 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(4 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(4 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(4 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }
@@ -1048,14 +1065,18 @@ void Breakthrough::createMovieScriptColumnQeq()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(5 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(5 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(5 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(5 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }
@@ -1128,14 +1149,18 @@ void Breakthrough::createMovieScriptColumnP()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(6 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(6 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(6 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(6 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }
@@ -1208,14 +1233,18 @@ void Breakthrough::createMovieScriptColumnPnormalized()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(7 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(7 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(7 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(7 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }
@@ -1293,14 +1322,18 @@ void Breakthrough::createMovieScriptColumnDpdt()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(8 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(8 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(8 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(8 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }
@@ -1379,14 +1412,18 @@ void Breakthrough::createMovieScriptColumnDqdt()
   stream << "  plot \\\n";
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(9 + i * 6) << " index ev*i notitle "
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(9 + i * 6) << " index ev*i notitle "
            << " with li lt " << i + 1 << ",\\\n";
   }
   for (size_t i = 0; i < Ncomp; i++)
   {
-    stream << "    " << "'column.txt'" << " us 1:" << std::to_string(9 + i * 6) << " index ev*i title '"
-           << components[i].name << " (y_i=" << components[i].molFraction << ")'" << " with po lt " << i + 1
-           << (i < Ncomp - 1 ? ",\\" : "") << "\n";
+    stream << "    "
+           << "'column.txt'"
+           << " us 1:" << std::to_string(9 + i * 6) << " index ev*i title '" << components[i].name
+           << " (y_i=" << components[i].molFraction << ")'"
+           << " with po lt " << i + 1 << (i < Ncomp - 1 ? ",\\" : "") << "\n";
   }
   stream << "}\n";
 }

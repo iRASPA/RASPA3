@@ -14,23 +14,11 @@ import <fstream>;
 
 import archive;
 
-/**
- * \brief Represents an energy factor with energy and its derivative with respect to lambda.
- *
- * The EnergyFactor struct holds the energy value and its derivative with respect to the scaling parameter lambda.
- * It provides constructors and operator overloads for arithmetic operations.
- */
 export struct EnergyFactor
 {
-  double energy;     ///< The energy value.
-  double dUdlambda;  ///< The derivative of energy with respect to lambda.
+  double energy;
+  double dUdlambda;
 
-  /**
-   * \brief Constructs an EnergyFactor with specified energy and derivative.
-   *
-   * \param energy The energy value.
-   * \param dUdlambda The derivative of energy with respect to lambda.
-   */
   EnergyFactor(double energy, double dUdlambda) : energy(energy), dUdlambda(dUdlambda) {}
 
   bool operator==(EnergyFactor const&) const = default;
@@ -57,7 +45,6 @@ export struct EnergyFactor
     return v;
   }
 
-  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyFactor& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyFactor& e);
 };

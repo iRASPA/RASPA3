@@ -24,11 +24,12 @@ export struct MCMoveProbabilitiesSystem
   bool operator==(MCMoveProbabilitiesSystem const &) const = default;
 
   MCMoveProbabilitiesSystem(double volumeChangeProbability = 0.0, double gibbsVolumeChangeProbability = 0.0,
-                            double parallelTemperingProbability = 0.0);
+                            double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
 
   double volumeChangeProbability;
   double gibbsVolumeChangeProbability;
   double parallelTemperingProbability;
+  double hybridMCProbability;
 
   void optimizeAcceptance();
 

@@ -5,7 +5,6 @@ module;
 #include <array>
 #include <cmath>
 #include <complex>
-#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -29,7 +28,6 @@ module;
 module forcefield;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
 import <filesystem>;
 import <fstream>;
 import <cstdlib>;
@@ -138,7 +136,6 @@ ForceField::ForceField(std::string filePath)
   {
     std::string jsonName = item.value("name", "");
     bool jsonFrameworkType = item.value("framework", false);
-    int64_t oxidationState = item.value("oxidationState", 0);
     double jsonMass = item.value("mass", 0.0);
     std::string jsonElement = item.value("element", "C");
     double jsonCharge = item.value("charge", 0.0);
@@ -150,11 +147,8 @@ ForceField::ForceField(std::string filePath)
                               ? static_cast<size_t>(PredefinedElements::atomicNumberData.at(jsonElement))
                               : 1;
 
-    PseudoAtom pseudo_atom = PseudoAtom(jsonName, jsonFrameworkType, jsonMass, jsonCharge, jsonPolarizibility,
-                                        atomicNumber, jsonPrintToOutput, jsonSource);
-    pseudo_atom.oxidationState = oxidationState;
-
-    pseudoAtoms.push_back(pseudo_atom);
+    pseudoAtoms.emplace_back(PseudoAtom(jsonName, jsonFrameworkType, jsonMass, jsonCharge, jsonPolarizibility,
+                                        atomicNumber, jsonPrintToOutput, jsonSource));
   }
 
   // Read and set truncation methods

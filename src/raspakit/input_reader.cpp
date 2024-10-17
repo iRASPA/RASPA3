@@ -230,11 +230,9 @@ InputReader::InputReader(const std::string inputFile)  // : inputStream(inputFil
   }
 }
 
-void InputReader::parseFitting([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
+void InputReader::parseFitting(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
-void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
-{
-}
+void InputReader::parseMixturePrediction(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
 void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -870,25 +868,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      Framework::UseChargesFrom useChargesFrom{Framework::UseChargesFrom::PseudoAtoms};
-      if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
-      {
-        std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
-
-        if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
-        {
-          useChargesFrom = Framework::UseChargesFrom::PseudoAtoms;
-        }
-        if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
-        {
-          useChargesFrom = Framework::UseChargesFrom::CIF_File;
-        }
-        if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
-        {
-          useChargesFrom = Framework::UseChargesFrom::ChargeEquilibration;
-        }
-      }
-
       if (value.contains("VolumeMoveProbability") && value["VolumeMoveProbability"].is_number_float())
       {
         mc_moves_probabilities.volumeChangeProbability = value["VolumeMoveProbability"].get<double>();
@@ -903,6 +882,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           value["ParallelTemperingSwapProbability"].is_number_float())
       {
         mc_moves_probabilities.parallelTemperingProbability = value["ParallelTemperingSwapProbability"].get<double>();
+      }
+      if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.hybridMCProbability = value["HybridMCProbability"].get<double>();
       }
 
       if (!value.contains("Type"))
@@ -922,6 +905,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ExternalTemperature"))
       {
         T = value["ExternalTemperature"].get<double>();
+      }
+
+      bool useChargesFromCIFFile = false;
+      if (value.contains("UseChargesFromCIFFile"))
+      {
+        useChargesFromCIFFile = value["UseChargesFromCIFFile"].get<bool>();
       }
 
       std::optional<double> P{};
@@ -959,7 +948,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(), frameworkNameString,
                                                                  frameworkNameString, jsonNumberOfUnitCells,
-                                                                 useChargesFrom)};
+                                                                 useChargesFromCIFFile)};
 
         // create system
         systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
@@ -999,24 +988,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
       }
 
-      if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
-      {
-        systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
-      }
-
-      if (value.contains("MacroStateMinimumNumberOfMolecules") &&
-          value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
-      {
-        systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<size_t>();
-      }
-
-      if (value.contains("MacroStateMaximumNumberOfMolecules") &&
-          value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
-      {
-        systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<size_t>();
-      }
-
-      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
+      if (value.contains("ExternalField"))
       {
         systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
       }
@@ -1310,6 +1282,11 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].timeStep = value["TimeStep"].get<double>();
       }
 
+      if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
+      {
+        systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<size_t>();
+      }
+
       systemId++;
     }
   }
@@ -1334,8 +1311,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
-      systems[i].tmmc.useBias = true;
-      systems[i].tmmc.useTMBias = true;
     }
   }
 
@@ -1490,10 +1465,11 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "VolumeMoveProbability",
     "GibbsVolumeMoveProbability",
     "ParallelTemperingSwapProbability",
+    "HybridMCProbability",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
-    "UseChargesFrom",
+    "UseChargesFromCIFFile",
     "Framework",
     "Name",
     "NumberOfUnitCells",
@@ -1539,10 +1515,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OutputPDBMovie",
     "SampleMovieEvery",
     "Ensemble",
-    "TimeStep",
-    "MacroStateUseBias",
-    "MacroStateMinimumNumberOfMolecules",
-    "MacroStateMaximumNumberOfMolecules"};
+    "TimeStep"
+    "HybridMCMoveNumberOfSteps"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

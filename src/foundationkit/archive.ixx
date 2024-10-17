@@ -47,7 +47,7 @@ export template <class STREAM>
 class Archive
 {
  public:
-  Archive(STREAM& stream) : stream(stream){};
+  Archive(STREAM& stream) : stream(stream) {};
 
   // a function that can serialize any enum
   template <typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>

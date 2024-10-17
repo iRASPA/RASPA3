@@ -14,19 +14,6 @@ import vdwparameters;
 import forcefield;
 import double4;
 
-/**
- * \brief Calculates the potential correction for van der Waals (VDW) interactions.
- *
- * This function computes the potential correction for VDW interactions between two
- * atom types based on the provided force field parameters. It determines the type
- * of VDW potential and calculates the correction accordingly.
- *
- * \param forcefield The force field containing interaction parameters.
- * \param typeA The type identifier for the first atom.
- * \param typeB The type identifier for the second atom.
- *
- * \return The calculated VDW potential correction.
- */
 export inline double potentialCorrectionVDW(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
