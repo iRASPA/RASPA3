@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <chrono>
 #include <complex>
 #include <optional>
 #include <span>
@@ -14,6 +15,7 @@ import <optional>;
 import <span>;
 import <vector>;
 import <complex>;
+import <chrono>;
 #endif
 
 import molecule;
@@ -23,6 +25,7 @@ import running_energy;
 import thermostat;
 import integrators_compute;
 import integrators_update;
+import integrators_cputime;
 
 RunningEnergy Integrators::velocityVerlet(
     std::span<Molecule> moleculePositions, std::span<Atom> moleculeAtomPositions,
@@ -33,9 +36,13 @@ RunningEnergy Integrators::velocityVerlet(
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
+  // Start timing the integration step
+  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
+    // Adjust velocities using Nose-Hoover thermostat
     double UKineticTranslation = computeTranslationalKineticEnergy(moleculePositions);
     double UKineticRotation = computeRotationalKineticEnergy(moleculePositions, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
@@ -68,17 +75,23 @@ RunningEnergy Integrators::velocityVerlet(
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
+    // Adjust velocities using Nose-Hoover thermostat
     double UKineticTranslation = computeTranslationalKineticEnergy(moleculePositions);
     double UKineticRotation = computeRotationalKineticEnergy(moleculePositions, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculePositions, scaling);
   }
 
+  // Update the running energies with current kinetic energies
   runningEnergies.translationalKineticEnergy = computeTranslationalKineticEnergy(moleculePositions);
   runningEnergies.rotationalKineticEnergy = computeRotationalKineticEnergy(moleculePositions, components);
   if (thermostat.has_value())
   {
     runningEnergies.NoseHooverEnergy = thermostat->getEnergy();
   }
+
+  // Update the CPU time spent in the integrator
+  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  integratorsCPUTime.velocityVerlet += end - begin;
   return runningEnergies;
 }

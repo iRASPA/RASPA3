@@ -92,6 +92,7 @@ import equation_of_states;
 import integrators;
 import integrators_compute;
 import integrators_update;
+import integrators_cputime;
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
@@ -409,6 +410,7 @@ void MolecularDynamics::production()
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
     system.mc_moves_count.clearCountStatistics();
+    integratorsCPUTime.clearTimingStatistics();
 
     system.accumulatedDrift = 0.0;
 
@@ -596,6 +598,7 @@ void MolecularDynamics::output()
                  component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
