@@ -28,7 +28,7 @@ jobs:
       - name: configure-cmake-raspa3 
         shell: bash
         run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-ubuntu-24 -DBUILD_DOXYGEN=ON .
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-24 -DBUILD_DOXYGEN=ON .
 
       - name: generate-documentation
         working-directory: ${{github.workspace}}/build
