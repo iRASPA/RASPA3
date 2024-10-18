@@ -154,4 +154,8 @@ export inline IntegratorsCPUTime operator+(const IntegratorsCPUTime& a, const In
   return m;
 }
 
+/**
+ * \brief NOTE: integratorsCPUTime is now defined as global and therefore defined "program-wide".
+ * In its current implementation it can not be tracked per system, which might be necessary in the future.
+ */
 export IntegratorsCPUTime integratorsCPUTime;
