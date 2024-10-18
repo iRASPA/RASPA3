@@ -1,0 +1,9 @@
+<map id="TransitionMatrix" name="TransitionMatrix">
+<area shape="rect" id="Node000001" title="Represents the transition matrix for TMMC simulations." alt="" coords="222,137,349,163"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,179,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="120,37,227,111,266,135,264,140,224,116,117,41"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="203,5,368,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="288,44,288,137,283,137,283,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="393,5,551,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="455,43,419,80,373,116,323,140,321,135,371,111,415,76,451,40"/>
+</map>

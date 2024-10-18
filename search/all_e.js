@@ -16,7 +16,7 @@ var searchData=
   ['numberofpseudoatoms_13',['numberOfPseudoAtoms',['../structForceField.html#ad6ee41cd15c3b6475fc065775777a97c',1,'ForceField']]],
   ['numberofrespasteps_14',['numberOfRespaSteps',['../structThermostat.html#a2263f489c13902dd7c65cd0400c46d81',1,'Thermostat']]],
   ['numberofsamples_15',['numberOfSamples',['../structBlockErrorEstimation.html#a5f61f16120a929c5609326aa4bd4f8c6',1,'BlockErrorEstimation']]],
-  ['numberofsteps_16',['numberofsteps',['../structMolecularDynamics.html#a11e28f5a0cb473275eb0a2b616e3cba1',1,'MolecularDynamics::numberOfSteps'],['../structMonteCarlo.html#ae4efdabf2af7c9324898dc2dafd75dd9',1,'MonteCarlo::numberOfSteps'],['../structTransitionMatrix.html#a05911234737520f785c23585e3dd3e96',1,'TransitionMatrix::numberOfSteps']]],
+  ['numberofsteps_16',['numberofsteps',['../structMolecularDynamics.html#a11e28f5a0cb473275eb0a2b616e3cba1',1,'MolecularDynamics::numberOfSteps'],['../structTransitionMatrix.html#a05911234737520f785c23585e3dd3e96',1,'TransitionMatrix::numberOfSteps'],['../structMonteCarloTransitionMatrix.html#a27c8a95992fb31656f7ca3b84cf9931e',1,'MonteCarloTransitionMatrix::numberOfSteps'],['../structMonteCarlo.html#ae4efdabf2af7c9324898dc2dafd75dd9',1,'MonteCarlo::numberOfSteps']]],
   ['numberofthreads_17',['numberOfThreads',['../structInputReader.html#ad44d9babc90dfef405b369006de39b20',1,'InputReader']]],
   ['numberofunitcells_18',['numberOfUnitCells',['../structFramework.html#a53e8c1d1aa3ddd74dedced41b1a0cba9',1,'Framework']]],
   ['numberofupdates_19',['numberOfUpdates',['../structTransitionMatrix.html#a41d6324e322702831cf5ec0315008b56',1,'TransitionMatrix']]],

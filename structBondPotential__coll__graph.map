@@ -1,0 +1,13 @@
+<map id="BondPotential" name="BondPotential">
+<area shape="rect" id="Node000001" title="Represents a bond potential between two particles." alt="" coords="871,70,984,95"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="363,5,645,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="659,35,752,46,847,60,881,67,880,73,846,65,752,51,659,40"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="425,70,583,95"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="597,80,870,80,870,85,597,85"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="410,119,598,174"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="611,134,725,120,846,100,879,93,880,98,847,105,726,125,612,139"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="193,134,280,159"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="294,144,410,144,410,149,294,149"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="5,127,144,167"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="157,144,193,144,193,149,157,149"/>
+</map>

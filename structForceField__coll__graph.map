@@ -1,0 +1,17 @@
+<map id="ForceField" name="ForceField">
+<area shape="rect" id="Node000001" title="Represents the force field used in simulations." alt="" coords="287,388,375,413"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,285,232,311"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="157,314,308,386,305,390,154,319"/>
+<area shape="rect" id="Node000003" href="$structVDWParameters.html" title="Represents the van der Waals parameters for particle interactions." alt="" coords="55,197,183,223"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="121,237,121,285,116,285,116,237"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="256,285,405,311"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="333,325,333,388,328,388,328,325"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="429,285,632,311"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="506,321,473,344,434,366,373,390,371,385,432,362,470,340,503,317"/>
+<area shape="rect" id="Node000006" href="$structPseudoAtom.html" title="Represents a pseudo&#45;atom in the simulation system." alt="" coords="479,197,583,223"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="533,237,533,285,528,285,528,237"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="487,95,574,120"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="533,134,533,197,528,197,528,134"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="461,5,600,45"/>
+<area shape="poly" id="edge7_Node000007_Node000008" title=" " alt="" coords="533,59,533,94,528,94,528,59"/>
+</map>

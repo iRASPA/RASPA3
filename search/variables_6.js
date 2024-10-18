@@ -7,7 +7,7 @@ var searchData=
   ['forcefield_4',['forceField',['../structInputReader.html#adb986e5f0525d6f2eef5863f23d1a6ce',1,'InputReader']]],
   ['forward_5flnpi_5',['forward_lnpi',['../structTransitionMatrix.html#ae936ea2f5161ba4735810885254876b2',1,'TransitionMatrix']]],
   ['fractionalatoms_6',['fractionalAtoms',['../structCIFReader.html#a3280d0e6e6c55cffa45f595fab54c51d',1,'CIFReader']]],
-  ['fractionalmoleculesystem_7',['fractionalmoleculesystem',['../structMolecularDynamics.html#a85f766f3f2cd7188ee73541e9ae570a4',1,'MolecularDynamics::fractionalMoleculeSystem'],['../structMonteCarloTransitionMatrix.html#adc26394a758597ad6a3072f50335cac4',1,'MonteCarloTransitionMatrix::fractionalMoleculeSystem']]],
+  ['fractionalmoleculesystem_7',['fractionalMoleculeSystem',['../structMolecularDynamics.html#a85f766f3f2cd7188ee73541e9ae570a4',1,'MolecularDynamics']]],
   ['framework_8',['framework',['../structPseudoAtom.html#acf4996286ed58a462d4edb3051c604b6',1,'PseudoAtom']]],
   ['frameworkid_9',['frameworkId',['../structFramework.html#a18a49c72e5553d366cd8c688bdf08737',1,'Framework']]],
   ['frameworkmoleculecharge_10',['frameworkMoleculeCharge',['../structRunningEnergy.html#a5267c85a15991347a4c5f3353dcbfa44',1,'RunningEnergy']]],

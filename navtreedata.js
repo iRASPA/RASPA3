@@ -36,6 +36,14 @@ var NAVTREE =
       [ "Units", "units.html", null ],
       [ "Commands", "commands.html", null ]
     ] ],
+    [ "User Manual", "md_docs_2raspa-manual.html", [
+      [ "Manual", "manual_main.html", null ],
+      [ "Installing", "installing.html", null ],
+      [ "Compiling", "compiling.html", null ],
+      [ "Running", "running.html", null ],
+      [ "Units", "units.html", null ],
+      [ "Commands", "commands.html", null ]
+    ] ],
     [ "Modules", "modules.html", [
       [ "Modules List", "modules.html", "modules_dup" ]
     ] ],
@@ -59,11 +67,12 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"structBondPotential.html#ac37e77270bf59af5e4b1d5d764e833d5",
-"structComponent.html#aedcf68ac03a4febf84ad0760caefe94a",
-"structFramework.html#aa3079de3f2f2bb15eea31fca562c8fdb",
-"structMonteCarlo.html#a13d1f1f592e841680c2d85c9fbf349d3",
-"structRunningEnergy.html#a52f9767a7d3773bcbd84b47096e26348"
+"structBondPotential.html#a04acbd4b9b8f5f274215bf7d80f0ea9e",
+"structComponent.html#adbbd42f8cf4e2bd8b3cef5aa777ff1bd",
+"structFramework.html#a93919b2740488f7324b325545b48ce7c",
+"structMonteCarlo.html",
+"structReactions.html",
+"structVDWParameters.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

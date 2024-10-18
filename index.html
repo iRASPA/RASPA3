@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.1</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -110,7 +110,7 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <p align="center"></p>
 <p>It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2024 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).</p>
 <p align="center"></p>
-<p><a href="https://github.com/iRASPA/raspa3/releases"><img src="https://img.shields.io/github/actions/workflow/status/iRASPA/raspa3/github-actions-create-release.yml" alt="GitHub Actions Workflow Status" class="inline"/> </a> <a href="https://github.com/iRASPA/raspa3/issues"><img src="https://img.shields.io/github/issues/iRASPA/raspa3" alt="GitHub Issues or Pull Requests" class="inline"/> </a> </p>
+<p><a href="https://github.com/iRASPA/raspa3/releases"><img src="https://img.shields.io/github/actions/workflow/status/iRASPA/RASPA3/create-release.yml" alt="GitHub Actions Workflow Status" class="inline"/> </a> <a href="https://github.com/iRASPA/raspa3/issues"><img src="https://img.shields.io/github/issues/iRASPA/raspa3" alt="GitHub Issues or Pull Requests" class="inline"/> </a> <a href="https://iRASPA.github.io/RASPA3"><img src="https://img.shields.io/badge/documentation-blue" alt="Documentation" class="inline"/> </a> <a href="https://github.com/iRASPA/RASPA3/actions/workflows/unit-test.yml"><img src="https://github.com/iraspa/raspa3/actions/workflows/unit-test.yml/badge.svg" alt="Unittests" style="pointer-events: none;" class="inline"/> </a> </p>
 <p align="center"></p>
 <p>• <a href="#authors">Authors</a> • <a href="#contributors">Contributors</a> • <a href="#running">Running</a> • <a href="#python">Python</a> • <a href="#dependencies">Dependencies</a> • <a href="#installation-guide">Installation Guide</a> • </p>
 <h1>Authors</h1>
@@ -137,6 +137,7 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <li>grand canonical ensemble (CBMC, CFCMC, and CB/CFCMC)</li>
 <li>Gibbs ensemble (CBMC, CFCMC, and CB/CFCMC)</li>
 <li>Monte Carlo NPT ensemble</li>
+<li>transition matrix Monte Carlo</li>
 <li>Molecular Dynamics NVT ensemble (Nose-Hoover thermostat)</li>
 <li>binary restart</li>
 <li>blocking pockets</li>
@@ -182,7 +183,22 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 </li>
 </ul>
 <h2>Download prebuilt installation</h2>
-<p>In Github, on the right side of the page, you will find the releases section. Select your OS and use the installer to install RASPA3.</p>
+<p>In Github, on the right side of the page, you will find the releases section. Select your OS and use the installer to install RASPA3. We provide packages for:<br  />
+</p><ul>
+<li>arm64<br  />
+</li>
+<li>Intel/AMD core-avx2<br  />
+</li>
+<li>Intel skylake-avx512<br  />
+ <br  />
+ Use the 'core-avx2' version for Intel and AMD cpu's that support the avx2 instruction set:<br  />
+</li>
+<li>Intel: Haswell processors 2013 and newer<br  />
+</li>
+<li>AMD: Excavator processors 2015 and newer<br  />
+ <br  />
+ The 'skylake-avx512' binary can provide a roughly 25% increase in speed compared to the 'core-avx2' on Intel cpu's that support avx512.</li>
+</ul>
 <h2>Build from source</h2>
 <h3>Dependencies</h3>
 <ul>
@@ -202,7 +218,8 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <p>cmake &ndash;list-presets<br  />
  Available configure presets:<br  />
  </p><blockquote class="doxtable">
-<p>&zwj;"macos-x64"<br  />
+<p>&zwj;"macos-x64-core-avx2"<br  />
+ "macos-x64-skylake-avx512"<br  />
  "macos-x64-debug"<br  />
  "macos-x64-profile"<br  />
  "macos-apple-silicon"<br  />
@@ -210,30 +227,52 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
  "macos-apple-silicon-profile"<br  />
  "windows-x64"<br  />
  "windows-arm64"<br  />
- "linux-x86_64-"<br  />
+ "linux-x86_64"<br  />
  "linux-x86_64-carbon"<br  />
- "linux-x86_64-opensuse-leap-15.2"<br  />
- "linux-x86_64-opensuse-leap-15.3"<br  />
- "linux-x86_64-opensuse-leap-15.4"<br  />
- "linux-x86_64-opensuse-leap-15.5"<br  />
- "linux-x86_64-opensuse-tumbleweed"<br  />
- "linux-x86_64-archlinux"<br  />
- "linux-x86_64-redhat-6"<br  />
- "linux-x86_64-redhat-7"<br  />
- "linux-x86_64-redhat-8"<br  />
- "linux-x86_64-redhat-9"<br  />
- "linux-x86_64-debian-12"<br  />
- "linux-x86_64-debian-11"<br  />
- "linux-x86_64-debian-10"<br  />
- "linux-x86_64-ubuntu-24"<br  />
- "linux-x86_64-ubuntu-22"<br  />
- "linux-x86_64-ubuntu-20"<br  />
- "linux-x86_64-fedora-35"<br  />
- "linux-x86_64-fedora-36"<br  />
- "linux-x86_64-fedora-37"<br  />
- "linux-x86_64-fedora-38"<br  />
- "linux-x86_64-fedora-39"<br  />
- "linux-x86_64-fedora-40" </p>
+ "linux-x86_64-core-avx2-opensuse-leap-15.2"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.3"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.4"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.5"<br  />
+ "linux-x86_64-core-avx2-opensuse-tumbleweed"<br  />
+ "linux-x86_64-core-avx2-archlinux"<br  />
+ "linux-x86_64-core-avx2-redhat-6"<br  />
+ "linux-x86_64-core-avx2-redhat-7"<br  />
+ "linux-x86_64-core-avx2-redhat-8"<br  />
+ "linux-x86_64-core-avx2-redhat-9"<br  />
+ "linux-x86_64-core-avx2-debian-12"<br  />
+ "linux-x86_64-core-avx2-debian-11"<br  />
+ "linux-x86_64-core-avx2-debian-10"<br  />
+ "linux-x86_64-core-avx2-ubuntu-24"<br  />
+ "linux-x86_64-core-avx2-ubuntu-22"<br  />
+ "linux-x86_64-core-avx2-ubuntu-20"<br  />
+ "linux-x86_64-core-avx2-fedora-35"<br  />
+ "linux-x86_64-core-avx2-fedora-36"<br  />
+ "linux-x86_64-core-avx2-fedora-37"<br  />
+ "linux-x86_64-core-avx2-fedora-38"<br  />
+ "linux-x86_64-core-avx2-fedora-39"<br  />
+ "linux-x86_64-core-avx2-fedora-40"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-leap-15.2"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-leap-15.3"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-leap-15.4"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-leap-15.5"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-tumbleweed"<br  />
+ "linux-x86_64-skylake-avx512-archlinux"<br  />
+ "linux-x86_64-skylake-avx512-redhat-6"<br  />
+ "linux-x86_64-skylake-avx512-redhat-7"<br  />
+ "linux-x86_64-skylake-avx512-redhat-8"<br  />
+ "linux-x86_64-skylake-avx512-redhat-9"<br  />
+ "linux-x86_64-skylake-avx512-debian-12"<br  />
+ "linux-x86_64-skylake-avx512-debian-11"<br  />
+ "linux-x86_64-skylake-avx512-debian-10"<br  />
+ "linux-x86_64-skylake-avx512-ubuntu-24"<br  />
+ "linux-x86_64-skylake-avx512-ubuntu-22"<br  />
+ "linux-x86_64-skylake-avx512-ubuntu-20"<br  />
+ "linux-x86_64-skylake-avx512-fedora-35"<br  />
+ "linux-x86_64-skylake-avx512-fedora-36"<br  />
+ "linux-x86_64-skylake-avx512-fedora-37"<br  />
+ "linux-x86_64-skylake-avx512-fedora-38"<br  />
+ "linux-x86_64-skylake-avx512-fedora-39"<br  />
+ "linux-x86_64-skylake-avx512-fedora-40" </p>
 </blockquote>
 <h3>linux</h3>
 <h4>Ubuntu 24</h4>

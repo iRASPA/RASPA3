@@ -9,7 +9,7 @@ var searchData=
   ['shift_6',['shift',['../structVDWParameters.html#a81e69d7fa0202408c0a6f4b7b0eb14e1',1,'VDWParameters']]],
   ['shiftpotentials_7',['shiftPotentials',['../structForceField.html#a4c94875f31812ab53c4173530da4d626',1,'ForceField']]],
   ['simulationbox_8',['simulationbox',['../structCIFReader.html#a599d6c872d3266e626c69564d90c6a69',1,'CIFReader::simulationBox'],['../structFramework.html#a91ecc05d0e6a1e5f24e4c16e477b381c',1,'Framework::simulationBox']]],
-  ['simulationstage_9',['simulationstage',['../structMolecularDynamics.html#af2d3e1160a4a7d3ee2c6d72aab45d99e',1,'MolecularDynamics::simulationStage'],['../structMonteCarlo.html#a76ad739bb694d62fea00fe53193ac0ef',1,'MonteCarlo::simulationStage']]],
+  ['simulationstage_9',['simulationstage',['../structMolecularDynamics.html#af2d3e1160a4a7d3ee2c6d72aab45d99e',1,'MolecularDynamics::simulationStage'],['../structMonteCarlo.html#a76ad739bb694d62fea00fe53193ac0ef',1,'MonteCarlo::simulationStage'],['../structMonteCarloTransitionMatrix.html#a44f7cf9be4ff7a6349439906810553ce',1,'MonteCarloTransitionMatrix::simulationStage']]],
   ['simulationtype_10',['simulationType',['../structInputReader.html#ab81241ee159cf277e422f3356f26059b',1,'InputReader']]],
   ['smallestcharge_11',['smallestCharge',['../structFramework.html#a93919b2740488f7324b325545b48ce7c',1,'Framework']]],
   ['source_12',['source',['../structPseudoAtom.html#a532f144150cd44507a0307be6f4989eb',1,'PseudoAtom']]],

@@ -1,0 +1,9 @@
+<map id="PropertyEnergyHistogram" name="PropertyEnergyHistogram">
+<area shape="rect" id="Node000001" title=" " alt="" coords="113,196,304,221"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,93,180,133"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,147,91,159,96,170,110,184,128,194,125,198,107,188,92,174,86,161,84,147"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="6,5,179,31"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="95,44,95,93,90,93,90,44"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="242,101,407,126"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="319,140,310,158,297,174,277,188,255,198,252,193,274,184,294,170,306,155,314,138"/>
+</map>
