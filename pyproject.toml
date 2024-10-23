@@ -1,5 +1,5 @@
 [build-system]
-requires = ["wheel", "scikit-build-core"]
+requires = ["wheel", "scikit-build-core", "cmake"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -31,4 +31,4 @@ cmake.args = [
 ]
 wheel.cmake = true
 build-dir = "build/python"
-sdist.exclude = ["*.cpp", "*.ixx", "*.pcm", "CMakeLists.txt"]
+# sdist.exclude = ["*.cpp", "*.ixx", "*.pcm", "CMakeLists.txt"]
