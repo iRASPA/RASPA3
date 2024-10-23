@@ -64,66 +64,93 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
+  // Update move counts statistics for swap insertion move
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalCounts += 1;
 
+  // Extract cutoff distances and growth type for the selected component
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
   Component::GrowType growType = system.components[selectedComponent].growType;
 
   time_begin = std::chrono::system_clock::now();
+
+  // Attempt to grow a new molecule using CBMC
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
       system.components, system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
       system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
       selectedComponent, selectedMolecule, 1.0, 0uz, system.numberOfTrialDirections);
+
   time_end = std::chrono::system_clock::now();
+
+  // Update CPU time statistics for the non-Ewald part of the move
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);
+
+  // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
+  // Check if the new molecule is inside blocked pockets
   if (system.insideBlockedPockets(system.components[selectedComponent], newMolecule))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 
+  // Update statistics for successfully constructed molecules
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.constructed += 1;
   system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalConstructed += 1;
 
   time_begin = std::chrono::system_clock::now();
+
+  // Compute energy difference due to Ewald Fourier components
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, {});
+
   time_end = std::chrono::system_clock::now();
+
+  // Update CPU time statistics for the Ewald part of the move
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCEwald += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveCBMCEwald += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
+
+  // Compute tail energy difference due to long-range corrections
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMolecule, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
+
   time_end = std::chrono::system_clock::now();
+
+  // Update CPU time statistics for the tail corrections
   system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCTail += (time_end - time_begin);
   system.mc_moves_cputime.swapInsertionMoveCBMCTail += (time_end - time_begin);
 
+  // Calculate correction factor for Ewald energy difference
   double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
+  // Compute the acceptance probability pre-factor
   double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
   double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * fugacity *
                      system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
+
+  // Calculate the acceptance probability Pacc
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
+  // Check if TMMC is enabled and macrostate limit is not exceeded
   if (system.tmmc.doTMMC)
   {
     size_t newN = oldN + 1;
@@ -133,17 +160,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     }
   }
 
-  // apply acceptance/rejection rule
+  // Apply acceptance/rejection criterion
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
+    // Move accepted; update acceptance statistics
     system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.accepted += 1;
     system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalAccepted += 1;
 
+    // Accept Ewald move and insert the new molecule into the system
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
     return {growData->energies + energyFourierDifference + tailEnergyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };
 
+  // Move rejected
   return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
 }

@@ -18,153 +18,249 @@ import double3;
 import archive;
 import json;
 
+/**
+ * \brief Stores CPU timing statistics for various Monte Carlo moves.
+ *
+ * The MCMoveCpuTime struct accumulates the duration of different Monte Carlo moves
+ * and their components in a simulation. It provides methods to reset the timings,
+ * write the timing statistics to strings, and output them in JSON format.
+ */
 export struct MCMoveCpuTime
 {
-  MCMoveCpuTime(){};
+  /**
+   * \brief Default constructor.
+   *
+   * Initializes all timing statistics to zero.
+   */
+  MCMoveCpuTime() {};
 
-  uint64_t versionNumber{1};
+  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
-  std::chrono::duration<double> propertySampling{0.0};
-  std::chrono::duration<double> energyPressureComputation{0.0};
+  std::chrono::duration<double> propertySampling{0.0};           ///< Time spent on property sampling.
+  std::chrono::duration<double> energyPressureComputation{0.0};  ///< Time spent on energy and pressure computations.
 
-  std::chrono::duration<double> translationMove{0.0};
-  std::chrono::duration<double> translationMoveExternalFieldMolecule{0.0};
-  std::chrono::duration<double> translationMoveFrameworkMolecule{0.0};
-  std::chrono::duration<double> translationMoveMoleculeMolecule{0.0};
-  std::chrono::duration<double> translationMoveEwald{0.0};
+  std::chrono::duration<double> translationMove{0.0};  ///< Time spent on translation moves.
+  std::chrono::duration<double> translationMoveExternalFieldMolecule{
+      0.0};  ///< Time for ExternalField-Molecule interactions during translation moves.
+  std::chrono::duration<double> translationMoveFrameworkMolecule{
+      0.0};  ///< Time for Framework-Molecule interactions during translation moves.
+  std::chrono::duration<double> translationMoveMoleculeMolecule{
+      0.0};  ///< Time for Molecule-Molecule interactions during translation moves.
+  std::chrono::duration<double> translationMoveEwald{0.0};  ///< Time for Ewald computations during translation moves.
 
-  std::chrono::duration<double> randomTranslationMove{0.0};
-  std::chrono::duration<double> randomTranslationMoveExternalFieldMolecule{0.0};
-  std::chrono::duration<double> randomTranslationMoveFrameworkMolecule{0.0};
-  std::chrono::duration<double> randomTranslationMoveMoleculeMolecule{0.0};
-  std::chrono::duration<double> randomTranslationMoveEwald{0.0};
+  std::chrono::duration<double> randomTranslationMove{0.0};  ///< Time spent on random translation moves.
+  std::chrono::duration<double> randomTranslationMoveExternalFieldMolecule{
+      0.0};  ///< Time for ExternalField-Molecule interactions during random translation moves.
+  std::chrono::duration<double> randomTranslationMoveFrameworkMolecule{
+      0.0};  ///< Time for Framework-Molecule interactions during random translation moves.
+  std::chrono::duration<double> randomTranslationMoveMoleculeMolecule{
+      0.0};  ///< Time for Molecule-Molecule interactions during random translation moves.
+  std::chrono::duration<double> randomTranslationMoveEwald{
+      0.0};  ///< Time for Ewald computations during random translation moves.
 
-  std::chrono::duration<double> rotationMove{0.0};
-  std::chrono::duration<double> rotationMoveExternalFieldMolecule{0.0};
-  std::chrono::duration<double> rotationMoveFrameworkMolecule{0.0};
-  std::chrono::duration<double> rotationMoveMoleculeMolecule{0.0};
-  std::chrono::duration<double> rotationMoveEwald{0.0};
+  std::chrono::duration<double> rotationMove{0.0};  ///< Time spent on rotation moves.
+  std::chrono::duration<double> rotationMoveExternalFieldMolecule{
+      0.0};  ///< Time for ExternalField-Molecule interactions during rotation moves.
+  std::chrono::duration<double> rotationMoveFrameworkMolecule{
+      0.0};  ///< Time for Framework-Molecule interactions during rotation moves.
+  std::chrono::duration<double> rotationMoveMoleculeMolecule{
+      0.0};  ///< Time for Molecule-Molecule interactions during rotation moves.
+  std::chrono::duration<double> rotationMoveEwald{0.0};  ///< Time for Ewald computations during rotation moves.
 
-  std::chrono::duration<double> randomRotationMove{0.0};
-  std::chrono::duration<double> randomRotationMoveExternalFieldMolecule{0.0};
-  std::chrono::duration<double> randomRotationMoveFrameworkMolecule{0.0};
-  std::chrono::duration<double> randomRotationMoveMoleculeMolecule{0.0};
-  std::chrono::duration<double> randomRotationMoveEwald{0.0};
+  std::chrono::duration<double> randomRotationMove{0.0};  ///< Time spent on random rotation moves.
+  std::chrono::duration<double> randomRotationMoveExternalFieldMolecule{
+      0.0};  ///< Time for ExternalField-Molecule interactions during random rotation moves.
+  std::chrono::duration<double> randomRotationMoveFrameworkMolecule{
+      0.0};  ///< Time for Framework-Molecule interactions during random rotation moves.
+  std::chrono::duration<double> randomRotationMoveMoleculeMolecule{
+      0.0};  ///< Time for Molecule-Molecule interactions during random rotation moves.
+  std::chrono::duration<double> randomRotationMoveEwald{
+      0.0};  ///< Time for Ewald computations during random rotation moves.
 
-  std::chrono::duration<double> reinsertionMoveCBMC{0.0};
-  std::chrono::duration<double> reinsertionMoveCBMCNonEwald{0.0};
-  std::chrono::duration<double> reinsertionMoveCBMCEwald{0.0};
+  std::chrono::duration<double> reinsertionMoveCBMC{0.0};  ///< Time spent on CBMC reinsertion moves.
+  std::chrono::duration<double> reinsertionMoveCBMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CBMC reinsertion moves.
+  std::chrono::duration<double> reinsertionMoveCBMCEwald{
+      0.0};  ///< Time for Ewald computations during CBMC reinsertion moves.
 
-  std::chrono::duration<double> swapInsertionMove{0.0};
-  std::chrono::duration<double> swapInsertionMoveNonEwald{0.0};
-  std::chrono::duration<double> swapInsertionMoveEwald{0.0};
-  std::chrono::duration<double> swapInsertionMoveTail{0.0};
+  std::chrono::duration<double> swapInsertionMove{0.0};  ///< Time spent on swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveNonEwald{
+      0.0};  ///< Time for non-Ewald computations during swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveEwald{
+      0.0};  ///< Time for Ewald computations during swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveTail{0.0};  ///< Time for tail corrections during swap insertion moves.
 
-  std::chrono::duration<double> swapDeletionMove{0.0};
-  std::chrono::duration<double> swapDeletionMoveNonEwald{0.0};
-  std::chrono::duration<double> swapDeletionMoveEwald{0.0};
-  std::chrono::duration<double> swapDeletionMoveTail{0.0};
+  std::chrono::duration<double> swapDeletionMove{0.0};  ///< Time spent on swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveNonEwald{
+      0.0};  ///< Time for non-Ewald computations during swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveEwald{
+      0.0};                                                 ///< Time for Ewald computations during swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveTail{0.0};  ///< Time for tail corrections during swap deletion moves.
 
-  std::chrono::duration<double> swapInsertionMoveCBMC{0.0};
-  std::chrono::duration<double> swapInsertionMoveCBMCNonEwald{0.0};
-  std::chrono::duration<double> swapInsertionMoveCBMCEwald{0.0};
-  std::chrono::duration<double> swapInsertionMoveCBMCTail{0.0};
+  std::chrono::duration<double> swapInsertionMoveCBMC{0.0};  ///< Time spent on CBMC swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveCBMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CBMC swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveCBMCEwald{
+      0.0};  ///< Time for Ewald computations during CBMC swap insertion moves.
+  std::chrono::duration<double> swapInsertionMoveCBMCTail{
+      0.0};  ///< Time for tail corrections during CBMC swap insertion moves.
 
-  std::chrono::duration<double> swapDeletionMoveCBMC{0.0};
-  std::chrono::duration<double> swapDeletionMoveCBMCNonEwald{0.0};
-  std::chrono::duration<double> swapDeletionMoveCBMCEwald{0.0};
-  std::chrono::duration<double> swapDeletionMoveCBMCTail{0.0};
+  std::chrono::duration<double> swapDeletionMoveCBMC{0.0};  ///< Time spent on CBMC swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveCBMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CBMC swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveCBMCEwald{
+      0.0};  ///< Time for Ewald computations during CBMC swap deletion moves.
+  std::chrono::duration<double> swapDeletionMoveCBMCTail{
+      0.0};  ///< Time for tail corrections during CBMC swap deletion moves.
 
-  std::chrono::duration<double> swapLambdaDeletionMove{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveNonEwald{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveEwald{0.0};
+  std::chrono::duration<double> swapLambdaDeletionMove{0.0};  ///< Time spent on lambda swap deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveNonEwald{
+      0.0};  ///< Time for non-Ewald computations during lambda swap deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveEwald{
+      0.0};  ///< Time for Ewald computations during lambda swap deletion moves.
 
-  std::chrono::duration<double> swapLambdaMoveCFCMC{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCTail{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCTail{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCTail{0.0};
+  std::chrono::duration<double> swapLambdaMoveCFCMC{0.0};  ///< Time spent on CFCMC swap lambda moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCFramework{
+      0.0};  ///< Time for Framework during CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald during CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCFCMCFramework{
+      0.0};  ///< Time for Framework during CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald during CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCFramework{
+      0.0};  ///< Time for Framework during CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald during CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC swap lambda deletion moves.
 
-  std::chrono::duration<double> swapLambdaMoveCBCFCMC{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCNonEwald{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCTail{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCTail{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCExternalField{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCFramework{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCMolecule{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCNonEwald{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCEwald{0.0};
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCTail{0.0};
+  std::chrono::duration<double> swapLambdaMoveCBCFCMC{0.0};  ///< Time spent on CB/CFCMC swap lambda moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCFramework{
+      0.0};  ///< Time for Framework during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCTail{
+      0.0};  ///< Time for tail corrections during CB/CFCMC swap lambda insertion moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CB/CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCFramework{
+      0.0};  ///< Time for Framework during CB/CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CB/CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CB/CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCTail{
+      0.0};  ///< Time for tail corrections during CB/CFCMC lambda change moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CB/CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCFramework{
+      0.0};  ///< Time for Framework during CB/CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCMolecule{
+      0.0};  ///< Time for Molecule during CB/CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CB/CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CB/CFCMC swap lambda deletion moves.
+  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCTail{
+      0.0};  ///< Time for tail corrections during CB/CFCMC swap lambda deletion moves.
 
-  std::chrono::duration<double> GibbsSwapMoveCBMC{0.0};
-  std::chrono::duration<double> GibbsSwapMoveCBMCNonEwald{0.0};
-  std::chrono::duration<double> GibbsSwapMoveCBMCEwald{0.0};
-  std::chrono::duration<double> GibbsSwapMoveCBMCTail{0.0};
+  std::chrono::duration<double> GibbsSwapMoveCBMC{0.0};  ///< Time spent on CBMC Gibbs swap moves.
+  std::chrono::duration<double> GibbsSwapMoveCBMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CBMC Gibbs swap moves.
+  std::chrono::duration<double> GibbsSwapMoveCBMCEwald{
+      0.0};  ///< Time for Ewald computations during CBMC Gibbs swap moves.
+  std::chrono::duration<double> GibbsSwapMoveCBMCTail{
+      0.0};  ///< Time for tail corrections during CBMC Gibbs swap moves.
 
-  std::chrono::duration<double> GibbsSwapLambdaMoveCFCMC{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCNonEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCTail{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCNonEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCTail{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCNonEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCTail{0.0};
+  std::chrono::duration<double> GibbsSwapLambdaMoveCFCMC{0.0};  ///< Time spent on CFCMC Gibbs swap lambda moves.
+  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda interchange moves.
+  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda interchange moves.
+  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda interchange moves.
+  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda change moves.
+  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda change moves.
+  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda change moves.
+  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda shuffle moves.
+  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda shuffle moves.
+  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCTail{
+      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda shuffle moves.
 
-  std::chrono::duration<double> WidomMoveCBMC{0.0};
-  std::chrono::duration<double> WidomMoveCBMCNonEwald{0.0};
-  std::chrono::duration<double> WidomMoveCBMCEwald{0.0};
-  std::chrono::duration<double> WidomMoveCBMCTail{0.0};
+  std::chrono::duration<double> WidomMoveCBMC{0.0};  ///< Time spent on CBMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBMCNonEwald{
+      0.0};                                               ///< Time for non-Ewald computations during CBMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBMCEwald{0.0};  ///< Time for Ewald computations during CBMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBMCTail{0.0};   ///< Time for tail corrections during CBMC Widom moves.
 
-  std::chrono::duration<double> WidomMoveCFCMC{0.0};
-  std::chrono::duration<double> WidomMoveCFCMCExternalField{0.0};
-  std::chrono::duration<double> WidomMoveCFCMCFramework{0.0};
-  std::chrono::duration<double> WidomMoveCFCMCMolecule{0.0};
-  std::chrono::duration<double> WidomMoveCFCMCEwald{0.0};
-  std::chrono::duration<double> WidomMoveCFCMCTail{0.0};
+  std::chrono::duration<double> WidomMoveCFCMC{0.0};               ///< Time spent on CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCFCMCExternalField{0.0};  ///< Time for ExternalField during CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCFCMCFramework{0.0};      ///< Time for Framework during CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCFCMCMolecule{0.0};       ///< Time for Molecule during CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCFCMCEwald{0.0};  ///< Time for Ewald computations during CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCFCMCTail{0.0};   ///< Time for tail corrections during CFCMC Widom moves.
 
-  std::chrono::duration<double> WidomMoveCBCFCMC{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCExternalField{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCFramework{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCMolecule{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCNonEwald{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCEwald{0.0};
-  std::chrono::duration<double> WidomMoveCBCFCMCTail{0.0};
+  std::chrono::duration<double> WidomMoveCBCFCMC{0.0};  ///< Time spent on CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCExternalField{
+      0.0};  ///< Time for ExternalField during CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCFramework{0.0};  ///< Time for Framework during CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCMolecule{0.0};   ///< Time for Molecule during CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCNonEwald{
+      0.0};  ///< Time for non-Ewald computations during CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCEwald{
+      0.0};  ///< Time for Ewald computations during CB/CFCMC Widom moves.
+  std::chrono::duration<double> WidomMoveCBCFCMCTail{0.0};  ///< Time for tail corrections during CB/CFCMC Widom moves.
 
-  std::chrono::duration<double> volumeMove{0.0};
-  std::chrono::duration<double> volumeMoveNonEwald{0.0};
-  std::chrono::duration<double> volumeMoveEwald{0.0};
-  std::chrono::duration<double> volumeMoveTail{0.0};
+  std::chrono::duration<double> volumeMove{0.0};          ///< Time spent on volume moves.
+  std::chrono::duration<double> volumeMoveNonEwald{0.0};  ///< Time for non-Ewald computations during volume moves.
+  std::chrono::duration<double> volumeMoveEwald{0.0};     ///< Time for Ewald computations during volume moves.
+  std::chrono::duration<double> volumeMoveTail{0.0};      ///< Time for tail corrections during volume moves.
 
-  std::chrono::duration<double> GibbsVolumeMove{0.0};
-  std::chrono::duration<double> GibbsVolumeMoveNonEwald{0.0};
-  std::chrono::duration<double> GibbsVolumeMoveEwald{0.0};
-  std::chrono::duration<double> GibbsVolumeMoveTail{0.0};
+  std::chrono::duration<double> GibbsVolumeMove{0.0};  ///< Time spent on Gibbs volume moves.
+  std::chrono::duration<double> GibbsVolumeMoveNonEwald{
+      0.0};  ///< Time for non-Ewald computations during Gibbs volume moves.
+  std::chrono::duration<double> GibbsVolumeMoveEwald{0.0};  ///< Time for Ewald computations during Gibbs volume moves.
+  std::chrono::duration<double> GibbsVolumeMoveTail{0.0};   ///< Time for tail corrections during Gibbs volume moves.
 
-  std::chrono::duration<double> ParallelTemperingSwap{0.0};
-  std::chrono::duration<double> ParallelTemperingSwapEnergy{0.0};
-  std::chrono::duration<double> ParallelTemperingSwapFugacity{0.0};
+  std::chrono::duration<double> ParallelTemperingSwap{0.0};  ///< Time spent on parallel tempering swaps.
+  std::chrono::duration<double> ParallelTemperingSwapEnergy{
+      0.0};  ///< Time for energy recalculation during parallel tempering swaps.
+  std::chrono::duration<double> ParallelTemperingSwapFugacity{
+      0.0};  ///< Time for fugacity swaps during parallel tempering swaps.
 
+  /**
+   * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.
+   *
+   * \return The total duration of all moves.
+   */
   inline std::chrono::duration<double> total() const
   {
     return propertySampling + energyPressureComputation + translationMove + randomTranslationMove + rotationMove +
@@ -174,13 +270,55 @@ export struct MCMoveCpuTime
            ParallelTemperingSwap;
   }
 
+  /**
+   * \brief Resets all timing statistics to zero.
+   */
   void clearTimingStatistics();
+
+  /**
+   * \brief Writes the CPU time statistics to a string.
+   *
+   * \return A string containing the timing statistics.
+   */
   const std::string writeMCMoveCPUTimeStatistics() const;
+
+  /**
+   * \brief Writes the CPU time statistics for a specific component.
+   *
+   * \param componentId The identifier of the component.
+   * \param componentName The name of the component.
+   * \return A string containing the timing statistics for the component.
+   */
   const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string& componentName) const;
+
+  /**
+   * \brief Writes the overall CPU time statistics.
+   *
+   * \param total The total simulation time.
+   * \return A string containing the overall timing statistics.
+   */
   const std::string writeMCMoveCPUTimeStatistics(std::chrono::duration<double> total) const;
 
+  /**
+   * \brief Returns the system-level CPU time statistics in JSON format.
+   *
+   * \return A JSON object containing the system-level timing statistics.
+   */
   const nlohmann::json jsonSystemMCMoveCPUTimeStatistics() const;
+
+  /**
+   * \brief Returns the component-level CPU time statistics in JSON format.
+   *
+   * \return A JSON object containing the component-level timing statistics.
+   */
   const nlohmann::json jsonComponentMCMoveCPUTimeStatistics() const;
+
+  /**
+   * \brief Returns the overall CPU time statistics in JSON format.
+   *
+   * \param total The total simulation time.
+   * \return A JSON object containing the overall timing statistics.
+   */
   const nlohmann::json jsonOverallMCMoveCPUTimeStatistics(std::chrono::duration<double> total) const;
 
   MCMoveCpuTime(const MCMoveCpuTime&) = default;

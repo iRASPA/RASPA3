@@ -460,7 +460,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
     std::transform(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), trialMolecule.second.begin(),
                    fractionalMoleculeB.begin(),
-                   [](const Atom& a, const Atom& b) {
+                   [](const Atom& a, const Atom& b)
+                   {
                      return Atom(b.position, a.charge, a.scalingVDW, a.scalingCoulomb, a.moleculeId, a.type,
                                  a.componentId, a.groupId);
                    });

@@ -64,20 +64,26 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
+  // Increment the count of swap deletion moves for the selected component
   system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.counts += 1;
   system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalCounts += 1;
 
+  // Proceed only if there is at least one molecule of the selected component
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
+    // Update the constructed count for the move statistics
     system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.constructed += 1;
     system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalConstructed += 1;
 
+    // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
+    // Retrieve cutoff distances from the force field
     double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
     double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
     double cutOffCoulomb = system.forceField.cutOffCoulomb;
 
+    // Retrace the molecule for the swap deletion using CBMC algorithm
     time_begin = std::chrono::system_clock::now();
     ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
         random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
@@ -85,17 +91,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
         selectedComponent, selectedMolecule, molecule, 1.0, system.numberOfTrialDirections);
     time_end = std::chrono::system_clock::now();
+    // Update the CPU time statistics for the non-Ewald part of the move
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
     system.mc_moves_cputime.swapDeletionMoveCBMCNonEwald += (time_end - time_begin);
 
+    // Compute the energy difference in Fourier space due to the deletion
     time_begin = std::chrono::system_clock::now();
     RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, {}, molecule);
     time_end = std::chrono::system_clock::now();
+    // Update the CPU time statistics for the Ewald part of the move
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCEwald += (time_end - time_begin);
     system.mc_moves_cputime.swapDeletionMoveCBMCEwald += (time_end - time_begin);
 
+    // Compute the tail energy difference due to the deletion
     time_begin = std::chrono::system_clock::now();
     [[maybe_unused]] RunningEnergy tailEnergyDifference =
         Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
@@ -103,12 +113,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
         Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
     time_end = std::chrono::system_clock::now();
+    // Update the CPU time statistics for the tail corrections
     system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
     system.mc_moves_cputime.swapDeletionMoveCBMCTail += (time_end - time_begin);
 
+    // Calculate the correction factor for Ewald summation
     double correctionFactorEwald =
         std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
+    // Compute acceptance probability factors
     double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
     double preFactor =
@@ -118,6 +131,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
+    // Check if the new macrostate is within the allowed TMMC range
     if (system.tmmc.doTMMC)
     {
       size_t newN = oldN - 1;
@@ -127,7 +141,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       }
     }
 
-    // apply acceptance/rejection rule
+    // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
       system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.accepted += 1;
@@ -141,5 +155,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
 
+  // Return default values if no molecules are available for deletion
   return {std::nullopt, double3(0.0, 1.0, 0.0)};
 }

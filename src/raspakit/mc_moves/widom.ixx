@@ -24,5 +24,17 @@ import system;
 
 export namespace MC_Moves
 {
+/**
+ * \brief Performs a Widom insertion move for the specified component.
+ *
+ * Attempts to insert a molecule of the selected component into the system using
+ * Configurational Bias Monte Carlo (CBMC) method. Calculates the energy differences
+ * and computes the insertion weight used for chemical potential estimation.
+ *
+ * \param random Reference to the random number generator.
+ * \param system Reference to the simulation system.
+ * \param selectedComponent Index of the component to perform the Widom move on.
+ * \return The Widom insertion weight if successful, or std::nullopt if the move was rejected.
+ */
 std::optional<double> WidomMove(RandomNumber& random, System& system, size_t selectedComponent);
-}
+}  // namespace MC_Moves
