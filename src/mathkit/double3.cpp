@@ -9,6 +9,7 @@ module;
 #include <iostream>
 #include <map>
 #include <utility>
+#include <string>
 #endif
 
 module double3;
@@ -22,6 +23,7 @@ import <map>;
 import <array>;
 import <utility>;
 import <algorithm>;
+import <string>;
 #endif
 
 import archive;
@@ -73,6 +75,11 @@ double3 double3::fract() const
     s.z -= 1.0;
   }
   return s;
+}
+
+std::string double3::to_string()
+{
+  return "(" + std::to_string(this->x) + ", " + std::to_string(this->y) + ", " + std::to_string(this->z) + ")";
 }
 
 std::ostream &operator<<(std::ostream &out, const double3 &vec)  // output
