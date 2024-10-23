@@ -8,6 +8,7 @@ module;
 #include <fstream>
 #include <map>
 #include <numbers>
+#include <string>
 #endif
 
 module simd_quatd;
@@ -20,6 +21,7 @@ import <complex>;
 import <array>;
 import <map>;
 import <algorithm>;
+import <string>;
 #endif
 
 import double3;
@@ -109,6 +111,11 @@ simd_quatd simd_quatd::roll(double angle)
 {
   double half_theta = 0.5 * angle * std::numbers::pi / 180.0;
   return simd_quatd(std::cos(half_theta), double3(0.0, 0.0, std::sin(half_theta)));
+}
+
+std::string simd_quatd::to_string()
+{
+  return "(" + std::to_string(this->r) + ", " + std::to_string(this->ix) + ", " + std::to_string(this->iy) + ", " + std::to_string(this->iz) + ")";
 }
 
 const simd_quatd simd_quatd::data120[120] = {simd_quatd(0.0, double3(1.0, 0.0, 0.0)),

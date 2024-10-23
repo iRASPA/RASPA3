@@ -1,24 +1,25 @@
 add_executable(unit_tests_raspakit
-               cbmc_interactions.cpp
-               energy_decomposition.cpp 
-               gradients.cpp
-               pbc.cpp
-               spacegroup.cpp
-               dudlambda.cpp
-               ewald.cpp
-               insertion_deletion.cpp
-               mc.cpp
-               pressure.cpp
-               static_energy.cpp
-               rigid_gradient.cpp
-               electrostatic_potential.cpp
-               electrostatic_field.cpp
-               electrostatic_polarization.cpp
-               nist_water_1.cpp
-               nist_water_2.cpp
-               nist_water_3.cpp
-               nist_water_4.cpp
-               main.cpp)
+  cbmc_interactions.cpp
+  energy_decomposition.cpp
+  gradients.cpp
+  integrators.cpp
+  pbc.cpp
+  spacegroup.cpp
+  dudlambda.cpp
+  ewald.cpp
+  insertion_deletion.cpp
+  mc.cpp
+  pressure.cpp
+  static_energy.cpp
+  rigid_gradient.cpp
+  electrostatic_potential.cpp
+  electrostatic_field.cpp
+  electrostatic_polarization.cpp
+  nist_water_1.cpp
+  nist_water_2.cpp
+  nist_water_3.cpp
+  nist_water_4.cpp
+  main.cpp)
 
 
 if (LINUX)

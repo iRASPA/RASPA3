@@ -5,6 +5,7 @@ module;
 #include <cmath>
 #include <fstream>
 #include <ostream>
+#include <string>
 #endif
 
 export module double3;
@@ -20,6 +21,7 @@ import <cmath>;
 import <algorithm>;
 import <ostream>;
 import <fstream>;
+import <string>;
 #endif
 
 import int3;
@@ -162,6 +164,7 @@ export union double3
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3& vec);
 
+  std::string to_string();
   friend void to_json(nlohmann::json&, const double3&);
   friend void from_json(const nlohmann::json&, double3&);
 };

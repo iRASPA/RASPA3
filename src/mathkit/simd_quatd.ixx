@@ -5,6 +5,7 @@ module;
 #include <map>
 #include <ostream>
 #include <vector>
+#include <string>
 #endif
 
 export module simd_quatd;
@@ -14,6 +15,7 @@ import <ostream>;
 import <fstream>;
 import <map>;
 import <vector>;
+import <string>;
 #endif
 
 import double3;
@@ -52,6 +54,7 @@ export union simd_quatd
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const simd_quatd& q);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, simd_quatd& q);
 
+  std::string to_string();
   friend void to_json(nlohmann::json&, const simd_quatd&);
   friend void from_json(const nlohmann::json&, simd_quatd&);
 };
