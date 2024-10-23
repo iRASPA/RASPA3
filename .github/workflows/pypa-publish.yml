@@ -1,6 +1,7 @@
 name: pypi
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -9,7 +10,7 @@ jobs:
       image: ghcr.io/iraspa/ubuntu-22-llvm-18:latest
     strategy:
       matrix:
-        python-version: [3.10, 3.11, 3.12]
+        python-version: [3.11, 3.12]
 
     steps:
     - name: Checkout code
