@@ -25,7 +25,6 @@ readme = "README.md"
 cmake.version = ">=3.28"
 cmake.build-type = "Release"
 cmake.args = [
-    "--preset=python",
     "-DBUILD_TESTING=0",
     "-DBUILD_PYTHON=1",
     "-DSKIP_EXECUTABLE=1",
