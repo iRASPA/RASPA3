@@ -31,6 +31,7 @@ import interactions_ewald;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import integrators_cputime;
+
 void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -50,7 +51,7 @@ void Integrators::updatePositions(std::span<Molecule> moleculePositions, double 
   // Update the center of mass positions for each molecule
   for (Molecule& molecule : moleculePositions)
   {
-    molecule.centerOfMassPosition = molecule.centerOfMassPosition + dt * molecule.velocity;
+    molecule.centerOfMassPosition += dt * molecule.velocity;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updatePositions += end - begin;
@@ -63,8 +64,8 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   // Update velocities and orientation momenta based on gradients
   for (Molecule& molecule : moleculePositions)
   {
-    molecule.velocity = molecule.velocity - 0.5 * dt * molecule.gradient * molecule.invMass;
-    molecule.orientationMomentum = 0.5 * dt * molecule.orientationGradient;
+    molecule.velocity -= 0.5 * dt * molecule.gradient * molecule.invMass;
+    molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
@@ -80,14 +81,12 @@ void Integrators::createCartesianPositions(std::span<const Molecule> moleculePos
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     simd_quatd q = molecule.orientation;
-    double3x3 M = double3x3::buildRotationMatrixInverse(q);
 
     // Calculate positions of each atom in the molecule
     for (size_t i = 0; i != span.size(); i++)
     {
-      span[i].position = molecule.centerOfMassPosition + M * components[molecule.componentId].atoms[i].position;
+      span[i].position = molecule.centerOfMassPosition + q * components[molecule.componentId].atoms[i].position;
     }
-
     index += molecule.numberOfAtoms;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
@@ -98,35 +97,16 @@ void Integrators::noSquishFreeRotorOrderTwo(std::span<Molecule> moleculePosition
                                             const std::vector<Component> components, double dt)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
-  // Perform second-order NoSquish free rotor integration over 5 sub-steps
-  for (size_t i = 0; i != 5; ++i)
-  {
-    noSquishRotate(moleculePositions, components, 3, 0.5 * dt / 5.0);
-    noSquishRotate(moleculePositions, components, 2, 0.5 * dt / 5.0);
-    noSquishRotate(moleculePositions, components, 1, dt / 5.0);
-    noSquishRotate(moleculePositions, components, 2, 0.5 * dt / 5.0);
-    noSquishRotate(moleculePositions, components, 3, 0.5 * dt / 5.0);
-  }
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
-  integratorsCPUTime.noSquishFreeRotorOrderTwo += end - begin;
-}
-
-void Integrators::noSquishRotate(std::span<Molecule> moleculePositions, const std::vector<Component> components,
-                                 size_t k, double dt)
-{
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
-  std::pair<simd_quatd, simd_quatd> pq;
-  // Rotate each molecule using the NoSquish algorithm
   for (Molecule& molecule : moleculePositions)
   {
     double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
-    pq = std::make_pair(molecule.orientationMomentum, molecule.orientation);
-    pq = Rigid::NoSquishRotate(k, dt, pq, inverseInertiaVector);
+    std::pair<simd_quatd, simd_quatd> pq = std::make_pair(molecule.orientationMomentum, molecule.orientation);
+    pq = Rigid::NoSquishFreeRotorOrderTwo(dt, pq, inverseInertiaVector);
     molecule.orientationMomentum = pq.first;
     molecule.orientation = pq.second;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
-  integratorsCPUTime.noSquishRotate += end - begin;
+  integratorsCPUTime.noSquishFreeRotorOrderTwo += end - begin;
 }
 
 void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> moleculePositions,
@@ -153,21 +133,9 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
     }
     molecule.velocity = com_velocity * molecule.invMass;
 
-    double3 I = components[molecule.componentId].inertiaVector;
-    double3 invI = components[molecule.componentId].inverseInertiaVector;
     simd_quatd q = molecule.orientation;
-    double3x3 M = double3x3::buildRotationMatrix(q);
-    double3 angularVelocity = (M * angularMomentum) * invI;
-
-    // Update orientation momentum based on angular velocity and inertia
-    molecule.orientationMomentum.ix =
-        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iy =
-        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iz =
-        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.r =
-        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+    simd_quatd omega = simd_quatd(0.0, q * angularMomentum);
+    molecule.orientationMomentum = 2.0 * q * omega;
 
     index += molecule.numberOfAtoms;
   }
@@ -193,25 +161,17 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
     molecule.gradient = com_gradient;
 
     double3 torque{};
-    simd_quatd orientation = molecule.orientation;
-    double3x3 M = double3x3::buildRotationMatrix(orientation);
+    simd_quatd q = molecule.orientation;
     for (size_t i = 0; i != span.size(); i++)
     {
       double atomMass = components[molecule.componentId].definedAtoms[i].second;
-      double3 F = M * (span[i].gradient - com_gradient * atomMass * molecule.invMass);
+      double3 F = q * (span[i].gradient - com_gradient * atomMass * molecule.invMass);
       double3 dr = components[molecule.componentId].atoms[i].position;
       torque += double3::cross(F, dr);
     }
 
     // Compute orientation gradient based on torque
-    molecule.orientationGradient.ix =
-        -2.0 * (orientation.r * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
-    molecule.orientationGradient.iy =
-        -2.0 * (orientation.iz * torque.x + orientation.r * torque.y - orientation.ix * torque.z);
-    molecule.orientationGradient.iz =
-        -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r * torque.z);
-    molecule.orientationGradient.r =
-        -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
+    molecule.orientationGradient = -2.0 * q * simd_quatd(0.0, torque);
 
     index += molecule.numberOfAtoms;
   }

@@ -55,11 +55,13 @@ double Integrators::computeRotationalKineticEnergy(std::span<const Molecule> mol
     double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
     // Retrieve orientation momentum and orientation
     simd_quatd p = molecule.orientationMomentum;
+    p.r = -p.r;
     simd_quatd q = molecule.orientation;
     simd_quatd pq = p * q;
 
     // Calculate angular velocity
     ang_vel = 0.5 * double3(pq.ix, pq.iy, pq.iz) * inverseInertiaVector;
+
     // Accumulate rotational kinetic energy: 0.5 * inertia * angular velocity squared
     energy += 0.5 * double3::dot(inertiaVector, ang_vel * ang_vel);
   }

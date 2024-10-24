@@ -121,6 +121,12 @@ export union double3
     this->x += b.x, this->y += b.y, this->z += b.z;
     return *this;
   }
+  double3& operator+=(const double& b)
+  {
+    this->x += b, this->y += b, this->z += b;
+    return *this;
+  }
+
   double3& operator-=(const double3& b)
   {
     this->x -= b.x, this->y -= b.y, this->z -= b.z;

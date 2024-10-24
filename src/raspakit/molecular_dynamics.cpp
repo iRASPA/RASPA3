@@ -319,10 +319,10 @@ void MolecularDynamics::equilibrate()
   {
     for (System& system : systems)
     {
-      Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
-                                  system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                                  system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                  system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+      system.runningEnergies = Integrators::velocityVerlet(
+          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
+          system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -451,10 +451,10 @@ void MolecularDynamics::production()
 
     for (System& system : systems)
     {
-      Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
-                                  system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                                  system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                  system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+      system.runningEnergies = Integrators::velocityVerlet(
+          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
+          system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=

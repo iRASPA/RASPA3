@@ -20,6 +20,7 @@ import component;
 import running_energy;
 import simulationbox;
 import forcefield;
+
 export namespace Integrators
 {
 /**
@@ -65,17 +66,6 @@ void createCartesianPositions(std::span<const Molecule> moleculePositions, std::
  */
 void noSquishFreeRotorOrderTwo(std::span<Molecule> moleculePositions, const std::vector<Component> components,
                                double dt);
-
-/**
- * \brief Rotates molecules using the NoSquish algorithm.
- *
- * \param moleculePositions Span of molecules to be rotated.
- * \param components Vector of component definitions.
- * \param k Axis index for rotation.
- * \param dt Time increment for the rotation.
- */
-void noSquishRotate(std::span<Molecule> moleculePositions, const std::vector<Component> components, size_t k,
-                    double dt);
 
 /**
  * \brief Updates center of mass velocities and orientation momenta of molecules.
