@@ -31,6 +31,8 @@ import interactions_ewald;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import integrators_cputime;
+import randomnumbers;
+import units;
 
 void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling)
 {
@@ -69,6 +71,26 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;
+}
+
+
+void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions, const std::vector<Component> components, double temperature)
+{
+  for (Molecule& molecule : moleculePositions)
+  {
+    // Draw reandom vector with variance kBT / m
+    molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
+                        std::sqrt(Units::KB * temperature / molecule.mass);
+
+    // Draw random quaternion with variance by kBT / I
+    double3 I = components[molecule.componentId].inertiaVector;
+    double3 invI = components[molecule.componentId].inertiaVector;
+    double3 angularVelocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
+
+    // rotate into orientation frame
+    simd_quatd q = molecule.orientation;
+    molecule.orientationMomentum = 2.0 * q * simd_quatd(0.0, I * angularVelocity);
+  }
 }
 
 void Integrators::createCartesianPositions(std::span<const Molecule> moleculePositions,

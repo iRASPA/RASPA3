@@ -20,6 +20,7 @@ import component;
 import running_energy;
 import simulationbox;
 import forcefield;
+import randomnumbers;
 
 export namespace Integrators
 {
@@ -46,6 +47,16 @@ void updatePositions(std::span<Molecule> moleculePositions, double dt);
  * \param dt Time step for the update.
  */
 void updateVelocities(std::span<Molecule> moleculePositions, double dt);
+
+/**
+ * \brief Initializes the velocities according to the Boltzmann distribution
+ *
+ * \param random A random number generator
+ * \param moleculePositions Span of molecules to initialize velocity for.
+ * \param components Components to get the inertiaVector
+ * \param temperature Temperature to set velocities to.
+ */
+void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions, const std::vector<Component> components, double temperature);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.

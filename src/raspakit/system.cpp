@@ -793,6 +793,7 @@ void System::rescaleMoveProbabilities()
     component.mc_moves_probabilities.volumeChangeProbability = mc_moves_probabilities.volumeChangeProbability;
     component.mc_moves_probabilities.gibbsVolumeChangeProbability = mc_moves_probabilities.gibbsVolumeChangeProbability;
     component.mc_moves_probabilities.parallelTemperingProbability = mc_moves_probabilities.parallelTemperingProbability;
+    component.mc_moves_probabilities.hybridMCProbability = mc_moves_probabilities.hybridMCProbability;
 
     component.mc_moves_probabilities.normalizeMoveProbabilities();
   }
@@ -1850,32 +1851,6 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   return pressureInfo;
 }
 
-void System::initializeVelocities(RandomNumber& random)
-{
-  for (Molecule& molecule : moleculePositions)
-  {
-    double3 I = components[molecule.componentId].inertiaVector;
-    double3 inverseInertiaVector = components[molecule.componentId].inverseInertiaVector;
-
-    molecule.velocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) *
-                        std::sqrt(Units::KB * temperature / molecule.mass);
-    double3 angularVelocity{};
-    angularVelocity.x = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.x);
-    angularVelocity.y = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.y);
-    angularVelocity.z = random.Gaussian() * std::sqrt(Units::KB * temperature * inverseInertiaVector.z);
-
-    simd_quatd q = molecule.orientation;
-
-    molecule.orientationMomentum.ix =
-        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iy =
-        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iz =
-        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.r =
-        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
-  }
-}
 
 void System::removeCenterOfMassVelocityDrift()
 {

@@ -280,7 +280,7 @@ void MolecularDynamics::equilibrate()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
     Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
-    system.initializeVelocities(random);
+    Integrators::initializeVelocities(random, system.moleculePositions, system.components, system.temperature);
 
     system.removeCenterOfMassVelocityDrift();
     if (system.thermostat.has_value())

@@ -255,7 +255,9 @@ export struct MCMoveCpuTime
       0.0};  ///< Time for energy recalculation during parallel tempering swaps.
   std::chrono::duration<double> ParallelTemperingSwapFugacity{
       0.0};  ///< Time for fugacity computation during parallel tempering swaps.
-  std::chrono::duration<double> hybridMC{0.0};   ///< Time for MD moves during hybrid MC.
+
+  std::chrono::duration<double> hybridMC{0.0};   ///< Time for hybrid MC.
+  std::chrono::duration<double> hybridMCIntegration{0.0}; ///< Time for MD integration in hybrid MC. 
 
   /**
    * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.

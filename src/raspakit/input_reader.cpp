@@ -1515,7 +1515,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "OutputPDBMovie",
     "SampleMovieEvery",
     "Ensemble",
-    "TimeStep"
+    "TimeStep",
     "HybridMCMoveNumberOfSteps"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {

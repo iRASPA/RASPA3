@@ -56,6 +56,7 @@ export struct MCMoveProbabilitiesParticles
    * \param widomCFCMCProbability Probability of performing a Widom CFCMC.
    * \param widomCBCFCMCProbability Probability of performing a Widom CBCFCMC.
    * \param parallelTemperingProbability Probability of performing a parallel tempering.
+   * \param hybridMCProbability Probability of performing a hybrid MC move.
    */
   MCMoveProbabilitiesParticles(double translationProbability = 0.0, double randomTranslationProbability = 0.0,
                                double rotationProbability = 0.0, double randomRotationProbability = 0.0,

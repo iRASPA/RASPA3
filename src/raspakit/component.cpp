@@ -554,6 +554,7 @@ std::string Component::printStatus(const ForceField &forceField) const
   std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", mc.widomCFCMCProbability);
   std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", mc.widomCBCFCMCProbability);
   std::print(stream, "    Parallel Tempering Swap:                  {} [-]\n", mc.parallelTemperingProbability);
+  std::print(stream, "    Hybrid MC probability:                    {} [-]\n", mc.hybridMCProbability);
   std::print(stream, "\n");
 
   std::print(stream, "    number of blocking-pockets: {}\n", blockingPockets.size());
@@ -631,6 +632,7 @@ nlohmann::json Component::jsonStatus() const
   moves["Widom (CFCMC) probability"] = mc.widomCFCMCProbability;
   moves["Widom (CFCMC/CBMC) probability"] = mc.widomCBCFCMCProbability;
   moves["Parallel Tempering Swap"] = mc.parallelTemperingProbability;
+  moves["Hybrid MC probability"] = mc.hybridMCProbability;
 
   status["moveProbabilities"] = moves;
 
