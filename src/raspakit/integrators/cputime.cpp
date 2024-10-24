@@ -120,8 +120,6 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics() const
     std::print(stream, "Velocity Verlet:                      {:14f} [s]\n", velocityVerlet.count());
   }
 
-  std::print(stream, "\nTotal Integrators CPU Time:           {:14f} [s]\n", total().count());
-
   return stream.str();
 }
 
@@ -150,9 +148,8 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics(
   std::print(stream, "Update Gradients:                     {:14f} [s]\n", updateGradients.count());
   std::print(stream, "Velocity Verlet:                      {:14f} [s]\n", velocityVerlet.count());
 
-  std::print(stream, "\nTotal Integrators CPU Time:           {:14f} [s]\n", total().count());
   std::print(stream, "Total Simulation Time:                {:14f} [s]\n", totalSimulation.count());
-  std::print(stream, "Overhead:                             {:14f} [s]\n", totalSimulation.count() - total().count());
+  std::print(stream, "Overhead:                             {:14f} [s]\n", totalSimulation.count() - velocityVerlet.count());
 
   return stream.str();
 }

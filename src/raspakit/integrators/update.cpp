@@ -64,11 +64,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   // Update velocities and orientation momenta based on gradients
   for (Molecule& molecule : moleculePositions)
   {
-<<<<<<< HEAD
     molecule.velocity -= 0.5 * dt * molecule.gradient * molecule.invMass;
-=======
-    molecule.velocity = molecule.velocity - 0.5 * dt * molecule.gradient * molecule.invMass;
->>>>>>> origin/hybridmc3
     molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
@@ -178,7 +174,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
     for (size_t i = 0; i != span.size(); i++)
     {
       double atomMass = components[molecule.componentId].definedAtoms[i].second;
-      double3 F = q * (span[i].gradient - com_gradient * atomMass * molecule.invMass);
+      double3 F = M * (span[i].gradient - com_gradient * atomMass * molecule.invMass);
       double3 dr = components[molecule.componentId].atoms[i].position;
       torque += double3::cross(F, dr);
     }

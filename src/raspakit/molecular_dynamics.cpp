@@ -447,6 +447,8 @@ void MolecularDynamics::production()
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
+    t1 = std::chrono::system_clock::now();
+
     estimation.setCurrentSample(currentCycle);
 
     for (System& system : systems)
