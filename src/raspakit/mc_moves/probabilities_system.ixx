@@ -43,16 +43,10 @@ export struct MCMoveProbabilitiesSystem
   MCMoveProbabilitiesSystem(double volumeChangeProbability = 0.0, double gibbsVolumeChangeProbability = 0.0,
                             double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
 
-<<<<<<< HEAD
-  double volumeChangeProbability;
-  double gibbsVolumeChangeProbability;
-  double parallelTemperingProbability;
-  double hybridMCProbability;
-=======
   double volumeChangeProbability;       ///< Probability for volume change moves.
   double gibbsVolumeChangeProbability;  ///< Probability for Gibbs ensemble volume change moves.
   double parallelTemperingProbability;  ///< Probability for parallel tempering moves.
->>>>>>> main
+  double hybridMCProbability;           ///< Probability for hybrid MC moves.
 
   /**
    * \brief Optimizes move probabilities based on acceptance rates.

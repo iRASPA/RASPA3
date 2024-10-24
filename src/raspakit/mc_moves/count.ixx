@@ -78,7 +78,7 @@ export struct MCMoveCount
   size_t volumeMove;                ///< Count of volume moves performed.
   size_t GibbsVolumeMove;           ///< Count of Gibbs volume moves performed.
   size_t ParallelTemperingSwap;     ///< Count of parallel tempering swap moves performed.
-  size_t HybridMC;                  ///< Count of hybrid MC moves performed.
+  size_t hybridMC;                  ///< Count of hybrid MC moves performed.
 
   /**
    * \brief Calculates the total number of moves performed.

@@ -51,7 +51,7 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   for (Molecule& molecule : moleculePositions)
   {
     molecule.velocity = molecule.velocity - 0.5 * dt * molecule.gradient * molecule.invMass;
-    molecule.orientationMomentum = 0.5 * dt * molecule.orientationGradient;
+    molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
   }
 }
 
@@ -105,38 +105,36 @@ void Integrators::updateCenterOfMassAndQuaternionVelocities(std::span<Molecule> 
                                                             std::span<Atom> moleculeAtomPositions,
                                                             std::vector<Component> components)
 {
+
   size_t index{};
   for (Molecule& molecule : moleculePositions)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
 
-    double3 com_velocity;
-    double3 angularMomentum;
-
+    double3 com{};
     for (size_t i = 0; i != span.size(); i++)
     {
-      double atomMass = components[molecule.componentId].definedAtoms[i].second;
-      com_velocity += atomMass * span[i].velocity;
+      double mass = components[molecule.componentId].definedAtoms[i].second;
+      com += mass * span[i].position;
+    }
+    com = com * molecule.invMass;
 
-      double3 dr = span[i].position - molecule.centerOfMassPosition;
-      angularMomentum += atomMass * double3::cross(dr, span[i].velocity);
+    double3 com_velocity{};
+    double3 angularMomentum{};
+    for (size_t i = 0; i != span.size(); i++)
+    {
+      double mass = components[molecule.componentId].definedAtoms[i].second;
+      com_velocity += mass * span[i].velocity;
+
+      double3 dr = span[i].position - com;
+      angularMomentum += mass * double3::cross(dr, span[i].velocity);
     }
     molecule.velocity = com_velocity * molecule.invMass;
 
-    double3 I = components[molecule.componentId].inertiaVector;
-    double3 invI = components[molecule.componentId].inverseInertiaVector;
     simd_quatd q = molecule.orientation;
     double3x3 M = double3x3::buildRotationMatrix(q);
-    double3 angularVelocity = (M * angularMomentum) * invI;
-
-    molecule.orientationMomentum.ix =
-        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iy =
-        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.iz =
-        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
-    molecule.orientationMomentum.r =
-        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
+    simd_quatd omega(0.0, M * angularMomentum);
+    molecule.orientationMomentum = 2.0 * q * omega;
 
     index += molecule.numberOfAtoms;
   }
@@ -158,8 +156,8 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
     molecule.gradient = com_gradient;
 
     double3 torque{};
-    simd_quatd orientation = molecule.orientation;
-    double3x3 M = double3x3::buildRotationMatrix(orientation);
+    simd_quatd q = molecule.orientation;
+    double3x3 M = double3x3::buildRotationMatrix(q);
     for (size_t i = 0; i != span.size(); i++)
     {
       double atomMass = components[molecule.componentId].definedAtoms[i].second;
@@ -168,15 +166,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
       torque += double3::cross(F, dr);
     }
 
-    molecule.orientationGradient.ix =
-        -2.0 * (orientation.r * torque.x - orientation.iz * torque.y + orientation.iy * torque.z);
-    molecule.orientationGradient.iy =
-        -2.0 * (orientation.iz * torque.x + orientation.r * torque.y - orientation.ix * torque.z);
-    molecule.orientationGradient.iz =
-        -2.0 * (-orientation.iy * torque.x + orientation.ix * torque.y + orientation.r * torque.z);
-    molecule.orientationGradient.r =
-        -2.0 * (-orientation.ix * torque.x - orientation.iy * torque.y - orientation.iz * torque.z);
-
+    molecule.orientationGradient = -2.0 * q * simd_quatd(0.0, torque);
     index += molecule.numberOfAtoms;
   }
 }
