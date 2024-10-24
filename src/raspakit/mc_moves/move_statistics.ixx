@@ -29,22 +29,36 @@ import <functional>;
 import archive;
 
 export template <typename T>
+/**
+ * \brief Collects and manages statistical data for move operations.
+ *
+ * The `MoveStatistics` struct accumulates statistics related to move operations in simulations.
+ * It keeps track of counts, acceptance rates, and allows for optimization of move parameters
+ * based on these statistics.
+ *
+ * \tparam T The numeric type used for counting and statistical calculations (e.g., `double`).
+ */
 struct MoveStatistics
 {
-  uint64_t versionNumber{1};
+  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
-  T counts{};
-  T constructed{};
-  T accepted{};
-  std::size_t allCounts{};
-  T totalCounts{};
-  T totalConstructed{};
-  T totalAccepted{};
-  T maxChange{};
-  T targetAcceptance{0.5};
+  T counts{};               ///< Number of move attempts.
+  T constructed{};          ///< Number of moves constructed.
+  T accepted{};             ///< Number of moves accepted.
+  std::size_t allCounts{};  ///< Total number of counts across all types.
+  T totalCounts{};          ///< Total move attempts across all simulations.
+  T totalConstructed{};     ///< Total moves constructed across all simulations.
+  T totalAccepted{};        ///< Total moves accepted across all simulations.
+  T maxChange{};            ///< Maximum allowed change in move parameters.
+  T targetAcceptance{0.5};  ///< Target acceptance rate for moves.
 
+  /**
+   * \brief Resets the statistical counters.
+   *
+   * Clears all the counts and statistics to start fresh.
+   */
   void clear()
   {
     counts = T{};
@@ -56,6 +70,15 @@ struct MoveStatistics
     totalAccepted = T{};
   }
 
+  /**
+   * \brief Optimizes the acceptance rate of moves.
+   *
+   * Adjusts the maximum change allowed in move parameters based on the acceptance rate to approach the target
+   * acceptance rate.
+   *
+   * \param lowerLimit The lower limit for `maxChange` adjustment.
+   * \param upperLimit The upper limit for `maxChange` adjustment.
+   */
   void optimizeAcceptance(T lowerLimit = T(0.0), T upperLimit = T(1.0))
   {
     T ratio = accepted / (counts + T(1.0));

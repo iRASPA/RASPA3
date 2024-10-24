@@ -78,6 +78,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double newVolumeA = expdv * totalVolume / (1.0 + expdv);
   double newVolumeB = totalVolume - newVolumeA;
 
+  // Scale systemA to new volume and calculate new positions
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
   double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(),
                                                               systemA.numberOfIntegerMoleculesPerComponent.end()));
@@ -85,18 +86,21 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
 
+  // Compute new intermolecular energy for systemA
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalInterEnergyA =
       Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
+  // Compute new tail corrections for systemA
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalTailEnergyA =
       Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
+  // Compute new Ewald Fourier energy for systemA
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
       systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
@@ -104,11 +108,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 
+  // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
   systemA.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemA.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
 
+  // Scale systemB to new volume and calculate new positions
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
   double numberOfMoleculesB = static_cast<double>(std::reduce(systemB.numberOfIntegerMoleculesPerComponent.begin(),
                                                               systemB.numberOfIntegerMoleculesPerComponent.end()));
@@ -116,18 +122,21 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
 
+  // Compute new intermolecular energy for systemB
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalInterEnergyB =
       Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveNonEwald += (time_end - time_begin);
 
+  // Compute new tail corrections for systemB
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalTailEnergyB =
       Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveTail += (time_end - time_begin);
 
+  // Compute new Ewald Fourier energy for systemB
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
       systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
@@ -135,11 +144,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   time_end = std::chrono::system_clock::now();
   systemA.mc_moves_cputime.GibbsVolumeMoveEwald += (time_end - time_begin);
 
+  // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
 
   systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
   systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
 
+  // Calculate total energy change deltaU
   double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) +
                   (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
 
@@ -148,6 +159,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
                                   (static_cast<double>(numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
                                   (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
+    // Accept the move: update systems A and B with new configurations and energies
     systemA.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
     systemA.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
 
