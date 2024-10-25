@@ -51,7 +51,7 @@ void MCMoveStatisticsSystem::optimizeAcceptance()
   volumeMove.optimizeAcceptance(0.01, 1.5);
   GibbsVolumeMove.optimizeAcceptance(0.01, 1.5);
   ParallelTemperingSwap.optimizeAcceptance(0.01, 1.5);
-  hybridMC.optimizeAcceptance(0.00001, 0.001);
+  hybridMC.optimizeAcceptance(0.00001, 0.01);
 }
 
 static std::string formatStatistics(const std::string name, const MoveStatistics<double> &move)
