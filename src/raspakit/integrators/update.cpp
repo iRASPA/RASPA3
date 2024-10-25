@@ -111,12 +111,6 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
     simd_quatd q = molecule.orientation;
     molecule.orientationMomentum = 4.0 * q * simd_quatd(0.0, I * angularVelocity);
   }
-  double uKinTrans = computeTranslationalKineticEnergy(moleculePositions);
-  double uKinRot = computeRotationalKineticEnergy(moleculePositions, components);
-  std::cout << std::format("Translational kinetic: {}, temp {}\n", uKinTrans,
-                           2.0 * uKinTrans / (Units::KB * (3 * moleculePositions.size() - 3)));
-  std::cout << std::format("Rotational kinetic: {}, temp {}\n", uKinRot,
-                           2.0 * uKinRot / (Units::KB * 3 * moleculePositions.size()));
 }
 
 void Integrators::createCartesianPositions(std::span<const Molecule> moleculePositions,

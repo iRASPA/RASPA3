@@ -93,7 +93,6 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // Accept or reject move based on energy difference
   if (random.uniform() < std::exp(-system.beta * drift))
   {
-    std::cout << "accepted\n";
     system.mc_moves_statistics.hybridMC.accepted += 1;
     system.mc_moves_statistics.hybridMC.totalAccepted += 1;
 

@@ -16,6 +16,8 @@ import running_energy;
 import randomnumbers;
 import system;
 
+export namespace MC_Moves
+{
 /**
  * \brief Performs a hybrid Monte Carlo move on the system.
  *
@@ -34,4 +36,5 @@ import system;
  * \return An optional RunningEnergy object containing the system's energy if the move is accepted, or std::nullopt if
  * rejected.
  */
-export std::optional<RunningEnergy> hybridMCMove(RandomNumber& random, System& system);
+std::optional<RunningEnergy> hybridMCMove(RandomNumber& random, System& system);
+}  // namespace MC_Moves
