@@ -33,6 +33,12 @@ export namespace Integrators
 void scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling);
 
 /**
+ * \brief Removes total system velocity.
+ *
+ * \param moleculePositions Span of molecules whose velocities are to be scaled.
+ */
+void removeCenterOfMassVelocity(std::span<Molecule> moleculePositions);
+/**
  * \brief Updates the positions of molecules based on their velocities.
  *
  * \param moleculePositions Span of molecules whose positions are to be updated.

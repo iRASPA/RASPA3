@@ -33,6 +33,7 @@ export struct IntegratorsCPUTime
   std::chrono::duration<double> computeCenterOfMassVelocity{0.0};
   std::chrono::duration<double> computeLinearMomentum{0.0};
   std::chrono::duration<double> scaleVelocities{0.0};
+  std::chrono::duration<double> removeCenterOfMassVelocity{0.0};
   std::chrono::duration<double> updatePositions{0.0};
   std::chrono::duration<double> updateVelocities{0.0};
   std::chrono::duration<double> createCartesianPositions{0.0};
@@ -47,7 +48,7 @@ export struct IntegratorsCPUTime
   inline std::chrono::duration<double> total() const
   {
     return computeTranslationalKineticEnergy + computeRotationalKineticEnergy + computeCenterOfMass +
-           computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + updatePositions + updateVelocities +
+           computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + removeCenterOfMassVelocity+ updatePositions + updateVelocities +
            createCartesianPositions + noSquishFreeRotorOrderTwo + noSquishRotate +
            updateCenterOfMassAndQuaternionVelocities + updateCenterOfMassAndQuaternionGradients + updateGradients +
            velocityVerlet;
@@ -61,6 +62,7 @@ export struct IntegratorsCPUTime
     computeCenterOfMassVelocity = std::chrono::duration<double>{0.0};
     computeLinearMomentum = std::chrono::duration<double>{0.0};
     scaleVelocities = std::chrono::duration<double>{0.0};
+    removeCenterOfMassVelocity = std::chrono::duration<double>{0.0};
     updatePositions = std::chrono::duration<double>{0.0};
     updateVelocities = std::chrono::duration<double>{0.0};
     createCartesianPositions = std::chrono::duration<double>{0.0};
@@ -112,6 +114,7 @@ export struct IntegratorsCPUTime
     computeCenterOfMassVelocity += b.computeCenterOfMassVelocity;
     computeLinearMomentum += b.computeLinearMomentum;
     scaleVelocities += b.scaleVelocities;
+    removeCenterOfMassVelocity += b.removeCenterOfMassVelocity;
     updatePositions += b.updatePositions;
     updateVelocities += b.updateVelocities;
     createCartesianPositions += b.createCartesianPositions;
@@ -139,6 +142,7 @@ export inline IntegratorsCPUTime operator+(const IntegratorsCPUTime& a, const In
   m.computeCenterOfMassVelocity = a.computeCenterOfMassVelocity + b.computeCenterOfMassVelocity;
   m.computeLinearMomentum = a.computeLinearMomentum + b.computeLinearMomentum;
   m.scaleVelocities = a.scaleVelocities + b.scaleVelocities;
+  m.removeCenterOfMassVelocity = a.removeCenterOfMassVelocity + b.removeCenterOfMassVelocity;
   m.updatePositions = a.updatePositions + b.updatePositions;
   m.updateVelocities = a.updateVelocities + b.updateVelocities;
   m.createCartesianPositions = a.createCartesianPositions + b.createCartesianPositions;

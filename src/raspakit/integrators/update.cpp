@@ -5,6 +5,7 @@ module;
 #include <complex>
 #include <span>
 #include <vector>
+#include <iostream>
 #endif
 
 module integrators_update;
@@ -14,6 +15,7 @@ import <span>;
 import <vector>;
 import <complex>;
 import <chrono>;
+import <iostream>;
 #endif
 
 import molecule;
@@ -31,6 +33,7 @@ import interactions_ewald;
 import interactions_intermolecular;
 import interactions_framework_molecule;
 import integrators_cputime;
+import integrators_compute;
 import randomnumbers;
 import units;
 
@@ -45,6 +48,20 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pa
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.scaleVelocities += end - begin;
+}
+
+void Integrators::removeCenterOfMassVelocity(std::span<Molecule> moleculePositions)
+{
+  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+
+  double3 totalVelocity = computeCenterOfMassVelocity(moleculePositions);
+  // Scale velocities and orientation momenta of each molecule
+  for (Molecule& molecule : moleculePositions)
+  {
+    molecule.velocity -= totalVelocity;
+  }
+  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  integratorsCPUTime.removeCenterOfMassVelocity += end - begin;
 }
 
 void Integrators::updatePositions(std::span<Molecule> moleculePositions, double dt)
@@ -84,13 +101,19 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 
     // Draw random quaternion with variance by kBT / I
     double3 I = components[molecule.componentId].inertiaVector;
-    double3 invI = components[molecule.componentId].inertiaVector;
-    double3 angularVelocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
+    double3 invI = components[molecule.componentId].inverseInertiaVector;
+
+    // factor sqrt(3/2) added to match correct mean
+    double3 angularVelocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(3 * invI * Units::KB * temperature / 2);
 
     // rotate into orientation frame
     simd_quatd q = molecule.orientation;
-    molecule.orientationMomentum = 2.0 * q * simd_quatd(0.0, I * angularVelocity);
+    molecule.orientationMomentum = 4.0 * q * simd_quatd(0.0, I * angularVelocity);
   }
+  double uKinTrans = computeTranslationalKineticEnergy(moleculePositions);
+  double uKinRot = computeRotationalKineticEnergy(moleculePositions, components);
+  std::cout << std::format("Translational kinetic: {}, temp {}\n", uKinTrans, 2.0 * uKinTrans / (Units::KB * (3 * moleculePositions.size() - 3)));
+  std::cout << std::format("Rotational kinetic: {}, temp {}\n", uKinRot, 2.0 * uKinRot / (Units::KB * 3 * moleculePositions.size()));
 }
 
 void Integrators::createCartesianPositions(std::span<const Molecule> moleculePositions,

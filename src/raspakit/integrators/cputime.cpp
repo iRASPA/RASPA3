@@ -39,6 +39,7 @@ import stringutils;
 import archive;
 import json;
 
+
 const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics() const
 {
   std::ostringstream stream;
@@ -71,6 +72,11 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics() const
   if (scaleVelocities > std::chrono::duration<double>::zero())
   {
     std::print(stream, "Scale Velocities:                     {:14f} [s]\n", scaleVelocities.count());
+  }
+
+  if (removeCenterOfMassVelocity > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "Remove COM velocity:                  {:14f} [s]\n", removeCenterOfMassVelocity.count());
   }
 
   if (updatePositions > std::chrono::duration<double>::zero())
@@ -136,6 +142,7 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics(
   std::print(stream, "Compute Center of Mass Velocity:      {:14f} [s]\n", computeCenterOfMassVelocity.count());
   std::print(stream, "Compute Linear Momentum:              {:14f} [s]\n", computeLinearMomentum.count());
   std::print(stream, "Scale Velocities:                     {:14f} [s]\n", scaleVelocities.count());
+  std::print(stream, "Scale Velocities:                     {:14f} [s]\n", removeCenterOfMassVelocity.count());
   std::print(stream, "Update Positions:                     {:14f} [s]\n", updatePositions.count());
   std::print(stream, "Update Velocities:                    {:14f} [s]\n", updateVelocities.count());
   std::print(stream, "Create Cartesian Positions:           {:14f} [s]\n", createCartesianPositions.count());
@@ -164,6 +171,7 @@ const nlohmann::json IntegratorsCPUTime::jsonSystemIntegratorsCPUTimeStatistics(
   status["computeCenterOfMassVelocity"] = computeCenterOfMassVelocity.count();
   status["computeLinearMomentum"] = computeLinearMomentum.count();
   status["scaleVelocities"] = scaleVelocities.count();
+  status["removeCenterOfMassVelocity"] = removeCenterOfMassVelocity.count();
   status["updatePositions"] = updatePositions.count();
   status["updateVelocities"] = updateVelocities.count();
   status["createCartesianPositions"] = createCartesianPositions.count();
@@ -199,6 +207,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Integr
   archive << t.computeCenterOfMassVelocity;
   archive << t.computeLinearMomentum;
   archive << t.scaleVelocities;
+  archive << t.removeCenterOfMassVelocity;
   archive << t.updatePositions;
   archive << t.updateVelocities;
   archive << t.createCartesianPositions;
@@ -231,6 +240,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, IntegratorsC
   archive >> t.scaleVelocities;
   archive >> t.updatePositions;
   archive >> t.updateVelocities;
+  archive >> t.removeCenterOfMassVelocity;
   archive >> t.createCartesianPositions;
   archive >> t.noSquishFreeRotorOrderTwo;
   archive >> t.noSquishRotate;
