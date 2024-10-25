@@ -462,7 +462,7 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
 RunningEnergy Interactions::computeEwaldFourierGradient(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+    const std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
     const std::vector<size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomPositions)
 {
