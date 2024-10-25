@@ -30,14 +30,12 @@ import units;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
+  // Initialize time points for performance measurement
   std::chrono::system_clock::time_point time_begin, time_end;
 
   system.mc_moves_statistics.hybridMC.counts += 1;
   system.mc_moves_statistics.hybridMC.totalCounts += 1;
 
-  // all copied data: moleculePositions, moleculeAtomPositions, thermostat, dt
-  // all const data: components, forcefield, simulationbox, numberofmoleculespercomponents, fixedFrameworkStoredEik
-  // all scratch data: eik_x, eik_y, eik_z, eik_xy
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::vector<Atom> moleculeAtomPositions(atomPositions.size());
   std::copy(atomPositions.begin(), atomPositions.end(), moleculeAtomPositions.begin());
@@ -46,8 +44,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   std::optional<Thermostat> thermostat(system.thermostat);
   double dt = system.timeStep;
 
-  // initialize the velocities according to Boltzmann distribution
-  // NOTE: it is important that the reference energy has the initial kinetic energies
+  // Initialize velocities and remove center of mass velocity
   Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
   Integrators::removeCenterOfMassVelocity(moleculePositions);
 
@@ -59,11 +56,12 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   double uKinRot = Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
   double rotationalTemperature = 2.0 * uKinRot / (Units::KB * static_cast<double>(system.rotationalDegreesOfFreedom));
 
+  // Scale velocities based on temperature ratios
   std::pair<double, double> scaling(system.temperature / translationalTemperature,
                                     system.temperature / rotationalTemperature);
   Integrators::scaleVelocities(moleculePositions, scaling);
 
-  // before getting energy, recompute current energy
+  // Recompute current energy
   system.runningEnergies =
       Integrators::updateGradients(system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
                                    system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
@@ -74,7 +72,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   referenceEnergy.rotationalKineticEnergy =
       Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
 
-  // integrate for N steps
+  // Integrate for N steps
   time_begin = std::chrono::system_clock::now();
   RunningEnergy currentEnergy = referenceEnergy;
   for (size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
@@ -92,7 +90,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
 
-  // accept or reject based on energy difference
+  // Accept or reject move based on energy difference
   if (random.uniform() < std::exp(-system.beta * drift))
   {
     std::cout << "accepted\n";

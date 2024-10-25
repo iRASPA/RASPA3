@@ -62,7 +62,8 @@ void updateVelocities(std::span<Molecule> moleculePositions, double dt);
  * \param components Components to get the inertiaVector
  * \param temperature Temperature to set velocities to.
  */
-void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions, const std::vector<Component> components, double temperature);
+void initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions,
+                          const std::vector<Component> components, double temperature);
 
 /**
  * \brief Converts molecule positions and orientations into Cartesian atom positions.

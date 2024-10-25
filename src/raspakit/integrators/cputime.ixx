@@ -48,8 +48,8 @@ export struct IntegratorsCPUTime
   inline std::chrono::duration<double> total() const
   {
     return computeTranslationalKineticEnergy + computeRotationalKineticEnergy + computeCenterOfMass +
-           computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + removeCenterOfMassVelocity+ updatePositions + updateVelocities +
-           createCartesianPositions + noSquishFreeRotorOrderTwo + noSquishRotate +
+           computeCenterOfMassVelocity + computeLinearMomentum + scaleVelocities + removeCenterOfMassVelocity +
+           updatePositions + updateVelocities + createCartesianPositions + noSquishFreeRotorOrderTwo + noSquishRotate +
            updateCenterOfMassAndQuaternionVelocities + updateCenterOfMassAndQuaternionGradients + updateGradients +
            velocityVerlet;
   }

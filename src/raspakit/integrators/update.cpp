@@ -3,9 +3,9 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <chrono>
 #include <complex>
+#include <iostream>
 #include <span>
 #include <vector>
-#include <iostream>
 #endif
 
 module integrators_update;
@@ -90,8 +90,8 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   integratorsCPUTime.updateVelocities += end - begin;
 }
 
-
-void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions, const std::vector<Component> components, double temperature)
+void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule> moleculePositions,
+                                       const std::vector<Component> components, double temperature)
 {
   for (Molecule& molecule : moleculePositions)
   {
@@ -104,7 +104,8 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
     double3 invI = components[molecule.componentId].inverseInertiaVector;
 
     // factor sqrt(3/2) added to match correct mean
-    double3 angularVelocity = double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(3 * invI * Units::KB * temperature / 2);
+    double3 angularVelocity =
+        double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(3 * invI * Units::KB * temperature / 2);
 
     // rotate into orientation frame
     simd_quatd q = molecule.orientation;
@@ -112,8 +113,10 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
   }
   double uKinTrans = computeTranslationalKineticEnergy(moleculePositions);
   double uKinRot = computeRotationalKineticEnergy(moleculePositions, components);
-  std::cout << std::format("Translational kinetic: {}, temp {}\n", uKinTrans, 2.0 * uKinTrans / (Units::KB * (3 * moleculePositions.size() - 3)));
-  std::cout << std::format("Rotational kinetic: {}, temp {}\n", uKinRot, 2.0 * uKinRot / (Units::KB * 3 * moleculePositions.size()));
+  std::cout << std::format("Translational kinetic: {}, temp {}\n", uKinTrans,
+                           2.0 * uKinTrans / (Units::KB * (3 * moleculePositions.size() - 3)));
+  std::cout << std::format("Rotational kinetic: {}, temp {}\n", uKinRot,
+                           2.0 * uKinRot / (Units::KB * 3 * moleculePositions.size()));
 }
 
 void Integrators::createCartesianPositions(std::span<const Molecule> moleculePositions,

@@ -39,7 +39,6 @@ import stringutils;
 import archive;
 import json;
 
-
 const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics() const
 {
   std::ostringstream stream;
@@ -156,7 +155,8 @@ const std::string IntegratorsCPUTime::writeIntegratorsCPUTimeStatistics(
   std::print(stream, "Velocity Verlet:                      {:14f} [s]\n", velocityVerlet.count());
 
   std::print(stream, "Total Simulation Time:                {:14f} [s]\n", totalSimulation.count());
-  std::print(stream, "Overhead:                             {:14f} [s]\n", totalSimulation.count() - velocityVerlet.count());
+  std::print(stream, "Overhead:                             {:14f} [s]\n",
+             totalSimulation.count() - velocityVerlet.count());
 
   return stream.str();
 }
