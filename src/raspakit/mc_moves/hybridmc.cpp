@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <chrono>
+#include <iostream>
 #include <optional>
 #include <span>
 #endif
@@ -12,8 +13,10 @@ module mc_moves_hybridmc;
 import <chrono>;
 import <span>;
 import <optional>;
+import <iostream>;
 #endif
 
+import double3;
 import running_energy;
 import randomnumbers;
 import system;
@@ -21,8 +24,9 @@ import atom;
 import molecule;
 import integrators;
 import integrators_update;
+import integrators_compute;
 import thermostat;
-
+import units;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
@@ -32,8 +36,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   system.mc_moves_statistics.hybridMC.totalCounts += 1;
 
   // all copied data: moleculePositions, moleculeAtomPositions, thermostat, dt
-  // all const data: components, forcefield, simulationbox, numberofmoleculespercomponents
-  // all scratch data: eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik
+  // all const data: components, forcefield, simulationbox, numberofmoleculespercomponents, fixedFrameworkStoredEik
+  // all scratch data: eik_x, eik_y, eik_z, eik_xy
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   std::vector<Atom> moleculeAtomPositions(atomPositions.size());
   std::copy(atomPositions.begin(), atomPositions.end(), moleculeAtomPositions.begin());
@@ -43,11 +47,36 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   double dt = system.timeStep;
 
   // initialize the velocities according to Boltzmann distribution
+  // NOTE: it is important that the reference energy has the initial kinetic energies
   Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
+  Integrators::removeCenterOfMassVelocity(moleculePositions);
+
+  double uKinTrans = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  double translationalTemperature = 2.0 * uKinTrans /
+                                    (Units::KB * static_cast<double>(system.translationalDegreesOfFreedom -
+                                                                     system.translationalCenterOfMassConstraint));
+
+  double uKinRot = Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
+  double rotationalTemperature = 2.0 * uKinRot / (Units::KB * static_cast<double>(system.rotationalDegreesOfFreedom));
+
+  std::pair<double, double> scaling(system.temperature / translationalTemperature,
+                                    system.temperature / rotationalTemperature);
+  Integrators::scaleVelocities(moleculePositions, scaling);
+
+  // before getting energy, recompute current energy
+  system.runningEnergies =
+      Integrators::updateGradients(system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
+                                   system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
+                                   system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+
+  RunningEnergy referenceEnergy = system.runningEnergies;
+  referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  referenceEnergy.rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
 
   // integrate for N steps
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy currentEnergy;
+  RunningEnergy currentEnergy = referenceEnergy;
   for (size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
   {
     currentEnergy = Integrators::velocityVerlet(
@@ -61,11 +90,12 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   system.mc_moves_statistics.hybridMC.constructed += 1;
   system.mc_moves_statistics.hybridMC.totalConstructed += 1;
 
+  double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
 
   // accept or reject based on energy difference
-  if (random.uniform() <
-      std::exp(-system.beta * std::abs(currentEnergy.conservedEnergy() - system.runningEnergies.conservedEnergy())))
+  if (random.uniform() < std::exp(-system.beta * drift))
   {
+    std::cout << "accepted\n";
     system.mc_moves_statistics.hybridMC.accepted += 1;
     system.mc_moves_statistics.hybridMC.totalAccepted += 1;
 
@@ -75,6 +105,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
     std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomPositions.begin());
     system.spanOfMoleculeAtoms() = moleculeAtomPositions;
+
+    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
     return system.runningEnergies;
   }
   return std::nullopt;
