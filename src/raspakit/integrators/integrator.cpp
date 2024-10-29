@@ -33,6 +33,7 @@ RunningEnergy Integrators::velocityVerlet(
     std::span<Atom> frameworkAtomPositions, const ForceField& forceField, const SimulationBox& simulationBox,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
@@ -64,7 +65,7 @@ RunningEnergy Integrators::velocityVerlet(
   // compute the gradient on all the atoms
   RunningEnergy runningEnergies =
       updateGradients(moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x,
-                      eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
+                      eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
 
   // compute the gradients on the center of mass and the orientation
   updateCenterOfMassAndQuaternionGradients(moleculePositions, moleculeAtomPositions, components);

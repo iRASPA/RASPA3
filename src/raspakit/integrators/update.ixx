@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <complex>
+#include <optional>
 #include <span>
 #include <vector>
 #endif
@@ -12,6 +13,7 @@ export module integrators_update;
 import <span>;
 import <vector>;
 import <complex>;
+import <optional>;
 #endif
 
 import molecule;
@@ -37,7 +39,7 @@ void scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, do
  *
  * \param moleculePositions Span of molecules whose velocities are to be scaled.
  */
-void removeCenterOfMassVelocity(std::span<Molecule> moleculePositions);
+void removeCenterOfMassVelocityDrift(std::span<Molecule> moleculePositions);
 /**
  * \brief Updates the positions of molecules based on their velocities.
  *
@@ -127,6 +129,7 @@ RunningEnergy updateGradients(
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<size_t> numberOfMoleculesPerComponent);
 }  // namespace Integrators

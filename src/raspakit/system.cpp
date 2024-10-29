@@ -1659,9 +1659,9 @@ void System::precomputeTotalRigidEnergy() noexcept
 
 void System::precomputeTotalGradients() noexcept
 {
-  runningEnergies =
-      Integrators::updateGradients(spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components,
-                                   eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
+  runningEnergies = Integrators::updateGradients(spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField,
+                                                 simulationBox, components, eik_x, eik_y, eik_z, eik_xy, totalEik,
+                                                 fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -1849,22 +1849,6 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second = -(pressureInfo.second - correctionTerm);
 
   return pressureInfo;
-}
-
-
-void System::removeCenterOfMassVelocityDrift()
-{
-  double3 sum_velocity{};
-  for (Molecule& molecule : moleculePositions)
-  {
-    sum_velocity += molecule.velocity;
-  }
-
-  sum_velocity = sum_velocity / static_cast<double>(numberOfMolecules());
-  for (Molecule& molecule : moleculePositions)
-  {
-    molecule.velocity -= sum_velocity;
-  }
 }
 
 void System::checkCartesianPositions()

@@ -301,7 +301,6 @@ export struct System
   void createInitialMolecules(RandomNumber &random);
   void determineSimulationBox();
 
-  void removeCenterOfMassVelocityDrift();
   void checkCartesianPositions();
 
   void precomputeTotalRigidEnergy() noexcept;

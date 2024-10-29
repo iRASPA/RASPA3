@@ -372,8 +372,9 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.forceField,
-      system.simulationBox, system.components, system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(
       (factorEwald.ewald_fourier + factorEwald.ewald_self + factorEwald.ewald_exclusion) * Units::EnergyToKelvin,
@@ -481,8 +482,9 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.forceField,
-      system.simulationBox, system.components, system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, 103.939706389550, 1e-4);
@@ -508,10 +510,10 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
-  [[maybe_unused]] RunningEnergy gradientEnergy =
-      Integrators::updateGradients(system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
-                                   system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
-                                   system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+  [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
+      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
   // EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);
 

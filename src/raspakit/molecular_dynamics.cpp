@@ -282,7 +282,7 @@ void MolecularDynamics::equilibrate()
     Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
     Integrators::initializeVelocities(random, system.moleculePositions, system.components, system.temperature);
 
-    system.removeCenterOfMassVelocityDrift();
+    Integrators::removeCenterOfMassVelocityDrift(system.moleculePositions);
     if (system.thermostat.has_value())
     {
       if (system.frameworkComponents.empty() && system.numberOfMolecules() > 1uz)
@@ -322,7 +322,8 @@ void MolecularDynamics::equilibrate()
       system.runningEnergies = Integrators::velocityVerlet(
           system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+          system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -456,7 +457,8 @@ void MolecularDynamics::production()
       system.runningEnergies = Integrators::velocityVerlet(
           system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+          system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=

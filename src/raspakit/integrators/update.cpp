@@ -50,7 +50,7 @@ void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pa
   integratorsCPUTime.scaleVelocities += end - begin;
 }
 
-void Integrators::removeCenterOfMassVelocity(std::span<Molecule> moleculePositions)
+void Integrators::removeCenterOfMassVelocityDrift(std::span<Molecule> moleculePositions)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
 
@@ -235,6 +235,7 @@ RunningEnergy Integrators::updateGradients(
     const SimulationBox& simulationBox, const std::vector<Component> components,
     std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
@@ -252,7 +253,7 @@ RunningEnergy Integrators::updateGradients(
   RunningEnergy intermolecularEnergy =
       Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(
-      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, forceField, simulationBox, components,
+      eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
       numberOfMoleculesPerComponent, moleculeAtomPositions);
 
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
