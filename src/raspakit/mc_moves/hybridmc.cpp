@@ -31,13 +31,12 @@ import interactions_ewald;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
-  std::cout<<"before" << std::endl;
   std::chrono::system_clock::time_point time_begin, time_end;
 
   system.mc_moves_statistics.hybridMC.counts += 1;
   system.mc_moves_statistics.hybridMC.totalCounts += 1;
 
-  if (system.moleculePositions.size() == 0)
+  if (system.moleculePositions.size() <= 1)
   {
     return std::nullopt;
   }
@@ -97,7 +96,6 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   system.mc_moves_statistics.hybridMC.totalConstructed += 1;
 
   double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
-  std::cout<<"mid" << std::endl;
 
   // accept or reject based on energy difference
   if (random.uniform() < std::exp(-system.beta * drift))
@@ -114,9 +112,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
     Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-  std::cout<<"after1" << std::endl;
     return currentEnergy;
   }
-  std::cout<<"after2" << std::endl;
   return std::nullopt;
 }

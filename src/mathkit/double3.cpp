@@ -77,7 +77,7 @@ double3 double3::fract() const
   return s;
 }
 
-std::string double3::to_string()
+std::string double3::to_string() const
 {
   return "(" + std::to_string(this->x) + ", " + std::to_string(this->y) + ", " + std::to_string(this->z) + ")";
 }
