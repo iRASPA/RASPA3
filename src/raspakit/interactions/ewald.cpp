@@ -584,12 +584,23 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
           total.second = rigid.second + cksum.second;
 
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+
           double rigidEnergy =
               temp * (rigid.first.real() * rigid.first.real() + rigid.first.imag() * rigid.first.imag());
+
           energySum.ewald_fourier +=
               temp * (total.first.real() * total.first.real() + total.first.imag() * total.first.imag()) - rigidEnergy;
+
+          if (forceField.omitInterInteractions)
+          {
+            energySum.ewald_fourier -=
+                temp * (cksum.first.real() * cksum.first.real() + cksum.first.imag() * cksum.first.imag());
+          }
+
           energySum.dudlambdaEwald +=
-              2.0 * temp * (cksum.first.real() * cksum.second.real() + cksum.first.imag() * cksum.second.imag());
+              2.0 * temp * (total.first.real() * total.second.real() + total.first.imag() * total.second.imag());
+          energySum.dudlambdaEwald -=
+              2.0 * temp * (rigid.first.real() * rigid.second.real() + rigid.first.imag() * rigid.second.imag());
 
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
@@ -598,12 +609,11 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             std::complex<double> cki = eik_xy[i] * eikz_temp;
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
-            atomPositions[i].gradient -= scaling * charge * 2.0 * temp *
-                                         (cki.imag() * cksum.first.real() - cki.real() * cksum.first.imag()) * rk;
+            atomPositions[i].gradient -=
+                scaling * charge * 2.0 * temp * (cki.imag() * cksum.first.real() - cki.real() * cksum.first.imag()) * rk;
           }
 
-          totalEik[nvec].first = rigid.first + cksum.first;
-          totalEik[nvec].second = rigid.second + cksum.second;
+          totalEik[nvec] = total;
           ++nvec;
         }
       }
