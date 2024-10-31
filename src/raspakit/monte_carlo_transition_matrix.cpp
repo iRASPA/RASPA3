@@ -392,7 +392,7 @@ void MonteCarloTransitionMatrix::equilibrate()
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}",
-                   system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
+                   system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
@@ -507,7 +507,7 @@ void MonteCarloTransitionMatrix::production()
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReportMC("Production", currentCycle, numberOfCycles));
+        std::print(stream, "{}", system.writeProductionStatusReportMC(currentCycle, numberOfCycles));
         std::flush(stream);
       }
     }

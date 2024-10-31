@@ -377,7 +377,7 @@ void MonteCarlo::equilibrate()
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}",
-                   system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
+                   system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }

@@ -37,25 +37,26 @@ export struct MCMoveProbabilitiesParticles
    * Initializes the move probabilities for various Monte Carlo moves. The probabilities
    * are normalized so that their sum equals 1.
    *
-   * \param translationProbability Probability of performing a translation move.
-   * \param randomTranslationProbability Probability of performing a random translation move.
-   * \param rotationProbability Probability of performing a rotation move.
-   * \param randomRotationProbability Probability of performing a random rotation move.
-   * \param volumeChangeProbability Probability of performing a volume change move.
-   * \param reinsertionCBMCProbability Probability of performing a reinsertion CBMC move.
-   * \param identityChangeCBMCProbability Probability of performing an identity change CBMC move.
-   * \param swapProbability Probability of performing a swap move.
-   * \param swapCBMCProbability Probability of performing a swap CBMC move.
-   * \param swapCFCMCProbability Probability of performing a swap CFCMC move.
-   * \param swapCBCFCMCProbability Probability of performing a swap CBCFCMC move.
-   * \param gibbsVolumeChangeProbability Probability of performing a Gibbs volume change move.
-   * \param gibbsSwapCBMCProbability Probability of performing a Gibbs swap CBMC move.
-   * \param gibbsSwapCFCMCProbability Probability of performing a Gibbs swap CFCMC move.
-   * \param gibbsSwapCBCFCMCProbability Probability of performing a Gibbs swap CBCFCMC move.
-   * \param widomProbability Probability of performing a Widom insertion move.
-   * \param widomCFCMCProbability Probability of performing a Widom CFCMC move.
-   * \param widomCBCFCMCProbability Probability of performing a Widom CBCFCMC move.
-   * \param parallelTemperingProbability Probability of performing a parallel tempering move.
+   * \param translationProbability Probability of performing a translation.
+   * \param randomTranslationProbability Probability of performing a random translation.
+   * \param rotationProbability Probability of performing a rotation.
+   * \param randomRotationProbability Probability of performing a random rotation.
+   * \param volumeChangeProbability Probability of performing a volume change.
+   * \param reinsertionCBMCProbability Probability of performing a reinsertion CBMC.
+   * \param identityChangeCBMCProbability Probability of performing an identity change CBMC.
+   * \param swapProbability Probability of performing a swap.
+   * \param swapCBMCProbability Probability of performing a swap CBMC.
+   * \param swapCFCMCProbability Probability of performing a swap CFCMC.
+   * \param swapCBCFCMCProbability Probability of performing a swap CBCFCMC.
+   * \param gibbsVolumeChangeProbability Probability of performing a Gibbs volume change.
+   * \param gibbsSwapCBMCProbability Probability of performing a Gibbs swap CBMC.
+   * \param gibbsSwapCFCMCProbability Probability of performing a Gibbs swap CFCMC.
+   * \param gibbsSwapCBCFCMCProbability Probability of performing a Gibbs swap CBCFCMC.
+   * \param widomProbability Probability of performing a Widom insertion.
+   * \param widomCFCMCProbability Probability of performing a Widom CFCMC.
+   * \param widomCBCFCMCProbability Probability of performing a Widom CBCFCMC.
+   * \param parallelTemperingProbability Probability of performing a parallel tempering.
+   * \param hybridMCProbability Probability of performing a hybrid MC move.
    */
   MCMoveProbabilitiesParticles(double translationProbability = 0.0, double randomTranslationProbability = 0.0,
                                double rotationProbability = 0.0, double randomRotationProbability = 0.0,
@@ -66,51 +67,49 @@ export struct MCMoveProbabilitiesParticles
                                double gibbsSwapCBMCProbability = 0.0, double gibbsSwapCFCMCProbability = 0.0,
                                double gibbsSwapCBCFCMCProbability = 0.0, double widomProbability = 0.0,
                                double widomCFCMCProbability = 0.0, double widomCBCFCMCProbability = 0.0,
-                               double parallelTemperingProbability = 0.0);
+                               double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
 
-  double translationProbability;         ///< Probability of performing a translation move. ///<<
-  double randomTranslationProbability;   ///< Probability of performing a random translation move. ///<<
-  double rotationProbability;            ///< Probability of performing a rotation move. ///<<
-  double randomRotationProbability;      ///< Probability of performing a random rotation move. ///<<
-  double volumeChangeProbability;        ///< Probability of performing a volume change move. ///<<
-  double reinsertionCBMCProbability;     ///< Probability of performing a reinsertion CBMC move. ///<<
-  double identityChangeCBMCProbability;  ///< Probability of performing an identity change CBMC move. ///<<
-  double swapProbability;                ///< Probability of performing a swap move. ///<<
-  double swapCBMCProbability;            ///< Probability of performing a swap CBMC move. ///<<
-  double swapCFCMCProbability;           ///< Probability of performing a swap CFCMC move. ///<<
-  double swapCBCFCMCProbability;         ///< Probability of performing a swap CBCFCMC move. ///<<
-  double gibbsVolumeChangeProbability;   ///< Probability of performing a Gibbs volume change move. ///<<
-  double gibbsSwapCBMCProbability;       ///< Probability of performing a Gibbs swap CBMC move. ///<<
-  double gibbsSwapCFCMCProbability;      ///< Probability of performing a Gibbs swap CFCMC move. ///<<
-  double gibbsSwapCBCFCMCProbability;    ///< Probability of performing a Gibbs swap CBCFCMC move. ///<<
-  double widomProbability;               ///< Probability of performing a Widom insertion move. ///<<
-  double widomCFCMCProbability;          ///< Probability of performing a Widom CFCMC move. ///<<
-  double widomCBCFCMCProbability;        ///< Probability of performing a Widom CBCFCMC move. ///<<
-  double parallelTemperingProbability;   ///< Probability of performing a parallel tempering move. ///<<
+  double translationProbability;         ///< Probability of performing a translation.
+  double randomTranslationProbability;   ///< Probability of performing a random translation.
+  double rotationProbability;            ///< Probability of performing a rotation.
+  double randomRotationProbability;      ///< Probability of performing a random rotation.
+  double volumeChangeProbability;        ///< Probability of performing a volume change.
+  double reinsertionCBMCProbability;     ///< Probability of performing a reinsertion CBMC.
+  double identityChangeCBMCProbability;  ///< Probability of performing an identity change CBMC.
+  double swapProbability;                ///< Probability of performing a swap.
+  double swapCBMCProbability;            ///< Probability of performing a swap CBMC.
+  double swapCFCMCProbability;           ///< Probability of performing a swap CFCMC.
+  double swapCBCFCMCProbability;         ///< Probability of performing a swap CBCFCMC.
+  double gibbsVolumeChangeProbability;   ///< Probability of performing a Gibbs volume change.
+  double gibbsSwapCBMCProbability;       ///< Probability of performing a Gibbs swap CBMC.
+  double gibbsSwapCFCMCProbability;      ///< Probability of performing a Gibbs swap CFCMC.
+  double gibbsSwapCBCFCMCProbability;    ///< Probability of performing a Gibbs swap CBCFCMC.
+  double widomProbability;               ///< Probability of performing a Widom insertion.
+  double widomCFCMCProbability;          ///< Probability of performing a Widom CFCMC.
+  double widomCBCFCMCProbability;        ///< Probability of performing a Widom CBCFCMC.
+  double parallelTemperingProbability;   ///< Probability of performing a parallel tempering.
+  double hybridMCProbability;            ///< Probability of performing a Hybrid MC.
 
-  double accumulatedTranslationProbability{0.0};  ///< Accumulated probability up to translation move. ///<<
-  double accumulatedRandomTranslationProbability{
-      0.0};                                           ///< Accumulated probability up to random translation move. ///<<
-  double accumulatedRotationProbability{0.0};         ///< Accumulated probability up to rotation move. ///<<
-  double accumulatedRandomRotationProbability{0.0};   ///< Accumulated probability up to random rotation move. ///<<
-  double accumulatedVolumeChangeProbability{0.0};     ///< Accumulated probability up to volume change move. ///<<
-  double accumulatedReinsertionCBMCProbability{0.0};  ///< Accumulated probability up to reinsertion CBMC move. ///<<
-  double accumulatedIdentityChangeCBMCProbability{
-      0.0};                                       ///< Accumulated probability up to identity change CBMC move. ///<<
-  double accumulatedSwapProbability{0.0};         ///< Accumulated probability up to swap move. ///<<
-  double accumulatedSwapCBMCProbability{0.0};     ///< Accumulated probability up to swap CBMC move. ///<<
-  double accumulatedSwapCFCMCProbability{0.0};    ///< Accumulated probability up to swap CFCMC move. ///<<
-  double accumulatedSwapCBCFCMCProbability{0.0};  ///< Accumulated probability up to swap CBCFCMC move. ///<<
-  double accumulatedGibbsVolumeChangeProbability{
-      0.0};                                          ///< Accumulated probability up to Gibbs volume change move. ///<<
-  double accumulatedGibbsSwapCBMCProbability{0.0};   ///< Accumulated probability up to Gibbs swap CBMC move. ///<<
-  double accumulatedGibbsSwapCFCMCProbability{0.0};  ///< Accumulated probability up to Gibbs swap CFCMC move. ///<<
-  double accumulatedGibbsSwapCBCFCMCProbability{0.0};  ///< Accumulated probability up to Gibbs swap CBCFCMC move. ///<<
-  double accumulatedWidomProbability{0.0};             ///< Accumulated probability up to Widom insertion move. ///<<
-  double accumulatedWidomCFCMCProbability{0.0};        ///< Accumulated probability up to Widom CFCMC move. ///<<
-  double accumulatedWidomCBCFCMCProbability{0.0};      ///< Accumulated probability up to Widom CBCFCMC move. ///<<
-  double accumulatedParallelTemperingProbability{
-      0.0};  ///< Accumulated probability up to parallel tempering move. ///<<
+  double accumulatedTranslationProbability{0.0};         ///< Normalized probability to perform translation.
+  double accumulatedRandomTranslationProbability{0.0};   ///< Normalized probability to perform random translation.
+  double accumulatedRotationProbability{0.0};            ///< Normalized probability to perform rotation.
+  double accumulatedRandomRotationProbability{0.0};      ///< Normalized probability to perform random rotation.
+  double accumulatedVolumeChangeProbability{0.0};        ///< Normalized probability to perform volume change.
+  double accumulatedReinsertionCBMCProbability{0.0};     ///< Normalized probability to perform reinsertion CBMC.
+  double accumulatedIdentityChangeCBMCProbability{0.0};  ///< Normalized probability to perform identity change CBMC.
+  double accumulatedSwapProbability{0.0};                ///< Normalized probability to perform swap.
+  double accumulatedSwapCBMCProbability{0.0};            ///< Normalized probability to perform swap CBMC.
+  double accumulatedSwapCFCMCProbability{0.0};           ///< Normalized probability to perform swap CFCMC.
+  double accumulatedSwapCBCFCMCProbability{0.0};         ///< Normalized probability to perform swap CBCFCMC.
+  double accumulatedGibbsVolumeChangeProbability{0.0};   ///< Normalized probability to perform Gibbs volume change.
+  double accumulatedGibbsSwapCBMCProbability{0.0};       ///< Normalized probability to perform Gibbs swap CBMC.
+  double accumulatedGibbsSwapCFCMCProbability{0.0};      ///< Normalized probability to perform Gibbs swap CFCMC.
+  double accumulatedGibbsSwapCBCFCMCProbability{0.0};    ///< Normalized probability to perform Gibbs swap CBCFCMC.
+  double accumulatedWidomProbability{0.0};               ///< Normalized probability to perform Widom insertion.
+  double accumulatedWidomCFCMCProbability{0.0};          ///< Normalized probability to perform Widom CFCMC.
+  double accumulatedWidomCBCFCMCProbability{0.0};        ///< Normalized probability to perform Widom CBCFCMC.
+  double accumulatedParallelTemperingProbability{0.0};   ///< Normalized probability to perform parallel tempering.
+  double accumulatedHybridMCProbability{0.0};            ///< Normalized probability to perform hybrid MC.
 
   /**
    * \brief Normalizes the move probabilities so that they sum to 1.

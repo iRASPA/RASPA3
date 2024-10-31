@@ -58,6 +58,7 @@ void MCMoveCount::clearCountStatistics()
   volumeMove = size_t{0};
   GibbsVolumeMove = size_t{0};
   ParallelTemperingSwap = size_t{0};
+  hybridMC = size_t{0};
 }
 
 /*
@@ -296,6 +297,11 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
       std::print(stream, "Parallel Tempering Swap:     {:14f} [%]\n",
                  100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal));
     }
+    if (hybridMC)
+    {
+      std::print(stream, "Hybrid MC:                   {:14f} [%]\n",
+                 100.0 * static_cast<double>(hybridMC) / static_cast<double>(countTotal));
+    }
 
     std::print(stream, "\n");
     std::print(stream, "Production count MC-steps:   {:14d} [-]\n\n", countTotal);
@@ -319,6 +325,7 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
     std::print(stream, "Volume:                      {:14d} [-]\n", volumeMove);
     std::print(stream, "Gibbs Volume:                {:14d} [-]\n", GibbsVolumeMove);
     std::print(stream, "Parallel Tempering Swap:     {:14d} [-]\n", ParallelTemperingSwap);
+    std::print(stream, "Hybrid MC:                   {:14d} [-]\n", hybridMC);
     std::print(stream, "                All summed:  {:14d} [-]\n", total());
     std::print(stream, "                difference:  {:14d} [-]\n", countTotal - total());
 
@@ -422,6 +429,10 @@ const nlohmann::json MCMoveCount::jsonAllSystemStatistics(size_t countTotal) con
       percentage["parallelTemperingSwap"] =
           100.0 * static_cast<double>(ParallelTemperingSwap) / static_cast<double>(countTotal);
     }
+    if (hybridMC)
+    {
+      percentage["hybridMC"] = 100.0 * static_cast<double>(hybridMC) / static_cast<double>(countTotal);
+    }
 
     count["countTotal"] = countTotal;
 
@@ -444,6 +455,7 @@ const nlohmann::json MCMoveCount::jsonAllSystemStatistics(size_t countTotal) con
     count["volume"] = volumeMove;
     count["gibbsVolume"] = GibbsVolumeMove;
     count["parallelTemperingSwap"] = ParallelTemperingSwap;
+    count["hybridMC"] = hybridMC;
     count["sum"] = total();
     count["difference"] = countTotal - total();
   }
@@ -476,6 +488,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << c.volumeMove;
   archive << c.GibbsVolumeMove;
   archive << c.ParallelTemperingSwap;
+  archive << c.hybridMC;
 
   return archive;
 }
@@ -510,6 +523,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
   archive >> c.volumeMove;
   archive >> c.GibbsVolumeMove;
   archive >> c.ParallelTemperingSwap;
+  archive >> c.hybridMC;
 
   return archive;
 }

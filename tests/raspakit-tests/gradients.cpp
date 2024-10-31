@@ -26,6 +26,9 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
+import integrators;
+import integrators_compute;
+import integrators_update;
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
@@ -50,7 +53,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(1, 1, 1));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), 0.0, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 3, 1, 0),
@@ -145,7 +148,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), 0.0, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 3, 1, 0),
@@ -244,7 +247,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
@@ -350,7 +353,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
@@ -369,8 +372,9 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.forceField,
-      system.simulationBox, system.components, system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(
       (factorEwald.ewald_fourier + factorEwald.ewald_self + factorEwald.ewald_exclusion) * Units::EnergyToKelvin,
@@ -454,7 +458,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
@@ -478,8 +482,9 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
 
   system.precomputeTotalRigidEnergy();
   [[maybe_unused]] RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.forceField,
-      system.simulationBox, system.components, system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms());
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+      system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+      system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, 103.939706389550, 1e-4);
@@ -505,7 +510,10 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
-  [[maybe_unused]] RunningEnergy gradientEnergy = system.computeTotalGradients();
+  [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
+      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
   // EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);
 
@@ -558,7 +566,7 @@ uint8_t groupId Atom(double3(0.3683, 0.1847, 0),       2.05,  1.0, 0, 0, 0, 0), 
 0.1098), -1.025, 1.0, 0, 1, 0, 0)
     },
     int3(1, 1, 1));
-  Component c = Component(1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+  Component c = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
     { // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
 uint8_t groupId
       //Atom(double3(0.0, 0.0,  1.149), 0.0, 1.0, 0, 4, 1, 0),
@@ -935,7 +943,7 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
                            Atom(double3(0.1085, -0.25, 0.0611), -1.025, 1.0, 0, 1, 0, 0)},
                           int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),

@@ -904,6 +904,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         mc_moves_probabilities.parallelTemperingProbability = value["ParallelTemperingSwapProbability"].get<double>();
       }
+      if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
+      {
+        mc_moves_probabilities.hybridMCProbability = value["HybridMCProbability"].get<double>();
+      }
 
       if (!value.contains("Type"))
       {
@@ -1309,6 +1313,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         systems[systemId].timeStep = value["TimeStep"].get<double>();
       }
+      if (value.contains("HybridMCMoveNumberOfSteps") && value["HybridMCMoveNumberOfSteps"].is_number_unsigned())
+      {
+        systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<size_t>();
+        if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
+        {
+          systems[systemId].mc_moves_statistics.hybridMC.maxChange = value["Timestep"].get<double>();
+        }
+      }
 
       systemId++;
     }
@@ -1490,6 +1502,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "VolumeMoveProbability",
     "GibbsVolumeMoveProbability",
     "ParallelTemperingSwapProbability",
+    "HybridMCProbability",
+    "HybridMCNumberOfSteps",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",

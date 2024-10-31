@@ -26,6 +26,9 @@ import interactions_intermolecular;
 import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
+import integrators;
+import integrators_compute;
+import integrators_update;
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
@@ -53,7 +56,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
@@ -78,8 +81,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  system.computeTotalGradients();
-  system.computeCenterOfMassAndQuaternionGradients();
+  Integrators::updateGradients(system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
+                               system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
+                               system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                               system.numberOfMoleculesPerComponent);
+  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculePositions, system.spanOfMoleculeAtoms(),
+                                                        system.components);
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, 103.939706389550, 1e-4);
@@ -146,7 +153,7 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
        Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
       int3(2, 2, 2));
   Component c = Component(
-      1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
@@ -171,8 +178,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  system.computeTotalGradients();
-  system.computeCenterOfMassAndQuaternionGradients();
+  Integrators::updateGradients(system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField,
+                               system.simulationBox, system.components, system.eik_x, system.eik_y, system.eik_z,
+                               system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                               system.numberOfMoleculesPerComponent);
+  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculePositions, system.spanOfMoleculeAtoms(),
+                                                        system.components);
 
   EXPECT_NEAR(atomPositions[0].gradient.x, -401.918996903652, 1e-4);
   EXPECT_NEAR(atomPositions[0].gradient.y, -250.086986676442, 1e-4);
@@ -273,6 +284,15 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
   atomPositions[8].position = double3(7.675123524814, 7.830783863478, 9.734158102333);
   atomPositions[9].position = double3(8.525606355084, 8.431855339730, 9.262947938533);
 
+  double3 com0, com1;
+  for (size_t i = 0; i < 5; ++i)
+  {
+    com0 += atomPositions[i].position * c.definedAtoms[i].second;
+    com1 += atomPositions[i].position * c.definedAtoms[i].second;
+  }
+  system.moleculePositions[0].centerOfMassPosition = com0 / system.moleculePositions[0].invMass;
+  system.moleculePositions[1].centerOfMassPosition = com1 / system.moleculePositions[0].invMass;
+
   atomPositions[0].velocity = double3(-2.56934959, 3.49026313, 2.46235469);
   atomPositions[1].velocity = double3(14.83854769, 8.31306952, -5.59358085);
   atomPositions[2].velocity = double3(-10.83853213, 19.76930089, -0.17504625);
@@ -301,9 +321,14 @@ TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
               -578.26684244 + 18.14933840, 1e-4);
   EXPECT_NEAR(energy.potentialEnergy() * Units::EnergyToKelvin, 15068.729964973694, 1e-4);
 
-  RunningEnergy force = system.computeTotalGradients();
-  system.computeCenterOfMassAndQuaternionGradients();
-  system.computeCenterOfMassAndQuaternionVelocities();
+  RunningEnergy force = Integrators::updateGradients(
+      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
+      system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+  Integrators::updateCenterOfMassAndQuaternionGradients(system.moleculePositions, system.spanOfMoleculeAtoms(),
+                                                        system.components);
+  Integrators::updateCenterOfMassAndQuaternionVelocities(system.moleculePositions, system.spanOfMoleculeAtoms(),
+                                                         system.components);
 
   EXPECT_NEAR(force.frameworkMoleculeVDW * Units::EnergyToKelvin, 13286.65000939, 1e-4);
   EXPECT_NEAR(force.frameworkMoleculeCharge * Units::EnergyToKelvin, 2340.77151436, 1e-4);
