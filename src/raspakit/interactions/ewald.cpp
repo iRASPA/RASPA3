@@ -610,7 +610,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
             atomPositions[i].gradient -=
-                scaling * charge * 2.0 * temp * (cki.imag() * cksum.first.real() - cki.real() * cksum.first.imag()) * rk;
+                scaling * charge * 2.0 * temp * (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk;
           }
 
           totalEik[nvec] = total;
