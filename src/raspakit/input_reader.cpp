@@ -1503,7 +1503,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "GibbsVolumeMoveProbability",
     "ParallelTemperingSwapProbability",
     "HybridMCProbability",
-    "HybridMCNumberOfSteps",
+    "HybridMCMoveNumberOfSteps",
     "Type",
     "ExternalTemperature",
     "ExternalPressure",

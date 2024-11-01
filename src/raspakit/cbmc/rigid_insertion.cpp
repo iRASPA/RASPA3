@@ -69,7 +69,8 @@ import component;
 
   if (components[selectedComponent].atoms.size() == 1)
   {
-    return ChainData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0)),
+    return ChainData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
+                              component.totalMass, component.componentId, component.definedAtoms.size()),
                      {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
@@ -122,7 +123,9 @@ import component;
                     atom.setScaling(scaling);
                   });
 
-    trialPositions.push_back({Molecule(shift, orientation), randomlyRotatedAtoms});
+    trialPositions.push_back(
+        {Molecule(shift, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+         randomlyRotatedAtoms});
   };
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =

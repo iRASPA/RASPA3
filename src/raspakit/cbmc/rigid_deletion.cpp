@@ -73,8 +73,10 @@ import cbmc_multiple_first_bead;
 
   if (molecule.size() == 1)
   {
-    return ChainData(Molecule(double3(), simd_quatd()), std::vector<Atom>(molecule.begin(), molecule.end()),
-                     firstBeadData.energies, firstBeadData.RosenbluthWeight, 0.0);
+    return ChainData(
+        Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
+        std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight,
+        0.0);
   }
 
   const ChainData rigidRotationData =
@@ -82,9 +84,10 @@ import cbmc_multiple_first_bead;
                         frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
                         startingBead, scaling, molecule, numberOfTrialDirections);
 
-  return ChainData(Molecule(double3(), simd_quatd()), std::vector<Atom>(molecule.begin(), molecule.end()),
-                   firstBeadData.energies + rigidRotationData.energies,
-                   firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
+  return ChainData(
+      Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
+      std::vector<Atom>(molecule.begin(), molecule.end()), firstBeadData.energies + rigidRotationData.energies,
+      firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
 [[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const std::vector<Framework> &frameworkComponents,
@@ -119,6 +122,7 @@ import cbmc_multiple_first_bead;
       std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                   [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
 
-  return ChainData(Molecule(double3(), simd_quatd()), trialPositions[0], externalEnergies[0].second,
-                   RosenbluthWeight / double(numberOfTrialDirections), 0.0);
+  return ChainData(
+      Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
+      trialPositions[0], externalEnergies[0].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }
