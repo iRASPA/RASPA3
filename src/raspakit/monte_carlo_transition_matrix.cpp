@@ -88,7 +88,7 @@ import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
 
-MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt){};
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt) {};
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -391,8 +391,7 @@ void MonteCarloTransitionMatrix::equilibrate()
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-        std::print(stream, "{}",
-                   system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }

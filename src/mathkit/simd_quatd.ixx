@@ -4,8 +4,8 @@ module;
 #include <fstream>
 #include <map>
 #include <ostream>
-#include <vector>
 #include <string>
+#include <vector>
 #endif
 
 export module simd_quatd;

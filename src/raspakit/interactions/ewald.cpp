@@ -609,8 +609,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
             std::complex<double> cki = eik_xy[i] * eikz_temp;
             double charge = atomPositions[i].charge;
             double scaling = atomPositions[i].scalingCoulomb;
-            atomPositions[i].gradient -=
-                scaling * charge * 2.0 * temp * (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk;
+            atomPositions[i].gradient -= scaling * charge * 2.0 * temp *
+                                         (cki.imag() * total.first.real() - cki.real() * total.first.imag()) * rk;
           }
 
           totalEik[nvec] = total;
