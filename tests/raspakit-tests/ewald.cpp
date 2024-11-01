@@ -21,7 +21,7 @@ import system;
 import simulationbox;
 import energy_factor;
 import running_energy;
-import force_factor;
+import gradient_factor;
 import energy_status;
 import units;
 import interactions_intermolecular;

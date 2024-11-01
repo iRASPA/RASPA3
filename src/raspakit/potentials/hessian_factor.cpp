@@ -13,7 +13,7 @@ module;
 #include <vector>
 #endif
 
-module force_factor;
+module hessian_factor;
 
 #ifndef USE_LEGACY_HEADERS
 import <fstream>;
@@ -30,19 +30,21 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceFactor &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const HessianFactor &e)
 {
   archive << e.energy;
-  archive << e.forceFactor;
+  archive << e.firstDerivativeFactor;
+  archive << e.secondDerivativeFactor;
   archive << e.dUdlambda;
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceFactor &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, HessianFactor &e)
 {
   archive >> e.energy;
-  archive >> e.forceFactor;
+  archive >> e.firstDerivativeFactor;
+  archive >> e.secondDerivativeFactor;
   archive >> e.dUdlambda;
 
   return archive;

@@ -18,7 +18,7 @@ import double4;
 
 import units;
 import forcefield;
-import force_factor;
+import gradient_factor;
 
 /**
  * \brief Computes the gradient of the Coulomb potential.
@@ -39,7 +39,7 @@ import force_factor;
  *
  * \note This function returns D[U[r], r] / r, where U[r] is the potential energy.
  */
-export [[clang::always_inline]] inline ForceFactor potentialCoulombGradient(
+export [[clang::always_inline]] inline GradientFactor potentialCoulombGradient(
     const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA,
     const double& scalingB, const double& r, const double& chargeA, const double& chargeB)
 {
@@ -51,30 +51,20 @@ export [[clang::always_inline]] inline ForceFactor potentialCoulombGradient(
     {
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      ForceFactor result = ForceFactor(scaling * temp,
-                                       -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                           ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) *
-                                                                        std::numbers::inv_sqrtpi_v<double>) /
-                                            (r * r * r)),
-                                       (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0));
-      return result;
+      return GradientFactor(scaling * temp,
+                            (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
+                            -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+                            ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * r * r) *
+                            std::numbers::inv_sqrtpi_v<double>) / (r * r * r)));
     }
     case ForceField::ChargeMethod::Coulomb:
     {
-      return ForceFactor(scaling * chargeA * chargeB / r, 0.0, 0.0);
-    }
-    case ForceField::ChargeMethod::Wolf:
-    {
-      return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0, 0.0);
-    }
-    case ForceField::ChargeMethod::ModifiedWolf:
-    {
-      return ForceFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0, 0.0);
+      return GradientFactor(scaling * chargeA * chargeB / r, 0.0, 0.0);
     }
     default:
       break;
   }
 
   // In case of an unsupported charge method, return a default ForceFactor.
-  return ForceFactor(0.0, 0.0, 0.0);
+  return GradientFactor(0.0, 0.0, 0.0);
 };

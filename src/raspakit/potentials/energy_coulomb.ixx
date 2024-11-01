@@ -56,15 +56,9 @@ export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const
     {
       return EnergyFactor(scaling * chargeA * chargeB / r, 0.0);
     }
-    case ForceField::ChargeMethod::Wolf:
-    {
-      return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
-    }
-    case ForceField::ChargeMethod::ModifiedWolf:
-    {
-      return EnergyFactor(scaling * chargeA * chargeB * std::erfc(forcefield.EwaldAlpha * r) / r, 0.0);
-    }
     default:
       break;
   }
+
+  return EnergyFactor(0.0, 0.0);
 };

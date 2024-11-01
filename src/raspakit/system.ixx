@@ -55,7 +55,7 @@ import averages;
 import running_energy;
 import energy_status;
 import energy_factor;
-import force_factor;
+import gradient_factor;
 import loadings;
 import sample_movies;
 import enthalpy_of_adsorption;

@@ -19,6 +19,11 @@ add_executable(unit_tests_raspakit
   nist_water_2.cpp
   nist_water_3.cpp
   nist_water_4.cpp
+  hessian_inter_lennard_jones.cpp
+  hessian_inter_real_ewald.cpp
+  third_derivative_inter_lennard_jones.cpp
+  third_derivative_inter_real_ewald.cpp
+  grids.cpp
   main.cpp)
 
 

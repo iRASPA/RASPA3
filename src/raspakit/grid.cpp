@@ -17,7 +17,7 @@ module;
 #include <vector>
 #endif
 
-module grids;
+module grid;
 
 #ifndef USE_LEGACY_HEADERS
 import <istream>;
@@ -54,13 +54,10 @@ import stringutils;
 //
 // The algorithme is a local tricubic interpolation scheme in three dimensions that is both C^1 and isotropic. It uses
 // a 64x64 matrix that gives the relationship between the derivatives at the corners of the elements and the
-// coefficients of the trcubic interpolant for this element. The problem is *not* separated into 3 three-dimensional
-// problems. This allows for a much easier and accurate computation of higher derivatives, e.g. the force, of the
+// coefficients of the tricubic interpolant for this element. The problem is *not* separated into 3 three-dimensional
+// problems. This allows for a much easier and accurate computation of higher derivatives, e.g. the gradient, of the
 // extrapolated field.
 //
-// Grids for triclinic frameowrks are based on a enclosing rectangular box. The tricubic interpolation algorithm
-// operates on a unit cube. Notice that the derivatives are given in terms of the unit cube and must be divided by the
-// actual size of the elements.
 
 [[maybe_unused]] static int Coeff[64][64] = {
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -198,4 +195,5 @@ import stringutils;
      -4,  -2, 4,  2,   -3, 3,   -3,  3,  -3, 3,  -3, 3,  -2, -1, -2, -1, -2, -1, -2, -1},
     {8,  -8, -8, 8,  -8, 8,  8, -8, 4,  4,  -4, -4, -4, -4, 4,  4,  4,  -4, 4, -4, -4, 4,
      -4, 4,  4,  -4, -4, 4,  4, -4, -4, 4,  2,  2,  2,  2,  -2, -2, -2, -2, 2, 2,  -2, -2,
-     2,  2,  -2, -2, 2,  -2, 2, -2, 2,  -2, 2,  -2, 1,  1,  1,  1,  1,  1,  1, 1}};
+     2,  2,  -2, -2, 2,  -2, 2, -2, 2,  -2, 2,  -2, 1,  1,  1,  1,  1,  1,  1, 1}
+};

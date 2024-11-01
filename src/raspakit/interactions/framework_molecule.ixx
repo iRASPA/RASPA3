@@ -18,12 +18,14 @@ import <vector>;
 
 import double3;
 import double3x3;
+import double3x3x3;
 import atom;
 import running_energy;
 import energy_status;
 import simulationbox;
 import energy_factor;
-import force_factor;
+import gradient_factor;
+import hessian_factor;
 import forcefield;
 import framework;
 import component;
@@ -190,4 +192,19 @@ RunningEnergy computeFrameworkMoleculeElectricField(const ForceField &forceField
 std::optional<RunningEnergy> computeFrameworkMoleculeElectricFieldDifference(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMolecule, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
+std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                     double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+
+std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                         double3 posA, double chargeA, std::span<const Atom> frameworkAtoms);
+
+std::tuple<double, double3, double3x3, double3x3x3> 
+  calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                        double3 posB, size_t typeB, std::span<const Atom> frameworkAtoms);
+
+std::tuple<double, double3, double3x3, double3x3x3> 
+  calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
+                                            double3 posB, double chargeB, std::span<const Atom> frameworkAtoms);
+
 };  // namespace Interactions

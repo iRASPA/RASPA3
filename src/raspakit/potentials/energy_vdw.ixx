@@ -65,51 +65,6 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
       return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
                                               (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
     }
-    case VDWParameters::Type::BuckingHam:
-    {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);
-      double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-      return EnergyFactor(scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)) - arg3), 0.0);
-    }
-    case VDWParameters::Type::Morse:
-    {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);
-      double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-      return EnergyFactor(scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)) - arg3), 0.0);
-    }
-    case VDWParameters::Type::FeynmannHibbs:
-    {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);
-      double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-      return EnergyFactor(scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)) - arg3), 0.0);
-    }
-    case VDWParameters::Type::MM3:
-    {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);
-      double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-      return EnergyFactor(scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)) - arg3), 0.0);
-    }
-    case VDWParameters::Type::BornHugginsMeyer:
-    {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);
-      double rri3 = 1.0 / ((temp * temp * temp) + 0.5 * (1.0 - scaling) * (1.0 - scaling));
-      return EnergyFactor(scaling * (4.0 * arg1 * (rri3 * (rri3 - 1.0)) - arg3), 0.0);
-    }
     default:
       break;
   }
