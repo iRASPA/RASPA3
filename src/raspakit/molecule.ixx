@@ -33,19 +33,33 @@ import json;
 // Note: C++17 and higher: std::vector<T> is automatically properly aligned based on type T
 export struct Molecule
 {
-  double3 centerOfMassPosition;
-  double3 velocity;
-  double3 gradient;
-  simd_quatd orientation;
-  simd_quatd orientationMomentum;
-  simd_quatd orientationGradient;
-  double mass;
-  size_t componentId;
-  size_t numberOfAtoms;
-  double invMass;
+  double3 centerOfMassPosition;  ///< The center of mass position of the molecule in 3D space.
+  double3 velocity;              ///< The velocity of the molecule.
+  double3 gradient;              ///< The gradient (force) acting on the molecule.
+  simd_quatd orientation;        ///< The orientation of the molecule represented as a quaternion.
+  simd_quatd orientationMomentum;///< The angular momentum of the molecule's orientation.
+  simd_quatd orientationGradient;///< The gradient (torque) acting on the molecule's orientation.
+  double mass;                   ///< Molecular mass
+  size_t componentId;            ///< Pointing to the index in the components list
+  size_t numberOfAtoms;          ///< Number of subatoms in this molecule
+  double invMass;                ///< 1/mass to save on computing (and set correct size)
 
+  /**
+   * \brief Default constructor for the Molecule struct.
+   *
+   * Initializes a Molecule object with default values.
+   */
   Molecule() noexcept = default;
 
+  /**
+   * \brief Constructs a Molecule with specified center of mass position and orientation.
+   *
+   * Initializes a Molecule with the provided center of mass position and orientation.
+   * Other members are initialized to zero.
+   *
+   * \param centerOfMassPosition The initial center of mass position of the molecule.
+   * \param orientation The initial orientation of the molecule represented as a quaternion.
+   */
   Molecule(double3 centerOfMassPosition, simd_quatd orientation)
       : centerOfMassPosition(centerOfMassPosition),
         velocity(0.0, 0.0, 0.0),
