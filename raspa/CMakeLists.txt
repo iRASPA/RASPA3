@@ -60,15 +60,16 @@ elseif (APPLE)
     pybind11::module
     ${BLAS_LIBRARIES}
     ${LAPACK_LIBRARIES}
-    ${HDF5_CXX_LIBRARIES}
-    ${HDF5_LIBRARIES}
+    ${BREW_HDF5_DIR}/lib/libhdf5_cpp.a
+    ${BREW_HDF5_DIR}/lib/libhdf5.a
+    ${BREW_LIBAEC_DIR}/lib/libaec.a
+    ${BREW_LIBAEC_DIR}/lib/libsz.a
     -nostdlib++
-    ${LLVM_LIBS}/c++/libc++experimental.a
-    ${LLVM_LIBS}/c++/libc++.a
-    ${LLVM_LIBS}/c++/libc++abi.a
-    ${LLVM_LIBS}/libunwind.a
-    ${OpenMP_libomp_LIBRARY}/lib/libomp.a
-    -lz
+    ${BREW_LLVM_DIR}/lib/c++/libc++experimental.a
+    ${BREW_LLVM_DIR}/lib/c++/libc++.a
+    ${BREW_LLVM_DIR}/lib/c++/libc++abi.a
+    ${BREW_LIBOMP_DIR}/lib/libomp.a
+    ${ZLIB_LIBRARIES}
     -lpthread
   )
 endif()
@@ -79,5 +80,5 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 if (LINUX)
   install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
 elseif (APPLE)
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${SKBUILD_PROJECT_NAME})
+  install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
 endif()

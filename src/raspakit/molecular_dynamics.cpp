@@ -89,8 +89,12 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
+import integrators;
+import integrators_compute;
+import integrators_update;
+import integrators_cputime;
 
-MolecularDynamics::MolecularDynamics() : random(std::nullopt){};
+MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
 MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -184,10 +188,12 @@ void MolecularDynamics::initialize()
   for (System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
-    system.createCartesianPositions();
-    system.runningEnergies = system.computeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
-    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
+    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
+    system.precomputeTotalGradients();
+    system.runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
+    system.runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
 
     std::ostream stream(streams[system.systemId].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
@@ -273,11 +279,10 @@ void MolecularDynamics::equilibrate()
   for (System& system : systems)
   {
     std::ostream stream(streams[system.systemId].rdbuf());
+    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
+    Integrators::initializeVelocities(random, system.moleculePositions, system.components, system.temperature);
 
-    system.createCartesianPositions();
-    system.initializeVelocities(random);
-
-    system.removeCenterOfMassVelocityDrift();
+    Integrators::removeCenterOfMassVelocityDrift(system.moleculePositions);
     if (system.thermostat.has_value())
     {
       if (system.frameworkComponents.empty() && system.numberOfMolecules() > 1uz)
@@ -288,9 +293,11 @@ void MolecularDynamics::equilibrate()
       system.thermostat->initialize(random);
     }
 
-    system.runningEnergies = system.computeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
-    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
+    system.precomputeTotalGradients();
+    system.runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
+    system.runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
     if (system.thermostat.has_value())
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
@@ -312,7 +319,11 @@ void MolecularDynamics::equilibrate()
   {
     for (System& system : systems)
     {
-      system.integrate();
+      system.runningEnergies = Integrators::velocityVerlet(
+          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+          system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -382,10 +393,12 @@ void MolecularDynamics::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.createCartesianPositions();
-    system.runningEnergies = system.computeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy = system.computeTranslationalKineticEnergy();
-    system.runningEnergies.rotationalKineticEnergy = system.computeRotationalKineticEnergy();
+    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
+    system.precomputeTotalGradients();
+    system.runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
+    system.runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
     if (system.thermostat.has_value())
     {
       system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
@@ -398,6 +411,7 @@ void MolecularDynamics::production()
     system.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
     system.mc_moves_count.clearCountStatistics();
+    integratorsCPUTime.clearTimingStatistics();
 
     system.accumulatedDrift = 0.0;
 
@@ -434,11 +448,17 @@ void MolecularDynamics::production()
   numberOfSteps = 0uz;
   for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
   {
+    t1 = std::chrono::system_clock::now();
+
     estimation.setCurrentSample(currentCycle);
 
     for (System& system : systems)
     {
-      system.integrate();
+      system.runningEnergies = Integrators::velocityVerlet(
+          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
+          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+          system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -451,7 +471,6 @@ void MolecularDynamics::production()
       system.sampleProperties(estimation.currentBin, currentCycle);
     }
 
-    /*
     for (System& system : systems)
     {
       // add the sample energy to the averages
@@ -465,7 +484,7 @@ void MolecularDynamics::production()
         // system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         // system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
-    }*/
+    }
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -583,6 +602,7 @@ void MolecularDynamics::output()
                  component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");

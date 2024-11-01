@@ -1,6 +1,6 @@
 project(raspakit)
 
-file(GLOB SRC_CPP_FILES 
+file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/foundationkit/*.cpp
   ${PROJECT_SOURCE_DIR}/mathkit/*.cpp
   ${PROJECT_SOURCE_DIR}/symmetrykit/*.cpp
@@ -11,9 +11,10 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/mc_moves/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.cpp)
 
-file(GLOB SRC_IXX_FILES 
+file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/foundationkit/*.ixx
   ${PROJECT_SOURCE_DIR}/mathkit/*.ixx
   ${PROJECT_SOURCE_DIR}/symmetrykit/*.ixx
@@ -24,6 +25,7 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/mc_moves/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.ixx)
 
 

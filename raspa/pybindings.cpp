@@ -154,11 +154,13 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("parallelTemperingProbability", &MCMoveProbabilitiesParticles::parallelTemperingProbability);
 
   pybind11::class_<MCMoveProbabilitiesSystem>(m, "MCMoveProbabilitiesSystem")
-      .def(pybind11::init<double, double, double>(), pybind11::arg("volumeChangeProbability"),
-           pybind11::arg("gibbsVolumeChangeProbability"), pybind11::arg("parallelTemperingProbability"))
+      .def(pybind11::init<double, double, double, double>(), pybind11::arg("volumeChangeProbability"),
+           pybind11::arg("gibbsVolumeChangeProbability"), pybind11::arg("parallelTemperingProbability"),
+           pybind11::arg("hybridMCProbability"))
       .def_readwrite("volumeChangeProbability", &MCMoveProbabilitiesSystem::volumeChangeProbability)
       .def_readwrite("gibbsVolumeChangeProbability", &MCMoveProbabilitiesSystem::gibbsVolumeChangeProbability)
-      .def_readwrite("parallelTemperingProbability", &MCMoveProbabilitiesSystem::parallelTemperingProbability);
+      .def_readwrite("parallelTemperingProbability", &MCMoveProbabilitiesSystem::parallelTemperingProbability)
+      .def_readwrite("hybridMCProbability", &MCMoveProbabilitiesSystem::hybridMCProbability);
 
   pybind11::class_<Component> component(m, "Component");
   component

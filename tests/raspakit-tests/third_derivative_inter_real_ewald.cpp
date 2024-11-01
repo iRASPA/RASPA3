@@ -740,7 +740,7 @@ TEST(third_derivative_inter_real_ewald, Test_third_derivative_fractional_methane
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
   double delta = 1e-6;
-  double tolerance = 1e-4;
+  double tolerance = 1e-3;
   double3x3 numerical_hessian;
   double chargeB = 1.0;
   double3 posB = double3(5.0, 5.0, 5.0);

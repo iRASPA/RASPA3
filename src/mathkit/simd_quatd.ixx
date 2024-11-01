@@ -4,8 +4,8 @@ module;
 #include <fstream>
 #include <map>
 #include <ostream>
-#include <vector>
 #include <string>
+#include <vector>
 #endif
 
 export module simd_quatd;
@@ -30,7 +30,7 @@ export union simd_quatd
     double ix, iy, iz, r;
   };
 
-  simd_quatd() : ix(0.0), iy(0.0), iz(0.0), r(0.0){};
+  simd_quatd() : ix(0.0), iy(0.0), iz(0.0), r(0.0) {};
   simd_quatd(double ix, double iy, double iz, double r);
   simd_quatd(double real, double3 imag);
   simd_quatd(double3 EulerAngles);
@@ -51,6 +51,18 @@ export union simd_quatd
   static const simd_quatd data360[360];
   static const double weights360[360];
 
+  simd_quatd& operator+=(const simd_quatd& b)
+  {
+    this->ix += b.ix, this->iy += b.iy, this->iz += b.iz, this->r += b.r;
+    return *this;
+  }
+
+  simd_quatd& operator-=(const simd_quatd& b)
+  {
+    this->ix -= b.ix, this->iy -= b.iy, this->iz -= b.iz, this->r -= b.r;
+    return *this;
+  }
+
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const simd_quatd& q);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, simd_quatd& q);
 
@@ -62,6 +74,11 @@ export union simd_quatd
 export inline simd_quatd operator+(const simd_quatd& a, const simd_quatd& b)
 {
   return simd_quatd(a.ix + b.ix, a.iy + b.iy, a.iz + b.iz, a.r + b.r);
+}
+
+export inline simd_quatd operator-(const simd_quatd& a, const simd_quatd& b)
+{
+  return simd_quatd(a.ix - b.ix, a.iy - b.iy, a.iz - b.iz, a.r - b.r);
 }
 
 export inline simd_quatd operator*(const double& a, const simd_quatd& b)

@@ -254,7 +254,10 @@ export struct MCMoveCpuTime
   std::chrono::duration<double> ParallelTemperingSwapEnergy{
       0.0};  ///< Time for energy recalculation during parallel tempering swaps.
   std::chrono::duration<double> ParallelTemperingSwapFugacity{
-      0.0};  ///< Time for fugacity swaps during parallel tempering swaps.
+      0.0};  ///< Time for fugacity computation during parallel tempering swaps.
+
+  std::chrono::duration<double> hybridMC{0.0};             ///< Time for hybrid MC.
+  std::chrono::duration<double> hybridMCIntegration{0.0};  ///< Time for MD integration in hybrid MC.
 
   /**
    * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.
@@ -267,7 +270,7 @@ export struct MCMoveCpuTime
            randomRotationMove + reinsertionMoveCBMC + swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC +
            swapDeletionMoveCBMC + swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC +
            GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove +
-           ParallelTemperingSwap;
+           ParallelTemperingSwap + hybridMC;
   }
 
   /**
@@ -462,6 +465,8 @@ export struct MCMoveCpuTime
     ParallelTemperingSwapEnergy = b.ParallelTemperingSwapEnergy;
     ParallelTemperingSwapFugacity = b.ParallelTemperingSwapFugacity;
 
+    hybridMC = b.hybridMC;
+
     return *this;
   }
 
@@ -603,6 +608,8 @@ export struct MCMoveCpuTime
     ParallelTemperingSwap += b.ParallelTemperingSwap;
     ParallelTemperingSwapEnergy += b.ParallelTemperingSwapEnergy;
     ParallelTemperingSwapFugacity += b.ParallelTemperingSwapFugacity;
+
+    hybridMC += b.hybridMC;
 
     return *this;
   }
@@ -778,6 +785,8 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.ParallelTemperingSwap = a.ParallelTemperingSwap + b.ParallelTemperingSwap;
   m.ParallelTemperingSwapEnergy = a.ParallelTemperingSwapEnergy + b.ParallelTemperingSwapEnergy;
   m.ParallelTemperingSwapFugacity = a.ParallelTemperingSwapFugacity + b.ParallelTemperingSwapFugacity;
+
+  m.hybridMC = a.hybridMC + b.hybridMC;
 
   return m;
 }

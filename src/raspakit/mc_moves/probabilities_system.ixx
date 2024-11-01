@@ -39,13 +39,15 @@ export struct MCMoveProbabilitiesSystem
    * \param volumeChangeProbability Probability for volume change moves.
    * \param gibbsVolumeChangeProbability Probability for Gibbs ensemble volume change moves.
    * \param parallelTemperingProbability Probability for parallel tempering moves.
+   * \param hybridMCProbability Probability for the hybridMC move.
    */
   MCMoveProbabilitiesSystem(double volumeChangeProbability = 0.0, double gibbsVolumeChangeProbability = 0.0,
-                            double parallelTemperingProbability = 0.0);
+                            double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
 
   double volumeChangeProbability;       ///< Probability for volume change moves.
   double gibbsVolumeChangeProbability;  ///< Probability for Gibbs ensemble volume change moves.
   double parallelTemperingProbability;  ///< Probability for parallel tempering moves.
+  double hybridMCProbability;           ///< Probability for hybrid MC moves.
 
   /**
    * \brief Optimizes move probabilities based on acceptance rates.
