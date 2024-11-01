@@ -33,6 +33,7 @@ examples/*/*/run
 
 dependencies.sh
 examples/*/*/output/
+examples/*/*/density_grids/
 
 # C++ objects and libs
 *.slo

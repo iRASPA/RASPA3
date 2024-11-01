@@ -71,11 +71,11 @@ cd examples/basic/1_mc_methane_in_box<br>
 - PDB-movies, energy histograms, number of molecule histograms
 - RDF, MSD-order-N, VACF, density grids (cube files)
 - charge equilibration
+- MC/MD hybrid move
 
 # Todo-list
 - tail-corrections for CFCMC
 - restart-file
-- MC/MD hybrid move
 - grids for rigid frameworks
 - flexible molecules
 - flexible frameworks

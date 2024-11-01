@@ -1,0 +1,37 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfCycles": 10000,
+  "NumberOfInitializationCycles": 5000,
+  "NumberOfEquilibrationCycles": 5000,
+  "PrintEvery": 1000,
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "MFI_SI",
+      "NumberOfUnitCells": [
+        2,
+        2,
+        2
+      ],
+      "ExternalTemperature": 353.0,
+      "ExternalPressure": 1.0e5,
+      "ChargeMethod": "Ewald",
+      "HybridMCProbability": 0.01,
+      "HybridMCMoveNumberOfSteps": 100,
+      "TimeStep": 0.005,
+      "Ensemble": "NVE"
+    }
+  ],
+  "Components": [
+    {
+      "Name": "CO2",
+      "MoleculeDefinition": "ExampleDefinitions",
+      "FugacityCoefficient": 1.0,
+      "ThermodynamicIntegration": true,
+      "TranslationProbability": 0.5,
+      "RotationProbability": 0.5,
+      "CFCMC_CBMC_SwapProbability": 1.0,
+      "CreateNumberOfMolecules": 0
+    }
+  ]
+}
