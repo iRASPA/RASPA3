@@ -72,6 +72,7 @@ class MCMoveProbabilitiesSystem(RaspaBase):
         volumeChangeProbability: float = 0.0,
         gibbsVolumeChangeProbability: float = 0.0,
         parallelTemperingProbability: float = 0.0,
+        hybridMCProbability: float = 0.0,
     ):
         super().__init__(**popSelf(locals()))
         self._cpp_obj = raspalib.MCMoveProbabilitiesSystem(**self.cpp_args())
