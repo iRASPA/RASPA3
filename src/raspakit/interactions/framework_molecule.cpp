@@ -14,6 +14,7 @@ module;
 #include <thread>
 #include <utility>
 #include <vector>
+#include <limits>
 #endif
 
 module interactions_framework_molecule;
@@ -32,17 +33,24 @@ import <deque>;
 import <semaphore>;
 import <atomic>;
 import <utility>;
+import <limits>;
 #endif
 
+import double3;
+import double4;
+import double3x3;
+import double3x3x3;
 import energy_status;
 import potential_energy_vdw;
 import potential_energy_coulomb;
 import potential_gradient_vdw;
 import potential_gradient_coulomb;
+import potential_hessian_vdw;
+import potential_hessian_coulomb;
+import potential_third_derivative_vdw;
+import potential_third_derivative_coulomb;
 import potential_electrostatics;
 import simulationbox;
-import double3;
-import double3x3;
 import forcefield;
 import atom;
 import energy_factor;
@@ -52,7 +60,9 @@ import units;
 import threadpool;
 // import threading;
 import energy_factor;
-import force_factor;
+import gradient_factor;
+import hessian_factor;
+import third_derivative_factor;
 import framework;
 import component;
 
@@ -317,13 +327,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 
       if (rr < cutOffFrameworkVDWSquared)
       {
-        ForceFactor forceFactor =
+        GradientFactor gradientFactor =
             potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-        energySum.frameworkMoleculeVDW += forceFactor.energy;
-        energySum.dudlambdaVDW += forceFactor.dUdlambda;
+        energySum.frameworkMoleculeVDW += gradientFactor.energy;
+        energySum.dudlambdaVDW += gradientFactor.dUdlambda;
 
-        const double3 f = forceFactor.forceFactor * dr;
+        const double3 f = gradientFactor.gradientFactor * dr;
 
         it1->gradient += f;
         it2->gradient -= f;
@@ -331,13 +341,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
       if (useCharge && rr < cutOffChargeSquared)
       {
         double r = std::sqrt(rr);
-        ForceFactor forceFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                           scalingCoulombB, r, chargeA, chargeB);
+        GradientFactor gradientFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
+                                                              scalingCoulombB, r, chargeA, chargeB);
 
-        energySum.frameworkMoleculeCharge += forceFactor.energy;
-        energySum.dudlambdaCharge += forceFactor.dUdlambda;
+        energySum.frameworkMoleculeCharge += gradientFactor.energy;
+        energySum.dudlambdaCharge += gradientFactor.dUdlambda;
 
-        const double3 f = forceFactor.forceFactor * dr;
+        const double3 f = gradientFactor.gradientFactor * dr;
 
         it1->gradient += f;
         it2->gradient -= f;
@@ -394,12 +404,12 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 
       if (rr < cutOffFrameworkVDWSquared)
       {
-        ForceFactor forceFactor =
+        GradientFactor gradientFactor =
             potentialVDWGradient(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-        energy.frameworkComponentEnergy(compA, compB).VanDerWaals += EnergyFactor(forceFactor.energy, 0.0);
+        energy.frameworkComponentEnergy(compA, compB).VanDerWaals += EnergyFactor(gradientFactor.energy, 0.0);
 
-        const double3 g = forceFactor.forceFactor * dr;
+        const double3 g = gradientFactor.gradientFactor * dr;
 
         it1->gradient += g;
         it2->gradient -= g;
@@ -420,12 +430,12 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
       {
         double r = std::sqrt(rr);
 
-        ForceFactor forceFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
+        GradientFactor gradientFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
                                                            scalingCoulombB, r, chargeA, chargeB);
 
-        energy.frameworkComponentEnergy(compA, compB).CoulombicReal += EnergyFactor(forceFactor.energy, 0.0);
+        energy.frameworkComponentEnergy(compA, compB).CoulombicReal += EnergyFactor(gradientFactor.energy, 0.0);
 
-        const double3 g = forceFactor.forceFactor * dr;
+        const double3 g = gradientFactor.gradientFactor * dr;
 
         it1->gradient += g;
         it2->gradient -= g;
@@ -545,10 +555,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
         energySum.frameworkMoleculeCharge += energyFactor.energy;
         energySum.dudlambdaCharge += energyFactor.dUdlambda;
 
-        ForceFactor forceFactor =
+        GradientFactor gradientFactor =
             scalingCoulombA * chargeA * potentialCoulombGradient(forceField, groupIdA, groupIdB, 1.0, 1.0, r, 1.0, 1.0);
         size_t index = static_cast<size_t>(std::distance(moleculeAtoms.begin(), it2));
-        electricFieldMolecules[index] += 2.0 * forceFactor.forceFactor * dr;
+        electricFieldMolecules[index] += 2.0 * gradientFactor.gradientFactor * dr;
       }
     }
   }
@@ -611,9 +621,9 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeElectricField
         energySum.frameworkMoleculeCharge += energyFactor.energy;
         energySum.dudlambdaCharge += energyFactor.dUdlambda;
 
-        ForceFactor forceFactor =
+        GradientFactor gradientFactor =
             scalingCoulombA * chargeA * potentialCoulombGradient(forceField, groupIdA, groupIdB, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMolecule[indexB] += 2.0 * forceFactor.forceFactor * dr;
+        electricFieldMolecule[indexB] += 2.0 * gradientFactor.gradientFactor * dr;
       }
     }
 
@@ -648,12 +658,288 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeElectricField
         energySum.frameworkMoleculeCharge -= energyFactor.energy;
         energySum.dudlambdaCharge -= energyFactor.dUdlambda;
 
-        ForceFactor forceFactor =
+        GradientFactor gradientFactor =
             scalingCoulombA * chargeA * potentialCoulombGradient(forceField, groupIdA, groupIdB, 1.0, 1.0, r, 1.0, 1.0);
-        electricFieldMolecule[indexB] -= 2.0 * forceFactor.forceFactor * dr;
+        electricFieldMolecule[indexB] -= 2.0 * gradientFactor.gradientFactor * dr;
       }
     }
   }
 
   return std::optional{energySum};
 }
+
+
+std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                                   double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
+
+  double energy{0.0};
+  double3 first_derivative{};
+  double3x3 second_derivative{};
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    double3 posB = it1->position;
+    size_t typeB = static_cast<size_t>(it1->type);
+    bool groupIdB = static_cast<bool>(it1->groupId);
+    double scalingB = it1->scalingVDW;
+
+    double3 dr = posA - posB;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    if (rr < cutOffFrameworkVDWSquared)
+    {
+      HessianFactor v = potentialVDWHessian(forceField, 0, groupIdB, 1.0, scalingB, rr, typeA, typeB);
+
+      energy += v.energy;
+
+      first_derivative.x += dr.x * v.firstDerivativeFactor;
+      first_derivative.y += dr.y * v.firstDerivativeFactor;
+      first_derivative.z += dr.z * v.firstDerivativeFactor;
+
+      // add contribution to the second derivatives (Hessian matrix)
+      second_derivative.ax += v.secondDerivativeFactor * dr.x * dr.x + v.firstDerivativeFactor;
+      second_derivative.ay += v.secondDerivativeFactor * dr.x * dr.y;
+      second_derivative.az += v.secondDerivativeFactor * dr.x * dr.z;
+
+      second_derivative.bx += v.secondDerivativeFactor * dr.y * dr.x;
+      second_derivative.by += v.secondDerivativeFactor * dr.y * dr.y + v.firstDerivativeFactor;
+      second_derivative.bz += v.secondDerivativeFactor * dr.y * dr.z;
+
+      second_derivative.cx += v.secondDerivativeFactor * dr.z * dr.x;
+      second_derivative.cy += v.secondDerivativeFactor * dr.z * dr.y;
+      second_derivative.cz += v.secondDerivativeFactor * dr.z * dr.z + v.firstDerivativeFactor;
+    }
+  }
+
+  return {energy, first_derivative, second_derivative};
+}
+
+
+std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                                       double3 posA, double chargeA, std::span<const Atom> frameworkAtoms)
+{
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  double energy{0.0};
+  double3 first_derivative{};
+  double3x3 second_derivative{};
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    double3 posB = it1->position;
+    bool groupIdB = static_cast<bool>(it1->groupId);
+    double scalingB = it1->scalingVDW;
+    double chargeB = it1->charge;
+
+    double3 dr = posA - posB;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    if (rr < cutOffChargeSquared)
+    {
+      double r = std::sqrt(rr);
+      HessianFactor v = potentialCoulombHessian(forceField, 0, groupIdB, 1.0, scalingB, rr, r, chargeA, chargeB);
+
+      energy += v.energy;
+
+      first_derivative.x += dr.x * v.firstDerivativeFactor;
+      first_derivative.y += dr.y * v.firstDerivativeFactor;
+      first_derivative.z += dr.z * v.firstDerivativeFactor;
+
+      // add contribution to the second derivatives (Hessian matrix)
+      second_derivative.ax += v.secondDerivativeFactor * dr.x * dr.x + v.firstDerivativeFactor;
+      second_derivative.ay += v.secondDerivativeFactor * dr.x * dr.y;
+      second_derivative.az += v.secondDerivativeFactor * dr.x * dr.z;
+
+      second_derivative.bx += v.secondDerivativeFactor * dr.y * dr.x;
+      second_derivative.by += v.secondDerivativeFactor * dr.y * dr.y + v.firstDerivativeFactor;
+      second_derivative.bz += v.secondDerivativeFactor * dr.y * dr.z;
+
+      second_derivative.cx += v.secondDerivativeFactor * dr.z * dr.x;
+      second_derivative.cy += v.secondDerivativeFactor * dr.z * dr.y;
+      second_derivative.cz += v.secondDerivativeFactor * dr.z * dr.z + v.firstDerivativeFactor;
+    }
+  }
+
+  return {energy, first_derivative, second_derivative};
+}
+
+
+std::tuple<double, double3, double3x3, double3x3x3> 
+  Interactions::calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                      double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
+
+  double energy{0.0};
+  double3 first_derivative{};
+  double3x3 second_derivative{};
+  double3x3x3 third_derivative{};
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    double3 posB = it1->position;
+    size_t typeB = static_cast<size_t>(it1->type);
+    bool groupIdB = static_cast<bool>(it1->groupId);
+    double scalingB = it1->scalingVDW;
+
+    double3 dr = posA - posB;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    if (rr < cutOffFrameworkVDWSquared)
+    {
+      ThirdDerivativeFactor v = potentialVDWThirdDerivative(forceField, 0, groupIdB, 1.0, scalingB, rr, typeA, typeB);
+
+      energy += v.energy;
+
+      first_derivative.x += dr.x * v.firstDerivativeFactor;
+      first_derivative.y += dr.y * v.firstDerivativeFactor;
+      first_derivative.z += dr.z * v.firstDerivativeFactor;
+
+      // add contribution to the second derivatives (Hessian matrix)
+      second_derivative.ax += v.secondDerivativeFactor * dr.x * dr.x + v.firstDerivativeFactor;
+      second_derivative.ay += v.secondDerivativeFactor * dr.x * dr.y;
+      second_derivative.az += v.secondDerivativeFactor * dr.x * dr.z;
+
+      second_derivative.bx += v.secondDerivativeFactor * dr.y * dr.x;
+      second_derivative.by += v.secondDerivativeFactor * dr.y * dr.y + v.firstDerivativeFactor;
+      second_derivative.bz += v.secondDerivativeFactor * dr.y * dr.z;
+
+      second_derivative.cx += v.secondDerivativeFactor * dr.z * dr.x;
+      second_derivative.cy += v.secondDerivativeFactor * dr.z * dr.y;
+      second_derivative.cz += v.secondDerivativeFactor * dr.z * dr.z + v.firstDerivativeFactor;
+
+      third_derivative.m111 += v.thirdDerivativeFactor * dr.x * dr.x * dr.x + 3.0 * v.secondDerivativeFactor * dr.x;
+      third_derivative.m112 += v.thirdDerivativeFactor * dr.x * dr.x * dr.y + v.secondDerivativeFactor * dr.y;
+      third_derivative.m113 += v.thirdDerivativeFactor * dr.x * dr.x * dr.z + v.secondDerivativeFactor * dr.z;
+
+      third_derivative.m121 += v.thirdDerivativeFactor * dr.x * dr.y * dr.x + v.secondDerivativeFactor * dr.y;
+      third_derivative.m122 += v.thirdDerivativeFactor * dr.x * dr.y * dr.y + v.secondDerivativeFactor * dr.x;
+      third_derivative.m123 += v.thirdDerivativeFactor * dr.x * dr.y * dr.z;
+
+      third_derivative.m131 += v.thirdDerivativeFactor * dr.x * dr.z * dr.x + v.secondDerivativeFactor * dr.z;
+      third_derivative.m132 += v.thirdDerivativeFactor * dr.x * dr.z * dr.y;
+      third_derivative.m133 += v.thirdDerivativeFactor * dr.x * dr.z * dr.z + v.secondDerivativeFactor * dr.x;
+
+      third_derivative.m211 += v.thirdDerivativeFactor * dr.y * dr.x * dr.x + v.secondDerivativeFactor * dr.y;
+      third_derivative.m212 += v.thirdDerivativeFactor * dr.y * dr.x * dr.y + v.secondDerivativeFactor * dr.x;
+      third_derivative.m213 += v.thirdDerivativeFactor * dr.y * dr.x * dr.z;
+
+      third_derivative.m221 += v.thirdDerivativeFactor * dr.y * dr.y * dr.x + v.secondDerivativeFactor * dr.x;
+      third_derivative.m222 += v.thirdDerivativeFactor * dr.y * dr.y * dr.y + 3.0 * v.secondDerivativeFactor * dr.y;
+      third_derivative.m223 += v.thirdDerivativeFactor * dr.y * dr.y * dr.z + v.secondDerivativeFactor * dr.z;
+
+      third_derivative.m231 += v.thirdDerivativeFactor * dr.y * dr.z * dr.x;
+      third_derivative.m232 += v.thirdDerivativeFactor * dr.y * dr.z * dr.y + v.secondDerivativeFactor * dr.z;
+      third_derivative.m233 += v.thirdDerivativeFactor * dr.y * dr.z * dr.z + v.secondDerivativeFactor * dr.y;
+
+      third_derivative.m311 += v.thirdDerivativeFactor * dr.z * dr.x * dr.x + v.secondDerivativeFactor * dr.z;
+      third_derivative.m312 += v.thirdDerivativeFactor * dr.z * dr.x * dr.y;
+      third_derivative.m313 += v.thirdDerivativeFactor * dr.z * dr.x * dr.z + v.secondDerivativeFactor * dr.x;
+
+      third_derivative.m321 += v.thirdDerivativeFactor * dr.z * dr.y * dr.x;
+      third_derivative.m322 += v.thirdDerivativeFactor * dr.z * dr.y * dr.y + v.secondDerivativeFactor * dr.z;
+      third_derivative.m323 += v.thirdDerivativeFactor * dr.z * dr.y * dr.z + v.secondDerivativeFactor * dr.y;
+
+      third_derivative.m331 += v.thirdDerivativeFactor * dr.z * dr.z * dr.x + v.secondDerivativeFactor * dr.x;
+      third_derivative.m332 += v.thirdDerivativeFactor * dr.z * dr.z * dr.y + v.secondDerivativeFactor * dr.y;
+      third_derivative.m333 += v.thirdDerivativeFactor * dr.z * dr.z * dr.z + 3.0 * v.secondDerivativeFactor * dr.z;
+    }
+  }
+
+  return {energy, first_derivative, second_derivative, third_derivative};
+}
+
+
+std::tuple<double, double3, double3x3, double3x3x3> 
+  Interactions::calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                          double3 posA, double chargeA, std::span<const Atom> frameworkAtoms)
+{
+  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
+
+  double energy{0.0};
+  double3 first_derivative{};
+  double3x3 second_derivative{};
+  double3x3x3 third_derivative{};
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    double3 posB = it1->position;
+    bool groupIdB = static_cast<bool>(it1->groupId);
+    double scalingB = it1->scalingVDW;
+    double chargeB = it1->charge;
+
+    double3 dr = posA - posB;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    if (rr < cutOffChargeSquared)
+    {
+      double r = std::sqrt(rr);
+
+      ThirdDerivativeFactor v = potentialCoulombThirdDerivative(forceField, 0, groupIdB, 1.0, scalingB, rr, r, chargeA, chargeB);
+
+      energy += v.energy;
+
+      first_derivative.x += dr.x * v.firstDerivativeFactor;
+      first_derivative.y += dr.y * v.firstDerivativeFactor;
+      first_derivative.z += dr.z * v.firstDerivativeFactor;
+
+      // add contribution to the second derivatives (Hessian matrix)
+      second_derivative.ax += v.secondDerivativeFactor * dr.x * dr.x + v.firstDerivativeFactor;
+      second_derivative.ay += v.secondDerivativeFactor * dr.x * dr.y;
+      second_derivative.az += v.secondDerivativeFactor * dr.x * dr.z;
+
+      second_derivative.bx += v.secondDerivativeFactor * dr.y * dr.x;
+      second_derivative.by += v.secondDerivativeFactor * dr.y * dr.y + v.firstDerivativeFactor;
+      second_derivative.bz += v.secondDerivativeFactor * dr.y * dr.z;
+
+      second_derivative.cx += v.secondDerivativeFactor * dr.z * dr.x;
+      second_derivative.cy += v.secondDerivativeFactor * dr.z * dr.y;
+      second_derivative.cz += v.secondDerivativeFactor * dr.z * dr.z + v.firstDerivativeFactor;
+
+      third_derivative.m111 += v.thirdDerivativeFactor * dr.x * dr.x * dr.x + 3.0 * v.secondDerivativeFactor * dr.x;
+      third_derivative.m112 += v.thirdDerivativeFactor * dr.x * dr.x * dr.y + v.secondDerivativeFactor * dr.y;
+      third_derivative.m113 += v.thirdDerivativeFactor * dr.x * dr.x * dr.z + v.secondDerivativeFactor * dr.z;
+
+      third_derivative.m121 += v.thirdDerivativeFactor * dr.x * dr.y * dr.x + v.secondDerivativeFactor * dr.y;
+      third_derivative.m122 += v.thirdDerivativeFactor * dr.x * dr.y * dr.y + v.secondDerivativeFactor * dr.x;
+      third_derivative.m123 += v.thirdDerivativeFactor * dr.x * dr.y * dr.z;
+
+      third_derivative.m131 += v.thirdDerivativeFactor * dr.x * dr.z * dr.x + v.secondDerivativeFactor * dr.z;
+      third_derivative.m132 += v.thirdDerivativeFactor * dr.x * dr.z * dr.y;
+      third_derivative.m133 += v.thirdDerivativeFactor * dr.x * dr.z * dr.z + v.secondDerivativeFactor * dr.x;
+
+      third_derivative.m211 += v.thirdDerivativeFactor * dr.y * dr.x * dr.x + v.secondDerivativeFactor * dr.y;
+      third_derivative.m212 += v.thirdDerivativeFactor * dr.y * dr.x * dr.y + v.secondDerivativeFactor * dr.x;
+      third_derivative.m213 += v.thirdDerivativeFactor * dr.y * dr.x * dr.z;
+
+      third_derivative.m221 += v.thirdDerivativeFactor * dr.y * dr.y * dr.x + v.secondDerivativeFactor * dr.x;
+      third_derivative.m222 += v.thirdDerivativeFactor * dr.y * dr.y * dr.y + 3.0 * v.secondDerivativeFactor * dr.y;
+      third_derivative.m223 += v.thirdDerivativeFactor * dr.y * dr.y * dr.z + v.secondDerivativeFactor * dr.z;
+
+      third_derivative.m231 += v.thirdDerivativeFactor * dr.y * dr.z * dr.x;
+      third_derivative.m232 += v.thirdDerivativeFactor * dr.y * dr.z * dr.y + v.secondDerivativeFactor * dr.z;
+      third_derivative.m233 += v.thirdDerivativeFactor * dr.y * dr.z * dr.z + v.secondDerivativeFactor * dr.y;
+
+      third_derivative.m311 += v.thirdDerivativeFactor * dr.z * dr.x * dr.x + v.secondDerivativeFactor * dr.z;
+      third_derivative.m312 += v.thirdDerivativeFactor * dr.z * dr.x * dr.y;
+      third_derivative.m313 += v.thirdDerivativeFactor * dr.z * dr.x * dr.z + v.secondDerivativeFactor * dr.x;
+
+      third_derivative.m321 += v.thirdDerivativeFactor * dr.z * dr.y * dr.x;
+      third_derivative.m322 += v.thirdDerivativeFactor * dr.z * dr.y * dr.y + v.secondDerivativeFactor * dr.z;
+      third_derivative.m323 += v.thirdDerivativeFactor * dr.z * dr.y * dr.z + v.secondDerivativeFactor * dr.y;
+
+      third_derivative.m331 += v.thirdDerivativeFactor * dr.z * dr.z * dr.x + v.secondDerivativeFactor * dr.x;
+      third_derivative.m332 += v.thirdDerivativeFactor * dr.z * dr.z * dr.y + v.secondDerivativeFactor * dr.y;
+      third_derivative.m333 += v.thirdDerivativeFactor * dr.z * dr.z * dr.z + 3.0 * v.secondDerivativeFactor * dr.z;
+    }
+  }
+
+  return {energy, first_derivative, second_derivative, third_derivative};
+}
+

@@ -11,7 +11,7 @@ module;
 #include <type_traits>
 #endif
 
-export module grids;
+export module grid;
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
@@ -25,6 +25,7 @@ import <print>;
 #endif
 
 import archive;
+import int3;
 import double3;
 import stringutils;
 
@@ -32,4 +33,6 @@ import scaling;
 
 export struct Grid
 {
+  int3 numberOfGridPoints;
+  std::vector<double> data;
 };

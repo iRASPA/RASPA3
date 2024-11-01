@@ -48,7 +48,7 @@ import double3x3;
 import forcefield;
 import atom;
 import energy_factor;
-import force_factor;
+import gradient_factor;
 import energy_status_inter;
 import running_energy;
 import units;

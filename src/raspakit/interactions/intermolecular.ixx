@@ -23,7 +23,7 @@ import running_energy;
 import energy_status;
 import simulationbox;
 import energy_factor;
-import force_factor;
+import gradient_factor;
 import forcefield;
 import component;
 
