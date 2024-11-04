@@ -37,6 +37,7 @@ export struct MCMoveStatisticsSystem
   MoveStatistics<double> GibbsVolumeMove{.maxChange = 0.1};        ///< Statistics for Gibbs volume move.
   MoveStatistics<double> ParallelTemperingSwap{.maxChange = 0.1};  ///< Statistics for parallel tempering swap.
   MoveStatistics<double> hybridMC{.maxChange = 0.0005};            ///< dt for hybridMC move timestep.
+  MoveStatistics<double> nonEquilibriumCandidate{.maxChange = 0.0005}; ///< move?
 
   /**
    * \brief Optimizes the acceptance rates of the moves.

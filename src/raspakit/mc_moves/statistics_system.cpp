@@ -44,6 +44,7 @@ void MCMoveStatisticsSystem::clear()
   GibbsVolumeMove.clear();
   ParallelTemperingSwap.clear();
   hybridMC.clear();
+  nonEquilibriumCandidate.clear();
 }
 
 void MCMoveStatisticsSystem::optimizeAcceptance()
@@ -52,6 +53,7 @@ void MCMoveStatisticsSystem::optimizeAcceptance()
   GibbsVolumeMove.optimizeAcceptance(0.01, 1.5);
   ParallelTemperingSwap.optimizeAcceptance(0.01, 1.5);
   hybridMC.optimizeAcceptance(0.00001, 0.01);
+  nonEquilibriumCandidate.optimizeAcceptance(0.0, 1.0);
 }
 
 static std::string formatStatistics(const std::string name, const MoveStatistics<double> &move)
@@ -97,6 +99,11 @@ const std::string MCMoveStatisticsSystem::writeMCMoveStatistics() const
   {
     std::print(stream, "{}", formatStatistics("Hybrid MC", hybridMC));
   }
+  if (nonEquilibriumCandidate.totalCounts > 0)
+  {
+    std::print(stream, "{}", formatStatistics("Non-Equilibrium Candidate", nonEquilibriumCandidate));
+  }
+
 
   return stream.str();
 }
@@ -120,6 +127,10 @@ const nlohmann::json MCMoveStatisticsSystem::jsonMCMoveStatistics() const
   {
     status["hybridMC"] = jsonStatistics(hybridMC);
   }
+  if (nonEquilibriumCandidate.totalCounts > 0)
+  {
+    status["nonEquilibriumCandidate"] = jsonStatistics(nonEquilibriumCandidate);
+  }
 
   return status;
 }
@@ -132,6 +143,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.GibbsVolumeMove;
   archive << p.ParallelTemperingSwap;
   archive << p.hybridMC;
+  archive << p.nonEquilibriumCandidate;
 
   return archive;
 }
@@ -151,6 +163,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatis
   archive >> p.GibbsVolumeMove;
   archive >> p.ParallelTemperingSwap;
   archive >> p.hybridMC;
+  archive >> p.nonEquilibriumCandidate;
 
   return archive;
 }

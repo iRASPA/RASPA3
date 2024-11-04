@@ -59,6 +59,7 @@ void MCMoveCount::clearCountStatistics()
   GibbsVolumeMove = size_t{0};
   ParallelTemperingSwap = size_t{0};
   hybridMC = size_t{0};
+  nonEquilibriumCandidate = size_t{0};
 }
 
 /*
@@ -200,7 +201,7 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
   if (translationMove || randomTranslationMove || rotationMove || randomRotationMove || reinsertionMoveCBMC ||
       swapInsertionMove || swapDeletionMove || swapInsertionMoveCBMC || swapDeletionMoveCBMC || swapLambdaMoveCFCMC ||
       swapLambdaMoveCBCFCMC || GibbsSwapLambdaMoveCFCMC || WidomMoveCBMC || WidomMoveCFCMC || WidomMoveCBCFCMC ||
-      volumeMove || GibbsVolumeMove || ParallelTemperingSwap)
+      volumeMove || GibbsVolumeMove || ParallelTemperingSwap || hybridMC || nonEquilibriumCandidate)
   {
     if (translationMove)
     {
@@ -302,6 +303,11 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
       std::print(stream, "Hybrid MC:                   {:14f} [%]\n",
                  100.0 * static_cast<double>(hybridMC) / static_cast<double>(countTotal));
     }
+    if (nonEquilibriumCandidate)
+    {
+      std::print(stream, "Non-Equilbrium Candidate:    {:14f} [%]\n",
+                 100.0 * static_cast<double>(nonEquilibriumCandidate) / static_cast<double>(countTotal));
+    }
 
     std::print(stream, "\n");
     std::print(stream, "Production count MC-steps:   {:14d} [-]\n\n", countTotal);
@@ -326,6 +332,7 @@ const std::string MCMoveCount::writeAllSystemStatistics(size_t countTotal) const
     std::print(stream, "Gibbs Volume:                {:14d} [-]\n", GibbsVolumeMove);
     std::print(stream, "Parallel Tempering Swap:     {:14d} [-]\n", ParallelTemperingSwap);
     std::print(stream, "Hybrid MC:                   {:14d} [-]\n", hybridMC);
+    std::print(stream, "Non-Equilibrium Candidate:   {:14d} [-]\n", nonEquilibriumCandidate);
     std::print(stream, "                All summed:  {:14d} [-]\n", total());
     std::print(stream, "                difference:  {:14d} [-]\n", countTotal - total());
 
@@ -344,7 +351,7 @@ const nlohmann::json MCMoveCount::jsonAllSystemStatistics(size_t countTotal) con
   if (translationMove || randomTranslationMove || rotationMove || randomRotationMove || reinsertionMoveCBMC ||
       swapInsertionMove || swapDeletionMove || swapInsertionMoveCBMC || swapDeletionMoveCBMC || swapLambdaMoveCFCMC ||
       swapLambdaMoveCBCFCMC || GibbsSwapLambdaMoveCFCMC || WidomMoveCBMC || WidomMoveCFCMC || WidomMoveCBCFCMC ||
-      volumeMove || GibbsVolumeMove || ParallelTemperingSwap)
+      volumeMove || GibbsVolumeMove || ParallelTemperingSwap || hybridMC || nonEquilibriumCandidate)
   {
     if (translationMove)
     {
@@ -433,6 +440,10 @@ const nlohmann::json MCMoveCount::jsonAllSystemStatistics(size_t countTotal) con
     {
       percentage["hybridMC"] = 100.0 * static_cast<double>(hybridMC) / static_cast<double>(countTotal);
     }
+    if (nonEquilibriumCandidate)
+    {
+      percentage["nonEquilibriumCandidate"] = 100.0 * static_cast<double>(nonEquilibriumCandidate) / static_cast<double>(countTotal);
+    }
 
     count["countTotal"] = countTotal;
 
@@ -456,6 +467,7 @@ const nlohmann::json MCMoveCount::jsonAllSystemStatistics(size_t countTotal) con
     count["gibbsVolume"] = GibbsVolumeMove;
     count["parallelTemperingSwap"] = ParallelTemperingSwap;
     count["hybridMC"] = hybridMC;
+    count["nonEquilibriumCandidate"] = nonEquilibriumCandidate;
     count["sum"] = total();
     count["difference"] = countTotal - total();
   }
@@ -489,6 +501,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << c.GibbsVolumeMove;
   archive << c.ParallelTemperingSwap;
   archive << c.hybridMC;
+  archive << c.nonEquilibriumCandidate;
 
   return archive;
 }
@@ -524,6 +537,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCount 
   archive >> c.GibbsVolumeMove;
   archive >> c.ParallelTemperingSwap;
   archive >> c.hybridMC;
+  archive >> c.nonEquilibriumCandidate;
 
   return archive;
 }

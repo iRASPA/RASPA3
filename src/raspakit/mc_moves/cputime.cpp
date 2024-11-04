@@ -176,6 +176,10 @@ void MCMoveCpuTime::clearTimingStatistics()
   ParallelTemperingSwapFugacity = std::chrono::duration<double>::zero();
 
   hybridMC = std::chrono::duration<double>::zero();
+  
+  nonEquilibriumCandidate = std::chrono::duration<double>::zero();
+  nonEquilibriumCandidatePerturbation = std::chrono::duration<double>::zero();
+  nonEquilibriumCandidateRelaxation = std::chrono::duration<double>::zero();
 }
 
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
@@ -208,6 +212,13 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
   {
     std::print(stream, "\n");
     std::print(stream, "Hybrid MC:                       {:14f} [s]\n", hybridMC.count());
+  }
+  if (nonEquilibriumCandidate > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "\n");
+    std::print(stream, "Non-Equilibrium Candidate:       {:14f} [s]\n", nonEquilibriumCandidate.count());
+    std::print(stream, "    Perturbation:                {:14f} [s]\n", nonEquilibriumCandidatePerturbation.count());
+    std::print(stream, "    Relaxation:                  {:14f} [s]\n", nonEquilibriumCandidateRelaxation.count());
   }
 
   std::print(stream, "\n");
@@ -793,6 +804,13 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     std::print(stream, "\n");
     std::print(stream, "Hybrid MC:                       {:14f} [s]\n", hybridMC.count());
   }
+  if (nonEquilibriumCandidate > std::chrono::duration<double>::zero())
+  {
+    std::print(stream, "\n");
+    std::print(stream, "Non-Equilibrium Candidate:       {:14f} [s]\n", nonEquilibriumCandidate.count());
+    std::print(stream, "    Perturbation:                {:14f} [s]\n", nonEquilibriumCandidatePerturbation.count());
+    std::print(stream, "    Relaxation:                  {:14f} [s]\n", nonEquilibriumCandidateRelaxation.count());
+  }
 
   std::print(stream, "\n");
   std::print(stream, "Property sampling:              {:14f} [s]\n", propertySampling.count());
@@ -829,6 +847,16 @@ const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics() const
     status["gibbsVolume"]["tail"] = GibbsVolumeMoveTail.count();
     status["gibbsVolume"]["overhead"] = GibbsVolumeMove.count() - GibbsVolumeMoveNonEwald.count() -
                                         GibbsVolumeMoveEwald.count() - GibbsVolumeMoveTail.count();
+  }
+  if (hybridMC > std::chrono::duration<double>::zero())
+  {
+    status["hybridMC"]["total"] = hybridMC.count();
+  }
+  if (nonEquilibriumCandidate > std::chrono::duration<double>::zero())
+  {
+    status["nonEquilibriumCandidate"]["total"] = nonEquilibriumCandidate.count();
+    status["nonEquilibriumCandidate"]["perturbation"] = nonEquilibriumCandidatePerturbation.count();
+    status["nonEquilibriumCandidate"]["relaxtaion"] = nonEquilibriumCandidateRelaxation.count();
   }
 
   status["propertySampling"] = propertySampling.count();
@@ -1066,6 +1094,12 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
   {
     status["hybridMC"]["total"] = hybridMC.count();
   }
+  if (nonEquilibriumCandidate > std::chrono::duration<double>::zero())
+  {
+    status["nonEquilibriumCandidate"]["total"] = nonEquilibriumCandidate.count();
+    status["nonEquilibriumCandidate"]["perturbation"] = nonEquilibriumCandidatePerturbation.count();
+    status["nonEquilibriumCandidate"]["relaxtaion"] = nonEquilibriumCandidateRelaxation.count();
+  }
 
   return status;
 }
@@ -1239,6 +1273,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
 
   archive << t.hybridMC;
 
+  archive << t.nonEquilibriumCandidate;
+  archive << t.nonEquilibriumCandidatePerturbation;
+  archive << t.nonEquilibriumCandidateRelaxation;
+
   return archive;
 }
 
@@ -1395,6 +1433,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveCpuTim
   archive >> t.ParallelTemperingSwapFugacity;
 
   archive >> t.hybridMC;
+
+  archive >> t.nonEquilibriumCandidate;
+  archive >> t.nonEquilibriumCandidatePerturbation;
+  archive >> t.nonEquilibriumCandidateRelaxation;
 
   return archive;
 }

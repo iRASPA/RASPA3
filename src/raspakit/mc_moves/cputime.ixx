@@ -258,6 +258,10 @@ export struct MCMoveCpuTime
 
   std::chrono::duration<double> hybridMC{0.0};             ///< Time for hybrid MC.
   std::chrono::duration<double> hybridMCIntegration{0.0};  ///< Time for MD integration in hybrid MC.
+  
+  std::chrono::duration<double> nonEquilibriumCandidate{0.0};             ///< Time spent on NCMC move
+  std::chrono::duration<double> nonEquilibriumCandidatePerturbation{0.0};             ///< Time spent on NCMC move Perturbation
+  std::chrono::duration<double> nonEquilibriumCandidateRelaxation{0.0};             ///< Time spent on NCMC move Relaxation
 
   /**
    * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.
@@ -270,7 +274,7 @@ export struct MCMoveCpuTime
            randomRotationMove + reinsertionMoveCBMC + swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC +
            swapDeletionMoveCBMC + swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC +
            GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove +
-           ParallelTemperingSwap + hybridMC;
+           ParallelTemperingSwap + hybridMC + nonEquilibriumCandidate;
   }
 
   /**
@@ -467,6 +471,10 @@ export struct MCMoveCpuTime
 
     hybridMC = b.hybridMC;
 
+    nonEquilibriumCandidate = b.nonEquilibriumCandidate;
+    nonEquilibriumCandidatePerturbation = b.nonEquilibriumCandidatePerturbation;
+    nonEquilibriumCandidateRelaxation = b.nonEquilibriumCandidateRelaxation;
+
     return *this;
   }
 
@@ -610,6 +618,10 @@ export struct MCMoveCpuTime
     ParallelTemperingSwapFugacity += b.ParallelTemperingSwapFugacity;
 
     hybridMC += b.hybridMC;
+
+    nonEquilibriumCandidate += b.nonEquilibriumCandidate;
+    nonEquilibriumCandidatePerturbation += b.nonEquilibriumCandidatePerturbation;
+    nonEquilibriumCandidateRelaxation += b.nonEquilibriumCandidateRelaxation;
 
     return *this;
   }
@@ -787,6 +799,10 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.ParallelTemperingSwapFugacity = a.ParallelTemperingSwapFugacity + b.ParallelTemperingSwapFugacity;
 
   m.hybridMC = a.hybridMC + b.hybridMC;
+
+  m.nonEquilibriumCandidate = a.nonEquilibriumCandidate + b.nonEquilibriumCandidate;
+  m.nonEquilibriumCandidatePerturbation = a.nonEquilibriumCandidatePerturbation + b.nonEquilibriumCandidatePerturbation;
+  m.nonEquilibriumCandidateRelaxation = a.nonEquilibriumCandidateRelaxation + b.nonEquilibriumCandidateRelaxation;
 
   return m;
 }

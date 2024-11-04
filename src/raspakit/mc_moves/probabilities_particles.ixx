@@ -57,6 +57,7 @@ export struct MCMoveProbabilitiesParticles
    * \param widomCBCFCMCProbability Probability of performing a Widom CBCFCMC.
    * \param parallelTemperingProbability Probability of performing a parallel tempering.
    * \param hybridMCProbability Probability of performing a hybrid MC move.
+   * \param nCMCProbability Probability of performing a nonequilibrium candidate MC move.
    */
   MCMoveProbabilitiesParticles(double translationProbability = 0.0, double randomTranslationProbability = 0.0,
                                double rotationProbability = 0.0, double randomRotationProbability = 0.0,
@@ -67,7 +68,8 @@ export struct MCMoveProbabilitiesParticles
                                double gibbsSwapCBMCProbability = 0.0, double gibbsSwapCFCMCProbability = 0.0,
                                double gibbsSwapCBCFCMCProbability = 0.0, double widomProbability = 0.0,
                                double widomCFCMCProbability = 0.0, double widomCBCFCMCProbability = 0.0,
-                               double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0);
+                               double parallelTemperingProbability = 0.0, double hybridMCProbability = 0.0,
+                               double nCMCProbability = 0.0);
 
   double translationProbability;         ///< Probability of performing a translation.
   double randomTranslationProbability;   ///< Probability of performing a random translation.
@@ -89,6 +91,7 @@ export struct MCMoveProbabilitiesParticles
   double widomCBCFCMCProbability;        ///< Probability of performing a Widom CBCFCMC.
   double parallelTemperingProbability;   ///< Probability of performing a parallel tempering.
   double hybridMCProbability;            ///< Probability of performing a Hybrid MC.
+  double nCMCProbability;                ///< Probability of performing a NCMC move.
 
   double accumulatedTranslationProbability{0.0};         ///< Normalized probability to perform translation.
   double accumulatedRandomTranslationProbability{0.0};   ///< Normalized probability to perform random translation.
@@ -110,6 +113,7 @@ export struct MCMoveProbabilitiesParticles
   double accumulatedWidomCBCFCMCProbability{0.0};        ///< Normalized probability to perform Widom CBCFCMC.
   double accumulatedParallelTemperingProbability{0.0};   ///< Normalized probability to perform parallel tempering.
   double accumulatedHybridMCProbability{0.0};            ///< Normalized probability to perform hybrid MC.
+  double accumulatedNCMCProbability{0.0};                ///< Normalized probability to perform NCMC.
 
   /**
    * \brief Normalizes the move probabilities so that they sum to 1.

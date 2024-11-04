@@ -49,7 +49,7 @@ MCMoveProbabilitiesParticles::MCMoveProbabilitiesParticles(
     double swapCFCMCProbability, double swapCBCFCMCProbability, double gibbsVolumeChangeProbability,
     double gibbsSwapCBMCProbability, double gibbsSwapCFCMCProbability, double gibbsSwapCBCFCMCProbability,
     double widomProbability, double widomCFCMCProbability, double widomCBCFCMCProbability,
-    double parallelTemperingProbability, double hybridMCProbability)
+    double parallelTemperingProbability, double hybridMCProbability, double nCMCProbability)
     : translationProbability(translationProbability),
       randomTranslationProbability(randomTranslationProbability),
       rotationProbability(rotationProbability),
@@ -69,7 +69,8 @@ MCMoveProbabilitiesParticles::MCMoveProbabilitiesParticles(
       widomCFCMCProbability(widomCFCMCProbability),
       widomCBCFCMCProbability(widomCBCFCMCProbability),
       parallelTemperingProbability(parallelTemperingProbability),
-      hybridMCProbability(hybridMCProbability)
+      hybridMCProbability(hybridMCProbability),
+      nCMCProbability(nCMCProbability)
 {
   normalizeMoveProbabilities();
 }
@@ -81,7 +82,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilities()
       volumeChangeProbability + reinsertionCBMCProbability + identityChangeCBMCProbability + swapProbability +
       swapCBMCProbability + swapCFCMCProbability + swapCBCFCMCProbability + gibbsVolumeChangeProbability +
       gibbsSwapCBMCProbability + gibbsSwapCFCMCProbability + widomProbability + widomCFCMCProbability +
-      widomCBCFCMCProbability + parallelTemperingProbability + hybridMCProbability;
+      widomCBCFCMCProbability + parallelTemperingProbability + hybridMCProbability + nCMCProbability;
 
   if (totalProbability > 1e-5)
   {
@@ -104,6 +105,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilities()
     widomCBCFCMCProbability /= totalProbability;
     parallelTemperingProbability /= totalProbability;
     hybridMCProbability /= totalProbability;
+    nCMCProbability /= totalProbability;
   }
 
   accumulatedTranslationProbability = translationProbability;
@@ -125,6 +127,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilities()
   accumulatedWidomCBCFCMCProbability = widomCBCFCMCProbability;
   accumulatedParallelTemperingProbability = parallelTemperingProbability;
   accumulatedHybridMCProbability = hybridMCProbability;
+  accumulatedNCMCProbability = nCMCProbability;
 
   accumulatedRandomTranslationProbability += accumulatedTranslationProbability;
   accumulatedRotationProbability += accumulatedRandomTranslationProbability;
@@ -144,6 +147,7 @@ void MCMoveProbabilitiesParticles::normalizeMoveProbabilities()
   accumulatedWidomCBCFCMCProbability += accumulatedWidomCFCMCProbability;
   accumulatedParallelTemperingProbability += accumulatedWidomCBCFCMCProbability;
   accumulatedHybridMCProbability += accumulatedParallelTemperingProbability;
+  accumulatedNCMCProbability = accumulatedHybridMCProbability;
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveProbabilitiesParticles &p)
@@ -170,6 +174,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.widomCBCFCMCProbability;
   archive << p.parallelTemperingProbability;
   archive << p.hybridMCProbability;
+  archive << p.nCMCProbability;
 
   archive << p.accumulatedTranslationProbability;
   archive << p.accumulatedRandomTranslationProbability;
@@ -190,7 +195,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.accumulatedWidomCFCMCProbability;
   archive << p.accumulatedWidomCBCFCMCProbability;
   archive << p.accumulatedParallelTemperingProbability;
-  archive << p.hybridMCProbability;
+  archive << p.accumulatedHybridMCProbability;
+  archive << p.accumulatedNCMCProbability;
 
   return archive;
 }
@@ -228,6 +234,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.widomCBCFCMCProbability;
   archive >> p.parallelTemperingProbability;
   archive >> p.hybridMCProbability;
+  archive >> p.nCMCProbability;
 
   archive >> p.accumulatedTranslationProbability;
   archive >> p.accumulatedRandomTranslationProbability;
@@ -248,7 +255,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.accumulatedWidomCFCMCProbability;
   archive >> p.accumulatedWidomCBCFCMCProbability;
   archive >> p.accumulatedParallelTemperingProbability;
-  archive >> p.hybridMCProbability;
+  archive >> p.accumulatedHybridMCProbability;
+  archive >> p.accumulatedNCMCProbability;
 
   return archive;
 }

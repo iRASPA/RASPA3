@@ -40,11 +40,12 @@ import stringutils;
 
 MCMoveProbabilitiesSystem::MCMoveProbabilitiesSystem(double volumeChangeProbability,
                                                      double gibbsVolumeChangeProbability,
-                                                     double parallelTemperingProbability, double hybridMCProbability)
+                                                     double parallelTemperingProbability, double hybridMCProbability, double nCMCProbability)
     : volumeChangeProbability(volumeChangeProbability),
       gibbsVolumeChangeProbability(gibbsVolumeChangeProbability),
       parallelTemperingProbability(parallelTemperingProbability),
-      hybridMCProbability(hybridMCProbability)
+      hybridMCProbability(hybridMCProbability),
+      nCMCProbability(nCMCProbability)
 {
 }
 
@@ -56,6 +57,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.gibbsVolumeChangeProbability;
   archive << p.parallelTemperingProbability;
   archive << p.hybridMCProbability;
+  archive << p.nCMCProbability;
 
   return archive;
 }
@@ -75,6 +77,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.gibbsVolumeChangeProbability;
   archive >> p.parallelTemperingProbability;
   archive >> p.hybridMCProbability;
+  archive >> p.nCMCProbability;
 
   return archive;
 }
