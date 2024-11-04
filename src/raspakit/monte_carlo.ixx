@@ -28,6 +28,7 @@ import input_reader;
 import energy_status;
 import archive;
 import json;
+import logger;
 
 /**
  * \brief Performs Monte Carlo simulations for molecular systems.
@@ -109,7 +110,7 @@ export struct MonteCarlo
   RandomNumber random;                 ///< Random number generator.
   size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
-  std::vector<std::ofstream> streams;            ///< Output streams for writing data.
+  std::vector<Logger> loggers;                   ///< Loggers to write output to.
   std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.
   std::vector<nlohmann::json> outputJsons;       ///< Output data in JSON format.
 
@@ -185,6 +186,11 @@ export struct MonteCarlo
    * \return A string describing the MonteCarlo object.
    */
   std::string repr() const;
+
+  /**
+   * \brief Writes a restart file
+   */
+  void writeRestartFile();
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MonteCarlo &mc);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MonteCarlo &mc);

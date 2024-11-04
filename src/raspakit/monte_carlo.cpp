@@ -87,8 +87,9 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
+import logger;
 
-MonteCarlo::MonteCarlo() : random(std::nullopt){};
+MonteCarlo::MonteCarlo() : random(std::nullopt) {};
 
 MonteCarlo::MonteCarlo(InputReader& reader) noexcept
     : numberOfCycles(reader.numberOfCycles),
@@ -155,11 +156,11 @@ void MonteCarlo::createOutputFiles()
   for (System& system : systems)
   {
     std::string fileNameString =
-        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
-    streams.emplace_back(fileNameString, std::ios::out);
-    fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
     outputJsonFileNames.emplace_back(fileNameString);
+    fileNameString =
+        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
+    loggers.emplace_back(fileNameString, Logger::LogLevel::INFO);
   }
 }
 
@@ -248,17 +249,18 @@ void MonteCarlo::initialize()
 
   for (const System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
-
-    std::print(stream, "{}", system.writeOutputHeader());
-    std::print(stream, "Random seed: {}\n\n", random.seed);
-    std::print(stream, "{}\n", HardwareInfo::writeInfo());
-    std::print(stream, "{}", Units::printStatus());
-    std::print(stream, "{}", system.writeSystemStatus());
-    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(stream, "{}", system.forceField.printForceFieldStatus());
-    std::print(stream, "{}", system.writeComponentStatus());
-    std::print(stream, "{}", system.reactions.printStatus());
+    Logger log;
+    log.info(system.writeOutputHeader());
+    log.info(std::format("Random seed: {}\n", random.seed));
+    log.info(HardwareInfo::writeInfo());
+    log.info(Units::printStatus());
+    log.info(system.writeSystemStatus());
+    log.info(system.forceField.printPseudoAtomStatus());
+    log.info(system.forceField.printForceFieldStatus());
+    log.info(system.writeComponentStatus());
+    log.info(system.reactions.printStatus());
+    loggers[system.systemId] += log;
+    loggers[system.systemId].flush();
 
 #ifdef VERSION
 #define QUOTE(str) #str
@@ -267,14 +269,16 @@ void MonteCarlo::initialize()
 #endif
 
     outputJsons[system.systemId]["seed"] = random.seed;
-    outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-    outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
-    outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-    outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-    outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] =
-        system.forceField.jsonPseudoAtomStatus();
-    outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
-    outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
+
+    nlohmann::json init;
+    init["hardwareInfo"] = HardwareInfo::jsonInfo();
+    init["units"] = Units::jsonStatus();
+    init["initialConditions"] = system.jsonSystemStatus();
+    init["forceField"] = system.forceField.jsonForceFieldStatus();
+    init["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
+    init["components"] = system.jsonComponentStatus();
+    init["reactions"] = system.reactions.jsonStatus();
+    outputJsons[system.systemId]["initialization"] = init;
 
     std::ofstream json(outputJsonFileNames[system.systemId]);
     json << outputJsons[system.systemId].dump(4);
@@ -285,10 +289,7 @@ void MonteCarlo::initialize()
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 
-    std::ostream stream(streams[system.systemId].rdbuf());
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
-    std::print(stream, "\n\n\n\n");
-
+    loggers[system.systemId].info(system.runningEnergies.printMC("Recomputed from scratch"));
     system.writeRestartFile();
   };
 
@@ -302,12 +303,11 @@ void MonteCarlo::initialize()
     {
       for (System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-        std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
-        std::flush(stream);
+        loggers[system.systemId].info(
+            system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+        loggers[system.systemId].flush();
       }
     }
 
@@ -321,15 +321,7 @@ void MonteCarlo::initialize()
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
+      writeRestartFile();
     }
 
     t2 = std::chrono::system_clock::now();
@@ -350,8 +342,6 @@ void MonteCarlo::equilibrate()
 
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
-
     system.runningEnergies = system.computeTotalEnergies();
 
     for (Component& component : system.components)
@@ -372,13 +362,11 @@ void MonteCarlo::equilibrate()
     {
       for (System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-        std::print(stream, "{}",
-                   system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
-        std::flush(stream);
+        loggers[system.systemId].info(
+            system.writeEquilibrationStatusReportMC("Equilibration", currentCycle, numberOfEquilibrationCycles));
+        loggers[system.systemId].flush();
       }
     }
 
@@ -405,15 +393,7 @@ void MonteCarlo::equilibrate()
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
+      writeRestartFile();
     }
 
     t2 = std::chrono::system_clock::now();
@@ -435,8 +415,6 @@ void MonteCarlo::production()
 
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
-
     system.runningEnergies = system.computeTotalEnergies();
 
     system.clearMoveStatistics();
@@ -501,12 +479,10 @@ void MonteCarlo::production()
     {
       for (System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
         system.loadings =
             Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-
-        std::print(stream, "{}", system.writeProductionStatusReportMC(currentCycle, numberOfCycles));
-        std::flush(stream);
+        loggers[system.systemId].info(system.writeProductionStatusReportMC(currentCycle, numberOfCycles));
+        loggers[system.systemId].flush();
       }
     }
 
@@ -550,15 +526,7 @@ void MonteCarlo::production()
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
-      // write restart
-      std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
-      Archive<std::ofstream> archive(ofile);
-      archive << *this;
-      ofile.close();
-      if (ofile)
-      {
-        std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
-      }
+      writeRestartFile();
     }
 
     t2 = std::chrono::system_clock::now();
@@ -594,99 +562,102 @@ void MonteCarlo::output()
 
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    Logger log;
 
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
-    stream << system.runningEnergies.printMCDiff(recomputedEnergies);
+    log.info(system.runningEnergies.printMCDiff(recomputedEnergies));
 
-    std::print(stream, "\n\n");
+    log.info("\n");
 
-    std::print(stream, "Monte-Carlo moves statistics\n");
-    std::print(stream, "===============================================================================\n\n");
+    log.info("Monte-Carlo moves statistics");
+    log.info("===============================================================================\n");
+    log.info(system.writeMCMoveStatistics());
 
-    std::print(stream, "{}", system.writeMCMoveStatistics());
-
-    std::print(stream, "Production run counting of the MC moves\n");
-    std::print(stream, "===============================================================================\n\n");
-
+    log.info("Production run counting of the MC moves");
+    log.info("===============================================================================\n");
     for (const Component& component : system.components)
     {
-      std::print(
-          stream, "{}",
+      log.info(
           component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, component.componentId, component.name));
     }
 
-    std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    log.info("Production run counting of the MC moves summed over systems and components");
+    log.info("===============================================================================\n");
+    log.info(countTotal.writeAllSystemStatistics(numberOfSteps));
 
-    std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
-
-    std::print(stream, "\n\n");
-
-    std::print(stream, "Production run CPU timings of the MC moves\n");
-    std::print(stream, "===============================================================================\n\n");
-
+    log.info("Production run CPU timings of the MC moves");
+    log.info("===============================================================================\n");
     for (const Component& component : system.components)
     {
-      std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+      log.info(component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
-    std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
-    std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
-    std::print(stream, "===============================================================================\n\n");
+    log.info(system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
-    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
-    std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
-    std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
-    std::print(stream, "Production simulation time:     {:14f} [s]\n", totalProductionSimulationTime.count());
-    std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
-    std::print(stream, "\n\n");
+    log.info("Production run CPU timings of the MC moves summed over systems and components");
+    log.info("===============================================================================\n");
+    log.info(total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
 
-    std::print(stream, "{}",
-               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents,
-                                                              system.components));
-    std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
-    std::print(
-        stream, "{}",
+    log.info(std::format("Initalization simulation time:  {:14f} [s]", totalInitializationSimulationTime.count()));
+    log.info(std::format("Equilibration simulation time:  {:14f} [s]", totalEquilibrationSimulationTime.count()));
+    log.info(std::format("Production simulation time:     {:14f} [s]", totalProductionSimulationTime.count()));
+    log.info(std::format("Total simulation time:          {:14f} [s]", totalSimulationTime.count()));
+
+    log.info(system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents,
+                                                            system.components));
+    log.info(system.averagePressure.writeAveragesStatistics());
+    log.info(
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
-    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass()));
+    log.info(system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass()));
+    loggers[system.systemId] += log;
+    loggers[system.systemId].flush();
 
     // json statistics
-    outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
-
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
-        countTotal.jsonAllSystemStatistics(numberOfSteps);
-
-    outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
+    nlohmann::json output, properties;
+    output["runningEnergies"] = system.runningEnergies.jsonMC();
+    output["recomputedEnergies"] = recomputedEnergies.jsonMC();
+    output["drift"] = drift.jsonMC();
+    output["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    output["MCMoveStatistics"]["summedOverAllSystems"] = countTotal.jsonAllSystemStatistics(numberOfSteps);
+    output["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
-    outputJsons[system.systemId]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["system"] =
-        system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
-
-    outputJsons[system.systemId]["properties"]["averageEnergies"] = system.averageEnergies.jsonAveragesStatistics(
+    output["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
+    output["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
+    output["cpuTimings"]["production"] = totalProductionSimulationTime.count();
+    output["cpuTimings"]["total"] = totalSimulationTime.count();
+    output["cpuTimings"]["system"] = system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
+    properties["averageEnergies"] = system.averageEnergies.jsonAveragesStatistics(
         system.hasExternalField, system.frameworkComponents, system.components);
-    outputJsons[system.systemId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
-    outputJsons[system.systemId]["properties"]["averageEnthalpy"] =
+    properties["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    properties["averageEnthalpy"] =
         system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
 
     for (const Component& component : system.components)
     {
-      outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
+      output["MCMoveStatistics"][component.name]["percentage"] =
           component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
-      outputJsons[system.systemId]["output"]["cpuTimings"][component.name] =
-          component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
+      output["cpuTimings"][component.name] = component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }
+
+    outputJsons[system.systemId]["output"] = output;
+    outputJsons[system.systemId]["properties"] = properties;
 
     std::ofstream json(outputJsonFileNames[system.systemId]);
     json << outputJsons[system.systemId].dump(4);
+  }
+}
+
+void MonteCarlo::writeRestartFile()
+{
+  // write restart
+  std::ofstream ofile("restart_data.bin_temp", std::ios::binary);
+  Archive<std::ofstream> archive(ofile);
+  archive << *this;
+  ofile.close();
+  if (ofile)
+  {
+    std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
   }
 }
 
