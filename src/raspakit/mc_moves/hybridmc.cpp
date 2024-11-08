@@ -57,19 +57,11 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   // initialize the velocities according to Boltzmann distribution
   // NOTE: it is important that the reference energy has the initial kinetic energies
   Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
-  Integrators::removeCenterOfMassVelocityDrift(moleculePositions);
 
-  double uKinTrans = Integrators::computeTranslationalKineticEnergy(moleculePositions);
-  double translationalTemperature = 2.0 * uKinTrans /
-                                    (Units::KB * static_cast<double>(system.translationalDegreesOfFreedom -
-                                                                     system.translationalCenterOfMassConstraint));
-
-  double uKinRot = Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
-  double rotationalTemperature = 2.0 * uKinRot / (Units::KB * static_cast<double>(system.rotationalDegreesOfFreedom));
-
-  std::pair<double, double> scaling(system.temperature / translationalTemperature,
-                                    system.temperature / rotationalTemperature);
-  Integrators::scaleVelocities(moleculePositions, scaling);
+  if (system.numberOfFrameworkAtoms == 0)
+  {
+    Integrators::removeCenterOfMassVelocityDrift(moleculePositions);
+  }
 
   // before getting energy, recompute current energy
   system.precomputeTotalGradients();
