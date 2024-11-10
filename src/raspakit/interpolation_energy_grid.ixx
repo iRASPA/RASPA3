@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <vector>
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -11,9 +12,10 @@ module;
 #include <type_traits>
 #endif
 
-export module grid;
+export module interpolation_energy_grid;
 
 #ifndef USE_LEGACY_HEADERS
+import <vector>;
 import <cmath>;
 import <cstddef>;
 import <istream>;
@@ -30,9 +32,19 @@ import double3;
 import stringutils;
 
 import scaling;
+import forcefield;
+import framework;
 
-export struct Grid
+export struct InterpolationEnergyGrid
 {
   int3 numberOfGridPoints;
   std::vector<double> data;
+
+  InterpolationEnergyGrid(int3 numberOfGridPoints): 
+    numberOfGridPoints(numberOfGridPoints),
+    data(static_cast<size_t>(8 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+  {
+  }
+
+  //std::vector<double> createVDWGrid(const ForceField &forcefield, const std::vector<Framework> & frameworkComponents, size_t typeA);
 };

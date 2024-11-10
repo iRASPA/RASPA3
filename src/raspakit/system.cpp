@@ -26,6 +26,7 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
+#include <mdspan>
 #endif
 
 module system;
@@ -57,6 +58,7 @@ import <array>;
 import <string>;
 import <string_view>;
 import <print>;
+import <mdspan>;
 #endif
 
 import archive;
@@ -64,6 +66,8 @@ import randomnumbers;
 import stringutils;
 import int3;
 import double3;
+import double3x3;
+import double3x3x3;
 import simd_quatd;
 import cubic;
 import atom;
@@ -1157,75 +1161,132 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
   double conv = Units::EnergyToKelvin;
 
   std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
-  std::print(stream, "Average pressure tensor: \n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
-             pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
-             pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
-             pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
-  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-  std::pair<double, double> p = averagePressure.averagePressure();
-  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * excessPressure.first,
-             1e-5 * Units::PressureConversionFactor * excessPressure.second);
-  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-             1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
+
+  switch(Units::unitSystem)
+  {
+    case Units::System::RASPA:
+    {
+      double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
+      double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
+      std::print(stream, "Average pressure tensor: \n");
+      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
+                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
+                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
+                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+      std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
+      std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
+      std::pair<double, double> p = averagePressure.averagePressure();
+      std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
+                 1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
+                 1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
+      std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
+                 1e-5 * Units::PressureConversionFactor * excessPressure.first,
+                 1e-5 * Units::PressureConversionFactor * excessPressure.second);
+      std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
+                 1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
+    }
+    break;
+    case Units::System::ReducedUnits:
+    {
+      double3x3 pressureTensor = currentPressureTensor.first;
+      double3x3 pressureTensorError = currentPressureTensor.second;
+      std::print(stream, "Average pressure tensor: \n");
+      std::print(stream, "-------------------------------------------------------------------------------\n");
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax, pressureTensor.bx,
+                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay, pressureTensor.by,
+                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.az, pressureTensor.bz,
+                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz, Units::unitOfPressureString);
+      std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
+      std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
+      std::pair<double, double> p = averagePressure.averagePressure();
+      std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n",
+                 idealGasPressure.first,
+                 idealGasPressure.second,
+                 Units::unitOfPressureString);
+      std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n",
+                 excessPressure.first,
+                 excessPressure.second,
+                 Units::unitOfPressureString);
+      std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n",
+                 p.first, p.second, Units::unitOfPressureString);
+    }
+    break;
+  }
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
-  std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+  std::print(stream, "Total potential energy{}  {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
-             conv * energyData.second.totalEnergy.energy);
+             conv * energyData.second.totalEnergy.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
              conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
+             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "Framework-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
              conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
-  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
              conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
-  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Coulombic Real{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
              conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
-  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
              conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "Molecule-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
              conv * energyData.first.interEnergy.VanDerWaals.energy,
-             conv * energyData.second.interEnergy.VanDerWaals.energy);
-  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.interEnergy.VanDerWaals.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
              conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
-  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Coulombic Real{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
              conv * energyData.first.interEnergy.CoulombicReal.energy,
-             conv * energyData.second.interEnergy.CoulombicReal.energy);
-  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.interEnergy.CoulombicReal.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
              conv * energyData.first.interEnergy.CoulombicFourier.energy,
-             conv * energyData.second.interEnergy.CoulombicFourier.energy);
-  std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
+             conv * energyData.second.interEnergy.CoulombicFourier.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Molecule Intra{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.intraEnergy.total().energy, conv * energyData.first.intraEnergy.total().energy,
-             conv * energyData.second.intraEnergy.total().energy);
+             conv * energyData.second.intraEnergy.total().energy,
+             Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
 
@@ -1407,9 +1468,9 @@ std::string System::writeSystemStatus() const
   std::print(stream, "System definitions\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, "Temperature:          {} [K]\n", temperature);
+  std::print(stream, "Temperature:          {} [{}]\n", temperature, Units::unitOfTemperatureString);
   std::print(stream, "Beta:                 {} [-]\n", beta);
-  std::print(stream, "Pressure:             {} [Pa]\n", pressure * Units::PressureConversionFactor);
+  std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor, Units::unitOfPressureString);
   std::print(stream, "Helium void fraction: {} [-]\n\n", heliumVoidFraction);
 
   stream << simulationBox.printStatus();
@@ -2216,3 +2277,70 @@ void System::readRestartFile()
 }
 
 std::string System::repr() const { return std::string("system test"); }
+
+
+//std::vector<double> createVDWGrid(const ForceField &forcefield, const std::vector<Framework> & frameworkComponents, size_t typeA);
+
+void System::createInterpolationGrids()
+{
+
+  double percent = 100.0/(double)(128 * gridPseudoAtomIndices.size());
+
+  for(size_t pseudo_atom_index: gridPseudoAtomIndices)
+  {
+    InterpolationEnergyGrid grid(int3(128, 128, 128));
+
+    std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data(grid.data.data(), 128, 128, 128, 8);
+
+    double teller{};
+    for(size_t i = 0; i <= 127; i++)
+    {
+      teller += 1.0;
+      for(size_t j = 0; j <= 127; j++)
+      {
+        for(size_t k = 0; k <=127; k++)
+        {
+          double3 s = double3(static_cast<double>(i) / static_cast<double>(127),
+                              static_cast<double>(j) / static_cast<double>(127),
+                              static_cast<double>(k) / static_cast<double>(127));
+
+          double3 pos = simulationBox.cell * s;
+
+          auto [energy, gradient, hessian, third_derivative] = 
+            Interactions::calculateThirdDerivativeAtPositionVDW(forceField, simulationBox, pos, pseudo_atom_index, spanOfFrameworkAtoms());
+
+          double energy_fractional = energy;
+          double3 gradient_fractional = simulationBox.cell.transpose() * gradient;
+          double3x3 hessian_fractional = simulationBox.cell.transpose() * hessian * simulationBox.cell;
+          double third_derivative_fractional_xyz = 
+            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cx * third_derivative.m111 +
+            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cy * third_derivative.m112 +
+            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cz * third_derivative.m113 +
+            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cx * third_derivative.m121 +
+            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cy * third_derivative.m122 +
+            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cz * third_derivative.m132;
+
+          data[i, j, k, 0] = energy_fractional;
+          data[i, j, k, 1] = gradient_fractional.x;
+          data[i, j, k, 2] = gradient_fractional.y;
+          data[i, j, k, 3] = gradient_fractional.z;
+          data[i, j, k, 4] = hessian_fractional.ay;
+          data[i, j, k, 5] = hessian_fractional.az;
+          data[i, j, k, 6] = hessian_fractional.bz;
+          data[i, j, k, 7] = third_derivative_fractional_xyz;
+        }
+      }
+      if((size_t)(teller*percent)>(size_t)((teller-1.0) * percent))
+      {
+        std::cout << "Percentage finished: " << (size_t)(teller * percent) << std::endl;;
+      }
+    }
+
+    interpolationGrids[pseudo_atom_index] = grid;
+
+  }
+
+  //for(const Framework &framework: frameworks)
+  //{
+  //}
+}

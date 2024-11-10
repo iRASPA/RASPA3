@@ -89,6 +89,7 @@ import transition_matrix;
 import equation_of_states;
 import thermostat;
 import json;
+import interpolation_energy_grid;
 
 /**
  * \brief Represents the central system for simulations.
@@ -417,4 +418,8 @@ export struct System
   void readRestartFile();
 
   std::string repr() const;
+
+  std::vector<size_t> gridPseudoAtomIndices;
+  std::vector<InterpolationEnergyGrid> interpolationGrids;
+  void createInterpolationGrids();
 };

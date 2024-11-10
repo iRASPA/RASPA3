@@ -17,7 +17,7 @@ module;
 #include <vector>
 #endif
 
-module grid;
+module interpolation_energy_grid;
 
 #ifndef USE_LEGACY_HEADERS
 import <istream>;
@@ -197,3 +197,5 @@ import stringutils;
      -4, 4,  4,  -4, -4, 4,  4, -4, -4, 4,  2,  2,  2,  2,  -2, -2, -2, -2, 2, 2,  -2, -2,
      2,  2,  -2, -2, 2,  -2, 2, -2, 2,  -2, 2,  -2, 1,  1,  1,  1,  1,  1,  1, 1}
 };
+
+

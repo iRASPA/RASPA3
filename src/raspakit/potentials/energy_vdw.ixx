@@ -63,9 +63,19 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
       double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
       return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+                                          (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+    }
+    case VDWParameters::Type::RepulsiveHarmonic:
+    {
+      double r = std::sqrt(rr);
+      double arg1 = forcefield(typeA, typeB).parameters.x;
+      double arg2 = forcefield(typeA, typeB).parameters.y;
+      double temp = (1.0 - r / arg2);
+      return EnergyFactor(temp < 0.0 ? 0.0 : arg1 * temp * temp, 0.0);
     }
     default:
       break;
   }
+
+  return EnergyFactor(0.0, 0.0);
 };

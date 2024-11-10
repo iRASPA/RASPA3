@@ -457,11 +457,11 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Force field status\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [Å]\n", cutOffFrameworkVDW);
-  std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [Å]\n", cutOffFrameworkVDW);
-  std::print(stream, "Cutoff Coulomb:                {:9.5f} [Å]\n\n", cutOffCoulomb);
+  std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW, Units::displayedUnitOfLengthString);
+  std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW, Units::displayedUnitOfLengthString);
+  std::print(stream, "Cutoff Coulomb:                {:9.5f} [{}]\n\n", cutOffCoulomb, Units::displayedUnitOfLengthString);
 
-  std::print(stream, "Overlap-criteria VDW:          {: .6e} [K]\n\n", overlapCriteria);
+  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria, Units::displayedUnitOfEnergyString);
 
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
@@ -470,12 +470,19 @@ std::string ForceField::printForceFieldStatus() const
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
         case VDWParameters::Type::LennardJones:
-          std::print(stream, "{:8} - {:8} {} p₀/kʙ: {:9.5f} [K], p₁: {:8.5f} [Å]\n", pseudoAtoms[i].name,
-                     pseudoAtoms[j].name, "Lennard-Jones",
+          std::print(stream, "{:8} - {:8} {} p₀{}: {:9.5f} [{}], p₁: {:8.5f} [{}]\n",
+                     pseudoAtoms[i].name,
+                     pseudoAtoms[j].name, 
+                     "Lennard-Jones",
+                     Units::displayedUnitOfEnergyConversionString,
                      Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
-                     data[i * numberOfPseudoAtoms + j].parameters.y);
-          std::print(stream, "{:33} shift: {:9.5f} [K], tailcorrections: {}\n", std::string(""),
+                     Units::displayedUnitOfEnergyString,
+                     data[i * numberOfPseudoAtoms + j].parameters.y,
+                     Units::displayedUnitOfLengthString);
+          std::print(stream, "{:33} shift: {:9.5f} [{}], tailcorrections: {}\n", 
+                     std::string(""),
                      Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
+                     Units::displayedUnitOfEnergyString,
                      tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
           break;
         default:

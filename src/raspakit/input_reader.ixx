@@ -213,6 +213,9 @@ export struct InputReader
    */
   void validateInput(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
+
+  void parseUnits(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
   /**
    * \struct InsensitiveCompare
    * \brief Comparator for case-insensitive string comparison.

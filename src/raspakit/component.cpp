@@ -66,6 +66,7 @@ import double3x3;
 import randomnumbers;
 import archive;
 import json;
+import units;
 import skposcarparser;
 import characterset;
 import stringutils;
@@ -492,8 +493,8 @@ std::string Component::printStatus(const ForceField &forceField) const
     std::print(stream, "    Type: Cation\n\n");
   }
 
-  std::print(stream, "    Critical temperature:  {} [K]\n", criticalTemperature);
-  std::print(stream, "    Critical pressure:     {} [Pa]\n", criticalPressure);
+  std::print(stream, "    Critical temperature:  {} [{}]\n", criticalTemperature, Units::unitOfTemperatureString);
+  std::print(stream, "    Critical pressure:     {} [{}]\n", criticalPressure, Units::unitOfPressureString);
   std::print(stream, "    Acentric factor:       {} [-]\n\n", acentricFactor);
 
   std::print(stream, "    Mol-fraction:                 {} [-]\n", molFraction);

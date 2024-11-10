@@ -179,6 +179,8 @@ InputReader::InputReader(const std::string inputFile)  // : inputStream(inputFil
 
   validateInput(parsed_data);
 
+  parseUnits(parsed_data);
+
   if (parsed_data.contains("SimulationType") && parsed_data["SimulationType"].is_string())
   {
     std::string simulationTypeString = parsed_data["SimulationType"].get<std::string>();
@@ -1475,6 +1477,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
     "SimulationType",
+    "Units",
     "ForceField",
     "NumberOfLambdaBins",
     "RestartFromBinaryFile",
@@ -1619,6 +1622,19 @@ void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>&
           throw std::runtime_error(std::format("Error: Unknown component input '{}'\n", key));
         }
       }
+    }
+  }
+}
+
+void InputReader::parseUnits(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
+{
+  if (parsed_data.contains("Units") && parsed_data["Units"].is_string())
+  {
+    std::string unitsString = parsed_data["Units"].get<std::string>();
+
+    if (caseInSensStringCompare(unitsString, "Reduced"))
+    {
+      Units::setUnits(Units::System::ReducedUnits);
     }
   }
 }

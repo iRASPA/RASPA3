@@ -39,14 +39,12 @@ export struct VDWParameters
   /**
    * \brief Enumeration of van der Waals potential types.
    */
-  enum class Type : int
+  enum class Type : size_t
   {
     LennardJones = 0,
     BuckingHam = 1,
-    Morse = 2,
-    FeynmannHibbs = 3,
-    MM3 = 4,
-    BornHugginsMeyer = 5
+    FeynmannHibbs = 2,
+    RepulsiveHarmonic = 100
   };
 
   double4 parameters;           ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
