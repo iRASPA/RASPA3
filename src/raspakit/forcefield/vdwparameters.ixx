@@ -47,7 +47,7 @@ export struct VDWParameters
     Morse = 3,
     FeynmannHibbs = 4,
     MM3 = 5,
-    BornHugginsMeyer = 6
+    BornHugginsMeyer = 6,
     RepulsiveHarmonic = 100
   };
 
