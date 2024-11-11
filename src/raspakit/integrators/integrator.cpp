@@ -6,6 +6,7 @@ module;
 #include <optional>
 #include <span>
 #include <vector>
+#include <iostream>
 #endif
 
 module integrators;
@@ -16,6 +17,7 @@ import <span>;
 import <vector>;
 import <complex>;
 import <chrono>;
+import <iostream>;
 #endif
 
 import molecule;
@@ -51,7 +53,7 @@ RunningEnergy Integrators::velocityVerlet(
   }
 
   // evolve the positions a half timestep
-  updateVelocities(moleculePositions, dt);
+  updateVelocities(moleculePositions, 0.5 * dt);
 
   // evolve the positions a full timestep
   updatePositions(moleculePositions, dt);
@@ -71,7 +73,7 @@ RunningEnergy Integrators::velocityVerlet(
   updateCenterOfMassAndQuaternionGradients(moleculePositions, moleculeAtomPositions, components);
 
   // evolve the positions a half timestep
-  updateVelocities(moleculePositions, dt);
+  updateVelocities(moleculePositions, 0.5 * dt);
 
   // apply thermo for temperature control
   if (thermostat.has_value())

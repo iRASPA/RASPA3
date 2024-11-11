@@ -74,7 +74,7 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
       return EnergyFactor(temp < 0.0 ? 0.0 : arg1 * temp * temp, 0.0);
     }
     default:
-      break;
+      return EnergyFactor(0.0, 0.0);
   }
 
   return EnergyFactor(0.0, 0.0);

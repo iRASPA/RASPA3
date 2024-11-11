@@ -41,9 +41,13 @@ export struct VDWParameters
    */
   enum class Type : size_t
   {
-    LennardJones = 0,
-    BuckingHam = 1,
-    FeynmannHibbs = 2,
+    None = 0,
+    LennardJones = 1,
+    BuckingHam = 2,
+    Morse = 3,
+    FeynmannHibbs = 4,
+    MM3 = 5,
+    BornHugginsMeyer = 6
     RepulsiveHarmonic = 100
   };
 
@@ -74,6 +78,21 @@ export struct VDWParameters
         type(Type::LennardJones)
   {
   }
+
+  VDWParameters(double epsilon, double sigma, Type type)
+      : parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)),
+        shift(0.0),
+        tailCorrectionEnergy(0.0),
+        type(type)
+  {
+  }
+
+  /**
+   * \brief Returns interaction type from given string
+   *
+   * \param interactionType string to convert to interaction type
+   */
+  static Type stringToEnum(std::string interactionType);
 
   /**
    * \brief Computes the potential energy shift at the cutoff distance.

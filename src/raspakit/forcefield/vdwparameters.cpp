@@ -22,6 +22,7 @@ module;
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 #endif
 
@@ -50,9 +51,41 @@ import <type_traits>;
 import <iterator>;
 import <functional>;
 import <print>;
+import <unordered_map>;
 #endif
 
 import archive;
+
+std::string toLower(const std::string& str)
+{
+  std::string result = str;
+  std::transform(result.begin(), result.end(), result.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+  return result;
+}
+
+VDWParameters::Type VDWParameters::stringToEnum(const std::string interactionType)
+{
+  static const std::unordered_map<std::string, Type> strToEnumMap = {{"none", Type::None},
+                                                                     {"lennardjones", Type::LennardJones},
+                                                                     {"lennard-jones", Type::LennardJones},
+                                                                     {"buckingham", Type::BuckingHam},
+                                                                     {"morse", Type::Morse},
+                                                                     {"feynmannhibbs", Type::FeynmannHibbs},
+                                                                     {"mm3", Type::MM3},
+                                                                     {"bornhugginsmeyer", Type::BornHugginsMeyer}};
+
+  std::string lowerInteractionType = toLower(interactionType);
+  auto it = strToEnumMap.find(lowerInteractionType);
+  if (it != strToEnumMap.end())
+  {
+    return it->second;
+  }
+  else
+  {
+    throw std::invalid_argument("Invalid string for interaction type conversion");
+  }
+}
 
 bool VDWParameters::operator==(const VDWParameters &other) const
 {

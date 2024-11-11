@@ -83,8 +83,8 @@ void Integrators::updateVelocities(std::span<Molecule> moleculePositions, double
   // Update velocities and orientation momenta based on gradients
   for (Molecule& molecule : moleculePositions)
   {
-    molecule.velocity -= 0.5 * dt * molecule.gradient * molecule.invMass;
-    molecule.orientationMomentum -= 0.5 * dt * molecule.orientationGradient;
+    molecule.velocity -= dt * molecule.gradient * molecule.invMass;
+    molecule.orientationMomentum -= dt * molecule.orientationGradient;
   }
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateVelocities += end - begin;

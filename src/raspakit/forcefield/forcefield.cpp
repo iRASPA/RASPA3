@@ -166,7 +166,7 @@ ForceField::ForceField(std::string filePath)
   }
   tailCorrection = parsed_data.value("TailCorrections", false);
 
-  data.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters(0.0, 0.0));
+  data.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, VDWParameters());
   shiftPotentials.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, shiftPotential);
   tailCorrections.resize(numberOfPseudoAtoms * numberOfPseudoAtoms, tailCorrection);
 
@@ -204,8 +204,9 @@ ForceField::ForceField(std::string filePath)
 
     double param0 = scannedJsonParameters[0];
     double param1 = scannedJsonParameters[1];
+    VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
 
-    data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0, param1);
+    data[index.value() * numberOfPseudoAtoms + index.value()] = VDWParameters(param0, param1, type);
   }
 
   // Set mixing rule and cut-off values
@@ -276,9 +277,10 @@ ForceField::ForceField(std::string filePath)
 
     double param0 = scannedJsonParameters[0];
     double param1 = scannedJsonParameters[1];
+    VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
 
-    data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = VDWParameters(param0, param1);
-    data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = VDWParameters(param0, param1);
+    data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = VDWParameters(param0, param1, type);
+    data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = VDWParameters(param0, param1, type);
   }
 
   // Get charge method
@@ -300,15 +302,20 @@ void ForceField::applyMixingRule()
     {
       for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
       {
-        double mix0 =
-            std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
-        double mix1 =
-            0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
+        if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones && data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+        {
+          double mix0 =
+              std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
+          double mix1 =
+              0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
 
-        data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-        data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-        data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-        data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+          data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+          data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+          data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
+          data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+          data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+          data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+        }
       }
     }
   }

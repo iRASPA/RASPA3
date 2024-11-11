@@ -24,46 +24,55 @@ std::pair<simd_quatd, simd_quatd> Rigid::NoSquishRotate(size_t k, double dt, std
                                                         double3 inverseInertiaVector)
 {
   simd_quatd pn, qn;
-  double zeta;
+  double zeta, cos_zeta, sin_zeta;
 
   auto& [p, q] = quat;
   switch (k)
   {
     case 1:
       zeta = dt * (-p.r * q.ix + p.ix * q.r + p.iy * q.iz - p.iz * q.iy) * inverseInertiaVector.x / 4.0;
-      pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.ix;
-      pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.r;
-      pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.iz;
-      pn.iz = std::cos(zeta) * p.iz - std::sin(zeta) * p.iy;
+      cos_zeta = std::cos(zeta);
+      sin_zeta = std::sin(zeta);
 
-      qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.ix;
-      qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.r;
-      qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.iz;
-      qn.iz = std::cos(zeta) * q.iz - std::sin(zeta) * q.iy;
+      pn.r = cos_zeta * p.r - sin_zeta * p.ix;
+      pn.ix = cos_zeta * p.ix + sin_zeta * p.r;
+      pn.iy = cos_zeta * p.iy + sin_zeta * p.iz;
+      pn.iz = cos_zeta * p.iz - sin_zeta * p.iy;
+
+      qn.r = cos_zeta * q.r - sin_zeta * q.ix;
+      qn.ix = cos_zeta * q.ix + sin_zeta * q.r;
+      qn.iy = cos_zeta * q.iy + sin_zeta * q.iz;
+      qn.iz = cos_zeta * q.iz - sin_zeta * q.iy;
       return {pn, qn};
     case 2:
       zeta = dt * (-p.r * q.iy - p.ix * q.iz + p.iy * q.r + p.iz * q.ix) * inverseInertiaVector.y / 4.0;
-      pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iy;
-      pn.ix = std::cos(zeta) * p.ix - std::sin(zeta) * p.iz;
-      pn.iy = std::cos(zeta) * p.iy + std::sin(zeta) * p.r;
-      pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.ix;
+      cos_zeta = std::cos(zeta);
+      sin_zeta = std::sin(zeta);
 
-      qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iy;
-      qn.ix = std::cos(zeta) * q.ix - std::sin(zeta) * q.iz;
-      qn.iy = std::cos(zeta) * q.iy + std::sin(zeta) * q.r;
-      qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.ix;
+      pn.r = cos_zeta * p.r - sin_zeta * p.iy;
+      pn.ix = cos_zeta * p.ix - sin_zeta * p.iz;
+      pn.iy = cos_zeta * p.iy + sin_zeta * p.r;
+      pn.iz = cos_zeta * p.iz + sin_zeta * p.ix;
+
+      qn.r = cos_zeta * q.r - sin_zeta * q.iy;
+      qn.ix = cos_zeta * q.ix - sin_zeta * q.iz;
+      qn.iy = cos_zeta * q.iy + sin_zeta * q.r;
+      qn.iz = cos_zeta * q.iz + sin_zeta * q.ix;
       return {pn, qn};
     case 3:
       zeta = dt * (-p.r * q.iz + p.ix * q.iy - p.iy * q.ix + p.iz * q.r) * inverseInertiaVector.z / 4.0;
-      pn.r = std::cos(zeta) * p.r - std::sin(zeta) * p.iz;
-      pn.ix = std::cos(zeta) * p.ix + std::sin(zeta) * p.iy;
-      pn.iy = std::cos(zeta) * p.iy - std::sin(zeta) * p.ix;
-      pn.iz = std::cos(zeta) * p.iz + std::sin(zeta) * p.r;
+      cos_zeta = std::cos(zeta);
+      sin_zeta = std::sin(zeta);
 
-      qn.r = std::cos(zeta) * q.r - std::sin(zeta) * q.iz;
-      qn.ix = std::cos(zeta) * q.ix + std::sin(zeta) * q.iy;
-      qn.iy = std::cos(zeta) * q.iy - std::sin(zeta) * q.ix;
-      qn.iz = std::cos(zeta) * q.iz + std::sin(zeta) * q.r;
+      pn.r = cos_zeta * p.r - sin_zeta * p.iz;
+      pn.ix = cos_zeta * p.ix + sin_zeta * p.iy;
+      pn.iy = cos_zeta * p.iy - sin_zeta * p.ix;
+      pn.iz = cos_zeta * p.iz + sin_zeta * p.r;
+
+      qn.r = cos_zeta * q.r - sin_zeta * q.iz;
+      qn.ix = cos_zeta * q.ix + sin_zeta * q.iy;
+      qn.iy = cos_zeta * q.iy - sin_zeta * q.ix;
+      qn.iz = cos_zeta * q.iz + sin_zeta * q.r;
       return {pn, qn};
       break;
     default:

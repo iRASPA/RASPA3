@@ -65,8 +65,7 @@ export [[clang::always_inline]] inline GradientFactor potentialVDWGradient(const
           12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr);
     }
     default:
-      break;
+      return GradientFactor(0.0, 0.0, 0.0);
   }
 
-  return GradientFactor(0.0, 0.0, 0.0);
 };
