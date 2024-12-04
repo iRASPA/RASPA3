@@ -258,6 +258,7 @@ void MonteCarlo::initialize()
     std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
     std::print(stream, "{}", system.forceField.printForceFieldStatus());
     std::print(stream, "{}", system.writeComponentStatus());
+    std::print(stream, "{}", system.writeNumberOfPseudoAtoms());
     std::print(stream, "{}", system.reactions.printStatus());
 
 #ifdef VERSION
@@ -491,6 +492,7 @@ void MonteCarlo::production()
         system.currentEnergyStatus = molecularPressure.first;
         system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
         std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }

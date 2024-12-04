@@ -162,7 +162,9 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
         std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
                    numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
                    error.numberOfMolecules[comp.componentId]);
-        std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n", numberDensities[comp.componentId],
+        std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n", 
+                   numberDensities[comp.componentId],
+                   Units::displayedUnitOfLengthString,
                    average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
         break;
     }

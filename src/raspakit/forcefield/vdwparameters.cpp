@@ -90,7 +90,9 @@ VDWParameters::Type VDWParameters::stringToEnum(const std::string interactionTyp
 bool VDWParameters::operator==(const VDWParameters &other) const
 {
   return (parameters == other.parameters && shift == other.shift &&
-          tailCorrectionEnergy == other.tailCorrectionEnergy && type == other.type);
+          tailCorrectionEnergy == other.tailCorrectionEnergy && 
+          tailCorrectionPressure == other.tailCorrectionPressure && 
+          type == other.type);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWParameters &p)
@@ -98,6 +100,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWPar
   archive << p.parameters;
   archive << p.shift;
   archive << p.tailCorrectionEnergy;
+  archive << p.tailCorrectionPressure;
   archive << p.type;
 
   return archive;
@@ -108,6 +111,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameter
   archive >> p.parameters;
   archive >> p.shift;
   archive >> p.tailCorrectionEnergy;
+  archive >> p.tailCorrectionPressure;
   archive >> p.type;
 
   return archive;

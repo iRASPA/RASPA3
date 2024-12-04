@@ -57,7 +57,7 @@ find_package(HDF5 REQUIRED COMPONENTS CXX)
 include_directories(${HDF5_INCLUDE_DIRS})
 
 # Set the version of C++ for the project
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 
 # Turning off extensions avoids an issue with the clang 16 compiler
 # clang 17 and greater can avoid this setting

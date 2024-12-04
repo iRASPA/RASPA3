@@ -791,6 +791,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOff"].get<double>();
         forceFields[systemId]->cutOffCoulomb = value["CutOff"].get<double>();
         forceFields[systemId]->preComputePotentialShift();
+        forceFields[systemId]->preComputeTailCorrection();
       }
 
       if (value.contains("CutOffVDW") && value["CutOffVDW"].is_number_float())
@@ -802,6 +803,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOffVDW"].get<double>();
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOffVDW"].get<double>();
         forceFields[systemId]->preComputePotentialShift();
+        forceFields[systemId]->preComputeTailCorrection();
       }
 
       if (value.contains("CutOffFrameworkVDW") && value["CutOffFrameworkVDW"].is_number_float())
@@ -812,6 +814,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOffFrameworkVDW"].get<double>();
         forceFields[systemId]->preComputePotentialShift();
+        forceFields[systemId]->preComputeTailCorrection();
       }
 
       if (value.contains("CutOffMoleculeVDW") && value["CutOffMoleculeVDW"].is_number_float())
@@ -822,6 +825,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOffMoleculeVDW"].get<double>();
         forceFields[systemId]->preComputePotentialShift();
+        forceFields[systemId]->preComputeTailCorrection();
       }
 
       if (value.contains("CutOffCoulomb") && value["CutOffCoulomb"].is_number_float())

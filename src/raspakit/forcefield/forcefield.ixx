@@ -155,7 +155,7 @@ export struct ForceField
    * \param j Index of the second pseudo-atom.
    * \return The cut-off distance for VDW interactions.
    */
-  double cutOffVDW(size_t i, size_t j);
+  double cutOffVDW(size_t i, size_t j) const;
 
   /**
    * \brief Pre-computes the potential shift for interactions.

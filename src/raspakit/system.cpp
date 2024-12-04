@@ -321,6 +321,7 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
       }
     }
   }
+
 }
 
 /// Inserts a molecule into the vector of atoms.
@@ -931,6 +932,39 @@ std::string System::writeOutputHeader() const
   //     break;
   // }
   // std::print(stream, "\n");
+
+  return stream.str();
+}
+
+std::string System::writeNumberOfPseudoAtoms() const
+{
+  std::ostringstream stream;
+
+  std::print(stream, "Number of pseudo-atoms\n");
+  std::print(stream, "===============================================================================\n\n");
+
+  for (size_t i = 0; const Component& c : components)
+  {
+    std::print(stream, "Component {:3d} ({})\n", c.componentId, c.name);
+    std::print(stream, "-------------------------------------------------------------------------------\n");
+    for(size_t index = 0; const size_t number_of_pseudo_atoms : numberOfPseudoAtoms[i])
+    {
+      std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name, number_of_pseudo_atoms);
+      ++index;
+    }
+    std::print(stream, "\n");
+    ++i;
+  }
+
+  std::print(stream, "Total number of pseudo-atoms:\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  for(size_t index = 0; const size_t number_of_pseudo_atoms : totalNumberOfPseudoAtoms)
+  {
+    std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name, number_of_pseudo_atoms);
+    ++index;
+  }
+
+  std::print(stream, "\n\n\n\n");
 
   return stream.str();
 }
@@ -1870,6 +1904,31 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   pressureInfo.first.sumTotal();
 
+  double pressureTailCorrection = 0.0;
+  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  for (std::span<const Atom>::iterator it1 = atomPositions.begin(); it1 != atomPositions.end(); ++it1)
+  {
+    size_t typeA = static_cast<size_t>(it1->type);
+    double scalingVDWA = it1->scalingVDW;
+
+    pressureTailCorrection += scalingVDWA * scalingVDWA * preFactor * forceField(typeA, typeA).tailCorrectionPressure;
+
+    for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != atomPositions.end(); ++it2)
+    {
+      size_t typeB = static_cast<size_t>(it2->type);
+      double scalingVDWB = it2->scalingVDW;
+
+      pressureTailCorrection += scalingVDWA * scalingVDWB * 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
+    }
+  }
+
+  pressureInfo.second.ax -= pressureTailCorrection;
+  pressureInfo.second.by -= pressureTailCorrection;
+  pressureInfo.second.cz -= pressureTailCorrection;
+
+
+
+
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm;
   for (size_t componentId = 0; componentId < components.size(); ++componentId)
@@ -2284,7 +2343,7 @@ std::string System::repr() const { return std::string("system test"); }
 void System::createInterpolationGrids()
 {
 
-  double percent = 100.0/(double)(128 * gridPseudoAtomIndices.size());
+  double percent = 100.0/static_cast<double>(128 * gridPseudoAtomIndices.size());
 
   for(size_t pseudo_atom_index: gridPseudoAtomIndices)
   {
@@ -2330,9 +2389,9 @@ void System::createInterpolationGrids()
           data[i, j, k, 7] = third_derivative_fractional_xyz;
         }
       }
-      if((size_t)(teller*percent)>(size_t)((teller-1.0) * percent))
+      if(static_cast<size_t>(teller*percent) > static_cast<size_t>((teller-1.0) * percent))
       {
-        std::cout << "Percentage finished: " << (size_t)(teller * percent) << std::endl;;
+        std::cout << "Percentage finished: " << static_cast<size_t>(teller * percent) << std::endl;;
       }
     }
 

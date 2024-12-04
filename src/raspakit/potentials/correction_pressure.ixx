@@ -4,7 +4,7 @@ module;
 #include <cmath>
 #endif
 
-export module potential_correction_vdw;
+export module potential_correction_pressure;
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
@@ -27,7 +27,7 @@ import double4;
  *
  * \return The calculated VDW potential correction.
  */
-export inline double potentialCorrectionVDW(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
+export inline double potentialCorrectionPressure(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -41,7 +41,7 @@ export inline double potentialCorrectionVDW(const ForceField& forcefield, const 
       double arg2 = forcefield(typeA, typeB).parameters.y;
       double term3 = (arg2 / cutOffVDW) * (arg2 / cutOffVDW) * (arg2 / cutOffVDW);
       double term6 = term3 * term3;
-      return (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+      return (8.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((2.0 / 3.0) * term6 * term3 - term3);
     }
     default:
       return 0.0;

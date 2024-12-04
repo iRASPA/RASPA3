@@ -65,6 +65,8 @@ import double3x3;
 import stringutils;
 import pseudo_atom;
 import vdwparameters;
+import potential_correction_vdw;
+import potential_correction_pressure;
 import simulationbox;
 import json;
 
@@ -321,7 +323,7 @@ void ForceField::applyMixingRule()
   }
 }
 
-double ForceField::cutOffVDW(size_t i, size_t j)
+double ForceField::cutOffVDW(size_t i, size_t j) const
 {
   if (pseudoAtoms[i].framework || pseudoAtoms[j].framework)
   {
@@ -353,9 +355,13 @@ void ForceField::preComputeTailCorrection()
     for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
       data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
+      data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = 0.0;
 
       if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
+        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = potentialCorrectionVDW(*this, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = potentialCorrectionPressure(*this, i, j);
+        /*
         switch (data[i * numberOfPseudoAtoms + j].type)
         {
           case VDWParameters::Type::LennardJones:
@@ -367,12 +373,16 @@ void ForceField::preComputeTailCorrection()
             double term6 = term3 * term3;
             data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy =
                 (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
+            data[i * numberOfPseudoAtoms + j].tailCorrectionPressure =
+                (8.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((2.0 / 3.0) * term6 * term3 - term3);
             break;
           }
           default:
             data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
+            data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = 0.0;
             break;
         }
+      */
       }
     }
   }

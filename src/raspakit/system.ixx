@@ -191,6 +191,10 @@ export struct System
   std::vector<std::vector<size_t>> numberOfPseudoAtoms;
   std::vector<size_t> totalNumberOfPseudoAtoms;
 
+  // vector of pair of lamba and pseudoatom-type
+  std::vector<std::pair<double, size_t>> numberOfIntegerPseudoAtoms;
+  std::vector<std::pair<double, size_t>> numberOfFractionalPseudoAtoms;
+
   size_t translationalCenterOfMassConstraint{};
   size_t translationalDegreesOfFreedom{};
   size_t rotationalDegreesOfFreedom{};
@@ -375,6 +379,7 @@ export struct System
   void optimizeMCMoves();
 
   std::string writeOutputHeader() const;
+  std::string writeNumberOfPseudoAtoms() const;
   std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
   std::string writeEquilibrationStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;

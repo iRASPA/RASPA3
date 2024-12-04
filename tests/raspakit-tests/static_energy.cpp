@@ -246,8 +246,8 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
   EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, 1971.00612979, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.94298709, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
-  // EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.81601515, 1e-6);
-  EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
+  EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.81601515, 1e-6);
+  //EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
   EXPECT_NEAR((energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
               -1197.23909965, 1e-6);
 }

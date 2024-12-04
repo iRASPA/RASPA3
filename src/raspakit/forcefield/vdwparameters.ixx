@@ -51,10 +51,11 @@ export struct VDWParameters
     RepulsiveHarmonic = 100
   };
 
-  double4 parameters;           ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
-  double shift;                 ///< The potential energy shift calculated at the cutoff distance.
-  double tailCorrectionEnergy;  ///< The tail correction energy for the potential.
-  Type type{0};                 ///< The type of van der Waals potential.
+  double4 parameters;            ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
+  double shift;                  ///< The potential energy shift calculated at the cutoff distance.
+  double tailCorrectionEnergy;   ///< The tail correction energy for the potential.
+  double tailCorrectionPressure; ///< The tail correction energy for the potential.
+  Type type{0};                  ///< The type of van der Waals potential.
 
   /**
    * \brief Default constructor for VDWParameters.
@@ -75,6 +76,7 @@ export struct VDWParameters
       : parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)),
         shift(0.0),
         tailCorrectionEnergy(0.0),
+        tailCorrectionPressure(0.0),
         type(Type::LennardJones)
   {
   }
@@ -83,6 +85,7 @@ export struct VDWParameters
       : parameters(double4(epsilon * Units::KelvinToEnergy, sigma, 0.0, 0.0)),
         shift(0.0),
         tailCorrectionEnergy(0.0),
+        tailCorrectionPressure(0.0),
         type(type)
   {
   }

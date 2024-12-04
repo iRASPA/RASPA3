@@ -69,6 +69,18 @@ export [[clang::always_inline]] inline ThirdDerivativeFactor
           48.0 * arg1 * scaling * rri6 * temp3 * (1.0 - rri3 * (2.0 + 9.0 * temp3 * (2.0 + 12.0 * rri6 * temp3 - 3.0 * rri3 * (2.0 + temp3)))) / (rr * rr* rr)
         );
     }
+    case VDWParameters::Type::RepulsiveHarmonic:
+    {
+      double r = std::sqrt(rr);
+      double arg1 = forcefield(typeA, typeB).parameters.x;
+      double arg2 = forcefield(typeA, typeB).parameters.y;
+      double temp = (1.0 - r / arg2);
+      return ThirdDerivativeFactor(temp < 0.0 ? 0.0 : arg1 * temp * temp, 
+                                   0.0, 
+                                   2.0 * arg1 * (r - arg2) / (r * arg2 * arg2), 
+                                   2.0 * arg1 / (rr * r * arg2), 
+                                   -6.0 * arg1 / (rr * rr * r * arg2));
+    }
     default:
       return ThirdDerivativeFactor(0.0, 0.0, 0.0, 0.0, 0.0);
   }

@@ -143,4 +143,4 @@ float trunc_acos(float x)
   return acos(x);
 }
 
-static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }
+//static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }

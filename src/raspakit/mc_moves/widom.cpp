@@ -124,5 +124,5 @@ std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 
   // Return the Widom insertion weight for the new molecule.
-  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight;
+  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight + 2.0 * tailEnergyDifference.potentialEnergy();
 }

@@ -471,7 +471,7 @@ void MolecularDynamics::production()
       system.sampleProperties(estimation.currentBin, currentCycle);
     }
 
-    for (System& system : systems)
+    for ([[maybe_unused]]System& system : systems)
     {
       // add the sample energy to the averages
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)

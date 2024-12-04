@@ -453,7 +453,7 @@ TEST(hessian_inter_real_ewald, Test_hessian_fractional_methane_in_CHA_triclinic_
     auto [_, _, reference_cartesian] = Interactions::calculateHessianAtPositionCoulomb(system.forceField, system.simulationBox, posB, chargeB, frameworkAtoms);
     double3x3 reference_fractional = system.simulationBox.cell.transpose() * reference_cartesian * system.simulationBox.cell;
 
-    double test = system.simulationBox.cell.ax * system.simulationBox.cell.ax * reference_cartesian.ax +
+    [[maybe_unused]] double test = system.simulationBox.cell.ax * system.simulationBox.cell.ax * reference_cartesian.ax +
                   system.simulationBox.cell.ay * system.simulationBox.cell.ax * reference_cartesian.bx +
                   system.simulationBox.cell.az * system.simulationBox.cell.ax * reference_cartesian.cx +
                   system.simulationBox.cell.ax * system.simulationBox.cell.ay * reference_cartesian.ay +
