@@ -542,7 +542,7 @@ nlohmann::json ForceField::jsonForceFieldStatus() const
       {
         case VDWParameters::Type::LennardJones:
           interactions[count]["typeA"] = pseudoAtoms[i].name;
-          interactions[count]["typeB"] = pseudoAtoms[i].name;
+          interactions[count]["typeB"] = pseudoAtoms[j].name;
           interactions[count]["potential"] = "Lennard-Jones";
           interactions[count]["ε/kʙ [K]"] = data[i * numberOfPseudoAtoms + j].parameters.x * Units::EnergyToKelvin;
           interactions[count]["σ/kʙ [Å]"] = data[i * numberOfPseudoAtoms + j].parameters.y;
