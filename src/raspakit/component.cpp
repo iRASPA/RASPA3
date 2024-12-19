@@ -667,7 +667,8 @@ std::pair<Molecule, std::vector<Atom>> Component::equilibratedMoleculeRandomInBo
   {
     trial_atoms[i].position = com + M * atoms[i].position;
   }
-  return {{com, q}, trial_atoms};
+
+  return {{com, q, totalMass, componentId, atoms.size()}, trial_atoms};
 }
 
 std::pair<Molecule, std::vector<Atom>> Component::translate(const Molecule &molecule, std::span<Atom> molecule_atoms,

@@ -79,7 +79,6 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(PROJECT_WARNINGS_CXX ${GCC_WARNINGS})
 endif()
 
-
 add_subdirectory(src)
 add_subdirectory(data)
 add_subdirectory(examples)

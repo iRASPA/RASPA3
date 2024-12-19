@@ -119,6 +119,15 @@ export struct PropertyLoading
 
   std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
 
+    /**
+   * \brief Returns a string representation of the PropertyLoading.
+   *
+   * Generates a simple string indicating a test representation of the PropertyLoading.
+   *
+   * \return A string representing the PropertyLoading.
+   */
+  std::string repr() const;
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLoading &l);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoading &l);
 };

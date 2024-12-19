@@ -17,6 +17,7 @@ module;
 #include <sstream>
 #include <string>
 #include <vector>
+#include <filesystem>
 #endif
 
 module property_lambda_probability_histogram;
@@ -40,6 +41,7 @@ import <complex>;
 import <print>;
 import <ranges>;
 import <numeric>;
+import <filesystem>;
 #endif
 
 import double3;
@@ -58,7 +60,6 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
     case PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize:
       WangLandauScalingFactor = 0.01;
       std::fill(histogram.begin(), histogram.end(), 0.0);
-      std::fill(biasFactor.begin(), biasFactor.end(), 0.0);
       break;
     case PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample:
       // assert(currentBin >= 0 && currentBin < numberOfSamplePoints);
@@ -100,6 +101,25 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
       std::fill(histogram.begin(), histogram.end(), 0.0);
       break;
   }
+}
+
+std::pair<std::vector<double>, std::vector<double>> PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram()
+{
+  std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
+
+  double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
+  double normalize = static_cast<double>(numberOfSamplePoints) / totalHistogram;
+
+  for (double &value : histogram_avg.first ) 
+  {
+    value *= normalize;
+  }
+  for (double &value : histogram_avg.second ) 
+  {
+    value *= normalize;
+  }
+
+  return histogram_avg;
 }
 
 std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double beta,
@@ -276,6 +296,52 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
   }
 
   return stream.str();
+}
+
+void PropertyLambdaProbabilityHistogram::writeBiasingFile(std::filesystem::path path)
+{
+  std::ofstream stream(path, std::ios::out);
+
+  nlohmann::json json;
+  std::vector<double> shifted{biasFactor};
+  for(size_t i = 0; i < shifted.size(); ++i)
+  {
+    shifted[i] -= shifted.back();
+  }
+  json["bias"] = shifted;
+
+  stream << json.dump(2);
+}
+
+void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path path)
+{
+  std::ifstream stream(path, std::ios::in);
+
+  if (!std::filesystem::exists(path))
+  {
+    throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", path.string()));
+  }
+
+  std::ifstream input(path);
+
+  nlohmann::basic_json<nlohmann::raspa_map> parsed_lambda_bias_data{};
+
+  parsed_lambda_bias_data = nlohmann::json::parse(input);
+
+  if (parsed_lambda_bias_data.contains("bias") && parsed_lambda_bias_data["bias"].is_array())
+  {
+    std::vector<double> lambda_bias_data = parsed_lambda_bias_data["bias"].get<std::vector<double>>();
+
+    // resample bias-factor to take different vector size into account
+    for(size_t i = 0; i < biasFactor.size(); ++i)
+    {
+      double lambda = static_cast<double>(i) * delta;
+
+      size_t index = static_cast<size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1));
+      biasFactor[i] = lambda_bias_data[index];
+    }
+  }
+
 }
 
 nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(

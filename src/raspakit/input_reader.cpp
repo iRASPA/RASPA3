@@ -696,6 +696,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("LambdaBiasFileName") && item["LambdaBiasFileName"].is_string())
+      {
+        std::string lambda_bias_file_name = item["LambdaBiasFileName"].get<std::string>();
+
+        try
+        {
+          std::filesystem::path path(lambda_bias_file_name);
+          for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+          {
+            jsonComponents[i][componentId].lambdaGC.readBiasingFile(path);
+          }
+        }
+        catch (nlohmann::json::parse_error& ex)
+        {
+          std::cerr << "parse error at byte " << ex.byte << std::endl;
+        }
+      }
+
       if (item.contains("BlockingPockets") && item.contains("BlockingPockets"))
       {
         for (auto& [_, block_pockets_item] : item["BlockingPockets"].items())
@@ -762,6 +780,24 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         for (size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonCreateNumberOfMolecules[i][componentId] = initialNumberOfMolecule[i];
+        }
+      }
+
+      if (item.contains("LambdaBiasFileName") && item["LambdaBiasFileName"].is_array())
+      {
+        std::vector<std::string> lambda_bias_file_names =
+            parseList<std::string>(jsonNumberOfSystems, "LambdaBiasFileName", item["LambdaBiasFileName"]);
+        for (size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          try
+          {
+            std::filesystem::path path(lambda_bias_file_names[i]);
+            jsonComponents[i][componentId].lambdaGC.readBiasingFile(path);
+          }
+          catch (nlohmann::json::parse_error& ex)
+          {
+            std::cerr << "parse error at byte " << ex.byte << std::endl;
+          }
         }
       }
 
@@ -1589,6 +1625,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "IdealGasRosenbluthWeight",
     "MolFraction",
     "ThermodynamicIntegration",
+    "LambdaBiasFileName",
     "BlockingPockets"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)

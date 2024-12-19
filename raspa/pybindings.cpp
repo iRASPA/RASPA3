@@ -15,11 +15,17 @@
 #ifdef USE_LEGACY_HEADERS
 #include <span>
 #include <vector>
+#include <string>
+#include <tuple>
+#include <optional>
 #endif
 
 #ifndef USE_LEGACY_HEADERS
 import <span>;
 import <vector>;
+import <string>;
+import <tuple>;
+import <optional>;
 #endif
 
 import int3;
@@ -33,12 +39,17 @@ import forcefield;
 import running_energy;
 import mc_moves_probabilities_particles;
 import mc_moves_probabilities_system;
+import move_statistics;
+import mc_moves_statistics_particles;
 import framework;
 import component;
 import system;
 import randomnumbers;
 import monte_carlo;
 import input_reader;
+import property_loading;
+import loadings;
+import property_lambda_probability_histogram;
 
 PYBIND11_MODULE(raspalib, m)
 {
@@ -89,16 +100,22 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<PseudoAtom>(m, "PseudoAtom")
       .def(pybind11::init<std::string, bool, double, double, double, size_t, bool, std::string>(),
            pybind11::arg("name"), pybind11::arg("frameworkType"), pybind11::arg("mass"), pybind11::arg("charge"),
-           pybind11::arg("polarizability"), pybind11::arg("atomicNumber"), pybind11::arg("printToPDB"),
-           pybind11::arg("source"));
+           pybind11::arg("polarizability") = 0.0, pybind11::arg("atomicNumber"), pybind11::arg("printToPDB") = true,
+           pybind11::arg("source") = std::string(""));
 
   pybind11::class_<ForceField> forceField(m, "ForceField");
   forceField
       .def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, double, double,
                           double, bool, bool, bool>(),
-           pybind11::arg("pseudoAtoms"), pybind11::arg("parameters"), pybind11::arg("mixingRule"),
-           pybind11::arg("cutOffFrameworkVDW"), pybind11::arg("cutOffMoleculeVDW"), pybind11::arg("cutOffCoulomb"),
-           pybind11::arg("shifted"), pybind11::arg("tailCorrections"), pybind11::arg("useCharge"))
+           pybind11::arg("pseudoAtoms"), 
+           pybind11::arg("parameters"), 
+           pybind11::arg("mixingRule"),
+           pybind11::arg("cutOffFrameworkVDW") = 12.0, 
+           pybind11::arg("cutOffMoleculeVDW") = 12.0, 
+           pybind11::arg("cutOffCoulomb") = 12.0,
+           pybind11::arg("shifted") = true, 
+           pybind11::arg("tailCorrections") = false, 
+           pybind11::arg("useCharge") = true)
       .def(pybind11::init<std::string>(), pybind11::arg("fileName"))
       .def("__repr__", &ForceField::repr)
       .def_readonly("pseudoAtoms", &ForceField::pseudoAtoms)
@@ -111,8 +128,12 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Framework>(m, "Framework")
       .def(pybind11::init<size_t, const ForceField &, std::string, SimulationBox, size_t, std::vector<Atom>, int3>(),
-           pybind11::arg("frameworkId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
-           pybind11::arg("simulationBox"), pybind11::arg("spaceGroupHallNumber"), pybind11::arg("definedAtoms"),
+           pybind11::arg("frameworkId"), 
+           pybind11::arg("forceField"), 
+           pybind11::arg("componentName"),
+           pybind11::arg("simulationBox"), 
+           pybind11::arg("spaceGroupHallNumber"), 
+           pybind11::arg("definedAtoms"),
            pybind11::arg("numberOfUnitCells"))
       .def(pybind11::init<size_t, const ForceField &, const std::string &, std::optional<const std::string>, int3,
                           Framework::UseChargesFrom>(),
@@ -153,6 +174,10 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("widomCFCMCProbability", &MCMoveProbabilitiesParticles::widomCFCMCProbability)
       .def_readwrite("parallelTemperingProbability", &MCMoveProbabilitiesParticles::parallelTemperingProbability);
 
+  pybind11::class_<MCMoveStatisticsParticles>(m, "MCMoveStatisticsParticles")
+      .def(pybind11::init<>())
+      .def("writeMCMoveStatistics", static_cast<const std::string (MCMoveStatisticsParticles::*)() const>(&MCMoveStatisticsParticles::writeMCMoveStatistics));
+
   pybind11::class_<MCMoveProbabilitiesSystem>(m, "MCMoveProbabilitiesSystem")
       .def(pybind11::init<double, double, double, double>(), pybind11::arg("volumeChangeProbability"),
            pybind11::arg("gibbsVolumeChangeProbability"), pybind11::arg("parallelTemperingProbability"),
@@ -162,14 +187,27 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("parallelTemperingProbability", &MCMoveProbabilitiesSystem::parallelTemperingProbability)
       .def_readwrite("hybridMCProbability", &MCMoveProbabilitiesSystem::hybridMCProbability);
 
+  pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
+    .def(pybind11::init<>())
+    .def_readonly("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
+    .def_readonly("histogram", &PropertyLambdaProbabilityHistogram::histogram)
+    .def("normalizedAverageProbabilityHistogram", &PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram);
+
   pybind11::class_<Component> component(m, "Component");
   component
       .def(pybind11::init<size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>, size_t,
                           size_t, const MCMoveProbabilitiesParticles &, std::optional<double>, bool>(),
-           pybind11::arg("componentId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
-           pybind11::arg("criticalTemperature"), pybind11::arg("criticalPressure"), pybind11::arg("acentricFactor"),
-           pybind11::arg("definedAtoms"), pybind11::arg("numberOfBlocks"), pybind11::arg("numberOfLambdaBins"),
-           pybind11::arg("particleProbabilities"), pybind11::arg("fugacityCoefficient") = std::nullopt,
+           pybind11::arg("componentId"), 
+           pybind11::arg("forceField"), 
+           pybind11::arg("componentName"),
+           pybind11::arg("criticalTemperature"), 
+           pybind11::arg("criticalPressure"), 
+           pybind11::arg("acentricFactor"),
+           pybind11::arg("definedAtoms"), 
+           pybind11::arg("numberOfBlocks") = 5, 
+           pybind11::arg("numberOfLambdaBins") = 41,
+           pybind11::arg("particleProbabilities"), 
+           pybind11::arg("fugacityCoefficient") = std::nullopt,
            pybind11::arg("thermodynamicIntegration") = false)
       .def(pybind11::init<Component::Type, size_t, const ForceField &, std::string &, std::string, size_t, size_t,
                           const MCMoveProbabilitiesParticles &, std::optional<double>, bool>(),
@@ -178,12 +216,26 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("numberOfLambdaBins"), pybind11::arg("particleProbabilities"),
            pybind11::arg("fugacityCoefficient") = std::nullopt, pybind11::arg("thermodynamicIntegration") = false)
       .def_readonly("name", &Component::name)
+      .def_readonly("lambdaGC", &Component::lambdaGC)
+      .def_readonly("mc_moves_statistics", &Component::mc_moves_statistics)
       .def("__repr__", &Component::repr);
 
   pybind11::enum_<Component::Type>(component, "Type")
       .value("Adsorbate", Component::Type::Adsorbate)
       .value("Cation", Component::Type::Cation)
       .export_values();
+
+  pybind11::class_<Loadings>(m, "Loadings")
+      .def(pybind11::init<size_t>())
+      .def("printStatus", static_cast<std::string (Loadings::*)(const Component&, std::optional<double>) const>(&Loadings::printStatus))
+      .def("printStatus", static_cast<std::string (Loadings::*)(const Component&, const Loadings&, const Loadings&,
+                          std::optional<double>) const>(&Loadings::printStatus));
+
+  pybind11::class_<PropertyLoading>(m, "PropertyLoading")
+      .def(pybind11::init<size_t, size_t>())
+      .def("averageLoading", &PropertyLoading::averageLoading)
+      .def("writeAveragesStatistics", &PropertyLoading::writeAveragesStatistics)
+      .def("__repr__", &PropertyLoading::repr);
 
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<size_t, ForceField, std::optional<SimulationBox>, double, std::optional<double>, double,
@@ -194,7 +246,12 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("frameworkComponents"), pybind11::arg("components"), pybind11::arg("initialNumberOfMolecules"),
            pybind11::arg("numberOfBlocks"), pybind11::arg("systemProbabilities"), pybind11::arg("sampleMoviesEvery"))
       .def("computeTotalEnergies", &System::computeTotalEnergies)
+      .def("frameworkMass", &System::frameworkMass)
+      .def_readonly("components", &System::components)
+      .def_readonly("loadings", &System::loadings)
+      .def_readonly("averageLoadings", &System::averageLoadings)
       .def_readwrite("atomPositions", &System::atomPositions)
+      .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 
   pybind11::class_<InputReader> inputReader(m, "InputReader");
@@ -225,19 +282,21 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<MonteCarlo> mc(m, "MonteCarlo");
   mc.def(pybind11::init<size_t, size_t, size_t, size_t, size_t, size_t, size_t, std::vector<System> &, RandomNumber &,
-                        size_t>(),
+                        size_t, bool>(),
          pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),
          pybind11::arg("numberOfEquilibrationCycles"), pybind11::arg("printEvery"),
          pybind11::arg("writeBinaryRestartEvery"), pybind11::arg("rescaleWangLandauEvery"),
          pybind11::arg("optimizeMCMovesEvery"), pybind11::arg("systems"), pybind11::arg("randomSeed"),
-         pybind11::arg("numberOfBlocks"))
+         pybind11::arg("numberOfBlocks"), pybind11::arg("outputToFiles") = false)
       .def(pybind11::init<InputReader &>(), pybind11::arg("inputReader"))
       .def("run", &MonteCarlo::run)
       .def("initialize", &MonteCarlo::initialize)
       .def("equilibrate", &MonteCarlo::equilibrate)
       .def("production", &MonteCarlo::production)
       .def("cycle", &MonteCarlo::performCycle)
+      .def_readonly("systems", &MonteCarlo::systems)
       .def_readwrite("simulationStage", &MonteCarlo::simulationStage);
+
 
   pybind11::enum_<MonteCarlo::SimulationStage>(mc, "SimulationStage")
       .value("Uninitialized", MonteCarlo::SimulationStage::Uninitialized)
@@ -245,4 +304,7 @@ PYBIND11_MODULE(raspalib, m)
       .value("Equilibration", MonteCarlo::SimulationStage::Equilibration)
       .value("Production", MonteCarlo::SimulationStage::Production)
       .export_values();
+
+
+
 }

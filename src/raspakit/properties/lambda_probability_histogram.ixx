@@ -12,6 +12,7 @@ module;
 #include <string>
 #include <tuple>
 #include <vector>
+#include <filesystem>
 #endif
 
 export module property_lambda_probability_histogram;
@@ -28,6 +29,7 @@ import <numbers>;
 import <tuple>;
 import <iostream>;
 import <fstream>;
+import <filesystem>;
 #endif
 
 import double3;
@@ -179,6 +181,8 @@ export struct PropertyLambdaProbabilityHistogram
 
   void WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase phase,
                            bool containsTheFractionalMolecule, double value = 1.0);
+
+  std::pair<std::vector<double>, std::vector<double>> normalizedAverageProbabilityHistogram();
 
   std::string writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential,
                                       std::optional<double> imposedFugacity) const;
@@ -688,6 +692,9 @@ export struct PropertyLambdaProbabilityHistogram
 
     return std::make_pair(average, confidenceIntervalError);
   }
+
+  void readBiasingFile(std::filesystem::path path);
+  void writeBiasingFile(std::filesystem::path path);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyLambdaProbabilityHistogram &p);

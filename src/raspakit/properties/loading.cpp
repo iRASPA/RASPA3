@@ -169,6 +169,12 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   return stream.str();
 }
 
+
+std::string PropertyLoading::repr() const 
+{ 
+  return std::string("PropertyLoading test");
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyLoading &l)
 {
   archive << l.versionNumber;

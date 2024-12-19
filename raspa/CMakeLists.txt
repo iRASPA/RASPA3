@@ -11,8 +11,8 @@ FetchContent_Declare(
 
 FetchContent_GetProperties(pybind11)
 if(NOT pybind11_POPULATED)
-    FetchContent_Populate(pybind11)
-    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+    FetchContent_MakeAvailable(pybind11)
+    #add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
 endif()
 
 pybind11_add_module(${PROJECT_NAME} MODULE)
