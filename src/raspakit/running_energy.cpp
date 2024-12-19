@@ -328,6 +328,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.dudlambdaCharge;
   archive >> e.dudlambdaEwald;
   archive >> e.translationalKineticEnergy;
+  archive >> e.rotationalKineticEnergy;
   archive >> e.NoseHooverEnergy;
 
   return archive;
