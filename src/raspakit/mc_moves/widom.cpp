@@ -57,7 +57,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 
-std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
+std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   // Update move statistics for Widom insertion move.
@@ -84,14 +84,14 @@ std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, 
   system.mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
 
   // If molecule growth failed, terminate the move.
-  if (!growData) return std::nullopt;
+  if (!growData) return {0.0, 0.0};
 
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   // Check if the new molecule is inside blocked pockets; if so, abort the move.
   if (system.insideBlockedPockets(system.components[selectedComponent], newMolecule))
   {
-    return std::nullopt;
+    return {0.0, 0.0};
   }
 
   // Update statistics for successfully constructed molecules.
@@ -119,10 +119,12 @@ std::optional<double> MC_Moves::WidomMove(RandomNumber& random, System& system, 
 
   // Compute the correction factor from Ewald and tail energy differences.
   double correctionFactorEwald =
+      //std::exp(-system.beta * (energyFourierDifference.potentialEnergy()));
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
   double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
 
   // Return the Widom insertion weight for the new molecule.
-  return correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight + 2.0 * tailEnergyDifference.potentialEnergy();
+  return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, 0.0};
+  //return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, tailEnergyDifference.potentialEnergy()};
 }

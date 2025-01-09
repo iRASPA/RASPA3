@@ -793,10 +793,10 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
     std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
-    std::optional<double> RosenbluthWeight = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
+    std::pair<double, double> value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
     selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(
-        currentBlock, RosenbluthWeight.value_or(0.0), selectedSystem.weight());
+        currentBlock, value.first, 2.0 * value.second, selectedSystem.weight());
 
     std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 

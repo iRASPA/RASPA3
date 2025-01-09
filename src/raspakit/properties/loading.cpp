@@ -169,6 +169,11 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   return stream.str();
 }
 
+std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(size_t comp) const
+{
+  std::pair<Loadings, Loadings> loadingAverage = averageLoading();
+  return {loadingAverage.first.numberOfMolecules[comp], loadingAverage.second.numberOfMolecules[comp]};
+}
 
 std::string PropertyLoading::repr() const 
 { 

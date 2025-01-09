@@ -117,6 +117,8 @@ export struct PropertyLoading
     return std::make_pair(average, confidenceIntervalError);
   }
 
+  std::pair<double, double> averageLoadingNumberOfMolecules(size_t comp) const;
+
   std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
 
     /**

@@ -36,5 +36,5 @@ export namespace MC_Moves
  * \param selectedComponent Index of the component to perform the Widom move on.
  * \return The Widom insertion weight if successful, or std::nullopt if the move was rejected.
  */
-std::optional<double> WidomMove(RandomNumber& random, System& system, size_t selectedComponent);
+std::pair<double, double> WidomMove(RandomNumber& random, System& system, size_t selectedComponent);
 }  // namespace MC_Moves

@@ -53,8 +53,11 @@ import property_lambda_probability_histogram;
 
 PYBIND11_MODULE(raspalib, m)
 {
-  pybind11::class_<int3>(m, "int3").def(pybind11::init<int32_t, int32_t, int32_t>(), pybind11::arg("x"),
-                                        pybind11::arg("y"), pybind11::arg("z"));
+  pybind11::class_<int3>(m, "int3").
+    def(pybind11::init<int32_t, int32_t, int32_t>(), pybind11::arg("x"), pybind11::arg("y"), pybind11::arg("z"))
+      .def_readwrite("x", &int3::x)
+      .def_readwrite("y", &int3::y)
+      .def_readwrite("z", &int3::z);
 
   pybind11::class_<double3>(m, "double3")
       .def(pybind11::init<double, double, double>(), pybind11::arg("x"), pybind11::arg("y"), pybind11::arg("z"))
@@ -227,6 +230,7 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Loadings>(m, "Loadings")
       .def(pybind11::init<size_t>())
+      .def_readonly("numberOfMolecules", &Loadings::numberOfMolecules)
       .def("printStatus", static_cast<std::string (Loadings::*)(const Component&, std::optional<double>) const>(&Loadings::printStatus))
       .def("printStatus", static_cast<std::string (Loadings::*)(const Component&, const Loadings&, const Loadings&,
                           std::optional<double>) const>(&Loadings::printStatus));
@@ -234,6 +238,7 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
       .def(pybind11::init<size_t, size_t>())
       .def("averageLoading", &PropertyLoading::averageLoading)
+      .def("averageLoadingNumberOfMolecules", &PropertyLoading::averageLoadingNumberOfMolecules)
       .def("writeAveragesStatistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
 
@@ -247,6 +252,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("numberOfBlocks"), pybind11::arg("systemProbabilities"), pybind11::arg("sampleMoviesEvery"))
       .def("computeTotalEnergies", &System::computeTotalEnergies)
       .def("frameworkMass", &System::frameworkMass)
+      .def_readonly("inputPressure", &System::input_pressure)
       .def_readonly("components", &System::components)
       .def_readonly("loadings", &System::loadings)
       .def_readonly("averageLoadings", &System::averageLoadings)

@@ -164,58 +164,109 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
     minimum_free_energy = conv * (*minimum_iterator);
   }
 
-  for (size_t i = 0; i < numberOfSamplePoints; ++i)
+  switch(Units::unitSystem)
   {
-    std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,
-               static_cast<double>(i) * delta, conv * freeEnergy.first[i] - minimum_free_energy,
-               conv * freeEnergy.second[i]);
+    case Units::System::RASPA:
+    {
+      for (size_t i = 0; i < numberOfSamplePoints; ++i)
+      {
+        std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,
+                   static_cast<double>(i) * delta, conv * freeEnergy.first[i] - minimum_free_energy,
+                   conv * freeEnergy.second[i]);
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
+      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      {
+        double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
+        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n",
+                 Units::EnergyToKelvin * (excessChemicalPotential.first + excessChemicalPotentialBias),
+                 Units::EnergyToKelvin * excessChemicalPotential.second);
+      std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [K]\n",
+                 Units::EnergyToKelvin * idealGasChemicalPotential.first,
+                 Units::EnergyToKelvin * idealGasChemicalPotential.second);
+      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [K]\n",
+                 Units::EnergyToKelvin * totalChemicalPotential.first,
+                 Units::EnergyToKelvin * totalChemicalPotential.second);
+      if (imposedChemicalPotential)
+      {
+        std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n",
+                   Units::EnergyToKelvin * imposedChemicalPotential.value());
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
+                 Units::EnergyToKJPerMol * (excessChemicalPotential.first + excessChemicalPotentialBias),
+                 Units::EnergyToKJPerMol * excessChemicalPotential.second);
+      std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [kJ/mol]\n",
+                 Units::EnergyToKJPerMol * idealGasChemicalPotential.first,
+                 Units::EnergyToKJPerMol * idealGasChemicalPotential.second);
+      std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [kJ/mol]\n",
+                 Units::EnergyToKJPerMol * totalChemicalPotential.first,
+                 Units::EnergyToKJPerMol * totalChemicalPotential.second);
+      if (imposedChemicalPotential)
+      {
+        std::print(stream, "    Imposed chemical potential:   {: .6e} [kJ/mol]\n",
+                   Units::EnergyToKJPerMol * imposedChemicalPotential.value());
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      if (imposedFugacity)
+      {
+        std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n",
+                   Units::PressureConversionFactor * imposedFugacity.value());
+      }
+      std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [Pa]\n",
+                 Units::PressureConversionFactor * measuredFugacity.first,
+                 Units::PressureConversionFactor * measuredFugacity.second);
+      break;
+    }
+    case Units::System::ReducedUnits:
+    {
+      for (size_t i = 0; i < numberOfSamplePoints; ++i)
+      {
+        std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [-]\n", "    ", i,
+                   static_cast<double>(i) * delta, beta * (freeEnergy.first[i] - minimum_free_energy),
+                   beta * freeEnergy.second[i]);
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))\n");
+      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      {
+        double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
+        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, beta * (blockAverage + excessChemicalPotentialBias));
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      std::print(stream, "    Beta * Excess chemical potential:    {: .6e} +/- {: .6e} [-]\n",
+                 beta * (excessChemicalPotential.first + excessChemicalPotentialBias),
+                 beta * excessChemicalPotential.second);
+      std::print(stream, "    Beta * Ideal gas chemical potential: {: .6e} +/- {: .6e} [-]\n",
+                 beta * idealGasChemicalPotential.first,
+                 beta * idealGasChemicalPotential.second);
+      std::print(stream, "    Beta * Total chemical potential:     {: .6e} +/- {: .6e} [-]\n",
+                 beta * totalChemicalPotential.first,
+                 beta * totalChemicalPotential.second);
+      if (imposedChemicalPotential)
+      {
+        std::print(stream, "    Beta * Imposed chemical potential:   {: .6e} [-]\n",
+                   beta * imposedChemicalPotential.value());
+      }
+      std::print(stream, "    ---------------------------------------------------------------------------\n");
+      if (imposedFugacity)
+      {
+        std::print(stream, "    Imposed fugacity:             {: .6e} [{}]\n",
+                   Units::PressureConversionFactor * imposedFugacity.value(),
+                   Units::unitOfPressureString);
+      }
+      std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [{}]\n",
+                 Units::PressureConversionFactor * measuredFugacity.first,
+                 Units::PressureConversionFactor * measuredFugacity.second,
+                 Units::unitOfPressureString);
+      break;
+    }
   }
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
-  for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
-  {
-    double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
-    std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
-  }
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n",
-             Units::EnergyToKelvin * (excessChemicalPotential.first + excessChemicalPotentialBias),
-             Units::EnergyToKelvin * excessChemicalPotential.second);
-  std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [K]\n",
-             Units::EnergyToKelvin * idealGasChemicalPotential.first,
-             Units::EnergyToKelvin * idealGasChemicalPotential.second);
-  std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [K]\n",
-             Units::EnergyToKelvin * totalChemicalPotential.first,
-             Units::EnergyToKelvin * totalChemicalPotential.second);
-  if (imposedChemicalPotential)
-  {
-    std::print(stream, "    Imposed chemical potential:   {: .6e} [K]\n",
-               Units::EnergyToKelvin * imposedChemicalPotential.value());
-  }
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [kJ/mol]\n",
-             Units::EnergyToKJPerMol * (excessChemicalPotential.first + excessChemicalPotentialBias),
-             Units::EnergyToKJPerMol * excessChemicalPotential.second);
-  std::print(stream, "    Ideal gas chemical potential: {: .6e} +/- {: .6e} [kJ/mol]\n",
-             Units::EnergyToKJPerMol * idealGasChemicalPotential.first,
-             Units::EnergyToKJPerMol * idealGasChemicalPotential.second);
-  std::print(stream, "    Total chemical potential:     {: .6e} +/- {: .6e} [kJ/mol]\n",
-             Units::EnergyToKJPerMol * totalChemicalPotential.first,
-             Units::EnergyToKJPerMol * totalChemicalPotential.second);
-  if (imposedChemicalPotential)
-  {
-    std::print(stream, "    Imposed chemical potential:   {: .6e} [kJ/mol]\n",
-               Units::EnergyToKJPerMol * imposedChemicalPotential.value());
-  }
-  std::print(stream, "    ---------------------------------------------------------------------------\n");
-  if (imposedFugacity)
-  {
-    std::print(stream, "    Imposed fugacity:             {: .6e} [Pa]\n",
-               Units::PressureConversionFactor * imposedFugacity.value());
-  }
-  std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [Pa]\n",
-             Units::PressureConversionFactor * measuredFugacity.first,
-             Units::PressureConversionFactor * measuredFugacity.second);
+
 
   std::print(stream, "\n\n");
   return stream.str();

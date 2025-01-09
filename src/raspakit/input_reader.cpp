@@ -327,6 +327,10 @@ void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_m
       {
         P = value["ExternalPressure"].get<double>();
       }
+      if (value.contains("ChemicalPotential"))
+      {
+        P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
+      }
 
       // create system
       systems[systemId] = System(systemId, T, P, heliumVoidFraction, {framework}, jsonComponents[systemId]);
@@ -975,6 +979,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       {
         P = value["ExternalPressure"].get<double>();
       }
+      if (value.contains("ChemicalPotential"))
+      {
+        P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
+      }
 
       if (caseInSensStringCompare(typeString, "Framework"))
       {
@@ -1550,6 +1558,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "Type",
     "ExternalTemperature",
     "ExternalPressure",
+    "ChemicalPotential",
     "UseChargesFrom",
     "Framework",
     "Name",
