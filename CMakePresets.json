@@ -28,6 +28,45 @@
       }
     },
     {
+      "name": "conda",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CONDA" : true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CLANG_DEFAULT_CXX_STDLIB" : "libc++",
+        "CMAKE_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
+        "CMAKE_NM" :  "$env{CONDA_PREFIX}/bin/llvm-nm",
+        "CMAKE_OBJDUMP" : "$env{CONDA_PREFIX}/bin/llvm-objdump",
+        "CMAKE_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
+        "CMAKE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_INSTALL_RPATH" : "$env{CONDA_PREFIX}/lib",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "PACKAGE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.14",
+        "CMAKE_CXX_FLAGS_RELEASE": "-D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
+        "HDF5_ROOT" : "$env{CONDA_PREFIX}",
+        "BUILD_MAC_PACKAGE": false,
+        "BUILD_TESTING": false,
+        "Python3_EXECUTABLE" : "$env{CONDA_PREFIX}/bin/python",
+        "BUILD_PYTHON": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "macOS"
+          ]
+        }
+      }
+    },
+    {
       "name": "windows-arm64",
       "description": "Sets compilers, build type",
       "environment": {
