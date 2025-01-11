@@ -26,7 +26,7 @@ jobs:
         create-summary: 'true'
         skip-bump: 'true'
         skip-commit: 'true'
-        skip-tag: 'true'
+        skip-tag: 'false'
         output-file: 'false'
         github-token: ${{ secrets.github_token }}
     - name: create-release

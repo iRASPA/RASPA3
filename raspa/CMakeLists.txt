@@ -15,8 +15,8 @@ if(NOT pybind11_POPULATED)
 endif()
 
 pybind11_add_module(${PROJECT_NAME} MODULE)
-target_sources(${PROJECT_NAME} PUBLIC pybindings.cpp)
-target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES pybindings.ixx)
+target_sources(${PROJECT_NAME} PUBLIC raspa_pybindings.cpp)
+target_sources(${PROJECT_NAME} PUBLIC FILE_SET CXX_MODULES FILES raspa_pybindings.ixx)
 
 if (CONDA)
   target_link_libraries(${PROJECT_NAME}
@@ -26,7 +26,6 @@ if (CONDA)
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
-        OpenMP::OpenMP_CXX
         ZLIB::ZLIB
         -lpthread)
 elseif (LINUX)
@@ -86,7 +85,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 
 if (CONDA)
-  execute_process ( COMMAND python -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+  target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld -stdlib=libc++ -L$ENV{CONDA_PREFIX}/lib)
+  execute_process ( COMMAND python -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES})
 elseif (LINUX)
   install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)

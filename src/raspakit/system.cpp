@@ -1906,14 +1906,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   double pressureTailCorrection = 0.0;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
-  for (std::span<const Atom>::iterator it1 = atomPositions.begin(); it1 != atomPositions.end(); ++it1)
+  for (std::vector<Atom>::iterator it1 = atomPositions.begin(); it1 != atomPositions.end(); ++it1)
   {
     size_t typeA = static_cast<size_t>(it1->type);
     double scalingVDWA = it1->scalingVDW;
 
     pressureTailCorrection += scalingVDWA * scalingVDWA * preFactor * forceField(typeA, typeA).tailCorrectionPressure;
 
-    for (std::span<const Atom>::iterator it2 = it1 + 1; it2 != atomPositions.end(); ++it2)
+    for (std::vector<Atom>::iterator it2 = it1 + 1; it2 != atomPositions.end(); ++it2)
     {
       size_t typeB = static_cast<size_t>(it2->type);
       double scalingVDWB = it2->scalingVDW;

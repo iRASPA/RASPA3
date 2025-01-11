@@ -22,7 +22,9 @@ module;
 #include <vector>
 #endif
 
-#include <omp.h>
+#if __has_include(<omp.h>)
+  #include <omp.h>
+#endif
 
 export module threadpool;
 

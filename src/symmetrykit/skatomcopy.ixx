@@ -5,8 +5,6 @@ module;
 #include <vector>
 #endif
 
-class SKAsymmetricAtom;
-
 export module skatom:skatomcopy;
 
 #ifndef USE_LEGACY_HEADERS
@@ -25,14 +23,9 @@ export class SKAtomCopy
     duplicate = 3
   };
 
-  SKAtomCopy() : _position(), _tag(0), _type(AtomCopyType::copy), _parent() {}
+  SKAtomCopy() : _position(), _tag(0), _type(AtomCopyType::copy) {}
   SKAtomCopy(const SKAtomCopy& atomCopy);
-  SKAtomCopy(std::shared_ptr<SKAsymmetricAtom> asymmetricParentAtom, double3 position)
-      : _position(position), _tag(0), _type(AtomCopyType::copy), _parent(asymmetricParentAtom)
-  {
-  }
 
-  const std::shared_ptr<SKAsymmetricAtom> parent() const { return this->_parent.lock(); }
   double3 position() const { return _position; }
   void setPosition(double3 p) { _position = p; }
   AtomCopyType type() { return _type; }
@@ -64,7 +57,6 @@ export class SKAtomCopy
   double3 _position;
   int64_t _tag;
   AtomCopyType _type;
-  std::weak_ptr<SKAsymmetricAtom> _parent;  // FIX!!!
   int64_t _asymmetricIndex;
 };
 
