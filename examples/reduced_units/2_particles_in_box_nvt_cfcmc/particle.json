@@ -1,0 +1,10 @@
+{
+  "CriticalTemperature" : 0.0,
+  "CriticalPressure" : 0.0,
+  "AcentricFactor" : 0.0,
+  "Type" : "rigid",
+  "pseudoAtoms" : 
+    [
+      ["C",[0.0, 0.0, 0.0]]
+    ]
+} 

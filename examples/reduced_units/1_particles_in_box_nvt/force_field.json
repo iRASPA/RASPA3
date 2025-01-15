@@ -1,0 +1,25 @@
+{
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "H",
+      "framework": false,
+      "print_to_output" : true,
+      "element" : "H",  
+      "print_as" : "H",  
+      "mass" : 1.0, 
+      "charge" :  0.0
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "H",
+      "type" : "lennard-jones",    
+      "parameters" : [1.0, 1.0]
+    }
+  ],
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "truncated",
+  "TailCorrections" : true
+}

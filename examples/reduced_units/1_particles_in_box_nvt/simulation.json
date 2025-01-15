@@ -1,0 +1,32 @@
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfCycles" : 10000,
+  "NumberOfInitializationCycles" : 5000,
+  "PrintEvery" : 5000,
+  "Units" : "Reduced",
+  
+  "Systems" : 
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [9.49914251593, 9.49914251593, 9.49914251593],
+      "ExternalTemperature" : 1.2,
+      "ChargeMethod" : "None",
+      "CutOff" : 4.0,
+      "OutputPDBMovie" : false,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" : 
+  [ 
+    {
+      "Name" : "particle",
+      "MoleculeDefinition" : "ExampleDefinitions",
+      "TranslationProbability" : 1.0,
+      "ReinsertionProbability" : 0.25,
+      "WidomProbability" : 0.25,
+      "CreateNumberOfMolecules" : 600
+    }
+  ]
+}
