@@ -38,9 +38,26 @@ import mixture_prediction_simulation;
 import isotherm_fitting_simulation;
 import multi_site_isotherm;
 
-int main()
+int main(int argc, char* argv[])
 {  
   setlocale(LC_ALL, "en-US");
+
+  std::vector<std::string> cmdLineArgs(argv, argv+argc);
+
+  for(auto& arg : cmdLineArgs)
+  {
+    if(arg == "--help" || arg == "-help")
+    {
+      std::cout << "RASPA is a software package for simulating adsorption and\n"
+                   "diffusion of molecules in flexible nanoporous materials.\n"
+                   "The code implements the latest state-of-the-art algorithms\n"
+                   "for Molecular Dynamics and Monte Carlo in various ensembles\n"
+                   "including symplectic/measure-preserving integrators, Ewald\n"
+                   "summation, Configurational-Bias Monte Carlo, Continuous\n"
+                   "Fractional Component Monte Carlo, and Reactive Monte Carlo.\n";
+      return 0;
+    }
+  }
 
   try
   {
