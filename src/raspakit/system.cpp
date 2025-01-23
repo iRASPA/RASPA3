@@ -1725,7 +1725,7 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
       com = com / totalMass;
 
       double3 d = com * (scale - 1.0);
-      scaledMolecules.push_back({com * scale, molecule.orientation});
+      scaledMolecules.push_back({com * scale, molecule.orientation, molecule.mass, componentId, span.size()});
 
       // create copy
       for (Atom atom : span)
