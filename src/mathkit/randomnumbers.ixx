@@ -96,6 +96,12 @@ export struct RandomNumber
   simd_quatd randomSimdQuatd();
   simd_quatd smallRandomQuaternion(double angleRange);
 
+  size_t categoricalDistribution(const std::vector<double>& probabilities)
+  {
+    std::discrete_distribution<size_t> d(probabilities.begin(), probabilities.end());
+    return d(mt);
+  }
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RandomNumber &r);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RandomNumber &r);
 };
