@@ -26,6 +26,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/advanced/7_mc_gibbs_co2/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/advanced/9_mc_cfcmc_co2_in_mfi/run)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/1_particles_in_box_nvt/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/reduced_units/2_particles_in_box_nvt_cfcmc/run)
+
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples
