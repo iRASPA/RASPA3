@@ -49,12 +49,13 @@ import running_energy;
 import property_lambda_probability_histogram;
 import property_widom;
 import averages;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC_CBMC(
     [[maybe_unused]] RandomNumber& random, System& system,

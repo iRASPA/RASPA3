@@ -52,34 +52,35 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import transition_matrix;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber& random, System& system,
                                                                          size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalCounts += 1;
   // Initialize selected molecule and update swap insertion move counts.
-
+  size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Swap, 0);
+  
+  // Generate a trial molecule with a random position inside the simulation box.
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
       system.components[selectedComponent].equilibratedMoleculeRandomInBox(random, system.simulationBox);
-  // Generate a trial molecule with a random position inside the simulation box.
 
+  // Check if the trial molecule is inside blocked pockets; reject if true.
   if (system.insideBlockedPockets(system.components[selectedComponent], trialMolecule.second))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
-  // Check if the trial molecule is inside blocked pockets; reject if true.
 
+  // Assign molecule ID, component ID, group ID, and set scaling factors for each atom.
   std::for_each(std::begin(trialMolecule.second), std::end(trialMolecule.second),
                 [selectedComponent, selectedMolecule](Atom& atom)
                 {
@@ -88,11 +89,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                   atom.groupId = static_cast<uint8_t>(0);
                   atom.setScaling(1.0);
                 });
-  // Assign molecule ID, component ID, group ID, and set scaling factors for each atom.
 
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.constructed += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalConstructed += 1;
   // Update constructed counts for swap insertion moves.
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Swap, 0);
 
   // compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
@@ -155,8 +154,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // apply acceptance/rejection rule
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
-    system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.accepted += 1;
-    system.components[selectedComponent].mc_moves_statistics.swapInsertionMove.totalAccepted += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Swap, 0);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.insertMolecule(selectedComponent, trialMolecule.first, trialMolecule.second);

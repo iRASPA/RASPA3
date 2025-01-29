@@ -85,10 +85,11 @@ import simulationbox;
 import cif_reader;
 import move_statistics;
 import bond_potential;
-import mc_moves_probabilities_particles;
-import mc_moves_statistics_particles;
+import mc_moves_move_types;
+import mc_moves_probabilities;
+import mc_moves_statistics;
 import mc_moves_cputime;
-import mc_moves_count;
+// import mc_moves_count;
 import json;
 
 // default constructor, needed for binary restart-file
@@ -97,7 +98,7 @@ Component::Component() {}
 // create Component in 'inputreader.cpp'
 Component::Component(Component::Type type, size_t currentComponent, const ForceField &forceField,
                      const std::string &componentName, std::optional<const std::string> fileName, size_t numberOfBlocks,
-                     size_t numberOfLambdaBins, const MCMoveProbabilitiesParticles &particleProbabilities,
+                     size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
                      std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
     : type(type),
       componentId(currentComponent),
@@ -119,8 +120,8 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 // create programmatically an 'adsorbate' component
 Component::Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
                      double P_c, double w, std::vector<Atom> atomList, size_t numberOfBlocks, size_t numberOfLambdaBins,
-                     const MCMoveProbabilitiesParticles &particleProbabilities,
-                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
+                     const MCMoveProbabilities &particleProbabilities, std::optional<double> fugacityCoefficient,
+                     bool thermodynamicIntegration) noexcept(false)
     : type(Type::Adsorbate),
       componentId(componentId),
       name(componentName),
@@ -536,25 +537,12 @@ std::string Component::printStatus(const ForceField &forceField) const
   std::print(stream, "    Net-charge:      {:12.8f} [e]\n", netCharge);
   std::print(stream, "\n");
 
-  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities;
-  std::print(stream, "    Translation-move probability:             {} [-]\n", mc.translationProbability);
-  std::print(stream, "    Random translation-move probability:      {} [-]\n", mc.randomTranslationProbability);
-  std::print(stream, "    Rotation-move probability:                {} [-]\n", mc.rotationProbability);
-  std::print(stream, "    Random rotation-move probability:         {} [-]\n", mc.randomRotationProbability);
-  std::print(stream, "    Volume-move probability:                  {} [-]\n", mc.volumeChangeProbability);
-  std::print(stream, "    Reinsertion (CBMC) probability:           {} [-]\n", mc.reinsertionCBMCProbability);
-  std::print(stream, "    Identity-change (CBMC) probability:       {} [-]\n", mc.identityChangeCBMCProbability);
-  std::print(stream, "    Swap-move (CBMC) probability:             {} [-]\n", mc.swapCBMCProbability);
-  std::print(stream, "    Swap-move (CFCMC) probability:            {} [-]\n", mc.swapCFCMCProbability);
-  std::print(stream, "    Swap-move (CFCMC/CBMC) probability:       {} [-]\n", mc.swapCBCFCMCProbability);
-  std::print(stream, "    Gibbs Volume-move probability:            {} [-]\n", mc.gibbsVolumeChangeProbability);
-  std::print(stream, "    Gibbs Swap-move (CBMC) probability:       {} [-]\n", mc.gibbsSwapCBMCProbability);
-  std::print(stream, "    Gibbs Swap-move (CFCMC) probability:      {} [-]\n", mc.gibbsSwapCFCMCProbability);
-  std::print(stream, "    Gibbs Swap-move (CFCMC/CBMC) probability: {} [-]\n", mc.gibbsSwapCBCFCMCProbability);
-  std::print(stream, "    Widom probability:                        {} [-]\n", mc.widomProbability);
-  std::print(stream, "    Widom (CFCMC) probability:                {} [-]\n", mc.widomCFCMCProbability);
-  std::print(stream, "    Widom (CFCMC/CBMC) probability:           {} [-]\n", mc.widomCBCFCMCProbability);
-  std::print(stream, "    Parallel Tempering Swap:                  {} [-]\n", mc.parallelTemperingProbability);
+  const std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  std::print(stream, "    Move probabilities:\n");
+  for (auto& [moveType, probability] : normalizedProbabilities)
+  {
+    std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[moveType] + ":", probability);
+  }
   std::print(stream, "\n");
 
   std::print(stream, "    number of blocking-pockets: {}\n", blockingPockets.size());
@@ -613,26 +601,11 @@ nlohmann::json Component::jsonStatus() const
   }
 
   nlohmann::json moves;
-  const MCMoveProbabilitiesParticles &mc = mc_moves_probabilities;
-  moves["Translation-move probability"] = mc.translationProbability;
-  moves["Random translation-move probability"] = mc.randomTranslationProbability;
-  moves["Rotation-move probability"] = mc.rotationProbability;
-  moves["Random rotation-move probability"] = mc.randomRotationProbability;
-  moves["Volume-move probability"] = mc.volumeChangeProbability;
-  moves["Reinsertion (CBMC) probability"] = mc.reinsertionCBMCProbability;
-  moves["Identity-change (CBMC) probability"] = mc.identityChangeCBMCProbability;
-  moves["Swap-move (CBMC) probability"] = mc.swapCBMCProbability;
-  moves["Swap-move (CFCMC) probability"] = mc.swapCFCMCProbability;
-  moves["Swap-move (CFCMC/CBMC) probability"] = mc.swapCBCFCMCProbability;
-  moves["Gibbs Volume-move probability"] = mc.gibbsVolumeChangeProbability;
-  moves["Gibbs Swap-move (CBMC) probability"] = mc.gibbsSwapCBMCProbability;
-  moves["Gibbs Swap-move (CFCMC) probability"] = mc.gibbsSwapCFCMCProbability;
-  moves["Gibbs Swap-move (CFCMC/CBMC) probability"] = mc.gibbsSwapCBCFCMCProbability;
-  moves["Widom probability"] = mc.widomProbability;
-  moves["Widom (CFCMC) probability"] = mc.widomCFCMCProbability;
-  moves["Widom (CFCMC/CBMC) probability"] = mc.widomCBCFCMCProbability;
-  moves["Parallel Tempering Swap"] = mc.parallelTemperingProbability;
-
+  std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  for (auto& [moveType, probability] : normalizedProbabilities)
+  {
+    moves[moveNames[moveType]] = probability;
+  }
   status["moveProbabilities"] = moves;
 
   status["n_bonds"] = bonds.size();
@@ -823,7 +796,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
-  archive << c.mc_moves_count;
+  // archive << c.mc_moves_count;
 
   archive << c.averageRosenbluthWeights;
 
@@ -915,7 +888,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
-  archive >> c.mc_moves_count;
+  // archive >> c.mc_moves_count;
 
   archive >> c.averageRosenbluthWeights;
 

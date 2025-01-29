@@ -50,13 +50,14 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import transition_matrix;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_probabilities;
+import mc_moves_move_types;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(RandomNumber& random, System& system,
                                                                             size_t selectedComponent,
@@ -65,15 +66,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
   std::chrono::system_clock::time_point time_begin, time_end;
 
   // Increment the count of swap deletion moves for the selected component
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::SwapCBMC, 1);
 
   // Proceed only if there is at least one molecule of the selected component
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
     // Update the constructed count for the move statistics
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.constructed += 1;
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalConstructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::SwapCBMC, 1);
 
     // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
@@ -144,8 +143,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.accepted += 1;
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove_CBMC.totalAccepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::SwapCBMC, 1);
 
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);

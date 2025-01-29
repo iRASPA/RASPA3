@@ -49,13 +49,14 @@ import running_energy;
 import property_lambda_probability_histogram;
 import property_widom;
 import averages;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent,
                                                        size_t selectedMolecule,
@@ -65,15 +66,17 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   double3 displacement{};
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  // Get the maximum displacement allowed for the selected component
-  double3 maxDisplacement = system.components[selectedComponent].mc_moves_statistics.translationMove.maxChange;
   // Randomly select a direction (0 for x, 1 for y, 2 for z)
   size_t selectedDirection = size_t(3.0 * random.uniform());
+  
+  // Get the maximum displacement allowed for the selected component
+  double maxDisplacement = system.components[selectedComponent].mc_moves_statistics.getMaxChange(MoveTypes::Translation, selectedDirection);
+  
   // Compute the displacement along the selected direction
-  displacement[selectedDirection] = maxDisplacement[selectedDirection] * 2.0 * (random.uniform() - 0.5);
+  displacement[selectedDirection] = maxDisplacement * 2.0 * (random.uniform() - 0.5);
+  
   // Update move statistics for the selected direction
-  system.components[selectedComponent].mc_moves_statistics.translationMove.counts[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.translationMove.totalCounts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Translation, selectedDirection);
 
   // Copy the current electric field if polarization is computed
   if (system.forceField.computePolarization)
@@ -166,15 +169,13 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
                                    ewaldFourierEnergy + polarization;
 
   // Update move construction statistics
-  system.components[selectedComponent].mc_moves_statistics.translationMove.constructed[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.translationMove.totalConstructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Translation, selectedDirection);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Update acceptance statistics
-    system.components[selectedComponent].mc_moves_statistics.translationMove.accepted[selectedDirection] += 1;
-    system.components[selectedComponent].mc_moves_statistics.translationMove.totalAccepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Translation, selectedDirection);
 
     // Accept the Ewald move
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

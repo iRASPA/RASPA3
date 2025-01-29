@@ -50,19 +50,20 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  
   // Update move statistics for Widom insertion move.
-  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Widom);
 
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
@@ -95,8 +96,7 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   }
 
   // Update statistics for successfully constructed molecules.
-  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.constructed += 1;
-  system.components[selectedComponent].mc_moves_statistics.WidomMove_CBMC.totalConstructed += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Widom);
 
   // Record start time for Ewald Fourier energy difference calculation.
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();

@@ -478,7 +478,8 @@ class Archive
     {
       std::pair<T1, T2> value;
       *this >> value;
-      v.push_back(value);
+      v[value.first] = value.second;
+      // v.push_back(value);
     }
     return *this;
   }

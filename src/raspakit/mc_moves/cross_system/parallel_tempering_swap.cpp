@@ -51,12 +51,13 @@ import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_system;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperingSwap(RandomNumber &random,
                                                                                        System &systemA, System &systemB)
@@ -64,10 +65,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   std::chrono::system_clock::time_point time_begin, time_end;
 
   // Update swap move counts for both systems
-  systemA.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
-  systemA.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
-  systemB.mc_moves_statistics.ParallelTemperingSwap.counts += 1;
-  systemB.mc_moves_statistics.ParallelTemperingSwap.totalCounts += 1;
+  systemA.mc_moves_statistics.addTrial(MoveTypes::ParallelTempering);
+  systemB.mc_moves_statistics.addTrial(MoveTypes::ParallelTempering);
 
   double acc = 0.0;
 
@@ -119,20 +118,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
   }
 
   // Update constructed move counts for both systems
-  systemA.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-  systemA.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
-  systemB.mc_moves_statistics.ParallelTemperingSwap.constructed += 1;
-  systemB.mc_moves_statistics.ParallelTemperingSwap.totalConstructed += 1;
+  systemA.mc_moves_statistics.addConstructed(MoveTypes::ParallelTempering);
+  systemB.mc_moves_statistics.addConstructed(MoveTypes::ParallelTempering);
 
   // Apply acceptance/rejection rule
   if (random.uniform() < acc)
   {
     // Update accepted move counts for both systems
-    systemA.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
-    systemA.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
-
-    systemB.mc_moves_statistics.ParallelTemperingSwap.accepted += 1;
-    systemB.mc_moves_statistics.ParallelTemperingSwap.totalAccepted += 1;
+    systemA.mc_moves_statistics.addAccepted(MoveTypes::ParallelTempering);
+    systemB.mc_moves_statistics.addAccepted(MoveTypes::ParallelTempering);
 
     // Swap configurations and properties between systems
     std::swap(systemA.atomPositions, systemB.atomPositions);
@@ -146,7 +140,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.mc_moves_probabilities, systemB.mc_moves_probabilities);
     std::swap(systemA.mc_moves_statistics, systemB.mc_moves_statistics);
     std::swap(systemA.mc_moves_cputime, systemB.mc_moves_cputime);
-    std::swap(systemA.mc_moves_count, systemB.mc_moves_count);
+    // std::swap(systemA.mc_moves_count, systemB.mc_moves_count);
 
     return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
   }

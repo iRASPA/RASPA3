@@ -57,7 +57,6 @@ import hardware_info;
 import archive;
 import system;
 import randomnumbers;
-import mc_moves;
 import input_reader;
 import component;
 import averages;
@@ -80,9 +79,11 @@ import property_simulationbox;
 import property_energy;
 import property_loading;
 import property_enthalpy;
-import mc_moves_probabilities_particles;
+import mc_moves;
+import mc_moves_probabilities;
 import mc_moves_cputime;
-import mc_moves_count;
+// import mc_moves_count;
+import molecule;
 import property_pressure;
 import transition_matrix;
 import interactions_ewald;
@@ -476,15 +477,15 @@ void MonteCarlo::production()
   {
     system.runningEnergies = system.computeTotalEnergies();
 
-    system.clearMoveStatistics();
+    system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
-    system.mc_moves_count.clearCountStatistics();
+    // system.mc_moves_count.clearCountStatistics();
 
     for (Component& component : system.components)
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
-      component.mc_moves_count.clearCountStatistics();
+      // component.mc_moves_count.clearCountStatistics();
 
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
@@ -632,11 +633,11 @@ void MonteCarlo::production()
 void MonteCarlo::output()
 {
   MCMoveCpuTime total;
-  MCMoveCount countTotal;
+  // MCMoveCount countTotal;
   for (const System& system : systems)
   {
     total += system.mc_moves_cputime;
-    countTotal += system.mc_moves_count;
+    // countTotal += system.mc_moves_count;
   }
 
   for (System& system : systems)
@@ -657,17 +658,17 @@ void MonteCarlo::output()
     std::print(stream, "Production run counting of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (const Component& component : system.components)
-    {
-      std::print(
-          stream, "{}",
-          component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, component.componentId, component.name));
-    }
+    // for (const Component& component : system.components)
+    // {
+    //   std::print(
+    //       stream, "{}",
+    //       component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, component.componentId, component.name));
+    // }
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
+    // std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 
@@ -706,8 +707,8 @@ void MonteCarlo::output()
     outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
 
     outputJsons[system.systemId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
-        countTotal.jsonAllSystemStatistics(numberOfSteps);
+    // outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
+    //    countTotal.jsonAllSystemStatistics(numberOfSteps);
 
     outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
@@ -726,8 +727,8 @@ void MonteCarlo::output()
 
     for (const Component& component : system.components)
     {
-      outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
-          component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
+      // outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
+      //     component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
       outputJsons[system.systemId]["output"]["cpuTimings"][component.name] =
           component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }

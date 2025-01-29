@@ -33,12 +33,13 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
 import component;
-import mc_moves_probabilities_particles;
 import simulationbox;
 import interactions_framework_molecule;
 import interactions_intermolecular;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::identityChangeMove([[maybe_unused]] RandomNumber& random,
                                                           [[maybe_unused]] System& system,

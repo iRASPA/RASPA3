@@ -64,8 +64,8 @@ import threadpool;
 import isotherm;
 import multi_site_isotherm;
 import pressure_range;
-import mc_moves_probabilities_system;
-import mc_moves_probabilities_particles;
+import mc_moves_probabilities;
+import mc_moves_move_types;
 import reaction;
 import reactions;
 import transition_matrix;
@@ -476,7 +476,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     for (size_t componentId = 0; auto& [_, item] : parsed_data["Components"].items())
     {
-      std::vector<MCMoveProbabilitiesParticles> move_probabilities(jsonNumberOfSystems);
+      std::vector<MCMoveProbabilities> move_probabilities(jsonNumberOfSystems);
 
       if (!item.contains("Name"))
       {
@@ -507,7 +507,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double translationProbability = item["TranslationProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].translationProbability = translationProbability;
+          move_probabilities[i].setProbability(MoveTypes::Translation, translationProbability);
         }
       }
 
@@ -516,7 +516,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double randomTranslationProbability = item["RandomTranslationProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].randomTranslationProbability = randomTranslationProbability;
+          move_probabilities[i].setProbability(MoveTypes::RandomTranslation, randomTranslationProbability);
         }
       }
 
@@ -525,16 +525,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double rotationProbability = item["RotationProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].rotationProbability = rotationProbability;
+          move_probabilities[i].setProbability(MoveTypes::Rotation, rotationProbability);
         }
       }
 
       if (item.contains("RandomRotationProbability") && item["RandomRotationProbability"].is_number_float())
       {
-        double randomTranslationProbability = item["RandomRotationProbability"].get<double>();
+        double randomRotationProbability = item["RandomRotationProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].randomTranslationProbability = randomTranslationProbability;
+          move_probabilities[i].setProbability(MoveTypes::RandomRotation, randomRotationProbability);
         }
       }
 
@@ -543,7 +543,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double reinsertionCBMCProbability = item["ReinsertionProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].reinsertionCBMCProbability = reinsertionCBMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::ReinsertionCBMC, reinsertionCBMCProbability);
         }
       }
 
@@ -552,7 +552,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapProbability = item["SwapConventionalProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].swapProbability = swapProbability;
+          move_probabilities[i].setProbability(MoveTypes::Swap, swapProbability);
         }
       }
 
@@ -561,7 +561,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCBMCProbability = item["SwapProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].swapCBMCProbability = swapCBMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::SwapCBMC, swapCBMCProbability);
         }
       }
 
@@ -570,7 +570,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCFCMCProbability = item["CFCMC_SwapProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].swapCFCMCProbability = swapCFCMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::SwapCFCMC, swapCFCMCProbability);
         }
       }
 
@@ -579,7 +579,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCBCFCMCProbability = item["CFCMC_CBMC_SwapProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].swapCBCFCMCProbability = swapCBCFCMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::SwapCBCFCMC, swapCBCFCMCProbability);
         }
       }
 
@@ -588,7 +588,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double gibbsSwapCFCMCProbability = item["Gibbs_CFCMC_SwapProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].gibbsSwapCFCMCProbability = gibbsSwapCFCMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::GibbsSwapCFCMC, gibbsSwapCFCMCProbability);
         }
       }
 
@@ -597,7 +597,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double gibbsSwapCBMCProbability = item["GibbsSwapProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].gibbsSwapCBMCProbability = gibbsSwapCBMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::GibbsSwapCBMC, gibbsSwapCBMCProbability);
         }
       }
 
@@ -606,7 +606,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomProbability = item["WidomProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].widomProbability = widomProbability;
+          move_probabilities[i].setProbability(MoveTypes::Widom, widomProbability);
         }
       }
 
@@ -615,7 +615,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomCFCMCProbability = item["CFCMC_WidomProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].widomCFCMCProbability = widomCFCMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::WidomCFCMC, widomCFCMCProbability);
         }
       }
 
@@ -624,7 +624,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomCBCFCMCProbability = item["CFCMC_CBMC_WidomProbability"].get<double>();
         for (size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].widomCBCFCMCProbability = widomCBCFCMCProbability;
+          move_probabilities[i].setProbability(MoveTypes::WidomCBCFCMC, widomCBCFCMCProbability);
         }
       }
 
@@ -813,7 +813,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     for (size_t systemId = 0; auto& [key, value] : parsed_data["Systems"].items())
     {
-      MCMoveProbabilitiesSystem mc_moves_probabilities{};
+      MCMoveProbabilities mc_moves_probabilities{};
 
       if (value.contains("ForceField") && value["ForceField"].is_string())
       {
@@ -937,22 +937,22 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (value.contains("VolumeMoveProbability") && value["VolumeMoveProbability"].is_number_float())
       {
-        mc_moves_probabilities.volumeChangeProbability = value["VolumeMoveProbability"].get<double>();
+        mc_moves_probabilities.setProbability(MoveTypes::VolumeChange, value["VolumeMoveProbability"].get<double>());
       }
 
       if (value.contains("GibbsVolumeMoveProbability") && value["GibbsVolumeMoveProbability"].is_number_float())
       {
-        mc_moves_probabilities.gibbsVolumeChangeProbability = value["GibbsVolumeMoveProbability"].get<double>();
+        mc_moves_probabilities.setProbability(MoveTypes::GibbsVolume, value["GibbsVolumeMoveProbability"].get<double>());
       }
 
       if (value.contains("ParallelTemperingSwapProbability") &&
           value["ParallelTemperingSwapProbability"].is_number_float())
       {
-        mc_moves_probabilities.parallelTemperingProbability = value["ParallelTemperingSwapProbability"].get<double>();
+        mc_moves_probabilities.setProbability(MoveTypes::ParallelTempering, value["ParallelTemperingSwapProbability"].get<double>());
       }
       if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
       {
-        mc_moves_probabilities.hybridMCProbability = value["HybridMCProbability"].get<double>();
+        mc_moves_probabilities.setProbability(MoveTypes::HybridMC, value["HybridMCProbability"].get<double>());
       }
 
       if (!value.contains("Type"))
@@ -1368,7 +1368,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<size_t>();
         if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
         {
-          systems[systemId].mc_moves_statistics.hybridMC.maxChange = value["Timestep"].get<double>();
+          systems[systemId].mc_moves_statistics.setMaxChange(MoveTypes::HybridMC, value["Timestep"].get<double>());
         }
       }
 

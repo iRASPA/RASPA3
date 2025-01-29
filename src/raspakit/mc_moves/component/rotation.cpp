@@ -49,12 +49,13 @@ import running_energy;
 import property_lambda_probability_histogram;
 import property_widom;
 import averages;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, size_t selectedComponent,
                                                     const std::vector<Component> &components, Molecule &molecule,
@@ -64,12 +65,13 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::chrono::system_clock::time_point time_begin, time_end;
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
-  double3 maxAngle = system.components[selectedComponent].mc_moves_statistics.rotationMove.maxChange;
   size_t selectedDirection = size_t(3.0 * random.uniform());
-  angle[selectedDirection] = maxAngle[selectedDirection] * 2.0 * (random.uniform() - 0.5);
 
-  system.components[selectedComponent].mc_moves_statistics.rotationMove.counts[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.rotationMove.totalCounts[selectedDirection] += 1;
+  double maxAngle = system.components[selectedComponent].mc_moves_statistics.getMaxChange(MoveTypes::Rotation, selectedDirection);
+
+  angle[selectedDirection] = maxAngle * 2.0 * (random.uniform() - 0.5);
+
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Rotation, selectedDirection);
 
   // construct the trial positions
   double rotationAngle = angle[selectedDirection];
@@ -123,14 +125,12 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   RunningEnergy energyDifference =
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
-  system.components[selectedComponent].mc_moves_statistics.rotationMove.constructed[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.rotationMove.totalConstructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Rotation, selectedDirection);
 
   // apply acceptance/rejection rule
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
-    system.components[selectedComponent].mc_moves_statistics.rotationMove.accepted[selectedDirection] += 1;
-    system.components[selectedComponent].mc_moves_statistics.rotationMove.totalAccepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Rotation, selectedDirection);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());

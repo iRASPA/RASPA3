@@ -2,12 +2,14 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <string>
+#include <map>
 #endif
 
 export module mc_moves_move_types;
 
 #ifndef USE_LEGACY_HEADERS
 import <string>;
+import <map>;
 #endif
 
 export enum class MoveTypes : size_t {
@@ -31,4 +33,27 @@ export enum class MoveTypes : size_t {
   ParallelTempering = 17,
   HybridMC = 18,
   Count
+};
+
+export std::map<MoveTypes, std::string> moveNames = 
+{
+  {MoveTypes::Translation, "Translation"},
+  {MoveTypes::RandomTranslation, "Random translation"},
+  {MoveTypes::Rotation, "Rotation"},
+  {MoveTypes::RandomRotation, "Random rotation"},
+  {MoveTypes::VolumeChange, "Volume change"},
+  {MoveTypes::ReinsertionCBMC, "Reinsertion (CBMC)"},
+  {MoveTypes::IdentityChangeCBMC, "Identity change (CBMC)"},
+  {MoveTypes::Swap, "Swap"},
+  {MoveTypes::SwapCBMC, "Swap (CBMC)"},
+  {MoveTypes::SwapCFCMC, "Swap (CFCMC)"},
+  {MoveTypes::SwapCBCFCMC, "Swap (CB/CFCMC)"},
+  {MoveTypes::GibbsVolume, "Gibbs volume"},
+  {MoveTypes::GibbsSwapCBMC, "Gibbs swap (CBMC)"},
+  {MoveTypes::GibbsSwapCFCMC, "Gibbs swap (CFCMC)"},
+  {MoveTypes::Widom, "Widom"},
+  {MoveTypes::WidomCFCMC, "Widom (CFCMC)"},
+  {MoveTypes::WidomCBCFCMC, "Widom (CB/CFCMC)"},
+  {MoveTypes::ParallelTempering, "Parallel tempering"},
+  {MoveTypes::HybridMC, "Hybrid MC"},
 };

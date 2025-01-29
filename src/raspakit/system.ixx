@@ -79,10 +79,13 @@ import units;
 import bond_potential;
 import isotherm;
 import move_statistics;
-import mc_moves_probabilities_system;
-import mc_moves_statistics_system;
+import mc_moves_move_types;
+import mc_moves_probabilities;
+import mc_moves_statistics;
+// import mc_moves_probabilities_system;
+// import mc_moves_statistics_system;
 import mc_moves_cputime;
-import mc_moves_count;
+// import mc_moves_count;
 import reaction;
 import reactions;
 import transition_matrix;
@@ -130,7 +133,7 @@ export struct System
   System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
          double heliumVoidFraction, std::vector<Framework> frameworkComponents, std::vector<Component> components,
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
-         const MCMoveProbabilitiesSystem &systemProbabilities = MCMoveProbabilitiesSystem(),
+         const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<size_t> sampleMoviesEvery = std::nullopt);
 
   System(size_t id, double T, std::optional<double> P, double heliumVoidFraction,
@@ -239,10 +242,10 @@ export struct System
   double netChargeAdsorbates{0.0};
   std::vector<double> netChargePerComponent;
 
-  MCMoveProbabilitiesSystem mc_moves_probabilities;
-  MCMoveStatisticsSystem mc_moves_statistics;
+  MCMoveProbabilities mc_moves_probabilities;
+  MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;
-  MCMoveCount mc_moves_count;
+  // MCMoveCount mc_moves_count;
 
   Reactions reactions;
   TransitionMatrix tmmc;
@@ -409,8 +412,6 @@ export struct System
   void writeCPUTimeStatistics(std::ostream &stream) const;
 
   [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
-
-  void clearMoveStatistics();
 
   std::pair<std::vector<Molecule>, std::vector<Atom>> scaledCenterOfMassPositions(double scale) const;
 

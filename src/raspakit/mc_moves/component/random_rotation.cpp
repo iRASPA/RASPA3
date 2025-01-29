@@ -49,12 +49,13 @@ import running_energy;
 import property_lambda_probability_histogram;
 import property_widom;
 import averages;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, System &system,
                                                           size_t selectedComponent,
@@ -65,13 +66,12 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   std::chrono::system_clock::time_point time_begin, time_end;
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
-  double3 maxAngle = system.components[selectedComponent].mc_moves_statistics.randomRotationMove.maxChange;
+  double maxAngle = system.components[selectedComponent].mc_moves_statistics.getMaxChange(MoveTypes::RandomRotation);
   size_t selectedDirection = size_t(3.0 * random.uniform());
-  angle[selectedDirection] = maxAngle[selectedDirection] * 2.0 * (random.uniform() - 0.5);
+  angle[selectedDirection] = maxAngle * 2.0 * (random.uniform() - 0.5);
 
   // Update move statistics for the selected direction
-  system.components[selectedComponent].mc_moves_statistics.randomRotationMove.counts[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.randomRotationMove.totalCounts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::RandomRotation, selectedDirection);
 
   // Construct the trial positions by rotating the molecule
   double rotationAngle = angle[selectedDirection];
@@ -128,15 +128,13 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
   // Update constructed move statistics
-  system.components[selectedComponent].mc_moves_statistics.randomRotationMove.constructed[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.randomRotationMove.totalConstructed[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::RandomRotation, selectedDirection);
 
   // Apply acceptance/rejection rule based on Metropolis criterion
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Move accepted; update statistics
-    system.components[selectedComponent].mc_moves_statistics.randomRotationMove.accepted[selectedDirection] += 1;
-    system.components[selectedComponent].mc_moves_statistics.randomRotationMove.totalAccepted[selectedDirection] += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::RandomRotation, selectedDirection);
 
     // Accept Ewald move and update molecule atoms
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

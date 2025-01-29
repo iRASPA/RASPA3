@@ -107,8 +107,8 @@ import multi_site_isotherm;
 import pressure_range;
 import bond_potential;
 import move_statistics;
-import mc_moves_probabilities_system;
-import mc_moves_probabilities_particles;
+import mc_moves_probabilities;
+import mc_moves_move_types;
 import mc_moves_cputime;
 import reaction;
 import reactions;
@@ -133,7 +133,7 @@ import integrators_update;
 System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
                double heliumVoidFraction, std::vector<Framework> f, std::vector<Component> c,
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
-               const MCMoveProbabilitiesSystem& systemProbabilities, std::optional<size_t> sampleMoviesEvery)
+               const MCMoveProbabilities& systemProbabilities, std::optional<size_t> sampleMoviesEvery)
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -717,17 +717,16 @@ void System::determineSwappableComponents()
 {
   for (Component& component : components)
   {
-    if (component.mc_moves_probabilities.swapProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCBMCProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCFCMCProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCBCFCMCProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::Swap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
 
-    if (component.mc_moves_probabilities.gibbsSwapCBMCProbability > 0.0 ||
-        component.mc_moves_probabilities.gibbsSwapCFCMCProbability > 0.0 ||
-        component.mc_moves_probabilities.gibbsSwapCBCFCMCProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -748,10 +747,10 @@ void System::determineFractionalComponents()
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
-    if (components[i].mc_moves_probabilities.swapCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.widomCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.swapCBCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.widomCBCFCMCProbability > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCBCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -759,8 +758,8 @@ void System::determineFractionalComponents()
     }
 
     // Gibbs
-    if (components[i].mc_moves_probabilities.gibbsSwapCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.gibbsSwapCBCFCMCProbability > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -795,12 +794,7 @@ void System::rescaleMoveProbabilities()
 {
   for (Component& component : components)
   {
-    component.mc_moves_probabilities.volumeChangeProbability = mc_moves_probabilities.volumeChangeProbability;
-    component.mc_moves_probabilities.gibbsVolumeChangeProbability = mc_moves_probabilities.gibbsVolumeChangeProbability;
-    component.mc_moves_probabilities.parallelTemperingProbability = mc_moves_probabilities.parallelTemperingProbability;
-    component.mc_moves_probabilities.hybridMCProbability = mc_moves_probabilities.hybridMCProbability;
-
-    component.mc_moves_probabilities.normalizeMoveProbabilities();
+    component.mc_moves_probabilities.join(mc_moves_probabilities);
   }
 }
 
@@ -808,25 +802,13 @@ void System::removeRedundantMoves()
 {
   for (Component& component : components)
   {
-    // WidomMove_CFCMC already done when using SwapMove_CFCMC
-    if (component.mc_moves_probabilities.widomCFCMCProbability > 0.0 &&
-        component.mc_moves_probabilities.swapCFCMCProbability > 0.0)
-    {
-      component.mc_moves_probabilities.widomCFCMCProbability = 0.0;
-    }
-
-    // WidomMove_CFCMC_CBMC already done when using SwapMove_CFCMC_CBMC
-    if (component.mc_moves_probabilities.widomCBCFCMCProbability > 0.0 &&
-        component.mc_moves_probabilities.swapCBCFCMCProbability > 0.0)
-    {
-      component.mc_moves_probabilities.widomCBCFCMCProbability = 0.0;
-    }
+    component.mc_moves_probabilities.removeRedundantMoves();
   }
 }
 
 void System::optimizeMCMoves()
 {
-  mc_moves_statistics.optimizeAcceptance();
+  mc_moves_statistics.optimizeMCMoves();
   for (Component& component : components)
   {
     component.mc_moves_statistics.optimizeMCMoves();
@@ -1725,7 +1707,7 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
       com = com / totalMass;
 
       double3 d = com * (scale - 1.0);
-      scaledMolecules.push_back({com * scale, molecule.orientation});
+      scaledMolecules.push_back({com * scale, molecule.orientation, molecule.mass, componentId, span.size()});
 
       // create copy
       for (Atom atom : span)
@@ -1737,8 +1719,6 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   }
   return {scaledMolecules, scaledAtoms};
 }
-
-void System::clearMoveStatistics() { mc_moves_statistics.clear(); }
 
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
                                                    const std::pair<EnergyStatus, double3x3>& rhs)
@@ -2056,7 +2036,7 @@ std::string System::writeMCMoveStatistics() const
                  component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
-    if (component.mc_moves_probabilities.widomProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
@@ -2092,18 +2072,6 @@ nlohmann::json System::jsonMCMoveStatistics() const
       status["lambdaStatistics"]["thermodynamicIntegration"] =
           component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
     }
-
-    /*
-    if (component.mc_moves_probabilities.widomProbability > 0.0)
-    {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
-      std::print(
-          stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential,
-    imposedFugacity));
-    }
-    */
   }
 
   return status;
@@ -2170,10 +2138,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.netChargeFramework;
   archive << s.netChargeAdsorbates;
   archive << s.netChargePerComponent;
-  archive << s.mc_moves_probabilities;
+  // archive << s.mc_moves_probabilities;
   archive << s.mc_moves_statistics;
   archive << s.mc_moves_cputime;
-  archive << s.mc_moves_count;
+  // archive << s.mc_moves_count;
   archive << s.reactions;
   archive << s.tmmc;
   archive << s.columnNumberOfGridPoints;
@@ -2276,10 +2244,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.netChargeFramework;
   archive >> s.netChargeAdsorbates;
   archive >> s.netChargePerComponent;
-  archive >> s.mc_moves_probabilities;
+  // archive >> s.mc_moves_probabilities;
   archive >> s.mc_moves_statistics;
   archive >> s.mc_moves_cputime;
-  archive >> s.mc_moves_count;
+  // archive >> s.mc_moves_count;
   archive >> s.reactions;
   archive >> s.tmmc;
   archive >> s.columnNumberOfGridPoints;

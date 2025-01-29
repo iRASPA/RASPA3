@@ -57,7 +57,6 @@ import hardware_info;
 import archive;
 import system;
 import randomnumbers;
-import mc_moves;
 import input_reader;
 import component;
 import averages;
@@ -82,9 +81,11 @@ import property_loading;
 import property_enthalpy;
 import property_msd;
 import property_vacf;
-import mc_moves_probabilities_particles;
+import mc_moves;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 import mc_moves_cputime;
-import mc_moves_count;
+// import mc_moves_count;
 import property_pressure;
 import transition_matrix;
 import interactions_ewald;
@@ -408,9 +409,9 @@ void MolecularDynamics::production()
     stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
     std::print(stream, "\n");
 
-    system.clearMoveStatistics();
+    system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
-    system.mc_moves_count.clearCountStatistics();
+    // system.mc_moves_count.clearCountStatistics();
     integratorsCPUTime.clearTimingStatistics();
 
     system.accumulatedDrift = 0.0;
@@ -419,7 +420,7 @@ void MolecularDynamics::production()
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
-      component.mc_moves_count.clearCountStatistics();
+      // component.mc_moves_count.clearCountStatistics();
 
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
@@ -560,11 +561,11 @@ void MolecularDynamics::production()
 void MolecularDynamics::output()
 {
   MCMoveCpuTime total;
-  MCMoveCount countTotal;
+  // MCMoveCount countTotal;
   for (const System& system : systems)
   {
     total += system.mc_moves_cputime;
-    countTotal += system.mc_moves_count;
+    // countTotal += system.mc_moves_count;
   }
 
   for (System& system : systems)
@@ -589,7 +590,7 @@ void MolecularDynamics::output()
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}\n", countTotal.writeAllSystemStatistics(numberOfSteps));
+    // std::print(stream, "{}\n", countTotal.writeAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 

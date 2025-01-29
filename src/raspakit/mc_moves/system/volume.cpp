@@ -52,27 +52,27 @@ import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
-import mc_moves_probabilities_system;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
   // Update volume move counts
-  system.mc_moves_statistics.volumeMove.counts += 1;
-  system.mc_moves_statistics.volumeMove.totalCounts += 1;
+  system.mc_moves_statistics.addTrial(MoveTypes::VolumeChange);
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   // Calculate the total number of molecules
   double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(),
                                                              system.numberOfIntegerMoleculesPerComponent.end()));
   double oldVolume = system.simulationBox.volume;
-  double maxVolumeChange = system.mc_moves_statistics.volumeMove.maxChange;
+  double maxVolumeChange = system.mc_moves_statistics.getMaxChange(MoveTypes::VolumeChange);
+
   // Propose a new volume change
   double newVolume = std::exp(std::log(oldVolume) + maxVolumeChange * (2.0 * random.uniform() - 1.0));
   // Compute scaling factor for box dimensions
@@ -107,8 +107,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
   // Update constructed move counts
-  system.mc_moves_statistics.volumeMove.constructed += 1;
-  system.mc_moves_statistics.volumeMove.totalConstructed += 1;
+  system.mc_moves_statistics.addConstructed(MoveTypes::VolumeChange);
 
   // Apply acceptance/rejection rule
   if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
@@ -117,8 +116,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
                                       system.beta))
   {
     // Move accepted: update system state
-    system.mc_moves_statistics.volumeMove.accepted += 1;
-    system.mc_moves_statistics.volumeMove.totalAccepted += 1;
+    system.mc_moves_statistics.addAccepted(MoveTypes::VolumeChange);
 
     system.simulationBox = newBox;
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculePositions.begin());

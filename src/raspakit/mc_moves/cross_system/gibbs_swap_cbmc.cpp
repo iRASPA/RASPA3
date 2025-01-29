@@ -34,14 +34,15 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
 import component;
-import mc_moves_probabilities_particles;
 import simulationbox;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(RandomNumber& random,
                                                                                     System& systemA, System& systemB,
@@ -54,10 +55,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
 
   // Update move counts statistics for both systems
-  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.counts += 1;
-  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalCounts += 1;
-  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.counts += 1;
-  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalCounts += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::GibbsSwapCBMC);
+  systemB.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::GibbsSwapCBMC);
 
   // Retrieve cutoff distances and grow type from system A
   double cutOffFrameworkVDW = systemA.forceField.cutOffFrameworkVDW;
@@ -88,8 +87,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   // Update statistics for successfully constructed molecules in system A
-  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.constructed += 1;
-  systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
+  systemA.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::GibbsSwapCBMC);
 
   std::chrono::system_clock::time_point u1 =
       std::chrono::system_clock::now();  // Start timing Ewald Fourier computation
@@ -176,8 +174,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   systemA.mc_moves_cputime.GibbsSwapMoveCBMCTail += (w2 - w1);
 
   // Update statistics for retraced molecules in system B
-  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.constructed += 1;
-  systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalConstructed += 1;
+  systemB.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::GibbsSwapCBMC);
 
   // Compute correction factor for Ewald energies in system B
   double correctionFactorEwaldB =
@@ -193,19 +190,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
            systemB.simulationBox.volume))
   {
     // Update accepted move statistics for system A
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
-    systemA.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
+    systemA.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::GibbsSwapCBMC);
 
     // Accept Ewald updates and insert the new molecule into system A
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
     systemA.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
-    // Debug
-    // assert(system.checkMoleculeIds());
-
     // Update accepted move statistics for system B
-    systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.accepted += 1;
-    systemB.components[selectedComponent].mc_moves_statistics.GibbsSwapMove_CBMC.totalAccepted += 1;
+    systemB.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::GibbsSwapCBMC);
 
     // Accept Ewald updates and delete the selected molecule from system B
     Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);

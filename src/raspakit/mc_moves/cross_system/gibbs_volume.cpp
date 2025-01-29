@@ -52,26 +52,25 @@ import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_system;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA,
                                                                                  System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  systemA.mc_moves_statistics.GibbsVolumeMove.counts += 1;
-  systemA.mc_moves_statistics.GibbsVolumeMove.totalCounts += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.counts += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.totalCounts += 1;
+  systemA.mc_moves_statistics.addTrial(MoveTypes::GibbsVolume);
+  systemB.mc_moves_statistics.addTrial(MoveTypes::GibbsVolume);
 
   // determine New box-volumes leaving the total volume constant
   double oldVolumeA = systemA.simulationBox.volume;
-  double maxVolumeChangeA = systemA.mc_moves_statistics.GibbsVolumeMove.maxChange;
+  double maxVolumeChangeA = systemA.mc_moves_statistics.getMaxChange(MoveTypes::GibbsVolume);
   double oldVolumeB = systemB.simulationBox.volume;
   double totalVolume = oldVolumeA + oldVolumeB;
   double expdv = std::exp(std::log(oldVolumeA / oldVolumeB) + maxVolumeChangeA * (2.0 * random.uniform() - 1.0));
@@ -111,8 +110,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
 
-  systemA.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
-  systemA.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
+  systemA.mc_moves_statistics.addConstructed(MoveTypes::GibbsVolume);
 
   // Scale systemB to new volume and calculate new positions
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
@@ -147,8 +145,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
 
-  systemB.mc_moves_statistics.GibbsVolumeMove.constructed += 1;
-  systemB.mc_moves_statistics.GibbsVolumeMove.totalConstructed += 1;
+  systemB.mc_moves_statistics.addConstructed(MoveTypes::GibbsVolume);
 
   // Calculate total energy change deltaU
   double deltaU = (newTotalEnergyA.potentialEnergy() - oldTotalEnergyA.potentialEnergy()) +
@@ -160,16 +157,14 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
                                   (static_cast<double>(numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     // Accept the move: update systems A and B with new configurations and energies
-    systemA.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
-    systemA.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
+    systemA.mc_moves_statistics.addAccepted(MoveTypes::GibbsVolume);
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculePositions.begin());
     std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomPositions.begin());
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
-    systemB.mc_moves_statistics.GibbsVolumeMove.accepted += 1;
-    systemB.mc_moves_statistics.GibbsVolumeMove.totalAccepted += 1;
+    systemB.mc_moves_statistics.addAccepted(MoveTypes::GibbsVolume);
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculePositions.begin());

@@ -51,13 +51,14 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import transition_matrix;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(RandomNumber& random, System& system,
                                                                              size_t selectedComponent)
@@ -66,8 +67,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
   // Update move counts statistics for swap insertion move
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::SwapCBMC, 0);
 
   // Extract cutoff distances and growth type for the selected component
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
@@ -102,8 +102,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   }
 
   // Update statistics for successfully constructed molecules
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.constructed += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalConstructed += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::SwapCBMC, 0);
 
   time_begin = std::chrono::system_clock::now();
 
@@ -164,8 +163,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     // Move accepted; update acceptance statistics
-    system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.accepted += 1;
-    system.components[selectedComponent].mc_moves_statistics.swapInsertionMove_CBMC.totalAccepted += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::SwapCBMC, 0);
 
     // Accept Ewald move and insert the new molecule into the system
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

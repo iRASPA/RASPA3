@@ -50,13 +50,12 @@ import property_widom;
 import averages;
 import running_energy;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import transition_matrix;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_move_types;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber& random, System& system,
                                                                         size_t selectedComponent,
@@ -65,14 +64,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
   std::chrono::system_clock::time_point time_begin, time_end;
 
   // Increment swap deletion move counts for the selected component
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Swap, 1);
 
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
     // Increment constructed swap deletion move counts
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.constructed += 1;
-    system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalConstructed += 1;
+    system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Swap, 1);
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
@@ -142,8 +139,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
       // Move accepted; update acceptance statistics
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.accepted += 1;
-      system.components[selectedComponent].mc_moves_statistics.swapDeletionMove.totalAccepted += 1;
+      system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Swap, 1);
 
       // Accept Ewald move and delete molecule from system
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

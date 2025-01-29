@@ -52,12 +52,13 @@ import property_lambda_probability_histogram;
 import property_widom;
 import averages;
 import forcefield;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system, size_t selectedComponent,
                                                        size_t selectedMolecule, Molecule &molecule,
@@ -67,8 +68,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   std::chrono::system_clock::time_point time_begin, time_end;
 
   // Increment move counts for reinsertion CBMC statistics.
-  system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.counts += 1;
-  system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.totalCounts += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::ReinsertionCBMC);
 
   // If no molecules of selected component are present, exit the move.
   if (system.numberOfMoleculesPerComponent[selectedComponent] == 0)
@@ -109,8 +109,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   }
 
   // Increment the constructed moves count.
-  system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.constructed += 1;
-  system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.totalConstructed += 1;
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::ReinsertionCBMC);
 
   time_begin = std::chrono::system_clock::now();
   // Retrace the old molecule configuration using CBMC retracing.
@@ -163,8 +162,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
   {
     // Move is accepted; update statistics and state.
-    system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.accepted += 1;
-    system.components[selectedComponent].mc_moves_statistics.reinsertionMove_CBMC.totalAccepted += 1;
+    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::ReinsertionCBMC);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());

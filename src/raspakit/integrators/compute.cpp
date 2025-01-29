@@ -4,6 +4,7 @@ module;
 #include <chrono>
 #include <optional>
 #include <span>
+#include <iostream>
 #endif
 
 module integrators_compute;
@@ -12,6 +13,7 @@ module integrators_compute;
 import <span>;
 import <optional>;
 import <chrono>;
+import <iostream>;
 #endif
 
 import molecule;

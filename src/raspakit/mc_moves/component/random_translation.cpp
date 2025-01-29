@@ -48,12 +48,13 @@ import running_energy;
 import property_lambda_probability_histogram;
 import property_widom;
 import averages;
-import move_statistics;
-import mc_moves_probabilities_particles;
 import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &random, System &system,
                                                              size_t selectedComponent,
@@ -70,8 +71,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   displacement = system.simulationBox.cell * s;
 
   // Update move counts for the selected direction
-  system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.counts[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.totalCounts[selectedDirection] += 1;
+  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::RandomTranslation, selectedDirection);
 
   // Construct the trial positions
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
@@ -127,17 +127,13 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
   // Update constructed move counts for the selected direction
-  system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.constructed[selectedDirection] += 1;
-  system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.totalConstructed[selectedDirection] +=
-      1;
-
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::RandomTranslation, selectedDirection);
+  
   // Apply Metropolis acceptance criterion
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
     // Move accepted, update accepted move counts
-    system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.accepted[selectedDirection] += 1;
-    system.components[selectedComponent].mc_moves_statistics.randomTranslationMove.totalAccepted[selectedDirection] +=
-        1;
+      system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::RandomTranslation, selectedDirection);
 
     // Accept Ewald move and update system state
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

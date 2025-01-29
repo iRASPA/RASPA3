@@ -28,13 +28,15 @@ import integrators_compute;
 import thermostat;
 import units;
 import interactions_ewald;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
 
-  system.mc_moves_statistics.hybridMC.counts += 1;
-  system.mc_moves_statistics.hybridMC.totalCounts += 1;
+  system.mc_moves_statistics.addTrial(MoveTypes::HybridMC);
 
   if (system.moleculePositions.size() <= 1)
   {
@@ -52,7 +54,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   std::optional<Thermostat> thermostat(system.thermostat);
 
   // get Timestep from the max change
-  double dt = system.mc_moves_statistics.hybridMC.maxChange;
+  double dt = system.mc_moves_statistics.getMaxChange(MoveTypes::HybridMC);
 
   // initialize the velocities according to Boltzmann distribution
   // NOTE: it is important that the reference energy has the initial kinetic energies
@@ -84,16 +86,14 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   time_end = std::chrono::system_clock::now();
 
   system.mc_moves_cputime.hybridMCIntegration += (time_end - time_begin);
-  system.mc_moves_statistics.hybridMC.constructed += 1;
-  system.mc_moves_statistics.hybridMC.totalConstructed += 1;
+  system.mc_moves_statistics.addConstructed(MoveTypes::HybridMC);
 
   double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
 
   // accept or reject based on energy difference
   if (random.uniform() < std::exp(-system.beta * drift))
   {
-    system.mc_moves_statistics.hybridMC.accepted += 1;
-    system.mc_moves_statistics.hybridMC.totalAccepted += 1;
+    system.mc_moves_statistics.addAccepted(MoveTypes::HybridMC);
 
     system.moleculePositions = moleculePositions;
     system.thermostat = thermostat;
