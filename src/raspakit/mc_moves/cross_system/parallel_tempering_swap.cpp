@@ -63,32 +63,24 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
                                                                                        System &systemA, System &systemB)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::ParallelTempering;
 
   // Update swap move counts for both systems
-  systemA.mc_moves_statistics.addTrial(MoveTypes::ParallelTempering);
-  systemB.mc_moves_statistics.addTrial(MoveTypes::ParallelTempering);
+  systemA.mc_moves_statistics.addTrial(move);
 
   double acc = 0.0;
 
   if (systemA.forceField != systemB.forceField)
   {
-    time_begin = std::chrono::system_clock::now();
-
     // Compute energy of system A using system B's force field
+    time_begin = std::chrono::system_clock::now();
     RunningEnergy systemAHamiltonianB =
         Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions);
-
-    time_end = std::chrono::system_clock::now();
-    systemA.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
-
-    time_begin = std::chrono::system_clock::now();
-
-    // Compute energy of system B using system A's force field
     RunningEnergy systemBHamiltonianA =
         Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions);
-
     time_end = std::chrono::system_clock::now();
-    systemB.mc_moves_cputime.ParallelTemperingSwapEnergy += (time_end - time_begin);
+
+    systemA.mc_moves_cputime[move]["Energy"] += (time_end - time_begin);
 
     // Calculate acceptance probability when force fields differ
     acc = std::exp(-systemA.beta * (systemBHamiltonianA.potentialEnergy() - systemA.runningEnergies.potentialEnergy()) -
@@ -106,27 +98,23 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     /// Ref: "Hyper-parallel tempering Monte Carlo: Application to the Lennard-Jones fluid and the
     /// restricted primitive model",  G. Yan and J.J. de Pablo, JCP, 111(21): 9509-9516, 1999
 
-    time_begin = std::chrono::system_clock::now();
-
     // Adjust acceptance probability for pressure differences
+    time_begin = std::chrono::system_clock::now();
     acc *= std::pow(systemB.pressure / systemA.pressure,
                     systemB.loadings.totalNumberOfMolecules - systemA.loadings.totalNumberOfMolecules);
-
     time_end = std::chrono::system_clock::now();
-    systemA.mc_moves_cputime.ParallelTemperingSwapFugacity += (time_end - time_begin);
-    systemB.mc_moves_cputime.ParallelTemperingSwapFugacity += (time_end - time_begin);
+
+    systemA.mc_moves_cputime[move]["Fugacity"] += (time_end - time_begin);
   }
 
   // Update constructed move counts for both systems
-  systemA.mc_moves_statistics.addConstructed(MoveTypes::ParallelTempering);
-  systemB.mc_moves_statistics.addConstructed(MoveTypes::ParallelTempering);
+  systemA.mc_moves_statistics.addConstructed(move);
 
   // Apply acceptance/rejection rule
   if (random.uniform() < acc)
   {
     // Update accepted move counts for both systems
-    systemA.mc_moves_statistics.addAccepted(MoveTypes::ParallelTempering);
-    systemB.mc_moves_statistics.addAccepted(MoveTypes::ParallelTempering);
+    systemA.mc_moves_statistics.addAccepted(move);
 
     // Swap configurations and properties between systems
     std::swap(systemA.atomPositions, systemB.atomPositions);

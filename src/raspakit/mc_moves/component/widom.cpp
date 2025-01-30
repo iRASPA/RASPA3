@@ -61,28 +61,30 @@ import mc_moves_probabilities;
 std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
 {
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  
+  MoveTypes move = MoveTypes::Widom;
+  Component& component = system.components[selectedComponent];
+
   // Update move statistics for Widom insertion move.
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Widom);
+  component.mc_moves_statistics.addTrial(move);
 
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
-  Component::GrowType growType = system.components[selectedComponent].growType;
+  Component::GrowType growType = component.growType;
 
   // Record the start time for the CBMC molecule growth.
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
-      random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
-      system.components, system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      selectedComponent, selectedMolecule, 1.0, 0uz, system.numberOfTrialDirections);
+      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
+      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
+      system.numberOfTrialDirections);
   // Record the end time for the CBMC molecule growth.
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
   // Update CPU time statistics for CBMC non-Ewald calculations.
-  system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
-  system.mc_moves_cputime.WidomMoveCBMCNonEwald += (t2 - t1);
+  component.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
+  system.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
 
   // If molecule growth failed, terminate the move.
   if (!growData) return {0.0, 0.0};
@@ -90,13 +92,13 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   [[maybe_unused]] std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   // Check if the new molecule is inside blocked pockets; if so, abort the move.
-  if (system.insideBlockedPockets(system.components[selectedComponent], newMolecule))
+  if (system.insideBlockedPockets(component, newMolecule))
   {
     return {0.0, 0.0};
   }
 
   // Update statistics for successfully constructed molecules.
-  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Widom);
+  component.mc_moves_statistics.addConstructed(move);
 
   // Record start time for Ewald Fourier energy difference calculation.
   std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
@@ -107,8 +109,8 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   // Record end time for Ewald Fourier energy difference calculation.
   std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
   // Update CPU time statistics for Ewald calculations.
-  system.components[selectedComponent].mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
-  system.mc_moves_cputime.WidomMoveCBMCEwald += (u2 - u1);
+  component.mc_moves_cputime[move]["Ewald"] += (u2 - u1);
+  system.mc_moves_cputime[move]["Ewald"] += (u2 - u1);
 
   // Compute the tail corrections for the energy due to the new molecule.
   RunningEnergy tailEnergyDifference =
@@ -119,12 +121,13 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
 
   // Compute the correction factor from Ewald and tail energy differences.
   double correctionFactorEwald =
-      //std::exp(-system.beta * (energyFourierDifference.potentialEnergy()));
+      // std::exp(-system.beta * (energyFourierDifference.potentialEnergy()));
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
-  double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
+  double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
   // Return the Widom insertion weight for the new molecule.
   return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, 0.0};
-  //return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, tailEnergyDifference.potentialEnergy()};
+  // return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight,
+  // tailEnergyDifference.potentialEnergy()};
 }

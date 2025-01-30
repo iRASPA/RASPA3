@@ -64,31 +64,33 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
                                                                              size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::SwapCBMC;
+  Component& component = system.components[selectedComponent];
 
   // Update move counts statistics for swap insertion move
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::SwapCBMC, 0);
+  component.mc_moves_statistics.addTrial(move, 0);
 
   // Extract cutoff distances and growth type for the selected component
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
-  Component::GrowType growType = system.components[selectedComponent].growType;
+  Component::GrowType growType = component.growType;
 
   time_begin = std::chrono::system_clock::now();
 
   // Attempt to grow a new molecule using CBMC
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
-      random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
-      system.components, system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      selectedComponent, selectedMolecule, 1.0, 0uz, system.numberOfTrialDirections);
+      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
+      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
+      system.numberOfTrialDirections);
 
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
-  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);
-  system.mc_moves_cputime.swapInsertionMoveCBMCNonEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
   // If growth failed, reject the move
   if (!growData) return {std::nullopt, double3(0.0, 1.0, 0.0)};
@@ -102,7 +104,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   }
 
   // Update statistics for successfully constructed molecules
-  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::SwapCBMC, 0);
+  system.components[selectedComponent].mc_moves_statistics.addConstructed(move, 0);
 
   time_begin = std::chrono::system_clock::now();
 
@@ -114,8 +116,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the Ewald part of the move
-  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCEwald += (time_end - time_begin);
-  system.mc_moves_cputime.swapInsertionMoveCBMCEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
 
@@ -129,17 +131,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the tail corrections
-  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveCBMCTail += (time_end - time_begin);
-  system.mc_moves_cputime.swapInsertionMoveCBMCTail += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
   // Calculate correction factor for Ewald energy difference
   double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
   // Compute the acceptance probability pre-factor
-  double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
-  double idealGasRosenbluthWeight = system.components[selectedComponent].idealGasRosenbluthWeight.value_or(1.0);
-  double preFactor = correctionFactorEwald * system.beta * system.components[selectedComponent].molFraction * fugacity *
+  double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+  double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
+  double preFactor = correctionFactorEwald * system.beta * component.molFraction * fugacity *
                      system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
@@ -163,7 +165,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
     // Move accepted; update acceptance statistics
-    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::SwapCBMC, 0);
+    component.mc_moves_statistics.addAccepted(move, 0);
 
     // Accept Ewald move and insert the new molecule into the system
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

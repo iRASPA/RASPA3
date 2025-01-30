@@ -1,8 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <string>
 #include <map>
+#include <string>
+#include <unordered_set>
 #endif
 
 export module mc_moves_move_types;
@@ -10,6 +11,7 @@ export module mc_moves_move_types;
 #ifndef USE_LEGACY_HEADERS
 import <string>;
 import <map>;
+import <unordered_set>;
 #endif
 
 export enum class MoveTypes : size_t {
@@ -35,25 +37,57 @@ export enum class MoveTypes : size_t {
   Count
 };
 
-export std::map<MoveTypes, std::string> moveNames = 
+export std::unordered_set<MoveTypes> componentMoves = 
 {
-  {MoveTypes::Translation, "Translation"},
-  {MoveTypes::RandomTranslation, "Random translation"},
-  {MoveTypes::Rotation, "Rotation"},
-  {MoveTypes::RandomRotation, "Random rotation"},
-  {MoveTypes::VolumeChange, "Volume change"},
-  {MoveTypes::ReinsertionCBMC, "Reinsertion (CBMC)"},
-  {MoveTypes::IdentityChangeCBMC, "Identity change (CBMC)"},
-  {MoveTypes::Swap, "Swap"},
-  {MoveTypes::SwapCBMC, "Swap (CBMC)"},
-  {MoveTypes::SwapCFCMC, "Swap (CFCMC)"},
-  {MoveTypes::SwapCBCFCMC, "Swap (CB/CFCMC)"},
-  {MoveTypes::GibbsVolume, "Gibbs volume"},
-  {MoveTypes::GibbsSwapCBMC, "Gibbs swap (CBMC)"},
-  {MoveTypes::GibbsSwapCFCMC, "Gibbs swap (CFCMC)"},
-  {MoveTypes::Widom, "Widom"},
-  {MoveTypes::WidomCFCMC, "Widom (CFCMC)"},
-  {MoveTypes::WidomCBCFCMC, "Widom (CB/CFCMC)"},
-  {MoveTypes::ParallelTempering, "Parallel tempering"},
-  {MoveTypes::HybridMC, "Hybrid MC"},
+  MoveTypes::Translation,
+  MoveTypes::RandomTranslation,
+  MoveTypes::Rotation,
+  MoveTypes::RandomRotation,
+  MoveTypes::ReinsertionCBMC,
+  MoveTypes::IdentityChangeCBMC,
+  MoveTypes::Swap,
+  MoveTypes::SwapCBMC,
+  MoveTypes::SwapCFCMC,
+  MoveTypes::SwapCBCFCMC,
+  MoveTypes::Widom,
+  MoveTypes::WidomCFCMC,
+  MoveTypes::WidomCBCFCMC
+};
+
+export std::unordered_set<MoveTypes> systemMoves = 
+{
+  MoveTypes::VolumeChange,
+  MoveTypes::HybridMC
+};
+
+export std::unordered_set<MoveTypes> crossSystemMoves = 
+{
+  MoveTypes::GibbsVolume,
+  MoveTypes::GibbsSwapCBMC,
+  MoveTypes::GibbsSwapCFCMC,
+  MoveTypes::ParallelTempering
+};
+
+export std::unordered_set<MoveTypes> groupMoves = {};
+
+export std::map<MoveTypes, std::string> moveNames = {
+    {MoveTypes::Translation, "Translation"},
+    {MoveTypes::RandomTranslation, "Random translation"},
+    {MoveTypes::Rotation, "Rotation"},
+    {MoveTypes::RandomRotation, "Random rotation"},
+    {MoveTypes::VolumeChange, "Volume change"},
+    {MoveTypes::ReinsertionCBMC, "Reinsertion (CBMC)"},
+    {MoveTypes::IdentityChangeCBMC, "Identity change (CBMC)"},
+    {MoveTypes::Swap, "Swap"},
+    {MoveTypes::SwapCBMC, "Swap (CBMC)"},
+    {MoveTypes::SwapCFCMC, "Swap (CFCMC)"},
+    {MoveTypes::SwapCBCFCMC, "Swap (CB/CFCMC)"},
+    {MoveTypes::GibbsVolume, "Gibbs volume"},
+    {MoveTypes::GibbsSwapCBMC, "Gibbs swap (CBMC)"},
+    {MoveTypes::GibbsSwapCFCMC, "Gibbs swap (CFCMC)"},
+    {MoveTypes::Widom, "Widom"},
+    {MoveTypes::WidomCFCMC, "Widom (CFCMC)"},
+    {MoveTypes::WidomCBCFCMC, "Widom (CB/CFCMC)"},
+    {MoveTypes::ParallelTempering, "Parallel tempering"},
+    {MoveTypes::HybridMC, "Hybrid MC"},
 };

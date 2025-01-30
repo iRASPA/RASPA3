@@ -62,14 +62,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
                                                                         size_t selectedMolecule)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::Swap;
+  Component& component = system.components[selectedComponent];
 
   // Increment swap deletion move counts for the selected component
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Swap, 1);
+  component.mc_moves_statistics.addTrial(move, 1);
 
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
     // Increment constructed swap deletion move counts
-    system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Swap, 1);
+    component.mc_moves_statistics.addConstructed(move, 1);
 
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
@@ -96,8 +98,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     time_end = std::chrono::system_clock::now();
 
     // Update CPU time statistics for Ewald calculations
-    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveEwald += (time_end - time_begin);
-    system.mc_moves_cputime.swapDeletionMoveEwald += (time_end - time_begin);
+    component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
     // Compute tail correction energy difference
     time_begin = std::chrono::system_clock::now();
@@ -109,18 +111,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     time_end = std::chrono::system_clock::now();
 
     // Update CPU time statistics for tail corrections
-    system.components[selectedComponent].mc_moves_cputime.swapDeletionMoveTail += (time_end - time_begin);
-    system.mc_moves_cputime.swapDeletionMoveTail += (time_end - time_begin);
+    component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
     // Get the total difference in energy
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                      energyFourierDifference + tailEnergyDifference;
 
     // Calculate the acceptance probability
-    double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
-    double preFactor =
-        double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
-        (system.beta * system.components[selectedComponent].molFraction * fugacity * system.simulationBox.volume);
+    double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+    double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
+                       (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
     size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
@@ -139,7 +140,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
       // Move accepted; update acceptance statistics
-      system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Swap, 1);
+      component.mc_moves_statistics.addAccepted(move, 1);
 
       // Accept Ewald move and delete molecule from system
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);

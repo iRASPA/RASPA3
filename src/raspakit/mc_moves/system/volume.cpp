@@ -62,16 +62,17 @@ import mc_moves_probabilities;
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::VolumeChange;
 
   // Update volume move counts
-  system.mc_moves_statistics.addTrial(MoveTypes::VolumeChange);
+  system.mc_moves_statistics.addTrial(move);
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   // Calculate the total number of molecules
   double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(),
                                                              system.numberOfIntegerMoleculesPerComponent.end()));
   double oldVolume = system.simulationBox.volume;
-  double maxVolumeChange = system.mc_moves_statistics.getMaxChange(MoveTypes::VolumeChange);
+  double maxVolumeChange = system.mc_moves_statistics.getMaxChange(move);
 
   // Propose a new volume change
   double newVolume = std::exp(std::log(oldVolume) + maxVolumeChange * (2.0 * random.uniform() - 1.0));
@@ -86,14 +87,14 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   RunningEnergy newTotalInterEnergy =
       Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime.volumeMoveNonEwald += (time_end - time_begin);
+  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new tail corrections
   RunningEnergy newTotalTailEnergy =
       Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime.volumeMoveTail += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new Ewald Fourier energy
@@ -101,13 +102,13 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
       system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
   time_end = std::chrono::system_clock::now();
-  system.mc_moves_cputime.volumeMoveEwald += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
   // Sum up all energy contributions
   RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
   // Update constructed move counts
-  system.mc_moves_statistics.addConstructed(MoveTypes::VolumeChange);
+  system.mc_moves_statistics.addConstructed(move);
 
   // Apply acceptance/rejection rule
   if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
@@ -116,7 +117,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
                                       system.beta))
   {
     // Move accepted: update system state
-    system.mc_moves_statistics.addAccepted(MoveTypes::VolumeChange);
+    system.mc_moves_statistics.addAccepted(move);
 
     system.simulationBox = newBox;
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculePositions.begin());

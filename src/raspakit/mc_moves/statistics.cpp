@@ -102,22 +102,16 @@ void MCMoveStatistics::addAccepted(const MoveTypes& move, size_t direction)
   statsMapDouble3[move].totalAccepted[direction] += 1;
 }
 
-double MCMoveStatistics::getMaxChange(const MoveTypes& move)
-{
-    return statsMapDouble[move].maxChange;
-}
+double MCMoveStatistics::getMaxChange(const MoveTypes& move) { return statsMapDouble[move].maxChange; }
 
-void MCMoveStatistics::setMaxChange(const MoveTypes& move, double value)
-{
-    statsMapDouble[move].maxChange = value;
-}
+void MCMoveStatistics::setMaxChange(const MoveTypes& move, double value) { statsMapDouble[move].maxChange = value; }
 
 double MCMoveStatistics::getMaxChange(const MoveTypes& move, size_t direction)
 {
-    return statsMapDouble3[move].maxChange[direction];
+  return statsMapDouble3[move].maxChange[direction];
 }
 
-static std::string formatStatistics(const std::string name, const MoveStatistics<double> &move)
+static std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
 {
   std::ostringstream stream;
   std::print(stream, "    {} all:          {:10}\n", name, move.allCounts);
@@ -130,7 +124,7 @@ static std::string formatStatistics(const std::string name, const MoveStatistics
   return stream.str();
 }
 
-static std::string formatStatistics(const std::string name, const MoveStatistics<double3> &move)
+static std::string formatStatistics(const std::string name, const MoveStatistics<double3>& move)
 {
   std::ostringstream stream;
   std::print(stream, "    {} all:          {:10}\n", name, move.allCounts);
@@ -149,7 +143,7 @@ static std::string formatStatistics(const std::string name, const MoveStatistics
   return stream.str();
 }
 
-static nlohmann::json jsonStatistics(const MoveStatistics<double> &move)
+static nlohmann::json jsonStatistics(const MoveStatistics<double>& move)
 {
   nlohmann::json status;
   status["all"] = move.allCounts;
@@ -161,7 +155,7 @@ static nlohmann::json jsonStatistics(const MoveStatistics<double> &move)
   return status;
 }
 
-static nlohmann::json jsonStatistics(const MoveStatistics<double3> &move)
+static nlohmann::json jsonStatistics(const MoveStatistics<double3>& move)
 {
   nlohmann::json status;
   status["all"] = move.allCounts;
@@ -175,7 +169,7 @@ static nlohmann::json jsonStatistics(const MoveStatistics<double3> &move)
   return status;
 }
 
-const std::string MCMoveStatistics::writeMCMoveStatistics() const 
+const std::string MCMoveStatistics::writeMCMoveStatistics() const
 {
   std::ostringstream stream;
   for (auto& [moveType, statistics] : statsMapDouble)
@@ -194,7 +188,7 @@ const std::string MCMoveStatistics::writeMCMoveStatistics() const
   }
   return stream.str();
 }
-const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const 
+const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
 {
   nlohmann::json status;
   for (auto& [moveType, statistics] : statsMapDouble)
@@ -214,7 +208,7 @@ const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMoveStatistics &p)
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMoveStatistics& p)
 {
   archive << p.versionNumber;
   archive << p.statsMapDouble;
@@ -222,13 +216,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveStatistics &p)
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatistics& p)
 {
   uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > p.versionNumber)
   {
-    const std::source_location &location = std::source_location::current();
+    const std::source_location& location = std::source_location::current();
     throw std::runtime_error(std::format("Invalid version reading 'MCMoveProbabilitiesSystem' at line {} in file {}\n",
                                          location.line(), location.file_name()));
   }

@@ -66,9 +66,11 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::ReinsertionCBMC;
+  Component &component = system.components[selectedComponent];
 
   // Increment move counts for reinsertion CBMC statistics.
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::ReinsertionCBMC);
+  component.mc_moves_statistics.addTrial(move);
 
   // If no molecules of selected component are present, exit the move.
   if (system.numberOfMoleculesPerComponent[selectedComponent] == 0)
@@ -87,14 +89,14 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainData> growData = CBMC::growMoleculeReinsertion(
-      random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
-      system.components, system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      selectedComponent, selectedMolecule, molecule, molecule_atoms, system.numberOfTrialDirections);
+      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
+      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
+      molecule_atoms, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
-  system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
-  system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
   // If growth was unsuccessful, exit the move.
   if (!growData) return std::nullopt;
@@ -103,25 +105,25 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
   // Check if the new molecule is inside blocked pockets; if so, exit the move.
-  if (system.insideBlockedPockets(system.components[selectedComponent], newMolecule))
+  if (system.insideBlockedPockets(component, newMolecule))
   {
     return std::nullopt;
   }
 
   // Increment the constructed moves count.
-  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::ReinsertionCBMC);
+  component.mc_moves_statistics.addConstructed(move);
 
   time_begin = std::chrono::system_clock::now();
   // Retrace the old molecule configuration using CBMC retracing.
   ChainData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, system.frameworkComponents, system.components[selectedComponent], system.hasExternalField,
-      system.components, system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      selectedComponent, selectedMolecule, molecule, molecule_atoms, growData->storedR, system.numberOfTrialDirections);
+      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
+      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
+      molecule_atoms, growData->storedR, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the retracing step.
-  system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
-  system.mc_moves_cputime.reinsertionMoveCBMCNonEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute the energy difference in the Fourier space due to Ewald summation.
@@ -130,8 +132,8 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       system.simulationBox, newMolecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the Ewald Fourier part of the move.
-  system.components[selectedComponent].mc_moves_cputime.reinsertionMoveCBMCEwald += (time_end - time_begin);
-  system.mc_moves_cputime.reinsertionMoveCBMCEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
   double correctionFactorDualCutOff = 1.0;
   std::optional<RunningEnergy> energyNew;
@@ -140,15 +142,13 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   {
     // If dual cutoff is used, compute correction factor due to non-overlapping energies.
     energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        system.frameworkComponents, system.components[selectedComponent], system.hasExternalField, system.forceField,
-        system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-        system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
-        growData->atom);
+        system.frameworkComponents, component, system.hasExternalField, system.forceField, system.simulationBox,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW,
+        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb, growData->atom);
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        system.frameworkComponents, system.components[selectedComponent], system.hasExternalField, system.forceField,
-        system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-        system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
-        retraceData.atom);
+        system.frameworkComponents, component, system.hasExternalField, system.forceField, system.simulationBox,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW,
+        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb, retraceData.atom);
     correctionFactorDualCutOff =
         std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
                                  (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
@@ -162,7 +162,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight)
   {
     // Move is accepted; update statistics and state.
-    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::ReinsertionCBMC);
+    component.mc_moves_statistics.addAccepted(move);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());

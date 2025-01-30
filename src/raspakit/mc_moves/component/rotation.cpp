@@ -63,15 +63,17 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
 {
   double3 angle{};
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::Rotation;
+  Component &component = system.components[selectedComponent];
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
   size_t selectedDirection = size_t(3.0 * random.uniform());
 
-  double maxAngle = system.components[selectedComponent].mc_moves_statistics.getMaxChange(MoveTypes::Rotation, selectedDirection);
+  double maxAngle = component.mc_moves_statistics.getMaxChange(move, selectedDirection);
 
   angle[selectedDirection] = maxAngle * 2.0 * (random.uniform() - 0.5);
 
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Rotation, selectedDirection);
+  component.mc_moves_statistics.addTrial(move, selectedDirection);
 
   // construct the trial positions
   double rotationAngle = angle[selectedDirection];
@@ -80,7 +82,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
       components[selectedComponent].rotate(molecule, molecule_atoms, q);
 
-  if (system.insideBlockedPockets(system.components[selectedComponent], trialMolecule.second))
+  if (system.insideBlockedPockets(component, trialMolecule.second))
   {
     return std::nullopt;
   }
@@ -90,8 +92,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
       system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.rotationMoveExternalFieldMolecule += (time_end - time_begin);
-  system.mc_moves_cputime.rotationMoveExternalFieldMolecule += (time_end - time_begin);
+  component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
   if (!externalFieldMolecule.has_value()) return std::nullopt;
 
   // compute framework-molecule energy contribution
@@ -99,8 +101,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
       system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.rotationMoveFrameworkMolecule += (time_end - time_begin);
-  system.mc_moves_cputime.rotationMoveFrameworkMolecule += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
   if (!frameworkMolecule.has_value()) return std::nullopt;
 
   // compute molecule-molecule energy contribution
@@ -108,8 +110,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.rotationMoveMoleculeMolecule += (time_end - time_begin);
-  system.mc_moves_cputime.rotationMoveMoleculeMolecule += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
   if (!interMolecule.has_value()) return std::nullopt;
 
   // compute Ewald energy contribution
@@ -118,19 +120,19 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.rotationMoveEwald += (time_end - time_begin);
-  system.mc_moves_cputime.rotationMoveEwald += (time_end - time_begin);
+  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
   // get the total difference in energy
   RunningEnergy energyDifference =
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy;
 
-  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Rotation, selectedDirection);
+  component.mc_moves_statistics.addConstructed(move, selectedDirection);
 
   // apply acceptance/rejection rule
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
   {
-    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Rotation, selectedDirection);
+    component.mc_moves_statistics.addAccepted(move, selectedDirection);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());

@@ -65,17 +65,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                                                                          size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
+  MoveTypes move = MoveTypes::Swap;
+  Component& component = system.components[selectedComponent];
 
   // Initialize selected molecule and update swap insertion move counts.
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  system.components[selectedComponent].mc_moves_statistics.addTrial(MoveTypes::Swap, 0);
-  
+  component.mc_moves_statistics.addTrial(move, 0);
+
   // Generate a trial molecule with a random position inside the simulation box.
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
-      system.components[selectedComponent].equilibratedMoleculeRandomInBox(random, system.simulationBox);
+      component.equilibratedMoleculeRandomInBox(random, system.simulationBox);
 
   // Check if the trial molecule is inside blocked pockets; reject if true.
-  if (system.insideBlockedPockets(system.components[selectedComponent], trialMolecule.second))
+  if (system.insideBlockedPockets(component, trialMolecule.second))
   {
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
@@ -91,7 +93,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                 });
 
   // Update constructed counts for swap insertion moves.
-  system.components[selectedComponent].mc_moves_statistics.addConstructed(MoveTypes::Swap, 0);
+  component.mc_moves_statistics.addConstructed(move, 0);
 
   // compute external field energy contribution
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
@@ -108,15 +110,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {});
   if (!interMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
+  // Compute Ewald Fourier energy difference and update CPU time statistics.
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, trialMolecule.second, {});
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveEwald += (time_end - time_begin);
-  system.mc_moves_cputime.swapInsertionMoveEwald += (time_end - time_begin);
-  // Compute Ewald Fourier energy difference and update CPU time statistics.
 
+  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+
+  // Compute tail energy difference and update CPU time statistics.
   time_begin = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
@@ -124,23 +128,22 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
       Interactions::computeFrameworkMoleculeTailEnergyDifference(
           system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
   time_end = std::chrono::system_clock::now();
-  system.components[selectedComponent].mc_moves_cputime.swapInsertionMoveTail += (time_end - time_begin);
-  system.mc_moves_cputime.swapInsertionMoveTail += (time_end - time_begin);
-  // Compute tail energy difference and update CPU time statistics.
+
+  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
   // get the total difference in energy
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                    energyFourierDifference + tailEnergyDifference;
 
-  double fugacity = system.components[selectedComponent].fugacityCoefficient.value_or(1.0) * system.pressure;
-  double preFactor = system.beta * system.components[selectedComponent].molFraction * fugacity *
-                     system.simulationBox.volume /
+  double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
+  double preFactor = system.beta * component.molFraction * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
-  // Calculate acceptance probability and bias from the transition matrix.
 
+  // Calculate acceptance probability and bias from the transition matrix.
   if (system.tmmc.doTMMC)
   {
     size_t newN = oldN + 1;
@@ -154,7 +157,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // apply acceptance/rejection rule
   if (random.uniform() < biasTransitionMatrix * Pacc)
   {
-    system.components[selectedComponent].mc_moves_statistics.addAccepted(MoveTypes::Swap, 0);
+    component.mc_moves_statistics.addAccepted(move, 0);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.insertMolecule(selectedComponent, trialMolecule.first, trialMolecule.second);

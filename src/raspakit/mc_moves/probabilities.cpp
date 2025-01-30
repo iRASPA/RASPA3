@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <random>
-#include <vector>
 #include <fstream>
-#include <sstream>
 #include <map>
+#include <random>
 #include <source_location>
+#include <sstream>
+#include <vector>
 #endif
 
 module mc_moves_probabilities;
@@ -59,11 +59,11 @@ const std::map<MoveTypes, double> MCMoveProbabilities::normalizedMap() const
 {
   double totalProbability = 0.0;
   std::map<MoveTypes, double> normalizedMap(probabilities);
-  for (auto& [moveType, probability] : normalizedMap)
+  for (auto &[moveType, probability] : normalizedMap)
   {
     totalProbability += probability;
   }
-  for (auto& [moveType, probability] : normalizedMap)
+  for (auto &[moveType, probability] : normalizedMap)
   {
     probability /= totalProbability;
   }
@@ -81,8 +81,8 @@ void MCMoveProbabilities::removeRedundantMoves()
     setProbability((MoveTypes::WidomCBCFCMC), 0.0);
   }
 }
-  
-void MCMoveProbabilities::join(const MCMoveProbabilities& other)
+
+void MCMoveProbabilities::join(const MCMoveProbabilities &other)
 {
   for (size_t i = 0; i < static_cast<size_t>(MoveTypes::Count); i++)
   {
@@ -97,7 +97,7 @@ void MCMoveProbabilities::join(const MCMoveProbabilities& other)
   }
 }
 
-MoveTypes MCMoveProbabilities::sample(RandomNumber& random)
+MoveTypes MCMoveProbabilities::sample(RandomNumber &random)
 {
   std::vector<double> vectorProbabilities(static_cast<size_t>(MoveTypes::Count));
   for (size_t i = 0; i < static_cast<size_t>(MoveTypes::Count); i++)
@@ -125,7 +125,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
                                          location.line(), location.file_name()));
   }
   archive >> p.probabilities;
-
 
   return archive;
 }

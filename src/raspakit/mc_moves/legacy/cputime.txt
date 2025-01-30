@@ -1,0 +1,105 @@
+
+MCMoveCpuTime::MCMoveCpuTime()
+  : timingMap{
+    {MoveTypes::Translation, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
+      {"Framework-Molecule", std::chrono::duration<double>::zero()},
+      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::RandomTranslation, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
+      {"Framework-Molecule", std::chrono::duration<double>::zero()},
+      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::Rotation, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
+      {"Framework-Molecule", std::chrono::duration<double>::zero()},
+      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::RandomRotation, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
+      {"Framework-Molecule", std::chrono::duration<double>::zero()},
+      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::ReinsertionCBMC, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Non-Ewald", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::Swap, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Insertion", std::chrono::duration<double>::zero()},
+      {"Deletion", std::chrono::duration<double>::zero()},
+      {"Non-Ewald", std::chrono::duration<double>::zero()},
+      {"Tail", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::SwapCBMC, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Insertion", std::chrono::duration<double>::zero()},
+      {"Deletion", std::chrono::duration<double>::zero()},
+      {"Non-Ewald", std::chrono::duration<double>::zero()},
+      {"Tail", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::SwapCFCMC, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Insertion-Total", std::chrono::duration<double>::zero()},
+      {"Insertion-ExternalField", std::chrono::duration<double>::zero()},
+      {"Insertion-Framework", std::chrono::duration<double>::zero()},
+      {"Insertion-Ewald", std::chrono::duration<double>::zero()},
+      {"Insertion-Tail", std::chrono::duration<double>::zero()},
+      {"Deletion-Total", std::chrono::duration<double>::zero()},
+      {"Deletion-ExternalField", std::chrono::duration<double>::zero()},
+      {"Deletion-Framework", std::chrono::duration<double>::zero()},
+      {"Deletion-Ewald", std::chrono::duration<double>::zero()},
+      {"Deletion-Tail", std::chrono::duration<double>::zero()},
+      {"Lambda-Total", std::chrono::duration<double>::zero()},
+      {"Lambda-ExternalField", std::chrono::duration<double>::zero()},
+      {"Lambda-Framework", std::chrono::duration<double>::zero()},
+      {"Lambda-Ewald", std::chrono::duration<double>::zero()},
+      {"Lambda-Tail", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::SwapCBCFCMC, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Insertion-Total", std::chrono::duration<double>::zero()},
+      {"Insertion-ExternalField", std::chrono::duration<double>::zero()},
+      {"Insertion-Framework", std::chrono::duration<double>::zero()},
+      {"Insertion-NonEwald", std::chrono::duration<double>::zero()},
+      {"Insertion-Ewald", std::chrono::duration<double>::zero()},
+      {"Insertion-Tail", std::chrono::duration<double>::zero()},
+      {"Deletion-Total", std::chrono::duration<double>::zero()},
+      {"Deletion-ExternalField", std::chrono::duration<double>::zero()},
+      {"Deletion-Framework", std::chrono::duration<double>::zero()},
+      {"Deletion-NonEwald", std::chrono::duration<double>::zero()},
+      {"Deletion-Ewald", std::chrono::duration<double>::zero()},
+      {"Deletion-Tail", std::chrono::duration<double>::zero()},
+      {"Lambda-Total", std::chrono::duration<double>::zero()},
+      {"Lambda-ExternalField", std::chrono::duration<double>::zero()},
+      {"Lambda-Framework", std::chrono::duration<double>::zero()},
+      {"Lambda-NonEwald", std::chrono::duration<double>::zero()},
+      {"Lambda-Ewald", std::chrono::duration<double>::zero()},
+      {"Lambda-Tail", std::chrono::duration<double>::zero()},
+    }},
+    {MoveTypes::GibbsSwapCBMC, {
+      {"Total", std::chrono::duration<double>::zero()},
+      {"Non-Ewald", std::chrono::duration<double>::zero()},
+      {"Tail", std::chrono::duration<double>::zero()},
+      {"Ewald", std::chrono::duration<double>::zero()},
+    }},
+  }
+
+
+
+  std::map<MoveTypes, std::map<std::string, std::chrono::duration<double>> timingMap;
+
+
+  
