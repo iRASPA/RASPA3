@@ -128,7 +128,6 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     std::swap(systemA.mc_moves_probabilities, systemB.mc_moves_probabilities);
     std::swap(systemA.mc_moves_statistics, systemB.mc_moves_statistics);
     std::swap(systemA.mc_moves_cputime, systemB.mc_moves_cputime);
-    // std::swap(systemA.mc_moves_count, systemB.mc_moves_count);
 
     return std::make_pair(systemA.runningEnergies, systemB.runningEnergies);
   }

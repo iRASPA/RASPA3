@@ -89,7 +89,6 @@ import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_statistics;
 import mc_moves_cputime;
-// import mc_moves_count;
 import json;
 
 // default constructor, needed for binary restart-file
@@ -796,7 +795,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
-  // archive << c.mc_moves_count;
 
   archive << c.averageRosenbluthWeights;
 
@@ -888,7 +886,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
-  // archive >> c.mc_moves_count;
 
   archive >> c.averageRosenbluthWeights;
 

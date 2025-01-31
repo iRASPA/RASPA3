@@ -82,10 +82,7 @@ import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_statistics;
-// import mc_moves_probabilities_system;
-// import mc_moves_statistics_system;
 import mc_moves_cputime;
-// import mc_moves_count;
 import reaction;
 import reactions;
 import transition_matrix;
@@ -245,7 +242,6 @@ export struct System
   MCMoveProbabilities mc_moves_probabilities;
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;
-  // MCMoveCount mc_moves_count;
 
   Reactions reactions;
   TransitionMatrix tmmc;

@@ -456,13 +456,11 @@ void MonteCarloTransitionMatrix::production()
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
-    // system.mc_moves_count.clearCountStatistics();
 
     for (Component& component : system.components)
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
-      // component.mc_moves_count.clearCountStatistics();
 
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
                                              system.containsTheFractionalMolecule);
@@ -549,11 +547,15 @@ void MonteCarloTransitionMatrix::production()
 void MonteCarloTransitionMatrix::output()
 {
   MCMoveCpuTime total;
-  // MCMoveCount countTotal;
+  MCMoveStatistics countTotal;
   for (const System& system : systems)
   {
     total += system.mc_moves_cputime;
-    // countTotal += system.mc_moves_count;
+    countTotal += system.mc_moves_statistics;
+    for (const Component& component : system.components)
+    {
+      countTotal += component.mc_moves_statistics;
+    }
   }
 
   for (System& system : systems)
@@ -571,20 +573,10 @@ void MonteCarloTransitionMatrix::output()
 
     std::print(stream, "{}", system.writeMCMoveStatistics());
 
-    std::print(stream, "Production run counting of the MC moves\n");
-    std::print(stream, "===============================================================================\n\n");
-
-    // for (const Component& component : system.components)
-    // {
-    //   std::print(
-    //       stream, "{}",
-    //       component.mc_moves_statistics.writeMCMoveStatistics(numberOfSteps, component.componentId, component.name));
-    // }
-
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    // std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
+    std::print(stream, "{}", countTotal.writeAllSystemStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 

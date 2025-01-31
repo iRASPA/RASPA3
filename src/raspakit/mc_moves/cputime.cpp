@@ -247,12 +247,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<32} {:14f} [s]\n", moveNames[moveType], moveTimings.at("Total").count());
+      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], moveTimings.at("Total").count());
       for (auto& [timingName, time] : moveTimings)
       {
         if (timingName != "Total")
         {
-          std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
+          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
         }
       }
     }
@@ -279,12 +279,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
     if (total > 0.0)
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<32} {:14f} [s]\n", moveNames[moveType], total);
+      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], total);
       for (auto& [timingName, time] : moveTimings)
       {
         if (timingName != "Total")
         {
-          std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
+          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
 
           // skip subtracting keys "...-Total" for overhead (they are summed qts)
           if (timingName.find("Total") == std::string::npos)
@@ -309,12 +309,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
     if (total > 0.0)
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<32} {:14f} [s]\n", moveNames[moveType], total);
+      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], total);
       for (auto& [timingName, time] : moveTimings)
       {
         if (timingName != "Total")
         {
-          std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
+          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
 
           // skip subtracting keys "...-Total" for overhead (they are summed qts)
           if (timingName.find("Total") == std::string::npos)

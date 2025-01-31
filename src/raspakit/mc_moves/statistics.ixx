@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <format>
 #include <map>
 #include <print>
 #include <string>
@@ -14,6 +15,7 @@ import <variant>;
 import <string>;
 import <map>;
 import <print>;
+import <format>;
 import <string>;
 #endif
 
@@ -79,8 +81,36 @@ export struct MCMoveStatistics
   void setMaxChange(const MoveTypes& move, double value);
 
   const std::string writeMCMoveStatistics() const;
+  const std::string writeMCMoveStatistics(size_t countTotal) const;
   const nlohmann::json jsonMCMoveStatistics() const;
+
+  inline MCMoveStatistics& operator+=(const MCMoveStatistics& b)
+  {
+    for (auto& [moveType, statistics] : statsMapDouble)
+    {
+      statistics += b.statsMapDouble.at(moveType);
+    }
+    for (auto& [moveType, statistics] : statsMapDouble3)
+    {
+      statistics += b.statsMapDouble3.at(moveType);
+    }
+    return *this;
+  }
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMoveStatistics& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatistics& p);
 };
+
+export inline MCMoveStatistics operator+(const MCMoveStatistics& a, const MCMoveStatistics& b)
+{
+  MCMoveStatistics c;
+  for (auto& [moveType, statistics] : a.statsMapDouble)
+  {
+    c.statsMapDouble[moveType] = a.statsMapDouble.at(moveType) + b.statsMapDouble.at(moveType);
+  }
+  for (auto& [moveType, statistics] : a.statsMapDouble3)
+  {
+    c.statsMapDouble3[moveType] = a.statsMapDouble3.at(moveType) + b.statsMapDouble3.at(moveType);
+  }
+  return c;
+}

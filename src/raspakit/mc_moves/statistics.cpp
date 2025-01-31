@@ -21,6 +21,7 @@ import <format>;
 import <fstream>;
 import <map>;
 import <print>;
+import <format>;
 import <source_location>;
 import <sstream>;
 import <string>;
@@ -114,31 +115,31 @@ double MCMoveStatistics::getMaxChange(const MoveTypes& move, size_t direction)
 static std::string formatStatistics(const std::string name, const MoveStatistics<double>& move)
 {
   std::ostringstream stream;
-  std::print(stream, "    {} all:          {:10}\n", name, move.allCounts);
-  std::print(stream, "    {} total:        {:10}\n", name, move.totalCounts);
-  std::print(stream, "    {} constructed:  {:10}\n", name, move.totalConstructed);
-  std::print(stream, "    {} accepted:     {:10}\n", name, move.totalAccepted);
-  std::print(stream, "    {} fraction:     {:10f}\n", name,
+  std::print(stream, "    {:20} all:          {:10}\n", name, move.allCounts);
+  std::print(stream, "    {:20} total:        {:10}\n", name, move.totalCounts);
+  std::print(stream, "    {:20} constructed:  {:10}\n", name, move.totalConstructed);
+  std::print(stream, "    {:20} accepted:     {:10}\n", name, move.totalAccepted);
+  std::print(stream, "    {:20} fraction:     {:10f}\n", name,
              move.totalAccepted / std::max(1.0, double(move.totalCounts)));
-  std::print(stream, "    {} max-change:   {:10f}\n\n", name, move.maxChange);
+  std::print(stream, "    {:20} max-change:   {:10f}\n\n", name, move.maxChange);
   return stream.str();
 }
 
 static std::string formatStatistics(const std::string name, const MoveStatistics<double3>& move)
 {
   std::ostringstream stream;
-  std::print(stream, "    {} all:          {:10}\n", name, move.allCounts);
-  std::print(stream, "    {} total:        {:10} {:10} {:10}\n", name, move.totalCounts.x, move.totalCounts.y,
+  std::print(stream, "    {:20} all:          {:10}\n", name, move.allCounts);
+  std::print(stream, "    {:20} total:        {:10} {:10} {:10}\n", name, move.totalCounts.x, move.totalCounts.y,
              move.totalCounts.z);
-  std::print(stream, "    {} constructed:  {:10} {:10} {:10}\n", name, move.totalConstructed.x, move.totalConstructed.y,
-             move.totalConstructed.z);
-  std::print(stream, "    {} accepted:     {:10} {:10} {:10}\n", name, move.totalAccepted.x, move.totalAccepted.y,
+  std::print(stream, "    {:20} constructed:  {:10} {:10} {:10}\n", name, move.totalConstructed.x,
+             move.totalConstructed.y, move.totalConstructed.z);
+  std::print(stream, "    {:20} accepted:     {:10} {:10} {:10}\n", name, move.totalAccepted.x, move.totalAccepted.y,
              move.totalAccepted.z);
-  std::print(stream, "    {} fraction:     {:10f} {:10f} {:10f}\n", name,
+  std::print(stream, "    {:20} fraction:     {:10f} {:10f} {:10f}\n", name,
              move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
              move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)),
              move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z)));
-  std::print(stream, "    {} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y,
+  std::print(stream, "    {:20} max-change:   {:10f} {:10f} {:10f}\n\n", name, move.maxChange.x, move.maxChange.y,
              move.maxChange.z);
   return stream.str();
 }
@@ -188,6 +189,77 @@ const std::string MCMoveStatistics::writeMCMoveStatistics() const
   }
   return stream.str();
 }
+
+const std::string MCMoveStatistics::writeMCMoveStatistics(size_t countTotal) const
+{
+  std::ostringstream stream;
+
+  size_t summed = 0;
+  for (auto& [moveType, statistics] : statsMapDouble)
+  {
+    double moveCount = static_cast<double>(statistics.allCounts);
+    if (moveCount > 0.0)
+    {
+      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
+                 100.0 * moveCount / static_cast<double>(countTotal));
+      summed += statistics.allCounts;
+    }
+  }
+  for (auto& [moveType, statistics] : statsMapDouble3)
+  {
+    double moveCount = static_cast<double>(statistics.allCounts);
+    if (moveCount > 0.0)
+    {
+      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
+                 100.0 * moveCount / static_cast<double>(countTotal));
+      summed += statistics.allCounts;
+    }
+  }
+
+  std::print(stream, "\n");
+  std::print(stream, "Production count MC-steps:   {:14d} [-]\n", countTotal);
+  std::print(stream, "               All summed:   {:14d} [-]\n", summed);
+  std::print(stream, "               difference:   {:14d} [-]\n", countTotal - summed);
+
+  return stream.str();
+}
+
+const std::string MCMoveStatistics::writeMCMoveStatistics(size_t countTotal, size_t componentId,
+                                                          const std::string& componentName) const
+{
+  std::ostringstream stream;
+
+  size_t summed = 0;
+  std::print(stream, "Component {} {}\n", componentId, componentName);
+  for (auto& [moveType, statistics] : statsMapDouble)
+  {
+    double moveCount = static_cast<double>(statistics.allCounts);
+    if (moveCount > 0.0)
+    {
+      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
+                 100.0 * moveCount / static_cast<double>(countTotal));
+      summed += statistics.allCounts;
+    }
+  }
+  for (auto& [moveType, statistics] : statsMapDouble3)
+  {
+    double moveCount = static_cast<double>(statistics.allCounts);
+    if (moveCount > 0.0)
+    {
+      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
+                 100.0 * moveCount / static_cast<double>(countTotal));
+      summed += statistics.allCounts;
+    }
+  }
+
+  std::print(stream, "\n");
+  std::print(stream, "Production count MC-steps:   {:14d} [-]\n", countTotal);
+  std::print(stream, "               All summed:   {:14d} [-]\n", summed);
+  std::print(stream, "               difference:   {:14d} [-]\n", countTotal - summed);
+
+  return stream.str();
+}
+
 const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
 {
   nlohmann::json status;

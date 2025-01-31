@@ -97,9 +97,8 @@ struct MoveStatistics
   }
 
   template <class U>
-  inline MoveStatistics operator+=(const MoveStatistics<U> &b)
+  inline MoveStatistics &operator+=(const MoveStatistics<U> &b)
   {
-    MoveStatistics c;
     counts += b.counts;
     constructed += b.constructed;
     accepted += b.accepted;
@@ -111,6 +110,7 @@ struct MoveStatistics
     targetAcceptance = 0.5 * (targetAcceptance + b.targetAcceptance);
     lowerLimit = 0.5 * (lowerLimit + b.lowerLimit);
     upperLimit = 0.5 * (upperLimit + b.upperLimit);
+    return *this;
   }
 
   template <class U>
@@ -120,7 +120,7 @@ struct MoveStatistics
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<U> &m);
 };
 
-template <class T>
+export template <class T>
 inline MoveStatistics<T> operator+(const MoveStatistics<T> &a, const MoveStatistics<T> &b)
 {
   MoveStatistics<T> c;
@@ -135,6 +135,7 @@ inline MoveStatistics<T> operator+(const MoveStatistics<T> &a, const MoveStatist
   c.targetAcceptance = 0.5 * (a.targetAcceptance + b.targetAcceptance);
   c.lowerLimit = 0.5 * (a.lowerLimit + b.lowerLimit);
   c.upperLimit = 0.5 * (a.upperLimit + b.upperLimit);
+  return c;
 }
 
 export template <class T>
