@@ -259,8 +259,8 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
   }
 
   std::print(stream, "\n");
-  std::print(stream, "Property sampling                {:14f} [s]\n", propertySampling.count());
-  std::print(stream, "Energy/pressure sampling:        {:14f} [s]\n", energyPressureComputation.count());
+  std::print(stream, "Property sampling               {:14f} [s]\n", propertySampling.count());
+  std::print(stream, "Energy/pressure sampling:       {:14f} [s]\n", energyPressureComputation.count());
   std::print(stream, "\n\n");
 
   return stream.str();
@@ -293,7 +293,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
           }
         }
       }
-      std::print(stream, "    {:<28s} {:14f} [s]\n", "Overhead", total);
+      std::print(stream, "    {:<27s} {:14f} [s]\n", "Overhead", total);
     }
   }
   std::print(stream, "\n\n");
@@ -323,7 +323,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
           }
         }
       }
-      std::print(stream, "    {:<28s} {:14f} [s]\n", "Overhead", total);
+      std::print(stream, "    {:<27s} {:14f} [s]\n", "Overhead", total);
     }
   }
 
