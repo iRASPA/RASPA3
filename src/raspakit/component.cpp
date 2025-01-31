@@ -539,7 +539,7 @@ std::string Component::printStatus(const ForceField &forceField) const
 
   const std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   std::print(stream, "    Move probabilities:\n");
-  for (auto& [moveType, probability] : normalizedProbabilities)
+  for (auto &[moveType, probability] : normalizedProbabilities)
   {
     std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[moveType] + ":", probability);
   }
@@ -602,7 +602,7 @@ nlohmann::json Component::jsonStatus() const
 
   nlohmann::json moves;
   std::map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
-  for (auto& [moveType, probability] : normalizedProbabilities)
+  for (auto &[moveType, probability] : normalizedProbabilities)
   {
     moves[moveNames[moveType]] = probability;
   }

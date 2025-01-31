@@ -571,8 +571,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Insertion"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
       }
       else
       {
@@ -588,8 +588,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Deletion"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
       }
       break;
     }
@@ -607,8 +607,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Insertion"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Insertion-Total"] += (t3 - t1);
       }
       else
       {
@@ -625,8 +625,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
-        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion"] += (t3 - t1);
-        selectedSystem.mc_moves_cputime[moveType]["Deletion"] += (t3 - t1);
+        selectedSystem.components[selectedComponent].mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
+        selectedSystem.mc_moves_cputime[moveType]["Deletion-Total"] += (t3 - t1);
       }
       break;
     }

@@ -85,7 +85,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
   // Select a new bin based on the maximum change
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
-  
+
   // Store the current number of integer molecules
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

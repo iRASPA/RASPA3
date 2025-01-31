@@ -56,6 +56,8 @@ export struct MCMoveCpuTime
     {
       total += moveTimings.at("Total");
     }
+    total += propertySampling;
+    total += energyPressureComputation;
     return total;
   }
 

@@ -82,8 +82,8 @@ MCMoveCpuTime::MCMoveCpuTime()
                 {MoveTypes::Swap,
                  {
                      {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion", std::chrono::duration<double>::zero()},
-                     {"Deletion", std::chrono::duration<double>::zero()},
+                     {"Insertion-Total", std::chrono::duration<double>::zero()},
+                     {"Deletion-Total", std::chrono::duration<double>::zero()},
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Tail", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
@@ -91,8 +91,8 @@ MCMoveCpuTime::MCMoveCpuTime()
                 {MoveTypes::SwapCBMC,
                  {
                      {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion", std::chrono::duration<double>::zero()},
-                     {"Deletion", std::chrono::duration<double>::zero()},
+                     {"Insertion-Total", std::chrono::duration<double>::zero()},
+                     {"Deletion-Total", std::chrono::duration<double>::zero()},
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Tail", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
@@ -224,6 +224,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
 
   for (const MoveTypes& moveType : systemMoves)
   {
+    if (timingMap.find(moveType) == timingMap.end()) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -241,6 +242,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
 
   for (const MoveTypes& moveType : crossSystemMoves)
   {
+    if (timingMap.find(moveType) == timingMap.end()) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -257,10 +259,8 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
   }
 
   std::print(stream, "\n");
-
   std::print(stream, "Property sampling                {:14f} [s]\n", propertySampling.count());
   std::print(stream, "Energy/pressure sampling:        {:14f} [s]\n", energyPressureComputation.count());
-
   std::print(stream, "\n\n");
 
   return stream.str();
@@ -273,6 +273,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
   std::print(stream, "Component {} {}\n", componentId, componentName);
   for (const MoveTypes& moveType : componentMoves)
   {
+    if (timingMap.find(moveType) == timingMap.end()) continue;
     auto& moveTimings = timingMap.at(moveType);
     double total = moveTimings.at("Total").count();
     if (total > 0.0)
@@ -284,7 +285,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
         if (timingName != "Total")
         {
           std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
-          total -= time.count();
+
+          // skip subtracting keys "...-Total" for overhead (they are summed qts)
+          if (timingName.find("Total") == std::string::npos)
+          {
+            total -= time.count();
+          }
         }
       }
       std::print(stream, "    {:<28s} {:14f} [s]\n", "Overhead", total);
@@ -309,7 +315,12 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::durat
         if (timingName != "Total")
         {
           std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
-          total -= time.count();
+
+          // skip subtracting keys "...-Total" for overhead (they are summed qts)
+          if (timingName.find("Total") == std::string::npos)
+          {
+            total -= time.count();
+          }
         }
       }
       std::print(stream, "    {:<28s} {:14f} [s]\n", "Overhead", total);
@@ -334,6 +345,7 @@ const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics() const
 
   for (const MoveTypes& moveType : systemMoves)
   {
+    if (timingMap.find(moveType) == timingMap.end()) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -345,6 +357,7 @@ const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics() const
   }
   for (const MoveTypes& moveType : crossSystemMoves)
   {
+    if (timingMap.find(moveType) == timingMap.end()) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -379,8 +392,13 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
       {
         if (timingName != "Total")
         {
-          status[moveNames[moveType]] = time.count();
-          total -= time.count();
+          status[moveNames[moveType]][timingName] = time.count();
+
+          // skip subtracting keys "...-Total" for overhead (they are summed qts)
+          if (timingName.find("Total") == std::string::npos)
+          {
+            total -= time.count();
+          }
         }
       }
       status[moveNames[moveType]]["Overhead"] = total;
