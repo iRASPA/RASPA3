@@ -582,7 +582,7 @@ void MolecularDynamics::output()
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}\n", countTotal.writeAllSystemStatistics(numberOfSteps));
+    std::print(stream, "{}\n", countTotal.writeMCMoveStatistics(numberOfSteps));
 
     std::print(stream, "\n\n");
 

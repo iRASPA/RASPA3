@@ -54,9 +54,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
-import mc_moves_statistics;
 import mc_moves_move_types;
-import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent,
                                                        size_t selectedMolecule,

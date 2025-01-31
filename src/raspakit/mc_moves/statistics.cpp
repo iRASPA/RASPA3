@@ -224,42 +224,6 @@ const std::string MCMoveStatistics::writeMCMoveStatistics(size_t countTotal) con
   return stream.str();
 }
 
-const std::string MCMoveStatistics::writeMCMoveStatistics(size_t countTotal, size_t componentId,
-                                                          const std::string& componentName) const
-{
-  std::ostringstream stream;
-
-  size_t summed = 0;
-  std::print(stream, "Component {} {}\n", componentId, componentName);
-  for (auto& [moveType, statistics] : statsMapDouble)
-  {
-    double moveCount = static_cast<double>(statistics.allCounts);
-    if (moveCount > 0.0)
-    {
-      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
-                 100.0 * moveCount / static_cast<double>(countTotal));
-      summed += statistics.allCounts;
-    }
-  }
-  for (auto& [moveType, statistics] : statsMapDouble3)
-  {
-    double moveCount = static_cast<double>(statistics.allCounts);
-    if (moveCount > 0.0)
-    {
-      std::print(stream, "{:<29}{:14} ({:<6.4f} [%])\n", moveNames[moveType], moveCount,
-                 100.0 * moveCount / static_cast<double>(countTotal));
-      summed += statistics.allCounts;
-    }
-  }
-
-  std::print(stream, "\n");
-  std::print(stream, "Production count MC-steps:   {:14d} [-]\n", countTotal);
-  std::print(stream, "               All summed:   {:14d} [-]\n", summed);
-  std::print(stream, "               difference:   {:14d} [-]\n", countTotal - summed);
-
-  return stream.str();
-}
-
 const nlohmann::json MCMoveStatistics::jsonMCMoveStatistics() const
 {
   nlohmann::json status;

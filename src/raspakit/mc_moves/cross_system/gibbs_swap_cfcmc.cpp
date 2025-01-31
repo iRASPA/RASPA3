@@ -46,9 +46,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
-import mc_moves_statistics;
 import mc_moves_move_types;
-import mc_moves_probabilities;
 
 // All systems have a fractional molecule, only one of these is 'active', the others are switched off with 'lambda=0'.
 // Implementation advantage: the number of fractional molecules per system remains constant.

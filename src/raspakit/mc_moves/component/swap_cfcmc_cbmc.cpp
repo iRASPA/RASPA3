@@ -57,9 +57,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
-import mc_moves_statistics;
 import mc_moves_move_types;
-import mc_moves_probabilities;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(RandomNumber& random, System& system,
                                                                                size_t selectedComponent,
