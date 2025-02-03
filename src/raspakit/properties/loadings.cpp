@@ -56,7 +56,7 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
 
     double loading = numberOfMolecules[comp.componentId];
     double excess_loading = numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
-    switch(Units::unitSystem)
+    switch (Units::unitSystem)
     {
       case Units::System::RASPA:
         std::print(stream, "    absolute adsorption: {: .6e} molecules\n", loading);
@@ -78,7 +78,7 @@ std::string Loadings::printStatus(const Component &comp, std::optional<double> f
     const double densityConversionFactor =
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
-    switch(Units::unitSystem)
+    switch (Units::unitSystem)
     {
       case Units::System::RASPA:
         std::print(stream, "    molecules:        {: .6e} molecules\n", numberOfMolecules[comp.componentId]);
@@ -114,27 +114,27 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
     double excess_loading_avg = average.numberOfMolecules[comp.componentId] - comp.amountOfExcessMolecules;
     double excess_loading_error = error.numberOfMolecules[comp.componentId];
 
-    switch(Units::unitSystem)
+    switch (Units::unitSystem)
     {
       case Units::System::RASPA:
-        std::print(stream, "    absolute adsorption: {:.6e} molecules ({:.6e} +/- {:.6e})]\n", loading, loading_avg,
+        std::print(stream, "    absolute adsorption: {:.6e} molecules ({:.6e} +/- {:.6e})\n", loading, loading_avg,
                    loading_error);
-        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})]\n", loading * toMolePerKg,
+        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})\n", loading * toMolePerKg,
                    loading_avg * toMolePerKg, loading_error * toMolePerKg);
-        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})]\n", loading * toMgPerKg,
+        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})\n", loading * toMgPerKg,
                    loading_avg * toMgPerKg, loading_error * toMgPerKg);
 
-        std::print(stream, "    excess adsorption:   {:.6e} molecules ({:.6e} +/- {:.6e})]\n", excess_loading,
+        std::print(stream, "    excess adsorption:   {:.6e} molecules ({:.6e} +/- {:.6e})\n", excess_loading,
                    excess_loading_avg, excess_loading_error);
-        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})]\n", excess_loading * toMolePerKg,
-                   excess_loading_avg * toMolePerKg, excess_loading_error * toMolePerKg);
-        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})]\n", excess_loading * toMgPerKg,
-                   excess_loading_avg * toMgPerKg, excess_loading_error * toMgPerKg);
+        std::print(stream, "                         {:.6e} mol/kg    ({:.6e} +/- {:.6e})\n",
+                   excess_loading * toMolePerKg, excess_loading_avg * toMolePerKg, excess_loading_error * toMolePerKg);
+        std::print(stream, "                         {:.6e} mg/g      ({:.6e} +/- {:.6e})\n",
+                   excess_loading * toMgPerKg, excess_loading_avg * toMgPerKg, excess_loading_error * toMgPerKg);
         break;
       case Units::System::ReducedUnits:
-        std::print(stream, "    absolute adsorption: {:.6e} molecules ({:.6e} +/- {:.6e})]\n", loading, loading_avg,
+        std::print(stream, "    absolute adsorption: {:.6e} molecules ({:.6e} +/- {:.6e})\n", loading, loading_avg,
                    loading_error);
-        std::print(stream, "    excess adsorption:   {:.6e} molecules ({:.6e} +/- {:.6e})]\n", excess_loading,
+        std::print(stream, "    excess adsorption:   {:.6e} molecules ({:.6e} +/- {:.6e})\n", excess_loading,
                    excess_loading_avg, excess_loading_error);
         break;
     }
@@ -145,14 +145,15 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
         1.0 / (1000.0 * Units::Angstrom * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant);
 
     std::print(stream, "Component {} ({})\n", comp.componentId, comp.name);
-    switch(Units::unitSystem)
+    switch (Units::unitSystem)
     {
       case Units::System::RASPA:
         std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
                    numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
                    error.numberOfMolecules[comp.componentId]);
-        std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n", numberDensities[comp.componentId],
-                   average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
+        std::print(stream, "    number density: {:.6e} molec./A^3 ({:.6e} +/- {:.6e})\n",
+                   numberDensities[comp.componentId], average.numberDensities[comp.componentId],
+                   error.numberDensities[comp.componentId]);
         std::print(stream, "    density:        {:.6e} kg/m^3     ({:.6e} +/- {:.6e})\n",
                    densityConversionFactor * comp.totalMass * numberDensities[comp.componentId],
                    densityConversionFactor * comp.totalMass * average.numberDensities[comp.componentId],
@@ -162,13 +163,11 @@ std::string Loadings::printStatus(const Component &comp, const Loadings &average
         std::print(stream, "    molecules:      {:.6e} molecules  ({:6e} +/- {:.6e})\n",
                    numberOfMolecules[comp.componentId], average.numberOfMolecules[comp.componentId],
                    error.numberOfMolecules[comp.componentId]);
-        std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n", 
-                   numberDensities[comp.componentId],
-                   Units::displayedUnitOfLengthString,
+        std::print(stream, "    number density: {:.6e} molec./{}^3 ({:.6e} +/- {:.6e})\n",
+                   numberDensities[comp.componentId], Units::displayedUnitOfLengthString,
                    average.numberDensities[comp.componentId], error.numberDensities[comp.componentId]);
         break;
     }
-
   }
 
   return stream.str();

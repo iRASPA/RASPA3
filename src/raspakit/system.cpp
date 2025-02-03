@@ -13,6 +13,7 @@ module;
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <mdspan>
 #include <numbers>
 #include <numeric>
 #include <optional>
@@ -26,7 +27,6 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
-#include <mdspan>
 #endif
 
 module system;
@@ -107,8 +107,8 @@ import multi_site_isotherm;
 import pressure_range;
 import bond_potential;
 import move_statistics;
-import mc_moves_probabilities_system;
-import mc_moves_probabilities_particles;
+import mc_moves_probabilities;
+import mc_moves_move_types;
 import mc_moves_cputime;
 import reaction;
 import reactions;
@@ -133,7 +133,7 @@ import integrators_update;
 System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
                double heliumVoidFraction, std::vector<Framework> f, std::vector<Component> c,
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
-               const MCMoveProbabilitiesSystem& systemProbabilities, std::optional<size_t> sampleMoviesEvery)
+               const MCMoveProbabilities& systemProbabilities, std::optional<size_t> sampleMoviesEvery)
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -321,7 +321,6 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
       }
     }
   }
-
 }
 
 /// Inserts a molecule into the vector of atoms.
@@ -717,17 +716,16 @@ void System::determineSwappableComponents()
 {
   for (Component& component : components)
   {
-    if (component.mc_moves_probabilities.swapProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCBMCProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCFCMCProbability > 0.0 ||
-        component.mc_moves_probabilities.swapCBCFCMCProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::Swap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
 
-    if (component.mc_moves_probabilities.gibbsSwapCBMCProbability > 0.0 ||
-        component.mc_moves_probabilities.gibbsSwapCFCMCProbability > 0.0 ||
-        component.mc_moves_probabilities.gibbsSwapCBCFCMCProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
     {
       component.swappable = true;
     }
@@ -748,10 +746,10 @@ void System::determineFractionalComponents()
     numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
     numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
 
-    if (components[i].mc_moves_probabilities.swapCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.widomCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.swapCBCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.widomCBCFCMCProbability > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0 ||
+        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCBCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -759,8 +757,7 @@ void System::determineFractionalComponents()
     }
 
     // Gibbs
-    if (components[i].mc_moves_probabilities.gibbsSwapCFCMCProbability > 0.0 ||
-        components[i].mc_moves_probabilities.gibbsSwapCBCFCMCProbability > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
@@ -795,12 +792,7 @@ void System::rescaleMoveProbabilities()
 {
   for (Component& component : components)
   {
-    component.mc_moves_probabilities.volumeChangeProbability = mc_moves_probabilities.volumeChangeProbability;
-    component.mc_moves_probabilities.gibbsVolumeChangeProbability = mc_moves_probabilities.gibbsVolumeChangeProbability;
-    component.mc_moves_probabilities.parallelTemperingProbability = mc_moves_probabilities.parallelTemperingProbability;
-    component.mc_moves_probabilities.hybridMCProbability = mc_moves_probabilities.hybridMCProbability;
-
-    component.mc_moves_probabilities.normalizeMoveProbabilities();
+    component.mc_moves_probabilities.join(mc_moves_probabilities);
   }
 }
 
@@ -808,25 +800,13 @@ void System::removeRedundantMoves()
 {
   for (Component& component : components)
   {
-    // WidomMove_CFCMC already done when using SwapMove_CFCMC
-    if (component.mc_moves_probabilities.widomCFCMCProbability > 0.0 &&
-        component.mc_moves_probabilities.swapCFCMCProbability > 0.0)
-    {
-      component.mc_moves_probabilities.widomCFCMCProbability = 0.0;
-    }
-
-    // WidomMove_CFCMC_CBMC already done when using SwapMove_CFCMC_CBMC
-    if (component.mc_moves_probabilities.widomCBCFCMCProbability > 0.0 &&
-        component.mc_moves_probabilities.swapCBCFCMCProbability > 0.0)
-    {
-      component.mc_moves_probabilities.widomCBCFCMCProbability = 0.0;
-    }
+    component.mc_moves_probabilities.removeRedundantMoves();
   }
 }
 
 void System::optimizeMCMoves()
 {
-  mc_moves_statistics.optimizeAcceptance();
+  mc_moves_statistics.optimizeMCMoves();
   for (Component& component : components)
   {
     component.mc_moves_statistics.optimizeMCMoves();
@@ -947,9 +927,10 @@ std::string System::writeNumberOfPseudoAtoms() const
   {
     std::print(stream, "Component {:3d} ({})\n", c.componentId, c.name);
     std::print(stream, "-------------------------------------------------------------------------------\n");
-    for(size_t index = 0; const size_t number_of_pseudo_atoms : numberOfPseudoAtoms[i])
+    for (size_t index = 0; const size_t number_of_pseudo_atoms : numberOfPseudoAtoms[i])
     {
-      std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name, number_of_pseudo_atoms);
+      std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
+                 number_of_pseudo_atoms);
       ++index;
     }
     std::print(stream, "\n");
@@ -958,9 +939,10 @@ std::string System::writeNumberOfPseudoAtoms() const
 
   std::print(stream, "Total number of pseudo-atoms:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  for(size_t index = 0; const size_t number_of_pseudo_atoms : totalNumberOfPseudoAtoms)
+  for (size_t index = 0; const size_t number_of_pseudo_atoms : totalNumberOfPseudoAtoms)
   {
-    std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name, number_of_pseudo_atoms);
+    std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
+               number_of_pseudo_atoms);
     ++index;
   }
 
@@ -1196,7 +1178,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 
   std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
 
-  switch(Units::unitSystem)
+  switch (Units::unitSystem)
   {
     case Units::System::RASPA:
     {
@@ -1204,12 +1186,15 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
       double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
       std::print(stream, "Average pressure tensor: \n");
       std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
-                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
-                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
-                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
+                 pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
+                 pressureTensorError.cx);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay,
+                 pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
+                 pressureTensorError.cy);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az,
+                 pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
+                 pressureTensorError.cz);
       std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
       std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
       std::pair<double, double> p = averagePressure.averagePressure();
@@ -1229,34 +1214,32 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
       double3x3 pressureTensorError = currentPressureTensor.second;
       std::print(stream, "Average pressure tensor: \n");
       std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax, pressureTensor.bx,
-                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx, Units::unitOfPressureString);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay, pressureTensor.by,
-                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy, Units::unitOfPressureString);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.az, pressureTensor.bz,
-                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
+                 pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
+                 pressureTensorError.cx, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay,
+                 pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
+                 pressureTensorError.cy, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.az,
+                 pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
+                 pressureTensorError.cz, Units::unitOfPressureString);
       std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
       std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
       std::pair<double, double> p = averagePressure.averagePressure();
-      std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n",
-                 idealGasPressure.first,
-                 idealGasPressure.second,
+      std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n", idealGasPressure.first,
+                 idealGasPressure.second, Units::unitOfPressureString);
+      std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", excessPressure.first, excessPressure.second,
                  Units::unitOfPressureString);
-      std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n",
-                 excessPressure.first,
-                 excessPressure.second,
+      std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", p.first, p.second,
                  Units::unitOfPressureString);
-      std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n",
-                 p.first, p.second, Units::unitOfPressureString);
     }
     break;
   }
 
   std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
   std::print(stream, "Total potential energy{}  {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
-             conv * energyData.second.totalEnergy.energy,
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.totalEnergy.energy,
+             conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "-------------------------------------------------------------------------------\n");
   std::print(stream, "ExternalField-molecule\n");
@@ -1271,8 +1254,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
              conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
@@ -1283,8 +1265,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
              conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
@@ -1293,33 +1274,26 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
              Units::displayedUnitOfEnergyString);
   std::print(stream, "Molecule-molecule\n");
   std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
              conv * energyData.first.interEnergy.VanDerWaals.energy,
-             conv * energyData.second.interEnergy.VanDerWaals.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.interEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
              conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Coulombic Real{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
              conv * energyData.first.interEnergy.CoulombicReal.energy,
-             conv * energyData.second.interEnergy.CoulombicReal.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString,
              conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
              conv * energyData.first.interEnergy.CoulombicFourier.energy,
-             conv * energyData.second.interEnergy.CoulombicFourier.energy,
-             Units::displayedUnitOfEnergyString);
+             conv * energyData.second.interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    Molecule Intra{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.intraEnergy.total().energy, conv * energyData.first.intraEnergy.total().energy,
-             conv * energyData.second.intraEnergy.total().energy,
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.intraEnergy.total().energy,
+             conv * energyData.first.intraEnergy.total().energy, conv * energyData.second.intraEnergy.total().energy,
              Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
@@ -1504,7 +1478,8 @@ std::string System::writeSystemStatus() const
 
   std::print(stream, "Temperature:          {} [{}]\n", temperature, Units::unitOfTemperatureString);
   std::print(stream, "Beta:                 {} [-]\n", beta);
-  std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor, Units::unitOfPressureString);
+  std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor,
+             Units::unitOfPressureString);
   std::print(stream, "Helium void fraction: {} [-]\n\n", heliumVoidFraction);
 
   stream << simulationBox.printStatus();
@@ -1738,8 +1713,6 @@ std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPo
   return {scaledMolecules, scaledAtoms};
 }
 
-void System::clearMoveStatistics() { mc_moves_statistics.clear(); }
-
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
                                                    const std::pair<EnergyStatus, double3x3>& rhs)
 {
@@ -1918,16 +1891,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       size_t typeB = static_cast<size_t>(it2->type);
       double scalingVDWB = it2->scalingVDW;
 
-      pressureTailCorrection += scalingVDWA * scalingVDWB * 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
+      pressureTailCorrection +=
+          scalingVDWA * scalingVDWB * 2.0 * preFactor * forceField(typeA, typeB).tailCorrectionPressure;
     }
   }
 
   pressureInfo.second.ax -= pressureTailCorrection;
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
-
-
-
 
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm;
@@ -2056,7 +2027,7 @@ std::string System::writeMCMoveStatistics() const
                  component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
-    if (component.mc_moves_probabilities.widomProbability > 0.0)
+    if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
@@ -2092,18 +2063,6 @@ nlohmann::json System::jsonMCMoveStatistics() const
       status["lambdaStatistics"]["thermodynamicIntegration"] =
           component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
     }
-
-    /*
-    if (component.mc_moves_probabilities.widomProbability > 0.0)
-    {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
-      std::print(
-          stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential,
-    imposedFugacity));
-    }
-    */
   }
 
   return status;
@@ -2173,7 +2132,6 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.mc_moves_probabilities;
   archive << s.mc_moves_statistics;
   archive << s.mc_moves_cputime;
-  archive << s.mc_moves_count;
   archive << s.reactions;
   archive << s.tmmc;
   archive << s.columnNumberOfGridPoints;
@@ -2279,7 +2237,6 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.mc_moves_probabilities;
   archive >> s.mc_moves_statistics;
   archive >> s.mc_moves_cputime;
-  archive >> s.mc_moves_count;
   archive >> s.reactions;
   archive >> s.tmmc;
   archive >> s.columnNumberOfGridPoints;
@@ -2337,27 +2294,26 @@ void System::readRestartFile()
 
 std::string System::repr() const { return std::string("system test"); }
 
-
-//std::vector<double> createVDWGrid(const ForceField &forcefield, const std::vector<Framework> & frameworkComponents, size_t typeA);
+// std::vector<double> createVDWGrid(const ForceField &forcefield, const std::vector<Framework> & frameworkComponents,
+// size_t typeA);
 
 void System::createInterpolationGrids()
 {
+  double percent = 100.0 / static_cast<double>(128 * gridPseudoAtomIndices.size());
 
-  double percent = 100.0/static_cast<double>(128 * gridPseudoAtomIndices.size());
-
-  for(size_t pseudo_atom_index: gridPseudoAtomIndices)
+  for (size_t pseudo_atom_index : gridPseudoAtomIndices)
   {
     InterpolationEnergyGrid grid(int3(128, 128, 128));
 
     std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data(grid.data.data(), 128, 128, 128, 8);
 
     double teller{};
-    for(size_t i = 0; i <= 127; i++)
+    for (size_t i = 0; i <= 127; i++)
     {
       teller += 1.0;
-      for(size_t j = 0; j <= 127; j++)
+      for (size_t j = 0; j <= 127; j++)
       {
-        for(size_t k = 0; k <=127; k++)
+        for (size_t k = 0; k <= 127; k++)
         {
           double3 s = double3(static_cast<double>(i) / static_cast<double>(127),
                               static_cast<double>(j) / static_cast<double>(127),
@@ -2365,19 +2321,19 @@ void System::createInterpolationGrids()
 
           double3 pos = simulationBox.cell * s;
 
-          auto [energy, gradient, hessian, third_derivative] = 
-            Interactions::calculateThirdDerivativeAtPositionVDW(forceField, simulationBox, pos, pseudo_atom_index, spanOfFrameworkAtoms());
+          auto [energy, gradient, hessian, third_derivative] = Interactions::calculateThirdDerivativeAtPositionVDW(
+              forceField, simulationBox, pos, pseudo_atom_index, spanOfFrameworkAtoms());
 
           double energy_fractional = energy;
           double3 gradient_fractional = simulationBox.cell.transpose() * gradient;
           double3x3 hessian_fractional = simulationBox.cell.transpose() * hessian * simulationBox.cell;
-          double third_derivative_fractional_xyz = 
-            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cx * third_derivative.m111 +
-            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cy * third_derivative.m112 +
-            simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cz * third_derivative.m113 +
-            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cx * third_derivative.m121 +
-            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cy * third_derivative.m122 +
-            simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cz * third_derivative.m132;
+          double third_derivative_fractional_xyz =
+              simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cx * third_derivative.m111 +
+              simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cy * third_derivative.m112 +
+              simulationBox.cell.ax * simulationBox.cell.bx * simulationBox.cell.cz * third_derivative.m113 +
+              simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cx * third_derivative.m121 +
+              simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cy * third_derivative.m122 +
+              simulationBox.cell.ax * simulationBox.cell.by * simulationBox.cell.cz * third_derivative.m132;
 
           data[i, j, k, 0] = energy_fractional;
           data[i, j, k, 1] = gradient_fractional.x;
@@ -2389,17 +2345,17 @@ void System::createInterpolationGrids()
           data[i, j, k, 7] = third_derivative_fractional_xyz;
         }
       }
-      if(static_cast<size_t>(teller*percent) > static_cast<size_t>((teller-1.0) * percent))
+      if (static_cast<size_t>(teller * percent) > static_cast<size_t>((teller - 1.0) * percent))
       {
-        std::cout << "Percentage finished: " << static_cast<size_t>(teller * percent) << std::endl;;
+        std::cout << "Percentage finished: " << static_cast<size_t>(teller * percent) << std::endl;
+        ;
       }
     }
 
     interpolationGrids[pseudo_atom_index] = grid;
-
   }
 
-  //for(const Framework &framework: frameworks)
+  // for(const Framework &framework: frameworks)
   //{
-  //}
+  // }
 }

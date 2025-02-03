@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <chrono>
 #include <fstream>
+#include <map>
 #include <string>
 #endif
 
@@ -12,11 +13,13 @@ export module mc_moves_cputime;
 import <string>;
 import <chrono>;
 import <fstream>;
+import <map>;
 #endif
 
 import double3;
 import archive;
 import json;
+import mc_moves_move_types;
 
 /**
  * \brief Stores CPU timing statistics for various Monte Carlo moves.
@@ -32,232 +35,14 @@ export struct MCMoveCpuTime
    *
    * Initializes all timing statistics to zero.
    */
-  MCMoveCpuTime() {};
+  MCMoveCpuTime();
 
-  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  uint64_t versionNumber{2};  ///< Version number for serialization purposes.
+
+  std::map<MoveTypes, std::map<std::string, std::chrono::duration<double>>> timingMap;
 
   std::chrono::duration<double> propertySampling{0.0};           ///< Time spent on property sampling.
   std::chrono::duration<double> energyPressureComputation{0.0};  ///< Time spent on energy and pressure computations.
-
-  std::chrono::duration<double> translationMove{0.0};  ///< Time spent on translation moves.
-  std::chrono::duration<double> translationMoveExternalFieldMolecule{
-      0.0};  ///< Time for ExternalField-Molecule interactions during translation moves.
-  std::chrono::duration<double> translationMoveFrameworkMolecule{
-      0.0};  ///< Time for Framework-Molecule interactions during translation moves.
-  std::chrono::duration<double> translationMoveMoleculeMolecule{
-      0.0};  ///< Time for Molecule-Molecule interactions during translation moves.
-  std::chrono::duration<double> translationMoveEwald{0.0};  ///< Time for Ewald computations during translation moves.
-
-  std::chrono::duration<double> randomTranslationMove{0.0};  ///< Time spent on random translation moves.
-  std::chrono::duration<double> randomTranslationMoveExternalFieldMolecule{
-      0.0};  ///< Time for ExternalField-Molecule interactions during random translation moves.
-  std::chrono::duration<double> randomTranslationMoveFrameworkMolecule{
-      0.0};  ///< Time for Framework-Molecule interactions during random translation moves.
-  std::chrono::duration<double> randomTranslationMoveMoleculeMolecule{
-      0.0};  ///< Time for Molecule-Molecule interactions during random translation moves.
-  std::chrono::duration<double> randomTranslationMoveEwald{
-      0.0};  ///< Time for Ewald computations during random translation moves.
-
-  std::chrono::duration<double> rotationMove{0.0};  ///< Time spent on rotation moves.
-  std::chrono::duration<double> rotationMoveExternalFieldMolecule{
-      0.0};  ///< Time for ExternalField-Molecule interactions during rotation moves.
-  std::chrono::duration<double> rotationMoveFrameworkMolecule{
-      0.0};  ///< Time for Framework-Molecule interactions during rotation moves.
-  std::chrono::duration<double> rotationMoveMoleculeMolecule{
-      0.0};  ///< Time for Molecule-Molecule interactions during rotation moves.
-  std::chrono::duration<double> rotationMoveEwald{0.0};  ///< Time for Ewald computations during rotation moves.
-
-  std::chrono::duration<double> randomRotationMove{0.0};  ///< Time spent on random rotation moves.
-  std::chrono::duration<double> randomRotationMoveExternalFieldMolecule{
-      0.0};  ///< Time for ExternalField-Molecule interactions during random rotation moves.
-  std::chrono::duration<double> randomRotationMoveFrameworkMolecule{
-      0.0};  ///< Time for Framework-Molecule interactions during random rotation moves.
-  std::chrono::duration<double> randomRotationMoveMoleculeMolecule{
-      0.0};  ///< Time for Molecule-Molecule interactions during random rotation moves.
-  std::chrono::duration<double> randomRotationMoveEwald{
-      0.0};  ///< Time for Ewald computations during random rotation moves.
-
-  std::chrono::duration<double> reinsertionMoveCBMC{0.0};  ///< Time spent on CBMC reinsertion moves.
-  std::chrono::duration<double> reinsertionMoveCBMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CBMC reinsertion moves.
-  std::chrono::duration<double> reinsertionMoveCBMCEwald{
-      0.0};  ///< Time for Ewald computations during CBMC reinsertion moves.
-
-  std::chrono::duration<double> swapInsertionMove{0.0};  ///< Time spent on swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveNonEwald{
-      0.0};  ///< Time for non-Ewald computations during swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveEwald{
-      0.0};  ///< Time for Ewald computations during swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveTail{0.0};  ///< Time for tail corrections during swap insertion moves.
-
-  std::chrono::duration<double> swapDeletionMove{0.0};  ///< Time spent on swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveNonEwald{
-      0.0};  ///< Time for non-Ewald computations during swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveEwald{
-      0.0};                                                 ///< Time for Ewald computations during swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveTail{0.0};  ///< Time for tail corrections during swap deletion moves.
-
-  std::chrono::duration<double> swapInsertionMoveCBMC{0.0};  ///< Time spent on CBMC swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveCBMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CBMC swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveCBMCEwald{
-      0.0};  ///< Time for Ewald computations during CBMC swap insertion moves.
-  std::chrono::duration<double> swapInsertionMoveCBMCTail{
-      0.0};  ///< Time for tail corrections during CBMC swap insertion moves.
-
-  std::chrono::duration<double> swapDeletionMoveCBMC{0.0};  ///< Time spent on CBMC swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveCBMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CBMC swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveCBMCEwald{
-      0.0};  ///< Time for Ewald computations during CBMC swap deletion moves.
-  std::chrono::duration<double> swapDeletionMoveCBMCTail{
-      0.0};  ///< Time for tail corrections during CBMC swap deletion moves.
-
-  std::chrono::duration<double> swapLambdaDeletionMove{0.0};  ///< Time spent on lambda swap deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveNonEwald{
-      0.0};  ///< Time for non-Ewald computations during lambda swap deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveEwald{
-      0.0};  ///< Time for Ewald computations during lambda swap deletion moves.
-
-  std::chrono::duration<double> swapLambdaMoveCFCMC{0.0};  ///< Time spent on CFCMC swap lambda moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCFramework{
-      0.0};  ///< Time for Framework during CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald during CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCFramework{
-      0.0};  ///< Time for Framework during CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald during CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCFramework{
-      0.0};  ///< Time for Framework during CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald during CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC swap lambda deletion moves.
-
-  std::chrono::duration<double> swapLambdaMoveCBCFCMC{0.0};  ///< Time spent on CB/CFCMC swap lambda moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCFramework{
-      0.0};  ///< Time for Framework during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaInsertionMoveCBCFCMCTail{
-      0.0};  ///< Time for tail corrections during CB/CFCMC swap lambda insertion moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CB/CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCFramework{
-      0.0};  ///< Time for Framework during CB/CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CB/CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CB/CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaChangeMoveCBCFCMCTail{
-      0.0};  ///< Time for tail corrections during CB/CFCMC lambda change moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CB/CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCFramework{
-      0.0};  ///< Time for Framework during CB/CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCMolecule{
-      0.0};  ///< Time for Molecule during CB/CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CB/CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CB/CFCMC swap lambda deletion moves.
-  std::chrono::duration<double> swapLambdaDeletionMoveCBCFCMCTail{
-      0.0};  ///< Time for tail corrections during CB/CFCMC swap lambda deletion moves.
-
-  std::chrono::duration<double> GibbsSwapMoveCBMC{0.0};  ///< Time spent on CBMC Gibbs swap moves.
-  std::chrono::duration<double> GibbsSwapMoveCBMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CBMC Gibbs swap moves.
-  std::chrono::duration<double> GibbsSwapMoveCBMCEwald{
-      0.0};  ///< Time for Ewald computations during CBMC Gibbs swap moves.
-  std::chrono::duration<double> GibbsSwapMoveCBMCTail{
-      0.0};  ///< Time for tail corrections during CBMC Gibbs swap moves.
-
-  std::chrono::duration<double> GibbsSwapLambdaMoveCFCMC{0.0};  ///< Time spent on CFCMC Gibbs swap lambda moves.
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda interchange moves.
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda interchange moves.
-  std::chrono::duration<double> GibbsSwapLambdaInterChangeMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda interchange moves.
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda change moves.
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda change moves.
-  std::chrono::duration<double> GibbsSwapLambdaChangeMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda change moves.
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CFCMC Gibbs swap lambda shuffle moves.
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CFCMC Gibbs swap lambda shuffle moves.
-  std::chrono::duration<double> GibbsSwapLambdaShuffleMoveCFCMCTail{
-      0.0};  ///< Time for tail corrections during CFCMC Gibbs swap lambda shuffle moves.
-
-  std::chrono::duration<double> WidomMoveCBMC{0.0};  ///< Time spent on CBMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBMCNonEwald{
-      0.0};                                               ///< Time for non-Ewald computations during CBMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBMCEwald{0.0};  ///< Time for Ewald computations during CBMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBMCTail{0.0};   ///< Time for tail corrections during CBMC Widom moves.
-
-  std::chrono::duration<double> WidomMoveCFCMC{0.0};               ///< Time spent on CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCFCMCExternalField{0.0};  ///< Time for ExternalField during CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCFCMCFramework{0.0};      ///< Time for Framework during CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCFCMCMolecule{0.0};       ///< Time for Molecule during CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCFCMCEwald{0.0};  ///< Time for Ewald computations during CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCFCMCTail{0.0};   ///< Time for tail corrections during CFCMC Widom moves.
-
-  std::chrono::duration<double> WidomMoveCBCFCMC{0.0};  ///< Time spent on CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCExternalField{
-      0.0};  ///< Time for ExternalField during CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCFramework{0.0};  ///< Time for Framework during CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCMolecule{0.0};   ///< Time for Molecule during CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCNonEwald{
-      0.0};  ///< Time for non-Ewald computations during CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCEwald{
-      0.0};  ///< Time for Ewald computations during CB/CFCMC Widom moves.
-  std::chrono::duration<double> WidomMoveCBCFCMCTail{0.0};  ///< Time for tail corrections during CB/CFCMC Widom moves.
-
-  std::chrono::duration<double> volumeMove{0.0};          ///< Time spent on volume moves.
-  std::chrono::duration<double> volumeMoveNonEwald{0.0};  ///< Time for non-Ewald computations during volume moves.
-  std::chrono::duration<double> volumeMoveEwald{0.0};     ///< Time for Ewald computations during volume moves.
-  std::chrono::duration<double> volumeMoveTail{0.0};      ///< Time for tail corrections during volume moves.
-
-  std::chrono::duration<double> GibbsVolumeMove{0.0};  ///< Time spent on Gibbs volume moves.
-  std::chrono::duration<double> GibbsVolumeMoveNonEwald{
-      0.0};  ///< Time for non-Ewald computations during Gibbs volume moves.
-  std::chrono::duration<double> GibbsVolumeMoveEwald{0.0};  ///< Time for Ewald computations during Gibbs volume moves.
-  std::chrono::duration<double> GibbsVolumeMoveTail{0.0};   ///< Time for tail corrections during Gibbs volume moves.
-
-  std::chrono::duration<double> ParallelTemperingSwap{0.0};  ///< Time spent on parallel tempering swaps.
-  std::chrono::duration<double> ParallelTemperingSwapEnergy{
-      0.0};  ///< Time for energy recalculation during parallel tempering swaps.
-  std::chrono::duration<double> ParallelTemperingSwapFugacity{
-      0.0};  ///< Time for fugacity computation during parallel tempering swaps.
-
-  std::chrono::duration<double> hybridMC{0.0};             ///< Time for hybrid MC.
-  std::chrono::duration<double> hybridMCIntegration{0.0};  ///< Time for MD integration in hybrid MC.
 
   /**
    * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.
@@ -266,11 +51,14 @@ export struct MCMoveCpuTime
    */
   inline std::chrono::duration<double> total() const
   {
-    return propertySampling + energyPressureComputation + translationMove + randomTranslationMove + rotationMove +
-           randomRotationMove + reinsertionMoveCBMC + swapInsertionMove + swapDeletionMove + swapInsertionMoveCBMC +
-           swapDeletionMoveCBMC + swapLambdaMoveCFCMC + swapLambdaMoveCBCFCMC + GibbsSwapMoveCBMC +
-           GibbsSwapLambdaMoveCFCMC + WidomMoveCBMC + WidomMoveCFCMC + WidomMoveCBCFCMC + volumeMove + GibbsVolumeMove +
-           ParallelTemperingSwap + hybridMC;
+    std::chrono::duration<double> total{0.0};
+    for (auto& [moveType, moveTimings] : timingMap)
+    {
+      total += moveTimings.at("Total");
+    }
+    total += propertySampling;
+    total += energyPressureComputation;
+    return total;
   }
 
   /**
@@ -326,147 +114,13 @@ export struct MCMoveCpuTime
 
   MCMoveCpuTime(const MCMoveCpuTime&) = default;
 
+  std::map<std::string, std::chrono::duration<double>>& operator[](const MoveTypes& move) { return timingMap[move]; }
+
   inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
   {
     propertySampling = b.propertySampling;
     energyPressureComputation = b.energyPressureComputation;
-
-    translationMove = b.translationMove;
-    translationMoveExternalFieldMolecule = b.translationMoveExternalFieldMolecule;
-    translationMoveFrameworkMolecule = b.translationMoveFrameworkMolecule;
-    translationMoveMoleculeMolecule = b.translationMoveMoleculeMolecule;
-    translationMoveEwald = b.translationMoveEwald;
-
-    randomTranslationMove = b.randomTranslationMove;
-    randomTranslationMoveExternalFieldMolecule = b.randomTranslationMoveExternalFieldMolecule;
-    randomTranslationMoveFrameworkMolecule = b.randomTranslationMoveFrameworkMolecule;
-    randomTranslationMoveMoleculeMolecule = b.randomTranslationMoveMoleculeMolecule;
-    randomTranslationMoveEwald = b.randomTranslationMoveEwald;
-
-    rotationMove = b.rotationMove;
-    rotationMoveExternalFieldMolecule = b.rotationMoveExternalFieldMolecule;
-    rotationMoveFrameworkMolecule = b.rotationMoveFrameworkMolecule;
-    rotationMoveMoleculeMolecule = b.rotationMoveMoleculeMolecule;
-    rotationMoveEwald = b.rotationMoveEwald;
-
-    randomRotationMove = b.randomRotationMove;
-    randomRotationMoveExternalFieldMolecule = b.randomRotationMoveExternalFieldMolecule;
-    randomRotationMoveFrameworkMolecule = b.randomRotationMoveFrameworkMolecule;
-    randomRotationMoveMoleculeMolecule = b.randomRotationMoveMoleculeMolecule;
-    randomRotationMoveEwald = b.randomRotationMoveEwald;
-
-    reinsertionMoveCBMC = b.reinsertionMoveCBMC;
-    reinsertionMoveCBMCNonEwald = b.reinsertionMoveCBMCNonEwald;
-    reinsertionMoveCBMCEwald = b.reinsertionMoveCBMCEwald;
-
-    swapInsertionMove = b.swapInsertionMove;
-    swapInsertionMoveNonEwald = b.swapInsertionMoveNonEwald;
-    swapInsertionMoveEwald = b.swapInsertionMoveEwald;
-    swapInsertionMoveTail = b.swapInsertionMoveTail;
-
-    swapDeletionMove = b.swapDeletionMove;
-    swapDeletionMoveNonEwald = b.swapDeletionMoveNonEwald;
-    swapDeletionMoveEwald = b.swapDeletionMoveEwald;
-    swapDeletionMoveTail = b.swapDeletionMoveTail;
-
-    swapInsertionMoveCBMC = b.swapInsertionMoveCBMC;
-    swapInsertionMoveCBMCNonEwald = b.swapInsertionMoveCBMCNonEwald;
-    swapInsertionMoveCBMCEwald = b.swapInsertionMoveCBMCEwald;
-    swapInsertionMoveCBMCTail = b.swapInsertionMoveCBMCTail;
-
-    swapDeletionMoveCBMC = b.swapDeletionMoveCBMC;
-    swapDeletionMoveCBMCNonEwald = b.swapDeletionMoveCBMCNonEwald;
-    swapDeletionMoveCBMCEwald = b.swapDeletionMoveCBMCEwald;
-    swapDeletionMoveCBMCTail = b.swapDeletionMoveCBMCTail;
-
-    swapLambdaMoveCFCMC = b.swapLambdaMoveCFCMC;
-    swapLambdaInsertionMoveCFCMCExternalField = b.swapLambdaInsertionMoveCFCMCExternalField;
-    swapLambdaInsertionMoveCFCMCFramework = b.swapLambdaInsertionMoveCFCMCFramework;
-    swapLambdaInsertionMoveCFCMCMolecule = b.swapLambdaInsertionMoveCFCMCMolecule;
-    swapLambdaInsertionMoveCFCMCEwald = b.swapLambdaInsertionMoveCFCMCEwald;
-    swapLambdaInsertionMoveCFCMCTail = b.swapLambdaInsertionMoveCFCMCTail;
-    swapLambdaChangeMoveCFCMCExternalField = b.swapLambdaChangeMoveCFCMCExternalField;
-    swapLambdaChangeMoveCFCMCFramework = b.swapLambdaChangeMoveCFCMCFramework;
-    swapLambdaChangeMoveCFCMCMolecule = b.swapLambdaChangeMoveCFCMCMolecule;
-    swapLambdaChangeMoveCFCMCEwald = b.swapLambdaChangeMoveCFCMCEwald;
-    swapLambdaChangeMoveCFCMCTail = b.swapLambdaChangeMoveCFCMCTail;
-    swapLambdaDeletionMoveCFCMCExternalField = b.swapLambdaDeletionMoveCFCMCExternalField;
-    swapLambdaDeletionMoveCFCMCFramework = b.swapLambdaDeletionMoveCFCMCFramework;
-    swapLambdaDeletionMoveCFCMCMolecule = b.swapLambdaDeletionMoveCFCMCMolecule;
-    swapLambdaDeletionMoveCFCMCEwald = b.swapLambdaDeletionMoveCFCMCEwald;
-    swapLambdaDeletionMoveCFCMCTail = b.swapLambdaDeletionMoveCFCMCTail;
-
-    swapLambdaMoveCBCFCMC = b.swapLambdaMoveCBCFCMC;
-    swapLambdaInsertionMoveCBCFCMCExternalField = b.swapLambdaInsertionMoveCBCFCMCExternalField;
-    swapLambdaInsertionMoveCBCFCMCFramework = b.swapLambdaInsertionMoveCBCFCMCFramework;
-    swapLambdaInsertionMoveCBCFCMCMolecule = b.swapLambdaInsertionMoveCBCFCMCMolecule;
-    swapLambdaInsertionMoveCBCFCMCNonEwald = b.swapLambdaInsertionMoveCBCFCMCNonEwald;
-    swapLambdaInsertionMoveCBCFCMCEwald = b.swapLambdaInsertionMoveCBCFCMCEwald;
-    swapLambdaInsertionMoveCBCFCMCTail = b.swapLambdaInsertionMoveCBCFCMCTail;
-    swapLambdaChangeMoveCBCFCMCExternalField = b.swapLambdaChangeMoveCBCFCMCExternalField;
-    swapLambdaChangeMoveCBCFCMCFramework = b.swapLambdaChangeMoveCBCFCMCFramework;
-    swapLambdaChangeMoveCBCFCMCMolecule = b.swapLambdaChangeMoveCBCFCMCMolecule;
-    swapLambdaChangeMoveCBCFCMCEwald = b.swapLambdaChangeMoveCBCFCMCEwald;
-    swapLambdaChangeMoveCBCFCMCTail = b.swapLambdaChangeMoveCBCFCMCTail;
-    swapLambdaDeletionMoveCBCFCMCExternalField = b.swapLambdaDeletionMoveCBCFCMCExternalField;
-    swapLambdaDeletionMoveCBCFCMCFramework = b.swapLambdaDeletionMoveCBCFCMCFramework;
-    swapLambdaDeletionMoveCBCFCMCMolecule = b.swapLambdaDeletionMoveCBCFCMCMolecule;
-    swapLambdaDeletionMoveCBCFCMCNonEwald = b.swapLambdaDeletionMoveCBCFCMCNonEwald;
-    swapLambdaDeletionMoveCBCFCMCEwald = b.swapLambdaDeletionMoveCBCFCMCEwald;
-    swapLambdaDeletionMoveCBCFCMCTail = b.swapLambdaDeletionMoveCBCFCMCTail;
-
-    GibbsSwapMoveCBMC = b.GibbsSwapMoveCBMC;
-    GibbsSwapMoveCBMCNonEwald = b.GibbsSwapMoveCBMCNonEwald;
-    GibbsSwapMoveCBMCEwald = b.GibbsSwapMoveCBMCEwald;
-    GibbsSwapMoveCBMCTail = b.GibbsSwapMoveCBMCTail;
-
-    GibbsSwapLambdaMoveCFCMC = b.GibbsSwapLambdaMoveCFCMC;
-    GibbsSwapLambdaInterChangeMoveCFCMCNonEwald = b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
-    GibbsSwapLambdaInterChangeMoveCFCMCEwald = b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
-    GibbsSwapLambdaInterChangeMoveCFCMCTail = b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
-    GibbsSwapLambdaChangeMoveCFCMCNonEwald = b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
-    GibbsSwapLambdaChangeMoveCFCMCEwald = b.GibbsSwapLambdaChangeMoveCFCMCEwald;
-    GibbsSwapLambdaChangeMoveCFCMCTail = b.GibbsSwapLambdaChangeMoveCFCMCTail;
-    GibbsSwapLambdaShuffleMoveCFCMCNonEwald = b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
-    GibbsSwapLambdaShuffleMoveCFCMCEwald = b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
-    GibbsSwapLambdaShuffleMoveCFCMCTail = b.GibbsSwapLambdaShuffleMoveCFCMCTail;
-
-    WidomMoveCBMC = b.WidomMoveCBMC;
-    WidomMoveCBMCNonEwald = b.WidomMoveCBMCNonEwald;
-    WidomMoveCBMCEwald = b.WidomMoveCBMCEwald;
-    WidomMoveCBMCTail = b.WidomMoveCBMCTail;
-
-    WidomMoveCFCMC = b.WidomMoveCFCMC;
-    WidomMoveCFCMCExternalField = b.WidomMoveCFCMCExternalField;
-    WidomMoveCFCMCFramework = b.WidomMoveCFCMCFramework;
-    WidomMoveCFCMCMolecule = b.WidomMoveCFCMCMolecule;
-    WidomMoveCFCMCEwald = b.WidomMoveCFCMCEwald;
-    WidomMoveCFCMCTail = b.WidomMoveCFCMCTail;
-
-    WidomMoveCBCFCMC = b.WidomMoveCBCFCMC;
-    WidomMoveCBCFCMCExternalField = b.WidomMoveCBCFCMCExternalField;
-    WidomMoveCBCFCMCFramework = b.WidomMoveCBCFCMCFramework;
-    WidomMoveCBCFCMCMolecule = b.WidomMoveCBCFCMCMolecule;
-    WidomMoveCBCFCMCNonEwald = b.WidomMoveCBCFCMCNonEwald;
-    WidomMoveCBCFCMCEwald = b.WidomMoveCBCFCMCEwald;
-    WidomMoveCBCFCMCTail = b.WidomMoveCBCFCMCTail;
-
-    volumeMove = b.volumeMove;
-    volumeMoveNonEwald = b.volumeMoveNonEwald;
-    volumeMoveEwald = b.volumeMoveEwald;
-    volumeMoveTail = b.volumeMoveTail;
-
-    GibbsVolumeMove = b.GibbsVolumeMove;
-    GibbsVolumeMoveNonEwald = b.GibbsVolumeMoveNonEwald;
-    GibbsVolumeMoveEwald = b.GibbsVolumeMoveEwald;
-    GibbsVolumeMoveTail = b.GibbsVolumeMoveTail;
-
-    ParallelTemperingSwap = b.ParallelTemperingSwap;
-    ParallelTemperingSwapEnergy = b.ParallelTemperingSwapEnergy;
-    ParallelTemperingSwapFugacity = b.ParallelTemperingSwapFugacity;
-
-    hybridMC = b.hybridMC;
-
+    timingMap = b.timingMap;
     return *this;
   }
 
@@ -475,142 +129,13 @@ export struct MCMoveCpuTime
     propertySampling += b.propertySampling;
     energyPressureComputation += b.energyPressureComputation;
 
-    translationMove += b.translationMove;
-    translationMoveExternalFieldMolecule += b.translationMoveExternalFieldMolecule;
-    translationMoveFrameworkMolecule += b.translationMoveFrameworkMolecule;
-    translationMoveMoleculeMolecule += b.translationMoveMoleculeMolecule;
-    translationMoveEwald += b.translationMoveEwald;
-
-    randomTranslationMove += b.randomTranslationMove;
-    randomTranslationMoveExternalFieldMolecule += b.randomTranslationMoveExternalFieldMolecule;
-    randomTranslationMoveFrameworkMolecule += b.randomTranslationMoveFrameworkMolecule;
-    randomTranslationMoveMoleculeMolecule += b.randomTranslationMoveMoleculeMolecule;
-    randomTranslationMoveEwald += b.randomTranslationMoveEwald;
-
-    rotationMove += b.rotationMove;
-    rotationMoveExternalFieldMolecule += b.rotationMoveExternalFieldMolecule;
-    rotationMoveFrameworkMolecule += b.rotationMoveFrameworkMolecule;
-    rotationMoveMoleculeMolecule += b.rotationMoveMoleculeMolecule;
-    rotationMoveEwald += b.rotationMoveEwald;
-
-    randomRotationMove += b.randomRotationMove;
-    randomRotationMoveExternalFieldMolecule += b.randomRotationMoveExternalFieldMolecule;
-    randomRotationMoveFrameworkMolecule += b.randomRotationMoveFrameworkMolecule;
-    randomRotationMoveMoleculeMolecule += b.randomRotationMoveMoleculeMolecule;
-    randomRotationMoveEwald += b.randomRotationMoveEwald;
-
-    reinsertionMoveCBMC += b.reinsertionMoveCBMC;
-    reinsertionMoveCBMCNonEwald += b.reinsertionMoveCBMCNonEwald;
-    reinsertionMoveCBMCEwald += b.reinsertionMoveCBMCEwald;
-
-    swapInsertionMove += b.swapInsertionMove;
-    swapInsertionMoveNonEwald += b.swapInsertionMoveNonEwald;
-    swapInsertionMoveEwald += b.swapInsertionMoveEwald;
-    swapInsertionMoveTail += b.swapInsertionMoveTail;
-
-    swapDeletionMove += b.swapDeletionMove;
-    swapDeletionMoveNonEwald += b.swapDeletionMoveNonEwald;
-    swapDeletionMoveEwald += b.swapDeletionMoveEwald;
-    swapDeletionMoveTail += b.swapDeletionMoveTail;
-
-    swapInsertionMoveCBMC += b.swapInsertionMoveCBMC;
-    swapInsertionMoveCBMCNonEwald += b.swapInsertionMoveCBMCNonEwald;
-    swapInsertionMoveCBMCEwald += b.swapInsertionMoveCBMCEwald;
-    swapInsertionMoveCBMCTail += b.swapInsertionMoveCBMCTail;
-
-    swapDeletionMoveCBMC += b.swapDeletionMoveCBMC;
-    swapDeletionMoveCBMCNonEwald += b.swapDeletionMoveCBMCNonEwald;
-    swapDeletionMoveCBMCEwald += b.swapDeletionMoveCBMCEwald;
-    swapDeletionMoveCBMCTail += b.swapDeletionMoveCBMCTail;
-
-    swapLambdaMoveCFCMC += b.swapLambdaMoveCFCMC;
-    swapLambdaInsertionMoveCFCMCExternalField += b.swapLambdaInsertionMoveCFCMCExternalField;
-    swapLambdaInsertionMoveCFCMCFramework += b.swapLambdaInsertionMoveCFCMCFramework;
-    swapLambdaInsertionMoveCFCMCMolecule += b.swapLambdaInsertionMoveCFCMCMolecule;
-    swapLambdaInsertionMoveCFCMCEwald += b.swapLambdaInsertionMoveCFCMCEwald;
-    swapLambdaInsertionMoveCFCMCTail += b.swapLambdaInsertionMoveCFCMCTail;
-    swapLambdaChangeMoveCFCMCExternalField += b.swapLambdaChangeMoveCFCMCExternalField;
-    swapLambdaChangeMoveCFCMCFramework += b.swapLambdaChangeMoveCFCMCFramework;
-    swapLambdaChangeMoveCFCMCMolecule += b.swapLambdaChangeMoveCFCMCMolecule;
-    swapLambdaChangeMoveCFCMCEwald += b.swapLambdaChangeMoveCFCMCEwald;
-    swapLambdaChangeMoveCFCMCTail += b.swapLambdaChangeMoveCFCMCTail;
-    swapLambdaDeletionMoveCFCMCExternalField += b.swapLambdaDeletionMoveCFCMCExternalField;
-    swapLambdaDeletionMoveCFCMCFramework += b.swapLambdaDeletionMoveCFCMCFramework;
-    swapLambdaDeletionMoveCFCMCMolecule += b.swapLambdaDeletionMoveCFCMCMolecule;
-    swapLambdaDeletionMoveCFCMCEwald += b.swapLambdaDeletionMoveCFCMCEwald;
-    swapLambdaDeletionMoveCFCMCTail += b.swapLambdaDeletionMoveCFCMCTail;
-
-    swapLambdaMoveCBCFCMC += b.swapLambdaMoveCBCFCMC;
-    swapLambdaInsertionMoveCBCFCMCExternalField += b.swapLambdaInsertionMoveCBCFCMCExternalField;
-    swapLambdaInsertionMoveCBCFCMCFramework += b.swapLambdaInsertionMoveCBCFCMCFramework;
-    swapLambdaInsertionMoveCBCFCMCMolecule += b.swapLambdaInsertionMoveCBCFCMCMolecule;
-    swapLambdaInsertionMoveCBCFCMCNonEwald += b.swapLambdaInsertionMoveCBCFCMCNonEwald;
-    swapLambdaInsertionMoveCBCFCMCEwald += b.swapLambdaInsertionMoveCBCFCMCEwald;
-    swapLambdaInsertionMoveCBCFCMCTail += b.swapLambdaInsertionMoveCBCFCMCTail;
-    swapLambdaChangeMoveCBCFCMCExternalField += b.swapLambdaChangeMoveCBCFCMCExternalField;
-    swapLambdaChangeMoveCBCFCMCFramework += b.swapLambdaChangeMoveCBCFCMCFramework;
-    swapLambdaChangeMoveCBCFCMCMolecule += b.swapLambdaChangeMoveCBCFCMCMolecule;
-    swapLambdaChangeMoveCBCFCMCEwald += b.swapLambdaChangeMoveCBCFCMCEwald;
-    swapLambdaChangeMoveCBCFCMCTail += b.swapLambdaChangeMoveCBCFCMCTail;
-    swapLambdaDeletionMoveCBCFCMCExternalField += b.swapLambdaDeletionMoveCBCFCMCExternalField;
-    swapLambdaDeletionMoveCBCFCMCFramework += b.swapLambdaDeletionMoveCBCFCMCFramework;
-    swapLambdaDeletionMoveCBCFCMCMolecule += b.swapLambdaDeletionMoveCBCFCMCMolecule;
-    swapLambdaDeletionMoveCBCFCMCNonEwald += b.swapLambdaDeletionMoveCBCFCMCNonEwald;
-    swapLambdaDeletionMoveCBCFCMCEwald += b.swapLambdaDeletionMoveCBCFCMCEwald;
-    swapLambdaDeletionMoveCBCFCMCTail += b.swapLambdaDeletionMoveCBCFCMCTail;
-
-    GibbsSwapMoveCBMC += b.GibbsSwapMoveCBMC;
-    GibbsSwapMoveCBMCNonEwald += b.GibbsSwapMoveCBMCNonEwald;
-    GibbsSwapMoveCBMCEwald += b.GibbsSwapMoveCBMCEwald;
-    GibbsSwapMoveCBMCTail += b.GibbsSwapMoveCBMCTail;
-
-    GibbsSwapLambdaMoveCFCMC += b.GibbsSwapLambdaMoveCFCMC;
-    GibbsSwapLambdaInterChangeMoveCFCMCNonEwald += b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
-    GibbsSwapLambdaInterChangeMoveCFCMCEwald += b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
-    GibbsSwapLambdaInterChangeMoveCFCMCTail += b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
-    GibbsSwapLambdaChangeMoveCFCMCNonEwald += b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
-    GibbsSwapLambdaChangeMoveCFCMCEwald += b.GibbsSwapLambdaChangeMoveCFCMCEwald;
-    GibbsSwapLambdaChangeMoveCFCMCTail += b.GibbsSwapLambdaChangeMoveCFCMCTail;
-    GibbsSwapLambdaShuffleMoveCFCMCNonEwald += b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
-    GibbsSwapLambdaShuffleMoveCFCMCEwald += b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
-    GibbsSwapLambdaShuffleMoveCFCMCTail += b.GibbsSwapLambdaShuffleMoveCFCMCTail;
-
-    WidomMoveCBMC += b.WidomMoveCBMC;
-    WidomMoveCBMCNonEwald += b.WidomMoveCBMCNonEwald;
-    WidomMoveCBMCEwald += b.WidomMoveCBMCEwald;
-    WidomMoveCBMCTail += b.WidomMoveCBMCTail;
-
-    WidomMoveCFCMC += b.WidomMoveCFCMC;
-    WidomMoveCFCMCExternalField += b.WidomMoveCFCMCExternalField;
-    WidomMoveCFCMCFramework += b.WidomMoveCFCMCFramework;
-    WidomMoveCFCMCMolecule += b.WidomMoveCFCMCMolecule;
-    WidomMoveCFCMCEwald += b.WidomMoveCFCMCEwald;
-    WidomMoveCFCMCTail += b.WidomMoveCFCMCTail;
-
-    WidomMoveCBCFCMC += b.WidomMoveCBCFCMC;
-    WidomMoveCBCFCMCExternalField += b.WidomMoveCBCFCMCExternalField;
-    WidomMoveCBCFCMCFramework += b.WidomMoveCBCFCMCFramework;
-    WidomMoveCBCFCMCMolecule += b.WidomMoveCBCFCMCMolecule;
-    WidomMoveCBCFCMCNonEwald += b.WidomMoveCBCFCMCNonEwald;
-    WidomMoveCBCFCMCEwald += b.WidomMoveCBCFCMCEwald;
-    WidomMoveCBCFCMCTail += b.WidomMoveCBCFCMCTail;
-
-    volumeMove += b.volumeMove;
-    volumeMoveNonEwald += b.volumeMoveNonEwald;
-    volumeMoveEwald += b.volumeMoveEwald;
-    volumeMoveTail += b.volumeMoveTail;
-
-    GibbsVolumeMove += b.GibbsVolumeMove;
-    GibbsVolumeMoveNonEwald += b.GibbsVolumeMoveNonEwald;
-    GibbsVolumeMoveEwald += b.GibbsVolumeMoveEwald;
-    GibbsVolumeMoveTail += b.GibbsVolumeMoveTail;
-
-    ParallelTemperingSwap += b.ParallelTemperingSwap;
-    ParallelTemperingSwapEnergy += b.ParallelTemperingSwapEnergy;
-    ParallelTemperingSwapFugacity += b.ParallelTemperingSwapFugacity;
-
-    hybridMC += b.hybridMC;
-
+    for (auto& [moveType, moveTimings] : timingMap)
+    {
+      for (auto& [timingName, time] : moveTimings)
+      {
+        time += b.timingMap.at(moveType).at(timingName);
+      }
+    }
     return *this;
   }
 
@@ -625,168 +150,13 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.propertySampling = a.propertySampling + b.propertySampling;
   m.energyPressureComputation = a.energyPressureComputation + b.energyPressureComputation;
 
-  m.translationMove = a.translationMove + b.translationMove;
-  m.translationMoveExternalFieldMolecule =
-      a.translationMoveExternalFieldMolecule + b.translationMoveExternalFieldMolecule;
-  m.translationMoveFrameworkMolecule = a.translationMoveFrameworkMolecule + b.translationMoveFrameworkMolecule;
-  m.translationMoveMoleculeMolecule = a.translationMoveMoleculeMolecule + b.translationMoveMoleculeMolecule;
-  m.translationMoveEwald = a.translationMoveEwald + b.translationMoveEwald;
-
-  m.randomTranslationMove = a.randomTranslationMove + b.randomTranslationMove;
-  m.randomTranslationMoveExternalFieldMolecule =
-      a.randomTranslationMoveExternalFieldMolecule + b.randomTranslationMoveExternalFieldMolecule;
-  m.randomTranslationMoveFrameworkMolecule =
-      a.randomTranslationMoveFrameworkMolecule + b.randomTranslationMoveFrameworkMolecule;
-  m.randomTranslationMoveMoleculeMolecule =
-      a.randomTranslationMoveMoleculeMolecule + b.randomTranslationMoveMoleculeMolecule;
-  m.randomTranslationMoveEwald = a.randomTranslationMoveEwald + b.randomTranslationMoveEwald;
-
-  m.rotationMove = a.rotationMove + b.rotationMove;
-  m.rotationMoveExternalFieldMolecule = a.rotationMoveExternalFieldMolecule + b.rotationMoveExternalFieldMolecule;
-  m.rotationMoveFrameworkMolecule = a.rotationMoveFrameworkMolecule + b.rotationMoveFrameworkMolecule;
-  m.rotationMoveMoleculeMolecule = a.rotationMoveMoleculeMolecule + b.rotationMoveMoleculeMolecule;
-  m.rotationMoveEwald = a.rotationMoveEwald + b.rotationMoveEwald;
-
-  m.randomRotationMove = a.randomRotationMove + b.randomRotationMove;
-  m.randomRotationMoveExternalFieldMolecule =
-      a.randomRotationMoveExternalFieldMolecule + b.randomRotationMoveExternalFieldMolecule;
-  m.randomRotationMoveFrameworkMolecule = a.randomRotationMoveFrameworkMolecule + b.randomRotationMoveFrameworkMolecule;
-  m.randomRotationMoveMoleculeMolecule = a.randomRotationMoveMoleculeMolecule + b.randomRotationMoveMoleculeMolecule;
-  m.randomRotationMoveEwald = a.randomRotationMoveEwald + b.randomRotationMoveEwald;
-
-  m.reinsertionMoveCBMC = a.reinsertionMoveCBMC + b.reinsertionMoveCBMC;
-  m.reinsertionMoveCBMCNonEwald = a.reinsertionMoveCBMCNonEwald + b.reinsertionMoveCBMCNonEwald;
-  m.reinsertionMoveCBMCEwald = a.reinsertionMoveCBMCEwald + b.reinsertionMoveCBMCEwald;
-
-  m.swapInsertionMove = a.swapInsertionMove + b.swapInsertionMove;
-  m.swapInsertionMoveNonEwald = a.swapInsertionMoveNonEwald + b.swapInsertionMoveNonEwald;
-  m.swapInsertionMoveEwald = a.swapInsertionMoveEwald + b.swapInsertionMoveEwald;
-  m.swapInsertionMoveTail = a.swapInsertionMoveEwald + b.swapInsertionMoveTail;
-
-  m.swapDeletionMove = a.swapDeletionMove + b.swapDeletionMove;
-  m.swapDeletionMoveNonEwald = a.swapDeletionMoveNonEwald + b.swapDeletionMoveNonEwald;
-  m.swapDeletionMoveEwald = a.swapDeletionMoveEwald + b.swapDeletionMoveEwald;
-  m.swapDeletionMoveTail = a.swapDeletionMoveEwald + b.swapDeletionMoveTail;
-
-  m.swapInsertionMoveCBMC = a.swapInsertionMoveCBMC + b.swapInsertionMoveCBMC;
-  m.swapInsertionMoveCBMCNonEwald = a.swapInsertionMoveCBMCNonEwald + b.swapInsertionMoveCBMCNonEwald;
-  m.swapInsertionMoveCBMCEwald = a.swapInsertionMoveCBMCEwald + b.swapInsertionMoveCBMCEwald;
-  m.swapInsertionMoveCBMCTail = a.swapInsertionMoveCBMCEwald + b.swapInsertionMoveCBMCTail;
-
-  m.swapDeletionMoveCBMC = a.swapDeletionMoveCBMC + b.swapDeletionMoveCBMC;
-  m.swapDeletionMoveCBMCNonEwald = a.swapDeletionMoveCBMCNonEwald + b.swapDeletionMoveCBMCNonEwald;
-  m.swapDeletionMoveCBMCEwald = a.swapDeletionMoveCBMCEwald + b.swapDeletionMoveCBMCEwald;
-  m.swapDeletionMoveCBMCTail = a.swapDeletionMoveCBMCEwald + b.swapDeletionMoveCBMCTail;
-
-  m.swapLambdaMoveCFCMC = a.swapLambdaMoveCFCMC + b.swapLambdaMoveCFCMC;
-  m.swapLambdaInsertionMoveCFCMCExternalField =
-      a.swapLambdaInsertionMoveCFCMCExternalField + b.swapLambdaInsertionMoveCFCMCExternalField;
-  m.swapLambdaInsertionMoveCFCMCFramework =
-      a.swapLambdaInsertionMoveCFCMCFramework + b.swapLambdaInsertionMoveCFCMCFramework;
-  m.swapLambdaInsertionMoveCFCMCMolecule =
-      a.swapLambdaInsertionMoveCFCMCMolecule + b.swapLambdaInsertionMoveCFCMCMolecule;
-  m.swapLambdaInsertionMoveCFCMCEwald = a.swapLambdaInsertionMoveCFCMCEwald + b.swapLambdaInsertionMoveCFCMCEwald;
-  m.swapLambdaInsertionMoveCFCMCTail = a.swapLambdaInsertionMoveCFCMCTail + b.swapLambdaInsertionMoveCFCMCTail;
-  m.swapLambdaChangeMoveCFCMCExternalField =
-      a.swapLambdaChangeMoveCFCMCExternalField + b.swapLambdaChangeMoveCFCMCExternalField;
-  m.swapLambdaChangeMoveCFCMCFramework = a.swapLambdaChangeMoveCFCMCFramework + b.swapLambdaChangeMoveCFCMCFramework;
-  m.swapLambdaChangeMoveCFCMCMolecule = a.swapLambdaChangeMoveCFCMCMolecule + b.swapLambdaChangeMoveCFCMCMolecule;
-  m.swapLambdaChangeMoveCFCMCEwald = a.swapLambdaChangeMoveCFCMCEwald + b.swapLambdaChangeMoveCFCMCEwald;
-  m.swapLambdaChangeMoveCFCMCTail = a.swapLambdaChangeMoveCFCMCTail + b.swapLambdaChangeMoveCFCMCTail;
-  m.swapLambdaDeletionMoveCFCMCExternalField =
-      a.swapLambdaDeletionMoveCFCMCExternalField + b.swapLambdaDeletionMoveCFCMCExternalField;
-  m.swapLambdaDeletionMoveCFCMCFramework =
-      a.swapLambdaDeletionMoveCFCMCFramework + b.swapLambdaDeletionMoveCFCMCFramework;
-  m.swapLambdaDeletionMoveCFCMCMolecule = a.swapLambdaDeletionMoveCFCMCMolecule + b.swapLambdaDeletionMoveCFCMCMolecule;
-  m.swapLambdaDeletionMoveCFCMCEwald = a.swapLambdaDeletionMoveCFCMCEwald + b.swapLambdaDeletionMoveCFCMCEwald;
-  m.swapLambdaDeletionMoveCFCMCTail = a.swapLambdaDeletionMoveCFCMCTail + b.swapLambdaDeletionMoveCFCMCTail;
-
-  m.swapLambdaMoveCBCFCMC = a.swapLambdaMoveCBCFCMC + b.swapLambdaMoveCBCFCMC;
-  m.swapLambdaInsertionMoveCBCFCMCExternalField =
-      a.swapLambdaInsertionMoveCBCFCMCExternalField + b.swapLambdaInsertionMoveCBCFCMCExternalField;
-  m.swapLambdaInsertionMoveCBCFCMCFramework =
-      a.swapLambdaInsertionMoveCBCFCMCFramework + b.swapLambdaInsertionMoveCBCFCMCFramework;
-  m.swapLambdaInsertionMoveCBCFCMCMolecule =
-      a.swapLambdaInsertionMoveCBCFCMCMolecule + b.swapLambdaInsertionMoveCBCFCMCMolecule;
-  m.swapLambdaInsertionMoveCBCFCMCNonEwald =
-      a.swapLambdaInsertionMoveCBCFCMCNonEwald + b.swapLambdaInsertionMoveCBCFCMCNonEwald;
-  m.swapLambdaInsertionMoveCBCFCMCEwald = a.swapLambdaInsertionMoveCBCFCMCEwald + b.swapLambdaInsertionMoveCBCFCMCEwald;
-  m.swapLambdaInsertionMoveCBCFCMCTail = a.swapLambdaInsertionMoveCBCFCMCTail + b.swapLambdaInsertionMoveCBCFCMCTail;
-  m.swapLambdaChangeMoveCBCFCMCExternalField =
-      a.swapLambdaChangeMoveCBCFCMCExternalField + b.swapLambdaChangeMoveCBCFCMCExternalField;
-  m.swapLambdaChangeMoveCBCFCMCFramework =
-      a.swapLambdaChangeMoveCBCFCMCFramework + b.swapLambdaChangeMoveCBCFCMCFramework;
-  m.swapLambdaChangeMoveCBCFCMCMolecule = a.swapLambdaChangeMoveCBCFCMCMolecule + b.swapLambdaChangeMoveCBCFCMCMolecule;
-  m.swapLambdaChangeMoveCBCFCMCEwald = a.swapLambdaChangeMoveCBCFCMCEwald + b.swapLambdaChangeMoveCBCFCMCEwald;
-  m.swapLambdaChangeMoveCBCFCMCTail = a.swapLambdaChangeMoveCBCFCMCTail + b.swapLambdaChangeMoveCBCFCMCTail;
-  m.swapLambdaDeletionMoveCBCFCMCExternalField =
-      a.swapLambdaDeletionMoveCBCFCMCExternalField + b.swapLambdaDeletionMoveCBCFCMCExternalField;
-  m.swapLambdaDeletionMoveCBCFCMCFramework =
-      a.swapLambdaDeletionMoveCBCFCMCFramework + b.swapLambdaDeletionMoveCBCFCMCFramework;
-  m.swapLambdaDeletionMoveCBCFCMCMolecule =
-      a.swapLambdaDeletionMoveCBCFCMCMolecule + b.swapLambdaDeletionMoveCBCFCMCMolecule;
-  m.swapLambdaDeletionMoveCBCFCMCNonEwald =
-      a.swapLambdaDeletionMoveCBCFCMCNonEwald + b.swapLambdaDeletionMoveCBCFCMCNonEwald;
-  m.swapLambdaDeletionMoveCBCFCMCEwald = a.swapLambdaDeletionMoveCBCFCMCEwald + b.swapLambdaDeletionMoveCBCFCMCEwald;
-  m.swapLambdaDeletionMoveCBCFCMCTail = a.swapLambdaDeletionMoveCBCFCMCTail + b.swapLambdaDeletionMoveCBCFCMCTail;
-
-  m.GibbsSwapMoveCBMC = a.GibbsSwapMoveCBMC + b.GibbsSwapMoveCBMC;
-  m.GibbsSwapMoveCBMCNonEwald = a.GibbsSwapMoveCBMCNonEwald + b.GibbsSwapMoveCBMCNonEwald;
-  m.GibbsSwapMoveCBMCEwald = a.GibbsSwapMoveCBMCEwald + b.GibbsSwapMoveCBMCEwald;
-  m.GibbsSwapMoveCBMCTail = a.GibbsSwapMoveCBMCTail + b.GibbsSwapMoveCBMCTail;
-
-  m.GibbsSwapLambdaMoveCFCMC = a.GibbsSwapLambdaMoveCFCMC + b.GibbsSwapLambdaMoveCFCMC;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald =
-      a.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCEwald =
-      a.GibbsSwapLambdaInterChangeMoveCFCMCEwald + b.GibbsSwapLambdaInterChangeMoveCFCMCEwald;
-  m.GibbsSwapLambdaInterChangeMoveCFCMCTail =
-      a.GibbsSwapLambdaInterChangeMoveCFCMCTail + b.GibbsSwapLambdaInterChangeMoveCFCMCTail;
-  m.GibbsSwapLambdaChangeMoveCFCMCNonEwald =
-      a.GibbsSwapLambdaChangeMoveCFCMCNonEwald + b.GibbsSwapLambdaChangeMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaChangeMoveCFCMCEwald = a.GibbsSwapLambdaChangeMoveCFCMCEwald + b.GibbsSwapLambdaChangeMoveCFCMCEwald;
-  m.GibbsSwapLambdaChangeMoveCFCMCTail = a.GibbsSwapLambdaChangeMoveCFCMCTail + b.GibbsSwapLambdaChangeMoveCFCMCTail;
-  m.GibbsSwapLambdaShuffleMoveCFCMCNonEwald =
-      a.GibbsSwapLambdaShuffleMoveCFCMCNonEwald + b.GibbsSwapLambdaShuffleMoveCFCMCNonEwald;
-  m.GibbsSwapLambdaShuffleMoveCFCMCEwald =
-      a.GibbsSwapLambdaShuffleMoveCFCMCEwald + b.GibbsSwapLambdaShuffleMoveCFCMCEwald;
-  m.GibbsSwapLambdaShuffleMoveCFCMCTail = a.GibbsSwapLambdaShuffleMoveCFCMCTail + b.GibbsSwapLambdaShuffleMoveCFCMCTail;
-
-  m.WidomMoveCBMC = a.WidomMoveCBMC + b.WidomMoveCBMC;
-  m.WidomMoveCBMCNonEwald = a.WidomMoveCBMCNonEwald + b.WidomMoveCBMCNonEwald;
-  m.WidomMoveCBMCEwald = a.WidomMoveCBMCEwald + b.WidomMoveCBMCEwald;
-  m.WidomMoveCBMCTail = a.WidomMoveCBMCTail + b.WidomMoveCBMCTail;
-
-  m.WidomMoveCFCMC = a.WidomMoveCFCMC + b.WidomMoveCFCMC;
-  m.WidomMoveCFCMCExternalField = a.WidomMoveCFCMCExternalField + b.WidomMoveCFCMCExternalField;
-  m.WidomMoveCFCMCFramework = a.WidomMoveCFCMCFramework + b.WidomMoveCFCMCFramework;
-  m.WidomMoveCFCMCMolecule = a.WidomMoveCFCMCMolecule + b.WidomMoveCFCMCMolecule;
-  m.WidomMoveCFCMCEwald = a.WidomMoveCFCMCEwald + b.WidomMoveCFCMCEwald;
-  m.WidomMoveCFCMCTail = a.WidomMoveCFCMCTail + b.WidomMoveCFCMCTail;
-
-  m.WidomMoveCBCFCMC = a.WidomMoveCBCFCMC + b.WidomMoveCBCFCMC;
-  m.WidomMoveCBCFCMCExternalField = a.WidomMoveCBCFCMCExternalField + b.WidomMoveCBCFCMCExternalField;
-  m.WidomMoveCBCFCMCFramework = a.WidomMoveCBCFCMCFramework + b.WidomMoveCBCFCMCFramework;
-  m.WidomMoveCBCFCMCMolecule = a.WidomMoveCBCFCMCMolecule + b.WidomMoveCBCFCMCMolecule;
-  m.WidomMoveCBCFCMCNonEwald = a.WidomMoveCBCFCMCNonEwald + b.WidomMoveCBCFCMCNonEwald;
-  m.WidomMoveCBCFCMCEwald = a.WidomMoveCBCFCMCEwald + b.WidomMoveCBCFCMCEwald;
-  m.WidomMoveCBCFCMCTail = a.WidomMoveCBCFCMCTail + b.WidomMoveCBCFCMCTail;
-
-  m.volumeMove = a.volumeMove + b.volumeMove;
-  m.volumeMoveNonEwald = a.volumeMoveNonEwald + b.volumeMoveNonEwald;
-  m.volumeMoveEwald = a.volumeMoveEwald + b.volumeMoveEwald;
-  m.volumeMoveTail = a.volumeMoveTail + b.volumeMoveTail;
-
-  m.GibbsVolumeMove = a.GibbsVolumeMove + b.GibbsVolumeMove;
-  m.GibbsVolumeMoveNonEwald = a.GibbsVolumeMoveNonEwald + b.GibbsVolumeMoveNonEwald;
-  m.GibbsVolumeMoveEwald = a.GibbsVolumeMoveEwald + b.GibbsVolumeMoveEwald;
-  m.GibbsVolumeMoveTail = a.GibbsVolumeMoveTail + b.GibbsVolumeMoveTail;
-
-  m.ParallelTemperingSwap = a.ParallelTemperingSwap + b.ParallelTemperingSwap;
-  m.ParallelTemperingSwapEnergy = a.ParallelTemperingSwapEnergy + b.ParallelTemperingSwapEnergy;
-  m.ParallelTemperingSwapFugacity = a.ParallelTemperingSwapFugacity + b.ParallelTemperingSwapFugacity;
-
-  m.hybridMC = a.hybridMC + b.hybridMC;
+  for (auto& [moveType, moveTimings] : m.timingMap)
+  {
+    for (auto& [timingName, time] : moveTimings)
+    {
+      time = a.timingMap.at(moveType).at(timingName) + b.timingMap.at(moveType).at(timingName);
+    }
+  }
 
   return m;
 }

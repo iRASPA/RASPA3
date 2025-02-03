@@ -432,7 +432,7 @@ class Archive
   }
 
   template <typename T, size_t size>
-  const Archive& operator<<(const std::array<T, size>& v)
+  Archive& operator<<(const std::array<T, size>& v)
   {
     for (size_t i = 0; i < size; ++i)
     {
@@ -458,7 +458,7 @@ class Archive
   }
 
   template <class T>
-  const Archive& operator<<(const std::vector<T>& v)
+  Archive& operator<<(const std::vector<T>& v)
   {
     size_t len = v.size();
     *this << len;
@@ -478,13 +478,14 @@ class Archive
     {
       std::pair<T1, T2> value;
       *this >> value;
-      v.push_back(value);
+      v[value.first] = value.second;
+      // v.push_back(value);
     }
     return *this;
   }
 
   template <class T1, class T2>
-  const Archive& operator<<(const std::map<T1, T2>& v)
+  Archive& operator<<(const std::map<T1, T2>& v)
   {
     size_t len = v.size();
     *this << len;
@@ -503,7 +504,7 @@ class Archive
   }
 
   template <class T1, class T2>
-  const Archive& operator<<(const std::pair<T1, T2>& v)
+  Archive& operator<<(const std::pair<T1, T2>& v)
   {
     *this << v.first << v.second;
     return *this;
@@ -527,7 +528,7 @@ class Archive
     return *this;
   }
 
-  const Archive& operator<<(const std::string& v)
+  Archive& operator<<(const std::string& v)
   {
     size_t len = v.length();
     *this << len;

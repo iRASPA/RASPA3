@@ -55,10 +55,10 @@ import isotherm;
 import multi_site_isotherm;
 import bond_potential;
 import move_statistics;
-import mc_moves_probabilities_particles;
-import mc_moves_statistics_particles;
+import mc_moves_move_types;
+import mc_moves_probabilities;
+import mc_moves_statistics;
 import mc_moves_cputime;
-import mc_moves_count;
 import json;
 
 /**
@@ -129,8 +129,7 @@ export struct Component
    */
   Component(Component::Type type, size_t currentComponent, const ForceField &forceField,
             const std::string &componentName, std::optional<const std::string> fileName, size_t numberOfBlocks,
-            size_t numberOfLambdaBins,
-            const MCMoveProbabilitiesParticles &systemProbabilities = MCMoveProbabilitiesParticles(),
+            size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
@@ -156,7 +155,7 @@ export struct Component
    */
   Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
             double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks, size_t numberOfLambdaBins,
-            const MCMoveProbabilitiesParticles &systemProbabilities = MCMoveProbabilitiesParticles(),
+            const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
@@ -228,10 +227,9 @@ export struct Component
 
   std::vector<bool> connectivityTable{};  ///< Connectivity table for the component.
 
-  MCMoveProbabilitiesParticles mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
-  MCMoveStatisticsParticles mc_moves_statistics;        ///< Move statistics for Monte Carlo simulations.
-  MCMoveCpuTime mc_moves_cputime;                       ///< CPU time statistics for Monte Carlo moves.
-  MCMoveCount mc_moves_count;                           ///< Move counts for Monte Carlo simulations.
+  MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
+  MCMoveStatistics mc_moves_statistics;
+  MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
 
   PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
 

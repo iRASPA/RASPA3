@@ -20,8 +20,9 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import mc_moves_probabilities_particles;
-import mc_moves_probabilities_system;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import mc_moves_probabilities;
 
 TEST(MC, translation)
 {
@@ -84,14 +85,14 @@ TEST(MC, translation)
                                 {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                  // uint8_t componentId, uint8_t groupId
                                  Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                                5, 21, MCMoveProbabilitiesParticles(1.0));
+                                5, 21, MCMoveProbabilities(1.0));
 
   Component co2 = Component(
       1, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
       {// double3 position, double charge, double lambda, uint16_t type, uint8_t componentId, uint32_t moleculeId
        Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
        Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21, MCMoveProbabilitiesParticles(1.0, 0.0, 1.0));
+      5, 21, MCMoveProbabilities(1.0, 0.0, 1.0));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {5, 3}, 5);
 

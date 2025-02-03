@@ -40,7 +40,7 @@ export template <typename T>
  */
 struct MoveStatistics
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  uint64_t versionNumber{2};  ///< Version number for serialization purposes.
 
   bool operator==(MoveStatistics<T> const &) const = default;
 
@@ -53,6 +53,8 @@ struct MoveStatistics
   T totalAccepted{};        ///< Total moves accepted across all simulations.
   T maxChange{};            ///< Maximum allowed change in move parameters.
   T targetAcceptance{0.5};  ///< Target acceptance rate for moves.
+  T lowerLimit{};
+  T upperLimit{};
 
   /**
    * \brief Resets the statistical counters.
@@ -75,11 +77,8 @@ struct MoveStatistics
    *
    * Adjusts the maximum change allowed in move parameters based on the acceptance rate to approach the target
    * acceptance rate.
-   *
-   * \param lowerLimit The lower limit for `maxChange` adjustment.
-   * \param upperLimit The upper limit for `maxChange` adjustment.
    */
-  void optimizeAcceptance(T lowerLimit = T(0.0), T upperLimit = T(1.0))
+  void optimizeAcceptance()
   {
     T ratio = accepted / (counts + T(1.0));
     if constexpr (std::is_same_v<double, T>)
@@ -98,11 +97,46 @@ struct MoveStatistics
   }
 
   template <class U>
+  inline MoveStatistics &operator+=(const MoveStatistics<U> &b)
+  {
+    counts += b.counts;
+    constructed += b.constructed;
+    accepted += b.accepted;
+    allCounts += b.allCounts;
+    totalCounts += b.totalCounts;
+    totalConstructed += b.totalConstructed;
+    totalAccepted += b.totalAccepted;
+    maxChange = 0.5 * (maxChange + b.maxChange);
+    targetAcceptance = 0.5 * (targetAcceptance + b.targetAcceptance);
+    lowerLimit = 0.5 * (lowerLimit + b.lowerLimit);
+    upperLimit = 0.5 * (upperLimit + b.upperLimit);
+    return *this;
+  }
+
+  template <class U>
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<U> &m);
 
   template <class U>
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatistics<U> &m);
 };
+
+export template <class T>
+inline MoveStatistics<T> operator+(const MoveStatistics<T> &a, const MoveStatistics<T> &b)
+{
+  MoveStatistics<T> c;
+  c.counts = a.counts + b.counts;
+  c.constructed = a.constructed + b.constructed;
+  c.accepted = a.accepted + b.accepted;
+  c.allCounts = a.allCounts + b.allCounts;
+  c.totalCounts = a.totalCounts + b.totalCounts;
+  c.totalConstructed = a.totalConstructed + b.totalConstructed;
+  c.totalAccepted = a.totalAccepted + b.totalAccepted;
+  c.maxChange = 0.5 * (a.maxChange + b.maxChange);
+  c.targetAcceptance = 0.5 * (a.targetAcceptance + b.targetAcceptance);
+  c.lowerLimit = 0.5 * (a.lowerLimit + b.lowerLimit);
+  c.upperLimit = 0.5 * (a.upperLimit + b.upperLimit);
+  return c;
+}
 
 export template <class T>
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveStatistics<T> &m)
@@ -118,6 +152,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   archive << m.totalAccepted;
   archive << m.maxChange;
   archive << m.targetAcceptance;
+  archive << m.lowerLimit;
+  archive << m.upperLimit;
 
   return archive;
 }
@@ -143,6 +179,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
   archive >> m.totalAccepted;
   archive >> m.maxChange;
   archive >> m.targetAcceptance;
+  archive >> m.lowerLimit;
+  archive >> m.upperLimit;
 
   return archive;
 }
