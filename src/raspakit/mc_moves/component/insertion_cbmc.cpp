@@ -75,15 +75,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
   Component::GrowType growType = component.growType;
 
-  time_begin = std::chrono::system_clock::now();
-
   // Attempt to grow a new molecule using CBMC
+  time_begin = std::chrono::system_clock::now();
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
       system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
       system.numberOfTrialDirections);
-
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
@@ -104,28 +102,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Update statistics for successfully constructed molecules
   system.components[selectedComponent].mc_moves_statistics.addConstructed(move, 0);
 
-  time_begin = std::chrono::system_clock::now();
-
   // Compute energy difference due to Ewald Fourier components
+  time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, {});
-
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the Ewald part of the move
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
-
   // Compute tail energy difference due to long-range corrections
+  time_begin = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMolecule, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
-
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the tail corrections
