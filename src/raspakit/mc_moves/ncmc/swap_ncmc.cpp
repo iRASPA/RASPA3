@@ -82,9 +82,21 @@ std::pair<std::optional<RunningEnergy>, double3> NonEqCBMC(RandomNumber& random,
   // get Timestep from the max change
   double dt = system.mc_moves_statistics.getMaxChange(move);
 
+  bool insert = (random.uniform() < 0.5);
+
   // insertion / deletion without acceptance
-  if (random.uniform() < 0.5)  // Insertion
+  if (insert)  // Insertion
   {
+    // Check if TMMC is enabled and macrostate limit is not exceeded
+    if (system.tmmc.doTMMC)
+    {
+      size_t newN = oldN + 1;
+      if (newN > system.tmmc.maxMacrostate)
+      {
+        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
+      }
+    }
+
     // Attempt to grow a new molecule using CBMC
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
@@ -138,6 +150,47 @@ std::pair<std::optional<RunningEnergy>, double3> NonEqCBMC(RandomNumber& random,
     double correctionFactorEwald =
         std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy()));
 
+    // insert molecule into copied atom positions
+    std::vector<Atom>::const_iterator iterator = system.iteratorForMolecule(selectedComponent, system.numberOfMoleculesPerComponent[selectedComponent]);
+    atomPositions.insert(iterator, growData->atoms.begin(), growData->atoms.end());
+    std::vector<Molecule>::iterator moleculeIterator = system.indexForMolecule(selectedComponent, system.numberOfMoleculesPerComponent[selectedComponent]);
+    moleculePositions.insert(moleculeIterator, growData->molecule);
+
+    // MD INTEGRATION
+    // initialize the velocities according to Boltzmann distribution
+    // NOTE: it is important that the reference energy has the initial kinetic energies
+    Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
+
+    if (system.numberOfFrameworkAtoms == 0)
+    {
+      Integrators::removeCenterOfMassVelocityDrift(moleculePositions);
+    }
+
+    // before getting energy, recompute current energy
+    system.precomputeTotalGradients();
+
+    RunningEnergy referenceEnergy = system.runningEnergies;
+    referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+    referenceEnergy.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
+    RunningEnergy currentEnergy = referenceEnergy;
+
+    // integrate for N steps
+    time_begin = std::chrono::system_clock::now();
+    for (size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
+    {
+      currentEnergy = Integrators::velocityVerlet(
+          moleculePositions, moleculeAtomPositions, system.components, dt, thermostat, system.spanOfFrameworkAtoms(),
+          system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+          system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+    }
+    time_end = std::chrono::system_clock::now();
+
+    system.mc_moves_cputime[move]["Integration"] += (time_end - time_begin);
+    system.mc_moves_statistics.addConstructed(move);
+
+    double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
+
     // Compute the acceptance probability pre-factor
     double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
     double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
@@ -145,21 +198,15 @@ std::pair<std::optional<RunningEnergy>, double3> NonEqCBMC(RandomNumber& random,
                        system.simulationBox.volume /
                        double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
+
     // Calculate the acceptance probability Pacc
     double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
-
-    size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
-    // Check if TMMC is enabled and macrostate limit is not exceeded
-    if (system.tmmc.doTMMC)
-    {
-      size_t newN = oldN + 1;
-      if (newN > system.tmmc.maxMacrostate)
-      {
-        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-      }
-    }
+
+
+
+
   }
   else
   {
@@ -233,6 +280,52 @@ std::pair<std::optional<RunningEnergy>, double3> NonEqCBMC(RandomNumber& random,
         return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
       }
     }
+
+    // delete molecule from copied atom positions
+    std::vector<Atom>::const_iterator iterator = system.iteratorForMolecule(selectedComponent, system.numberOfMoleculesPerComponent[selectedComponent]);
+    atomPositions.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+    std::vector<Molecule>::iterator moleculeIterator = system.indexForMolecule(selectedComponent, system.numberOfMoleculesPerComponent[selectedComponent]);
+    moleculePositions.insert(moleculeIterator, moleculeIterator + 1);
+
+    // MD INTEGRATION
+
+    // initialize the velocities according to Boltzmann distribution
+    // NOTE: it is important that the reference energy has the initial kinetic energies
+    Integrators::initializeVelocities(random, moleculePositions, system.components, system.temperature);
+
+    if (system.numberOfFrameworkAtoms == 0)
+    {
+      Integrators::removeCenterOfMassVelocityDrift(moleculePositions);
+    }
+
+    // before getting energy, recompute current energy
+    system.precomputeTotalGradients();
+
+    RunningEnergy referenceEnergy = system.runningEnergies;
+    referenceEnergy.translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+    referenceEnergy.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(moleculePositions, system.components);
+    RunningEnergy currentEnergy = referenceEnergy;
+
+    // integrate for N steps
+    time_begin = std::chrono::system_clock::now();
+    for (size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
+    {
+      currentEnergy = Integrators::velocityVerlet(
+          moleculePositions, moleculeAtomPositions, system.components, dt, thermostat, system.spanOfFrameworkAtoms(),
+          system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+          system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+    }
+    time_end = std::chrono::system_clock::now();
+
+    system.mc_moves_cputime[move]["Integration"] += (time_end - time_begin);
+    system.mc_moves_statistics.addConstructed(move);
+
+    double drift = std::abs(currentEnergy.conservedEnergy() - referenceEnergy.conservedEnergy());
+
+
+
   }
+
 
 }
