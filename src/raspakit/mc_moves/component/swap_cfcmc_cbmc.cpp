@@ -602,7 +602,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_cputime[move]["Lambda-Framework"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Lambda-Framework"] += (time_end - time_begin);
     }
-    if (!frameworkEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!frameworkEnergyDifference.has_value())
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
 
     // Compute molecule-molecule energy difference
     time_begin = std::chrono::system_clock::now();
@@ -619,7 +622,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_cputime[move]["Lambda-Molecule"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Lambda-Molecule"] += (time_end - time_begin);
     }
-    if (!interEnergyDifference.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!interEnergyDifference.has_value())
+    {
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    }
 
     // Compute Ewald energy difference
     time_begin = std::chrono::system_clock::now();
@@ -672,6 +678,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       return {energyDifference, double3(0.0, 1.0, 0.0)};
     };
+
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
 }

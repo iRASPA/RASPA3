@@ -61,6 +61,7 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   MoveTypes move = MoveTypes::Widom;
   Component& component = system.components[selectedComponent];
+  std::chrono::system_clock::time_point t1, t2;
 
   // Update move statistics for Widom insertion move.
   component.mc_moves_statistics.addTrial(move);
@@ -70,17 +71,15 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   double cutOffCoulomb = system.forceField.cutOffCoulomb;
   Component::GrowType growType = component.growType;
 
-  // Record the start time for the CBMC molecule growth.
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
+  t1 = std::chrono::system_clock::now();
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
       system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
       system.numberOfTrialDirections);
-  // Record the end time for the CBMC molecule growth.
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
-  // Update CPU time statistics for CBMC non-Ewald calculations.
+  t2 = std::chrono::system_clock::now();
+
   component.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
   system.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);
 
@@ -98,24 +97,27 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
   // Update statistics for successfully constructed molecules.
   component.mc_moves_statistics.addConstructed(move);
 
-  // Record start time for Ewald Fourier energy difference calculation.
-  std::chrono::system_clock::time_point u1 = std::chrono::system_clock::now();
   // Compute the energy difference in Ewald Fourier space due to the new molecule.
+  t1 = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, {});
-  // Record end time for Ewald Fourier energy difference calculation.
-  std::chrono::system_clock::time_point u2 = std::chrono::system_clock::now();
-  // Update CPU time statistics for Ewald calculations.
-  component.mc_moves_cputime[move]["Ewald"] += (u2 - u1);
-  system.mc_moves_cputime[move]["Ewald"] += (u2 - u1);
+  t2 = std::chrono::system_clock::now();
+
+  component.mc_moves_cputime[move]["Ewald"] += (t2 - t1);
+  system.mc_moves_cputime[move]["Ewald"] += (t2 - t1);
 
   // Compute the tail corrections for the energy due to the new molecule.
+  t1 = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference =
       Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMolecule, {}) +
       Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
+  t2 = std::chrono::system_clock::now();
+
+  component.mc_moves_cputime[move]["Tail"] += (t2 - t1);
+  system.mc_moves_cputime[move]["Tail"] += (t2 - t1);
 
   // Compute the correction factor from Ewald and tail energy differences.
   double correctionFactorEwald =
@@ -124,8 +126,5 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
-  // Return the Widom insertion weight for the new molecule.
   return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight, 0.0};
-  // return {correctionFactorEwald * growData->RosenbluthWeight / idealGasRosenbluthWeight,
-  // tailEnergyDifference.potentialEnergy()};
 }

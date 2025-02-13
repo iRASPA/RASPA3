@@ -71,9 +71,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
   // Proceed only if there is at least one molecule of the selected component
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
-    // Update the constructed count for the move statistics
-    component.mc_moves_statistics.addConstructed(move, 1);
-
     // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
@@ -116,6 +113,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Update the CPU time statistics for the tail corrections
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+
+    // Update the constructed count for the move statistics
+    component.mc_moves_statistics.addConstructed(move, 1);
 
     // Calculate the correction factor for Ewald summation
     double correctionFactorEwald =

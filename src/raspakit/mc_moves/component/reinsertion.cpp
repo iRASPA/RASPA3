@@ -111,20 +111,21 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Increment the constructed moves count.
   component.mc_moves_statistics.addConstructed(move);
 
-  time_begin = std::chrono::system_clock::now();
   // Retrace the old molecule configuration using CBMC retracing.
+  time_begin = std::chrono::system_clock::now();
   ChainData retraceData = CBMC::retraceMoleculeReinsertion(
       random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
       system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
       molecule_atoms, growData->storedR, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
+
   // Record CPU time taken for the retracing step.
   component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
-  time_begin = std::chrono::system_clock::now();
   // Compute the energy difference in the Fourier space due to Ewald summation.
+  time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
       system.simulationBox, newMolecule, molecule_atoms);

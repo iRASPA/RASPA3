@@ -34,21 +34,39 @@ export enum class MoveTypes : size_t {
   WidomCBCFCMC = 16,
   ParallelTempering = 17,
   HybridMC = 18,
-  NonEqCBMC = 19,
   Count
 };
 
-export std::unordered_set<MoveTypes> componentMoves = {
-    MoveTypes::Translation,     MoveTypes::RandomTranslation,  MoveTypes::Rotation, MoveTypes::RandomRotation,
-    MoveTypes::ReinsertionCBMC, MoveTypes::IdentityChangeCBMC, MoveTypes::Swap,     MoveTypes::SwapCBMC,
-    MoveTypes::SwapCFCMC,       MoveTypes::SwapCBCFCMC,        MoveTypes::Widom,    MoveTypes::WidomCFCMC,
-    MoveTypes::WidomCBCFCMC,    MoveTypes::NonEqCBMC,
+export std::unordered_set<MoveTypes> componentMoves = 
+{
+  MoveTypes::Translation,
+  MoveTypes::RandomTranslation,
+  MoveTypes::Rotation,
+  MoveTypes::RandomRotation,
+  MoveTypes::ReinsertionCBMC,
+  MoveTypes::IdentityChangeCBMC,
+  MoveTypes::Swap,
+  MoveTypes::SwapCBMC,
+  MoveTypes::SwapCFCMC,
+  MoveTypes::SwapCBCFCMC,
+  MoveTypes::Widom,
+  MoveTypes::WidomCFCMC,
+  MoveTypes::WidomCBCFCMC
 };
 
-export std::unordered_set<MoveTypes> systemMoves = {MoveTypes::VolumeChange, MoveTypes::HybridMC};
+export std::unordered_set<MoveTypes> systemMoves = 
+{
+  MoveTypes::VolumeChange,
+  MoveTypes::HybridMC
+};
 
-export std::unordered_set<MoveTypes> crossSystemMoves = {MoveTypes::GibbsVolume, MoveTypes::GibbsSwapCBMC,
-                                                         MoveTypes::GibbsSwapCFCMC, MoveTypes::ParallelTempering};
+export std::unordered_set<MoveTypes> crossSystemMoves = 
+{
+  MoveTypes::GibbsVolume,
+  MoveTypes::GibbsSwapCBMC,
+  MoveTypes::GibbsSwapCFCMC,
+  MoveTypes::ParallelTempering
+};
 
 export std::unordered_set<MoveTypes> groupMoves = {};
 

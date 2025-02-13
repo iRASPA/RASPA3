@@ -757,8 +757,7 @@ void System::determineFractionalComponents()
     }
 
     // Gibbs
-    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
+    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
     {
       numberOfFractionalMoleculesPerComponent[i] += 1;
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;

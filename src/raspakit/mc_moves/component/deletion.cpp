@@ -70,9 +70,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
   if (system.numberOfIntegerMoleculesPerComponent[selectedComponent] > 0)
   {
-    // Increment constructed swap deletion move counts
-    component.mc_moves_statistics.addConstructed(move, 1);
-
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
     // Compute external field energy contribution
@@ -117,6 +114,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // Get the total difference in energy
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                      energyFourierDifference + tailEnergyDifference;
+    
+    // Increment constructed swap deletion move counts
+    component.mc_moves_statistics.addConstructed(move, 1);
 
     // Calculate the acceptance probability
     double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;

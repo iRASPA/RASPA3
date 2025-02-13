@@ -146,11 +146,9 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("swapCBCFCMCProbability") = 0.0, pybind11::arg("gibbsVolumeChangeProbability") = 0.0,
            pybind11::arg("gibbsSwapCBMCProbability") = 0.0, pybind11::arg("gibbsSwapCFCMCProbability") = 0.0,
            pybind11::arg("widomProbability") = 0.0, pybind11::arg("widomCFCMCProbability") = 0.0,
-           pybind11::arg("widomCBCFCMCProbability") = 0.0,
-           pybind11::arg("parallelTemperingProbability") = 0.0 pybind11::arg("hybridMCProbability") = 0.0)
-      .def("setProbability", &setProbability)
-      .def("getProbability", &getProbability)
-      .def("join", &join);
+           pybind11::arg("widomCBCFCMCProbability") = 0.0, pybind11::arg("parallelTemperingProbability") = 0.0,
+           pybind11::arg("hybridMCProbability") = 0.0)
+      .def("join", &MCMoveProbabilities::join);
 
   pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
