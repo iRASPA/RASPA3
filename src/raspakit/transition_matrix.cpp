@@ -195,7 +195,7 @@ void TransitionMatrix::writeStatistics()
     std::print(textTMMCFile, "# maximum microstate: {}\n", maxMacrostate);
     std::print(textTMMCFile, "# column 1: N\n");
     std::print(textTMMCFile, "# column 2: CM[-1]\n");
-    std::print(textTMMCFile, "# column 3: CM[ 0]0n");
+    std::print(textTMMCFile, "# column 3: CM[ 0]0\n");
     std::print(textTMMCFile, "# column 4: CM[+1]\n");
     std::print(textTMMCFile, "# column 5: bias\n");
     std::print(textTMMCFile, "# column 6: lnpi\n");
