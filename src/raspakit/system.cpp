@@ -1901,7 +1901,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.cz -= pressureTailCorrection;
 
   // Correct rigid molecule contribution using the constraints forces
-  double3x3 correctionTerm;
+  double3x3 correctionTerm{};
   for (size_t componentId = 0; componentId < components.size(); ++componentId)
   {
     if (components[componentId].rigid)
@@ -1938,6 +1938,13 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     }
   }
   pressureInfo.second = -(pressureInfo.second - correctionTerm);
+
+  double temp = 0.5 * (pressureInfo.second.ay + pressureInfo.second.bx);
+  pressureInfo.second.ay = pressureInfo.second.bx = temp;
+  temp = 0.5 * (pressureInfo.second.az + pressureInfo.second.cx);
+  pressureInfo.second.az = pressureInfo.second.cx = temp;
+  temp = 0.5 * (pressureInfo.second.bz + pressureInfo.second.cy);
+  pressureInfo.second.bz = pressureInfo.second.cy = temp;
 
   return pressureInfo;
 }
