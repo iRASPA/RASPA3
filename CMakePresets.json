@@ -42,12 +42,13 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{CONDA_PREFIX}/lib",
         "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
         "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "PACKAGE_INSTALL_PREFIX" : "${dollar}{CONDA_PREFIX}",
         "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
         "BUILD_MAC_PACKAGE": false,
         "SKIP_EXECUTABLE" : false,
-        "BUILD_TESTING": false,
+        "BUILD_TESTING": true,
         "BUILD_PYTHON": false
       },
       "vendor": {
@@ -73,7 +74,8 @@
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{CONDA_PREFIX}/lib",
         "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
         "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "PACKAGE_INSTALL_PREFIX" : "${dollar}{CONDA_PREFIX}",
         "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
         "BUILD_MAC_PACKAGE": false,
@@ -271,8 +273,8 @@
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
         "Python3_EXECUTABLE": "/usr/local/bin/python3.12",
-        "BUILD_TESTING": false,
-        "BUILD_PYTHON": true
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
