@@ -23,6 +23,7 @@ add_executable(unit_tests_raspakit
   hessian_inter_real_ewald.cpp
   third_derivative_inter_lennard_jones.cpp
   third_derivative_inter_real_ewald.cpp
+  sixth_derivative_inter_lennard_jones.cpp
   grids.cpp
   main.cpp)
 
