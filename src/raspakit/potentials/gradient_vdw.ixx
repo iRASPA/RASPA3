@@ -64,6 +64,10 @@ export [[clang::always_inline]] inline GradientFactor potentialVDWGradient(const
           (groupIdA ? scalingB * (term + dlambda_term) : 0.0) + (groupIdB ? scalingA * (term + dlambda_term) : 0.0),
           12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr);
     }
+    case VDWParameters::Type::RepulsiveHarmonic:
+    {
+      return GradientFactor(0.0, 0.0, 0.0);
+    }
     default:
       return GradientFactor(0.0, 0.0, 0.0);
   }

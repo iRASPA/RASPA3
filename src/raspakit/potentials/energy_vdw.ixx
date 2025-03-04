@@ -71,7 +71,7 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
       double arg1 = forcefield(typeA, typeB).parameters.x;
       double arg2 = forcefield(typeA, typeB).parameters.y;
       double temp = (1.0 - r / arg2);
-      return EnergyFactor(temp < 0.0 ? 0.0 : arg1 * temp * temp, 0.0);
+      return EnergyFactor(r >= arg2 ? 0.0 : 0.5 * arg1 * temp * temp, 0.0);
     }
     default:
       return EnergyFactor(0.0, 0.0);

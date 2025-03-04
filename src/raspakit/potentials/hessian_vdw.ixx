@@ -67,6 +67,10 @@ export [[clang::always_inline]] inline HessianFactor potentialVDWHessian(const F
           24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr)
         );
     }
+    case VDWParameters::Type::RepulsiveHarmonic:
+    {
+      return HessianFactor(0.0, 0.0, 0.0, 0.0);
+    }
     default:
       return HessianFactor(0.0, 0.0, 0.0, 0.0);
   }
