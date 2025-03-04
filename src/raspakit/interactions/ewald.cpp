@@ -1101,6 +1101,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     }
   }
 
+
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
   for (size_t i = 0; i != atomPositions.size(); ++i)
@@ -1149,6 +1150,18 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
           temp = chargeA * chargeB * Bt1;
           span[i].gradient -= temp * dr;
           span[j].gradient += temp * dr;
+
+          strainDerivative.ax -= temp * dr.x * dr.x;
+          strainDerivative.bx -= temp * dr.y * dr.x;
+          strainDerivative.cx -= temp * dr.z * dr.x;
+
+          strainDerivative.ay -= temp * dr.x * dr.y;
+          strainDerivative.by -= temp * dr.y * dr.y;
+          strainDerivative.cy -= temp * dr.z * dr.y;
+
+          strainDerivative.az -= temp * dr.x * dr.z;
+          strainDerivative.bz -= temp * dr.y * dr.z;
+          strainDerivative.cz -= temp * dr.z * dr.z;
         }
       }
       index += size;
