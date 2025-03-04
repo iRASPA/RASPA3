@@ -10,6 +10,7 @@
 #include <mutex>
 #include <complex>
 #include <locale>
+#include <string_view>
 #endif
 
 #ifndef USE_LEGACY_HEADERS
@@ -24,6 +25,7 @@ import <semaphore>;
 import <mutex>;
 import <complex>;
 import <locale>;
+import <string_view>;
 #endif
 
 import archive;
@@ -39,14 +41,16 @@ import isotherm_fitting_simulation;
 import multi_site_isotherm;
 
 int main(int argc, char* argv[])
-{  
+{
+  using namespace std::literals;
+
   setlocale(LC_ALL, "en-US");
 
-  std::vector<std::string> cmdLineArgs(argv, argv+argc);
+  std::vector<std::string_view> args(argv, argv + argc);
 
-  for(auto& arg : cmdLineArgs)
+  for(auto it = args.begin(); it != args.end(); ++it)
   {
-    if(arg == "--help" || arg == "-help")
+    if(*it == "--help"sv || *it == "-h"sv)
     {
       std::cout << "RASPA is a software package for simulating adsorption and\n"
                    "diffusion of molecules in flexible nanoporous materials.\n"
@@ -57,6 +61,10 @@ int main(int argc, char* argv[])
                    "Fractional Component Monte Carlo, and Reactive Monte Carlo.\n";
       return 0;
     }
+    //else if (*it == "--size"sv)
+    //{
+    //  std::ispanstream(*++it) >> opts.size;
+    //}
   }
 
   try
