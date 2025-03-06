@@ -3,7 +3,20 @@ add_executable(unit_tests_foundationkit
                main.cpp)
 
 
-if (LINUX)
+if (CONDA)
+  target_link_libraries(unit_tests_foundationkit
+                        PUBLIC
+                        libs::raspakit
+                        ${BLAS_LIBRARIES}
+                        ${LAPACK_LIBRARIES}
+                        ${HDF5_LIBRARIES}
+                        OpenMP::OpenMP_CXX
+                        GTest::gtest
+                        GTest::gtest_main
+                        ZLIB::ZLIB
+                        -lpthread
+)
+elseif (LINUX)
   target_link_libraries(unit_tests_foundationkit
                         PUBLIC
                         libs::raspakit
