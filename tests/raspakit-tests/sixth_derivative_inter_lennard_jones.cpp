@@ -1027,3 +1027,140 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
   }
 }
 
+// Convert Fractional derivatives back to Cartesian
+// ================================================
+
+
+TEST(sixth_derivative_inter_lennard_jones, Test_fractional_to_Cartesian_methane_in_CHA_triclinic_1x1x1)
+{
+  double tolerance = 1e-4;
+
+  ForceField forceField = ForceField(
+      {
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
+      ForceField::MixingRule::Lorentz_Berthelot, 21.8, 21.8, 21.8, false, false, true);
+
+  Framework f = Framework(
+      0, forceField, "CHA", SimulationBox(9.459, 9.459, 9.459, 
+        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0), 1,
+      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
+       // uint8_t groupId
+        Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)
+      },
+      int3(1, 1, 1));
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
+                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
+                           // uint8_t componentId, uint8_t groupId
+                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
+                          5, 21);
+
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
+
+  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+
+  size_t typeB = 2;
+  double3 posB_reference = double3(5.1, 4.25, 5.4);
+
+  std::array<double, 27> analyticalCartesian = Interactions::calculateTriquinticCartesianAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+  std::array<double, 27> analyticalFractional = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+  double3 first_derivative_fractional{analyticalFractional[1], analyticalFractional[2], analyticalFractional[3]};
+  double3x3 second_derivative_fractional{double3{analyticalFractional[4], analyticalFractional[5], analyticalFractional[6]},
+                                         double3{analyticalFractional[5], analyticalFractional[7], analyticalFractional[8]},
+                                         double3{analyticalFractional[6], analyticalFractional[8], analyticalFractional[9]}};
+
+
+  double3 first_derivative_Cartesian{};
+  double3x3 second_derivative_Cartesian{};
+
+  first_derivative_Cartesian = double3x3::transpose(system.simulationBox.inverseCell) * first_derivative_fractional;
+
+  second_derivative_Cartesian = double3x3::transpose(system.simulationBox.inverseCell) * second_derivative_fractional * system.simulationBox.inverseCell;
+
+  EXPECT_NEAR(first_derivative_Cartesian[0], analyticalCartesian[1], tolerance);  
+  EXPECT_NEAR(first_derivative_Cartesian[1], analyticalCartesian[2], tolerance);  
+  EXPECT_NEAR(first_derivative_Cartesian[2], analyticalCartesian[3], tolerance);  
+
+  EXPECT_NEAR(second_derivative_Cartesian[0][0], analyticalCartesian[4], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[0][1], analyticalCartesian[5], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[0][2], analyticalCartesian[6], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[1][1], analyticalCartesian[7], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[1][2], analyticalCartesian[8], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[2][2], analyticalCartesian[9], tolerance);  
+
+  first_derivative_Cartesian = double3{};
+  second_derivative_Cartesian = double3x3{};
+  for(const size_t &p : std::array<size_t, 3>{0, 1, 2})
+  {
+    first_derivative_Cartesian[0] += system.simulationBox.inverseCell[0][p] * first_derivative_fractional[p];
+    first_derivative_Cartesian[1] += system.simulationBox.inverseCell[1][p] * first_derivative_fractional[p];
+    first_derivative_Cartesian[2] += system.simulationBox.inverseCell[2][p] * first_derivative_fractional[p];
+
+    for(const size_t &q : std::array<size_t, 3>{0, 1, 2})
+    {
+      second_derivative_Cartesian[0][0] += system.simulationBox.inverseCell[0][p] * system.simulationBox.inverseCell[0][q] * second_derivative_fractional[p][q];
+      second_derivative_Cartesian[0][1] += system.simulationBox.inverseCell[0][p] * system.simulationBox.inverseCell[1][q] * second_derivative_fractional[p][q];
+      second_derivative_Cartesian[0][2] += system.simulationBox.inverseCell[0][p] * system.simulationBox.inverseCell[2][q] * second_derivative_fractional[p][q];
+      second_derivative_Cartesian[1][1] += system.simulationBox.inverseCell[1][p] * system.simulationBox.inverseCell[1][q] * second_derivative_fractional[p][q];
+      second_derivative_Cartesian[1][2] += system.simulationBox.inverseCell[1][p] * system.simulationBox.inverseCell[2][q] * second_derivative_fractional[p][q];
+      second_derivative_Cartesian[2][2] += system.simulationBox.inverseCell[2][p] * system.simulationBox.inverseCell[2][q] * second_derivative_fractional[p][q];
+    }
+  }
+
+  EXPECT_NEAR(first_derivative_Cartesian[0], analyticalCartesian[1], tolerance);  
+  EXPECT_NEAR(first_derivative_Cartesian[1], analyticalCartesian[2], tolerance);  
+  EXPECT_NEAR(first_derivative_Cartesian[2], analyticalCartesian[3], tolerance);  
+
+  EXPECT_NEAR(second_derivative_Cartesian[0][0], analyticalCartesian[4], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[0][1], analyticalCartesian[5], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[0][2], analyticalCartesian[6], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[1][1], analyticalCartesian[7], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[1][2], analyticalCartesian[8], tolerance);  
+  EXPECT_NEAR(second_derivative_Cartesian[2][2], analyticalCartesian[9], tolerance);  
+
+
+
+}
