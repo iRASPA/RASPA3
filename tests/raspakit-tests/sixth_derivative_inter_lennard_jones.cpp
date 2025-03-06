@@ -32,6 +32,10 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
+
+// Cartesian derivatives
+// =====================
+
 TEST(sixth_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
@@ -729,6 +733,297 @@ TEST(sixth_derivative_inter_lennard_jones, Test_sixth_derivative_cartesian_metha
         }
       }
     }
-
   }
 }
+
+// Fractional derivatives for the triquintic interpolation algorithm
+// =================================================================
+
+
+TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CHA_triclinic_1x1x1)
+{
+  ForceField forceField = ForceField(
+      {
+          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
+          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
+          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
+          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
+          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
+      },
+      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
+       VDWParameters(85.671, 3.017)},
+      ForceField::MixingRule::Lorentz_Berthelot, 21.8, 21.8, 21.8, false, false, true);
+
+  Framework f = Framework(
+      0, forceField, "CHA", SimulationBox(9.459, 9.459, 9.459, 
+        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0), 1,
+      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
+       // uint8_t groupId
+        Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
+        Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
+        Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)
+      },
+      int3(1, 1, 1));
+  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
+                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
+                           // uint8_t componentId, uint8_t groupId
+                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
+                          5, 21);
+
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
+
+  std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
+
+  size_t typeB = 2;
+  double3 posB_reference = double3(5.1, 4.25, 5.4);
+  double3 posB;
+
+  // first derivatives
+  {
+    double delta = 1e-6;
+    double tolerance = 1e-3;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_x = (x_right[0] - x_left[0]) / delta;
+    double numerical_gradient_y = (y_right[0] - y_left[0]) / delta;
+    double numerical_gradient_z = (z_right[0] - z_left[0]) / delta;
+
+    EXPECT_NEAR(analytical[1], numerical_gradient_x, tolerance);  // dU / dx
+    EXPECT_NEAR(analytical[2], numerical_gradient_y, tolerance);  // dU / dy
+    EXPECT_NEAR(analytical[3], numerical_gradient_z, tolerance);  // dU / dz
+  }
+
+
+  // second derivatives
+  {
+    double delta = 1e-6;
+    double tolerance = 1e-3;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_xx = (x_right[1] - x_left[1]) / delta;
+    double numerical_gradient_xy = (y_right[1] - y_left[1]) / delta;
+    double numerical_gradient_xz = (z_right[1] - z_left[1]) / delta;
+    double numerical_gradient_yy = (y_right[2] - y_left[2]) / delta;
+    double numerical_gradient_yz = (y_right[3] - y_left[3]) / delta;
+    double numerical_gradient_zz = (z_right[3] - z_left[3]) / delta;
+
+    EXPECT_NEAR(analytical[4], numerical_gradient_xx, tolerance);  // d^2U / dx^2
+    EXPECT_NEAR(analytical[5], numerical_gradient_xy, tolerance);  // d^2U / dx dy
+    EXPECT_NEAR(analytical[6], numerical_gradient_xz, tolerance);  // d^2U / dx dz
+    EXPECT_NEAR(analytical[7], numerical_gradient_yy, tolerance);  // d^2U / dy^2
+    EXPECT_NEAR(analytical[8], numerical_gradient_yz, tolerance);  // d^2U / dy dz
+    EXPECT_NEAR(analytical[9], numerical_gradient_zz, tolerance);  // d^2U / dz
+  }
+
+  // third derivatives
+  {
+    double delta = 1e-6;
+    double tolerance = 1e-3;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_xxy = (y_right[4] - y_left[4]) / delta;
+    double numerical_gradient_xxz = (z_right[4] - z_left[4]) / delta;
+    double numerical_gradient_xyy = (y_right[5] - y_left[5]) / delta;
+    double numerical_gradient_xyz = (z_right[5] - z_left[5]) / delta;
+    double numerical_gradient_yyz = (z_right[7] - z_left[7]) / delta;
+    double numerical_gradient_xzz = (z_right[6] - z_left[6]) / delta;
+    double numerical_gradient_yzz = (z_right[8] - z_left[8]) / delta;
+
+    EXPECT_NEAR(analytical[10], numerical_gradient_xxy, tolerance);  // d^3U / dx dx dy
+    EXPECT_NEAR(analytical[11], numerical_gradient_xxz, tolerance);  // d^3U / dx dx dy
+    EXPECT_NEAR(analytical[12], numerical_gradient_xyy, tolerance);  // d^3U / dx dy dy
+    EXPECT_NEAR(analytical[13], numerical_gradient_xyz, tolerance);  // d^3U / dx dy dz
+    EXPECT_NEAR(analytical[14], numerical_gradient_yyz, tolerance);  // d^3U / dy dy dz
+    EXPECT_NEAR(analytical[15], numerical_gradient_xzz, tolerance);  // d^3U / dx dz dz
+    EXPECT_NEAR(analytical[16], numerical_gradient_yzz, tolerance);  // d^3U / dy dz dz
+  }
+
+  // fourth derivatives
+  {
+    double delta = 1e-6;
+    double tolerance = 1e-3;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_xxyy = (y_right[10] - y_left[10]) / delta;
+    double numerical_gradient_xxzz = (x_right[15] - x_left[15]) / delta;
+    double numerical_gradient_yyzz = (z_right[14] - z_left[14]) / delta;
+    double numerical_gradient_xxyz = (x_right[13] - x_left[13]) / delta;
+    double numerical_gradient_xyyz = (y_right[13] - y_left[13]) / delta;
+    double numerical_gradient_xyzz = (z_right[13] - z_left[13]) / delta;
+
+    EXPECT_NEAR(analytical[17], numerical_gradient_xxyy, tolerance);  // d^4U / dx dx dy dy
+    EXPECT_NEAR(analytical[18], numerical_gradient_xxzz, tolerance);  // d^4U / dx dx dz dz
+    EXPECT_NEAR(analytical[19], numerical_gradient_yyzz, tolerance);  // d^4U / dy dy dz dz
+    EXPECT_NEAR(analytical[20], numerical_gradient_xxyz, tolerance);  // d^4U / dx dx dy dz
+    EXPECT_NEAR(analytical[21], numerical_gradient_xyyz, tolerance);  // d^4U / dx dy dy dz
+    EXPECT_NEAR(analytical[22], numerical_gradient_xyzz, tolerance);  // d^4U / dx dy dz dz
+  }
+
+  // fifth derivatives
+  {
+    double delta = 1e-6;
+    double tolerance = 1e-2;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_xxyyz = (z_right[17] - z_left[17]) / delta;
+    double numerical_gradient_xxyzz = (y_right[18] - y_left[18]) / delta;
+    double numerical_gradient_xyyzz = (x_right[19] - x_left[19]) / delta;
+
+    EXPECT_NEAR(analytical[23], numerical_gradient_xxyyz, tolerance);  // d^5U / dx dx dy dy dz
+    EXPECT_NEAR(analytical[24], numerical_gradient_xxyzz, tolerance);  // d^5U / dx dx dy dz dz
+    EXPECT_NEAR(analytical[25], numerical_gradient_xyyzz, tolerance);  // d^5U / dx dy dy dz dz
+  }
+
+  // sixth derivative
+  {
+    double delta = 1e-5;
+    double tolerance = 1.0;
+
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+
+    double3 s = system.simulationBox.inverseCell * posB_reference;
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+
+    double numerical_gradient_xxyyzz = (z_right[23] - z_left[23]) / delta;
+
+    EXPECT_NEAR(analytical[26], numerical_gradient_xxyyzz, tolerance);  // d^6U / dx dx dy dy dz dz
+  }
+}
+

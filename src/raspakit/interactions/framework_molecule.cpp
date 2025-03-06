@@ -1062,7 +1062,6 @@ std::tuple<double, std::array<double,3>, std::array<std::array<double,3>,3>, std
   return {energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative};
 }
 
-
 std::tuple<double, double3, double3x3, double3x3x3> 
   Interactions::calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
                                                           double3 posA, double chargeA, std::span<const Atom> frameworkAtoms)
@@ -1149,5 +1148,219 @@ std::tuple<double, double3, double3x3, double3x3x3>
   }
 
   return {energy, first_derivative, second_derivative, third_derivative};
+}
+
+std::array<double, 8>  Interactions::calculateTricubicCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                             double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative, sixth_derivative] = 
+    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+
+  return {
+     energy,
+
+     first_derivative[0],
+     first_derivative[1],
+     first_derivative[2],
+
+     second_derivative[0][1],
+     second_derivative[0][2],
+     second_derivative[1][2],
+
+     third_derivative[0][1][2]
+  };
+}
+
+std::array<double, 8>  Interactions::calculateTricubicFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                              double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  double energy_fractional{0.0};
+  std::array<double,3> first_derivative_fractional{};
+  std::array<std::array<double,3>,3> second_derivative_fractional{};
+  std::array<std::array<std::array<double,3>,3>,3> third_derivative_fractional{};
+
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative, sixth_derivative] = 
+    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+
+  for(const size_t &p : std::array<size_t, 3>{0, 1, 2})
+  {
+    first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
+    first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
+    first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
+    for(const size_t &q : std::array<size_t, 3>{0, 1, 2})
+    {
+      second_derivative_fractional[0][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[0][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[1][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      for(const size_t &r : std::array<size_t, 3>{0, 1, 2})
+      {
+        third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+      }
+    }
+  }
+
+  return {
+     energy_fractional,
+
+     first_derivative_fractional[0],
+     first_derivative_fractional[1],
+     first_derivative_fractional[2],
+
+     second_derivative_fractional[0][1],
+     second_derivative_fractional[0][2],
+     second_derivative_fractional[1][2],
+
+     third_derivative_fractional[0][1][2]
+  };
+}
+
+
+std::array<double, 27>  Interactions::calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                                double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative] = 
+    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+
+  return std::array<double, 27>{
+     energy,
+
+     first_derivative[0],
+     first_derivative[1],
+     first_derivative[2],
+
+     second_derivative[0][0],
+     second_derivative[0][1],
+     second_derivative[0][2],
+     second_derivative[1][1],
+     second_derivative[1][2],
+     second_derivative[2][2],
+
+     third_derivative[0][0][1],
+     third_derivative[0][0][2],
+     third_derivative[0][1][1],
+     third_derivative[0][1][2],
+     third_derivative[1][1][2],
+     third_derivative[0][2][2],
+     third_derivative[1][2][2],
+
+     fourth_derivative[0][0][1][1],
+     fourth_derivative[0][0][2][2],
+     fourth_derivative[1][1][2][2],
+     fourth_derivative[0][0][1][2],
+     fourth_derivative[0][1][1][2],
+     fourth_derivative[0][1][2][2],
+
+     fifth_derivative[0][0][1][1][2],
+     fifth_derivative[0][0][1][2][2],
+     fifth_derivative[0][1][1][2][2],
+
+     sixth_derivative[0][0][1][1][2][2]
+  };
+}
+
+std::array<double, 27>  Interactions::calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                                                 double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  double energy_fractional{0.0};
+  std::array<double,3> first_derivative_fractional{};
+  std::array<std::array<double,3>,3> second_derivative_fractional{};
+  std::array<std::array<std::array<double,3>,3>,3> third_derivative_fractional{};
+  std::array<std::array<std::array<std::array<double,3>,3>,3>,3> fourth_derivative_fractional{};
+  std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3> fifth_derivative_fractional{};
+  std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3> sixth_derivative_fractional{};
+  
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative] = 
+    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+
+
+  energy_fractional = energy;
+  for(const size_t &p : std::array<size_t, 3>{0, 1, 2})
+  {
+    first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
+    first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
+    first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
+    for(const size_t &q : std::array<size_t, 3>{0, 1, 2})
+    {
+      second_derivative_fractional[0][0] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * second_derivative[p][q];
+      second_derivative_fractional[0][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[0][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[1][1] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[1][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[2][2] += simulationBox.cell[2][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      for(const size_t &r : std::array<size_t, 3>{0, 1, 2})
+      {
+        third_derivative_fractional[0][0][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][0][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[1][1][2] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][2][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+
+        for(const size_t &s : std::array<size_t, 3>{0, 1, 2})
+        {
+          fourth_derivative_fractional[0][0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * simulationBox.cell[1][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][0][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[1][1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+
+          for(const size_t &t : std::array<size_t, 3>{0, 1, 2})
+          {
+            fifth_derivative_fractional[0][0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * 
+                                                          simulationBox.cell[1][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+            fifth_derivative_fractional[0][0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * 
+                                                          simulationBox.cell[2][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+            fifth_derivative_fractional[0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * 
+                                                          simulationBox.cell[2][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+
+            for(const size_t &u : std::array<size_t, 3>{0, 1, 2})
+            {
+              sixth_derivative_fractional[0][0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * 
+                                                               simulationBox.cell[1][r] * simulationBox.cell[1][s] *
+                                                               simulationBox.cell[2][t] * simulationBox.cell[2][u] * sixth_derivative[p][q][r][s][t][u];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return {
+     energy_fractional,
+
+     first_derivative_fractional[0],
+     first_derivative_fractional[1],
+     first_derivative_fractional[2],
+
+     second_derivative_fractional[0][0],
+     second_derivative_fractional[0][1],
+     second_derivative_fractional[0][2],
+     second_derivative_fractional[1][1],
+     second_derivative_fractional[1][2],
+     second_derivative_fractional[2][2],
+
+     third_derivative_fractional[0][0][1],
+     third_derivative_fractional[0][0][2],
+     third_derivative_fractional[0][1][1],
+     third_derivative_fractional[0][1][2],
+     third_derivative_fractional[1][1][2],
+     third_derivative_fractional[0][2][2],
+     third_derivative_fractional[1][2][2],
+
+     fourth_derivative_fractional[0][0][1][1],
+     fourth_derivative_fractional[0][0][2][2],
+     fourth_derivative_fractional[1][1][2][2],
+     fourth_derivative_fractional[0][0][1][2],
+     fourth_derivative_fractional[0][1][1][2],
+     fourth_derivative_fractional[0][1][2][2],
+
+     fifth_derivative_fractional[0][0][1][1][2],
+     fifth_derivative_fractional[0][0][1][2][2],
+     fifth_derivative_fractional[0][1][1][2][2],
+
+     sixth_derivative_fractional[0][0][1][1][2][2]
+  };
 }
 
