@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstddef>
 #include <atomic>
 #include <chrono>
 #include <cmath>

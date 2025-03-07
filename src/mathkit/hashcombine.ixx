@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <limits>

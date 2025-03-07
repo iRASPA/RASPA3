@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cmath>
 #include <complex>
-#include <cstddef>
 #include <span>
 #include <vector>
 

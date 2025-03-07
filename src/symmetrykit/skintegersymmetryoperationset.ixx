@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstddef>
 #include <set>
 #include <tuple>
 #include <type_traits>

@@ -1,6 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <type_traits>
@@ -8,14 +9,12 @@ module;
 
 #include <algorithm>         // all_of, find, for_each
 #include <cassert>           // assert
-#include <cstddef>           // nullptr_t, ptrdiff_t, size_t
 #include <functional>        // hash, less
 #include <initializer_list>  // initializer_list
 #ifndef JSON_NO_IO
 #include <iosfwd>        // istream, ostream
 #endif                   // JSON_NO_IO
 #include <array>         // array
-#include <cstddef>       // nullptr_t
 #include <exception>     // exception
 #include <forward_list>  // forward_list
 #include <iterator>      // random_access_iterator_tag
@@ -34,7 +33,6 @@ module;
 #if JSON_DIAGNOSTICS
 #include <numeric>  // accumulate
 #endif
-#include <cstddef>  // size_t
 #include <filesystem>
 #include <iterator>   // input_iterator_tag
 #include <stdexcept>  // runtime_error

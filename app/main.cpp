@@ -1,4 +1,5 @@
 #ifdef USE_LEGACY_HEADERS
+#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <fstream>
@@ -14,6 +15,7 @@
 #endif
 
 #ifndef USE_LEGACY_HEADERS
+import <cstddef>;
 import <exception>;
 import <iostream>;
 import <fstream>;

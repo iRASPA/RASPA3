@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <algorithm>
 #include <complex>
 #include <span>
