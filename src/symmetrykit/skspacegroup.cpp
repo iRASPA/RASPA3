@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <cmath>
 #include <algorithm>
 #include <array>
 #include <iterator>
@@ -925,15 +926,15 @@ std::optional<double3> SKSpaceGroup::getOriginShift(size_t HallNumber, Centring 
   Matrix v = P * b;
 
   // The system P * b = v, v = [v1,...,vn] has solutions(mod Z) if and only if vi==0 whenever di=0
-  if ((D(0, 0) == 0 && abs(v(0, 0) - rint(v(0, 0))) > symmetryPrecision) ||
-      (D(1, 1) == 0 && abs(v(1, 0) - rint(v(1, 0))) > symmetryPrecision) ||
-      (D(2, 2) == 0 && abs(v(2, 0) - rint(v(2, 0))) > symmetryPrecision))
+  if ((D(0, 0) == 0 && std::fabs(v(0, 0) - rint(v(0, 0))) > symmetryPrecision) ||
+      (D(1, 1) == 0 && std::fabs(v(1, 0) - rint(v(1, 0))) > symmetryPrecision) ||
+      (D(2, 2) == 0 && std::fabs(v(2, 0) - rint(v(2, 0))) > symmetryPrecision))
   {
     return std::nullopt;
   }
   for (size_t i = 3; i < 9; i++)
   {
-    if (abs(v(i, 0) - rint(v(i, 0))) > symmetryPrecision)
+    if (std::fabs(v(i, 0) - rint(v(i, 0))) > symmetryPrecision)
     {
       return std::nullopt;
     }

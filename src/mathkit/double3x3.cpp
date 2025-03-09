@@ -14,7 +14,7 @@ module;
 #endif
 
 #define sqr(x) ((x) * (x))
-#define SIGN(a, b) ((b) >= 0.0 ? fabs(a) : -fabs(a))
+#define SIGN(a, b) ((b) >= 0.0 ? std::fabs(a) : -std::fabs(a))
 
 /* DSYEV prototype */
 extern "C"

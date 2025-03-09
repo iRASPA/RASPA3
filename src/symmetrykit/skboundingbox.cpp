@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <cmath>
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -92,7 +93,7 @@ double SKBoundingBox::volume()
   double3x3 axes = double3x3(double3(_maximum.x - _minimum.x, 0.0, 0.0), double3(0.0, _maximum.y - _minimum.y, 0.0),
                              double3(0.0, 0.0, _maximum.z - _minimum.z));
 
-  return abs(axes.determinant());
+  return std::fabs(axes.determinant());
 }
 
 double SKBoundingBox::shortestEdge()

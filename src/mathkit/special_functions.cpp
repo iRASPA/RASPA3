@@ -103,7 +103,7 @@ double hypergeometric(double a, double b, double c, double x)
   double value = 1.0 + term;
   int n = 1;
 
-  while (std::abs(term) > TOLERANCE)
+  while (std::fabs(term) > TOLERANCE)
   {
     a++, b++, c++, n++;
     term *= a * b * x / c / n;
@@ -119,7 +119,7 @@ int areClose(const double x1, const double x2, const double epsilon)
   double delta, difference, maxXY;
 
   /* Find exponent of largest absolute value */
-  maxXY = (std::abs(x1) > std::abs(x2)) ? x1 : x2;
+  maxXY = (std::fabs(x1) > std::fabs(x2)) ? x1 : x2;
   std::frexp(maxXY, &exponent);
 
   /* Form a neighborhood of size  2 * delta */
@@ -204,7 +204,7 @@ double hypergeometric2F1(double a, double b, double c, double z)
   double mu;
   double result;
 
-  if (std::abs(z) <= 0.5)
+  if (std::fabs(z) <= 0.5)
   {
     result = series_2F1(a, b, c, z);
     return (result);

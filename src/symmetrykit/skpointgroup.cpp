@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <cmath>
 #include <algorithm>
 #include <iterator>
 #include <map>
@@ -140,7 +141,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
   // 3: rhombohedrally centred, hexagonally centred
   // 4: all-face centred
 
-  switch (abs(basis.determinant()))
+  switch (std::abs(basis.determinant()))
   {
     case 1:
       return Centring::primitive;
@@ -150,7 +151,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (1,0,0) is found, then 'a' is detected
-        if (abs(basis[0][i]) == 1 && basis[1][i] == 0 && basis[2][i] == 0)
+        if (std::fabs(basis[0][i]) == 1 && basis[1][i] == 0 && basis[2][i] == 0)
         {
           return Centring::a_face;
         }
@@ -160,7 +161,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (0,1,0) is found, then 'b' is detected
-        if (basis[0][i] == 0 && abs(basis[1][i]) == 1 && basis[2][i] == 0)
+        if (basis[0][i] == 0 && std::fabs(basis[1][i]) == 1 && basis[2][i] == 0)
         {
           return Centring::b_face;
         }
@@ -170,14 +171,14 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (0,0,1) is found, then 'b' is detected
-        if (basis[0][i] == 0 && basis[1][i] == 0 && abs(basis[2][i]) == 1)
+        if (basis[0][i] == 0 && basis[1][i] == 0 && std::fabs(basis[2][i]) == 1)
         {
           return Centring::c_face;
         }
       }
 
       // detect body-center
-      int sum = abs(basis[0][0]) + abs(basis[1][0]) + abs(basis[2][0]);
+      int sum = std::fabs(basis[0][0]) + std::fabs(basis[1][0]) + std::fabs(basis[2][0]);
       if (sum == 2)
       {
         return Centring::body;
@@ -205,7 +206,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
 ///     in the obverse or reverse setting.
 SKTransformationMatrix SKPointGroup::computeBasisCorrection(SKTransformationMatrix basis, Centring& centering)
 {
-  int det = abs(basis.determinant());
+  int det = std::fabs(basis.determinant());
   Laue lau = _laue;
 
   // the absolute value of the determinant gives the scale factor by which volume is multiplied under the associated
@@ -397,7 +398,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
           axes[1] = axisVector;
 
           // to avoid F-center choice det=4
-          if (abs(int3x3(axes[0], axes[1], axes[2]).determinant()) < 4)
+          if (std::fabs(int3x3(axes[0], axes[1], axes[2]).determinant()) < 4)
           {
             if (axes.determinant() < 0)
             {

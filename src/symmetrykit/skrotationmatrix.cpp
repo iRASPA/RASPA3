@@ -24,7 +24,7 @@ SKRotationMatrix::SKRotationMatrix() {}
 
 // SKRotationMatrix::SKRotationMatrix(const SKTransformationMatrix &m)
 //{
-//     assert(abs(m.determinant()) == 1);
+//     assert(std::abs(m.determinant()) == 1);
 //     this->int3x3_m = m.transformation;
 // }
 

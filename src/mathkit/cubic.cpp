@@ -38,7 +38,7 @@ double CBRT(double Z)
   //  Was unable to use the sign command of C, so wrote my own
   //  that why a new variable needs to be introduced that keeps track of the sign of
   //  SIGN is supposed to return a 1, -1 or 0 depending on what the sign of the argument is
-  ret = std::fabs(pow(fabs(Z), THIRD)) * static_cast<double>(signR(Z));
+  ret = std::abs(pow(std::abs(Z), THIRD)) * static_cast<double>(signR(Z));
   return ret;
 }
 

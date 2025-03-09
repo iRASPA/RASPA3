@@ -137,7 +137,7 @@ export union double4x4
     bool equal = true;
     const double epsilon = 1e-8;
 
-    for (int i = 0; i < 16 && equal; i++) equal = fabs(this->m[i] - b.m[i]) <= epsilon;
+    for (int i = 0; i < 16 && equal; i++) equal = std::fabs(this->m[i] - b.m[i]) <= epsilon;
 
     return equal;
   };

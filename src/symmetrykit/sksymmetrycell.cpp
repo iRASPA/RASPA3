@@ -248,7 +248,7 @@ double3x3 SKSymmetryCell::findSmallestPrimitiveCell(std::vector<std::tuple<doubl
         double3 tmpv2 = unitCell * translationVectors[j];
         double3 tmpv3 = unitCell * translationVectors[k];
         double3x3 cell = double3x3(tmpv1, tmpv2, tmpv3);
-        double volume = fabs(cell.determinant());
+        double volume = std::fabs(cell.determinant());
 
         if ((volume > 1.0) && (volume < minimumVolume))
         {
@@ -443,7 +443,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell(double3x3 un
     double3x3 trialUnitCell = double3x3(b[0], b[1], b[i]);
     double volume = trialUnitCell.determinant();
 
-    if (abs(volume) > symmetryPrecision)
+    if (std::fabs(volume) > symmetryPrecision)
     {
       return (volume > 0) ? trialUnitCell : -trialUnitCell;
     }
@@ -491,7 +491,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
   {
     double3x3 tmpmat = double3x3(b[0], unitCell[1], b[i]);
 
-    if (fabs(tmpmat.determinant()) > symmetryPrecision)
+    if (std::fabs(tmpmat.determinant()) > symmetryPrecision)
     {
       extendedBasis[0] = b[0];
       extendedBasis[1] = b[i];
@@ -506,7 +506,7 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
 
   double volume = basis.determinant();
 
-  if (fabs(volume) < symmetryPrecision)
+  if (std::fabs(volume) < symmetryPrecision)
   {
     return std::nullopt;
   }
@@ -586,11 +586,12 @@ bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, do
   SKSymmetryCell transformedMetricCell = SKSymmetryCell::createFromMetricTensor(transformedMetricTensor);
 
   double3 lengthDifference =
-      double3(abs(metricCell._a - transformedMetricCell._a), abs(metricCell._b - transformedMetricCell._b),
-              abs(metricCell._c - transformedMetricCell._c));
-  double3 angleDifference = double3(sin(abs(metricCell._alpha - transformedMetricCell._alpha)),
-                                    sin(abs(metricCell._beta - transformedMetricCell._beta)),
-                                    sin(abs(metricCell._gamma - transformedMetricCell._gamma)));
+      double3(std::fabs(metricCell._a - transformedMetricCell._a), 
+              std::fabs(metricCell._b - transformedMetricCell._b),
+              std::fabs(metricCell._c - transformedMetricCell._c));
+  double3 angleDifference = double3(sin(std::fabs(metricCell._alpha - transformedMetricCell._alpha)),
+                                    sin(std::fabs(metricCell._beta - transformedMetricCell._beta)),
+                                    sin(std::fabs(metricCell._gamma - transformedMetricCell._gamma)));
 
   // check on lengths
   if (lengthDifference.length() > symmetryPrecision)
@@ -599,7 +600,7 @@ bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, do
   }
 
   // check on angles
-  if (abs(std::max({angleDifference.x, angleDifference.y, angleDifference.z})) > symmetryPrecision)
+  if (std::fabs(std::max({angleDifference.x, angleDifference.y, angleDifference.z})) > symmetryPrecision)
   {
     return false;
   }
@@ -741,7 +742,7 @@ algorithmStart:
 
   // step 1
   if (SKSymmetryCell::isLargerThen(A, B) ||
-      (SKSymmetryCell::isEqualTo(A, B) && (SKSymmetryCell::isLargerThen(abs(xi), abs(eta)))))
+      (SKSymmetryCell::isEqualTo(A, B) && (SKSymmetryCell::isLargerThen(std::fabs(xi), std::fabs(eta)))))
   {
     SKTransformationMatrix matrixC = SKTransformationMatrix(int3(0, -1, 0), int3(-1, 0, 0), int3(0, 0, -1));
     // assert(matrixC.determinant() == 1);
@@ -754,7 +755,7 @@ algorithmStart:
 
   // step 2
   if (SKSymmetryCell::isLargerThen(B, C) ||
-      (SKSymmetryCell::isEqualTo(B, C) && (SKSymmetryCell::isLargerThen(abs(eta), abs(zeta)))))
+      (SKSymmetryCell::isEqualTo(B, C) && (SKSymmetryCell::isLargerThen(std::fabs(eta), std::fabs(zeta)))))
   {
     SKTransformationMatrix matrixC = SKTransformationMatrix(int3(-1, 0, 0), int3(0, 0, -1), int3(0, -1, 0));
     // assert(matrixC.determinant() == 1);
@@ -787,9 +788,9 @@ algorithmStart:
     // assert(matrixC.determinant() == 1);
     changeOfBasisMatrix = changeOfBasisMatrix * matrixC;
 
-    xi = abs(xi);
-    eta = abs(eta);
-    zeta = abs(zeta);
+    xi = std::fabs(xi);
+    eta = std::fabs(eta);
+    zeta = std::fabs(zeta);
   }
   else  // step 4:
   {
@@ -827,13 +828,13 @@ algorithmStart:
     // assert(matrixC.determinant() == 1);
     changeOfBasisMatrix = changeOfBasisMatrix * matrixC;
 
-    xi = -abs(xi);
-    eta = -abs(eta);
-    zeta = -abs(zeta);
+    xi = -std::fabs(xi);
+    eta = -std::fabs(eta);
+    zeta = -std::fabs(zeta);
   }
 
   // step 5
-  if ((SKSymmetryCell::isLargerThen(abs(xi), B)) ||
+  if ((SKSymmetryCell::isLargerThen(std::fabs(xi), B)) ||
       (SKSymmetryCell::isEqualTo(xi, B) && SKSymmetryCell::isSmallerThen(2.0 * eta, zeta)) ||
       (SKSymmetryCell::isEqualTo(xi, -B) && SKSymmetryCell::isSmallerThen(zeta, 0.0)))
   {
@@ -849,7 +850,7 @@ algorithmStart:
   }
 
   // step 6
-  if ((SKSymmetryCell::isLargerThen(abs(eta), A)) ||
+  if ((SKSymmetryCell::isLargerThen(std::fabs(eta), A)) ||
       (SKSymmetryCell::isEqualTo(eta, A) && SKSymmetryCell::isSmallerThen(2.0 * xi, zeta)) ||
       (SKSymmetryCell::isEqualTo(eta, -A) && SKSymmetryCell::isSmallerThen(zeta, 0.0)))
   {
@@ -865,7 +866,7 @@ algorithmStart:
   }
 
   // step7
-  if ((SKSymmetryCell::isLargerThen(abs(zeta), A)) ||
+  if ((SKSymmetryCell::isLargerThen(std::fabs(zeta), A)) ||
       (SKSymmetryCell::isEqualTo(zeta, A) && SKSymmetryCell::isSmallerThen(2.0 * xi, eta)) ||
       (SKSymmetryCell::isEqualTo(zeta, -A) && SKSymmetryCell::isSmallerThen(eta, 0.0)))
   {

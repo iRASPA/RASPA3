@@ -176,9 +176,9 @@ export union double3x3
   inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
   inline bool operator==(const double3x3& b) const
   {
-    return ((abs(this->m11 - b.m11) < 1e-5) && (abs(this->m12 - b.m12) < 1e-5) && (abs(this->m13 - b.m13) < 1e-5) &&
-            (abs(this->m21 - b.m21) < 1e-5) && (abs(this->m22 - b.m22) < 1e-5) && (abs(this->m23 - b.m23) < 1e-5) &&
-            (abs(this->m31 - b.m31) < 1e-5) && (abs(this->m32 - b.m32) < 1e-5) && (abs(this->m33 - b.m33) < 1e-5));
+    return ((std::fabs(this->m11 - b.m11) < 1e-5) && (std::fabs(this->m12 - b.m12) < 1e-5) && (std::fabs(this->m13 - b.m13) < 1e-5) &&
+            (std::fabs(this->m21 - b.m21) < 1e-5) && (std::fabs(this->m22 - b.m22) < 1e-5) && (std::fabs(this->m23 - b.m23) < 1e-5) &&
+            (std::fabs(this->m31 - b.m31) < 1e-5) && (std::fabs(this->m32 - b.m32) < 1e-5) && (std::fabs(this->m33 - b.m33) < 1e-5));
   }
 
   inline int3x3 toInt3x3()

@@ -665,8 +665,8 @@ void SKCell::gamma(const double& newValue)
 
 bool SKCell::orthorhombic() const
 {
-  return (fabs(alpha() - std::numbers::pi / 2.0) < 0.001) && (fabs(beta() - std::numbers::pi / 2.0) < 0.001) &&
-         (fabs(gamma() - std::numbers::pi / 2.0) < 0.001);
+  return (std::fabs(alpha() - std::numbers::pi / 2.0) < 0.001) && (std::fabs(beta() - std::numbers::pi / 2.0) < 0.001) &&
+         (std::fabs(gamma() - std::numbers::pi / 2.0) < 0.001);
 }
 
 double SKCell::volume() const
