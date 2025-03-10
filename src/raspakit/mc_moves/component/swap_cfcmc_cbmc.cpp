@@ -660,7 +660,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     RunningEnergy energyDifference = externalFieldEnergyDifference.value() + frameworkEnergyDifference.value() +
                                      interEnergyDifference.value() + EwaldFourierDifference + tailEnergyDifference;
 
-    component.mc_moves_statistics.addConstructed(move, 1);
+    component.mc_moves_statistics.addConstructed(move, 2);
 
     // Calculate bias term for acceptance probability
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
