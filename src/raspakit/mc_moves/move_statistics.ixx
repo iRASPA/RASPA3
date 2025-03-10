@@ -159,7 +159,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   archive << m.targetAcceptance;
   archive << m.lowerLimit;
   archive << m.upperLimit;
-  acrhive << m.optimize;
+  archive << m.optimize;
 
   return archive;
 }
