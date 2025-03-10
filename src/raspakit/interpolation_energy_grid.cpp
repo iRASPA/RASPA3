@@ -16,7 +16,9 @@ module;
 #include <sstream>
 #include <utility>
 #include <vector>
-#include <mdspan>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module interpolation_energy_grid;
@@ -43,6 +45,9 @@ import double3;
 import stringutils;
 import framework;
 import simulationbox;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.
 // The amount of points is compute from

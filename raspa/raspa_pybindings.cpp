@@ -1,6 +1,15 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 
+#ifdef USE_LEGACY_HEADERS
+#include <cstddef>
+#include <optional>
+#include <span>
+#include <string>
+#include <tuple>
+#include <vector>
+#endif
+
 #include <pybind11/chrono.h>
 #include <pybind11/complex.h>
 #include <pybind11/functional.h>

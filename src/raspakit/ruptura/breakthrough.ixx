@@ -3,11 +3,13 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <fstream>
-#include <mdspan>
 #include <span>
 #include <string>
 #include <tuple>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 export module breakthrough;
@@ -25,6 +27,9 @@ import input_reader;
 import component;
 import system;
 import mixture_prediction;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 export struct Breakthrough
 {

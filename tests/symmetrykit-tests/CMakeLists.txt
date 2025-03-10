@@ -90,3 +90,4 @@ endif()
 file(COPY spglibtestdata DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
 gtest_add_tests(TARGET unit_tests_symmetrykit TEST_LIST noArgsTests)
+

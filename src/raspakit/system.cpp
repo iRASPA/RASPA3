@@ -14,7 +14,6 @@ module;
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <mdspan>
 #include <numbers>
 #include <numeric>
 #include <optional>
@@ -28,6 +27,9 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module system;
@@ -124,6 +126,9 @@ import json;
 import integrators;
 import integrators_compute;
 import integrators_update;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 // construct System programmatically
 /*! \brief Brief description.

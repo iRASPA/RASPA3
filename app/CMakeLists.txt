@@ -11,6 +11,7 @@ if (CONDA)
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
+        OpenMP::OpenMP_CXX
         ZLIB::ZLIB
         -lpthread
 )

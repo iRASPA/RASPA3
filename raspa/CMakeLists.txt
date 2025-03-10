@@ -26,8 +26,10 @@ if (CONDA)
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
+        OpenMP::OpenMP_CXX
         ZLIB::ZLIB
         -lpthread)
+  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libstdc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (LINUX)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -45,6 +47,7 @@ elseif (LINUX)
         -lm
         -ldl
         -lpthread)
+  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (WIN32)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -60,6 +63,7 @@ elseif (WIN32)
         -l:libc++abi.a
         -lm
         -lpthread)
+  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -78,14 +82,14 @@ elseif (APPLE)
         ${BREW_LIBOMP_DIR}/lib/libomp.a
         ${ZLIB_LIBRARIES}
         -lpthread)
+  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 endif()
 
-target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 
 if (CONDA)
-  target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld -stdlib=libc++ -L$ENV{CONDA_PREFIX}/lib)
+  target_link_options(${PROJECT_NAME} PRIVATE -fuse-ld=lld -L$ENV{CONDA_PREFIX}/lib)
   execute_process ( COMMAND python -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
   install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES})
 elseif (LINUX)

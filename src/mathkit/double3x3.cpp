@@ -208,7 +208,7 @@ double trunc_acos(double x)
 {
   if (x >= 1.0) return 0.0;
   if (x <= -1.0) return std::numbers::pi;
-  return acos(x);
+  return std::acos(x);
 }
 
 static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }

@@ -151,7 +151,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (1,0,0) is found, then 'a' is detected
-        if (std::fabs(basis[0][i]) == 1 && basis[1][i] == 0 && basis[2][i] == 0)
+        if (std::abs(basis[0][i]) == 1 && basis[1][i] == 0 && basis[2][i] == 0)
         {
           return Centring::a_face;
         }
@@ -161,7 +161,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (0,1,0) is found, then 'b' is detected
-        if (basis[0][i] == 0 && std::fabs(basis[1][i]) == 1 && basis[2][i] == 0)
+        if (basis[0][i] == 0 && std::abs(basis[1][i]) == 1 && basis[2][i] == 0)
         {
           return Centring::b_face;
         }
@@ -171,14 +171,14 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
       for (int i = 0; i < 3; i++)
       {
         // if (0,0,1) is found, then 'b' is detected
-        if (basis[0][i] == 0 && basis[1][i] == 0 && std::fabs(basis[2][i]) == 1)
+        if (basis[0][i] == 0 && basis[1][i] == 0 && std::abs(basis[2][i]) == 1)
         {
           return Centring::c_face;
         }
       }
 
       // detect body-center
-      int sum = std::fabs(basis[0][0]) + std::fabs(basis[1][0]) + std::fabs(basis[2][0]);
+      int sum = std::abs(basis[0][0]) + std::abs(basis[1][0]) + std::abs(basis[2][0]);
       if (sum == 2)
       {
         return Centring::body;
@@ -206,7 +206,7 @@ Centring SKPointGroup::computeCentering(SKTransformationMatrix basis)
 ///     in the obverse or reverse setting.
 SKTransformationMatrix SKPointGroup::computeBasisCorrection(SKTransformationMatrix basis, Centring& centering)
 {
-  int det = std::fabs(basis.determinant());
+  int det = std::abs(basis.determinant());
   Laue lau = _laue;
 
   // the absolute value of the determinant gives the scale factor by which volume is multiplied under the associated

@@ -6,11 +6,13 @@ module;
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <mdspan>
 #include <optional>
 #include <span>
 #include <string>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 export module property_density_grid;
@@ -35,6 +37,9 @@ import simulationbox;
 import forcefield;
 import framework;
 import component;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 export struct PropertyDensityGrid
 {

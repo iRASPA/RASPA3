@@ -12,7 +12,6 @@ module;
 #include <ios>
 #include <iostream>
 #include <map>
-#include <mdspan>
 #include <numeric>
 #include <optional>
 #include <print>
@@ -50,7 +49,6 @@ import <complex>;
 import <exception>;
 import <source_location>;
 import <print>;
-import <mdspan>;
 #endif
 
 import stringutils;

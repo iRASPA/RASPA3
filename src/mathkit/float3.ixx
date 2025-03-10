@@ -29,8 +29,8 @@ export union float3
   inline float& operator[](int i) { return v[i]; }
   inline const float& operator[](int i) const { return v[i]; }
 
-  inline float length() { return sqrt(x * x + y * y + z * z); }
-  inline float length() const { return sqrt(x * x + y * y + z * z); }
+  inline float length() { return std::sqrt(x * x + y * y + z * z); }
+  inline float length() const { return std::sqrt(x * x + y * y + z * z); }
   float3 normalise();
   float3 fract();
 

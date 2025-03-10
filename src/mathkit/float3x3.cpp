@@ -141,7 +141,7 @@ float trunc_acos(float x)
 {
   if (x >= 1.0f) return 0.0f;
   if (x <= -1.0f) return float(std::numbers::pi);
-  return acos(x);
+  return std::acos(x);
 }
 
 //static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }

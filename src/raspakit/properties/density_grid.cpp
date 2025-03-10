@@ -10,7 +10,6 @@ module;
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <mdspan>
 #include <numbers>
 #include <print>
 #include <source_location>
@@ -19,6 +18,9 @@ module;
 #include <string>
 #include <tuple>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module property_density_grid;
@@ -54,6 +56,9 @@ import averages;
 import stringutils;
 import framework;
 import component;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 // Gaussian cube file are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop

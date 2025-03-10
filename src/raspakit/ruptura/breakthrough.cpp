@@ -9,7 +9,6 @@ module;
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <mdspan>
 #include <numeric>
 #include <print>
 #include <span>
@@ -17,6 +16,9 @@ module;
 #include <string>
 #include <type_traits>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 module breakthrough;
@@ -45,6 +47,9 @@ import component;
 import system;
 import simulationbox;
 import mixture_prediction;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 // TODO: move std::span to std::mdarray in C++26
 // TODO: move cachedP0 and cachedPsi to submdspan in C++26

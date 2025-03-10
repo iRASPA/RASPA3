@@ -60,9 +60,9 @@ export union double3
   double3 normalise();
   double3 fract() const;
 
-  inline double length() { return sqrt(x * x + y * y + z * z); }
+  inline double length() { return std::sqrt(x * x + y * y + z * z); }
   inline double length_squared() const { return (x * x + y * y + z * z); }
-  inline double length() const { return sqrt(x * x + y * y + z * z); }
+  inline double length() const { return std::sqrt(x * x + y * y + z * z); }
   inline static double3 abs(double3 v1) { return double3(std::abs(v1.x), std::abs(v1.y), std::abs(v1.z)); }
   inline static double3 rint(double3 const& v) { return double3(std::rint(v.x), std::rint(v.y), std::rint(v.z)); }
   inline static double3 fract(double3 const& v)
@@ -97,7 +97,7 @@ export union double3
   }
   inline static double3 normalize(const double3& v)
   {
-    double f = 1.0 / sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
+    double f = 1.0 / std::sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
     return double3(f * v.x, f * v.y, f * v.z);
   }
   inline static double3 flip(double3 v, bool3 flip, double3 boundary)

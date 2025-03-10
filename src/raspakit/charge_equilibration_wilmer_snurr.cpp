@@ -6,10 +6,12 @@ module;
 #include <cstdint>
 #include <exception>
 #include <iostream>
-#include <mdspan>
 #include <numbers>
 #include <span>
 #include <vector>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 #endif
 
 #if !defined(_WIN32)
@@ -34,6 +36,9 @@ import double3x3;
 import skelement;
 import atom;
 import simulationbox;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 extern "C"
 {

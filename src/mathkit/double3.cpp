@@ -31,7 +31,7 @@ import archive;
 
 double3 double3::normalise()
 {
-  double magnitude = sqrt((x * x) + (y * y) + (z * z));
+  double magnitude = std::sqrt((x * x) + (y * y) + (z * z));
 
   if (magnitude != 0)
   {

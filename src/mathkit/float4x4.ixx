@@ -76,7 +76,7 @@ export union float4x4
     bool equal = true;
     const float epsilon = 1e-8f;
 
-    for (int i = 0; i < 16 && equal; i++) equal = fabs(this->m[i] - b.m[i]) <= epsilon;
+    for (int i = 0; i < 16 && equal; i++) equal = std::fabs(this->m[i] - b.m[i]) <= epsilon;
 
     return equal;
   };

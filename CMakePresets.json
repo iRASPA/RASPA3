@@ -28,7 +28,7 @@
       }
     },
     {
-      "name": "conda_raspa3",
+      "name": "mac_conda_raspa3",
       "description": "Sets compilers, build type",
       "inherits": [
         "base"
@@ -43,9 +43,11 @@
         "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
         "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
-        "PACKAGE_INSTALL_PREFIX" : "${dollar}{CONDA_PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "BLA_SIZEOF_INTEGER": "8",
         "BUILD_MAC_PACKAGE": false,
         "SKIP_EXECUTABLE" : false,
         "BUILD_TESTING": true,
@@ -60,7 +62,46 @@
       }
     },
     {
-      "name": "conda_raspalib",
+      "name": "linux_conda_raspa3",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CONDA" : true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{CONDA_PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{CONDA_PREFIX}/lib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "OpenMP_C_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_C_LIB_NAMES": "libgomp",
+        "OpenMP_CXX_LIB_NAMES": "libgomp",
+        "OpenMP_libgomp_LIBRARY": "$env{CONDA_PREFIX}/lib/libgomp.so",
+        "BUILD_MAC_PACKAGE": false,
+        "SKIP_EXECUTABLE" : false,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Linux"
+          ]
+        }
+      }
+    },
+    {
+      "name": "mac_conda_raspalib",
       "description": "Sets compilers, build type",
       "inherits": [
         "base"
@@ -75,9 +116,11 @@
         "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
         "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
         "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
-        "PACKAGE_INSTALL_PREFIX" : "${dollar}{CONDA_PREFIX}",
-        "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libomp -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "BLA_SIZEOF_INTEGER": "8",
         "BUILD_MAC_PACKAGE": false,
         "SKIP_EXECUTABLE" : true,
         "BUILD_TESTING": false,
@@ -88,6 +131,45 @@
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": [
             "macOS"
+          ]
+        }
+      }
+    },
+    {
+      "name": "linux_conda_raspalib",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CONDA" : true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{CONDA_PREFIX}/lib",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{CONDA_PREFIX}/lib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{CONDA_PREFIX}/bin/llvm-ar",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{CONDA_PREFIX}/bin/llvm-ranlib",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libgomp -DNDEBUG -stdlib=libstdc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "OpenMP_C_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp=libgomp",
+        "OpenMP_C_LIB_NAMES": "libgomp",
+        "OpenMP_CXX_LIB_NAMES": "libgomp",
+        "OpenMP_libgomp_LIBRARY": "$env{CONDA_PREFIX}/lib/libgomp.so",
+        "BUILD_MAC_PACKAGE": false,
+        "SKIP_EXECUTABLE" : false,
+        "BUILD_TESTING": false,
+        "Python3_EXECUTABLE": "$env{PYTHON}",
+        "BUILD_PYTHON": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Linux"
           ]
         }
       }
@@ -125,7 +207,7 @@
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": [
-            "windows"
+            "Windows"
           ]
         }
       }
@@ -165,7 +247,7 @@
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": [
-            "windows"
+            "Windows"
           ]
         }
       }
@@ -205,7 +287,7 @@
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": [
-            "windows"
+            "Windows"
           ]
         }
       }

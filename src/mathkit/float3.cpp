@@ -15,7 +15,7 @@ import <iostream>;
 
 float3 float3::normalise()
 {
-  float magnitude = sqrt((x * x) + (y * y) + (z * z));
+  float magnitude = std::sqrt((x * x) + (y * y) + (z * z));
 
   if (magnitude != 0.0f)
   {
@@ -29,9 +29,9 @@ float3 float3::normalise()
 float3 float3::fract()
 {
   float3 s = float3(x, y, z);
-  s.x -= rint(x);
-  s.y -= rint(y);
-  s.z -= rint(z);
+  s.x -= std::rint(x);
+  s.y -= std::rint(y);
+  s.z -= std::rint(z);
 
   if (s.x < 0.0f)
   {

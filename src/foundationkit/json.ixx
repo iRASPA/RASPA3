@@ -2,90 +2,51 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <cmath>     // ldexp
+#include <cstdint>   // uint8_t, uint16_t, uint32_t, uint64_t
+#include <cstdio>    // snprintf
+#include <cstdlib>           // strtof, strtod, strtold, strtoll, strtoull
+#include <cctype>     // isdigit
+#include <cerrno>     // errno, ERANGE
+#include <cstring>   // memcpy
+#include <clocale>           // localeconv
 #include <functional>
 #include <iostream>
+#include <istream>  // istream
 #include <type_traits>
-#endif
-
 #include <algorithm>         // all_of, find, for_each
+#include <version>
 #include <cassert>           // assert
 #include <functional>        // hash, less
 #include <initializer_list>  // initializer_list
-#ifndef JSON_NO_IO
 #include <iosfwd>        // istream, ostream
-#endif                   // JSON_NO_IO
+#include <vector>         // vector
 #include <array>         // array
+#include <string>    // char_traits, string
+#include <string_view>
+#include <utility>        // declval, forward, move, pair, swap
 #include <exception>     // exception
 #include <forward_list>  // forward_list
 #include <iterator>      // random_access_iterator_tag
-#include <iterator>      // inserter, front_inserter, end
 #include <map>           // map
 #include <memory>        // unique_ptr
 #include <optional>
-#include <string>         // string, stoi, to_string
 #include <tuple>          // tuple, make_tuple
 #include <type_traits>    // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
 #include <unordered_map>  // unordered_map
-#include <utility>        // declval, forward, move, pair, swap
-#include <utility>        // pair, declval
 #include <valarray>       // valarray
-#include <vector>         // vector
-#if JSON_DIAGNOSTICS
 #include <numeric>  // accumulate
-#endif
 #include <filesystem>
-#include <iterator>   // input_iterator_tag
 #include <stdexcept>  // runtime_error
-#include <string>     // to_string
-#include <string>     // string, to_string
-#include <tuple>      // tuple_size, get, tuple_element
-#include <utility>    // move
-#include <vector>     // vector
-
-#if JSON_HAS_RANGES
 #include <ranges>  // enable_borrowed_range
-#endif
-
-#include <algorithm>  // generate_n
 #include <any>
-#include <array>     // array
-#include <cmath>     // ldexp
-#include <cstddef>   // size_t
-#include <cstdint>   // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstdio>    // snprintf
-#include <cstring>   // memcpy
-#include <iterator>  // back_inserter
 #include <limits>    // numeric_limits
-#include <string>    // char_traits, string
-#include <string_view>
-#include <utility>  // make_pair, move
-#include <vector>   // vector
-
-// #include <nlohmann/detail/exceptions.hpp>
-
-// #include <nlohmann/detail/input/input_adapters.hpp>
-//     __ _____ _____ _____
-//  __|  |   __|     |   | |  JSON for Modern C++
-// |  |  |__   |  |  | | | |  version 3.11.3
-// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
-//
-// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
-// SPDX-License-Identifier: MIT
-
-#include <array>        // array
-#include <cstddef>      // size_t
-#include <cstring>      // strlen
-#include <iterator>     // begin, end, iterator_traits, random_access_iterator_tag, distance, next
-#include <memory>       // shared_ptr, make_shared, addressof
-#include <numeric>      // accumulate
-#include <string>       // string, char_traits
-#include <type_traits>  // enable_if, is_base_of, is_pointer, is_integral, remove_pointer
-#include <utility>      // pair, declval
-
+#include <iomanip>      // setfill, setw
+#include <limits>       // numeric_limits
 #ifndef JSON_NO_IO
-#include <cstdio>   // FILE *
-#include <istream>  // istream
+#include <iosfwd>   // ostream
 #endif              // JSON_NO_IO
+#endif
 
 export module json;
 
@@ -135,8 +96,6 @@ struct RASPAComparator
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <utility>
 
 // #include <nlohmann/detail/abi_macros.hpp>
 //     __ _____ _____ _____
@@ -256,11 +215,6 @@ struct RASPAComparator
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <array>    // array
-#include <cstddef>  // size_t
-#include <cstdint>  // uint8_t
-#include <string>   // string
-
 // #include <nlohmann/detail/macro_scope.hpp>
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
@@ -270,7 +224,6 @@ struct RASPAComparator
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <utility>  // declval, pair
 // #include <nlohmann/detail/meta/detected.hpp>
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
@@ -279,8 +232,6 @@ struct RASPAComparator
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <type_traits>
 
 // #include <nlohmann/detail/meta/void_t.hpp>
 //     __ _____ _____ _____
@@ -2271,12 +2222,6 @@ JSON_HEDLEY_DIAGNOSTIC_POP
 #endif
 // the cpp 11 flag is always specified because it is the minimal required version
 #define JSON_HAS_CPP_11
-#endif
-
-#ifdef __has_include
-#if __has_include(<version>)
-#include <version>
-#endif
 #endif
 
 #if !defined(JSON_HAS_FILESYSTEM) && !defined(JSON_HAS_EXPERIMENTAL_FILESYSTEM)
@@ -4326,9 +4271,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstring>  // strlen
-#include <string>   // string
-#include <utility>  // forward
 
 // #include <nlohmann/detail/meta/cpp_future.hpp>
 
@@ -7311,15 +7253,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <array>             // array
-#include <clocale>           // localeconv
-#include <cstddef>           // size_t
-#include <cstdio>            // snprintf
-#include <cstdlib>           // strtof, strtod, strtold, strtoll, strtoull
-#include <initializer_list>  // initializer_list
-#include <string>            // char_traits, string
-#include <utility>           // move
-#include <vector>            // vector
 
 // #include <nlohmann/detail/input/input_adapters.hpp>
 
@@ -12147,12 +12080,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cmath>       // isfinite
-#include <cstdint>     // uint8_t
-#include <functional>  // function
-#include <string>      // string
-#include <utility>     // move
-#include <vector>      // vector
 
 // #include <nlohmann/detail/exceptions.hpp>
 
@@ -13737,18 +13664,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <algorithm>  // all_of
-#include <cctype>     // isdigit
-#include <cerrno>     // errno, ERANGE
-#include <cstdlib>    // strtoull
-#ifndef JSON_NO_IO
-#include <iosfwd>   // ostream
-#endif              // JSON_NO_IO
-#include <limits>   // max
-#include <numeric>  // accumulate
-#include <string>   // string
-#include <utility>  // move
-#include <vector>   // vector
 
 // #include <nlohmann/detail/exceptions.hpp>
 
@@ -14762,16 +14677,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <algorithm>  // reverse
-#include <array>      // array
-#include <cmath>      // isnan, isinf
-#include <cstdint>    // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstring>    // memcpy
-#include <limits>     // numeric_limits
-#include <map>        // map
-#include <string>     // string
-#include <utility>    // move
-#include <vector>     // vector
 
 // #include <nlohmann/detail/input/binary_reader.hpp>
 
@@ -14786,17 +14691,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <algorithm>  // copy
-#include <cstddef>    // size_t
-#include <iterator>   // back_inserter
-#include <memory>     // shared_ptr, make_shared
-#include <string>     // basic_string
-#include <vector>     // vector
-
-#ifndef JSON_NO_IO
-#include <ios>      // streamsize
-#include <ostream>  // basic_ostream
-#endif              // JSON_NO_IO
 
 // #include <nlohmann/detail/macro_scope.hpp>
 
@@ -16686,18 +16580,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <algorithm>    // reverse, remove, fill, find, none_of
-#include <array>        // array
-#include <clocale>      // localeconv, lconv
-#include <cmath>        // labs, isfinite, isnan, signbit
-#include <cstddef>      // size_t, ptrdiff_t
-#include <cstdint>      // uint8_t
-#include <cstdio>       // snprintf
-#include <iomanip>      // setfill, setw
-#include <limits>       // numeric_limits
-#include <string>       // string, char_traits
-#include <type_traits>  // is_same
-#include <utility>      // move
 
 // #include <nlohmann/detail/conversions/to_chars.hpp>
 //     __ _____ _____ _____
@@ -16709,12 +16591,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <array>        // array
-#include <cmath>        // signbit, isfinite
-#include <cstdint>      // intN_t, uintN_t
-#include <cstring>      // memcpy, memmove
-#include <limits>       // numeric_limits
-#include <type_traits>  // conditional
 
 // #include <nlohmann/detail/macro_scope.hpp>
 
@@ -18744,14 +18620,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <functional>        // equal_to, less
-#include <initializer_list>  // initializer_list
-#include <iterator>          // input_iterator_tag, iterator_traits
-#include <memory>            // allocator
-#include <stdexcept>         // for out_of_range
-#include <type_traits>       // enable_if, is_convertible
-#include <utility>           // pair
-#include <vector>            // vector
 
 // #include <nlohmann/detail/macro_scope.hpp>
 

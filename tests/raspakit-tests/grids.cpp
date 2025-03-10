@@ -7,7 +7,9 @@
 #include <vector>
 #include <numbers>
 #include <print>
-#include <mdspan>
+#if defined(__has_include) && __has_include(<mdspan>)
+  #include <mdspan>
+#endif
 
 import int3;
 import double3;
@@ -31,6 +33,9 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 import interpolation_energy_grid;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+  import mdspan;
+#endif
 
 TEST(grids, Test_saddle_point)
 {
