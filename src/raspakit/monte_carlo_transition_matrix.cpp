@@ -496,6 +496,22 @@ void MonteCarloTransitionMatrix::production()
 
     performCycle();
 
+    for (System& system : systems)
+    {
+      system.sampleProperties(estimation.currentBin, currentCycle);
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+
+        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+      }
+    }
+
     if (currentCycle % printEvery == 0uz)
     {
       for (System& system : systems)
