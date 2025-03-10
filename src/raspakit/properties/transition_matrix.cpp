@@ -160,6 +160,8 @@ void TransitionMatrix::adjustBias()
     lnpi[i] += normalFactor;  // Zhao's note: mind the sign
     bias[i] = -lnpi[i];
   }
+
+  writeStatistics();
 };
 
 // Clear Collection matrix stats (used after initialization cycles)

@@ -63,9 +63,9 @@ void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
-  std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
+  std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
                                                           numberOfGridPoints.y, numberOfGridPoints.z);
-  std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
+  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
                                                               std::min(1uz, numberOfFrameworks), numberOfGridPoints.x,
                                                               numberOfGridPoints.y, numberOfGridPoints.z);
 
@@ -94,9 +94,9 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
 
   std::filesystem::create_directory("density_grids");
 
-  std::experimental::mdspan<double, std::experimental::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
+  std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
                                                           numberOfGridPoints.y, numberOfGridPoints.z);
-  std::experimental::mdspan<double, std::experimental::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
+  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
                                                               std::min(1uz, numberOfFrameworks), numberOfGridPoints.x,
                                                               numberOfGridPoints.y, numberOfGridPoints.z);
 
