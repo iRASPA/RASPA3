@@ -134,7 +134,7 @@ The 'skylake-avx512' binary can provide a roughly 25% increase in speed compared
 - python3 and pybind11<br>
 - blas and lapack (64-bit integers)
 - openmp
-- hfd5
+- hdf5
 
 ### presets
 
