@@ -56,6 +56,7 @@ struct MoveStatistics
   T targetAcceptance{0.5};  ///< Target acceptance rate for moves.
   T lowerLimit{};
   T upperLimit{};
+  bool optimize{true};
 
   /**
    * \brief Resets the statistical counters.
@@ -81,6 +82,7 @@ struct MoveStatistics
    */
   void optimizeAcceptance()
   {
+    if (!optimize) return;
     T ratio = accepted / (counts + T(1.0));
     if constexpr (std::is_same_v<double, T>)
     {
@@ -111,6 +113,7 @@ struct MoveStatistics
     targetAcceptance = 0.5 * (targetAcceptance + b.targetAcceptance);
     lowerLimit = 0.5 * (lowerLimit + b.lowerLimit);
     upperLimit = 0.5 * (upperLimit + b.upperLimit);
+    optimize = (optimize && b.optimize);
     return *this;
   }
 
@@ -136,6 +139,7 @@ inline MoveStatistics<T> operator+(const MoveStatistics<T> &a, const MoveStatist
   c.targetAcceptance = 0.5 * (a.targetAcceptance + b.targetAcceptance);
   c.lowerLimit = 0.5 * (a.lowerLimit + b.lowerLimit);
   c.upperLimit = 0.5 * (a.upperLimit + b.upperLimit);
+  c.optimize = (a.optimize && b.optimize);
   return c;
 }
 
@@ -155,6 +159,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MoveSt
   archive << m.targetAcceptance;
   archive << m.lowerLimit;
   archive << m.upperLimit;
+  acrhive << m.optimize;
 
   return archive;
 }
@@ -182,6 +187,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MoveStatisti
   archive >> m.targetAcceptance;
   archive >> m.lowerLimit;
   archive >> m.upperLimit;
+  archive >> m.optimize;
 
   return archive;
 }
