@@ -4,6 +4,7 @@ module;
 #include <cstddef>
 #include <complex>
 #include <optional>
+#include <vector>
 #include <span>
 #endif
 

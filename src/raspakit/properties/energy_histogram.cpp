@@ -14,6 +14,7 @@ module;
 #include <ranges>
 #include <source_location>
 #include <sstream>
+#include <ostream>
 #include <vector>
 #endif
 

@@ -206,6 +206,6 @@ export double3 clamp(double3 value, double3 low, double3 high)
                  std::clamp(value.z, low.z, high.z));
 }
 
-void to_json(nlohmann::json& j, const double3& a) { j = nlohmann::json{a.x, a.y, a.z}; }
+export void to_json(nlohmann::json& j, const double3& a) { j = nlohmann::json{a.x, a.y, a.z}; }
 
-void from_json(const nlohmann::json& j, double3& a) { j.get_to(a); }
+export void from_json(const nlohmann::json& j, double3& a) { j.get_to(a); }

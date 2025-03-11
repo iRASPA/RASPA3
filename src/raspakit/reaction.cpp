@@ -10,6 +10,7 @@ module;
 #include <print>
 #include <source_location>
 #include <sstream>
+#include <ostream>
 #include <string>
 #include <vector>
 #endif

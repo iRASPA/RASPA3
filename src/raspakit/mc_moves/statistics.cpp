@@ -9,6 +9,7 @@ module;
 #include <print>
 #include <source_location>
 #include <sstream>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -161,13 +162,13 @@ static nlohmann::json jsonStatistics(const MoveStatistics<double3>& move)
 {
   nlohmann::json status;
   status["all"] = move.allCounts;
-  status["total"] = move.totalCounts;
-  status["constructed"] = move.totalConstructed;
-  status["accepted"] = move.totalAccepted;
+  status["total"] = {move.totalCounts.x, move.totalCounts.y, move.totalCounts.z};
+  status["constructed"] = {move.totalConstructed.x, move.totalConstructed.y, move.totalConstructed.z};
+  status["accepted"] = {move.totalAccepted.x, move.totalAccepted.y, move.totalAccepted.z};
   status["fraction"] = {move.totalAccepted.x / std::max(1.0, double(move.totalCounts.x)),
                         move.totalAccepted.y / std::max(1.0, double(move.totalCounts.y)),
                         move.totalAccepted.z / std::max(1.0, double(move.totalCounts.z))};
-  status["maxChange"] = move.maxChange;
+  status["maxChange"] = {move.maxChange.x, move.maxChange.y, move.maxChange.z};
   return status;
 }
 

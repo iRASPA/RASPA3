@@ -97,7 +97,7 @@ export struct Molecule
 // should be 6 times double4 = 6x(8x4) = 6x32 = 192 bytes
 // static_assert(sizeof(Molecule) == 192, "struct Molecule size is not 192");
 
-void to_json(nlohmann::json &j, const Molecule &a)
+export void to_json(nlohmann::json &j, const Molecule &a)
 {
   j = nlohmann::json{{"centerOfMassPosition", a.centerOfMassPosition},
                      {"velocity", a.velocity},
@@ -110,7 +110,7 @@ void to_json(nlohmann::json &j, const Molecule &a)
                      {"numberOfAtoms", a.numberOfAtoms}};
 }
 
-void from_json(const nlohmann::json &j, Molecule &a)
+export void from_json(const nlohmann::json &j, Molecule &a)
 {
   j.at("centerOfMassPosition").get_to(a.centerOfMassPosition);
   j.at("velocity").get_to(a.velocity);

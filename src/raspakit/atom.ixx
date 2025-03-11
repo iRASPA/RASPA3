@@ -194,7 +194,7 @@ export struct Atom
   }
 };
 
-void to_json(nlohmann::json &j, const Atom &a)
+export void to_json(nlohmann::json &j, const Atom &a)
 {
   j = nlohmann::json{{"position", a.position},       {"velocity", a.velocity},
                      {"gradient", a.gradient},       {"charge", a.charge},
@@ -203,7 +203,7 @@ void to_json(nlohmann::json &j, const Atom &a)
                      {"componentId", a.componentId}, {"groupId", a.groupId}};
 }
 
-void from_json(const nlohmann::json &j, Atom &a)
+export void from_json(const nlohmann::json &j, Atom &a)
 {
   j.at("position").get_to(a.position);
   j.at("velocity").get_to(a.velocity);

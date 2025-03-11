@@ -8,6 +8,7 @@ module;
 #include <source_location>
 #include <sstream>
 #include <vector>
+#include <format>
 #endif
 
 module mc_moves_probabilities;

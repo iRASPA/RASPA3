@@ -48,11 +48,7 @@ endif()
 find_package(ZLIB)
 find_package(BLAS)
 find_package(LAPACK)
-
-if(NOT WIN32)
-  find_package(OpenMP)
-endif()
-
+find_package(OpenMP)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 include_directories(${HDF5_INCLUDE_DIRS})
 

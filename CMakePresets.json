@@ -28,6 +28,43 @@
       }
     },
     {
+      "name": "windows_conda_raspa3",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CONDA" : true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /Ob2 /openmp::llvm -I$env{CONDA_PREFIX}/Library/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "ZLIB_INCLUDE_DIR": "$env{CONDA_PREFIX}/Library/include",
+        "ZLIB_LIBRARY": "$env{CONDA_PREFIX}/Library/lib/zlib.lib",
+        "BLAS_LIBRARIES": "$env{CONDA_PREFIX}/Library/lib/openblas.lib",
+        "LAPACK_LIBRARIES": "$env{CONDA_PREFIX}/Library/lib/openblas.lib",
+        "OpenMP_libomp_LIBRARY": "$env{CONDA_PREFIX}/Library/lib/libomp.lib",
+        "OpenMP_C_FLAGS": "/openmp::llvm",
+        "OpenMP_CXX_FLAGS": "/openmp::lvm",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "BUILD_MAC_PACKAGE": false,
+        "SKIP_EXECUTABLE" : false,
+        "BUILD_TESTING": true,
+        "BUILD_PYTHON": false
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Windows"
+          ]
+        }
+      }
+    },
+    {
       "name": "mac_conda_raspa3",
       "description": "Sets compilers, build type",
       "inherits": [
@@ -101,6 +138,44 @@
       }
     },
     {
+      "name": "windows_conda_raspalib",
+      "description": "Sets compilers, build type",
+      "inherits": [
+        "base"
+      ],
+      "cacheVariables": {
+        "CONDA" : true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /Ob2 /openmp::llvm -I$env{CONDA_PREFIX}/Library/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG",
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
+        "ZLIB_INCLUDE_DIR": "$env{CONDA_PREFIX}/Library/include",
+        "ZLIB_LIBRARY": "$env{CONDA_PREFIX}/Library/lib/zlib.lib",
+        "BLAS_LIBRARIES": "$env{CONDA_PREFIX}/Library/lib/openblas.lib",
+        "LAPACK_LIBRARIES": "$env{CONDA_PREFIX}/Library/lib/openblas.lib",
+        "OpenMP_libomp_LIBRARY": "$env{CONDA_PREFIX}/Library/lib/libomp.lib",
+        "OpenMP_C_FLAGS": "/openmp::llvm",
+        "OpenMP_CXX_FLAGS": "/openmp::lvm",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "BUILD_MAC_PACKAGE": false,
+        "SKIP_EXECUTABLE" : false,
+        "Python3_EXECUTABLE": "$env{PYTHON}",
+        "BUILD_TESTING": false,
+        "BUILD_PYTHON": true
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Windows"
+          ]
+        }
+      }
+    },
+    {
       "name": "mac_conda_raspalib",
       "description": "Sets compilers, build type",
       "inherits": [
@@ -120,7 +195,6 @@
         "PACKAGE_INSTALL_PREFIX" : "$env{CONDA_PREFIX}",
         "CMAKE_CXX_FLAGS_RELEASE" : "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp=libomp -DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
-        "BLA_SIZEOF_INTEGER": "8",
         "BUILD_MAC_PACKAGE": false,
         "SKIP_EXECUTABLE" : true,
         "BUILD_TESTING": false,

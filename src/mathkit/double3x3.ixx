@@ -431,9 +431,9 @@ export inline double3x3 sqrt(const double3x3& b)
   return r;
 }
 
-void to_json(nlohmann::json& j, const double3x3& a)
+export void to_json(nlohmann::json& j, const double3x3& a)
 {
   j = nlohmann::json{{a.ax, a.ay, a.az}, {a.bx, a.by, a.bz}, {a.cx, a.cy, a.cz}};
 }
 
-void from_json(const nlohmann::json& j, double3x3& a) { j.get_to(a); }
+export void from_json(const nlohmann::json& j, double3x3& a) { j.get_to(a); }

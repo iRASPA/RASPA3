@@ -549,7 +549,7 @@ export inline SimulationBox max(const SimulationBox& a, const SimulationBox& b)
 
 export inline SimulationBox operator*(const double3x3& a, const SimulationBox& b) { return SimulationBox(a * b.cell); }
 
-void to_json(nlohmann::json& j, const SimulationBox& b)
+export void to_json(nlohmann::json& j, const SimulationBox& b)
 {
   j = nlohmann::json{{"lengthA", b.lengthA},
                      {"lengthB", b.lengthB},
@@ -559,7 +559,7 @@ void to_json(nlohmann::json& j, const SimulationBox& b)
                      {"angleGamma", b.angleGamma * 180.0 / (std::numbers::pi * 90.0)}};
 }
 
-void from_json(const nlohmann::json& j, SimulationBox& b)
+export void from_json(const nlohmann::json& j, SimulationBox& b)
 {
   j.at("lengthA").get_to(b.lengthA);
   j.at("lengthB").get_to(b.lengthB);
