@@ -1325,9 +1325,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
           }
 
+          PropertyDensityGrid::Normalization norm = PropertyDensityGrid::Normalization::Max;
+          if (value.contains("DensityGridNormalization") && value["DensityGridNormalization"].is_string())
+          {
+            std::string normString = value["DensityGridNormalization"].get<std::string>();
+            if (caseInSensStringCompare(normString, "NumberDensity"))
+            {
+              norm = PropertyDensityGrid::Normalization::NumberDensity;
+            }
+          }
+
           systems[systemId].propertyDensityGrid = PropertyDensityGrid(
               systems[systemId].frameworkComponents.size(), systems[systemId].components.size(), densityGridSize,
-              sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList);
+              sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm);
         }
       }
 
@@ -1603,6 +1613,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteDensityGridEvery",
     "DensityGridSize",
     "DensityGridPseudoAtomsList",
+    "DensityGridNormalization",
     "OutputPDBMovie",
     "SampleMovieEvery",
     "Ensemble",

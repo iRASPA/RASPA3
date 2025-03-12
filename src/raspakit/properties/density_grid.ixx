@@ -43,10 +43,16 @@ import component;
 
 export struct PropertyDensityGrid
 {
+  enum class Normalization : size_t
+  {
+    Max = 0,
+    NumberDensity = 1
+  };
+
   PropertyDensityGrid() {}
 
   PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery,
-                      size_t writeEvery, std::vector<size_t> densityGridPseudoAtomsList)
+                      size_t writeEvery, std::vector<size_t> densityGridPseudoAtomsList, Normalization normType)
       : numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
         grid_cell(numberOfComponents *
@@ -59,11 +65,12 @@ export struct PropertyDensityGrid
                  static_cast<double>(numberOfGridPoints.z)),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
-        densityGridPseudoAtomsList(densityGridPseudoAtomsList)
+        densityGridPseudoAtomsList(densityGridPseudoAtomsList),
+        normType(normType)
   {
   }
 
-  uint64_t versionNumber{1};
+  uint64_t versionNumber{2};
 
   size_t numberOfFrameworks;
   size_t numberOfComponents;
@@ -75,6 +82,8 @@ export struct PropertyDensityGrid
   size_t sampleEvery;
   size_t writeEvery;
   std::vector<size_t> densityGridPseudoAtomsList;
+  Normalization normType{Normalization::Max};
+  size_t numberOfSamples{0};
 
   void sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox,
               std::span<const Atom> moleculeAtoms, size_t currrentCycle);

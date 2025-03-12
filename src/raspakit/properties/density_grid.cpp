@@ -89,6 +89,8 @@ void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const
                     static_cast<size_t>(t.z * gridSize.z)]++;
     }
   }
+
+  numberOfSamples++;
 }
 
 void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const SimulationBox &simulationBox,
@@ -184,13 +186,28 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
       std::vector<double>::iterator it_end =
           it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-      std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
-      double normalization{1.0};
-      if (maximum != it_end)
-      {
-        normalization = static_cast<double>(1.0 / *maximum);
-      }
 
+      double normalization{1.0};
+      switch (normType)
+      {
+        case Normalization::Max:
+        {
+          std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+          if (maximum != it_end)
+          {
+            normalization = static_cast<double>(1.0 / *maximum);
+          }
+          std::cout << "MAX: " << normalization << std::endl;
+          break;
+        }
+        case Normalization::NumberDensity:
+        {
+          normalization = (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples));
+          std::cout << "NUMBER DENSITY: " << normalization << std::endl;
+          break;
+        }
+      }
+        
       for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
       {
         std::print(ostream, "{}\n", *it * normalization);
@@ -213,6 +230,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
   archive << temp.sampleEvery;
   archive << temp.writeEvery;
+
+  archive << temp.normType;
+  archive << temp.numberOfSamples;
 
   return archive;
 }
@@ -238,6 +258,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
 
   archive >> temp.sampleEvery;
   archive >> temp.writeEvery;
+
+  archive >> temp.normType;
+  archive >> temp.numberOfSamples;
 
   return archive;
 }
