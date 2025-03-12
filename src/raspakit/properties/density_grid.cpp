@@ -197,13 +197,11 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
           {
             normalization = static_cast<double>(1.0 / *maximum);
           }
-          std::cout << "MAX: " << normalization << std::endl;
           break;
         }
         case Normalization::NumberDensity:
         {
           normalization = (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples));
-          std::cout << "NUMBER DENSITY: " << normalization << std::endl;
           break;
         }
       }
