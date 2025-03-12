@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <chrono>
 #include <complex>
+#include <cstddef>
 #include <iostream>
 #include <span>
 #include <vector>
@@ -106,11 +106,18 @@ void Integrators::initializeVelocities(RandomNumber& random, std::span<Molecule>
 
     // factor sqrt(3/2) added to match correct mean
     double3 angularVelocity =
-        double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(3 * invI * Units::KB * temperature / 2);
+        double3(random.Gaussian(), random.Gaussian(), random.Gaussian()) * sqrt(invI * Units::KB * temperature);
 
     // rotate into orientation frame
     simd_quatd q = molecule.orientation;
-    molecule.orientationMomentum = 4.0 * q * simd_quatd(0.0, I * angularVelocity);
+    molecule.orientationMomentum.ix =
+        2.0 * (q.r * (I.x * angularVelocity.x) - q.iz * (I.y * angularVelocity.y) + q.iy * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iy =
+        2.0 * (q.iz * (I.x * angularVelocity.x) + q.r * (I.y * angularVelocity.y) - q.ix * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.iz =
+        2.0 * (-q.iy * (I.x * angularVelocity.x) + q.ix * (I.y * angularVelocity.y) + q.r * (I.z * angularVelocity.z));
+    molecule.orientationMomentum.r =
+        2.0 * (-q.ix * (I.x * angularVelocity.x) - q.iy * (I.y * angularVelocity.y) - q.iz * (I.z * angularVelocity.z));
   }
 }
 
