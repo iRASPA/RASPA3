@@ -287,7 +287,7 @@ ForceField::ForceField(std::string filePath)
   }
 
   // Get charge method
-  useCharge = parsed_data.value("ChargeMethod", "Ewald") != "Ewald";
+  useCharge = parsed_data.value("ChargeMethod", "Ewald") != "None";
 
   cutOffFrameworkVDW = parsed_data.value("CutOffFrameworkVDW", 12.0);
   cutOffMoleculeVDW = parsed_data.value("CutOffMoleculeVDW", 12.0);
