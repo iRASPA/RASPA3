@@ -11,7 +11,6 @@ module;
 #include <iostream>
 #include <optional>
 #include <span>
-#include <tuple>
 #include <vector>
 #endif
 
@@ -21,11 +20,9 @@ module mc_moves_rotation;
 import <complex>;
 import <vector>;
 import <array>;
-import <tuple>;
 import <optional>;
 import <span>;
 import <optional>;
-import <tuple>;
 import <algorithm>;
 import <chrono>;
 import <cmath>;

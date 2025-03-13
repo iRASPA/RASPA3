@@ -29,7 +29,6 @@ if (CONDA)
         OpenMP::OpenMP_CXX
         ZLIB::ZLIB
         -lpthread)
-  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libstdc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (LINUX)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -47,7 +46,6 @@ elseif (LINUX)
         -lm
         -ldl
         -lpthread)
-  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (WIN32)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -63,7 +61,6 @@ elseif (WIN32)
         -l:libc++abi.a
         -lm
         -lpthread)
-  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -82,9 +79,9 @@ elseif (APPLE)
         ${BREW_LIBOMP_DIR}/lib/libomp.a
         ${ZLIB_LIBRARIES}
         -lpthread)
-  target_compile_options(${PROJECT_NAME} PUBLIC -stdlib=libc++ $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 endif()
 
+target_compile_options(${PROJECT_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${PROJECT_WARNINGS_CXX}>)
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 
