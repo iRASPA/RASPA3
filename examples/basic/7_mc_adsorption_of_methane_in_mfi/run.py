@@ -1,22 +1,37 @@
-import raspa
+import raspalib
 
-ff = raspa.ForceField.exampleMoleculeForceField()
 
-mcmoves = raspa.MCMoveProbabilitiesParticles(
-    translationProbability=0.5,
-    reinsertionCBMCProbability=0.5,
-    swapProbability=1.0,
+ff = raspalib.ForceField("force_field.json")
+ff.useCharge = False
+
+mcmoves = raspalib.MCMoveProbabilities(translationProbability=0.5, reinsertionCBMCProbability=0.5, swapProbability=1.0)
+
+methane = raspalib.Component(
+    componentId=0,
+    forceField=ff,
+    componentName="methane",
+    fileName="methane.json",
+    particleProbabilities=mcmoves,
 )
-methane = raspa.Component.exampleCH4(0, ff, particleProbabilities=mcmoves)
-mfi = raspa.Framework(0, ff, "MFI_SI", "MFI_SI.cif", numberOfUnitCells=[2, 2, 2])
 
-system = raspa.System(0, 300.0, ff, [methane], [0], pressure=1e5, frameworkComponents=[mfi])
-
-mc = raspa.MonteCarlo(
-    numberOfCycles=10000,
-    numberOfInitializationCycles=2000,
-    numberOfEquilibrationCycles=0,
-    systems=[system],
+mfi = raspalib.Framework(
+    frameworkId=0,
+    forceField=ff,
+    componentName="MFI_SI",
+    fileName="MFI_SI.cif",
+    numberOfUnitCells=raspalib.int3(2, 2, 2),
 )
+
+system = raspalib.System(
+    systemId=0,
+    externalTemperature=300.0,
+    externalPressure=1e5,
+    forceField=ff,
+    components=[methane],
+    initialNumberOfMolecules=[0],
+    frameworkComponents=[mfi],
+)
+
+mc = raspalib.MonteCarlo(numberOfCycles=10000, numberOfInitializationCycles=2000, systems=[system], outputToFiles=True)
 
 mc.run()

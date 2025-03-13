@@ -86,6 +86,10 @@ void MCMoveProbabilities::removeRedundantMoves()
 
 void MCMoveProbabilities::join(const MCMoveProbabilities &other)
 {
+  if (*this == other)
+  {
+    return;
+  }
   for (size_t i = 0; i < static_cast<size_t>(MoveTypes::Count); i++)
   {
     if (probabilities[static_cast<MoveTypes>(i)] > 0.0 && other.getProbability(static_cast<MoveTypes>(i)) > 0.0)
