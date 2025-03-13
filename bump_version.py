@@ -40,7 +40,6 @@ def increment_version(current_version, part):
 
 def main(new_version_or_part):
     # Define file paths
-    python_file = "raspa/utils.py"
     pyproject_file = "pyproject.toml"
     cmake_file = "CMakeLists.txt"
     pkgbuild_core_file = "packaging/PKGBUILD-core-avx2"
@@ -81,7 +80,6 @@ def main(new_version_or_part):
     
 
     # Bump versions in respective files
-    bump_version(python_file, python_pattern, new_python_version)
     bump_version(pyproject_file, pyproject_pattern, new_pyproject_version)
     bump_version(cmake_file, cmake_pattern, new_cmake_version)
     bump_version(pkgbuild_core_file, pkgbuild_pattern, new_pkgbuild_version)
