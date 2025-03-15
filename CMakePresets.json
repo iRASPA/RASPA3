@@ -11,7 +11,10 @@
       "description": "Sets generator, build and install directory, vcpkg",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build"
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "INSTALL_GTEST": false
+      }
     },
     {
       "name": "python",
@@ -23,7 +26,6 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "INSTALL_GTEST": false,
         "SKIP_EXECUTABLE": true
       }
     },
@@ -71,8 +73,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CLANG}",
         "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
-        "CMAKE_CXX_COMPILER_AR" : "llvm-ar",
-        "CMAKE_CXX_COMPILER_RANLIB" : "llvm-ranlib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{RANLIB}",
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS" : "$env{BUILD_PREFIX}/bin/clang-scan-deps",
         "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{PREFIX}/lib",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{PREFIX}/lib",
@@ -105,8 +107,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CLANG}",
         "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
-        "CMAKE_CXX_COMPILER_AR" : "llvm-ar",
-        "CMAKE_CXX_COMPILER_RANLIB" : "llvm-ranlib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{RANLIB}",
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS" : "$env{BUILD_PREFIX}/bin/clang-scan-deps",
         "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
@@ -179,8 +181,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CLANG}",
         "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
-        "CMAKE_CXX_COMPILER_AR" : "llvm-ar",
-        "CMAKE_CXX_COMPILER_RANLIB" : "llvm-ranlib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{RANLIB}",
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS" : "$env{BUILD_PREFIX}/bin/clang-scan-deps",
         "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{PREFIX}/lib",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libc++ -L$env{PREFIX}/lib",
@@ -214,8 +216,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CLANG}",
         "CMAKE_CXX_COMPILER": "$env{CLANGXX}",
-        "CMAKE_CXX_COMPILER_AR" : "llvm-ar",
-        "CMAKE_CXX_COMPILER_RANLIB" : "llvm-ranlib",
+        "CMAKE_CXX_COMPILER_AR" : "$env{AR}",
+        "CMAKE_CXX_COMPILER_RANLIB" : "$env{RANLIB}",
         "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS" : "$env{BUILD_PREFIX}/bin/clang-scan-deps",
         "CMAKE_EXE_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
         "CMAKE_SHARED_LINKER_FLAGS": "-fuse-ld=lld -stdlib=libstdc++ -L$env{PREFIX}/lib",
@@ -667,7 +669,6 @@
         "PACKAGE_INSTALL_PREFIX": "/usr",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION" : true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "INSTALL_GTEST": false,
         "BUILD_TESTING": true
       },
       "vendor": {
@@ -1322,7 +1323,6 @@
         "CMAKE_INSTALL_PREFIX": "/usr",
         "PACKAGE_INSTALL_PREFIX": "/usr",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
-        "INSTALL_GTEST": false,
         "BUILD_TESTING": true
       },
       "vendor": {
