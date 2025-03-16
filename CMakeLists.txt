@@ -9,38 +9,7 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-if(LINUX)
-  execute_process (
-    COMMAND bash -c "llvm-config --libdir"
-    OUTPUT_VARIABLE LLVM_LIBS
-  )
-  
-  execute_process (
-    COMMAND bash -c "llvm-config --version"
-    OUTPUT_VARIABLE LLVM_VERSION
-  )
-elseif(APPLE)
-  execute_process (
-    COMMAND bash -c "brew --prefix llvm"
-    OUTPUT_VARIABLE BREW_LLVM_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  execute_process (
-    COMMAND bash -c "brew --prefix libomp"
-    OUTPUT_VARIABLE BREW_LIBOMP_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  execute_process (
-    COMMAND bash -c "brew --prefix hdf5"
-    OUTPUT_VARIABLE BREW_HDF5_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-  execute_process (
-    COMMAND bash -c "brew --prefix libaec"
-    OUTPUT_VARIABLE BREW_LIBAEC_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
-elseif(WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64" AND NOT CONDA)
+if(WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64" AND NOT CONDA)
   find_package(LLVM CONFIG REQUIRED)
   list(APPEND CMAKE_MODULE_PATH "{LLVM_CMAKE_DIR}")
 endif()

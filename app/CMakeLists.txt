@@ -57,15 +57,15 @@ elseif (APPLE)
         libs::raspakit
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
-        ${BREW_HDF5_DIR}/lib/libhdf5_cpp.a
-        ${BREW_HDF5_DIR}/lib/libhdf5.a
-        ${BREW_LIBAEC_DIR}/lib/libaec.a 
-        ${BREW_LIBAEC_DIR}/lib/libsz.a 
+        $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
+        $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
+        $ENV{HOMEBREW_PREFIX}/lib/libaec.a 
+        $ENV{HOMEBREW_PREFIX}/lib/libsz.a 
         -nostdlib++
-        ${BREW_LLVM_DIR}/lib/c++/libc++experimental.a
-        ${BREW_LLVM_DIR}/lib/c++/libc++.a
-        ${BREW_LLVM_DIR}/lib/c++/libc++abi.a
-        ${BREW_LIBOMP_DIR}/lib/libomp.a
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
+        $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
+        $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
         ${ZLIB_LIBRARIES}
         -lpthread)
 endif()

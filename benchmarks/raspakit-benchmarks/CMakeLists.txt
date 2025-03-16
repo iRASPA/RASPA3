@@ -44,11 +44,10 @@ elseif (APPLE)
     ${HDF5_CXX_LIBRARIES}
     benchmark::benchmark
     -nostdlib++
-    ${LLVM_LIBS}/c++/libc++experimental.a
-    ${LLVM_LIBS}/c++/libc++.a
-    ${LLVM_LIBS}/c++/libc++abi.a
-    ${LLVM_LIBS}/libunwind.a
-    ${LLVM_LIBS}/../../../libomp/19.1.0/lib/libomp.a
+    ${HOMEBREW_PREFIX}/opt/llvm//lib/c++/libc++experimental.a
+    ${HOMEBREW_PREFIX}/opt/llvm//lib/c++/libc++.a
+    ${HOMEBREW_PREFIX}/opt/llvm//lib/c++/libc++abi.a
+    ${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
     -lpthread
   )
 endif()
