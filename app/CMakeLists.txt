@@ -47,7 +47,7 @@ elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
         libs::raspakit
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
-        C:/vcpkg/installed/arm64-windows/lib/libf2c.lib
+        C:/vcpkg/installed/arm64-windows-static/lib/libf2c.lib
         ${HDF5_CXX_LIBRARIES}
         ${llvm_libs}
         -nostdlib++)
