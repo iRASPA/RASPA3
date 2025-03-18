@@ -426,7 +426,6 @@
         "HDF5_USE_STATIC_LIBRARIES": true,
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_MAC_PACKAGE": false,
-        "Python3_EXECUTABLE": "/usr/local/bin/python3.12",
         "BUILD_TESTING": true,
         "BUILD_PYTHON": false
       },
