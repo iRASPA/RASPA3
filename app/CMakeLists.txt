@@ -39,7 +39,6 @@ elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64")
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${HDF5_CXX_LIBRARIES}
-        ${llvm_libs}
         -nostdlib++)
 elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
   target_link_libraries(${PROJECT_NAME}
@@ -49,7 +48,6 @@ elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
         ${LAPACK_LIBRARIES}
         C:/vcpkg/installed/arm64-windows-static/lib/libf2c.lib
         ${HDF5_CXX_LIBRARIES}
-        ${llvm_libs}
         -nostdlib++)
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}

@@ -9,11 +9,6 @@ project(raspa3
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-if(WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64" AND NOT CONDA)
-  find_package(LLVM CONFIG REQUIRED)
-  list(APPEND CMAKE_MODULE_PATH "{LLVM_CMAKE_DIR}")
-endif()
-
 find_package(ZLIB)
 find_package(BLAS)
 find_package(LAPACK)

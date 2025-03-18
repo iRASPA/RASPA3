@@ -48,7 +48,6 @@ elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64")
                         ${HDF5_CXX_LIBRARIES}
                         GTest::gtest
                         GTest::gtest_main
-                        ${llvm_libs}
                         -nostdlib++
 )
 elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
@@ -61,7 +60,6 @@ elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
                         ${HDF5_CXX_LIBRARIES}
                         GTest::gtest
                         GTest::gtest_main
-                        ${llvm_libs}
                         -nostdlib++
 )
 elseif (APPLE)
