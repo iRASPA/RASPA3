@@ -100,15 +100,6 @@ if(OpenMP_FOUND)
   INSTALL(FILES "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}/bin/libomp.dll" DESTINATION bin COMPONENT app)
 endif()
 
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64")
-  if(BLAS_FOUND)
-    INSTALL(FILES "C:/vcpkg/installed/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}-windows-static/bin/openblas.dll" DESTINATION bin COMPONENT app)
-  endif()
-  if(LAPACK_FOUND)
-    INSTALL(FILES "C:/vcpkg/installed/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}-windows-static/bin/liblapack.dll" DESTINATION bin COMPONENT app)
-  endif()
-endif()
-
 
 endif()
 
