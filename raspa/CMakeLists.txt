@@ -56,11 +56,7 @@ elseif (WIN32)
         ${HDF5_CXX_LIBRARIES}
         ${HDF5_LIBRARIES}
         OpenMP::OpenMP_CXX
-        -nostdlib++
-        -l:libc++.a
-        -l:libc++abi.a
-        -lm
-        -lpthread)
+        -nostdlib++)
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC

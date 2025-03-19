@@ -14,8 +14,7 @@ if (CONDA)
                         GTest::gtest
                         GTest::gtest_main
                         ZLIB::ZLIB
-                        -lpthread
-)
+                        -lpthread)
 elseif (LINUX)
   target_link_libraries(unit_tests_foundationkit
                         PUBLIC
@@ -33,31 +32,19 @@ elseif (LINUX)
                         -lm
                         -ldl
                         ${ZLIB_LIBRARIES}
-                        -lpthread
-)
-elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64")
+                        -lpthread)
+elseif (WIN32)
   target_link_libraries(unit_tests_foundationkit
                         PUBLIC
                         libs::raspakit
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         ${HDF5_CXX_LIBRARIES}
+                        OpenMP::OpenMP_CXX
                         GTest::gtest
                         GTest::gtest_main
                         -nostdlib++
-)
-elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
-  target_link_libraries(unit_tests_foundationkit
-                        PUBLIC
-                        libs::raspakit
-                        ${BLAS_LIBRARIES}
-                        ${LAPACK_LIBRARIES}
-                        C:/vcpkg/installed/arm64-windows-static/lib/libf2c.lib
-                        ${HDF5_CXX_LIBRARIES}
-                        GTest::gtest
-                        GTest::gtest_main
-                        -nostdlib++
-)
+                        ${ZLIB_LIBRARIES})
 elseif (APPLE)
   target_link_libraries(unit_tests_foundationkit PRIVATE
                         libs::raspakit
@@ -75,8 +62,7 @@ elseif (APPLE)
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
                         $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
                         ${ZLIB_LIBRARIES}
-                        -lpthread
-  )
+                        -lpthread)
 endif()
 
 gtest_add_tests(TARGET unit_tests_foundationkit TEST_SUFFIX .noArgs TEST_LIST   noArgsTests)

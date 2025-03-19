@@ -13,8 +13,7 @@ if (CONDA)
         ${HDF5_LIBRARIES}
         OpenMP::OpenMP_CXX
         ZLIB::ZLIB
-        -lpthread
-)
+        -lpthread)
 elseif (LINUX)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -32,23 +31,16 @@ elseif (LINUX)
         -ldl
         ${ZLIB_LIBRARIES}
         -lpthread)
-elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "AMD64")
+elseif (WIN32)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC
         libs::raspakit
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
         ${HDF5_CXX_LIBRARIES}
-        -nostdlib++)
-elseif (WIN32 AND ${CMAKE_SYSTEM_PROCESSOR} MATCHES "ARM64")
-  target_link_libraries(${PROJECT_NAME}
-        PUBLIC
-        libs::raspakit
-        ${BLAS_LIBRARIES}
-        ${LAPACK_LIBRARIES}
-        C:/vcpkg/installed/arm64-windows-static/lib/libf2c.lib
-        ${HDF5_CXX_LIBRARIES}
-        -nostdlib++)
+        OpenMP::OpenMP_CXX
+        -nostdlib++
+        ${ZLIB_LIBRARIES})
 elseif (APPLE)
   target_link_libraries(${PROJECT_NAME}
         PUBLIC

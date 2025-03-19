@@ -94,7 +94,18 @@ set(CPACK_NSIS_CONTACT d.dubbeldam@uva.nl)
 
 include(CPack)
 
-include (InstallRequiredSystemLibraries)
+include(InstallRequiredSystemLibraries)
+
+if(OpenMP_FOUND)
+  INSTALL(FILES "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}/bin/libomp.dll" DESTINATION bin COMPONENT app)
+endif()
+if(BLAS_FOUND)
+  INSTALL(FILES "C:/vcpkg/installed/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}-windows-static/bin/libblas.dll" DESTINATION bin COMPONENT app)
+endif()
+if(LAPACK_FOUND)
+  INSTALL(FILES "C:/vcpkg/installed/${CMAKE_VS_PLATFORM_TOOLSET_HOST_ARCHITECTURE}-windows-static/bin/liblapack.dll" DESTINATION bin COMPONENT app)
+endif()
+
 
 endif()
 
