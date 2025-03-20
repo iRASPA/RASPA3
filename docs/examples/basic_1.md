@@ -7,7 +7,7 @@ You can find the directory with the all input files at `examples/basic/1_mc_meth
 
 As this is likely your first simulation, let me explain what is happening after the input file is read.
 
-First, your `simulation.input` file is read by the InputReader. It parses the input in three sections. First of all, general simulation settings like `SimulationType` and `NumberOfCycles` is read and set to the right attributes. Also, it will read the `force_field.json`. 
+First, your `simulation.json` file is read by the InputReader. It parses the input in three sections. First of all, general simulation settings like `SimulationType` and `NumberOfCycles` is read and set to the right attributes. Also, it will read the `force_field.json`. 
 
 Then, from the **list** of systems a System object is created for every entry. The System object is central to all simulations and holds the lists of Atom, Molecule, Thermostat, SimulationBox, MCMoveProbabilitiesParticles, and also a variety of other trackers and property objects. While in this run we don't include a framework, this is also the place where a Framework object can be created.
 
@@ -52,22 +52,32 @@ During your run a few things will be created. First of all, an `output/` directo
 
 ## Run with python
 
-Very similarly to what happens behind the scene during a run initiated from a `simulation.input` file, we can also carry out these steps ourselves, using python code. 
+Very similarly to what happens behind the scene during a run initiated from a `simulation.json` file, we can also carry out these steps ourselves, using python code. 
 
-We first create a `raspa.ForceField` object, which without arguments, uses a default force field, which can be found in `data/forcefields/force_field.json`. Then, we have to create the MCMoveProbabilitiesParticles object ourselves, in this case we add just a `translationProbability` of 1.0. Then, we create the component, which in this case is the default methane component given by `raspa.Component.exampleCH4`. We also create a SimulationBox. Then we add all these things to `raspa.System`. Afterwards, we pass the System to MonteCarlo and call run, after which the simulation is started. This allows us to interact with the simulation objects after the run.
+We first create a `raspalib.ForceField` object, which without arguments, uses a default force field, which can be found in `data/forcefields/force_field.json`. Then, we have to create the MCMoveProbabilitiesParticles object ourselves, in this case we add just a `translationProbability` of 1.0. Then, we create the component, which in this case is the default methane component given by `raspa.Component`. We also create a SimulationBox. Then we add all these things to `raspa.System`. Afterwards, we pass the System to MonteCarlo and call run, after which the simulation is started. This allows us to interact with the simulation objects after the run.
 
 ```python
-import raspa
+import raspalib
 import numpy as np
 
-ff = raspa.ForceField.exampleMoleculeForceField()
+ff = raspalib.ForceField("force_field.json")
+ff.useCharge = False
 
-mcmoves = raspa.MCMoveProbabilitiesParticles(translationProbability=1.0)
-methane = raspa.Component.exampleCH4(0, ff, particleProbabilities=mcmoves)
-box = raspa.SimulationBox(30.0 * np.ones(3))
-system = raspa.System(
+mcmoves = raspalib.MCMoveProbabilities(translationProbability=1.0)
+
+methane = raspalib.Component(
+    componentId=0,
+    forceField=ff,
+    componentName="methane",
+    fileName="methane.json",
+    particleProbabilities=mcmoves,
+)
+
+box = raspalib.SimulationBox(30.0, 30.0, 30.0)
+
+system = raspalib.System(
     systemId=0,
-    temperature=300.0,
+    externalTemperature=300.0,
     forceField=ff,
     components=[methane],
     initialNumberOfMolecules=[100],
@@ -75,10 +85,11 @@ system = raspa.System(
     sampleMoviesEvery=10,
 )
 
-mc = raspa.MonteCarlo(
+mc = raspalib.MonteCarlo(
     numberOfCycles=10000,
     numberOfInitializationCycles=1000,
     systems=[system],
+    outputToFiles=True,
 )
 mc.run()
 

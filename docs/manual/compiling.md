@@ -41,35 +41,87 @@ After that, you can update the code by using
 Using `cmake --list-presets` you can see the list of `CMake` presets.
 These include
 
--   `macos-x64`
--   `macos-x64-debug`
--   `macos-apple-silicon`
--   `macos-apple-silicon-debug`
--   `windows-x64`
--   `windows-arm64`
--   `linux`
--   `linux-opensuse-leap-15.2`
--   `linux-opensuse-leap-15.3`
--   `linux-opensuse-leap-15.4`
--   `linux-opensuse-leap-15.5`
--   `linux-opensuse-tumbleweed`
--   `linux-archlinux`
--   `linux-redhat-6`
--   `linux-redhat-7`
--   `linux-redhat-8`
--   `linux-redhat-9`
--   `linux-debian-12`
--   `linux-debian-11`
--   `linux-debian-10`
--   `linux-ubuntu-24`
--   `linux-ubuntu-22`
--   `linux-ubuntu-20`
--   `linux-fedora-35`
--   `linux-fedora-36`
--   `linux-fedora-37`
--   `linux-fedora-38`
--   `linux-fedora-39`
--   `linux-fedora-40`
+-  `python`
+-  `windows_conda_raspa3`
+-  `mac_conda_raspa3`
+-  `linux_conda_raspa3`
+-  `windows_conda_raspalib`
+-  `mac_conda_raspalib`
+-  `linux_conda_raspalib`
+-  `windows-arm64-package`
+-  `windows-x64-core-avx2-package`
+-  `windows-x64-skylake-avx512-package`
+-  `macos-universal`
+-  `macos-universal-package`
+-  `macos-x64-core-avx2`
+-  `macos-x64-core-avx2-package`
+-  `macos-x64-skylake-avx512`
+-  `macos-x64-skylake-avx512-package`
+-  `macos-x64-debug`
+-  `macos-x64-profile`
+-  `macos-apple-silicon`
+-  `macos-apple-silicon-package`
+-  `macos-apple-silicon-profile`
+-  `macos-apple-silicon-debug`
+-  `linux-x86_64`
+-  `linux-x86_64-carbon`
+-  `linux-x86_64-core-avx2-opensuse-leap-15.2`
+-  `linux-x86_64-skylake-avx512-opensuse-leap-15.2`
+-  `linux-x86_64-core-avx2-opensuse-leap-15.3`
+-  `linux-x86_64-skylake-avx512-opensuse-leap-15.3`
+-  `linux-x86_64-core-avx2-opensuse-leap-15.4`
+-  `linux-x86_64-skylake-avx512-opensuse-leap-15.4`
+-  `linux-x86_64-core-avx2-opensuse-leap-15.5`
+-  `linux-x86_64-skylake-avx512-opensuse-leap-15.5`
+-  `linux-x86_64-core-avx2-opensuse-leap-15.6`
+-  `linux-x86_64-skylake-avx512-opensuse-leap-15.6`
+-  `linux-x86_64-core-avx2-opensuse-tumbleweed`
+-  `linux-x86_64-skylake-avx512-opensuse-tumbleweed`
+-  `linux-x86_64-core-avx2-archlinux`
+-  `linux-x86_64-skylake-avx512-archlinux`
+-  `linux-x86_64-core-avx2-redhat-6`
+-  `linux-x86_64-skylake-avx512-redhat-6`
+-  `linux-x86_64-core-avx2-redhat-7`
+-  `linux-x86_64-skylake-avx512-redhat-7`
+-  `linux-x86_64-core-avx2-redhat-8`
+-  `linux-x86_64-skylake-avx512-redhat-8`
+-  `linux-x86_64-core-avx2-redhat-9`
+-  `linux-x86_64-skylake-avx512-redhat-9`
+-  `linux-x86_64-core-avx2-debian-12`
+-  `linux-x86_64-skylake-avx512-debian-12`
+-  `linux-x86_64-core-avx2-debian-11`
+-  `linux-x86_64-skylake-avx512-debian-11`
+-  `linux-x86_64-core-avx2-debian-10`
+-  `linux-x86_64-skylake-avx512-debian-10`
+-  `linux-x86_64-core-avx2-ubuntu-24`
+-  `linux-x86_64-skylake-avx512-ubuntu-24`
+-  `linux-x86_64-core-avx2-ubuntu-22`
+-  `linux-x86_64-skylake-avx512-ubuntu-22`
+-  `linux-x86_64-core-avx2-ubuntu-20`
+-  `linux-x86_64-skylake-avx512-ubuntu-20`
+-  `linux-x86_64-core-avx2-fedora-35`
+-  `linux-x86_64-skylake-avx512-fedora-35`
+-  `linux-x86_64-core-avx2-fedora-36`
+-  `linux-x86_64-skylake-avx512-fedora-36`
+-  `linux-x86_64-core-avx2-fedora-37`
+-  `linux-x86_64-skylake-avx512-fedora-37`
+-  `linux-x86_64-core-avx2-fedora-38`
+-  `linux-x86_64-skylake-avx512-fedora-38`
+-  `linux-x86_64-core-avx2-fedora-39`
+-  `linux-x86_64-skylake-avx512-fedora-39`
+-  `linux-x86_64-core-avx2-fedora-40`
+-  `linux-x86_64-skylake-avx512-fedora-40`
+-  `linux-aarch64`
+-  `linux-aarch64-ubuntu-22`
+-  `linux-aarch64-ubuntu-24`
+-  `linux-aarch64-redhat-9`
+
+Presets predetermine for your system what the cmake options are. For example, the paths to compilers and libraries are given. Also, the CXX flags determining the optimization level and system architecture are preset. Pick your preset, depending on your system:
+- OS base (linux / mac / windows)
+- Architecture (x86_64 for intel, aarch64 for arm or apple-silicon)
+- Instruction set (skylake avx512 offers improved performance only on intel chips)
+- Linux distribution
+
 
 Installation on recent `macOS` computers is then accomplished for
 example by
@@ -79,7 +131,7 @@ example by
 
 or on `Linux`
 
-    cmake -B build --preset linux-ubuntu-22
+    cmake -B build --preset linux-x86_64-core-avx2-ubuntu-22
     ninja -C build install
 
 afterwhich the unit tests can be run

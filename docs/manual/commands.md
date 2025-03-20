@@ -97,14 +97,15 @@
 -   `"NumberOfInitializationCycles": integer`
     The number of cycles used to initialize the system using Monte
     Carlo. This can be used for both Monte Carlo as well as Molecular
-    Dynamics to quickly equilibrate the positions of the atoms in the
+    Dynamics to quickly minimize the positions of the atoms in the
     system.
 
 -   `"NumberOfEquilibrationCycles" : integer`
     For Molecular Dynamics it is the number of MD steps to equilibrate
     the velocities in the systems. After this equilibration the
     production run is started. For Monte Carlo, in particular `CFCMC`,
-    the equilibration-phase is used to measure the biasing factors.
+    the equilibration-phase is used to measure the biasing factors, using
+    Wang-Landau estimation.
 
 ### Restart and crash-recovery
 
@@ -118,10 +119,9 @@
 
 -   `"ContinueAfterCrash" : boolean`
     Write a binary file containing the complete status of the program.
-    The file name is 'binary_restart.dat' and is located in the
-    directory 'CrashRestart'. With this option to `true` the presence of
-    this file will result in continuation from the point where the
-    program was at the moment of outputting this file. The file can be
+    The file name is 'restart_data.bin'. With this option to `true` the 
+    presence of this file will result in continuation from the point where
+    the program was at the moment of outputting this file. The file can be
     quite big (several hundreds of megabytes) and will be outputted
     every 'WriteBinaryRestartFileEvery' cycles.
 
@@ -136,6 +136,31 @@
     `int` cycles. For MD information like energy conservation and
     stress are printed.
 
+### Parameter tuning
+
+-   `"RescaleWangLandauEvery" : integer`
+    Determines the frequency of updates for optimizing the λ parameter in
+    for example Continuous Fractional Component Monte Carlo during the
+    equilibration phase of the simulation.
+
+-   `"OptimizeMCMovesEvery" : integer`
+    Determines the frequency of updating the maximum change in the Monte
+    Carlo moves towards an optimal acceptance ratio (default: 0.5). For
+    Translation, the maximum displacement is optimized, for rotation the
+    maximum angle, for hybrid MC the maximum timestep etc.
+
+### Systems & Components
+
+-   `"Systems" : list`
+    List of system settings, each containing a dictionary with possible
+    key-value pairs described below. Multiple systems can be owned by one
+    process and Monte Carlo moves starting with Gibbs and parallel tempering
+    act on two systems.
+
+-   `"Components" : list`
+    List of component settings, each containing a dictionary with possible
+    key-value pairs described below.
+
 ----------------------------------------------------------------------------------
 
 ## System options
@@ -143,7 +168,8 @@
 ### Operating conditions and thermostat/barostat-parameters
 
 -   `"ExternalTemperature" : floating-point-number`
-    The external temperature in Kelvin for the system. Default: `298`
+    The external temperature in Kelvin for the system. From this, the system
+    beta is calculated, which is central in all statistics. Default: `298`
 
 -   `"ExternalPressure" : floating-point-number`
     The external pressure in Pascal for the system. Default: `0`
@@ -277,6 +303,11 @@
     remains constant, but the individual volume of the boxes are
     changed. The volumes are changed by a random change in
     $\ln(V_I/V_{II})$.
+
+-   `"GibbVolumeChangeProbability" : floating-point-number`
+    The probability per cycle to attempt a Hybrid MC move. A hybrid MC
+    move propagates the Hamiltonian via a short Molecular Dynamics
+    simulation and accepts the new state based on the drift.
 
 ### Molecular dynamics parameters
 
@@ -501,6 +532,15 @@ Output is written to the directory `density_grids`.
                    [0.0,       0.0,        0.5,       0.5]
                  ]
 
+-   `"LambdaBiasFileName" : string`
+    Pointing this parameter to a json file containing preset λ values
+    allows optimized CFCMC simulations to be run without Wang-Landau
+    estimation of the biasing weights.
+
+-   `"ThermodynamicIntegration" : boolean`
+    Boolean switch to determine whether to do a thermodynamic integration
+    over dU/dλ for the fractional component.
+
 ### Component **`MC`**-moves
 
 -   `"TranslationProbability" : floating-point-number`
@@ -532,9 +572,16 @@ Output is written to the directory `density_grids`.
     often necessary, to change the internal configuration of flexible
     molecules.
 
--   `"SwapProbability" : floating-point-number`
+-   `"SwapConventionalProbability" : floating-point-number`
     The relative probability to attempt a insertion or deletion move.
     Whether to insert or delete is decided randomly with a probability
+    of 50% for each. The swap move imposes a chemical equilibrium
+    between the system and an imaginary particle reservoir for the
+    current component.
+
+-   `"SwapProbability" : floating-point-number`
+    The relative probability to attempt a insertion or deletion move using
+    CBMC. Whether to insert or delete is decided randomly with a probability
     of 50% for each. The swap move imposes a chemical equilibrium
     between the system and an imaginary particle reservoir for the
     current component. The move starts with multiple first bead, and
