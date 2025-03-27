@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <tuple>
 #include <utility>

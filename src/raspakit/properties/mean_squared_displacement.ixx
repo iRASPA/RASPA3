@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -38,7 +38,7 @@ import component;
 
 export struct PropertyMeanSquaredDisplacement
 {
-  PropertyMeanSquaredDisplacement(){};
+  PropertyMeanSquaredDisplacement() {};
 
   PropertyMeanSquaredDisplacement(size_t numberOfComponents, size_t numberOfParticles, size_t sampleEvery,
                                   size_t writeEvery, size_t numberOfBlockElementsMSD)

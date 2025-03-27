@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <format>
 #include <locale>
 #include <print>

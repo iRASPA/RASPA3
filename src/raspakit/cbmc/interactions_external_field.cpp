@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <future>
 #include <iostream>
 #include <numbers>

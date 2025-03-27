@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -44,7 +44,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyEnergyHistogram
 {
-  PropertyEnergyHistogram(){};
+  PropertyEnergyHistogram() {};
 
   PropertyEnergyHistogram(size_t numberOfBlocks, size_t numberOfBins, std::pair<double, double> range,
                           size_t sampleEvery, size_t writeEvery)

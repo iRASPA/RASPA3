@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>

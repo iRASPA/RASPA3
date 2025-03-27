@@ -8,7 +8,7 @@ module;
 #include <tuple>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -28,7 +28,7 @@ import component;
 import system;
 import mixture_prediction;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 export struct Breakthrough

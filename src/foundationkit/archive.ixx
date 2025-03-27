@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <bit>
 #include <chrono>
 #include <complex>
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <istream>
@@ -48,7 +48,7 @@ export template <class STREAM>
 class Archive
 {
  public:
-  Archive(STREAM& stream) : stream(stream){};
+  Archive(STREAM& stream) : stream(stream) {};
 
   // a function that can serialize any enum
   template <typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>

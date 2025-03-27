@@ -26,7 +26,7 @@ export struct SKTransformationMatrix
   SKTransformationMatrix();
   SKTransformationMatrix(int3x3 m);
   SKTransformationMatrix(int3 v1, int3 v2, int3 v3);
-  SKTransformationMatrix(SKRotationMatrix m, int3 t) : transformation(m.int3x3_m), translation(t){};
+  SKTransformationMatrix(SKRotationMatrix m, int3 t) : transformation(m.int3x3_m), translation(t) {};
 
   inline int3& operator[](int i) { return this->transformation.v[i]; }
   inline const int3& operator[](int i) const { return this->transformation.v[i]; }

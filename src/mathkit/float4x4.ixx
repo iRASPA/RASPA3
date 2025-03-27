@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #endif
 
 export module float4x4;
@@ -59,7 +59,7 @@ export union float4x4
         m14(m14),
         m24(m24),
         m34(m34),
-        m44(m44){
+        m44(m44) {
 
         };
 

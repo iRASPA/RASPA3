@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstring>
 #include <algorithm>
 #include <cctype>
 #include <complex>
+#include <cstddef>
+#include <cstring>
 #include <format>
 #include <fstream>
 #include <istream>
@@ -214,7 +214,6 @@ export struct InputReader
    * \throws std::runtime_error If unknown input keys are found or required keys are missing.
    */
   void validateInput(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
-
 
   void parseUnits(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 

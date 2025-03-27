@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #endif
 
 export module potential_correction_vdw;

@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -17,7 +17,7 @@ module;
 #include <type_traits>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -48,7 +48,7 @@ import system;
 import simulationbox;
 import mixture_prediction;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 // TODO: move std::span to std::mdarray in C++26

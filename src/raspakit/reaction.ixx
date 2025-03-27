@@ -37,7 +37,7 @@ export struct Reaction
    *
    * Initializes a Reaction object with default values.
    */
-  Reaction(){};
+  Reaction() {};
 
   /**
    * \brief Constructs a Reaction with specified parameters.

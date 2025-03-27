@@ -25,7 +25,7 @@ export struct SKAsymmetricUnit
   std::pair<int, int> c;
 
   SKAsymmetricUnit();
-  SKAsymmetricUnit(std::pair<int, int> p1, std::pair<int, int> p2, std::pair<int, int> p3) : a(p1), b(p2), c(p3){};
+  SKAsymmetricUnit(std::pair<int, int> p1, std::pair<int, int> p2, std::pair<int, int> p3) : a(p1), b(p2), c(p3) {};
 
   SKAsymmetricUnit(const SKAsymmetricUnit& t)
   {

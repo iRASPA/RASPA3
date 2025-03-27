@@ -37,7 +37,7 @@ export union float3x4
         m13(m13),
         m23(m23),
         m33(m33),
-        m43(m43){
+        m43(m43) {
 
         };
 

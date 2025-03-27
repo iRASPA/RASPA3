@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #endif
 
 export module double4x4;
@@ -55,7 +55,7 @@ export union double4x4
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(0.0){};
+        m44(0.0) {};
 
   explicit double4x4(double m11, double m22, double m33, double m44)
       : m11(m11),
@@ -73,7 +73,7 @@ export union double4x4
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(m44){};
+        m44(m44) {};
 
   explicit double4x4(double4 v)
       : m11(v.x),
@@ -91,7 +91,7 @@ export union double4x4
         m14(0.0),
         m24(0.0),
         m34(0.0),
-        m44(v.w){};
+        m44(v.w) {};
 
   double4x4(double m11, double m21, double m31, double m41, double m12, double m22, double m32, double m42, double m13,
             double m23, double m33, double m43, double m14, double m24, double m34, double m44)

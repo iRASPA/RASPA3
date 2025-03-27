@@ -194,37 +194,45 @@ std::optional<RunningEnergy> computeFrameworkMoleculeElectricFieldDifference(
     const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMolecule, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
-std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                     double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField,
+                                                                     const SimulationBox &simulationBox, double3 posA,
+                                                                     size_t typeA,
+                                                                     std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                         double3 posA, double chargeA, std::span<const Atom> frameworkAtoms);
+std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const ForceField &forceField,
+                                                                         const SimulationBox &simulationBox,
+                                                                         double3 posA, double chargeA,
+                                                                         std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, double3, double3x3, double3x3x3> 
-  calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                        double3 posB, size_t typeB, std::span<const Atom> frameworkAtoms);
+std::tuple<double, double3, double3x3, double3x3x3> calculateThirdDerivativeAtPositionVDW(
+    const ForceField &forceField, const SimulationBox &simulationBox, double3 posB, size_t typeB,
+    std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, std::array<double,3>, std::array<std::array<double,3>,3>, std::array<std::array<std::array<double,3>,3>,3>,
-  std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,
-  std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,
-  std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3>>
-  calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                        double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
+calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox, double3 posA,
+                                      size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, double3, double3x3, double3x3x3> 
-  calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
-                                            double3 posB, double chargeB, std::span<const Atom> frameworkAtoms);
+std::tuple<double, double3, double3x3, double3x3x3> calculateThirdDerivativeAtPositionCoulomb(
+    const ForceField &forceField, const SimulationBox &simulationBox, double3 posB, double chargeB,
+    std::span<const Atom> frameworkAtoms);
 
+std::array<double, 8> calculateTricubicCartesianAtPositionVDW(const ForceField &forceField,
+                                                              const SimulationBox &simulationBox, double3 posA,
+                                                              size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 8> calculateTricubicCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                              double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+std::array<double, 8> calculateTricubicFractionalAtPositionVDW(const ForceField &forceField,
+                                                               const SimulationBox &simulationBox, double3 posA,
+                                                               size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 8> calculateTricubicFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                               double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+std::array<double, 27> calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField,
+                                                                 const SimulationBox &simulationBox, double3 posA,
+                                                                 size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::array<double, 27> calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                 double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
-
-std::array<double, 27> calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                  double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms);
+std::array<double, 27> calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField,
+                                                                  const SimulationBox &simulationBox, double3 posA,
+                                                                  size_t typeA, std::span<const Atom> frameworkAtoms);
 };  // namespace Interactions

@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -36,7 +36,7 @@ import forcefield;
 
 export struct PropertyRadialDistributionFunction
 {
-  PropertyRadialDistributionFunction(){};
+  PropertyRadialDistributionFunction() {};
 
   PropertyRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins,
                                      double range, size_t sampleEvery, size_t writeEvery)

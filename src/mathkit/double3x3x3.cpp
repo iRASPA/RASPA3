@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <fstream>
 #include <map>
 #include <numbers>
@@ -32,4 +32,3 @@ import double3x3;
 import simd_quatd;
 import double3;
 import archive;
-

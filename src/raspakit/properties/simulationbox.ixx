@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -43,7 +43,7 @@ inline std::pair<SimulationBox, double> pair_sum(const std::pair<SimulationBox, 
 
 export struct PropertySimulationBox
 {
-  PropertySimulationBox(){};
+  PropertySimulationBox() {};
 
   PropertySimulationBox(size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingSimulationBox(numberOfBlocks, std::make_pair(SimulationBox(), 0.0))

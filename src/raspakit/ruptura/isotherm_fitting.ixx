@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
+#include <cstddef>
 #include <iostream>
 #include <string>
 #include <tuple>

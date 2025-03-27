@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <numbers>
 #endif
@@ -24,7 +24,7 @@ import hessian_factor;
 /**
  * \brief Computes the gradient of the Coulomb potential.
  *
- * This function calculates the energy, gradient, and hessian of the Coulomb potential based 
+ * This function calculates the energy, gradient, and hessian of the Coulomb potential based
  * on the specified charge method in the provided force field. It handles different charge
  * method in the provided force field. It handles different charge calculation
  * methods such as Ewald, Coulomb, Wolf, and ModifiedWolf.
@@ -44,7 +44,7 @@ import hessian_factor;
  */
 export [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(
     const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA,
-    const double& scalingB, const double &rr, const double& r, const double& chargeA, const double& chargeB)
+    const double& scalingB, const double& rr, const double& r, const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
 
@@ -54,21 +54,22 @@ export [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(
     {
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      return HessianFactor(scaling * temp,
-                           (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
-                           -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                           ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * rr) *
-                           std::numbers::inv_sqrtpi_v<double>) / (rr * r)),
-                           Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                           (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
-                            4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
-                            6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr )));
+      return HessianFactor(
+          scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
+          -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+              ((std::erfc(alpha * r) +
+                2.0 * alpha * r * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>) /
+               (rr * r)),
+          Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+              (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
+               4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
+               6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr)));
     }
     case ForceField::ChargeMethod::Coulomb:
     {
-      return HessianFactor(Units::CoulombicConversionFactor * scaling * chargeA * chargeB / r, 
-                           -Units::CoulombicConversionFactor * scaling * chargeA * chargeB / (rr *r), 
-                           Units::CoulombicConversionFactor * 3.0 * scaling * chargeA * chargeB / (rr * rr * r), 
+      return HessianFactor(Units::CoulombicConversionFactor * scaling * chargeA * chargeB / r,
+                           -Units::CoulombicConversionFactor * scaling * chargeA * chargeB / (rr * r),
+                           Units::CoulombicConversionFactor * 3.0 * scaling * chargeA * chargeB / (rr * rr * r),
                            -Units::CoulombicConversionFactor * 15.0 * scaling * chargeA * chargeB / (rr * rr * rr * r));
     }
     default:

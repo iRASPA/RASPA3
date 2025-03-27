@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <optional>
 #include <span>
 #include <tuple>

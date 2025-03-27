@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -42,7 +42,7 @@ export struct PseudoAtom
    *
    * Initializes a PseudoAtom object with default values.
    */
-  PseudoAtom(){};
+  PseudoAtom() {};
 
   /**
    * \brief Constructs a PseudoAtom with specified parameters.
@@ -68,7 +68,7 @@ export struct PseudoAtom
         polarizability(polarizability),
         atomicNumber(atomicNumber),
         printToPDB(printToPDB),
-        source(source){};
+        source(source) {};
 
   uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
 

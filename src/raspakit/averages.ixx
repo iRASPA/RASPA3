@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -117,7 +117,7 @@ export struct BlockErrorEstimation
    *
    * Initializes a BlockErrorEstimation object with default values.
    */
-  BlockErrorEstimation(){};
+  BlockErrorEstimation() {};
 
   /**
    * \brief Constructs a BlockErrorEstimation with specified parameters.

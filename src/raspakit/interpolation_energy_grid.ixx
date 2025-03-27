@@ -1,9 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
-#include <vector>
 #include <cmath>
 #include <cstddef>
 #include <fstream>
@@ -12,6 +10,7 @@ module;
 #include <print>
 #include <sstream>
 #include <type_traits>
+#include <vector>
 #endif
 
 export module interpolation_energy_grid;
@@ -46,11 +45,11 @@ export struct InterpolationEnergyGrid
   int3 numberOfGridPoints;
   std::vector<double> data;
 
-  InterpolationEnergyGrid(int3 numberOfCells): 
-    numberOfCells(numberOfCells),
-    numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
-    //data(static_cast<size_t>(8 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
-    data(static_cast<size_t>(27 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+  InterpolationEnergyGrid(int3 numberOfCells)
+      : numberOfCells(numberOfCells),
+        numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
+        // data(static_cast<size_t>(8 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+        data(static_cast<size_t>(27 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
   {
   }
 

@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #endif
 
@@ -39,10 +39,10 @@ export struct HessianFactor
    * \param firstDerivativeFactor The first-derivative scaling factor.
    * \param secondDerivativeFactor The second-derivative scaling factor.
    */
-  HessianFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor):
-        energy(energy), 
-        dUdlambda(dUdlambda), 
-        firstDerivativeFactor(firstDerivativeFactor), 
+  HessianFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor)
+      : energy(energy),
+        dUdlambda(dUdlambda),
+        firstDerivativeFactor(firstDerivativeFactor),
         secondDerivativeFactor(secondDerivativeFactor)
   {
   }
@@ -80,7 +80,6 @@ export struct HessianFactor
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const HessianFactor& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HessianFactor& e);
 };
-
 
 export inline HessianFactor operator+(const HessianFactor& a, const HessianFactor& b)
 {

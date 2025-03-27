@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -51,7 +51,7 @@ inline std::pair<double3x3, double> pair_acc_pressure2(const std::pair<double3x3
 
 export struct PropertyPressure
 {
-  PropertyPressure(){};
+  PropertyPressure() {};
 
   PropertyPressure(size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks),

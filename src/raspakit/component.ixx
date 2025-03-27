@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <fstream>

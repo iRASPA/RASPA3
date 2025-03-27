@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstddef>
 #include <deque>
 #include <functional>
 #include <future>

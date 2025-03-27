@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #endif
 
@@ -26,8 +26,8 @@ import archive;
  */
 export struct GradientFactor
 {
-  double energy;       ///< The energy component.
-  double dUdlambda;    ///< The derivative of the potential energy with respect to lambda.
+  double energy;          ///< The energy component.
+  double dUdlambda;       ///< The derivative of the potential energy with respect to lambda.
   double gradientFactor;  ///< The scaling factor for forces.
 
   /**

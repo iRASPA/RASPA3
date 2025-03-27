@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <map>
+#include <ostream>
 #include <print>
 #include <ranges>
 #include <source_location>
 #include <sstream>
-#include <ostream>
 #include <vector>
 #endif
 

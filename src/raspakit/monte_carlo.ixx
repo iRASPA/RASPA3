@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <chrono>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -89,13 +89,13 @@ export struct MonteCarlo
    */
   MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
              size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
-             size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed,
-             size_t numberOfBlocks, bool outputToFiles = false);
+             size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed, size_t numberOfBlocks,
+             bool outputToFiles = false);
 
   uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  bool outputToFiles{ true };
-  RandomNumber random;                  ///< Random number generator.
+  bool outputToFiles{true};
+  RandomNumber random;  ///< Random number generator.
 
   size_t numberOfCycles;                ///< Number of production cycles.
   size_t numberOfSteps;                 ///< Total number of steps performed.

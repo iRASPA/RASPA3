@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -46,7 +46,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyEnthalpy
 {
-  PropertyEnthalpy(){};
+  PropertyEnthalpy() {};
   PropertyEnthalpy(size_t numberOfBlocks, size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
         numberOfComponents(numberOfComponents),
@@ -135,7 +135,8 @@ export struct PropertyEnthalpy
 
     std::transform(
         bookKeepingEnthalpyOfAdsorptionTerms.begin(), bookKeepingEnthalpyOfAdsorptionTerms.end(), enthalpy.begin(),
-        [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block) {
+        [&](const std::pair<EnthalpyOfAdsorptionTerms, double> &block)
+        {
           return Units::EnergyToKelvin * ((block.first / block.second).compositeProperty().values[k] - idealGasTerm);
         });
     return enthalpy;

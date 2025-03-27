@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <map>

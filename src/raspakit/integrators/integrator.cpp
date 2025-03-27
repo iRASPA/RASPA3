@@ -1,13 +1,13 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <chrono>
 #include <complex>
+#include <cstddef>
+#include <iostream>
 #include <optional>
 #include <span>
 #include <vector>
-#include <iostream>
 #endif
 
 module integrators;

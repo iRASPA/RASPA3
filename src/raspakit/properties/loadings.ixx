@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <optional>
 #include <ostream>
@@ -27,7 +27,7 @@ import component;
 
 export struct Loadings
 {
-  Loadings(){};
+  Loadings() {};
 
   Loadings(size_t size)
       : size(size),

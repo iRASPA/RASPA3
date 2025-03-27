@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -42,7 +42,7 @@ inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, 
 
 export struct PropertyTemperature
 {
-  PropertyTemperature(){};
+  PropertyTemperature() {};
 
   PropertyTemperature(size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingTemperature(numberOfBlocks, std::make_pair(0.0, 0.0))

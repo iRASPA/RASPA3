@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -62,49 +62,66 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
              conv * frameworkMoleculeEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    framework-molecule Coulombic Fourier:    {: .6e} [{}]\n",
              conv * frameworkMoleculeEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    molecule-molecule  Van der Waals:        {: .6e} [{}]\n", 
+  std::print(stream, "    molecule-molecule  Van der Waals:        {: .6e} [{}]\n",
              conv * interEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    molecule-molecule  Van der Waals (Tail): {: .6e} [{}]\n",
              conv * interEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    molecule-molecule  Coulombic Real:       {: .6e} [{}/-]\n", 
-      conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Coulombic Real:       {: .6e} [{}/-]\n",
+             conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
              conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", 
-      conv * totalEnergy.dUdlambda, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
+             Units::displayedUnitOfEnergyString);
 
   for (size_t i = 0; i < components.size(); ++i)
   {
     std::print(stream, "    Component: {} [{}]\n", i, components[i].name);
     std::print(stream, "    ---------------------------------------------------------------------------\n\n");
-    std::print(stream, "    Molecule bond:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bond, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bend:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bend, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule inversionBend:     {: .6e} [{}]\n", conv * intraComponentEnergies[i].inversionBend, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule ureyBradley:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].ureyBradley, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule torsion:           {: .6e} [{}]\n", conv * intraComponentEnergies[i].torsion, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule improperTorsion:   {: .6e} [{}]\n", conv * intraComponentEnergies[i].improperTorsion, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bondBond:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondBond, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bondBend:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondBend, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bondTorsion:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondTorsion, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bendBend:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bendBend, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule bendTorsion:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].bendTorsion, Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule intraVDW:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].intraVDW, Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bond:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bond,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bend:              {: .6e} [{}]\n", conv * intraComponentEnergies[i].bend,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule inversionBend:     {: .6e} [{}]\n", conv * intraComponentEnergies[i].inversionBend,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule ureyBradley:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].ureyBradley,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule torsion:           {: .6e} [{}]\n", conv * intraComponentEnergies[i].torsion,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule improperTorsion:   {: .6e} [{}]\n",
+               conv * intraComponentEnergies[i].improperTorsion, Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bondBond:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondBond,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bondBend:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondBend,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bondTorsion:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].bondTorsion,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bendBend:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].bendBend,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule bendTorsion:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].bendTorsion,
+               Units::displayedUnitOfEnergyString);
+    std::print(stream, "    Molecule intraVDW:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].intraVDW,
+               Units::displayedUnitOfEnergyString);
     std::print(stream, "    Molecule intraChargeCharge: {: .6e} [{}]\n\n",
                conv * intraComponentEnergies[i].intraChargeCharge, Units::displayedUnitOfEnergyString);
     for (size_t j = 0; j < components.size(); ++j)
     {
       std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);
       std::print(stream, "        Van der Waals:        {: .6e} [{}]\n",
-                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaals.energy, Units::displayedUnitOfEnergyString);
+                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaals.energy,
+                 Units::displayedUnitOfEnergyString);
       std::print(stream, "        Van der Waals (Tail): {: .6e} [{}]\n",
-                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
+                 conv * interComponentEnergies[i * numberOfComponents + j].VanDerWaalsTailCorrection.energy,
+                 Units::displayedUnitOfEnergyString);
       std::print(stream, "        Coulombic Real:       {: .6e} [{}]\n",
-                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicReal.energy,
+                 Units::displayedUnitOfEnergyString);
       std::print(stream, "        Coulombic Fourier:    {: .6e} [{}]\n",
-                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+                 conv * interComponentEnergies[i * numberOfComponents + j].CoulombicFourier.energy,
+                 Units::displayedUnitOfEnergyString);
       std::print(stream, "        -----------------------------------------------------------------------\n");
       std::print(stream, "        Sum                   {: .6e} [{}]\n\n",
-                 conv * interComponentEnergies[i * numberOfComponents + j].totalInter.energy, Units::displayedUnitOfEnergyString);
+                 conv * interComponentEnergies[i * numberOfComponents + j].totalInter.energy,
+                 Units::displayedUnitOfEnergyString);
     }
   }
   std::print(stream, "\n");

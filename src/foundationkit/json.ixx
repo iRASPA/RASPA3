@@ -1,51 +1,51 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <algorithm>  // all_of, find, for_each
+#include <any>
+#include <array>    // array
+#include <cassert>  // assert
+#include <cctype>   // isdigit
+#include <cerrno>   // errno, ERANGE
+#include <clocale>  // localeconv
+#include <cmath>    // ldexp
 #include <cstddef>
-#include <cmath>     // ldexp
-#include <cstdint>   // uint8_t, uint16_t, uint32_t, uint64_t
-#include <cstdio>    // snprintf
-#include <cstdlib>           // strtof, strtod, strtold, strtoll, strtoull
-#include <cctype>     // isdigit
-#include <cerrno>     // errno, ERANGE
-#include <cstring>   // memcpy
-#include <clocale>           // localeconv
+#include <cstdint>    // uint8_t, uint16_t, uint32_t, uint64_t
+#include <cstdio>     // snprintf
+#include <cstdlib>    // strtof, strtod, strtold, strtoll, strtoull
+#include <cstring>    // memcpy
+#include <exception>  // exception
+#include <filesystem>
+#include <forward_list>  // forward_list
 #include <functional>
-#include <iostream>
-#include <istream>  // istream
-#include <type_traits>
-#include <algorithm>         // all_of, find, for_each
-#include <version>
-#include <cassert>           // assert
 #include <functional>        // hash, less
 #include <initializer_list>  // initializer_list
-#include <iosfwd>        // istream, ostream
-#include <vector>         // vector
-#include <array>         // array
-#include <string>    // char_traits, string
-#include <string_view>
-#include <utility>        // declval, forward, move, pair, swap
-#include <exception>     // exception
-#include <forward_list>  // forward_list
-#include <iterator>      // random_access_iterator_tag
-#include <map>           // map
-#include <memory>        // unique_ptr
+#include <iomanip>           // setfill, setw
+#include <iosfwd>            // istream, ostream
+#include <iostream>
+#include <istream>   // istream
+#include <iterator>  // random_access_iterator_tag
+#include <limits>    // numeric_limits
+#include <limits>    // numeric_limits
+#include <map>       // map
+#include <memory>    // unique_ptr
+#include <numeric>   // accumulate
 #include <optional>
-#include <tuple>          // tuple, make_tuple
+#include <ranges>     // enable_borrowed_range
+#include <stdexcept>  // runtime_error
+#include <string>     // char_traits, string
+#include <string_view>
+#include <tuple>  // tuple, make_tuple
+#include <type_traits>
 #include <type_traits>    // is_arithmetic, is_same, is_enum, underlying_type, is_convertible
 #include <unordered_map>  // unordered_map
+#include <utility>        // declval, forward, move, pair, swap
 #include <valarray>       // valarray
-#include <numeric>  // accumulate
-#include <filesystem>
-#include <stdexcept>  // runtime_error
-#include <ranges>  // enable_borrowed_range
-#include <any>
-#include <limits>    // numeric_limits
-#include <iomanip>      // setfill, setw
-#include <limits>       // numeric_limits
+#include <vector>         // vector
+#include <version>
 #ifndef JSON_NO_IO
-#include <iosfwd>   // ostream
-#endif              // JSON_NO_IO
+#include <iosfwd>  // ostream
+#endif             // JSON_NO_IO
 #endif
 
 export module json;
@@ -1966,7 +1966,7 @@ JSON_HEDLEY_DIAGNOSTIC_POP
   _Generic((1 ? (void*)((__INTPTR_TYPE__)((expr) * 0)) : (int*)0), int*: 1, void*: 0)
 #else
 #include <stdint.h>
-#define JSON_HEDLEY_IS_CONSTEXPR_(expr) _Generic((1 ? (void*)((intptr_t) * 0) : (int*)0), int*: 1, void*: 0)
+#define JSON_HEDLEY_IS_CONSTEXPR_(expr) _Generic((1 ? (void*)((intptr_t)*0) : (int*)0), int*: 1, void*: 0)
 #endif
 #elif defined(JSON_HEDLEY_GCC_VERSION) || defined(JSON_HEDLEY_INTEL_VERSION) || defined(JSON_HEDLEY_TINYC_VERSION) || \
     defined(JSON_HEDLEY_TI_ARMCL_VERSION) || JSON_HEDLEY_TI_CL430_VERSION_CHECK(18, 12, 0) ||                         \
@@ -4271,7 +4271,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/meta/cpp_future.hpp>
 
 // #include <nlohmann/detail/meta/detected.hpp>
@@ -4857,8 +4856,8 @@ inline void from_json_array_impl(const BasicJsonType& j, typename BasicJsonType:
 }
 
 template <typename BasicJsonType, typename T, std::size_t N>
-auto from_json_array_impl(const BasicJsonType& j, std::array<T, N>& arr,
-                          priority_tag<2> /*unused*/) -> decltype(j.template get<T>(), void())
+auto from_json_array_impl(const BasicJsonType& j, std::array<T, N>& arr, priority_tag<2> /*unused*/)
+    -> decltype(j.template get<T>(), void())
 {
   for (std::size_t i = 0; i < N; ++i)
   {
@@ -4910,10 +4909,9 @@ template <typename BasicJsonType, typename ConstructibleArrayType,
                           !std::is_same<ConstructibleArrayType, typename BasicJsonType::binary_t>::value &&
                           !is_basic_json<ConstructibleArrayType>::value,
                       int> = 0>
-auto from_json(const BasicJsonType& j,
-               ConstructibleArrayType& arr) -> decltype(from_json_array_impl(j, arr, priority_tag<3>{}),
-                                                        j.template get<typename ConstructibleArrayType::value_type>(),
-                                                        void())
+auto from_json(const BasicJsonType& j, ConstructibleArrayType& arr)
+    -> decltype(from_json_array_impl(j, arr, priority_tag<3>{}),
+                j.template get<typename ConstructibleArrayType::value_type>(), void())
 {
   if (JSON_HEDLEY_UNLIKELY(!j.is_array()))
   {
@@ -4966,10 +4964,10 @@ inline void from_json(const BasicJsonType& j, ConstructibleObjectType& obj)
   ConstructibleObjectType ret;
   const auto* inner_object = j.template get_ptr<const typename BasicJsonType::object_t*>();
   using value_type = typename ConstructibleObjectType::value_type;
-  std::transform(inner_object->begin(), inner_object->end(), std::inserter(ret, ret.begin()),
-                 [](typename BasicJsonType::object_t::value_type const& p) {
-                   return value_type(p.first, p.second.template get<typename ConstructibleObjectType::mapped_type>());
-                 });
+  std::transform(
+      inner_object->begin(), inner_object->end(), std::inserter(ret, ret.begin()),
+      [](typename BasicJsonType::object_t::value_type const& p)
+      { return value_type(p.first, p.second.template get<typename ConstructibleObjectType::mapped_type>()); });
   obj = std::move(ret);
 }
 
@@ -5119,8 +5117,8 @@ inline void from_json(const BasicJsonType& j, std_fs::path& p)
 struct from_json_fn
 {
   template <typename BasicJsonType, typename T>
-  auto operator()(const BasicJsonType& j, T&& val) const
-      noexcept(noexcept(from_json(j, std::forward<T>(val)))) -> decltype(from_json(j, std::forward<T>(val)))
+  auto operator()(const BasicJsonType& j, T&& val) const noexcept(noexcept(from_json(j, std::forward<T>(val))))
+      -> decltype(from_json(j, std::forward<T>(val)))
   {
     return from_json(j, std::forward<T>(val));
   }
@@ -5803,8 +5801,8 @@ inline void to_json(BasicJsonType& j, const std_fs::path& p)
 struct to_json_fn
 {
   template <typename BasicJsonType, typename T>
-  auto operator()(BasicJsonType& j, T&& val) const
-      noexcept(noexcept(to_json(j, std::forward<T>(val)))) -> decltype(to_json(j, std::forward<T>(val)), void())
+  auto operator()(BasicJsonType& j, T&& val) const noexcept(noexcept(to_json(j, std::forward<T>(val))))
+      -> decltype(to_json(j, std::forward<T>(val)), void())
   {
     return to_json(j, std::forward<T>(val));
   }
@@ -6514,9 +6512,8 @@ contiguous_bytes_input_adapter input_adapter(CharT b)
 }
 
 template <typename T, std::size_t N>
-auto input_adapter(T (&array)[N])
-    -> decltype(input_adapter(
-        array, array + N))  // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+auto input_adapter(T (&array)[N]) -> decltype(input_adapter(
+    array, array + N))  // NOLINT(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
 {
   return input_adapter(array, array + N);
 }
@@ -7252,7 +7249,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/input/input_adapters.hpp>
 
@@ -12080,7 +12076,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/exceptions.hpp>
 
 // #include <nlohmann/detail/input/input_adapters.hpp>
@@ -13664,7 +13659,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/exceptions.hpp>
 
 // #include <nlohmann/detail/macro_scope.hpp>
@@ -14677,7 +14671,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/input/binary_reader.hpp>
 
 // #include <nlohmann/detail/macro_scope.hpp>
@@ -14690,7 +14683,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/macro_scope.hpp>
 
@@ -16580,7 +16572,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/conversions/to_chars.hpp>
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
@@ -16590,7 +16581,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2009 Florian Loitsch <https://florian.loitsch.com/>
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/macro_scope.hpp>
 
@@ -18619,7 +18609,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/macro_scope.hpp>
 

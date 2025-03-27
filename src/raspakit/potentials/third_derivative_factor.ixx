@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #endif
 
@@ -41,10 +41,11 @@ export struct ThirdDerivativeFactor
    * \param secondDerivativeFactor The second-derivative scaling factor.
    * \param thirdDerivativeFactor The third-derivative scaling factor.
    */
-  ThirdDerivativeFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor, double thirdDerivativeFactor):
-        energy(energy), 
-        dUdlambda(dUdlambda), 
-        firstDerivativeFactor(firstDerivativeFactor), 
+  ThirdDerivativeFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor,
+                        double thirdDerivativeFactor)
+      : energy(energy),
+        dUdlambda(dUdlambda),
+        firstDerivativeFactor(firstDerivativeFactor),
         secondDerivativeFactor(secondDerivativeFactor),
         thirdDerivativeFactor(thirdDerivativeFactor)
   {
@@ -86,7 +87,6 @@ export struct ThirdDerivativeFactor
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ThirdDerivativeFactor& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ThirdDerivativeFactor& e);
 };
-
 
 export inline ThirdDerivativeFactor operator+(const ThirdDerivativeFactor& a, const ThirdDerivativeFactor& b)
 {

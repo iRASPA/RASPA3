@@ -2,8 +2,8 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
-#include <memory>
 #include <locale>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>

@@ -1,13 +1,14 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cstddef>
 #include <deque>
 #include <future>
 #include <iostream>
+#include <limits>
 #include <numbers>
 #include <optional>
 #include <semaphore>
@@ -15,7 +16,6 @@ module;
 #include <thread>
 #include <utility>
 #include <vector>
-#include <limits>
 #endif
 
 module interactions_framework_molecule;
@@ -345,7 +345,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
       {
         double r = std::sqrt(rr);
         GradientFactor gradientFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                              scalingCoulombB, r, chargeA, chargeB);
+                                                                 scalingCoulombB, r, chargeA, chargeB);
 
         energySum.frameworkMoleculeCharge += gradientFactor.energy;
         energySum.dudlambdaCharge += gradientFactor.dUdlambda;
@@ -434,7 +434,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
         double r = std::sqrt(rr);
 
         GradientFactor gradientFactor = potentialCoulombGradient(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                           scalingCoulombB, r, chargeA, chargeB);
+                                                                 scalingCoulombB, r, chargeA, chargeB);
 
         energy.frameworkComponentEnergy(compA, compB).CoulombicReal += EnergyFactor(gradientFactor.energy, 0.0);
 
@@ -671,9 +671,10 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeElectricField
   return std::optional{energySum};
 }
 
-
-std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                                   double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField,
+                                                                                   const SimulationBox &simulationBox,
+                                                                                   double3 posA, size_t typeA,
+                                                                                   std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 
@@ -720,9 +721,9 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionV
   return {energy, first_derivative, second_derivative};
 }
 
-
-std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                                       double3 posA, double chargeA, std::span<const Atom> frameworkAtoms)
+std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionCoulomb(
+    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA, double chargeA,
+    std::span<const Atom> frameworkAtoms)
 {
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -770,10 +771,9 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionC
   return {energy, first_derivative, second_derivative};
 }
 
-
-std::tuple<double, double3, double3x3, double3x3x3> 
-  Interactions::calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                      double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::tuple<double, double3, double3x3, double3x3x3> Interactions::calculateThirdDerivativeAtPositionVDW(
+    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA, size_t typeA,
+    std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 
@@ -857,22 +857,23 @@ std::tuple<double, double3, double3x3, double3x3x3>
   return {energy, first_derivative, second_derivative, third_derivative};
 }
 
-std::tuple<double, std::array<double,3>, std::array<std::array<double,3>,3>, std::array<std::array<std::array<double,3>,3>,3>, 
-  std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,
-  std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,
-  std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3>> 
-  Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                      double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
+           std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
+Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                    double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 
   double energy{0.0};
-  std::array<double,3> first_derivative{};
-  std::array<std::array<double,3>,3> second_derivative{};
-  std::array<std::array<std::array<double,3>,3>,3> third_derivative{};
-  std::array<std::array<std::array<std::array<double,3>,3>,3>,3> fourth_derivative{};
-  std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3> fifth_derivative{};
-  std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3> sixth_derivative{};
+  std::array<double, 3> first_derivative{};
+  std::array<std::array<double, 3>, 3> second_derivative{};
+  std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative{};
+  std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3> fourth_derivative{};
+  std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3> fifth_derivative{};
+  std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3> sixth_derivative{};
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -891,166 +892,163 @@ std::tuple<double, std::array<double,3>, std::array<std::array<double,3>,3>, std
 
       energy += v.energy;
 
-      for(size_t i = 0; i != 3; ++i)
+      for (size_t i = 0; i != 3; ++i)
       {
         first_derivative[i] += dr[i] * v.firstDerivativeFactor;
 
-        for(size_t j = 0; j != 3; ++j)
+        for (size_t j = 0; j != 3; ++j)
         {
-          second_derivative[i][j] += v.secondDerivativeFactor * dr[i] * dr[j] 
-                                     + (i==j ? v.firstDerivativeFactor : 0.0);
+          second_derivative[i][j] +=
+              v.secondDerivativeFactor * dr[i] * dr[j] + (i == j ? v.firstDerivativeFactor : 0.0);
 
-          for(size_t k = 0; k != 3; ++k)
+          for (size_t k = 0; k != 3; ++k)
           {
-            third_derivative[i][j][k] += v.thirdDerivativeFactor * dr[i] * dr[j] * dr[k]
-                                         + (j==k ? v.secondDerivativeFactor * dr[i] : 0.0)
-                                         + (i==k ? v.secondDerivativeFactor * dr[j] : 0.0)
-                                         + (i==j ? v.secondDerivativeFactor * dr[k] : 0.0);
+            third_derivative[i][j][k] +=
+                v.thirdDerivativeFactor * dr[i] * dr[j] * dr[k] + (j == k ? v.secondDerivativeFactor * dr[i] : 0.0) +
+                (i == k ? v.secondDerivativeFactor * dr[j] : 0.0) + (i == j ? v.secondDerivativeFactor * dr[k] : 0.0);
 
-            for(size_t l = 0; l != 3; ++l)
+            for (size_t l = 0; l != 3; ++l)
             {
-              fourth_derivative[i][j][k][l] += v.fourthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l]
-                                               + (i==j ? v.thirdDerivativeFactor * dr[k] * dr[l] : 0.0)
-                                               + (i==k ? v.thirdDerivativeFactor * dr[j] * dr[l] : 0.0)
-                                               + (i==l ? v.thirdDerivativeFactor * dr[j] * dr[k] : 0.0)
-                                               + (j==k ? v.thirdDerivativeFactor * dr[i] * dr[l] : 0.0)
-                                               + (j==l ? v.thirdDerivativeFactor * dr[i] * dr[k] : 0.0)
-                                               + (k==l ? v.thirdDerivativeFactor * dr[i] * dr[j] : 0.0)
-                                               + (i==j && k==l ? v.secondDerivativeFactor : 0.0)
-                                               + (i==l && j==k ? v.secondDerivativeFactor : 0.0)
-                                               + (i==k && j==l ? v.secondDerivativeFactor : 0.0);
-              for(size_t m = 0; m != 3; ++m)
+              fourth_derivative[i][j][k][l] += v.fourthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l] +
+                                               (i == j ? v.thirdDerivativeFactor * dr[k] * dr[l] : 0.0) +
+                                               (i == k ? v.thirdDerivativeFactor * dr[j] * dr[l] : 0.0) +
+                                               (i == l ? v.thirdDerivativeFactor * dr[j] * dr[k] : 0.0) +
+                                               (j == k ? v.thirdDerivativeFactor * dr[i] * dr[l] : 0.0) +
+                                               (j == l ? v.thirdDerivativeFactor * dr[i] * dr[k] : 0.0) +
+                                               (k == l ? v.thirdDerivativeFactor * dr[i] * dr[j] : 0.0) +
+                                               (i == j && k == l ? v.secondDerivativeFactor : 0.0) +
+                                               (i == l && j == k ? v.secondDerivativeFactor : 0.0) +
+                                               (i == k && j == l ? v.secondDerivativeFactor : 0.0);
+              for (size_t m = 0; m != 3; ++m)
               {
-                fifth_derivative[i][j][k][l][m] += v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l] * dr[m]
-                                                   + (i==j ? v.fourthDerivativeFactor * dr[k] * dr[l] * dr[m] : 0.0)
-                                                   + (i==k ? v.fourthDerivativeFactor * dr[j] * dr[l] * dr[m] : 0.0)
-                                                   + (i==l ? v.fourthDerivativeFactor * dr[j] * dr[k] * dr[m] : 0.0)
-                                                   + (i==m ? v.fourthDerivativeFactor * dr[j] * dr[k] * dr[l] : 0.0)
-                                                   + (j==k ? v.fourthDerivativeFactor * dr[i] * dr[l] * dr[m] : 0.0)
-                                                   + (j==l ? v.fourthDerivativeFactor * dr[i] * dr[k] * dr[m] : 0.0)
-                                                   + (j==m ? v.fourthDerivativeFactor * dr[i] * dr[k] * dr[l] : 0.0)
-                                                   + (k==l ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[m] : 0.0)
-                                                   + (k==m ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[l] : 0.0)
-                                                   + (l==m ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[k] : 0.0)
+                fifth_derivative[i][j][k][l][m] += v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l] * dr[m] +
+                                                   (i == j ? v.fourthDerivativeFactor * dr[k] * dr[l] * dr[m] : 0.0) +
+                                                   (i == k ? v.fourthDerivativeFactor * dr[j] * dr[l] * dr[m] : 0.0) +
+                                                   (i == l ? v.fourthDerivativeFactor * dr[j] * dr[k] * dr[m] : 0.0) +
+                                                   (i == m ? v.fourthDerivativeFactor * dr[j] * dr[k] * dr[l] : 0.0) +
+                                                   (j == k ? v.fourthDerivativeFactor * dr[i] * dr[l] * dr[m] : 0.0) +
+                                                   (j == l ? v.fourthDerivativeFactor * dr[i] * dr[k] * dr[m] : 0.0) +
+                                                   (j == m ? v.fourthDerivativeFactor * dr[i] * dr[k] * dr[l] : 0.0) +
+                                                   (k == l ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[m] : 0.0) +
+                                                   (k == m ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[l] : 0.0) +
+                                                   (l == m ? v.fourthDerivativeFactor * dr[i] * dr[j] * dr[k] : 0.0)
 
+                                                   + (j == k && l == m ? v.thirdDerivativeFactor * dr[i] : 0.0) +
+                                                   (j == m && k == l ? v.thirdDerivativeFactor * dr[i] : 0.0) +
+                                                   (j == l && k == m ? v.thirdDerivativeFactor * dr[i] : 0.0)
 
-                                                   + (j==k && l==m ? v.thirdDerivativeFactor * dr[i] : 0.0)
-                                                   + (j==m && k==l ? v.thirdDerivativeFactor * dr[i] : 0.0)
-                                                   + (j==l && k==m ? v.thirdDerivativeFactor * dr[i] : 0.0)
+                                                   + (k == l && m == i ? v.thirdDerivativeFactor * dr[j] : 0.0) +
+                                                   (k == i && l == m ? v.thirdDerivativeFactor * dr[j] : 0.0) +
+                                                   (k == m && l == i ? v.thirdDerivativeFactor * dr[j] : 0.0)
 
-                                                   + (k==l && m==i ? v.thirdDerivativeFactor * dr[j] : 0.0)
-                                                   + (k==i && l==m ? v.thirdDerivativeFactor * dr[j] : 0.0)
-                                                   + (k==m && l==i ? v.thirdDerivativeFactor * dr[j] : 0.0)
+                                                   + (l == m && i == j ? v.thirdDerivativeFactor * dr[k] : 0.0) +
+                                                   (l == j && m == i ? v.thirdDerivativeFactor * dr[k] : 0.0) +
+                                                   (l == i && m == j ? v.thirdDerivativeFactor * dr[k] : 0.0)
 
-                                                   + (l==m && i==j ? v.thirdDerivativeFactor * dr[k] : 0.0)
-                                                   + (l==j && m==i ? v.thirdDerivativeFactor * dr[k] : 0.0)
-                                                   + (l==i && m==j ? v.thirdDerivativeFactor * dr[k] : 0.0)
+                                                   + (m == i && j == k ? v.thirdDerivativeFactor * dr[l] : 0.0) +
+                                                   (m == k && i == j ? v.thirdDerivativeFactor * dr[l] : 0.0) +
+                                                   (m == j && i == k ? v.thirdDerivativeFactor * dr[l] : 0.0)
 
-                                                   + (m==i && j==k ? v.thirdDerivativeFactor * dr[l] : 0.0)
-                                                   + (m==k && i==j ? v.thirdDerivativeFactor * dr[l] : 0.0)
-                                                   + (m==j && i==k ? v.thirdDerivativeFactor * dr[l] : 0.0)
+                                                   + (i == j && k == l ? v.thirdDerivativeFactor * dr[m] : 0.0) +
+                                                   (i == l && j == k ? v.thirdDerivativeFactor * dr[m] : 0.0) +
+                                                   (i == k && j == l ? v.thirdDerivativeFactor * dr[m] : 0.0);
 
-                                                   + (i==j && k==l ? v.thirdDerivativeFactor * dr[m] : 0.0)
-                                                   + (i==l && j==k ? v.thirdDerivativeFactor * dr[m] : 0.0)
-                                                   + (i==k && j==l ? v.thirdDerivativeFactor * dr[m] : 0.0);
-
-                for(size_t n = 0; n != 3; ++n)
+                for (size_t n = 0; n != 3; ++n)
                 {
-                  sixth_derivative[i][j][k][l][m][n] += 
-                    v.sixthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l] * dr[m] * dr[n]
+                  sixth_derivative[i][j][k][l][m][n] +=
+                      v.sixthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l] * dr[m] * dr[n]
 
-                      + (i==j ? (v.fifthDerivativeFactor * dr[k] * dr[l] * dr[m] * dr[n]) : 0.0)
-                      + (i==k ? (v.fifthDerivativeFactor * dr[j] * dr[l] * dr[m] * dr[n]) : 0.0)
-                      + (i==l ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[m] * dr[n]) : 0.0)
-                      + (i==m ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[l] * dr[n]) : 0.0)
-                      + (i==n ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[l] * dr[m]) : 0.0)
-                      + (j==k ? (v.fifthDerivativeFactor * dr[i] * dr[l] * dr[m] * dr[n]) : 0.0)
-                      + (j==l ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[m] * dr[n]) : 0.0)
-                      + (j==m ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[l] * dr[n]) : 0.0)
-                      + (j==n ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[l] * dr[m]) : 0.0)
-                      + (k==l ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[m] * dr[n]) : 0.0)
-                      + (k==m ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[l] * dr[n]) : 0.0)
-                      + (k==n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[l] * dr[m]) : 0.0)
-                      + (l==m ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[n]) : 0.0)
-                      + (l==n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[m]) : 0.0)
-                      + (m==n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l]) : 0.0)
+                      + (i == j ? (v.fifthDerivativeFactor * dr[k] * dr[l] * dr[m] * dr[n]) : 0.0) +
+                      (i == k ? (v.fifthDerivativeFactor * dr[j] * dr[l] * dr[m] * dr[n]) : 0.0) +
+                      (i == l ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[m] * dr[n]) : 0.0) +
+                      (i == m ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[l] * dr[n]) : 0.0) +
+                      (i == n ? (v.fifthDerivativeFactor * dr[j] * dr[k] * dr[l] * dr[m]) : 0.0) +
+                      (j == k ? (v.fifthDerivativeFactor * dr[i] * dr[l] * dr[m] * dr[n]) : 0.0) +
+                      (j == l ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[m] * dr[n]) : 0.0) +
+                      (j == m ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[l] * dr[n]) : 0.0) +
+                      (j == n ? (v.fifthDerivativeFactor * dr[i] * dr[k] * dr[l] * dr[m]) : 0.0) +
+                      (k == l ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[m] * dr[n]) : 0.0) +
+                      (k == m ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[l] * dr[n]) : 0.0) +
+                      (k == n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[l] * dr[m]) : 0.0) +
+                      (l == m ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[n]) : 0.0) +
+                      (l == n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[m]) : 0.0) +
+                      (m == n ? (v.fifthDerivativeFactor * dr[i] * dr[j] * dr[k] * dr[l]) : 0.0)
 
-                      +(k==l && m==n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0)
-                      +(k==m && l==n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0)
-                      +(l==m && k==n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0)
+                      + (k == l && m == n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0) +
+                      (k == m && l == n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0) +
+                      (l == m && k == n ? v.fourthDerivativeFactor * dr[i] * dr[j] : 0.0)
 
-                      +(j==l && m==n ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0)
-                      +(j==m && l==n ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0)
-                      +(j==n && l==m ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0)
+                      + (j == l && m == n ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0) +
+                      (j == m && l == n ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0) +
+                      (j == n && l == m ? v.fourthDerivativeFactor * dr[i] * dr[k] : 0.0)
 
-                      +(j==k && m==n ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0)
-                      +(j==m && k==n ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0)
-                      +(j==n && k==m ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0)
+                      + (j == k && m == n ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0) +
+                      (j == m && k == n ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0) +
+                      (j == n && k == m ? v.fourthDerivativeFactor * dr[i] * dr[l] : 0.0)
 
-                      +(j==k && l==n ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0)
-                      +(j==l && k==n ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0)
-                      +(j==n && k==l ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0)
+                      + (j == k && l == n ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0) +
+                      (j == l && k == n ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0) +
+                      (j == n && k == l ? v.fourthDerivativeFactor * dr[i] * dr[m] : 0.0)
 
-                      +(j==k && l==m ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0)
-                      +(j==l && k==m ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0)
-                      +(j==m && k==l ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0)
+                      + (j == k && l == m ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0) +
+                      (j == l && k == m ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0) +
+                      (j == m && k == l ? v.fourthDerivativeFactor * dr[i] * dr[n] : 0.0)
 
-                      +(i==l && m==n ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0)
-                      +(i==m && l==n ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0)
-                      +(i==n && l==m ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0)
+                      + (i == l && m == n ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0) +
+                      (i == m && l == n ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0) +
+                      (i == n && l == m ? v.fourthDerivativeFactor * dr[j] * dr[k] : 0.0)
 
-                      +(i==k && m==n ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0)
-                      +(i==m && k==n ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0)
-                      +(i==n && k==m ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0)
+                      + (i == k && m == n ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0) +
+                      (i == m && k == n ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0) +
+                      (i == n && k == m ? v.fourthDerivativeFactor * dr[j] * dr[l] : 0.0)
 
-                      +(i==k && l==n ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0)
-                      +(i==l && k==n ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0)
-                      +(i==n && k==l ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0)
+                      + (i == k && l == n ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0) +
+                      (i == l && k == n ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0) +
+                      (i == n && k == l ? v.fourthDerivativeFactor * dr[j] * dr[m] : 0.0)
 
-                      +(i==k && l==m ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0)
-                      +(i==l && k==m ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0)
-                      +(i==m && k==l ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0)
+                      + (i == k && l == m ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0) +
+                      (i == l && k == m ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0) +
+                      (i == m && k == l ? v.fourthDerivativeFactor * dr[j] * dr[n] : 0.0)
 
-                      +(i==j && m==n ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0)
-                      +(i==m && j==n ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0)
-                      +(i==n && j==m ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0)
+                      + (i == j && m == n ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0) +
+                      (i == m && j == n ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0) +
+                      (i == n && j == m ? v.fourthDerivativeFactor * dr[k] * dr[l] : 0.0)
 
-                      +(i==j && l==n ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0)
-                      +(i==l && j==n ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0)
-                      +(i==n && j==l ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0)
+                      + (i == j && l == n ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0) +
+                      (i == l && j == n ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0) +
+                      (i == n && j == l ? v.fourthDerivativeFactor * dr[k] * dr[m] : 0.0)
 
-                      +(i==j && l==m ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0)
-                      +(i==l && j==m ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0)
-                      +(i==m && j==l ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0)
+                      + (i == j && l == m ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0) +
+                      (i == l && j == m ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0) +
+                      (i == m && j == l ? v.fourthDerivativeFactor * dr[k] * dr[n] : 0.0)
 
-                      +(i==j && k==n ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0)
-                      +(i==k && j==n ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0)
-                      +(i==n && j==k ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0)
+                      + (i == j && k == n ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0) +
+                      (i == k && j == n ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0) +
+                      (i == n && j == k ? v.fourthDerivativeFactor * dr[l] * dr[m] : 0.0)
 
-                      +(i==j && k==m ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0)
-                      +(i==k && j==m ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0)
-                      +(i==m && j==k ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0)
+                      + (i == j && k == m ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0) +
+                      (i == k && j == m ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0) +
+                      (i == m && j == k ? v.fourthDerivativeFactor * dr[l] * dr[n] : 0.0)
 
-                      +(i==j && k==l ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0)
-                      +(i==k && j==l ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0)
-                      +(i==l && j==k ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0)
+                      + (i == j && k == l ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0) +
+                      (i == k && j == l ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0) +
+                      (i == l && j == k ? v.fourthDerivativeFactor * dr[m] * dr[n] : 0.0)
 
-
-                      +(i==j && k==l && m==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==j && k==n && l==m ? v.thirdDerivativeFactor : 0.0)
-                      +(i==j && k==m && l==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==k && j==l && m==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==k && j==m && l==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==k && j==n && l==m ? v.thirdDerivativeFactor : 0.0)
-                      +(i==l && j==k && m==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==l && j==m && k==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==l && j==n && k==m ? v.thirdDerivativeFactor : 0.0)
-                      +(i==m && j==k && l==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==m && j==l && k==n ? v.thirdDerivativeFactor : 0.0)
-                      +(i==m && j==n && k==l ? v.thirdDerivativeFactor : 0.0)
-                      +(i==n && j==k && l==m ? v.thirdDerivativeFactor : 0.0)
-                      +(i==n && j==l && k==m ? v.thirdDerivativeFactor : 0.0)
-                      +(i==n && j==m && k==l ? v.thirdDerivativeFactor : 0.0);
+                      + (i == j && k == l && m == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == j && k == n && l == m ? v.thirdDerivativeFactor : 0.0) +
+                      (i == j && k == m && l == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == k && j == l && m == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == k && j == m && l == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == k && j == n && l == m ? v.thirdDerivativeFactor : 0.0) +
+                      (i == l && j == k && m == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == l && j == m && k == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == l && j == n && k == m ? v.thirdDerivativeFactor : 0.0) +
+                      (i == m && j == k && l == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == m && j == l && k == n ? v.thirdDerivativeFactor : 0.0) +
+                      (i == m && j == n && k == l ? v.thirdDerivativeFactor : 0.0) +
+                      (i == n && j == k && l == m ? v.thirdDerivativeFactor : 0.0) +
+                      (i == n && j == l && k == m ? v.thirdDerivativeFactor : 0.0) +
+                      (i == n && j == m && k == l ? v.thirdDerivativeFactor : 0.0);
                 }
               }
             }
@@ -1060,12 +1058,13 @@ std::tuple<double, std::array<double,3>, std::array<std::array<double,3>,3>, std
     }
   }
 
-  return {energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative};
+  return {energy,           first_derivative, second_derivative, third_derivative, fourth_derivative,
+          fifth_derivative, sixth_derivative};
 }
 
-std::tuple<double, double3, double3x3, double3x3x3> 
-  Interactions::calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                          double3 posA, double chargeA, std::span<const Atom> frameworkAtoms)
+std::tuple<double, double3, double3x3, double3x3x3> Interactions::calculateThirdDerivativeAtPositionCoulomb(
+    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA, double chargeA,
+    std::span<const Atom> frameworkAtoms)
 {
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
@@ -1089,7 +1088,8 @@ std::tuple<double, double3, double3x3, double3x3x3>
     {
       double r = std::sqrt(rr);
 
-      ThirdDerivativeFactor v = potentialCoulombThirdDerivative(forceField, 0, groupIdB, 1.0, scalingB, rr, r, chargeA, chargeB);
+      ThirdDerivativeFactor v =
+          potentialCoulombThirdDerivative(forceField, 0, groupIdB, 1.0, scalingB, rr, r, chargeA, chargeB);
 
       energy += v.energy;
 
@@ -1151,176 +1151,214 @@ std::tuple<double, double3, double3x3, double3x3x3>
   return {energy, first_derivative, second_derivative, third_derivative};
 }
 
-std::array<double, 8>  Interactions::calculateTricubicCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                             double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::array<double, 8> Interactions::calculateTricubicCartesianAtPositionVDW(const ForceField &forceField,
+                                                                            const SimulationBox &simulationBox,
+                                                                            double3 posA, size_t typeA,
+                                                                            std::span<const Atom> frameworkAtoms)
 {
-  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative, sixth_derivative] = 
-    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative,
+        sixth_derivative] =
+      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
 
-  return {
-     energy,
+  return {energy,
 
-     first_derivative[0],
-     first_derivative[1],
-     first_derivative[2],
+          first_derivative[0],
+          first_derivative[1],
+          first_derivative[2],
 
-     second_derivative[0][1],
-     second_derivative[0][2],
-     second_derivative[1][2],
+          second_derivative[0][1],
+          second_derivative[0][2],
+          second_derivative[1][2],
 
-     third_derivative[0][1][2]
-  };
+          third_derivative[0][1][2]};
 }
 
-std::array<double, 8>  Interactions::calculateTricubicFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                              double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionVDW(const ForceField &forceField,
+                                                                             const SimulationBox &simulationBox,
+                                                                             double3 posA, size_t typeA,
+                                                                             std::span<const Atom> frameworkAtoms)
 {
   double energy_fractional{0.0};
-  std::array<double,3> first_derivative_fractional{};
-  std::array<std::array<double,3>,3> second_derivative_fractional{};
-  std::array<std::array<std::array<double,3>,3>,3> third_derivative_fractional{};
+  std::array<double, 3> first_derivative_fractional{};
+  std::array<std::array<double, 3>, 3> second_derivative_fractional{};
+  std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative_fractional{};
 
-  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative, sixth_derivative] = 
-    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative,
+        sixth_derivative] =
+      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
 
-  for(const size_t &p : std::array<size_t, 3>{0, 1, 2})
+  for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
   {
     first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
     first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
     first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
-    for(const size_t &q : std::array<size_t, 3>{0, 1, 2})
+    for (const size_t &q : std::array<size_t, 3>{0, 1, 2})
     {
-      second_derivative_fractional[0][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
-      second_derivative_fractional[0][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-      second_derivative_fractional[1][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-      for(const size_t &r : std::array<size_t, 3>{0, 1, 2})
+      second_derivative_fractional[0][1] +=
+          simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[0][2] +=
+          simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[1][2] +=
+          simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      for (const size_t &r : std::array<size_t, 3>{0, 1, 2})
       {
-        third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][1][2] +=
+            simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
       }
     }
   }
 
-  return {
-     energy_fractional,
+  return {energy_fractional,
 
-     first_derivative_fractional[0],
-     first_derivative_fractional[1],
-     first_derivative_fractional[2],
+          first_derivative_fractional[0],
+          first_derivative_fractional[1],
+          first_derivative_fractional[2],
 
-     second_derivative_fractional[0][1],
-     second_derivative_fractional[0][2],
-     second_derivative_fractional[1][2],
+          second_derivative_fractional[0][1],
+          second_derivative_fractional[0][2],
+          second_derivative_fractional[1][2],
 
-     third_derivative_fractional[0][1][2]
-  };
+          third_derivative_fractional[0][1][2]};
 }
 
-
-std::array<double, 27>  Interactions::calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                                double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::array<double, 27> Interactions::calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField,
+                                                                               const SimulationBox &simulationBox,
+                                                                               double3 posA, size_t typeA,
+                                                                               std::span<const Atom> frameworkAtoms)
 {
-  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative] = 
-    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
+        sixth_derivative] =
+      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
 
-  return std::array<double, 27>{
-     energy,
+  return std::array<double, 27>{energy,
 
-     first_derivative[0],
-     first_derivative[1],
-     first_derivative[2],
+                                first_derivative[0],
+                                first_derivative[1],
+                                first_derivative[2],
 
-     second_derivative[0][0],
-     second_derivative[0][1],
-     second_derivative[0][2],
-     second_derivative[1][1],
-     second_derivative[1][2],
-     second_derivative[2][2],
+                                second_derivative[0][0],
+                                second_derivative[0][1],
+                                second_derivative[0][2],
+                                second_derivative[1][1],
+                                second_derivative[1][2],
+                                second_derivative[2][2],
 
-     third_derivative[0][0][1],
-     third_derivative[0][0][2],
-     third_derivative[0][1][1],
-     third_derivative[0][1][2],
-     third_derivative[1][1][2],
-     third_derivative[0][2][2],
-     third_derivative[1][2][2],
+                                third_derivative[0][0][1],
+                                third_derivative[0][0][2],
+                                third_derivative[0][1][1],
+                                third_derivative[0][1][2],
+                                third_derivative[1][1][2],
+                                third_derivative[0][2][2],
+                                third_derivative[1][2][2],
 
-     fourth_derivative[0][0][1][1],
-     fourth_derivative[0][0][2][2],
-     fourth_derivative[1][1][2][2],
-     fourth_derivative[0][0][1][2],
-     fourth_derivative[0][1][1][2],
-     fourth_derivative[0][1][2][2],
+                                fourth_derivative[0][0][1][1],
+                                fourth_derivative[0][0][2][2],
+                                fourth_derivative[1][1][2][2],
+                                fourth_derivative[0][0][1][2],
+                                fourth_derivative[0][1][1][2],
+                                fourth_derivative[0][1][2][2],
 
-     fifth_derivative[0][0][1][1][2],
-     fifth_derivative[0][0][1][2][2],
-     fifth_derivative[0][1][1][2][2],
+                                fifth_derivative[0][0][1][1][2],
+                                fifth_derivative[0][0][1][2][2],
+                                fifth_derivative[0][1][1][2][2],
 
-     sixth_derivative[0][0][1][1][2][2]
-  };
+                                sixth_derivative[0][0][1][1][2][2]};
 }
 
-std::array<double, 27>  Interactions::calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                                                 double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField,
+                                                                                const SimulationBox &simulationBox,
+                                                                                double3 posA, size_t typeA,
+                                                                                std::span<const Atom> frameworkAtoms)
 {
   double energy_fractional{0.0};
-  std::array<double,3> first_derivative_fractional{};
-  std::array<std::array<double,3>,3> second_derivative_fractional{};
-  std::array<std::array<std::array<double,3>,3>,3> third_derivative_fractional{};
-  std::array<std::array<std::array<std::array<double,3>,3>,3>,3> fourth_derivative_fractional{};
-  std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3> fifth_derivative_fractional{};
-  std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3> sixth_derivative_fractional{};
-  
-  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative] = 
-    Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+  std::array<double, 3> first_derivative_fractional{};
+  std::array<std::array<double, 3>, 3> second_derivative_fractional{};
+  std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative_fractional{};
+  std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3> fourth_derivative_fractional{};
+  std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3> fifth_derivative_fractional{};
+  std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>
+      sixth_derivative_fractional{};
 
+  auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
+        sixth_derivative] =
+      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
 
   energy_fractional = energy;
-  for(const size_t &p : std::array<size_t, 3>{0, 1, 2})
+  for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
   {
     first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
     first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
     first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
-    for(const size_t &q : std::array<size_t, 3>{0, 1, 2})
+    for (const size_t &q : std::array<size_t, 3>{0, 1, 2})
     {
-      second_derivative_fractional[0][0] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * second_derivative[p][q];
-      second_derivative_fractional[0][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
-      second_derivative_fractional[0][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-      second_derivative_fractional[1][1] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * second_derivative[p][q];
-      second_derivative_fractional[1][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-      second_derivative_fractional[2][2] += simulationBox.cell[2][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-      for(const size_t &r : std::array<size_t, 3>{0, 1, 2})
+      second_derivative_fractional[0][0] +=
+          simulationBox.cell[0][p] * simulationBox.cell[0][q] * second_derivative[p][q];
+      second_derivative_fractional[0][1] +=
+          simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[0][2] +=
+          simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[1][1] +=
+          simulationBox.cell[1][p] * simulationBox.cell[1][q] * second_derivative[p][q];
+      second_derivative_fractional[1][2] +=
+          simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      second_derivative_fractional[2][2] +=
+          simulationBox.cell[2][p] * simulationBox.cell[2][q] * second_derivative[p][q];
+      for (const size_t &r : std::array<size_t, 3>{0, 1, 2})
       {
-        third_derivative_fractional[0][0][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
-        third_derivative_fractional[0][0][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
-        third_derivative_fractional[0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
-        third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
-        third_derivative_fractional[1][1][2] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
-        third_derivative_fractional[0][2][2] += simulationBox.cell[0][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
-        third_derivative_fractional[1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][0][1] +=
+            simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][0][2] +=
+            simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][1][1] +=
+            simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][1][2] +=
+            simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[1][1][2] +=
+            simulationBox.cell[1][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[0][2][2] +=
+            simulationBox.cell[0][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
+        third_derivative_fractional[1][2][2] +=
+            simulationBox.cell[1][p] * simulationBox.cell[2][q] * simulationBox.cell[2][r] * third_derivative[p][q][r];
 
-        for(const size_t &s : std::array<size_t, 3>{0, 1, 2})
+        for (const size_t &s : std::array<size_t, 3>{0, 1, 2})
         {
-          fourth_derivative_fractional[0][0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * simulationBox.cell[1][s] * fourth_derivative[p][q][r][s];
-          fourth_derivative_fractional[0][0][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
-          fourth_derivative_fractional[1][1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
-          fourth_derivative_fractional[0][0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
-          fourth_derivative_fractional[0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
-          fourth_derivative_fractional[0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[2][r] * simulationBox.cell[2][s] * fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
+                                                      simulationBox.cell[1][r] * simulationBox.cell[1][s] *
+                                                      fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][0][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
+                                                      simulationBox.cell[2][r] * simulationBox.cell[2][s] *
+                                                      fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[1][1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[1][q] *
+                                                      simulationBox.cell[2][r] * simulationBox.cell[2][s] *
+                                                      fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
+                                                      simulationBox.cell[1][r] * simulationBox.cell[2][s] *
+                                                      fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] *
+                                                      simulationBox.cell[1][r] * simulationBox.cell[2][s] *
+                                                      fourth_derivative[p][q][r][s];
+          fourth_derivative_fractional[0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] *
+                                                      simulationBox.cell[2][r] * simulationBox.cell[2][s] *
+                                                      fourth_derivative[p][q][r][s];
 
-          for(const size_t &t : std::array<size_t, 3>{0, 1, 2})
+          for (const size_t &t : std::array<size_t, 3>{0, 1, 2})
           {
-            fifth_derivative_fractional[0][0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * 
-                                                          simulationBox.cell[1][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
-            fifth_derivative_fractional[0][0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * simulationBox.cell[1][r] * 
-                                                          simulationBox.cell[2][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
-            fifth_derivative_fractional[0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] * simulationBox.cell[1][r] * 
-                                                          simulationBox.cell[2][s] * simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+            fifth_derivative_fractional[0][0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
+                                                          simulationBox.cell[1][r] * simulationBox.cell[1][s] *
+                                                          simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+            fifth_derivative_fractional[0][0][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
+                                                          simulationBox.cell[1][r] * simulationBox.cell[2][s] *
+                                                          simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
+            fifth_derivative_fractional[0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] *
+                                                          simulationBox.cell[1][r] * simulationBox.cell[2][s] *
+                                                          simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
 
-            for(const size_t &u : std::array<size_t, 3>{0, 1, 2})
+            for (const size_t &u : std::array<size_t, 3>{0, 1, 2})
             {
-              sixth_derivative_fractional[0][0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] * 
+              sixth_derivative_fractional[0][0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                                simulationBox.cell[1][r] * simulationBox.cell[1][s] *
-                                                               simulationBox.cell[2][t] * simulationBox.cell[2][u] * sixth_derivative[p][q][r][s][t][u];
+                                                               simulationBox.cell[2][t] * simulationBox.cell[2][u] *
+                                                               sixth_derivative[p][q][r][s][t][u];
             }
           }
         }
@@ -1328,40 +1366,37 @@ std::array<double, 27>  Interactions::calculateTriquinticFractionalAtPositionVDW
     }
   }
 
-  return {
-     energy_fractional,
+  return {energy_fractional,
 
-     first_derivative_fractional[0],
-     first_derivative_fractional[1],
-     first_derivative_fractional[2],
+          first_derivative_fractional[0],
+          first_derivative_fractional[1],
+          first_derivative_fractional[2],
 
-     second_derivative_fractional[0][0],
-     second_derivative_fractional[0][1],
-     second_derivative_fractional[0][2],
-     second_derivative_fractional[1][1],
-     second_derivative_fractional[1][2],
-     second_derivative_fractional[2][2],
+          second_derivative_fractional[0][0],
+          second_derivative_fractional[0][1],
+          second_derivative_fractional[0][2],
+          second_derivative_fractional[1][1],
+          second_derivative_fractional[1][2],
+          second_derivative_fractional[2][2],
 
-     third_derivative_fractional[0][0][1],
-     third_derivative_fractional[0][0][2],
-     third_derivative_fractional[0][1][1],
-     third_derivative_fractional[0][1][2],
-     third_derivative_fractional[1][1][2],
-     third_derivative_fractional[0][2][2],
-     third_derivative_fractional[1][2][2],
+          third_derivative_fractional[0][0][1],
+          third_derivative_fractional[0][0][2],
+          third_derivative_fractional[0][1][1],
+          third_derivative_fractional[0][1][2],
+          third_derivative_fractional[1][1][2],
+          third_derivative_fractional[0][2][2],
+          third_derivative_fractional[1][2][2],
 
-     fourth_derivative_fractional[0][0][1][1],
-     fourth_derivative_fractional[0][0][2][2],
-     fourth_derivative_fractional[1][1][2][2],
-     fourth_derivative_fractional[0][0][1][2],
-     fourth_derivative_fractional[0][1][1][2],
-     fourth_derivative_fractional[0][1][2][2],
+          fourth_derivative_fractional[0][0][1][1],
+          fourth_derivative_fractional[0][0][2][2],
+          fourth_derivative_fractional[1][1][2][2],
+          fourth_derivative_fractional[0][0][1][2],
+          fourth_derivative_fractional[0][1][1][2],
+          fourth_derivative_fractional[0][1][2][2],
 
-     fifth_derivative_fractional[0][0][1][1][2],
-     fifth_derivative_fractional[0][0][1][2][2],
-     fifth_derivative_fractional[0][1][1][2][2],
+          fifth_derivative_fractional[0][0][1][1][2],
+          fifth_derivative_fractional[0][0][1][2][2],
+          fifth_derivative_fractional[0][1][1][2][2],
 
-     sixth_derivative_fractional[0][0][1][1][2][2]
-  };
+          sixth_derivative_fractional[0][0][1][1][2][2]};
 }
-

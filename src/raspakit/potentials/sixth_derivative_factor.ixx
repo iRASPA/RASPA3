@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #endif
 
@@ -44,11 +44,12 @@ export struct SixthDerivativeFactor
    * \param secondDerivativeFactor The second-derivative scaling factor.
    * \param thirdDerivativeFactor The third-derivative scaling factor.
    */
-  SixthDerivativeFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor, double thirdDerivativeFactor,
-                        double fourthDerivativeFactor, double fifthDerivativeFactor, double sixthDerivativeFactor):
-        energy(energy), 
-        dUdlambda(dUdlambda), 
-        firstDerivativeFactor(firstDerivativeFactor), 
+  SixthDerivativeFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor,
+                        double thirdDerivativeFactor, double fourthDerivativeFactor, double fifthDerivativeFactor,
+                        double sixthDerivativeFactor)
+      : energy(energy),
+        dUdlambda(dUdlambda),
+        firstDerivativeFactor(firstDerivativeFactor),
         secondDerivativeFactor(secondDerivativeFactor),
         thirdDerivativeFactor(thirdDerivativeFactor),
         fourthDerivativeFactor(fourthDerivativeFactor),
@@ -105,7 +106,6 @@ export struct SixthDerivativeFactor
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SixthDerivativeFactor& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, SixthDerivativeFactor& e);
 };
-
 
 export inline SixthDerivativeFactor operator+(const SixthDerivativeFactor& a, const SixthDerivativeFactor& b)
 {

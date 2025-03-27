@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <fstream>
 #include <map>
 #include <numbers>
@@ -116,7 +116,8 @@ simd_quatd simd_quatd::roll(double angle)
 
 std::string simd_quatd::to_string()
 {
-  return "(" + std::to_string(this->r) + ", " + std::to_string(this->ix) + ", " + std::to_string(this->iy) + ", " + std::to_string(this->iz) + ")";
+  return "(" + std::to_string(this->r) + ", " + std::to_string(this->ix) + ", " + std::to_string(this->iy) + ", " +
+         std::to_string(this->iz) + ")";
 }
 
 const simd_quatd simd_quatd::data120[120] = {simd_quatd(0.0, double3(1.0, 0.0, 0.0)),

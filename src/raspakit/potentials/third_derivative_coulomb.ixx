@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <numbers>
 #endif
@@ -26,7 +26,7 @@ import third_derivative_factor;
  * \brief Computes the first, second, and third-derivatives of the Coulombic potential.
  *
  * This function calculates the derivatives of the VDW potential between two atom types.
- * It returns D[U[r], r] / r, D[D[U[r], r] / r, r] / r, 
+ * It returns D[U[r], r] / r, D[D[U[r], r] / r, r] / r,
  * D[D[D[U[r], r] / r, r] / r, r] / r, and D[D[D[D[U[r], r] / r, r] / r, r] / r, r] / r.
  *
  * \param forcefield The force field parameters defining the interaction.
@@ -42,7 +42,7 @@ import third_derivative_factor;
  */
 export [[clang::always_inline]] inline ThirdDerivativeFactor potentialCoulombThirdDerivative(
     const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA,
-    const double& scalingB, const double &rr, const double& r, const double& chargeA, const double& chargeB)
+    const double& scalingB, const double& rr, const double& r, const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
 
@@ -52,29 +52,32 @@ export [[clang::always_inline]] inline ThirdDerivativeFactor potentialCoulombThi
     {
       double alpha = forcefield.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
-      return ThirdDerivativeFactor(scaling * temp,
-                                   (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
-                                   -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                   ((std::erfc(alpha * r) + 2.0 * alpha * r * std::exp(-alpha * alpha * rr) *
-                                   std::numbers::inv_sqrtpi_v<double>) / (rr * r)),
-                                   Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                   (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
-                                    4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
-                                    6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr )),
-                                   -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
-                                   (15.0 * std::erfc(alpha * r) / (rr * rr * rr * r) +
-                                    30.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr  * rr) +
-                                    20.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr ) +
-                                    8.0 * alpha * alpha * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr)
-                                   );
+      return ThirdDerivativeFactor(
+          scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
+          -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+              ((std::erfc(alpha * r) +
+                2.0 * alpha * r * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double>) /
+               (rr * r)),
+          Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+              (3.0 * std::erfc(alpha * r) / (rr * rr * r) +
+               4.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / rr +
+               6.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr)),
+          -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *
+              (15.0 * std::erfc(alpha * r) / (rr * rr * rr * r) +
+               30.0 * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> / (rr * rr * rr) +
+               20.0 * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) * std::numbers::inv_sqrtpi_v<double> /
+                   (rr * rr) +
+               8.0 * alpha * alpha * alpha * alpha * alpha * std::exp(-alpha * alpha * rr) *
+                   std::numbers::inv_sqrtpi_v<double> / rr));
     }
     case ForceField::ChargeMethod::Coulomb:
     {
-      return ThirdDerivativeFactor(Units::CoulombicConversionFactor * scaling * chargeA * chargeB / r,
-                                   -Units::CoulombicConversionFactor * scaling * chargeA * chargeB / (rr *r),
-                                   Units::CoulombicConversionFactor * 3.0 * scaling * chargeA * chargeB / (rr * rr * r),
-                                   -Units::CoulombicConversionFactor * 15.0 * scaling * chargeA * chargeB / (rr * rr * rr * r),
-                                   Units::CoulombicConversionFactor * 105.0 * scaling * chargeA * chargeB / (rr * rr * rr * rr * r));
+      return ThirdDerivativeFactor(
+          Units::CoulombicConversionFactor * scaling * chargeA * chargeB / r,
+          -Units::CoulombicConversionFactor * scaling * chargeA * chargeB / (rr * r),
+          Units::CoulombicConversionFactor * 3.0 * scaling * chargeA * chargeB / (rr * rr * r),
+          -Units::CoulombicConversionFactor * 15.0 * scaling * chargeA * chargeB / (rr * rr * rr * r),
+          Units::CoulombicConversionFactor * 105.0 * scaling * chargeA * chargeB / (rr * rr * rr * rr * r));
     }
     default:
       break;
@@ -83,4 +86,3 @@ export [[clang::always_inline]] inline ThirdDerivativeFactor potentialCoulombThi
   // In case of an unsupported charge method, return a default ForceFactor.
   return ThirdDerivativeFactor(0.0, 0.0, 0.0, 0.0, 0.0);
 };
-

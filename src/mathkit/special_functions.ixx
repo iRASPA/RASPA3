@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include <numeric>
 #include <string>
 #include <vector>

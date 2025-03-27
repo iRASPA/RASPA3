@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <concepts>
+#include <cstddef>
 #include <deque>
 #include <exception>
 #include <functional>
@@ -24,7 +24,7 @@ module;
 #endif
 
 #if __has_include(<omp.h>)
-  #include <omp.h>
+#include <omp.h>
 #endif
 
 export module threadpool;
@@ -419,7 +419,7 @@ class ThreadPool
   }
 
  private:
-  ThreadPool() : tasks_(){};
+  ThreadPool() : tasks_() {};
 
   size_t number_of_threads;
   ThreadingType threadingType;

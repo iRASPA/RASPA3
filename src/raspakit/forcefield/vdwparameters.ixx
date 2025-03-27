@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -52,11 +52,11 @@ export struct VDWParameters
     RepulsiveHarmonic = 100
   };
 
-  double4 parameters;            ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
-  double shift;                  ///< The potential energy shift calculated at the cutoff distance.
-  double tailCorrectionEnergy;   ///< The tail correction energy for the potential.
-  double tailCorrectionPressure; ///< The tail correction energy for the potential.
-  Type type{0};                  ///< The type of van der Waals potential.
+  double4 parameters;             ///< The potential parameters. For LJ: epsilon, sigma; for Buckingham: 3 parameters.
+  double shift;                   ///< The potential energy shift calculated at the cutoff distance.
+  double tailCorrectionEnergy;    ///< The tail correction energy for the potential.
+  double tailCorrectionPressure;  ///< The tail correction energy for the potential.
+  Type type{0};                   ///< The type of van der Waals potential.
 
   /**
    * \brief Default constructor for VDWParameters.

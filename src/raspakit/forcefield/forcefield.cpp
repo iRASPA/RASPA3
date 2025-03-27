@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
@@ -305,10 +305,11 @@ void ForceField::applyMixingRule()
     {
       for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
       {
-        if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones && data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+        if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+            data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
         {
-          double mix0 =
-              std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x * data[j * numberOfPseudoAtoms + j].parameters.x);
+          double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
+                                  data[j * numberOfPseudoAtoms + j].parameters.x);
           double mix1 =
               0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
 
@@ -475,11 +476,15 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Force field status\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW, Units::displayedUnitOfLengthString);
-  std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW, Units::displayedUnitOfLengthString);
-  std::print(stream, "Cutoff Coulomb:                {:9.5f} [{}]\n\n", cutOffCoulomb, Units::displayedUnitOfLengthString);
+  std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
+             Units::displayedUnitOfLengthString);
+  std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW,
+             Units::displayedUnitOfLengthString);
+  std::print(stream, "Cutoff Coulomb:                {:9.5f} [{}]\n\n", cutOffCoulomb,
+             Units::displayedUnitOfLengthString);
 
-  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria,
+             Units::displayedUnitOfEnergyString);
 
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
@@ -488,17 +493,12 @@ std::string ForceField::printForceFieldStatus() const
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
         case VDWParameters::Type::LennardJones:
-          std::print(stream, "{:8} - {:8} {} p₀{}: {:9.5f} [{}], p₁: {:8.5f} [{}]\n",
-                     pseudoAtoms[i].name,
-                     pseudoAtoms[j].name, 
-                     "Lennard-Jones",
-                     Units::displayedUnitOfEnergyConversionString,
+          std::print(stream, "{:8} - {:8} {} p₀{}: {:9.5f} [{}], p₁: {:8.5f} [{}]\n", pseudoAtoms[i].name,
+                     pseudoAtoms[j].name, "Lennard-Jones", Units::displayedUnitOfEnergyConversionString,
                      Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].parameters.x,
-                     Units::displayedUnitOfEnergyString,
-                     data[i * numberOfPseudoAtoms + j].parameters.y,
+                     Units::displayedUnitOfEnergyString, data[i * numberOfPseudoAtoms + j].parameters.y,
                      Units::displayedUnitOfLengthString);
-          std::print(stream, "{:33} shift: {:9.5f} [{}], tailcorrections: {}\n", 
-                     std::string(""),
+          std::print(stream, "{:33} shift: {:9.5f} [{}], tailcorrections: {}\n", std::string(""),
                      Units::EnergyToKelvin * data[i * numberOfPseudoAtoms + j].shift,
                      Units::displayedUnitOfEnergyString,
                      tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");

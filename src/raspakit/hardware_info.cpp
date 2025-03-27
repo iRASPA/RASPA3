@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <chrono>
 #include <cstddef>
 #include <cstring>
-#include <chrono>
 #include <iostream>
 #include <print>
 #include <random>
@@ -13,10 +13,10 @@ module;
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 #include <VersionHelpers.h>
 #include <intrin.h>
 #include <sysinfoapi.h>
+#include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")

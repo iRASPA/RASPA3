@@ -2,13 +2,13 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <format>
 #include <fstream>
 #include <map>
 #include <random>
 #include <source_location>
 #include <sstream>
 #include <vector>
-#include <format>
 #endif
 
 module mc_moves_probabilities;

@@ -1,7 +1,6 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <complex>
 #include <cstddef>
@@ -19,7 +18,7 @@ module;
 #include <tuple>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -57,7 +56,7 @@ import stringutils;
 import framework;
 import component;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 // Gaussian cube file are stored row-order (std::layout_right)
@@ -186,7 +185,6 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
       std::vector<double>::iterator it_end =
           it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
-
       double normalization{1.0};
       switch (normType)
       {
@@ -201,11 +199,12 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
         }
         case Normalization::NumberDensity:
         {
-          normalization = (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples));
+          normalization =
+              (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples));
           break;
         }
       }
-        
+
       for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
       {
         std::print(ostream, "{}\n", *it * normalization);

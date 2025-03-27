@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <chrono>
+#include <cstddef>
 #include <optional>
 #include <span>
 #endif

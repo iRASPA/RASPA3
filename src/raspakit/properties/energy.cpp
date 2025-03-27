@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -69,16 +69,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    ExternalField-molecule energy{} {}-{} [{}-{}]:\n", 
-                     Units::displayedUnitOfEnergyConversionString, k, l, components[k].name,
-                     components[l].name);
+          std::print(stream, "    ExternalField-molecule energy{} {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    ExternalField-molecule energy{} {}-{} + {}-{} [{}-{}]:\n", 
-                     Units::displayedUnitOfEnergyConversionString, k, l, l, k,
-                     components[k].name, components[l].name);
+          std::print(stream, "    ExternalField-molecule energy{} {}-{} + {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -107,14 +105,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+          std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
+          std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -139,14 +137,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+          std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
+          std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -172,14 +170,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
+                     k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -204,14 +202,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
         double prefactor = Units::EnergyToKelvin;
         if (k == l)
         {
-          std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
         }
         else
         {
           prefactor *= 2.0;
-          std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n", 
-              Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
+          std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n",
+                     Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
         }
         std::print(stream, "    ---------------------------------------------------------------------------\n");
         for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -241,16 +239,15 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Framework-molecule energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name,
-                   components[l].name);
+        std::print(stream, "    Framework-molecule energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Framework-molecule energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, 
-                   frameworkComponents[k].name, components[l].name);
+        std::print(stream, "    Framework-molecule energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -279,15 +276,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name,
-                   components[l].name);
+        std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
+                   k, l, frameworkComponents[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
+        std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
                    components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -313,16 +309,15 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name,
-                   components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k,
-                   frameworkComponents[k].name, components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -347,15 +342,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name,
-                   components[l].name);
+        std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
+                   k, l, frameworkComponents[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
+        std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
                    components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -381,16 +375,15 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name,
-                   components[l].name);
+        std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, frameworkComponents[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k,
-                   frameworkComponents[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, frameworkComponents[k].name,
+                   components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -419,15 +412,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Inter-molecular energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+        std::print(stream, "    Inter-molecular energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Inter-molecular energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name,
-                   components[l].name);
+        std::print(stream, "    Inter-molecular energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -457,15 +449,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+        std::print(stream, "    Van der Waals energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
+                   k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name,
-                   components[l].name);
+        std::print(stream, "    Van der Waals energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -490,16 +481,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, components[k].name,
-                   components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name,
-                   components[l].name);
+        std::print(stream, "    VDW Tail-Correction energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -524,15 +513,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Real energy{} {}-{} [{}-{}]:\n", Units::displayedUnitOfEnergyConversionString,
+                   k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name,
-                   components[l].name);
+        std::print(stream, "    Coulomb Real energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -557,15 +545,14 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
       double prefactor = Units::EnergyToKelvin;
       if (k == l)
       {
-        std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
+        std::print(stream, "    Coulomb Fourier energy{} {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, components[k].name, components[l].name);
       }
       else
       {
         prefactor *= 2.0;
-        std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n", 
-            Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name,
-                   components[l].name);
+        std::print(stream, "    Coulomb Fourier energy{} {}-{} + {}-{} [{}-{}]:\n",
+                   Units::displayedUnitOfEnergyConversionString, k, l, l, k, components[k].name, components[l].name);
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
@@ -594,8 +581,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::vec
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
   std::print(stream, "    Average  {: .6e} +/- {: .6e} [{}]\n", prefactor * computedAverage.first.totalEnergy.energy,
-             prefactor * computedAverage.second.totalEnergy.energy,
-             Units::displayedUnitOfEnergyString);
+             prefactor * computedAverage.second.totalEnergy.energy, Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
 

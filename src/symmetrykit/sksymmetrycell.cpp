@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cfloat>
 #include <cmath>
+#include <cstddef>
 #include <iterator>
 #include <numbers>
 #include <optional>
@@ -586,8 +586,7 @@ bool SKSymmetryCell::checkMetricSimilarity(double3x3 transformedMetricTensor, do
   SKSymmetryCell transformedMetricCell = SKSymmetryCell::createFromMetricTensor(transformedMetricTensor);
 
   double3 lengthDifference =
-      double3(std::fabs(metricCell._a - transformedMetricCell._a), 
-              std::fabs(metricCell._b - transformedMetricCell._b),
+      double3(std::fabs(metricCell._a - transformedMetricCell._a), std::fabs(metricCell._b - transformedMetricCell._b),
               std::fabs(metricCell._c - transformedMetricCell._c));
   double3 angleDifference = double3(sin(std::fabs(metricCell._alpha - transformedMetricCell._alpha)),
                                     sin(std::fabs(metricCell._beta - transformedMetricCell._beta)),
@@ -615,11 +614,12 @@ std::vector<std::tuple<double3, size_t, double>> SKSymmetryCell::trim(
   double3x3 changeOfBasis = to.inverse() * from;
 
   std::vector<std::tuple<double3, size_t, double>> trimmedAtoms{};
-  std::transform(
-      atoms.begin(), atoms.end(), std::back_inserter(trimmedAtoms),
-      [changeOfBasis](const std::tuple<double3, size_t, double>& atom) -> std::tuple<double3, size_t, double> {
-        return std::make_tuple(double3::fract(changeOfBasis * std::get<0>(atom)), std::get<1>(atom), std::get<2>(atom));
-      });
+  std::transform(atoms.begin(), atoms.end(), std::back_inserter(trimmedAtoms),
+                 [changeOfBasis](const std::tuple<double3, size_t, double>& atom) -> std::tuple<double3, size_t, double>
+                 {
+                   return std::make_tuple(double3::fract(changeOfBasis * std::get<0>(atom)), std::get<1>(atom),
+                                          std::get<2>(atom));
+                 });
 
   std::vector<size_t> overlapTable = std::vector<size_t>(trimmedAtoms.size());
   std::fill(overlapTable.begin(), overlapTable.end(), -1);

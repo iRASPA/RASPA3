@@ -1,7 +1,6 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -28,7 +27,7 @@ module;
 #include <tuple>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -127,7 +126,7 @@ import integrators;
 import integrators_compute;
 import integrators_update;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 // construct System programmatically

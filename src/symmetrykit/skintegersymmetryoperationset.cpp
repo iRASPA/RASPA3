@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include <iterator>
 #include <tuple>
 #include <type_traits>

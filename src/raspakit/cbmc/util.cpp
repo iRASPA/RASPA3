@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <iostream>
 #include <tuple>
 #include <vector>
-//#if defined(__has_include) && __has_include(<stacktrace>)
-//#include <stacktrace>
-//#endif
+// #if defined(__has_include) && __has_include(<stacktrace>)
+// #include <stacktrace>
+// #endif
 #include <print>
 #endif
 
@@ -75,10 +75,10 @@ size_t CBMC::selectTrialPosition(RandomNumber &random, std::vector<double> LogBo
   ;
   if (match == LogBoltzmannFactors.end())
   {
-//#if defined(__has_include) && __has_include(<stacktrace>)
-//    auto trace = std::stacktrace::current();
-//    std::cout << std::to_string(trace) << '\n';
-//#endif
+    // #if defined(__has_include) && __has_include(<stacktrace>)
+    //     auto trace = std::stacktrace::current();
+    //     std::cout << std::to_string(trace) << '\n';
+    // #endif
     throw std::runtime_error("[cbmc-utils]: no maximum value found\n");
   }
   double largest_value = *match;

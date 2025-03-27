@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <iostream>
 #include <numbers>
 #include <span>
@@ -1101,7 +1101,6 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
       }
     }
   }
-
 
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+#include <cstddef>
 #include <iterator>
 #include <map>
 #include <string>
@@ -324,10 +324,10 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
 
       // look for all proper rotation matrices of the wanted rotation type
       std::vector<SKRotationMatrix> filteredProperRotations{};
-      std::copy_if(properRotations.begin(), properRotations.end(), std::back_inserter(filteredProperRotations),
-                   [rotationalTypeForBasis](SKRotationMatrix m) {
-                     return static_cast<typename std::underlying_type<Laue>::type>(m.type()) == rotationalTypeForBasis;
-                   });
+      std::copy_if(
+          properRotations.begin(), properRotations.end(), std::back_inserter(filteredProperRotations),
+          [rotationalTypeForBasis](SKRotationMatrix m)
+          { return static_cast<typename std::underlying_type<Laue>::type>(m.type()) == rotationalTypeForBasis; });
 
       // take their rotation axes (use a set to avoid duplicates)
       std::unordered_set<int3, int3::hashFunction> allAxes;
@@ -362,10 +362,10 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
 
       // look for all proper rotation matrices of the wanted rotation type
       std::vector<SKRotationMatrix> properRotationMatrices{};
-      std::copy_if(properRotations.begin(), properRotations.end(), std::back_inserter(properRotationMatrices),
-                   [rotationalTypeForBasis](SKRotationMatrix m) {
-                     return static_cast<typename std::underlying_type<Laue>::type>(m.type()) == rotationalTypeForBasis;
-                   });
+      std::copy_if(
+          properRotations.begin(), properRotations.end(), std::back_inserter(properRotationMatrices),
+          [rotationalTypeForBasis](SKRotationMatrix m)
+          { return static_cast<typename std::underlying_type<Laue>::type>(m.type()) == rotationalTypeForBasis; });
 
       if (properRotationMatrices.empty())
       {

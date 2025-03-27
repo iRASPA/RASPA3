@@ -37,15 +37,7 @@ export union float3x3
 
   float3x3(float m11 = 0.0, float m21 = 0.0, float m31 = 0.0, float m12 = 0.0, float m22 = 0.0, float m32 = 0.0,
            float m13 = 0.0, float m23 = 0.0, float m33 = 0.0)
-      : m11(m11),
-        m21(m21),
-        m31(m31),
-        m12(m12),
-        m22(m22),
-        m32(m32),
-        m13(m13),
-        m23(m23),
-        m33(m33){
+      : m11(m11), m21(m21), m31(m31), m12(m12), m22(m22), m32(m32), m13(m13), m23(m23), m33(m33) {
 
         };
   float3x3(float3 v1, float3 v2, float3 v3)
@@ -59,9 +51,9 @@ export union float3x3
         m23(v3.y),
         m33(v3.z)
 
-            {
+  {
 
-            };
+  };
   float3x3(simd_quatd q);
 
   float determinant(void);

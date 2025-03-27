@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -71,8 +71,7 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
              averageRosenbluthWeightValue.second);
   std::print(stream, "\n\n");
 
-
-  switch(Units::unitSystem)
+  switch (Units::unitSystem)
   {
     case Units::System::RASPA:
     {
@@ -91,8 +90,8 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
       std::pair<double, double> average_widom_fugacity = averageFugacity(beta);
 
       std::print(stream, "    Excess chemical potential:          {: .6e} +/- {: .6e} [K]\n",
-           Units::EnergyToKelvin * average_excess_widom_chemical_potential.first,
-           Units::EnergyToKelvin * average_excess_widom_chemical_potential.second);
+                 Units::EnergyToKelvin * average_excess_widom_chemical_potential.first,
+                 Units::EnergyToKelvin * average_excess_widom_chemical_potential.second);
       std::print(stream, "    Tail-correction chemical potential: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * average_chemical_potential_tail_correction.first,
                  Units::EnergyToKelvin * average_chemical_potential_tail_correction.second);
@@ -154,8 +153,8 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
       std::pair<double, double> average_widom_fugacity = averageFugacity(beta);
 
       std::print(stream, "    Beta * Excess chemical potential:          {: .6e} +/- {: .6e} [-]\n",
-           beta * average_excess_widom_chemical_potential.first,
-           beta * average_excess_widom_chemical_potential.second);
+                 beta * average_excess_widom_chemical_potential.first,
+                 beta * average_excess_widom_chemical_potential.second);
       std::print(stream, "    Beta * Tail-correction chemical potential: {: .6e} +/- {: .6e} [-]\n",
                  beta * average_chemical_potential_tail_correction.first,
                  beta * average_chemical_potential_tail_correction.second);
@@ -174,13 +173,11 @@ std::string PropertyWidom::writeAveragesStatistics(double beta, std::optional<do
       if (imposedFugacity)
       {
         std::print(stream, "    Imposed fugacity:            {: .6e} [{}]\n",
-                   Units::PressureConversionFactor * imposedFugacity.value(),
-                   Units::unitOfPressureString);
+                   Units::PressureConversionFactor * imposedFugacity.value(), Units::unitOfPressureString);
 
         std::print(stream, "    Measured fugacity:           {: .6e} +/- {: .6e} [{}]\n",
                    Units::PressureConversionFactor * average_widom_fugacity.first,
-                   Units::PressureConversionFactor * average_widom_fugacity.second,
-                   Units::unitOfPressureString);
+                   Units::PressureConversionFactor * average_widom_fugacity.second, Units::unitOfPressureString);
       }
       break;
     }

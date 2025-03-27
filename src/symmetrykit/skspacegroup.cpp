@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <iterator>
 #include <map>
 #include <string>
@@ -472,7 +472,8 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             std::vector<std::tuple<double3, size_t, double>> atomsInConventionalCell{};
             std::transform(positionInPrimitiveCell.begin(), positionInPrimitiveCell.end(),
                            std::back_inserter(atomsInConventionalCell),
-                           [transform, origin](const std::tuple<double3, size_t, double>& tuple) {
+                           [transform, origin](const std::tuple<double3, size_t, double>& tuple)
+                           {
                              return std::make_tuple(transform * std::get<0>(tuple) + origin, std::get<1>(tuple),
                                                     std::get<2>(tuple));
                            });

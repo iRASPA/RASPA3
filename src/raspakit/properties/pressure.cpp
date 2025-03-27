@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -56,7 +56,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
 
   std::pair<double3x3, double3x3> currentPressureTensor = averagePressureTensor();
 
-  switch(Units::unitSystem)
+  switch (Units::unitSystem)
   {
     case Units::System::RASPA:
     {
@@ -64,12 +64,15 @@ std::string PropertyPressure::writeAveragesStatistics() const
       double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
       std::print(stream, "Average pressure tensor: \n");
       std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
-                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
-                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n\n", pressureTensor.az, pressureTensor.bz,
-                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
+                 pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
+                 pressureTensorError.cx);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay,
+                 pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
+                 pressureTensorError.cy);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n\n", pressureTensor.az,
+                 pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
+                 pressureTensorError.cz);
 
       std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
       for (size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)
@@ -80,8 +83,8 @@ std::string PropertyPressure::writeAveragesStatistics() const
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Ideal gas pressure  {: .6e} +/- {: .6e} [Pa]\n", conv * pressureIdealGasAverage.first,
                  pressureIdealGasAverage.second);
-      std::print(stream, "                        {: .6e} +/- {: .6e} [bar]\n", 1e-5 * conv * pressureIdealGasAverage.first,
-                 1e-5 * conv * pressureIdealGasAverage.second);
+      std::print(stream, "                        {: .6e} +/- {: .6e} [bar]\n",
+                 1e-5 * conv * pressureIdealGasAverage.first, 1e-5 * conv * pressureIdealGasAverage.second);
       std::print(stream, "\n\n");
 
       for (size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
@@ -116,12 +119,15 @@ std::string PropertyPressure::writeAveragesStatistics() const
       double3x3 pressureTensorError = Units::PressureConversionFactor * currentPressureTensor.second;
       std::print(stream, "Average pressure tensor: \n");
       std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax, pressureTensor.bx,
-                 pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx, Units::unitOfPressureString);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay, pressureTensor.by,
-                 pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy, Units::unitOfPressureString);
-      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n\n", pressureTensor.az, pressureTensor.bz,
-                 pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
+                 pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
+                 pressureTensorError.cx, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay,
+                 pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
+                 pressureTensorError.cy, Units::unitOfPressureString);
+      std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n\n", pressureTensor.az,
+                 pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
+                 pressureTensorError.cz, Units::unitOfPressureString);
 
       std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
       for (size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)

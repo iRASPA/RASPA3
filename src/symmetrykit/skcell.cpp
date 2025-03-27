@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdlib>
 #include <memory>
 #include <numbers>
@@ -665,8 +665,8 @@ void SKCell::gamma(const double& newValue)
 
 bool SKCell::orthorhombic() const
 {
-  return (std::fabs(alpha() - std::numbers::pi / 2.0) < 0.001) && (std::fabs(beta() - std::numbers::pi / 2.0) < 0.001) &&
-         (std::fabs(gamma() - std::numbers::pi / 2.0) < 0.001);
+  return (std::fabs(alpha() - std::numbers::pi / 2.0) < 0.001) &&
+         (std::fabs(beta() - std::numbers::pi / 2.0) < 0.001) && (std::fabs(gamma() - std::numbers::pi / 2.0) < 0.001);
 }
 
 double SKCell::volume() const

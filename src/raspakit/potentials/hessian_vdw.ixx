@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #endif
 
@@ -23,7 +23,7 @@ import hessian_factor;
  * \brief Computes the energy, gradient, and Hessian of the van der Waals (VDW) potential.
  *
  * This function calculates the gradient of the VDW potential between two atom types.
- * It returns derivatives as D[U[r], r] / r to avoid computing the square root for 
+ * It returns derivatives as D[U[r], r] / r to avoid computing the square root for
  * Lennard-Jones (LJ) potential, as only the squared distance (rr) is required.
  *
  * \param forcefield The force field parameters defining the interaction.
@@ -38,10 +38,10 @@ import hessian_factor;
  * \return A HessianFactor object containing the computed energy, gradient, and Hessian.
  */
 export [[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield,
-                                                                       const bool& groupIdA, const bool& groupIdB,
-                                                                       const double& scalingA, const double& scalingB,
-                                                                       const double& rr, const size_t& typeA,
-                                                                       const size_t& typeB)
+                                                                         const bool& groupIdA, const bool& groupIdB,
+                                                                         const double& scalingA, const double& scalingB,
+                                                                         const double& rr, const size_t& typeA,
+                                                                         const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -53,20 +53,19 @@ export [[clang::always_inline]] inline HessianFactor potentialVDWHessian(const F
       double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
       double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
       double arg3 = forcefield(typeA, typeB).shift;
-      double temp = (rr / arg2);              // (r/sigma)^2
-      double temp3 = temp * temp * temp;      // (r/sigma)^6
+      double temp = (rr / arg2);          // (r/sigma)^2
+      double temp3 = temp * temp * temp;  // (r/sigma)^6
       double inv_scaling = 1.0 - scaling;
-      double rri3 = 1.0 / (temp3 + 0.5 * inv_scaling * inv_scaling);   // 1.0 / [0.5 (1-l)^2 + (r/sigma)^6]
+      double rri3 = 1.0 / (temp3 + 0.5 * inv_scaling * inv_scaling);  // 1.0 / [0.5 (1-l)^2 + (r/sigma)^6]
       double rri6 = rri3 * rri3;
       double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
 
       return HessianFactor(
-          scaling * term, 
+          scaling * term,
           (groupIdA ? scalingB * (term + dlambda_term) : 0.0) + (groupIdB ? scalingA * (term + dlambda_term) : 0.0),
           12.0 * scaling * arg1 * (rri6 * temp3 * (0.5 - rri3)) / rr,
-          24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr)
-        );
+          24.0 * arg1 * scaling * rri6 * temp3 * (1.0 + rri3 * (temp3 * (-3.0 + 9.0 * rri3) - 2.0)) / (rr * rr));
     }
     case VDWParameters::Type::RepulsiveHarmonic:
     {

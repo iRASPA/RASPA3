@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <optional>
 #include <span>
@@ -38,7 +38,7 @@ import component;
 
 export struct PropertyVelocityAutoCorrelationFunction
 {
-  PropertyVelocityAutoCorrelationFunction(){};
+  PropertyVelocityAutoCorrelationFunction() {};
 
   PropertyVelocityAutoCorrelationFunction(size_t numberOfComponents, size_t numberOfParticles,
                                           size_t numberOfBuffersVACF, size_t bufferLengthVACF, size_t sampleEvery,

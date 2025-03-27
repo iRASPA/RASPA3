@@ -1,10 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -13,7 +14,6 @@ module;
 #include <string>
 #include <tuple>
 #include <vector>
-#include <filesystem>
 #endif
 
 export module property_lambda_probability_histogram;
@@ -60,7 +60,7 @@ export struct PropertyLambdaProbabilityHistogram
     Finalize = 3
   };
 
-  PropertyLambdaProbabilityHistogram(){};
+  PropertyLambdaProbabilityHistogram() {};
 
   PropertyLambdaProbabilityHistogram(size_t numberOfBlocks, size_t numberOfSamplePoints)
       : numberOfBlocks(numberOfBlocks),

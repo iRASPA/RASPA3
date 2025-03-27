@@ -1,7 +1,6 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
 #include <cstddef>
 #include <fstream>

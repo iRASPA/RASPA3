@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <iostream>
 #endif
 
@@ -64,7 +64,7 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
       double term = arg1 * (rri3 * (rri3 - 1.0)) - arg3;
       double dlambda_term = arg1 * scaling * inv_scaling * (2.0 * rri6 * rri3 - rri6);
       return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
-                                          (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
+                                              (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
     }
     case VDWParameters::Type::RepulsiveHarmonic:
     {

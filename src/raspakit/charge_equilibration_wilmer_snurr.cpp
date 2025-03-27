@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <iostream>
@@ -10,7 +10,7 @@ module;
 #include <span>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -37,7 +37,7 @@ import skelement;
 import atom;
 import simulationbox;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 extern "C"

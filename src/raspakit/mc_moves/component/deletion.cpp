@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <optional>
@@ -115,7 +115,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // Get the total difference in energy
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                      energyFourierDifference + tailEnergyDifference;
-    
+
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);
 

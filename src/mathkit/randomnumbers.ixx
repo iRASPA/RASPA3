@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <optional>
@@ -97,7 +97,7 @@ export struct RandomNumber
   simd_quatd randomSimdQuatd();
   simd_quatd smallRandomQuaternion(double angleRange);
 
-  size_t categoricalDistribution(const std::vector<double>& probabilities)
+  size_t categoricalDistribution(const std::vector<double> &probabilities)
   {
     std::discrete_distribution<size_t> d(probabilities.begin(), probabilities.end());
     return d(mt);

@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <numbers>
@@ -44,7 +44,7 @@ inline std::pair<Loadings, double> pair_sum(const std::pair<Loadings, double> &l
 
 export struct PropertyLoading
 {
-  PropertyLoading(){};
+  PropertyLoading() {};
 
   PropertyLoading(size_t numberOfBlocks, size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
@@ -122,7 +122,7 @@ export struct PropertyLoading
 
   std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
 
-    /**
+  /**
    * \brief Returns a string representation of the PropertyLoading.
    *
    * Generates a simple string indicating a test representation of the PropertyLoading.

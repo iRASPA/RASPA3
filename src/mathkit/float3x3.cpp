@@ -1,8 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <numbers>
 #include <vector>
 #endif
@@ -144,4 +144,4 @@ float trunc_acos(float x)
   return std::acos(x);
 }
 
-//static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }
+// static double sign(double x) { return (x < 0.0 ? -1.0 : 1.0); }

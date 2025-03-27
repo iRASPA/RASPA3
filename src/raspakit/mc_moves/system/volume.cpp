@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <complex>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <numeric>

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <chrono>
+#include <cmath>
+#include <cstddef>
 #include <iostream>
 #include <optional>
 #include <span>

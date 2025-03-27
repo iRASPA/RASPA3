@@ -1,11 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <complex>
+#include <cstddef>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -18,7 +19,6 @@ module;
 #include <sstream>
 #include <string>
 #include <vector>
-#include <filesystem>
 #endif
 
 module property_lambda_probability_histogram;
@@ -104,18 +104,19 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
   }
 }
 
-std::pair<std::vector<double>, std::vector<double>> PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram()
+std::pair<std::vector<double>, std::vector<double>>
+PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram()
 {
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
   double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
   double normalize = static_cast<double>(numberOfSamplePoints) / totalHistogram;
 
-  for (double &value : histogram_avg.first ) 
+  for (double &value : histogram_avg.first)
   {
     value *= normalize;
   }
-  for (double &value : histogram_avg.second ) 
+  for (double &value : histogram_avg.second)
   {
     value *= normalize;
   }
@@ -165,7 +166,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
     minimum_free_energy = conv * (*minimum_iterator);
   }
 
-  switch(Units::unitSystem)
+  switch (Units::unitSystem)
   {
     case Units::System::RASPA:
     {
@@ -180,7 +181,8 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
-        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * (blockAverage + excessChemicalPotentialBias));
+        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
+                   conv * (blockAverage + excessChemicalPotentialBias));
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential:    {: .6e} +/- {: .6e} [K]\n",
@@ -236,18 +238,17 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
-        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, beta * (blockAverage + excessChemicalPotentialBias));
+        std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
+                   beta * (blockAverage + excessChemicalPotentialBias));
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Beta * Excess chemical potential:    {: .6e} +/- {: .6e} [-]\n",
                  beta * (excessChemicalPotential.first + excessChemicalPotentialBias),
                  beta * excessChemicalPotential.second);
       std::print(stream, "    Beta * Ideal gas chemical potential: {: .6e} +/- {: .6e} [-]\n",
-                 beta * idealGasChemicalPotential.first,
-                 beta * idealGasChemicalPotential.second);
+                 beta * idealGasChemicalPotential.first, beta * idealGasChemicalPotential.second);
       std::print(stream, "    Beta * Total chemical potential:     {: .6e} +/- {: .6e} [-]\n",
-                 beta * totalChemicalPotential.first,
-                 beta * totalChemicalPotential.second);
+                 beta * totalChemicalPotential.first, beta * totalChemicalPotential.second);
       if (imposedChemicalPotential)
       {
         std::print(stream, "    Beta * Imposed chemical potential:   {: .6e} [-]\n",
@@ -257,17 +258,14 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       if (imposedFugacity)
       {
         std::print(stream, "    Imposed fugacity:             {: .6e} [{}]\n",
-                   Units::PressureConversionFactor * imposedFugacity.value(),
-                   Units::unitOfPressureString);
+                   Units::PressureConversionFactor * imposedFugacity.value(), Units::unitOfPressureString);
       }
       std::print(stream, "    Measured fugacity:            {: .6e} +/- {: .6e} [{}]\n",
                  Units::PressureConversionFactor * measuredFugacity.first,
-                 Units::PressureConversionFactor * measuredFugacity.second,
-                 Units::unitOfPressureString);
+                 Units::PressureConversionFactor * measuredFugacity.second, Units::unitOfPressureString);
       break;
     }
   }
-
 
   std::print(stream, "\n\n");
   return stream.str();
@@ -356,7 +354,7 @@ void PropertyLambdaProbabilityHistogram::writeBiasingFile(std::filesystem::path 
 
   nlohmann::json json;
   std::vector<double> shifted{biasFactor};
-  for(size_t i = 0; i < shifted.size(); ++i)
+  for (size_t i = 0; i < shifted.size(); ++i)
   {
     shifted[i] -= shifted.back();
   }
@@ -385,7 +383,7 @@ void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path p
     std::vector<double> lambda_bias_data = parsed_lambda_bias_data["bias"].get<std::vector<double>>();
 
     // resample bias-factor to take different vector size into account
-    for(size_t i = 0; i < biasFactor.size(); ++i)
+    for (size_t i = 0; i < biasFactor.size(); ++i)
     {
       double lambda = static_cast<double>(i) * delta;
 
@@ -393,7 +391,6 @@ void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path p
       biasFactor[i] = lambda_bias_data[index];
     }
   }
-
 }
 
 nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(

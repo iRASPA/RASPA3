@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -17,7 +17,7 @@ module;
 #include <utility>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
-  #include <mdspan>
+#include <mdspan>
 #endif
 #endif
 
@@ -46,7 +46,7 @@ import stringutils;
 import framework;
 import simulationbox;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-  import mdspan;
+import mdspan;
 #endif
 
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.
@@ -69,6 +69,7 @@ import simulationbox;
 // extrapolated field.
 //
 
+// clang-format off
 [[maybe_unused]] static int tricubic_coefficients[64][64] = {
 { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 { 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -355,50 +356,52 @@ import simulationbox;
 {4320,-4320,-4320,4320,-4320,4320,4320,-4320,2304,2016,-2304,-2016,-2304,-2016,2304,2016,2160,-2160,2160,-2160,-2160,2160,-2160,2160,2160,-2160,-2160,2160,2160,-2160,-2160,2160,432,-288,-432,288,-432,288,432,-288,1152,1008,1152,1008,-1152,-1008,-1152,-1008,1152,1008,-1152,-1008,1152,1008,-1152,-1008,360,-360,-360,360,-360,360,360,-360,1080,-1080,1080,-1080,1080,-1080,1080,-1080,360,-360,-360,360,-360,360,360,-360,216,-144,216,-144,-216,144,-216,144,216,-144,-216,144,216,-144,-216,144,192,168,-192,-168,-192,-168,192,168,576,504,576,504,576,504,576,504,180,-180,-180,180,180,-180,-180,180,192,168,-192,-168,-192,-168,192,168,180,-180,180,-180,-180,180,-180,180,36,-24,-36,24,-36,24,36,-24,36,-24,-36,24,-36,24,36,-24,30,-30,-30,30,-30,30,30,-30,108,-72,108,-72,108,-72,108,-72,96,84,-96,-84,96,84,-96,-84,96,84,96,84,-96,-84,-96,-84,18,-12,-18,12,18,-12,-18,12,18,-12,18,-12,-18,12,-18,12,16,14,-16,-14,-16,-14,16,14,3,-2,-3,2,-3,2,3,-2},
 {-1728,1728,1728,-1728,1728,-1728,-1728,1728,-864,-864,864,864,864,864,-864,-864,-864,864,-864,864,864,-864,864,-864,-864,864,864,-864,-864,864,864,-864,-144,144,144,-144,144,-144,-144,144,-432,-432,-432,-432,432,432,432,432,-432,-432,432,432,-432,-432,432,432,-144,144,144,-144,144,-144,-144,144,-432,432,-432,432,-432,432,-432,432,-144,144,144,-144,144,-144,-144,144,-72,72,-72,72,72,-72,72,-72,-72,72,72,-72,-72,72,72,-72,-72,-72,72,72,72,72,-72,-72,-216,-216,-216,-216,-216,-216,-216,-216,-72,72,72,-72,-72,72,72,-72,-72,-72,72,72,72,72,-72,-72,-72,72,-72,72,72,-72,72,-72,-12,12,12,-12,12,-12,-12,12,-12,12,12,-12,12,-12,-12,12,-12,12,12,-12,12,-12,-12,12,-36,36,-36,36,-36,36,-36,36,-36,-36,36,36,-36,-36,36,36,-36,-36,-36,-36,36,36,36,36,-6,6,6,-6,-6,6,6,-6,-6,6,-6,6,6,-6,6,-6,-6,-6,6,6,6,6,-6,-6,-1,1,1,-1,1,-1,-1,1}
 };
-
+// clang-format on
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
-void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Framework &framework, size_t pseudo_atom_index)
+void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Framework &framework,
+                                          size_t pseudo_atom_index)
 {
   const SimulationBox &simulationBox = framework.simulationBox;
-  double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x),
-                          1.0 / static_cast<double>(numberOfCells.y),
+  double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
                           1.0 / static_cast<double>(numberOfCells.z));
-  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 27, numberOfGridPoints.x,
+                                                                            numberOfGridPoints.y, numberOfGridPoints.z);
 
   double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
 
   double counter{};
-  for(size_t i = 0; i < static_cast<size_t>(numberOfGridPoints.z); ++i)
+  for (size_t i = 0; i < static_cast<size_t>(numberOfGridPoints.z); ++i)
   {
-    for(size_t j = 0; j < static_cast<size_t>(numberOfGridPoints.y); ++j)
+    for (size_t j = 0; j < static_cast<size_t>(numberOfGridPoints.y); ++j)
     {
-      for(size_t k = 0; k < static_cast<size_t>(numberOfGridPoints.z); ++k)
+      for (size_t k = 0; k < static_cast<size_t>(numberOfGridPoints.z); ++k)
       {
         counter += 1.0;
-        double3 s = double3(static_cast<double>(i) * delta.x,
-                            static_cast<double>(j) * delta.y,
+        double3 s = double3(static_cast<double>(i) * delta.x, static_cast<double>(j) * delta.y,
                             static_cast<double>(k) * delta.z);
         double3 pos = simulationBox.cell * s;
 
         std::print("position: {} {} {}   {} {} {}\n", s.x, s.y, s.z, pos.x, pos.y, pos.z);
 
-        auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative, sixth_derivative] =
-          Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
+        auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
+              sixth_derivative] =
+            Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, pos, pseudo_atom_index,
+                                                                framework.unitCellAtoms);
 
-        data_cell[ 0, i, j, k] = energy;
+        data_cell[0, i, j, k] = energy;
 
-        data_cell[ 1, i, j, k] = first_derivative[0];
-        data_cell[ 2, i, j, k] = first_derivative[1];
-        data_cell[ 3, i, j, k] = first_derivative[2];
+        data_cell[1, i, j, k] = first_derivative[0];
+        data_cell[2, i, j, k] = first_derivative[1];
+        data_cell[3, i, j, k] = first_derivative[2];
 
-        data_cell[ 4, i, j, k] = second_derivative[0][0];
-        data_cell[ 5, i, j, k] = second_derivative[0][1];
-        data_cell[ 6, i, j, k] = second_derivative[0][2];
-        data_cell[ 7, i, j, k] = second_derivative[1][1];
-        data_cell[ 8, i, j, k] = second_derivative[1][2];
-        data_cell[ 9, i, j, k] = second_derivative[2][2];
+        data_cell[4, i, j, k] = second_derivative[0][0];
+        data_cell[5, i, j, k] = second_derivative[0][1];
+        data_cell[6, i, j, k] = second_derivative[0][2];
+        data_cell[7, i, j, k] = second_derivative[1][1];
+        data_cell[8, i, j, k] = second_derivative[1][2];
+        data_cell[9, i, j, k] = second_derivative[2][2];
 
         data_cell[10, i, j, k] = third_derivative[0][0][1];
         data_cell[11, i, j, k] = third_derivative[0][0][2];
@@ -421,11 +424,11 @@ void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Fr
 
         data_cell[26, i, j, k] = sixth_derivative[0][0][1][1][2][2];
 
+        auto [energy2, gradient2, hessian2, third_derivative2] = Interactions::calculateThirdDerivativeAtPositionVDW(
+            forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
 
-        auto [energy2, gradient2, hessian2, third_derivative2] =
-          Interactions::calculateThirdDerivativeAtPositionVDW(forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
-
-        std::print("check: {} {} {} {} <-> {} {} {} {} \n",energy, first_derivative[0], first_derivative[1], first_derivative[2], energy2, gradient2.x, gradient2.y, gradient2.z);
+        std::print("check: {} {} {} {} <-> {} {} {} {} \n", energy, first_derivative[0], first_derivative[1],
+                   first_derivative[2], energy2, gradient2.x, gradient2.y, gradient2.z);
         /*
 
         double energy_fractional = energy;
@@ -467,12 +470,10 @@ void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Fr
   }
 }
 
-
 double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
 {
   std::vector<double> X(216);
   std::vector<double> a(216);
-
 
   // find the corresponding cell, between 0 and NumberOfVDWGridPoints
   // determine lower boundary
@@ -485,10 +486,9 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
   size_t y1 = (y0 + 1);
   size_t z1 = (z0 + 1);
 
-
-
-  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  for(size_t i = 0; i < 27; ++i)
+  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 27, numberOfGridPoints.x,
+                                                                            numberOfGridPoints.y, numberOfGridPoints.z);
+  for (size_t i = 0; i < 27; ++i)
   {
     X[8 * i + 0] = data_cell[i, x0, y0, z0];
     X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -500,10 +500,10 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
     X[8 * i + 7] = data_cell[i, x1, y1, z1];
   }
 
-  for(size_t i = 0; i != 216; ++i)
+  for (size_t i = 0; i != 216; ++i)
   {
     a[i] = 0.0;
-    for(size_t j = 0; j != 216; ++j)
+    for (size_t j = 0; j != 216; ++j)
     {
       a[i] += triquintic_coefficients[i][j] * X[j] / 8.0;
     }
@@ -511,10 +511,10 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
 
   // energy
   double value = 0.0;
-  for(size_t i = 0; i != 6; ++i)
-    for(size_t j = 0; j != 6; ++j)
-      for(size_t k = 0; k != 6; ++k)
-        value += a[i + 6 * j + 36 * k] * std::pow(s.x,i) * std::pow(s.y,j) * std::pow(s.z,k);
+  for (size_t i = 0; i != 6; ++i)
+    for (size_t j = 0; j != 6; ++j)
+      for (size_t k = 0; k != 6; ++k)
+        value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
   return value;
 }
@@ -537,8 +537,8 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
   size_t z1 = (z0 + 1);
 
 
-  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-  for(size_t i = 0; i < 8; ++i)
+  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(data.data(), 8, numberOfGridPoints.x,
+numberOfGridPoints.y, numberOfGridPoints.z); for(size_t i = 0; i < 8; ++i)
   {
     X[8 * i + 0] = data_cell[i, x0, y0, z0];
     X[8 * i + 1] = data_cell[i, x1, y0, z0];

@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <exception>
 #include <format>
 #include <iostream>
