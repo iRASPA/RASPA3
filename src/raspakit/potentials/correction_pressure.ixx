@@ -15,6 +15,8 @@ import vdwparameters;
 import forcefield;
 import double4;
 
+export namespace Potentials
+{
 /**
  * \brief Calculates the potential correction for van der Waals (VDW) interactions.
  *
@@ -28,7 +30,7 @@ import double4;
  *
  * \return The calculated VDW potential correction.
  */
-export inline double potentialCorrectionPressure(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
+inline double potentialCorrectionPressure(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -48,3 +50,4 @@ export inline double potentialCorrectionPressure(const ForceField& forcefield, c
       return 0.0;
   }
 };
+}  // namespace Potentials

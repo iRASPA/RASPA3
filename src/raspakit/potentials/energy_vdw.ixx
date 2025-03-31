@@ -19,6 +19,8 @@ import energy_factor;
 
 import double4;
 
+export namespace Potentials
+{
 /**
  * \brief Calculates the van der Waals potential energy between two atoms.
  *
@@ -40,11 +42,10 @@ import double4;
  * \param typeB The type identifier for the second atom.
  * \return An EnergyFactor object containing the calculated potential energy and lambda derivative.
  */
-export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield,
-                                                                       const bool& groupIdA, const bool& groupIdB,
-                                                                       const double& scalingA, const double& scalingB,
-                                                                       const double& rr, const size_t& typeA,
-                                                                       const size_t& typeB)
+[[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const bool& groupIdA,
+                                                                const bool& groupIdB, const double& scalingA,
+                                                                const double& scalingB, const double& rr,
+                                                                const size_t& typeA, const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -80,3 +81,4 @@ export [[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const For
 
   return EnergyFactor(0.0, 0.0);
 };
+}  // namespace Potentials

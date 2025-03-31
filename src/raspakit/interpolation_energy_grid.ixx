@@ -41,15 +41,23 @@ import interactions_framework_molecule;
 
 export struct InterpolationEnergyGrid
 {
+  enum class InterpolationOrder : size_t
+  {
+    Tricubic = 8,
+    Triquintic = 27
+  };
+
   int3 numberOfCells;
   int3 numberOfGridPoints;
+  InterpolationOrder order;
   std::vector<double> data;
 
-  InterpolationEnergyGrid(int3 numberOfCells)
+  InterpolationEnergyGrid(int3 numberOfCells, InterpolationOrder order)
       : numberOfCells(numberOfCells),
         numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
-        // data(static_cast<size_t>(8 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
-        data(static_cast<size_t>(27 * numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+        order(order),
+        data(std::to_underlying(order) *
+             static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
   {
   }
 

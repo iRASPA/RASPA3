@@ -15,13 +15,15 @@ import <fstream>;
 
 import archive;
 
+export namespace Potentials
+{
 /**
  * \brief Represents an energy factor with energy and its derivative with respect to lambda.
  *
  * The EnergyFactor struct holds the energy value and its derivative with respect to the scaling parameter lambda.
  * It provides constructors and operator overloads for arithmetic operations.
  */
-export struct EnergyFactor
+struct EnergyFactor
 {
   double energy;     ///< The energy value.
   double dUdlambda;  ///< The derivative of energy with respect to lambda.
@@ -58,12 +60,11 @@ export struct EnergyFactor
     return v;
   }
 
-  // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyFactor& e);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyFactor& e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::EnergyFactor& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::EnergyFactor& e);
 };
 
-export inline EnergyFactor operator+(const EnergyFactor& a, const EnergyFactor& b)
+inline EnergyFactor operator+(const EnergyFactor& a, const EnergyFactor& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a.energy + b.energy;
@@ -72,7 +73,7 @@ export inline EnergyFactor operator+(const EnergyFactor& a, const EnergyFactor& 
   return m;
 }
 
-export inline EnergyFactor operator-(const EnergyFactor& a, const EnergyFactor& b)
+inline EnergyFactor operator-(const EnergyFactor& a, const EnergyFactor& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a.energy - b.energy;
@@ -81,7 +82,7 @@ export inline EnergyFactor operator-(const EnergyFactor& a, const EnergyFactor& 
   return m;
 }
 
-export inline EnergyFactor operator*(const EnergyFactor& a, const EnergyFactor& b)
+inline EnergyFactor operator*(const EnergyFactor& a, const EnergyFactor& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a.energy * b.energy;
@@ -90,7 +91,7 @@ export inline EnergyFactor operator*(const EnergyFactor& a, const EnergyFactor& 
   return m;
 }
 
-export inline EnergyFactor operator*(const double& a, const EnergyFactor& b)
+inline EnergyFactor operator*(const double& a, const EnergyFactor& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a * b.energy;
@@ -99,7 +100,7 @@ export inline EnergyFactor operator*(const double& a, const EnergyFactor& b)
   return m;
 }
 
-export inline EnergyFactor operator*(const EnergyFactor& a, const double& b)
+inline EnergyFactor operator*(const EnergyFactor& a, const double& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a.energy * b;
@@ -108,7 +109,7 @@ export inline EnergyFactor operator*(const EnergyFactor& a, const double& b)
   return m;
 }
 
-export inline EnergyFactor operator/(const EnergyFactor& a, const double& b)
+inline EnergyFactor operator/(const EnergyFactor& a, const double& b)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = a.energy / b;
@@ -117,7 +118,7 @@ export inline EnergyFactor operator/(const EnergyFactor& a, const double& b)
   return m;
 }
 
-export inline EnergyFactor sqrt(const EnergyFactor& a)
+inline EnergyFactor sqrt(const EnergyFactor& a)
 {
   EnergyFactor m(0.0, 0.0);
   m.energy = std::sqrt(a.energy);
@@ -125,3 +126,4 @@ export inline EnergyFactor sqrt(const EnergyFactor& a)
 
   return m;
 }
+}  // namespace Potentials

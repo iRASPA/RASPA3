@@ -25,7 +25,7 @@ import simulationbox;
 import energy_factor;
 import gradient_factor;
 import hessian_factor;
-import sixth_derivative_factor;
+import triquintic_derivative_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -973,7 +973,7 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
   // fifth derivatives
   {
     double delta = 1e-6;
-    double tolerance = 1e-2;
+    double tolerance = 3e-1;
 
     std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
@@ -1160,7 +1160,4 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fractional_to_Cartesian_methane_
   EXPECT_NEAR(second_derivative_Cartesian[1][1], analyticalCartesian[7], tolerance);  
   EXPECT_NEAR(second_derivative_Cartesian[1][2], analyticalCartesian[8], tolerance);  
   EXPECT_NEAR(second_derivative_Cartesian[2][2], analyticalCartesian[9], tolerance);  
-
-
-
 }

@@ -21,6 +21,8 @@ import units;
 import forcefield;
 import hessian_factor;
 
+export namespace Potentials
+{
 /**
  * \brief Computes the gradient of the Coulomb potential.
  *
@@ -42,9 +44,11 @@ import hessian_factor;
  *
  * \note This function returns derivates as D[U[r], r] / r, where U[r] is the potential energy.
  */
-export [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(
-    const ForceField& forcefield, const bool& groupIdA, const bool& groupIdB, const double& scalingA,
-    const double& scalingB, const double& rr, const double& r, const double& chargeA, const double& chargeB)
+[[clang::always_inline]] inline HessianFactor potentialCoulombHessian(const ForceField& forcefield,
+                                                                      const bool& groupIdA, const bool& groupIdB,
+                                                                      const double& scalingA, const double& scalingB,
+                                                                      const double& rr, const double& r,
+                                                                      const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
 
@@ -79,3 +83,4 @@ export [[clang::always_inline]] inline HessianFactor potentialCoulombHessian(
   // In case of an unsupported charge method, return a default ForceFactor.
   return HessianFactor(0.0, 0.0, 0.0, 0.0);
 };
+}  // namespace Potentials

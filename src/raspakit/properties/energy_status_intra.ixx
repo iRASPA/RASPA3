@@ -62,11 +62,11 @@ export struct EnergyIntra
 
   bool operator==(EnergyIntra const&) const = default;
 
-  inline EnergyFactor total() const
+  inline Potentials::EnergyFactor total() const
   {
-    return EnergyFactor(bond + bend + inversionBend + ureyBradley + torsion + improperTorsion + bondBond + bondBend +
-                            bondTorsion + bendBend + bendTorsion + intraVDW + intraChargeCharge,
-                        0.0);
+    return Potentials::EnergyFactor(bond + bend + inversionBend + ureyBradley + torsion + improperTorsion + bondBond +
+                                        bondBend + bondTorsion + bendBend + bendTorsion + intraVDW + intraChargeCharge,
+                                    0.0);
   }
 
   void zero()

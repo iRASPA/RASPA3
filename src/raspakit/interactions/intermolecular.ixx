@@ -156,8 +156,9 @@ void computeInterMolecularElectricPotential(const ForceField &forceField, const 
  * \param moleculeAtoms A span of atoms for which to compute the polarization energy.
  * \return The total inter-molecular polarization energy.
  */
-EnergyFactor computeInterMolecularPolarizationEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                     std::span<const Atom> moleculeAtoms) noexcept;
+Potentials::EnergyFactor computeInterMolecularPolarizationEnergy(const ForceField &forceField,
+                                                                 const SimulationBox &simulationBox,
+                                                                 std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric field for each atom.

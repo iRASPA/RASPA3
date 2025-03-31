@@ -70,9 +70,9 @@ export struct EnergyStatus
     return interComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  EnergyFactor interEnergyComponent(size_t compA)
+  Potentials::EnergyFactor interEnergyComponent(size_t compA)
   {
-    EnergyFactor sum(0.0, 0.0);
+    Potentials::EnergyFactor sum(0.0, 0.0);
     for (size_t i = 0; i < numberOfComponents; i++)
     {
       sum += interComponentEnergies[compA * numberOfComponents + i].totalInter;
@@ -82,7 +82,7 @@ export struct EnergyStatus
 
   void zero()
   {
-    totalEnergy = EnergyFactor(0.0, 0.0);
+    totalEnergy = Potentials::EnergyFactor(0.0, 0.0);
     dUdlambda = 0.0;
     intraEnergy.zero();
     externalFieldMoleculeEnergy.zero();
@@ -214,7 +214,7 @@ export struct EnergyStatus
   size_t numberOfExternalFields;
   size_t numberOfFrameworks;
   size_t numberOfComponents;
-  EnergyFactor totalEnergy;
+  Potentials::EnergyFactor totalEnergy;
   EnergyIntra intraEnergy;
   EnergyInter externalFieldMoleculeEnergy;
   EnergyInter frameworkMoleculeEnergy;

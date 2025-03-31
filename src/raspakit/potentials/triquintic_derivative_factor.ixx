@@ -6,7 +6,7 @@ module;
 #include <fstream>
 #endif
 
-export module sixth_derivative_factor;
+export module triquintic_derivative_factor;
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
@@ -15,6 +15,8 @@ import <fstream>;
 
 import archive;
 
+export namespace Potentials
+{
 /**
  * \brief Represents the force factors associated with an energy component.
  *
@@ -24,10 +26,9 @@ import archive;
  * first switching Lennard-Jones (LJ) interactions on in the range [0, 0.5], then
  * electrostatic interactions from [0.5, 1.0].
  */
-export struct SixthDerivativeFactor
+struct TriquinticDerivativeFactor
 {
   double energy;                  ///< The energy component.
-  double dUdlambda;               ///< The derivative of the potential energy with respect to lambda.
   double firstDerivativeFactor;   ///< The scaling factor for the first derivative.
   double secondDerivativeFactor;  ///< The scaling factor for the second derivative.
   double thirdDerivativeFactor;   ///< The scaling factor for the third derivative.
@@ -36,19 +37,17 @@ export struct SixthDerivativeFactor
   double sixthDerivativeFactor;   ///< The scaling factor for the sixth derivative.
 
   /**
-   * \brief Constructs a ThirdDerivativeFactor with specified energy, force factor, and dUdlambda.
+   * \brief Constructs a ThirdDerivativeFactor with specified energy, force factor.
    *
    * \param energy The energy value.
-   * \param dUdlambda The derivative of the potential energy with respect to lambda.
    * \param firstDerivativeFactor The first-derivative scaling factor.
    * \param secondDerivativeFactor The second-derivative scaling factor.
    * \param thirdDerivativeFactor The third-derivative scaling factor.
    */
-  SixthDerivativeFactor(double energy, double dUdlambda, double firstDerivativeFactor, double secondDerivativeFactor,
-                        double thirdDerivativeFactor, double fourthDerivativeFactor, double fifthDerivativeFactor,
-                        double sixthDerivativeFactor)
+  TriquinticDerivativeFactor(double energy, double firstDerivativeFactor, double secondDerivativeFactor,
+                             double thirdDerivativeFactor, double fourthDerivativeFactor, double fifthDerivativeFactor,
+                             double sixthDerivativeFactor)
       : energy(energy),
-        dUdlambda(dUdlambda),
         firstDerivativeFactor(firstDerivativeFactor),
         secondDerivativeFactor(secondDerivativeFactor),
         thirdDerivativeFactor(thirdDerivativeFactor),
@@ -58,12 +57,11 @@ export struct SixthDerivativeFactor
   {
   }
 
-  bool operator==(SixthDerivativeFactor const&) const = default;
+  bool operator==(TriquinticDerivativeFactor const&) const = default;
 
-  inline SixthDerivativeFactor& operator+=(const SixthDerivativeFactor& b)
+  inline TriquinticDerivativeFactor& operator+=(const TriquinticDerivativeFactor& b)
   {
     energy += b.energy;
-    dUdlambda += b.dUdlambda;
     firstDerivativeFactor += b.firstDerivativeFactor;
     secondDerivativeFactor += b.secondDerivativeFactor;
     thirdDerivativeFactor += b.thirdDerivativeFactor;
@@ -74,10 +72,9 @@ export struct SixthDerivativeFactor
     return *this;
   }
 
-  inline SixthDerivativeFactor& operator-=(const SixthDerivativeFactor& b)
+  inline TriquinticDerivativeFactor& operator-=(const TriquinticDerivativeFactor& b)
   {
     energy -= b.energy;
-    dUdlambda -= b.dUdlambda;
     firstDerivativeFactor -= b.firstDerivativeFactor;
     secondDerivativeFactor -= b.secondDerivativeFactor;
     thirdDerivativeFactor -= b.thirdDerivativeFactor;
@@ -88,11 +85,10 @@ export struct SixthDerivativeFactor
     return *this;
   }
 
-  inline SixthDerivativeFactor operator-() const
+  inline TriquinticDerivativeFactor operator-() const
   {
-    SixthDerivativeFactor v(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    TriquinticDerivativeFactor v(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     v.energy = -energy;
-    v.dUdlambda = -dUdlambda;
     v.firstDerivativeFactor = -firstDerivativeFactor;
     v.secondDerivativeFactor = -secondDerivativeFactor;
     v.thirdDerivativeFactor = -thirdDerivativeFactor;
@@ -103,15 +99,14 @@ export struct SixthDerivativeFactor
     return v;
   }
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const SixthDerivativeFactor& e);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, SixthDerivativeFactor& e);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const TriquinticDerivativeFactor& e);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, TriquinticDerivativeFactor& e);
 };
 
-export inline SixthDerivativeFactor operator+(const SixthDerivativeFactor& a, const SixthDerivativeFactor& b)
+inline TriquinticDerivativeFactor operator+(const TriquinticDerivativeFactor& a, const TriquinticDerivativeFactor& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy + b.energy;
-  m.dUdlambda = a.dUdlambda + b.dUdlambda;
   m.firstDerivativeFactor = a.firstDerivativeFactor + b.firstDerivativeFactor;
   m.secondDerivativeFactor = a.secondDerivativeFactor + b.secondDerivativeFactor;
   m.thirdDerivativeFactor = a.thirdDerivativeFactor + b.thirdDerivativeFactor;
@@ -122,11 +117,10 @@ export inline SixthDerivativeFactor operator+(const SixthDerivativeFactor& a, co
   return m;
 }
 
-export inline SixthDerivativeFactor operator-(const SixthDerivativeFactor& a, const SixthDerivativeFactor& b)
+inline TriquinticDerivativeFactor operator-(const TriquinticDerivativeFactor& a, const TriquinticDerivativeFactor& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy - b.energy;
-  m.dUdlambda = a.dUdlambda - b.dUdlambda;
   m.firstDerivativeFactor = a.firstDerivativeFactor - b.firstDerivativeFactor;
   m.secondDerivativeFactor = a.secondDerivativeFactor - b.secondDerivativeFactor;
   m.thirdDerivativeFactor = a.thirdDerivativeFactor - b.thirdDerivativeFactor;
@@ -137,11 +131,10 @@ export inline SixthDerivativeFactor operator-(const SixthDerivativeFactor& a, co
   return m;
 }
 
-export inline SixthDerivativeFactor operator*(const SixthDerivativeFactor& a, const SixthDerivativeFactor& b)
+inline TriquinticDerivativeFactor operator*(const TriquinticDerivativeFactor& a, const TriquinticDerivativeFactor& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy * b.energy;
-  m.dUdlambda = a.dUdlambda * b.dUdlambda;
   m.firstDerivativeFactor = a.firstDerivativeFactor * b.firstDerivativeFactor;
   m.secondDerivativeFactor = a.secondDerivativeFactor * b.secondDerivativeFactor;
   m.thirdDerivativeFactor = a.thirdDerivativeFactor * b.thirdDerivativeFactor;
@@ -152,11 +145,10 @@ export inline SixthDerivativeFactor operator*(const SixthDerivativeFactor& a, co
   return m;
 }
 
-export inline SixthDerivativeFactor operator*(const double& a, const SixthDerivativeFactor& b)
+inline TriquinticDerivativeFactor operator*(const double& a, const TriquinticDerivativeFactor& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a * b.energy;
-  m.dUdlambda = a * b.dUdlambda;
   m.firstDerivativeFactor = a * b.firstDerivativeFactor;
   m.secondDerivativeFactor = a * b.secondDerivativeFactor;
   m.thirdDerivativeFactor = a * b.thirdDerivativeFactor;
@@ -167,11 +159,10 @@ export inline SixthDerivativeFactor operator*(const double& a, const SixthDeriva
   return m;
 }
 
-export inline SixthDerivativeFactor operator*(const SixthDerivativeFactor& a, const double& b)
+inline TriquinticDerivativeFactor operator*(const TriquinticDerivativeFactor& a, const double& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy * b;
-  m.dUdlambda = a.dUdlambda * b;
   m.firstDerivativeFactor = a.firstDerivativeFactor * b;
   m.secondDerivativeFactor = a.secondDerivativeFactor * b;
   m.thirdDerivativeFactor = a.thirdDerivativeFactor * b;
@@ -182,11 +173,10 @@ export inline SixthDerivativeFactor operator*(const SixthDerivativeFactor& a, co
   return m;
 }
 
-export inline SixthDerivativeFactor operator/(const SixthDerivativeFactor& a, const double& b)
+inline TriquinticDerivativeFactor operator/(const TriquinticDerivativeFactor& a, const double& b)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy / b;
-  m.dUdlambda = a.dUdlambda / b;
   m.firstDerivativeFactor = a.firstDerivativeFactor / b;
   m.secondDerivativeFactor = a.secondDerivativeFactor / b;
   m.thirdDerivativeFactor = a.thirdDerivativeFactor / b;
@@ -197,11 +187,10 @@ export inline SixthDerivativeFactor operator/(const SixthDerivativeFactor& a, co
   return m;
 }
 
-export inline SixthDerivativeFactor sqrt(const SixthDerivativeFactor& a)
+inline TriquinticDerivativeFactor sqrt(const TriquinticDerivativeFactor& a)
 {
-  SixthDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+  TriquinticDerivativeFactor m(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
   m.energy = std::sqrt(a.energy);
-  m.dUdlambda = std::sqrt(a.dUdlambda);
   m.firstDerivativeFactor = std::sqrt(a.firstDerivativeFactor);
   m.secondDerivativeFactor = std::sqrt(a.secondDerivativeFactor);
   m.thirdDerivativeFactor = std::sqrt(a.thirdDerivativeFactor);
@@ -211,3 +200,4 @@ export inline SixthDerivativeFactor sqrt(const SixthDerivativeFactor& a)
 
   return m;
 }
+}  // namespace Potentials

@@ -15,6 +15,8 @@ import <fstream>;
 
 import archive;
 
+export namespace Potentials
+{
 /**
  * \brief Represents the first and second derivative factors associated with an energy component.
  *
@@ -24,7 +26,7 @@ import archive;
  * first switching Lennard-Jones (LJ) interactions on in the range [0, 0.5], then
  * electrostatic interactions from [0.5, 1.0].
  */
-export struct HessianFactor
+struct HessianFactor
 {
   double energy;                  ///< The energy component.
   double dUdlambda;               ///< The derivative of the potential energy with respect to lambda.
@@ -81,7 +83,7 @@ export struct HessianFactor
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, HessianFactor& e);
 };
 
-export inline HessianFactor operator+(const HessianFactor& a, const HessianFactor& b)
+inline HessianFactor operator+(const HessianFactor& a, const HessianFactor& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy + b.energy;
@@ -92,7 +94,7 @@ export inline HessianFactor operator+(const HessianFactor& a, const HessianFacto
   return m;
 }
 
-export inline HessianFactor operator-(const HessianFactor& a, const HessianFactor& b)
+inline HessianFactor operator-(const HessianFactor& a, const HessianFactor& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy - b.energy;
@@ -103,7 +105,7 @@ export inline HessianFactor operator-(const HessianFactor& a, const HessianFacto
   return m;
 }
 
-export inline HessianFactor operator*(const HessianFactor& a, const HessianFactor& b)
+inline HessianFactor operator*(const HessianFactor& a, const HessianFactor& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy * b.energy;
@@ -114,7 +116,7 @@ export inline HessianFactor operator*(const HessianFactor& a, const HessianFacto
   return m;
 }
 
-export inline HessianFactor operator*(const double& a, const HessianFactor& b)
+inline HessianFactor operator*(const double& a, const HessianFactor& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a * b.energy;
@@ -125,7 +127,7 @@ export inline HessianFactor operator*(const double& a, const HessianFactor& b)
   return m;
 }
 
-export inline HessianFactor operator*(const HessianFactor& a, const double& b)
+inline HessianFactor operator*(const HessianFactor& a, const double& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy * b;
@@ -136,7 +138,7 @@ export inline HessianFactor operator*(const HessianFactor& a, const double& b)
   return m;
 }
 
-export inline HessianFactor operator/(const HessianFactor& a, const double& b)
+inline HessianFactor operator/(const HessianFactor& a, const double& b)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = a.energy / b;
@@ -147,7 +149,7 @@ export inline HessianFactor operator/(const HessianFactor& a, const double& b)
   return m;
 }
 
-export inline HessianFactor sqrt(const HessianFactor& a)
+inline HessianFactor sqrt(const HessianFactor& a)
 {
   HessianFactor m(0.0, 0.0, 0.0, 0.0);
   m.energy = std::sqrt(a.energy);
@@ -157,3 +159,4 @@ export inline HessianFactor sqrt(const HessianFactor& a)
 
   return m;
 }
+}  // namespace Potentials

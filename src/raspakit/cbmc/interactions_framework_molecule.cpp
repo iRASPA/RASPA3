@@ -97,8 +97,8 @@ template <>
 
         if (rr < cutOffVDWSquared)
         {
-          EnergyFactor energyFactor =
-              potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+          Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+              forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
           if (energyFactor.energy > overlapCriteria)
           {
             return std::nullopt;
@@ -109,8 +109,8 @@ template <>
         if (useCharge && rr < cutOffChargeSquared)
         {
           double r = std::sqrt(rr);
-          EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                             scalingCoulombB, r, chargeA, chargeB);
+          Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+              forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
           energySum.frameworkMoleculeCharge += energyFactor.energy;
           energySum.dudlambdaCharge += energyFactor.dUdlambda;
@@ -175,8 +175,8 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            EnergyFactor energyFactor =
-                potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
             if (energyFactor.energy > overlapCriteria)
             {
@@ -189,8 +189,8 @@ template <>
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                               scalingCoulombB, r, chargeA, chargeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
             energySum.dudlambdaCharge += energyFactor.dUdlambda;
@@ -285,8 +285,8 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            EnergyFactor energyFactor =
-                potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
               cancel.test_and_set();
@@ -297,8 +297,8 @@ template <>
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                               scalingCoulombB, r, chargeA, chargeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
             energySum.dudlambdaCharge += energyFactor.dUdlambda;

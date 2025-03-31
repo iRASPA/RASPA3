@@ -424,5 +424,4 @@ export struct System
 
   std::vector<size_t> gridPseudoAtomIndices;
   std::vector<InterpolationEnergyGrid> interpolationGrids;
-  void createInterpolationGrids();
 };

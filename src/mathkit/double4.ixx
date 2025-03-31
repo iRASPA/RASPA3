@@ -35,8 +35,8 @@ export union double4
 
   bool operator==(double4 const& rhs) const { return (x == rhs.x) && (y == rhs.y) && (z == rhs.z) && (w == rhs.w); }
 
-  inline double& operator[](int i) { return v[i]; }
-  inline const double& operator[](int i) const { return v[i]; }
+  inline double& operator[](size_t i) { return v[i]; }
+  inline const double& operator[](size_t i) const { return v[i]; }
 
   void normalise();
   inline static double dot(const double4& v1, const double4& v2)

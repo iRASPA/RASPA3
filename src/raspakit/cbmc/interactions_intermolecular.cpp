@@ -94,8 +94,8 @@ import threadpool;
 
           if (rr < cutOffVDWSquared)
           {
-            EnergyFactor energyFactor =
-                potentialVDWEnergy(forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
+                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria) return std::nullopt;
 
             energySum.moleculeMoleculeVDW += energyFactor.energy;
@@ -104,8 +104,8 @@ import threadpool;
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            EnergyFactor energyFactor = potentialCoulombEnergy(forceField, groupIdA, groupIdB, scalingCoulombA,
-                                                               scalingCoulombB, r, chargeA, chargeB);
+            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
+                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.moleculeMoleculeCharge += energyFactor.energy;
             energySum.dudlambdaCharge += energyFactor.dUdlambda;

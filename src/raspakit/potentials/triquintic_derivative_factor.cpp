@@ -14,7 +14,7 @@ module;
 #include <vector>
 #endif
 
-module sixth_derivative_factor;
+module triquintic_derivative_factor;
 
 #ifndef USE_LEGACY_HEADERS
 import <fstream>;
@@ -31,7 +31,7 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SixthDerivativeFactor &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Potentials::TriquinticDerivativeFactor &e)
 {
   archive << e.energy;
   archive << e.firstDerivativeFactor;
@@ -40,12 +40,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const SixthD
   archive << e.fourthDerivativeFactor;
   archive << e.fifthDerivativeFactor;
   archive << e.sixthDerivativeFactor;
-  archive << e.dUdlambda;
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SixthDerivativeFactor &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Potentials::TriquinticDerivativeFactor &e)
 {
   archive >> e.energy;
   archive >> e.firstDerivativeFactor;
@@ -54,7 +53,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SixthDerivat
   archive >> e.fourthDerivativeFactor;
   archive >> e.fifthDerivativeFactor;
   archive >> e.sixthDerivativeFactor;
-  archive >> e.dUdlambda;
 
   return archive;
 }

@@ -14,7 +14,7 @@ module;
 #include <vector>
 #endif
 
-module third_derivative_factor;
+module tricubic_derivative_factor;
 
 #ifndef USE_LEGACY_HEADERS
 import <fstream>;
@@ -31,24 +31,22 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ThirdDerivativeFactor &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Potentials::TricubicDerivativeFactor &e)
 {
   archive << e.energy;
   archive << e.firstDerivativeFactor;
   archive << e.secondDerivativeFactor;
   archive << e.thirdDerivativeFactor;
-  archive << e.dUdlambda;
 
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ThirdDerivativeFactor &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Potentials::TricubicDerivativeFactor &e)
 {
   archive >> e.energy;
   archive >> e.firstDerivativeFactor;
   archive >> e.secondDerivativeFactor;
   archive >> e.thirdDerivativeFactor;
-  archive >> e.dUdlambda;
 
   return archive;
 }

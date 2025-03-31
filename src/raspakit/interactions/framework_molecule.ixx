@@ -204,9 +204,10 @@ std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const F
                                                                          double3 posA, double chargeA,
                                                                          std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, double3, double3x3, double3x3x3> calculateThirdDerivativeAtPositionVDW(
-    const ForceField &forceField, const SimulationBox &simulationBox, double3 posB, size_t typeB,
-    std::span<const Atom> frameworkAtoms);
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>>
+calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox, double3 posB,
+                                      size_t typeB, std::span<const Atom> frameworkAtoms);
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>,
@@ -216,9 +217,10 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
 calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox, double3 posA,
                                       size_t typeA, std::span<const Atom> frameworkAtoms);
 
-std::tuple<double, double3, double3x3, double3x3x3> calculateThirdDerivativeAtPositionCoulomb(
-    const ForceField &forceField, const SimulationBox &simulationBox, double3 posB, double chargeB,
-    std::span<const Atom> frameworkAtoms);
+std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
+           std::array<std::array<std::array<double, 3>, 3>, 3>>
+calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField, const SimulationBox &simulationBox,
+                                          double3 posB, double chargeB, std::span<const Atom> frameworkAtoms);
 
 std::array<double, 8> calculateTricubicCartesianAtPositionVDW(const ForceField &forceField,
                                                               const SimulationBox &simulationBox, double3 posA,

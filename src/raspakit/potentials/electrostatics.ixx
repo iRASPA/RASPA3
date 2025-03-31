@@ -21,6 +21,8 @@ import units;
 import forcefield;
 import energy_factor;
 
+export namespace Potentials
+{
 /**
  * \brief Calculates the electrostatic potential based on the provided force field parameters.
  *
@@ -35,9 +37,8 @@ import energy_factor;
  * \param chargeB The charge of the second particle.
  * \return The computed electrostatic potential.
  */
-export [[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forcefield,
-                                                                      const double& scalingB, const double& r,
-                                                                      const double& chargeB)
+[[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forcefield, const double& scalingB,
+                                                               const double& r, const double& chargeB)
 {
   switch (forcefield.chargeMethod)
   {
@@ -63,3 +64,4 @@ export [[clang::always_inline]] inline double potentialElectrostatics(const Forc
       break;
   }
 };
+}  // namespace Potentials

@@ -18,6 +18,9 @@ import energy_factor;
 import units;
 
 import double4;
+
+export namespace Potentials
+{
 /**
  * \brief Calculates the Coulomb potential energy factor between two atoms.
  *
@@ -35,11 +38,10 @@ import double4;
  * \param chargeB Electric charge of atom B.
  * \return An EnergyFactor object containing the computed Coulomb energy and any group-related scaling.
  */
-export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield,
-                                                                           const bool& groupIdA, const bool& groupIdB,
-                                                                           const double& scalingA,
-                                                                           const double& scalingB, const double& r,
-                                                                           const double& chargeA, const double& chargeB)
+[[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA,
+                                                                    const bool& groupIdB, const double& scalingA,
+                                                                    const double& scalingB, const double& r,
+                                                                    const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
@@ -63,3 +65,4 @@ export [[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const
 
   return EnergyFactor(0.0, 0.0);
 };
+}  // namespace Potentials

@@ -361,8 +361,8 @@ void ForceField::preComputeTailCorrection()
 
       if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
-        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = potentialCorrectionVDW(*this, i, j);
-        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = potentialCorrectionPressure(*this, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(*this, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(*this, i, j);
         /*
         switch (data[i * numberOfPseudoAtoms + j].type)
         {
@@ -652,6 +652,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.computePolarization;
   archive << f.omitInterPolarization;
 
+  archive << f.hasExternalField;
+  archive << f.potentialEnergySurfaceType;
+  archive << f.potentialEnergySurfaceOrigin;
+
   return archive;
 }
 
@@ -697,6 +701,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
 
   archive >> f.computePolarization;
   archive >> f.omitInterPolarization;
+
+  archive >> f.hasExternalField;
+  archive >> f.potentialEnergySurfaceType;
+  archive >> f.potentialEnergySurfaceOrigin;
 
   return archive;
 }

@@ -19,6 +19,8 @@ import vdwparameters;
 import forcefield;
 import hessian_factor;
 
+export namespace Potentials
+{
 /**
  * \brief Computes the energy, gradient, and Hessian of the van der Waals (VDW) potential.
  *
@@ -37,11 +39,10 @@ import hessian_factor;
  *
  * \return A HessianFactor object containing the computed energy, gradient, and Hessian.
  */
-export [[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield,
-                                                                         const bool& groupIdA, const bool& groupIdB,
-                                                                         const double& scalingA, const double& scalingB,
-                                                                         const double& rr, const size_t& typeA,
-                                                                         const size_t& typeB)
+[[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield, const bool& groupIdA,
+                                                                  const bool& groupIdB, const double& scalingA,
+                                                                  const double& scalingB, const double& rr,
+                                                                  const size_t& typeA, const size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 
@@ -75,3 +76,4 @@ export [[clang::always_inline]] inline HessianFactor potentialVDWHessian(const F
       return HessianFactor(0.0, 0.0, 0.0, 0.0);
   }
 };
+}  // namespace Potentials

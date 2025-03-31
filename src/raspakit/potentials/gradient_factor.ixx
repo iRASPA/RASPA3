@@ -15,6 +15,8 @@ import <fstream>;
 
 import archive;
 
+export namespace Potentials
+{
 /**
  * \brief Represents the force factors associated with an energy component.
  *
@@ -24,7 +26,7 @@ import archive;
  * first switching Lennard-Jones (LJ) interactions on in the range [0, 0.5], then
  * electrostatic interactions from [0.5, 1.0].
  */
-export struct GradientFactor
+struct GradientFactor
 {
   double energy;          ///< The energy component.
   double dUdlambda;       ///< The derivative of the potential energy with respect to lambda.
@@ -74,7 +76,7 @@ export struct GradientFactor
 };
 
 // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
-export inline GradientFactor operator+(const GradientFactor& a, const GradientFactor& b)
+inline GradientFactor operator+(const GradientFactor& a, const GradientFactor& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
@@ -84,7 +86,7 @@ export inline GradientFactor operator+(const GradientFactor& a, const GradientFa
   return m;
 }
 
-export inline GradientFactor operator-(const GradientFactor& a, const GradientFactor& b)
+inline GradientFactor operator-(const GradientFactor& a, const GradientFactor& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = a.energy - b.energy;
@@ -94,7 +96,7 @@ export inline GradientFactor operator-(const GradientFactor& a, const GradientFa
   return m;
 }
 
-export inline GradientFactor operator*(const GradientFactor& a, const GradientFactor& b)
+inline GradientFactor operator*(const GradientFactor& a, const GradientFactor& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = a.energy * b.energy;
@@ -104,7 +106,7 @@ export inline GradientFactor operator*(const GradientFactor& a, const GradientFa
   return m;
 }
 
-export inline GradientFactor operator*(const double& a, const GradientFactor& b)
+inline GradientFactor operator*(const double& a, const GradientFactor& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = a * b.energy;
@@ -114,7 +116,7 @@ export inline GradientFactor operator*(const double& a, const GradientFactor& b)
   return m;
 }
 
-export inline GradientFactor operator*(const GradientFactor& a, const double& b)
+inline GradientFactor operator*(const GradientFactor& a, const double& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = a.energy * b;
@@ -124,7 +126,7 @@ export inline GradientFactor operator*(const GradientFactor& a, const double& b)
   return m;
 }
 
-export inline GradientFactor operator/(const GradientFactor& a, const double& b)
+inline GradientFactor operator/(const GradientFactor& a, const double& b)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = a.energy / b;
@@ -134,7 +136,7 @@ export inline GradientFactor operator/(const GradientFactor& a, const double& b)
   return m;
 }
 
-export inline GradientFactor sqrt(const GradientFactor& a)
+inline GradientFactor sqrt(const GradientFactor& a)
 {
   GradientFactor m(0.0, 0.0, 0.0);
   m.energy = std::sqrt(a.energy);
@@ -143,3 +145,4 @@ export inline GradientFactor sqrt(const GradientFactor& a)
 
   return m;
 }
+}  // namespace Potentials

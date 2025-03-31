@@ -31,7 +31,7 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const GradientFactor &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Potentials::GradientFactor &e)
 {
   archive << e.energy;
   archive << e.dUdlambda;
@@ -40,7 +40,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Gradie
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, GradientFactor &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Potentials::GradientFactor &e)
 {
   archive >> e.energy;
   archive >> e.dUdlambda;

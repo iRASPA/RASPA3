@@ -31,7 +31,7 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const HessianFactor &e)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Potentials::HessianFactor &e)
 {
   archive << e.energy;
   archive << e.firstDerivativeFactor;
@@ -41,7 +41,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Hessia
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, HessianFactor &e)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Potentials::HessianFactor &e)
 {
   archive >> e.energy;
   archive >> e.firstDerivativeFactor;

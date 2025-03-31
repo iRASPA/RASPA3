@@ -63,6 +63,20 @@ export struct ForceField
     Lorentz_Berthelot = 0  ///< Lorentz-Berthelot mixing rule.
   };
 
+  enum class PotentialEnergySurfaceType : size_t
+  {
+    None = 0,
+    SecondOrderPolynomialTestFunction = 1,
+    ThirdOrderPolynomialTestFunction = 2,
+    FourthOrderPolynomialTestFunction = 3,
+    FifthOrderPolynomialTestFunction = 4,
+    SixthOrderPolynomialTestFunction = 5,
+    ExponentialNonPolynomialTestFunction = 6,
+    MullerBrown = 7,
+    Eckhardt = 8,
+    GonzalezSchlegel = 9  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+  };
+
   uint64_t versionNumber{1};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
@@ -102,6 +116,10 @@ export struct ForceField
 
   bool computePolarization{false};   ///< Indicates if polarization effects are computed.
   bool omitInterPolarization{true};  ///< If true, omits polarization between molecules.
+
+  bool hasExternalField{false};
+  PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction};
+  double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
 
   /**
    * \brief Default constructor for the ForceField struct.

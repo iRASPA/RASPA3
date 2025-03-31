@@ -31,6 +31,7 @@ import <print>;
 #endif
 
 import archive;
+import energy_factor;
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyInter &e)
 {

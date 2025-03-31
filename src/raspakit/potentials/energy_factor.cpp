@@ -31,7 +31,7 @@ import <print>;
 
 import archive;
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyFactor &e)
+Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive, const Potentials::EnergyFactor &e)
 {
   archive << e.energy;
   archive << e.dUdlambda;
@@ -39,7 +39,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyFactor &e)
+Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, Potentials::EnergyFactor &e)
 {
   archive >> e.energy;
   archive >> e.dUdlambda;
