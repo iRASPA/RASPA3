@@ -1967,8 +1967,9 @@ import mdspan;
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
-void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Framework &framework,
-                                          [[maybe_unused]] size_t pseudo_atom_index)
+void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGridType interpolationGridType,
+                                                    const ForceField &forceField, const Framework &framework,
+                                                    [[maybe_unused]] size_t pseudo_atom_index)
 {
   const SimulationBox &simulationBox = framework.simulationBox;
   double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
@@ -1994,11 +1995,10 @@ void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Fr
         {
           case InterpolationEnergyGrid::InterpolationOrder::Tricubic:
           {
-            // std::array<double, 8> values =
-            //      Interactions::calculateTricubicFractionalAtPositionVDW(forceField, simulationBox, pos,
-            //      pseudo_atom_index, framework.unitCellAtoms);
-            std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
-                forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+            std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPosition(
+                interpolationGridType, forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
+            // std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
+            //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
             values[1] /= static_cast<double>(numberOfCells.x);
             values[2] /= static_cast<double>(numberOfCells.y);
@@ -2016,11 +2016,10 @@ void InterpolationEnergyGrid::makeVDWGrid(const ForceField &forceField, const Fr
           }
           break;
           case InterpolationEnergyGrid::InterpolationOrder::Triquintic:
-            // std::array<double, 27> values =
-            //   Interactions::calculateTriquinticFractionalAtPositionVDW(forceField, simulationBox, pos,
-            //   pseudo_atom_index, framework.unitCellAtoms);
-            std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
-                forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
+            std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPosition(
+                interpolationGridType, forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
+            // std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
+            //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
             values[1] /= static_cast<double>(numberOfCells[0]);
             values[2] /= static_cast<double>(numberOfCells[1]);

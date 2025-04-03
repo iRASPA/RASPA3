@@ -111,29 +111,29 @@ TEST(sixth_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CH
 
   {
     double3 s = system.simulationBox.inverseCell * posB;
-    auto [e, reference_cartesian, d2, d3, d4, d5, d6] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [e, reference_cartesian, d2, d3, d4, d5, d6] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
     double3 reference_fractional = system.simulationBox.cell.transpose() * double3(reference_cartesian[0], reference_cartesian[1], reference_cartesian[2]);
 
     // finite difference x
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
-    auto [x2_energy, d1x2, d2x2, d3x2, d4x2, d5x2, d6x2] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [x2_energy, d1x2, d2x2, d3x2, d4x2, d5x2, d6x2] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
-    auto [x1_energy, d1x1, d2x1, d3x1, d4x1, d5x1, d6x1] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [x1_energy, d1x1, d2x1, d3x1, d4x1, d5x1, d6x1] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     // finite difference y
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    auto [y2_energy, d1y2, d2y2, d3y2, d4y2, d5y2, d6y2] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [y2_energy, d1y2, d2y2, d3y2, d4y2, d5y2, d6y2] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    auto [y1_energy, d1y1, d2y1, d3y1, d4y1, d5y1, d6y1] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [y1_energy, d1y1, d2y1, d3y1, d4y1, d5y1, d6y1] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     // finite difference z
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    auto [z2_energy, d1z2, d2z2, d3z2, d4z2, d5z2, d6z2] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [z2_energy, d1z2, d2z2, d3z2, d4z2, d5z2, d6z2] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    auto [z1_energy, d1z1, d2z1, d3z1, d4z1, d5z1, d6z1] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    auto [z1_energy, d1z1, d2z1, d3z1, d4z1, d5z1, d6z1] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     numerical_gradient.x = (x2_energy - x1_energy) / delta;
     numerical_gradient.y = (y2_energy - y1_energy) / delta;
@@ -223,17 +223,17 @@ TEST(sixth_derivative_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA
   {
     double3 posB;
 
-    auto [e, d1, reference_cartesian, d3, d4, d5, d6] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    auto [e, d1, reference_cartesian, d3, d4, d5, d6] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     std::array<std::array<double,3>,3> numerical_second_derivative{};
     for(size_t i = 0; i != 3; ++i)
     {
       // finite difference x
       posB = posB_reference + double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [ep, gradient_plus, d2p, d3p, d4p, d5p, d6p] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [ep, gradient_plus, d2p, d3p, d4p, d5p, d6p] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
       posB = posB_reference - double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [em, gradient_minus, d2m, d3m, d4m, d5m, d6m] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [em, gradient_minus, d2m, d3m, d4m, d5m, d6m] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
 
       for(size_t j = 0; j != 3; ++j)
@@ -329,17 +329,17 @@ TEST(sixth_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
   {
     double3 posB;
 
-    auto [e, d1, d2, reference_cartesian, d4, d5, d6] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    auto [e, d1, d2, reference_cartesian, d4, d5, d6] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     std::array<std::array<std::array<double,3>,3>,3> numerical_third_derivative{};
     for(size_t i = 0; i != 3; ++i)
     {
       // finite difference x
       posB = posB_reference + double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [ep, d1p, hessian_plus, d3p, d4p, d5p, d6p] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [ep, d1p, hessian_plus, d3p, d4p, d5p, d6p] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
       posB = posB_reference - double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [em, d1m, hessian_minus, d3m, d4m, d5m, d6m] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [em, d1m, hessian_minus, d3m, d4m, d5m, d6m] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
 
       for(size_t j = 0; j != 3; ++j)
@@ -441,17 +441,17 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fourth_derivative_cartesian_meth
   {
     double3 posB;
 
-    auto [e, d1, d2, d3, reference_cartesian, d5, d6] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    auto [e, d1, d2, d3, reference_cartesian, d5, d6] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     std::array<std::array<std::array<std::array<double,3>,3>,3>,3> numerical_fourth_derivative{};
     for(size_t i = 0; i != 3; ++i)
     {
       // finite difference x
       posB = posB_reference + double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [ep, d1p, d2p, third_plus, d4p, d5p, d6p] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [ep, d1p, d2p, third_plus, d4p, d5p, d6p] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
       posB = posB_reference - double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [em, d1m, d2m, third_minus, d4m, d5m, d6m] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [em, d1m, d2m, third_minus, d4m, d5m, d6m] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
 
       for(size_t j = 0; j != 3; ++j)
@@ -559,17 +559,17 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fifth_derivative_cartesian_metha
   {
     double3 posB;
 
-    auto [e, d1, d2, d3, d4, reference_cartesian,  d6] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    auto [e, d1, d2, d3, d4, reference_cartesian,  d6] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3> numerical_fifth_derivative{};
     for(size_t i = 0; i != 3; ++i)
     {
       // finite difference x
       posB = posB_reference + double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [ep, d1p, d2p, d3p, fourth_plus, d5p, d6p] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [ep, d1p, d2p, d3p, fourth_plus, d5p, d6p] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
       posB = posB_reference - double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [em, d1m, d2m, d3m, fourth_minus, d5m, d6m] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [em, d1m, d2m, d3m, fourth_minus, d5m, d6m] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
 
       for(size_t j = 0; j != 3; ++j)
@@ -683,17 +683,17 @@ TEST(sixth_derivative_inter_lennard_jones, Test_sixth_derivative_cartesian_metha
   {
     double3 posB;
 
-    auto [e, d1, d2, d3, d4, d5, reference_cartesian] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    auto [e, d1, d2, d3, d4, d5, reference_cartesian] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     std::array<std::array<std::array<std::array<std::array<std::array<double,3>,3>,3>,3>,3>,3> numerical_sixth_derivative{};
     for(size_t i = 0; i != 3; ++i)
     {
       // finite difference x
       posB = posB_reference + double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [ep, d1p, d2p, d3p, d4p, fifth_plus, d6p] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [ep, d1p, d2p, d3p, d4p, fifth_plus, d6p] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
       posB = posB_reference - double3(i==0 ? 0.5 * delta : 0.0, i==1 ? 0.5 * delta : 0.0, i==2 ? 0.5 * delta : 0.0);
-      auto [em, d1m, d2m, d3m, d4m, fifth_minus, d6m] = Interactions::calculateSixthDerivativeAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+      auto [em, d1m, d2m, d3m, d4m, fifth_minus, d6m] = Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
 
       for(size_t j = 0; j != 3; ++j)
@@ -816,27 +816,27 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-6;
     double tolerance = 1e-3;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_x = (x_right[0] - x_left[0]) / delta;
     double numerical_gradient_y = (y_right[0] - y_left[0]) / delta;
@@ -853,27 +853,27 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-6;
     double tolerance = 1e-3;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_xx = (x_right[1] - x_left[1]) / delta;
     double numerical_gradient_xy = (y_right[1] - y_left[1]) / delta;
@@ -895,21 +895,21 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-6;
     double tolerance = 1e-3;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_xxy = (y_right[4] - y_left[4]) / delta;
     double numerical_gradient_xxz = (z_right[4] - z_left[4]) / delta;
@@ -933,27 +933,27 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-6;
     double tolerance = 1e-3;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_xxyy = (y_right[10] - y_left[10]) / delta;
     double numerical_gradient_xxzz = (x_right[15] - x_left[15]) / delta;
@@ -975,27 +975,27 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-6;
     double tolerance = 3e-1;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
-    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> x_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
-    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
-    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> y_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_xxyyz = (z_right[17] - z_left[17]) / delta;
     double numerical_gradient_xxyzz = (y_right[18] - y_left[18]) / delta;
@@ -1011,15 +1011,15 @@ TEST(sixth_derivative_inter_lennard_jones, Test_Txxyyzz_fractional_methane_in_CH
     double delta = 1e-5;
     double tolerance = 1.0;
 
-    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+    std::array<double, 27> analytical = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
     double3 s = system.simulationBox.inverseCell * posB_reference;
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
-    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_right  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
-    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
+    std::array<double, 27> z_left  = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB, frameworkAtoms);
 
     double numerical_gradient_xxyyzz = (z_right[23] - z_left[23]) / delta;
 
@@ -1103,9 +1103,9 @@ TEST(sixth_derivative_inter_lennard_jones, Test_fractional_to_Cartesian_methane_
   size_t typeB = 2;
   double3 posB_reference = double3(5.1, 4.25, 5.4);
 
-  std::array<double, 27> analyticalCartesian = Interactions::calculateTriquinticCartesianAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+  std::array<double, 27> analyticalCartesian = Interactions::calculateTriquinticCartesianAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
-  std::array<double, 27> analyticalFractional = Interactions::calculateTriquinticFractionalAtPositionVDW(system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
+  std::array<double, 27> analyticalFractional = Interactions::calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB, frameworkAtoms);
 
   double3 first_derivative_fractional{analyticalFractional[1], analyticalFractional[2], analyticalFractional[3]};
   double3x3 second_derivative_fractional{double3{analyticalFractional[4], analyticalFractional[5], analyticalFractional[6]},

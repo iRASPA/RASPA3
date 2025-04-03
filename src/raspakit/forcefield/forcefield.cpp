@@ -72,18 +72,25 @@ import simulationbox;
 import json;
 
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions,
-                       [[maybe_unused]] MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                       double cutOffCoulomb, bool shifted, bool applyTailCorrections, bool useCharge) noexcept(false)
-    : data(pseudoAtoms.size() * pseudoAtoms.size(), VDWParameters(0.0, 0.0)),
-      shiftPotentials(pseudoAtoms.size() * pseudoAtoms.size(), shifted),
-      tailCorrections(pseudoAtoms.size() * pseudoAtoms.size(), applyTailCorrections),
+                       MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+                       bool shifted, bool applyTailCorrections, bool useCharge) noexcept(false)
+    : data((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), VDWParameters(0.0, 0.0)),
+      shiftPotentials((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), shifted),
+      tailCorrections((pseudoAtoms.size() + 1) * (pseudoAtoms.size() + 1), applyTailCorrections),
+      mixingRule(mixingRule),
       cutOffFrameworkVDW(cutOffFrameworkVDW),
       cutOffMoleculeVDW(cutOffMoleculeVDW),
       cutOffCoulomb(cutOffCoulomb),
-      numberOfPseudoAtoms(pseudoAtoms.size()),
+      numberOfPseudoAtoms(pseudoAtoms.size() + 1),
       pseudoAtoms(pseudoAtoms),
       useCharge(useCharge)
 {
+  PseudoAtom unitPseudoAtom("unit", false, 1.0, 1.0, 0.0, 0, false);
+  this->pseudoAtoms.push_back(unitPseudoAtom);
+
+  VDWParameters unitVDWParameters(double4(1.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::LennardJones);
+  selfInteractions.push_back(unitVDWParameters);
+
   for (size_t i = 0; i < selfInteractions.size(); ++i)
   {
     data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
@@ -217,6 +224,10 @@ ForceField::ForceField(std::string filePath)
   {
     mixingRule = MixingRule::Lorentz_Berthelot;
   }
+  if (parsed_data.value("MixingRule", "") == "Jorgensen")
+  {
+    mixingRule = MixingRule::Jorgensen;
+  }
 
   // Apply mixing rule and precompute potentials
   applyMixingRule();
@@ -299,29 +310,55 @@ ForceField::ForceField(std::string filePath)
 
 void ForceField::applyMixingRule()
 {
-  if (mixingRule == MixingRule::Lorentz_Berthelot)
+  switch (mixingRule)
   {
-    for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
-    {
-      for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
+    case MixingRule::Lorentz_Berthelot:
+      for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
       {
-        if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
-            data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+        for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
-          double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
-                                  data[j * numberOfPseudoAtoms + j].parameters.x);
-          double mix1 =
-              0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
+          if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+              data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+          {
+            double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
+                                    data[j * numberOfPseudoAtoms + j].parameters.x);
+            double mix1 =
+                0.5 * (data[i * numberOfPseudoAtoms + i].parameters.y + data[j * numberOfPseudoAtoms + j].parameters.y);
 
-          data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
-          data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
-          data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
-          data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
-          data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
-          data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+            data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+            data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
+            data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+            data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+          }
         }
       }
-    }
+      break;
+    case MixingRule::Jorgensen:
+      for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+      {
+        for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
+        {
+          if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
+              data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
+          {
+            double mix0 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.x *
+                                    data[j * numberOfPseudoAtoms + j].parameters.x);
+            double mix1 = std::sqrt(data[i * numberOfPseudoAtoms + i].parameters.y *
+                                    data[j * numberOfPseudoAtoms + j].parameters.y);
+
+            data[i * numberOfPseudoAtoms + j].parameters.x = mix0;
+            data[i * numberOfPseudoAtoms + j].parameters.y = mix1;
+            data[i * numberOfPseudoAtoms + j].type = VDWParameters::Type::LennardJones;
+
+            data[j * numberOfPseudoAtoms + i].parameters.x = mix0;
+            data[j * numberOfPseudoAtoms + i].parameters.y = mix1;
+            data[j * numberOfPseudoAtoms + i].type = VDWParameters::Type::LennardJones;
+          }
+        }
+      }
+      break;
   }
 }
 

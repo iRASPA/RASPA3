@@ -61,6 +61,7 @@ export struct InterpolationEnergyGrid
   {
   }
 
-  void makeVDWGrid(const ForceField &forceField, const Framework &framework, size_t pseudo_atom_index);
+  void makeInterpolationGrid(ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+                             const Framework &framework, size_t pseudo_atom_index);
   double interpolateVDWGrid(double3 s);
 };

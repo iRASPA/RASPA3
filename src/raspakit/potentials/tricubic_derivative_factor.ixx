@@ -50,6 +50,11 @@ struct TricubicDerivativeFactor
   {
   }
 
+  TricubicDerivativeFactor()
+      : energy(0.0), firstDerivativeFactor(0.0), secondDerivativeFactor(0.0), thirdDerivativeFactor(0.0)
+  {
+  }
+
   bool operator==(TricubicDerivativeFactor const&) const = default;
 
   inline TricubicDerivativeFactor& operator+=(const TricubicDerivativeFactor& b)

@@ -60,7 +60,8 @@ export struct ForceField
    */
   enum class MixingRule : int
   {
-    Lorentz_Berthelot = 0  ///< Lorentz-Berthelot mixing rule.
+    Lorentz_Berthelot = 0,  ///< Lorentz-Berthelot mixing rule.
+    Jorgensen = 1
   };
 
   enum class PotentialEnergySurfaceType : size_t
@@ -75,6 +76,14 @@ export struct ForceField
     MullerBrown = 7,
     Eckhardt = 8,
     GonzalezSchlegel = 9  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+  };
+
+  enum class InterpolationGridType : size_t
+  {
+    LennardJones = 0,
+    LennardJonesRepulsion = 1,
+    LennardJonesAttraction = 2,
+    EwaldReal = 3
   };
 
   uint64_t versionNumber{1};  ///< Version number of the force field format.

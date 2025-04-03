@@ -63,7 +63,23 @@ export struct VDWParameters
    *
    * Initializes the parameters with zero values.
    */
-  VDWParameters() : parameters(0.0, 0.0, 0.0, 0.0), shift(0.0) {}
+  VDWParameters()
+      : parameters(0.0, 0.0, 0.0, 0.0),
+        shift(0.0),
+        tailCorrectionEnergy(0.0),
+        tailCorrectionPressure(0.0),
+        type(Type::LennardJones)
+  {
+  }
+
+  VDWParameters(double4 parameters, double shift, double tailCorrectionEnergy, double tailCorrectionPressure, Type type)
+      : parameters(parameters),
+        shift(shift),
+        tailCorrectionEnergy(tailCorrectionEnergy),
+        tailCorrectionPressure(tailCorrectionPressure),
+        type(type)
+  {
+  }
 
   /**
    * \brief Constructs a Lennard-Jones VDWParameter structure.

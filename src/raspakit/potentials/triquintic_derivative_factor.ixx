@@ -57,6 +57,17 @@ struct TriquinticDerivativeFactor
   {
   }
 
+  TriquinticDerivativeFactor()
+      : energy(0.0),
+        firstDerivativeFactor(0.0),
+        secondDerivativeFactor(0.0),
+        thirdDerivativeFactor(0.0),
+        fourthDerivativeFactor(0.0),
+        fifthDerivativeFactor(0.0),
+        sixthDerivativeFactor(0.0)
+  {
+  }
+
   bool operator==(TriquinticDerivativeFactor const&) const = default;
 
   inline TriquinticDerivativeFactor& operator+=(const TriquinticDerivativeFactor& b)

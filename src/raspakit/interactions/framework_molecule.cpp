@@ -782,7 +782,8 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionC
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-Interactions::calculateThirdDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
+Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+                                                    const ForceField &forceField, const SimulationBox &simulationBox,
                                                     double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
@@ -791,6 +792,7 @@ Interactions::calculateThirdDerivativeAtPositionVDW(const ForceField &forceField
   std::array<double, 3> first_derivative{};
   std::array<std::array<double, 3>, 3> second_derivative{};
   std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative{};
+  Potentials::TricubicDerivativeFactor v{};
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -803,7 +805,23 @@ Interactions::calculateThirdDerivativeAtPositionVDW(const ForceField &forceField
 
     if (rr < cutOffFrameworkVDWSquared)
     {
-      Potentials::TricubicDerivativeFactor v = Potentials::potentialLJTricubicDerivative(forceField, rr, typeA, typeB);
+      switch (interpolationGridType)
+      {
+        case ForceField::InterpolationGridType::LennardJones:
+          v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
+                                                                           typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesAttraction:
+          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
+                                                                            typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::EwaldReal:
+          v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
+          break;
+      }
 
       energy += v.energy;
 
@@ -835,8 +853,9 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField, const SimulationBox &simulationBox,
-                                                    double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
+                                                      const ForceField &forceField, const SimulationBox &simulationBox,
+                                                      double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 
@@ -847,6 +866,7 @@ Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField
   std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3> fourth_derivative{};
   std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3> fifth_derivative{};
   std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3> sixth_derivative{};
+  Potentials::TriquinticDerivativeFactor v{};
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
@@ -859,8 +879,21 @@ Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField
 
     if (rr < cutOffFrameworkVDWSquared)
     {
-      Potentials::TriquinticDerivativeFactor v =
-          Potentials::potentialLJTriquinticDerivative(forceField, rr, typeA, typeB);
+      switch (interpolationGridType)
+      {
+        case ForceField::InterpolationGridType::LennardJones:
+          v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+          v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesAttraction:
+          v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::EwaldReal:
+          v = Potentials::potentialLennardJonesTriquinticDerivative(forceField, rr, typeA, typeB);
+          break;
+      }
 
       energy += v.energy;
 
@@ -1034,68 +1067,14 @@ Interactions::calculateSixthDerivativeAtPositionVDW(const ForceField &forceField
           fifth_derivative, sixth_derivative};
 }
 
-std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
-           std::array<std::array<std::array<double, 3>, 3>, 3>>
-Interactions::calculateThirdDerivativeAtPositionCoulomb(const ForceField &forceField,
-                                                        const SimulationBox &simulationBox, double3 posA,
-                                                        double chargeA, std::span<const Atom> frameworkAtoms)
-{
-  const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
-
-  double energy{0.0};
-  std::array<double, 3> first_derivative{};
-  std::array<std::array<double, 3>, 3> second_derivative{};
-  std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative{};
-
-  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
-  {
-    double3 posB = it1->position;
-    double chargeB = it1->charge;
-
-    double3 dr = posA - posB;
-    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-    double rr = double3::dot(dr, dr);
-
-    if (rr < cutOffChargeSquared)
-    {
-      double r = std::sqrt(rr);
-
-      Potentials::TricubicDerivativeFactor v =
-          Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, r, chargeA, chargeB);
-
-      energy += v.energy;
-
-      for (size_t i = 0; i != 3; ++i)
-      {
-        first_derivative[i] += dr[i] * v.firstDerivativeFactor;
-
-        for (size_t j = 0; j != 3; ++j)
-        {
-          second_derivative[i][j] +=
-              v.secondDerivativeFactor * dr[i] * dr[j] + (i == j ? v.firstDerivativeFactor : 0.0);
-
-          for (size_t k = 0; k != 3; ++k)
-          {
-            third_derivative[i][j][k] +=
-                v.thirdDerivativeFactor * dr[i] * dr[j] * dr[k] + (j == k ? v.secondDerivativeFactor * dr[i] : 0.0) +
-                (i == k ? v.secondDerivativeFactor * dr[j] : 0.0) + (i == j ? v.secondDerivativeFactor * dr[k] : 0.0);
-          }
-        }
-      }
-    }
-  }
-
-  return {energy, first_derivative, second_derivative, third_derivative};
-}
-
-std::array<double, 8> Interactions::calculateTricubicCartesianAtPositionVDW(const ForceField &forceField,
-                                                                            const SimulationBox &simulationBox,
-                                                                            double3 posA, size_t typeA,
-                                                                            std::span<const Atom> frameworkAtoms)
+std::array<double, 8> Interactions::calculateTricubicCartesianAtPosition(
+    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    const SimulationBox &simulationBox, double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, firth_derivative,
         sixth_derivative] =
-      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+      Interactions::calculateTriquinticDerivativeAtPosition(interpolationGridType, forceField, simulationBox, posA,
+                                                            typeA, frameworkAtoms);
 
   return {energy,
 
@@ -1110,10 +1089,9 @@ std::array<double, 8> Interactions::calculateTricubicCartesianAtPositionVDW(cons
           third_derivative[0][1][2]};
 }
 
-std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionVDW(const ForceField &forceField,
-                                                                             const SimulationBox &simulationBox,
-                                                                             double3 posA, size_t typeA,
-                                                                             std::span<const Atom> frameworkAtoms)
+std::array<double, 8> Interactions::calculateTricubicFractionalAtPosition(
+    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    const SimulationBox &simulationBox, double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   double energy_fractional{0.0};
   std::array<double, 3> first_derivative_fractional{};
@@ -1121,7 +1099,8 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionVDW(con
   std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative_fractional{};
 
   auto [energy, first_derivative, second_derivative, third_derivative] =
-      Interactions::calculateThirdDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+      Interactions::calculateTricubicDerivativeAtPosition(interpolationGridType, forceField, simulationBox, posA, typeA,
+                                                          frameworkAtoms);
 
   energy_fractional = energy;
   for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
@@ -1158,14 +1137,14 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionVDW(con
           third_derivative_fractional[0][1][2]};
 }
 
-std::array<double, 27> Interactions::calculateTriquinticCartesianAtPositionVDW(const ForceField &forceField,
-                                                                               const SimulationBox &simulationBox,
-                                                                               double3 posA, size_t typeA,
-                                                                               std::span<const Atom> frameworkAtoms)
+std::array<double, 27> Interactions::calculateTriquinticCartesianAtPosition(
+    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    const SimulationBox &simulationBox, double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
         sixth_derivative] =
-      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+      Interactions::calculateTriquinticDerivativeAtPosition(interpolationGridType, forceField, simulationBox, posA,
+                                                            typeA, frameworkAtoms);
 
   return std::array<double, 27>{energy,
 
@@ -1202,10 +1181,9 @@ std::array<double, 27> Interactions::calculateTriquinticCartesianAtPositionVDW(c
                                 sixth_derivative[0][0][1][1][2][2]};
 }
 
-std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionVDW(const ForceField &forceField,
-                                                                                const SimulationBox &simulationBox,
-                                                                                double3 posA, size_t typeA,
-                                                                                std::span<const Atom> frameworkAtoms)
+std::array<double, 27> Interactions::calculateTriquinticFractionalAtPosition(
+    ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+    const SimulationBox &simulationBox, double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
 {
   double energy_fractional{0.0};
   std::array<double, 3> first_derivative_fractional{};
@@ -1218,7 +1196,8 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionVDW(
 
   auto [energy, first_derivative, second_derivative, third_derivative, fourth_derivative, fifth_derivative,
         sixth_derivative] =
-      Interactions::calculateSixthDerivativeAtPositionVDW(forceField, simulationBox, posA, typeA, frameworkAtoms);
+      Interactions::calculateTriquinticDerivativeAtPosition(interpolationGridType, forceField, simulationBox, posA,
+                                                            typeA, frameworkAtoms);
 
   energy_fractional = energy;
   for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
