@@ -50,7 +50,7 @@ import cbmc_rigid_insertion;
 import cbmc_multiple_first_bead;
 
 [[nodiscard]] std::optional<ChainData> CBMC::growRigidMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
@@ -90,7 +90,7 @@ import cbmc_multiple_first_bead;
 
 // helper function
 [[nodiscard]] std::optional<ChainData> CBMC::growRigidMoleculeChainReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, size_t startingBead, [[maybe_unused]] Molecule &molecule,
@@ -148,7 +148,7 @@ import cbmc_multiple_first_bead;
 }
 
 [[nodiscard]] ChainData CBMC::retraceRigidMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
@@ -179,7 +179,7 @@ import cbmc_multiple_first_bead;
 }
 
 [[nodiscard]] ChainData CBMC::retraceRigidChainReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, size_t startingBead, Molecule &molecule,

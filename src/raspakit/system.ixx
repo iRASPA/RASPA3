@@ -129,13 +129,13 @@ export struct System
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
   System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
-         double heliumVoidFraction, std::vector<Framework> frameworkComponents, std::vector<Component> components,
+         double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
          std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
          const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<size_t> sampleMoviesEvery = std::nullopt);
 
-  System(size_t id, double T, std::optional<double> P, double heliumVoidFraction,
-         std::vector<Framework> frameworkComponents, std::vector<Component> components);
+  System(size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> framework,
+         std::vector<Component> components);
 
   uint64_t versionNumber{1};
 
@@ -152,7 +152,7 @@ export struct System
   size_t numberOfFrameworkAtoms{0};
   size_t numberOfRigidFrameworkAtoms{0};
 
-  std::vector<Framework> frameworkComponents;
+  std::optional<Framework> framework;
   std::vector<Component> components;
 
   EquationOfState equationOfState;
@@ -304,7 +304,6 @@ export struct System
 
   void createFrameworks();
   void createInitialMolecules(RandomNumber &random);
-  void determineSimulationBox();
 
   void checkCartesianPositions();
 

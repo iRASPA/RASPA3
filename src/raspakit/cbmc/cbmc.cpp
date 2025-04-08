@@ -43,7 +43,7 @@ import component;
 import cbmc_chain_data;
 
 [[nodiscard]] std::optional<ChainData> CBMC::growMoleculeSwapInsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
@@ -61,7 +61,7 @@ import cbmc_chain_data;
 }
 
 [[nodiscard]] std::optional<ChainData> CBMC::growMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
@@ -75,7 +75,7 @@ import cbmc_chain_data;
 }
 
 [[nodiscard]] ChainData CBMC::retraceMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
@@ -89,7 +89,7 @@ import cbmc_chain_data;
 }
 
 [[nodiscard]] ChainData CBMC::retraceMoleculeSwapDeletion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,

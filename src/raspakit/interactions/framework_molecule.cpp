@@ -361,15 +361,14 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 }
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::vector<Framework> &frameworkComponents,
-    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms) noexcept
+    const ForceField &forceField, const std::optional<Framework> &framework, const std::vector<Component> &components,
+    const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
 
   double3x3 strainDerivativeTensor;
-  EnergyStatus energy(1, frameworkComponents.size(), components.size());
+  EnergyStatus energy(1, framework.has_value() ? 1 : 0, components.size());
 
   bool useCharge = forceField.useCharge;
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;

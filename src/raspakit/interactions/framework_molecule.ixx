@@ -134,9 +134,8 @@ RunningEnergy computeFrameworkMoleculeGradient(const ForceField &forceField, con
  * the strain derivative.
  */
 [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::vector<Framework> &frameworkComponents,
-    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-    std::span<Atom> moleculeAtoms) noexcept;
+    const ForceField &forceField, const std::optional<Framework> &framework, const std::vector<Component> &components,
+    const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the electric potential at molecule atom positions due to the framework atoms.

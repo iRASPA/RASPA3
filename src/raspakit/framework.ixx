@@ -130,6 +130,7 @@ export struct Framework
   std::string name{};                         ///< Name of the framework component.
   std::optional<std::string> filenameData{};  ///< Optional file name containing framework data.
   std::string filename{};                     ///< File name of the framework.
+  size_t numberOfComponents{1};
 
   bool rigid{true};  ///< Flag indicating if the framework is rigid.
 

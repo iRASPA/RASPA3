@@ -48,7 +48,7 @@ import cbmc_util;
 import cbmc_interactions;
 import cbmc_multiple_first_bead;
 
-[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const std::vector<Framework> &frameworkComponents,
+[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const std::optional<Framework> &frameworkComponents,
                                           const Component &component, bool hasExternalField,
                                           const ForceField &forcefield, const SimulationBox &simulationBox,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
@@ -57,7 +57,7 @@ import cbmc_multiple_first_bead;
                                           std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] ChainData CBMC::retraceRigidMoleculeSwapDeletion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
+    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
     bool hasExternalField, const std::vector<Component> &components, const ForceField &forcefield,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
@@ -90,7 +90,7 @@ import cbmc_multiple_first_bead;
       firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const std::vector<Framework> &frameworkComponents,
+[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const std::optional<Framework> &frameworkComponents,
                                           const Component &component, bool hasExternalField,
                                           const ForceField &forcefield, const SimulationBox &simulationBox,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,

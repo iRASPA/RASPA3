@@ -136,7 +136,7 @@ import mdspan;
  *  Detailed description starts here.
  */
 System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
-               double heliumVoidFraction, std::vector<Framework> f, std::vector<Component> c,
+               double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
                const MCMoveProbabilities& systemProbabilities, std::optional<size_t> sampleMoviesEvery)
     : systemId(id),
@@ -145,7 +145,7 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
       input_pressure(P.value_or(0.0)),
       beta(1.0 / (Units::KB * T)),
       heliumVoidFraction(heliumVoidFraction),
-      frameworkComponents(f),
+      framework(f),
       components(c),
       loadings(c.size()),
       swappableComponents(),
@@ -165,13 +165,13 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
       atomPositions({}),
       moleculePositions({}),
       runningEnergies(),
-      currentEnergyStatus(1, f.size(), c.size()),
+      currentEnergyStatus(1, f.has_value() ? 1 : 0, c.size()),
       netChargePerComponent(c.size()),
       mc_moves_probabilities(systemProbabilities),
       mc_moves_statistics(),
       reactions(),
       tmmc(),
-      averageEnergies(numberOfBlocks, 1, f.size(), c.size()),
+      averageEnergies(numberOfBlocks, 1, f.has_value() ? 1 : 0, c.size()),
       averageLoadings(numberOfBlocks, c.size()),
       averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
       averageTemperature(numberOfBlocks),
@@ -193,7 +193,10 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
   computeNumberOfPseudoAtoms();
 
   createFrameworks();
-  determineSimulationBox();
+  if (framework.has_value())
+  {
+    simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
+  }
 
   forceField.initializeEwaldParameters(simulationBox);
 
@@ -222,7 +225,7 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
   }
 }
 
-System::System(size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::vector<Framework> f,
+System::System(size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f,
                std::vector<Component> c)
     : systemId(id),
       temperature(T),
@@ -230,7 +233,7 @@ System::System(size_t id, double T, std::optional<double> P, double heliumVoidFr
       input_pressure(P.value_or(0.0)),
       beta(1.0 / (Units::KB * T)),
       heliumVoidFraction(heliumVoidFraction),
-      frameworkComponents(f),
+      framework(f),
       components(c)
 {
 }
@@ -238,9 +241,9 @@ System::System(size_t id, double T, std::optional<double> P, double heliumVoidFr
 void System::createFrameworks()
 {
   netChargeFramework = 0.0;
-  for (Framework& framework : frameworkComponents)
+  if (framework.has_value())
   {
-    const std::vector<Atom>& atoms = framework.atoms;
+    const std::vector<Atom>& atoms = framework->atoms;
     for (const Atom& atom : atoms)
     {
       atomPositions.push_back(atom);
@@ -250,20 +253,16 @@ void System::createFrameworks()
     }
     numberOfFrameworkAtoms += atoms.size();
     numberOfRigidFrameworkAtoms += atoms.size();
-    netChargeFramework += framework.netCharge;
-    netCharge += framework.netCharge;
+    netChargeFramework += framework->netCharge;
+    netCharge += framework->netCharge;
   }
 }
 
 std::optional<double> System::frameworkMass() const
 {
-  if (frameworkComponents.empty()) return std::nullopt;
+  if (!framework.has_value()) return std::nullopt;
 
-  double mass = 0.0;
-  for (const Framework& framework : frameworkComponents)
-  {
-    mass += framework.mass;
-  }
+  double mass = framework->mass;
   for (size_t i = 0; i < components.size(); ++i)
   {
     if (components[i].type == Component::Type::Cation)
@@ -272,15 +271,6 @@ std::optional<double> System::frameworkMass() const
     }
   }
   return mass;
-}
-
-void System::determineSimulationBox()
-{
-  for (Framework& framework : frameworkComponents)
-  {
-    // For multiple framework, the simulation box is the union of the boxes
-    simulationBox = max(simulationBox, framework.simulationBox.scaled(framework.numberOfUnitCells));
-  }
 }
 
 void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -495,9 +485,9 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, frameworkComponents, components[componentId], hasExternalField, components, forceField,
-              simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
+              random, framework, components[componentId], hasExternalField, components, forceField, simulationBox,
+              spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
               numberOfMoleculesPerComponent[componentId], 0.0, 1uz, numberOfTrialDirections);
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
 
@@ -515,9 +505,9 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, frameworkComponents, components[componentId], hasExternalField, components, forceField,
-              simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
+              random, framework, components[componentId], hasExternalField, components, forceField, simulationBox,
+              spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType, forceField.cutOffFrameworkVDW,
+              forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
               numberOfMoleculesPerComponent[componentId], 1.0, 0uz, numberOfTrialDirections);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
@@ -535,19 +525,19 @@ void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
 
 bool System::insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const
 {
-  for (const Framework& framework : frameworkComponents)
+  if (framework.has_value())
   {
     for (size_t i = 0; i != component.blockingPockets.size(); ++i)
     {
       double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
       double3 pos =
-          framework.simulationBox.cell *
+          framework->simulationBox.cell *
           double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
       for (const Atom& atom : molecule_atoms)
       {
         double lambda = atom.scalingVDW;
         double3 dr = atom.position - pos;
-        dr = framework.simulationBox.applyPeriodicBoundaryConditions(dr);
+        dr = framework->simulationBox.applyPeriodicBoundaryConditions(dr);
         if (dr.length_squared() < lambda * radius_squared)
         {
           return true;
@@ -1518,9 +1508,9 @@ std::string System::writeComponentStatus() const
 
   std::print(stream, "Component definitions\n");
   std::print(stream, "===============================================================================\n\n");
-  for (const Framework& component : frameworkComponents)
+  if (framework.has_value())
   {
-    std::print(stream, "{}", component.printStatus(forceField));
+    std::print(stream, "{}", framework->printStatus(forceField));
   }
   for (const Component& component : components)
   {
@@ -1534,9 +1524,9 @@ std::string System::writeComponentStatus() const
 nlohmann::json System::jsonComponentStatus() const
 {
   nlohmann::json status;
-  for (const Framework& component : frameworkComponents)
+  if (framework.has_value())
   {
-    status[component.name] = component.jsonStatus();
+    status[framework->name] = framework->jsonStatus();
   }
   for (const Component& component : components)
   {
@@ -1661,7 +1651,7 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
 
   if (propertyDensityGrid.has_value())
   {
-    propertyDensityGrid->sample(frameworkComponents, simulationBox, spanOfMoleculeAtoms(), currentCycle);
+    propertyDensityGrid->sample(framework, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
@@ -1869,7 +1859,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      forceField, frameworkComponents, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+      forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));
@@ -1877,7 +1867,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo = pair_acc(
       pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                        frameworkComponents, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
+                        framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
 
   pressureInfo.first.sumTotal();
@@ -2063,7 +2053,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfFrameworks;
   archive << s.numberOfFrameworkAtoms;
   archive << s.numberOfRigidFrameworkAtoms;
-  archive << s.frameworkComponents;
+  archive << s.framework;
   archive << s.components;
   archive << s.equationOfState;
   archive << s.thermostat;
@@ -2168,7 +2158,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfFrameworks;
   archive >> s.numberOfFrameworkAtoms;
   archive >> s.numberOfRigidFrameworkAtoms;
-  archive >> s.frameworkComponents;
+  archive >> s.framework;
   archive >> s.components;
   archive >> s.equationOfState;
   archive >> s.thermostat;

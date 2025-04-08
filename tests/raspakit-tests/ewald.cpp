@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <vector>
 
@@ -120,7 +120,7 @@ TEST(Ewald, Test_1_Na_1_Cl_in_Box_10_10_10_Gradient)
   system.precomputeTotalRigidEnergy();
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-      system.forceField, system.simulationBox, system.frameworkComponents, system.components,
+      system.forceField, system.simulationBox, system.framework, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
       system.netChargeFramework, system.netChargePerComponent);
 
@@ -640,4 +640,3 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
     EXPECT_NEAR(spanOfMoleculeAtoms[i].gradient.z, gradient.z, tolerance) << "Wrong z-gradient";
   }
 }
-

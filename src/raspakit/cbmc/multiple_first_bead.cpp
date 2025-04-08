@@ -39,7 +39,7 @@ import forcefield;
 import simulationbox;
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
+    RandomNumber& random, const std::optional<Framework>& frameworkComponents, const Component& component,
     bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
@@ -74,7 +74,7 @@ import simulationbox;
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadSwapDeletion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
+    RandomNumber& random, const std::optional<Framework>& frameworkComponents, const Component& component,
     bool hasExternalField, const ForceField& forcefield, const SimulationBox& simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, const Atom atom, double scaling,
@@ -107,7 +107,7 @@ import simulationbox;
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growRigidMultipleFirstBeadReinsertion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
+    RandomNumber& random, const std::optional<Framework>& frameworkComponents, const Component& component,
     bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
@@ -142,7 +142,7 @@ import simulationbox;
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadReinsertion(
-    [[maybe_unused]] RandomNumber& random, const std::vector<Framework>& frameworkComponents,
+    [[maybe_unused]] RandomNumber& random, const std::optional<Framework>& frameworkComponents,
     const Component& component, bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, double storedR, size_t numberOfTrialDirections)

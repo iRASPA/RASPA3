@@ -57,7 +57,7 @@ export struct PropertyDensityGrid
         numberOfComponents(numberOfComponents),
         grid_cell(numberOfComponents *
                   static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-        grid_unitcell(std::min(1uz, numberOfFrameworks) * numberOfComponents *
+        grid_unitcell(numberOfComponents *
                       static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         totalGridSize(static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         numberOfGridPoints(numberOfGridPoints),
@@ -85,10 +85,10 @@ export struct PropertyDensityGrid
   Normalization normType{Normalization::Max};
   size_t numberOfSamples{0};
 
-  void sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox,
+  void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,
               std::span<const Atom> moleculeAtoms, size_t currrentCycle);
   void writeOutput(size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
-                   const std::vector<Framework> &frameworkComponents, const std::vector<Component> &components,
+                   const std::optional<Framework> &frameworkComponents, const std::vector<Component> &components,
                    size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp);

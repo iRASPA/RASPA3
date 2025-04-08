@@ -573,7 +573,7 @@ void MonteCarlo::production()
         if (system.propertyDensityGrid.has_value())
         {
           system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                  system.frameworkComponents, system.components, currentCycle);
+                                                  system.framework, system.components, currentCycle);
         }
         if (system.averageEnergyHistogram.has_value())
         {
@@ -679,9 +679,9 @@ void MonteCarlo::output()
     std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
     std::print(stream, "\n\n");
 
-    std::print(stream, "{}",
-               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents,
-                                                              system.components));
+    std::print(
+        stream, "{}",
+        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     std::print(
         stream, "{}",
@@ -706,8 +706,8 @@ void MonteCarlo::output()
     outputJsons[system.systemId]["output"]["cpuTimings"]["system"] =
         system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
 
-    outputJsons[system.systemId]["properties"]["averageEnergies"] = system.averageEnergies.jsonAveragesStatistics(
-        system.hasExternalField, system.frameworkComponents, system.components);
+    outputJsons[system.systemId]["properties"]["averageEnergies"] =
+        system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
     outputJsons[system.systemId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
     outputJsons[system.systemId]["properties"]["averageEnthalpy"] =
         system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);

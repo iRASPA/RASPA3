@@ -1014,9 +1014,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
 
-        std::vector<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(), frameworkNameString,
-                                                                 frameworkNameString, jsonNumberOfUnitCells,
-                                                                 useChargesFrom)};
+        std::optional<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(),
+                                                                   frameworkNameString, frameworkNameString,
+                                                                   jsonNumberOfUnitCells, useChargesFrom)};
 
         // create system
         systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
@@ -1338,7 +1338,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyDensityGrid = PropertyDensityGrid(
-              systems[systemId].frameworkComponents.size(), systems[systemId].components.size(), densityGridSize,
+              systems[systemId].framework ? 1 : 0, systems[systemId].components.size(), densityGridSize,
               sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm);
         }
       }

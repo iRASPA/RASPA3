@@ -285,7 +285,7 @@ void MolecularDynamics::equilibrate()
     Integrators::removeCenterOfMassVelocityDrift(system.moleculePositions);
     if (system.thermostat.has_value())
     {
-      if (system.frameworkComponents.empty() && system.numberOfMolecules() > 1uz)
+      if (!system.framework.has_value() && system.numberOfMolecules() > 1uz)
       {
         system.translationalCenterOfMassConstraint = 3;
         system.thermostat->translationalCenterOfMassConstraint = 3;
@@ -521,7 +521,7 @@ void MolecularDynamics::production()
       if (system.propertyDensityGrid.has_value())
       {
         system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                system.frameworkComponents, system.components, currentCycle);
+                                                system.framework, system.components, currentCycle);
       }
 
       if (system.propertyMSD.has_value())
@@ -602,9 +602,9 @@ void MolecularDynamics::output()
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalSimulationTime));
     std::print(stream, "\n\n");
 
-    std::print(stream, "{}",
-               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents,
-                                                              system.components));
+    std::print(
+        stream, "{}",
+        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
     std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     std::print(
         stream, "{}",

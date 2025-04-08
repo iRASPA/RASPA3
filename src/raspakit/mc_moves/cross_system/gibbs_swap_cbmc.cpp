@@ -74,7 +74,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
-      random, systemA.frameworkComponents, componentA, systemA.hasExternalField, systemA.components, systemA.forceField,
+      random, systemA.framework, componentA, systemA.hasExternalField, systemA.components, systemA.forceField,
       systemA.simulationBox, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 0uz,
       systemA.numberOfTrialDirections);
@@ -127,7 +127,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::system_clock::now();
   ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
-      random, systemB.frameworkComponents, componentB, systemB.hasExternalField, systemB.components, systemB.forceField,
+      random, systemB.framework, componentB, systemB.hasExternalField, systemB.components, systemB.forceField,
       systemB.simulationBox, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0,
       systemB.numberOfTrialDirections);

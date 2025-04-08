@@ -933,7 +933,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Framework> &frameworkComponents,
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::optional<Framework> &framework,
     const std::vector<Component> &components, const std::vector<size_t> &numberOfMoleculesPerComponent,
     std::span<Atom> atomPositions, double UIon, double netChargeFramework,
     std::vector<double> netChargePerComponent) noexcept
@@ -947,7 +947,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  EnergyStatus energy(1, frameworkComponents.size(), components.size());
+  EnergyStatus energy(1, framework.has_value() ? 1uz : 0uz, components.size());
   double3x3 strainDerivative;
 
   if (!forceField.useCharge || forceField.omitEwaldFourier) return std::make_pair(energy, strainDerivative);
