@@ -41,12 +41,15 @@ import breakthrough_simulation;
 import mixture_prediction_simulation;
 import isotherm_fitting_simulation;
 import multi_site_isotherm;
+import opencl;
 
 int main(int argc, char* argv[])
 {
   using namespace std::literals;
 
   setlocale(LC_ALL, "en-US");
+
+  OpenCL::initialize();
 
   std::vector<std::string_view> args(argv, argv + argc);
 
@@ -63,14 +66,16 @@ int main(int argc, char* argv[])
                    "Fractional Component Monte Carlo, and Reactive Monte Carlo.\n";
       return 0;
     }
-    //else if (*it == "--size"sv)
-    //{
-    //  std::ispanstream(*++it) >> opts.size;
-    //}
+    else if (*it == "--opencl"sv)
+    {
+      std::cout << OpenCL::printBestOpenCLDevice();
+      return 0;
+    }
   }
 
   try
   {
+
     InputReader inputReader("simulation.json");
 
     auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type>::instance();

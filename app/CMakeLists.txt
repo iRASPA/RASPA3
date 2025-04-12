@@ -12,6 +12,7 @@ if (CONDA)
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
         OpenMP::OpenMP_CXX
+        OpenCL::OpenCL
         ZLIB::ZLIB
         -lpthread)
 elseif (LINUX)
@@ -24,6 +25,7 @@ elseif (LINUX)
         ${HDF5_CXX_LIBRARIES}
         ${HDF5_LIBRARIES}
         OpenMP::OpenMP_CXX
+        OpenCL::OpenCL
         -nostdlib++
         -l:libc++.a
         -l:libc++abi.a
@@ -39,6 +41,7 @@ elseif (WIN32)
         ${LAPACK_LIBRARIES}
         ${HDF5_CXX_LIBRARIES}
         OpenMP::OpenMP_CXX
+        OpenCL::OpenCL
         -nostdlib++
         ${ZLIB_LIBRARIES})
 elseif (APPLE)
@@ -56,6 +59,7 @@ elseif (APPLE)
         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
         $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
+        OpenCL::OpenCL
         ${ZLIB_LIBRARIES}
         -lpthread)
 endif()

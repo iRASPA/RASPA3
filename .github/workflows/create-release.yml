@@ -44,11 +44,14 @@ jobs:
       id: step_upload_url
       run: echo "upload_url=${{ steps.create_release.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
 
+# x86_64 linux avx2
+# =====================================================================================================================
+ 
   linux-x86_64-core-avx2-rocky-9-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/rocky-9-llvm-18:latest
+      image: ghcr.io/iraspa/rocky-9-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -79,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/almalinux-9-llvm-18:latest
+      image: ghcr.io/iraspa/almalinux-9-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -110,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/rocky-8-llvm-18:latest
+      image: ghcr.io/iraspa/rocky-8-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -141,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/almalinux-8-llvm-18:latest
+      image: ghcr.io/iraspa/almalinux-8-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -175,7 +178,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/rocky-7-llvm-18:latest
+          image: ghcr.io/iraspa/rocky-7-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -201,7 +204,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/centos-6-llvm-18:latest
+          image: ghcr.io/iraspa/centos-6-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -238,6 +241,7 @@ jobs:
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
           tar -zxvf hdf5.tar.gz
           cd hdf5-1.14.4-3
@@ -268,7 +272,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/ubuntu-22-llvm-18:latest
+      image: ghcr.io/iraspa/ubuntu-22-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -299,7 +303,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/ubuntu-20-llvm-18:latest
+      image: ghcr.io/iraspa/ubuntu-20-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -331,7 +335,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/archlinux-llvm-18:latest
+      image: ghcr.io/iraspa/archlinux-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -362,6 +366,52 @@ jobs:
           asset_content_type: application/octet-stream
 
 
+  linux-x86_64-core-avx2-fedora-41-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: fedora:41
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          dnf update -y
+          dnf install -y 'dnf-command(config-manager)'
+          dnf install -y --setopt=install_weak_deps=False wget git rpm-build
+          dnf install -y --setopt=install_weak_deps=False llvm lld cmake clang clang-tools-extra ninja-build
+          dnf install -y --setopt=install_weak_deps=False libomp-devel libcxx libcxxabi libcxx-devel libcxxabi-devel libcxx-static libcxxabi-static
+          dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 pybind11-devel
+          dnf install -y --setopt=install_weak_deps=False zlib-ng zlib-ng-devel zlib-ng-compat zlib-ng-compat-devel zlib-ng-compat-static
+          dnf install -y --setopt=install_weak_deps=False ocl-icd-devel fftw-devel
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxvf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib64/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-fedora-41
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.core-avx2.rpm
+          asset_content_type: application/octet-stream
+
   linux-x86_64-core-avx2-fedora-40-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -381,6 +431,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64
           dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 pybind11-devel
           dnf install -y --setopt=install_weak_deps=False zlib-ng zlib-ng-devel zlib-ng-compat zlib-ng-compat-devel zlib-ng-compat-static
+          dnf install -y --setopt=install_weak_deps=False ocl-icd-devel fftw-devel
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
           tar -zxvf hdf5.tar.gz
           cd hdf5-1.14.4-3
@@ -411,7 +462,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-39-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-39-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -442,7 +493,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-38-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-38-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -473,7 +524,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-37-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-37-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -504,7 +555,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-36-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-36-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -535,7 +586,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-35-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-35-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -566,7 +617,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-tumbleweed-llvm-18:latest
+      image: opensuse/tumbleweed
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -576,6 +627,16 @@ jobs:
       - name: configure-cmake-raspa
         shell: bash
         run: |
+          zypper --non-interactive dup
+          zypper --non-interactive update
+          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
+          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends lapack-devel blas-devel
+          zypper install -y --no-recommends ocl-icd-devel fftw3-devel
+          zypper remove -y busybox
+          zypper install -y rpm-build git hdf5-devel
+          zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
+          ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-tumbleweed
       - name: create-raspa-rpm-package
         shell: bash
@@ -597,7 +658,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.6-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.6-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -628,7 +689,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.5-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.5-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -659,7 +720,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.4-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.4-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -690,7 +751,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.3-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.3-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -724,7 +785,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-18:latest
+          image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -747,7 +808,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-12-llvm-18:latest
+      image: ghcr.io/iraspa/debian-12-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -778,7 +839,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-11-llvm-18:latest
+      image: ghcr.io/iraspa/debian-11-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -809,7 +870,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-10-llvm-18:latest
+      image: ghcr.io/iraspa/debian-10-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -836,43 +897,14 @@ jobs:
           asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-10_core-avx2.deb
           asset_content_type: application/octet-stream
 
-#  linux-aarch64-ubuntu-22-job:
-#    runs-on: ubuntu-24-arm64
-#    needs: release-job
-#    container:
-#      image: ghcr.io/iraspa/ubuntu-22-llvm-18-aarch64:latest
-#      credentials:
-#         username: ${{ github.actor }}
-#         password: ${{ secrets.github_token }}
-#    steps:
-#      - name: checkout-repository
-#        uses: actions/checkout@v4
-#      - name: configure-cmake-raspa
-#        shell: bash
-#        run: |
-#          cmake -B ${{github.workspace}}/build --preset linux-aarch-ubuntu-22
-#      - name: create-raspa-deb-package
-#        shell: bash
-#        run: |
-#          ninja -C ${{github.workspace}}/build package
-#          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64.deb .
-#      - name: upload-release-asset
-#        id: upload-release-asset
-#        uses: actions/upload-release-asset@v1
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        with:
-#          upload_url: ${{ needs.release-job.outputs.upload_url }}
-#          asset_path: ./raspa_${{ github.event.inputs.version }}_aarch64.deb
-#          asset_name: raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-22.deb
-#          asset_content_type: application/octet-stream
-#
+# x86_64 linux avx512
+# =====================================================================================================================
 
   linux-x86_64-skylake-avx512-rocky-9-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/rocky-9-llvm-18:latest
+      image: ghcr.io/iraspa/rocky-9-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -903,7 +935,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/almalinux-9-llvm-18:latest
+      image: ghcr.io/iraspa/almalinux-9-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -934,7 +966,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/rocky-8-llvm-18:latest
+      image: ghcr.io/iraspa/rocky-8-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -965,7 +997,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/almalinux-8-llvm-18:latest
+      image: ghcr.io/iraspa/almalinux-8-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -999,7 +1031,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/rocky-7-llvm-18:latest
+          image: ghcr.io/iraspa/rocky-7-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -1025,7 +1057,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/centos-6-llvm-18:latest
+          image: ghcr.io/iraspa/centos-6-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -1062,6 +1094,7 @@ jobs:
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
           tar -zxvf hdf5.tar.gz
           cd hdf5-1.14.4-3
@@ -1092,7 +1125,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/ubuntu-22-llvm-18:latest
+      image: ghcr.io/iraspa/ubuntu-22-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1123,7 +1156,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/ubuntu-20-llvm-18:latest
+      image: ghcr.io/iraspa/ubuntu-20-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1155,7 +1188,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/archlinux-llvm-18:latest
+      image: ghcr.io/iraspa/archlinux-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1186,6 +1219,52 @@ jobs:
           asset_content_type: application/octet-stream
 
 
+  linux-x86_64-skylake-avx512-fedora-41-job:
+    runs-on: ubuntu-latest
+    needs: release-job
+    container:
+      image: fedora:41
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          dnf update -y
+          dnf install -y 'dnf-command(config-manager)'
+          dnf install -y --setopt=install_weak_deps=False wget git rpm-build
+          dnf install -y --setopt=install_weak_deps=False llvm lld cmake clang clang-tools-extra ninja-build
+          dnf install -y --setopt=install_weak_deps=False libomp-devel libcxx libcxxabi libcxx-devel libcxxabi-devel libcxx-static libcxxabi-static
+          dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64
+          dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 pybind11-devel
+          dnf install -y --setopt=install_weak_deps=False zlib-ng zlib-ng-devel zlib-ng-compat zlib-ng-compat-devel zlib-ng-compat-static
+          dnf install -y --setopt=install_weak_deps=False ocl-icd-devel fftw-devel
+          wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
+          tar -zxvf hdf5.tar.gz
+          cd hdf5-1.14.4-3
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib64/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          ninja -C build
+          ninja -C build install
+          cd ..
+          rm -rf hdf5-1.14.4-3
+          ldconfig
+          cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-fedora-41
+      - name: create-raspa-rpm-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.rpm .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.rpm
+          asset_name: raspa-${{ github.event.inputs.version }}-1.fc41.x86_64.skylake-avx512.rpm
+          asset_content_type: application/octet-stream
+
   linux-x86_64-skylake-avx512-fedora-40-job:
     runs-on: ubuntu-latest
     needs: release-job
@@ -1205,6 +1284,7 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False lapack-devel lapack64 blas64
           dnf install -y --setopt=install_weak_deps=False python3 python3-devel python3-pybind11 pybind11-devel
           dnf install -y --setopt=install_weak_deps=False zlib-ng zlib-ng-devel zlib-ng-compat zlib-ng-compat-devel zlib-ng-compat-static
+          dnf install -y --setopt=install_weak_deps=False ocl-icd-devel fftw-devel
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
           tar -zxvf hdf5.tar.gz
           cd hdf5-1.14.4-3
@@ -1235,7 +1315,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-39-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-39-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1266,7 +1346,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-38-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-38-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1297,7 +1377,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-37-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-37-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1328,7 +1408,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-36-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-36-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1359,7 +1439,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/fedora-35-llvm-18:latest
+      image: ghcr.io/iraspa/fedora-35-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1386,11 +1466,12 @@ jobs:
           asset_name: raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
 
+
   linux-x86_64-skylake-avx512-opensuse-tumbleweed-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-tumbleweed-llvm-18:latest
+      image: opensuse/tumbleweed:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1400,6 +1481,16 @@ jobs:
       - name: configure-cmake-raspa
         shell: bash
         run: |
+          zypper --non-interactive dup
+          zypper --non-interactive update
+          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
+          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends lapack-devel blas-devel
+          zypper install -y --no-recommends ocl-icd-devel fftw3-devel
+          zypper remove -y busybox
+          zypper install -y rpm-build git hdf5-devel
+          zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
+          ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-tumbleweed
       - name: create-raspa-rpm-package
         shell: bash
@@ -1421,7 +1512,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.6-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.6-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1453,7 +1544,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.5-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.5-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1484,7 +1575,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.4-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.4-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1515,7 +1606,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/opensuse-leap-15.3-llvm-18:latest
+      image: ghcr.io/iraspa/opensuse-leap-15.3-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1549,7 +1640,7 @@ jobs:
       - name: configure-cmake-raspa
         uses: addnab/docker-run-action@v3
         with:
-          image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-18:latest
+          image: ghcr.io/iraspa/opensuse-leap-15.2-llvm-20:latest
           options: -v ${{ github.workspace }}:/tmp2
           run: |
             git clone https://github.com/iraspa/raspa3
@@ -1572,7 +1663,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-12-llvm-18:latest
+      image: ghcr.io/iraspa/debian-12-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1603,7 +1694,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-11-llvm-18:latest
+      image: ghcr.io/iraspa/debian-11-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1634,7 +1725,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: ghcr.io/iraspa/debian-10-llvm-18:latest
+      image: ghcr.io/iraspa/debian-10-llvm-20:latest
       credentials:
          username: ${{ github.actor }}
          password: ${{ secrets.github_token }}
@@ -1661,4 +1752,43 @@ jobs:
           asset_name: raspa_${{ github.event.inputs.version }}_amd64_debian-10_skylake-avx512.deb
           asset_content_type: application/octet-stream
 
+# aarch64 linux
+# =====================================================================================================================
+
+
+  linux-aarch64-ubuntu-24-job:
+    runs-on: ubuntu-24-arm64
+    needs: release-job
+    container:
+      image: ubuntu-arm64:24.04
+    steps:
+      - name: checkout-repository
+        uses: actions/checkout@v4
+      - name: configure-cmake-raspa
+        shell: bash
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
+          apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
+          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
+          apt-get install -y --no-install-recommends libhdf5-dev
+          cmake -B ${{github.workspace}}/build --preset linux-aarch64-ubuntu-24
+      - name: create-raspa-deb-package
+        shell: bash
+        run: |
+          ninja -C ${{github.workspace}}/build package
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-24.deb .
+      - name: upload-release-asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release-job.outputs.upload_url }}
+          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_aarch64_ubuntu-24.deb
+          asset_content_type: application/octet-stream
 
