@@ -221,7 +221,7 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<System>(m, "System")
       .def(pybind11::init<size_t, ForceField, std::optional<SimulationBox>, double, std::optional<double>, double,
-                          std::vector<Framework>, std::vector<Component>, std::vector<size_t>, size_t,
+                          std::optional<Framework>, std::vector<Component>, std::vector<size_t>, size_t,
                           MCMoveProbabilities, std::optional<size_t>>(),
            pybind11::arg("systemId"), pybind11::arg("forceField"), pybind11::arg("simulationBox") = std::nullopt,
            pybind11::arg("externalTemperature"), pybind11::arg("externalPressure") = std::nullopt,
