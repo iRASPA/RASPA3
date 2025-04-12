@@ -6,14 +6,15 @@ RUN \
   pacman -S --noconfirm cmake ninja python3 pybind11 && \
   pacman -S --noconfirm gcc openmp && \
   pacman -S --noconfirm blas64 lapack64 && \
+  pacman -S --noconfirm fftw ocl-icd && \
   pacman -S --noconfirm fakeroot shadow && \
   pacman -S --needed --noconfirm sudo && \
   useradd builduser -m && \
   passwd -d builduser && \
   printf 'builduser ALL=(ALL) ALL\n' | tee -a /etc/sudoers && \
-  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-18.1.8.tar.gz && \
-  tar -zxvf llvmorg-18.1.8.tar.gz && \
-  cd llvm-project-llvmorg-18.1.8 && \
+  wget https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-20.1.2.tar.gz && \
+  tar -zxvf llvmorg-20.1.2.tar.gz && \
+  cd llvm-project-llvmorg-20.1.2 && \
   cmake -G Ninja -S llvm -B build -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release  -DLLVM_ENABLE_PROJECTS="clang;lld" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind"  -DLLVM_TARGETS_TO_BUILD=X86 -DLLVM_RUNTIME_TARGETS="x86_64-unknown-linux-gnu" -DLLVM_BINUTILS_INCDIR=/usr/include && \
   ninja -C build && \
   ninja -C build install && \
