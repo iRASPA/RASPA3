@@ -50,6 +50,7 @@ elseif (APPLE)
         libs::raspakit
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
+        ${TORCH_LIBRARIES}
         $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
         $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
         $ENV{HOMEBREW_PREFIX}/lib/libaec.a 

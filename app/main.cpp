@@ -42,6 +42,9 @@ import mixture_prediction_simulation;
 import isotherm_fitting_simulation;
 import multi_site_isotherm;
 import opencl;
+#ifdef BUILD_LIBTORCH
+import libtorch_test;
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -50,6 +53,10 @@ int main(int argc, char* argv[])
   setlocale(LC_ALL, "en-US");
 
   OpenCL::initialize();
+
+#ifdef BUILD_LIBTORCH
+  test_libtorch();
+#endif
 
   std::vector<std::string_view> args(argv, argv + argc);
 

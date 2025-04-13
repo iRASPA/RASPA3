@@ -320,7 +320,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
 
   // check the needed image formats
   cl_image_format imageFormat_RGBA_INT8{CL_RGBA, CL_UNSIGNED_INT8};
-  cl_image_desc imageDescriptor_RGBA_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, {nullptr}};
+  cl_image_desc imageDescriptor_RGBA_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_RGBA_INT8 = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_RGBA_INT8, &imageDescriptor_RGBA_INT8, nullptr, &err);
   if (err != CL_SUCCESS)
   {
@@ -329,7 +329,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
   clReleaseMemObject(image_RGBA_INT8);
 
   cl_image_format imageFormat_R_INT8{CL_R, CL_UNSIGNED_INT8};
-  cl_image_desc imageDescriptor_R_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, {nullptr}};
+  cl_image_desc imageDescriptor_R_INT8{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_R_INT8 = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT8, &imageDescriptor_R_INT8, nullptr, &err);
   if (err != CL_SUCCESS)
   {
@@ -338,7 +338,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
   clReleaseMemObject(image_R_INT8);
 
   cl_image_format imageFormat_R_INT16{CL_R, CL_UNSIGNED_INT16};
-  cl_image_desc imageDescriptor_R_INT16{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, {nullptr}};
+  cl_image_desc imageDescriptor_R_INT16{CL_MEM_OBJECT_IMAGE3D, 256, 256, 256, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_R_INT16 = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT16, &imageDescriptor_R_INT16, nullptr, &err);
   if (err != CL_SUCCESS)
   {
@@ -347,7 +347,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
   clReleaseMemObject(image_R_INT16);
 
   cl_image_format imageFormat_R_INT32{CL_R, CL_UNSIGNED_INT16};
-  cl_image_desc imageDescriptor_R_INT32{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, {nullptr}};
+  cl_image_desc imageDescriptor_R_INT32{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_R_INT32 = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_INT32, &imageDescriptor_R_INT32, nullptr, &err);
   if (err != CL_SUCCESS)
   {
@@ -356,7 +356,7 @@ bool OpenCL::supportsImageFormatCapabilities(cl_context &trial_clContext, cl_dev
   clReleaseMemObject(image_R_INT32);
 
   cl_image_format imageFormat_R_FLOAT{CL_R, CL_FLOAT};
-  cl_image_desc imageDescriptor_R_FLOAT{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, {nullptr}};
+  cl_image_desc imageDescriptor_R_FLOAT{CL_MEM_OBJECT_IMAGE3D, 128, 128, 128, 0, 0, 0, 0, 0, nullptr};
   cl_mem image_R_FLOAT = clCreateImage(trial_clContext, CL_MEM_READ_WRITE, &imageFormat_R_FLOAT, &imageDescriptor_R_FLOAT, nullptr, &err);
   if (err != CL_SUCCESS)
   {
