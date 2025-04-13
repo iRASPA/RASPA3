@@ -12,7 +12,7 @@ source=(raspa3.tar.gz)
 md5sums=('SKIP')
 
 build() {
-  cmake -B build --preset linux-x86_64-core-avx2-archlinux -DCMAKE_INSTALL_PREFIX=${pkgdir}/usr
+  cmake -B build --preset linux-x86_64-core-avx2-archlinux -DCMAKE_INSTALL_PREFIX=${pkgdir}/usr -DCMAKE_POLICY_VERSION_MINIMUM=3.5 
   cmake --build build
 }
 

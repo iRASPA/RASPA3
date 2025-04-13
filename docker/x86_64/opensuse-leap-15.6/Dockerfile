@@ -6,7 +6,7 @@ RUN \
   zypper install -y --no-recommends rpm-build && \
   zypper install -y --no-recommends lapack-devel blas-devel && \
   zypper install -y --no-recommends cmake ninja libhdf5_cpp103 libhdf5-103 && \
-  zypper install -y --no-recommends ocl-icd-devel fftw3-devel && \
+  zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel && \
   wget https://www.python.org/ftp/python/3.8.19/Python-3.8.19.tgz && \
   tar xzf Python-3.8.19.tgz && \
   cd Python-3.8.19 && \

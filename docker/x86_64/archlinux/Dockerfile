@@ -2,11 +2,11 @@ FROM archlinux:latest
 
 RUN \
   pacman -Sy && \
-  pacman -S --noconfirm vi vim git wget && \
+  pacman -S --noconfirm vi vim git wget debugedit && \
   pacman -S --noconfirm cmake ninja python3 pybind11 && \
   pacman -S --noconfirm gcc openmp && \
   pacman -S --noconfirm blas64 lapack64 && \
-  pacman -S --noconfirm fftw ocl-icd && \
+  pacman -S --noconfirm fftw ocl-icd opencl-headers && \
   pacman -S --noconfirm fakeroot shadow && \
   pacman -S --needed --noconfirm sudo && \
   useradd builduser -m && \

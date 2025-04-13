@@ -856,7 +856,7 @@
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BUILD_LIBTORCH" : false,
         "BUILD_PYTHON": true
       }
@@ -874,7 +874,7 @@
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BUILD_LIBTORCH" : false,
         "BUILD_PYTHON": true
       }
@@ -891,7 +891,7 @@
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "BUILD_LIBTORCH" : false,
@@ -910,7 +910,7 @@
         "OpenMP_C_LIB_NAMES": "libomp",
         "OpenMP_CXX_FLAGS": "-fopenmp",
         "OpenMP_CXX_LIB_NAMES": "libomp",
-        "OpenMP_libomp_LIBRARY": "/usr/lib/libomp.a",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BLAS_LIBRARIES": "/usr/lib64/libblas64.so.3",
         "LAPACK_LIBRARIES": "/usr/lib64/liblapack64.so.3",
         "BUILD_LIBTORCH" : false,
@@ -1321,6 +1321,34 @@
     },
     {
       "name": "linux-x86_64-skylake-avx512-fedora-40",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_LIBTORCH" : false,
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-core-avx2-fedora-41",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath,  libomp, glibc, libgcc, zlib-ng-compat",
+        "ZLIB_LIBRARY": "/usr/lib64/libz.a",
+        "BLA_SIZEOF_INTEGER": "8",
+        "BUILD_LIBTORCH" : false,
+        "BUILD_PYTHON": true
+      }
+    },
+    {
+      "name": "linux-x86_64-skylake-avx512-fedora-41",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {

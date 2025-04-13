@@ -618,9 +618,6 @@ jobs:
     needs: release-job
     container:
       image: opensuse/tumbleweed
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
@@ -631,8 +628,8 @@ jobs:
           zypper --non-interactive update
           zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
           zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
           zypper install -y --no-recommends lapack-devel blas-devel
-          zypper install -y --no-recommends ocl-icd-devel fftw3-devel
           zypper remove -y busybox
           zypper install -y rpm-build git hdf5-devel
           zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
@@ -1472,9 +1469,6 @@ jobs:
     needs: release-job
     container:
       image: opensuse/tumbleweed:latest
-      credentials:
-         username: ${{ github.actor }}
-         password: ${{ secrets.github_token }}
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
@@ -1485,8 +1479,8 @@ jobs:
           zypper --non-interactive update
           zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
           zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
+          zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
           zypper install -y --no-recommends lapack-devel blas-devel
-          zypper install -y --no-recommends ocl-icd-devel fftw3-devel
           zypper remove -y busybox
           zypper install -y rpm-build git hdf5-devel
           zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
@@ -1756,39 +1750,39 @@ jobs:
 # =====================================================================================================================
 
 
-  linux-aarch64-ubuntu-24-job:
-    runs-on: ubuntu-24-arm64
-    needs: release-job
-    container:
-      image: ubuntu-arm64:24.04
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-      - name: configure-cmake-raspa
-        shell: bash
-        run: |
-          apt-get update
-          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
-          apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
-          apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
-          apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
-          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
-          apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
-          apt-get install -y --no-install-recommends libhdf5-dev
-          cmake -B ${{github.workspace}}/build --preset linux-aarch64-ubuntu-24
-      - name: create-raspa-deb-package
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-24.deb .
-      - name: upload-release-asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_aarch64_ubuntu-24.deb
-          asset_content_type: application/octet-stream
+# linux-aarch64-ubuntu-24-job:
+#   runs-on: ubuntu-24.04-arm
+#   needs: release-job
+#   container:
+#     image: ubuntu-arm64:24.04
+#   steps:
+#     - name: checkout-repository
+#       uses: actions/checkout@v4
+#     - name: configure-cmake-raspa
+#       shell: bash
+#       run: |
+#         apt-get update
+#         DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
+#         apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
+#         apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
+#         apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
+#         apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+#         apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
+#         apt-get install -y --no-install-recommends libhdf5-dev
+#         cmake -B ${{github.workspace}}/build --preset linux-aarch64-ubuntu-24
+#     - name: create-raspa-deb-package
+#       shell: bash
+#       run: |
+#         ninja -C ${{github.workspace}}/build package
+#         mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-24.deb .
+#     - name: upload-release-asset
+#       id: upload-release-asset
+#       uses: actions/upload-release-asset@v1
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       with:
+#         upload_url: ${{ needs.release-job.outputs.upload_url }}
+#         asset_path: ./raspa_${{ github.event.inputs.version }}_amd64.deb
+#         asset_name: raspa_${{ github.event.inputs.version }}_aarch64_ubuntu-24.deb
+#         asset_content_type: application/octet-stream
 
