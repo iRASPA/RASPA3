@@ -48,6 +48,8 @@ jobs:
   linux-aarch64-ubuntu-24-job:
     runs-on: ubuntu-24.04-arm
     needs: release-job
+    container:
+      image: arm64v8/ubuntu:24.04
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
