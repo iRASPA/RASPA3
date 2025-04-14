@@ -8,7 +8,7 @@ RUN \
   curl https://www.getpagespeed.com/files/centos6-scl-rh-eol.repo --output /etc/yum.repos.d/CentOS-SCLo-scl-rh.repo && \
   yum update -y && \
   yum install -y --nogpgcheck lapack-devel lapack blas  && \
-  yum install -y --nogpgcheck openssl-devel && \
+  yum install -y --nogpgcheck openssl-devel rpm-build && \
   yum install -y --nogpgcheck wget git && \
   yum install -y --nogpgcheck binutils-devel && \
   yum install -y --nogpgcheck gcc openssl-devel bzip2-devel && \
@@ -65,6 +65,7 @@ RUN \
   rm -rf /usr/lib64/libunwind* && \
   ninja -C build install && \
   cd .. && \
+  /bin/rm -rf llvm-* && \
   echo "/usr/lib/x86_64-unknown-linux-gnu/" >> /etc/ld.so.conf.d/libomp.conf && \
   ldconfig && \
   wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz && \

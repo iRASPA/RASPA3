@@ -56,6 +56,7 @@ jobs:
       - name: configure-cmake-raspa
         shell: bash
         run: |
+          apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
           apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
@@ -74,18 +75,18 @@ jobs:
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
           tar -zxf hdf5.tar.gz
           cd hdf5-1.14.4-3
-          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
+          cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/aarch64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
           ninja -C build
           ninja -C build install
           cd ..
-          rm -rf hdf5-1.14.4-3
+          /bin/rm -rf hdf5-1.14.4-3
           ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-aarch64-ubuntu-24
       - name: create-raspa-deb-package
         shell: bash
         run: |
           ninja -C ${{github.workspace}}/build package
-          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_aarch64-ubuntu-24.deb .
+          mv ${{github.workspace}}/build/raspa_${{ github.event.inputs.version }}_arm64-ubuntu-24.deb .
       - name: upload-release-asset
         id: upload-release-asset
         uses: actions/upload-release-asset@v1
@@ -93,7 +94,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release-job.outputs.upload_url }}
-          asset_path: ./raspa_${{ github.event.inputs.version }}_aarch64.deb
-          asset_name: raspa_${{ github.event.inputs.version }}_aarch64_ubuntu-24.deb
+          asset_path: ./raspa_${{ github.event.inputs.version }}_arm64.deb
+          asset_name: raspa_${{ github.event.inputs.version }}_arm64_ubuntu-24.deb
           asset_content_type: application/octet-stream
  
