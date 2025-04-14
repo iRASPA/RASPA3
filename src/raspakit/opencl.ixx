@@ -13,9 +13,9 @@ export module opencl;
 
 export namespace OpenCL
 {
-  std::optional<cl_context> clContext{std::nullopt};
-  std::optional<cl_device_id> clDeviceId{std::nullopt};
-  std::optional<cl_command_queue> clCommandQueue{std::nullopt};
+  extern std::optional<cl_context> clContext;
+  extern std::optional<cl_device_id> clDeviceId;
+  extern std::optional<cl_command_queue> clCommandQueue;
 
   void initialize(void);
   std::optional<cl_device_id> bestOpenCLDevice(cl_device_type device_type);

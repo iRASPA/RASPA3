@@ -17,6 +17,9 @@ module;
 
 module opencl;
 
+std::optional<cl_context> OpenCL::clContext = std::nullopt;
+std::optional<cl_device_id> OpenCL::clDeviceId = std::nullopt;
+std::optional<cl_command_queue> OpenCL::clCommandQueue = std::nullopt;
 
 void OpenCL::initialize()
 {
