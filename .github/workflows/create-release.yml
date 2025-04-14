@@ -237,13 +237,22 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
-          apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
           apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
+          wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz
+          tar -zxf cmake-3.31.6.tar.gz
+          cd cmake-3.31.6
+          ./bootstrap
+          nice -n20 make -j 8
+          make install
+          cd ..
+          /bin/rm -rf cmake-3.31.6
+          /bin/rm cmake-3.31.6.tar.gz
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
-          tar -zxvf hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
           cd hdf5-1.14.4-3
           cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
           ninja -C build
@@ -1081,14 +1090,23 @@ jobs:
         shell: bash
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata 
-          apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build wget
+          DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
+          apt-get install -y --no-install-recommends git ca-certificates ninja-build wget openssl libssl-dev make
           apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev
           apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev
-          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev 
+          apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
           apt-get install -y --no-install-recommends ocl-icd-opencl-dev libfftw3-dev
+          wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz
+          tar -zxf cmake-3.31.6.tar.gz
+          cd cmake-3.31.6
+          ./bootstrap
+          nice -n20 make -j 8
+          make install
+          cd ..
+          /bin/rm -rf cmake-3.31.6
+          /bin/rm cmake-3.31.6.tar.gz
           wget https://github.com/HDFGroup/hdf5/releases/download/hdf5_1.14.4.3/hdf5.tar.gz
-          tar -zxvf hdf5.tar.gz
+          tar -zxf hdf5.tar.gz
           cd hdf5-1.14.4-3
           cmake -B build -GNinja -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX=/usr -DHDF5_BUILD_CPP_LIB=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS} -std=c++23 -stdlib=libc++" -DZLIB_LIBRARY=/usr/lib/x86_64-linux-gnu/libz.a -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF
           ninja -C build
