@@ -15,6 +15,15 @@ RUN \
   ln -sfn /usr/local/bin/python3.8 /usr/bin/python3.8 && \
   cd .. && \
   rm -rf Python-3.8.19* && \
+  wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6.tar.gz && \
+  tar -zxvf cmake-3.31.6.tar.gz && \
+  cd cmake-3.31.6 && \
+  ./bootstrap && \
+  nice -n20 make -j 32 && \
+  make install && \
+  cd .. &&\
+  rm -rf cmake-3.31.6 && \
+  rm cmake-3.31.6.tar.gz && \
   wget https://github.com/ninja-build/ninja/archive/refs/tags/v1.12.1.tar.gz && \
   tar -zxvf v1.12.1.tar.gz && \
   cd ninja-1.12.1 && \
