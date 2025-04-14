@@ -613,27 +613,21 @@ jobs:
           asset_name: raspa-${{ github.event.inputs.version }}-1.fc35.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
 
+
   linux-x86_64-core-avx2-opensuse-tumbleweed-job:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: opensuse/tumbleweed
+      image: ghcr.io/iraspa/opensuse-tumbleweed-llvm-20:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
       - name: configure-cmake-raspa
         shell: bash
         run: |
-          zypper --non-interactive dup
-          zypper --non-interactive update
-          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
-          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
-          zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
-          zypper install -y --no-recommends lapack-devel blas-devel
-          zypper remove -y busybox
-          zypper install -y rpm-build git hdf5-devel
-          zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
-          ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-opensuse-tumbleweed
       - name: create-raspa-rpm-package
         shell: bash
@@ -650,6 +644,7 @@ jobs:
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-tumbleweed.x86_64.core-avx2.rpm
           asset_content_type: application/octet-stream
+
 
   linux-x86_64-core-avx2-opensuse-leap-15-6-job:
     runs-on: ubuntu-latest
@@ -1468,23 +1463,16 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-job
     container:
-      image: opensuse/tumbleweed:latest
+      image: ghcr.io/iraspa/opensuse-tumbleweed-llvm-20:latest
+      credentials:
+         username: ${{ github.actor }}
+         password: ${{ secrets.github_token }}
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
       - name: configure-cmake-raspa
         shell: bash
         run: |
-          zypper --non-interactive dup
-          zypper --non-interactive update
-          zypper install -y --no-recommends wget git ca-certificates cmake ninja libstdc++-devel gcc gcc-c++ binutils-devel
-          zypper install -y --no-recommends python3 python-pybind11-common-devel python3-pybind11 python3-devel
-          zypper install -y --no-recommends ocl-icd-devel opencl-headers libOpenCL1 fftw3-devel
-          zypper install -y --no-recommends lapack-devel blas-devel
-          zypper remove -y busybox
-          zypper install -y rpm-build git hdf5-devel
-          zypper install -y llvm clang clang-tools libc++-devel libc++abi-devel libomp-devel lld
-          ldconfig
           cmake -B ${{github.workspace}}/build --preset linux-x86_64-skylake-avx512-opensuse-tumbleweed
       - name: create-raspa-rpm-package
         shell: bash
@@ -1501,6 +1489,7 @@ jobs:
           asset_path: ./raspa-${{ github.event.inputs.version }}-1.x86_64.rpm
           asset_name: raspa-${{ github.event.inputs.version }}-1.opensuse-tumbleweed.x86_64.skylake-avx512.rpm
           asset_content_type: application/octet-stream
+
 
   linux-x86_64-skylake-avx512-opensuse-leap-15-6-job:
     runs-on: ubuntu-latest
