@@ -48,7 +48,14 @@ export template <class STREAM>
 class Archive
 {
  public:
-  Archive(STREAM& stream) : stream(stream) {};
+  Archive(STREAM& stream) : stream(stream), tracking(std::make_shared<PointerTracking>()) {};
+
+  struct PointerTracking
+  {
+    uint64_t next_id = 1;                                           // next ID to assign
+    std::unordered_map<const void*, uint64_t> ptr_to_id;            // For writing
+    std::unordered_map<uint64_t, std::shared_ptr<void>> id_to_ptr;  // For reading
+  };
 
   // a function that can serialize any enum
   template <typename Enum, typename = typename std::enable_if<std::is_enum<Enum>::value>::type>
@@ -393,6 +400,82 @@ class Archive
     return *this;
   }
 
+  //---------------------------------------
+  // SHARED_PTR special handling
+  //
+  // We do pointer-tracking. For each pointer:
+  //  - On write: If null -> write ID=0. Otherwise, if new -> assign new ID
+  //    and serialize object. If old -> just write ID that was assigned earlier.
+  //  - On read: If ID=0 -> null pointer. Else if new ID -> allocate object,
+  //    read into it, store in map. If old ID -> retrieve pointer from map.
+  //---------------------------------------
+  template <class T>
+  Archive& operator<<(const std::shared_ptr<T>& ptr)
+  {
+    // Write out an ID for this pointer
+    if (!ptr)
+    {
+      // Null pointer => ID 0
+      uint64_t id = 0;
+      *this << id;
+      return *this;
+    }
+
+    // Non-null pointer => see if we already assigned an ID
+    auto it = tracking->ptr_to_id.find(ptr.get());
+    if (it == tracking->ptr_to_id.end())
+    {
+      // Not yet encountered => assign new ID
+      uint64_t new_id = tracking->next_id++;
+      tracking->ptr_to_id[ptr.get()] = new_id;
+      *this << new_id;  // Write that ID
+
+      // Now serialize the *pointee* itself
+      // so it can reconstruct the contents of T.
+      *this << *ptr;
+    }
+    else
+    {
+      // We already have an ID for this pointer
+      uint64_t existing_id = it->second;
+      *this << existing_id;
+    }
+    return *this;
+  }
+
+  template <class T>
+  Archive& operator>>(std::shared_ptr<T>& ptr)
+  {
+    // Read the pointer ID
+    uint64_t id = 0;
+    *this >> id;
+    if (id == 0)
+    {
+      // Null pointer => no data follows
+      ptr.reset();
+      return *this;
+    }
+
+    // Non-null => do we already have this ID?
+    auto it = tracking->id_to_ptr.find(id);
+    if (it == tracking->id_to_ptr.end())
+    {
+      // First time we see this ID => create new T
+      auto new_obj = std::make_shared<T>();
+      tracking->id_to_ptr[id] = new_obj;
+
+      // Now read the object’s data
+      *this >> *new_obj;
+      ptr = new_obj;
+    }
+    else
+    {
+      // Already had that ID => reuse the same pointer
+      ptr = std::static_pointer_cast<T>(it->second);
+    }
+    return *this;
+  }
+
   template <class T>
   Archive& operator>>(std::optional<T>& v)
   {
@@ -539,4 +622,5 @@ class Archive
 
  private:
   STREAM& stream;
+  std::shared_ptr<PointerTracking> tracking;
 };

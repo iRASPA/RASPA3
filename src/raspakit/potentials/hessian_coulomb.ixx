@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <numbers>
 #endif
 
@@ -13,6 +14,7 @@ export module potential_hessian_coulomb;
 import <cmath>;
 import <numbers>;
 import <iostream>;
+import <memory>;
 #endif
 
 import double4;
@@ -44,7 +46,7 @@ export namespace Potentials
  *
  * \note This function returns derivates as D[U[r], r] / r, where U[r] is the potential energy.
  */
-[[clang::always_inline]] inline HessianFactor potentialCoulombHessian(const ForceField& forcefield,
+[[clang::always_inline]] inline HessianFactor potentialCoulombHessian(const ForceField& forceField,
                                                                       const bool& groupIdA, const bool& groupIdB,
                                                                       const double& scalingA, const double& scalingB,
                                                                       const double& rr, const double& r,
@@ -52,11 +54,11 @@ export namespace Potentials
 {
   double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
 
-  switch (forcefield.chargeMethod)
+  switch (forceField.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
-      double alpha = forcefield.EwaldAlpha;
+      double alpha = forceField.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
       return HessianFactor(
           scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),

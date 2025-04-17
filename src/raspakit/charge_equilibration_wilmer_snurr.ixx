@@ -25,17 +25,33 @@ import atom;
 import forcefield;
 import simulationbox;
 
-// "Towards rapid computational screening of metal-organic frameworks for carbon
-//   dioxide capture: Calculation of framework charges via charge equilibration"
-// C.E. Wilmer and R.Q. Snurr
-// Chemical Engineering Journal, 171(3), 775-781
-//
-// "An Extended Charge Equilibration Method",
-// Christopher E. Wilmer, Ki Chul Kim, and Randall Q. Snurr,
-// The journal of Physical Chemistry Letters, 3, 2506-2511, 2012
-
+/**
+ * \brief Namespace containing all functionalities related to Charge Equilibration.
+ *
+ * The ChargeEquilibration namespace houses an enum class specifying QEq methods
+ * and a function to execute the QEq procedure. It defines methods to compute
+ * charge distributions within a periodic or non-periodic simulation box.
+ *
+ *  \details
+ * The methods in this file implement the QEq approach based on the following references:
+ * - C.E. Wilmer and R.Q. Snurr,
+ *   "Towards rapid computational screening of metal-organic frameworks for carbon dioxide capture:
+ *    Calculation of framework charges via charge equilibration,"
+ *   Chemical Engineering Journal 171(3), 775-781 (2011).
+ * - Christopher E. Wilmer, Ki Chul Kim, and Randall Q. Snurr,
+ *   "An Extended Charge Equilibration Method,"
+ *   The Journal of Physical Chemistry Letters, 3, 2506-2511 (2012).
+ */
 export namespace ChargeEquilibration
 {
+/**
+ * \brief Enumerates the possible methods for performing Charge Equilibration.
+ *
+ * - NonPeriodic: Uses direct distances without periodic boundaries.
+ * - Periodic: Applies a single-image periodic boundary correction.
+ * - PeriodicDirectSum: A multi-image direct summation for periodic systems.
+ * - PeriodicEwaldSum: An Ewald-based summation approach for periodic systems.
+ */
 enum class Type : size_t
 {
   NonPeriodic = 0,
@@ -44,10 +60,31 @@ enum class Type : size_t
   PeriodicEwaldSum = 3
 };
 
-void computeChargeEquilibration(const ForceField &forceField, const SimulationBox &box, std::span<Atom> frameworkAtoms,
+/**
+ * \brief Performs the Charge Equilibration (QEq) procedure on a set of framework atoms.
+ *
+ * This function computes partial charges on atoms based on a global hardness,
+ * electronegativity model, and a specified QEq method (non-periodic or various
+ * periodic options). The resulting charges are stored directly in the `frameworkAtoms`.
+ *
+ * \param forceField     A shared pointer to the ForceField containing pseudo-atom data
+ *                       (e.g., oxidation states, element indices).
+ * \param box            The SimulationBox describing system dimensions and periodicity.
+ * \param frameworkAtoms A span of Atom objects for which charges will be computed.
+ * \param type           The QEq calculation method (e.g., NonPeriodic, Periodic, etc.).
+ */
+void computeChargeEquilibration(const ForceField &forceField,
+                                const SimulationBox &box, std::span<Atom> frameworkAtoms,
                                 ChargeEquilibration::Type type);
 }  // namespace ChargeEquilibration
 
+/**
+ * \brief Holds reference data for a single element used in charge equilibration.
+ *
+ * This struct includes the element’s label (chemical symbol), its electron affinity,
+ * and a list of ionization energies. These data are used by the QEq procedure
+ * to determine electronegativity and chemical hardness for each atom type.
+ */
 struct ChargeEquilbrationElementData
 {
   std::string label;
@@ -60,6 +97,13 @@ struct ChargeEquilbrationElementData
 //  { "O", 1.4611135,  {13.61805, 35.1211, 54.9355, 77.41353, 113.8990, 138.1197, 739.29, 871.4101}},
 //  { "C", 1.262119,   {11.26030, 24.3833, 47.8878, 64.4939, 392.087, 489.99334}},
 
+/**
+ * \brief A reference table containing element-specific data for QEq calculations.
+ *
+ * The table is indexed to match pseudo-atom types in the ForceField. For each
+ * element, it includes the symbol, a single electron affinity, and multiple
+ * ionization energies corresponding to different oxidation states.
+ */
 static std::vector<ChargeEquilbrationElementData> chargeEquilbrationElementData = {
     {"", 0.0, {}},
     {"H", -2.4172, {11.4732}},
@@ -147,14 +191,24 @@ static std::vector<ChargeEquilbrationElementData> chargeEquilbrationElementData 
     {"Bi", 0.942362, {7.2855, 16.703, 25.56, 45.3, 56.0, 88.3}},
     {"Po", 1.9, {8.414}}};
 
-// X is the 'electronegativity' or 'Mulliken electronegativity'
-// "Towards rapid computational screening of metal-organic frameworks for carbon
-//   dioxide capture: Calculation of framework charges via charge equilibration"
-// Chemical Engineering Journal, 171(3), 775-781
-// C.E. Wilmer and R.Q. Snurr
-// X_0 = (\partial dE/\partial Q)_{Q=0}  = 0.5 * (IP + EA)
-// the electron affinity can be thought of as the "zero-th" ionization energy
-inline double referenceTableX(const ForceField &forceField, size_t pseudo_atom_type, size_t index)
+/**
+ * \brief Computes the Mulliken electronegativity for a given pseudo-atom type.
+ *
+ * \details
+ * The formula for Mulliken electronegativity is \f$ X = \frac{1}{2} (IP + EA) \f$.
+ * If the oxidation state is zero, it uses the first ionization energy and the
+ * tabulated electron affinity. Otherwise, it picks higher ionization energy entries.
+ *
+ * \param forceField       Shared pointer to the \c ForceField containing pseudo-atom definitions.
+ * \param pseudo_atom_type Index of the pseudo-atom type in the force field.
+ * \param index            Index into the element data table for this atom.
+ * \return                 The Mulliken electronegativity in eV.
+ *
+ * \note
+ * For additional theoretical context, see the references at the top of this file.
+ */
+inline double referenceTableX(const ForceField &forceField, size_t pseudo_atom_type,
+                              size_t index)
 {
   double electron_affinity, ionization_potential;
 
@@ -173,10 +227,20 @@ inline double referenceTableX(const ForceField &forceField, size_t pseudo_atom_t
   return 0.5 * (ionization_potential + electron_affinity);
 }
 
-// J is the 'idempotential' of the 'chemical hardness' parameter of the atom
-// J_0 = \partial d^2E/\partial Q^2  = IP - EA
-// the electron affinity can be thought of as the "zero-th" ionization energy
-inline double referenceTableJ(const ForceField &forceField, size_t pseudo_atom_type, size_t index)
+/**
+ * \brief Computes the chemical hardness (J) for a given pseudo-atom type as \f$ IP - EA \f$.
+ *
+ * \details
+ * This function accounts for the atom’s oxidation state by choosing the appropriate
+ * ionization energies from \c chargeEquilbrationElementData.
+ *
+ * \param forceField       Shared pointer to the \c ForceField with pseudo-atom data.
+ * \param pseudo_atom_type Index of the pseudo-atom type in the force field.
+ * \param index            Index into the element data table for this element.
+ * \return                 The chemical hardness in eV.
+ */
+inline double referenceTableJ(const ForceField &forceField, size_t pseudo_atom_type,
+                              size_t index)
 {
   double electron_affinity, ionization_potential;
 
@@ -197,7 +261,20 @@ inline double referenceTableJ(const ForceField &forceField, size_t pseudo_atom_t
   return (ionization_potential - electron_affinity);
 }
 
-inline double referenceTableXc(const ForceField &forceField, size_t pseudo_atom_type, size_t index)
+/**
+ * \brief Calculates the scaled hardness term for a pseudo-atom with a nonzero oxidation state.
+ *
+ * \details
+ * If the oxidation state is > 0, this function returns
+ * \f$ (IP_{oxidation} - EA_{oxidation-1}) \times \text{oxidation state} \f$.
+ *
+ * \param forceField       Shared pointer to the \c ForceField with pseudo-atom data.
+ * \param pseudo_atom_type Index of the pseudo-atom type in the force field.
+ * \param index            Index into the element data table for this element.
+ * \return                 A scaled version of chemical hardness accounting for oxidation state.
+ */
+inline double referenceTableXc(const ForceField &forceField, size_t pseudo_atom_type,
+                               size_t index)
 {
   double electron_affinity, ionization_potential;
 

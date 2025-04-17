@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #endif
 
 export module potential_tricubic_derivative_lj;
@@ -11,6 +12,7 @@ export module potential_tricubic_derivative_lj;
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <iostream>;
+import <memory>;
 #endif
 
 import double4;
@@ -40,11 +42,11 @@ export namespace Potentials
  * \return A ThirdDerivativeFactor object containing the computed derivatives.
  */
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialLennardJonesTricubicDerivative(
-    const ForceField& forcefield, const double& r2, const size_t& typeA, const size_t& typeB)
+    const ForceField& forceField, const double& r2, const size_t& typeA, const size_t& typeB)
 {
-  double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-  double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-  double arg3 = forcefield(typeA, typeB).shift;
+  double arg1 = 4.0 * forceField(typeA, typeB).parameters.x;
+  double arg2 = forceField(typeA, typeB).parameters.y * forceField(typeA, typeB).parameters.y;
+  double arg3 = forceField(typeA, typeB).shift;
   double temp3 = (arg2 / r2) * (arg2 / r2) * (arg2 / r2);
   double r4 = r2 * r2;
   double r6 = r4 * r2;
@@ -55,10 +57,11 @@ export namespace Potentials
 };
 
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialLennardJonesRepulsionTricubicDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const size_t& typeA, const size_t& typeB)
+    const ForceField& forceField, const double& r2, const double& cutoff2, const size_t& typeA,
+    const size_t& typeB)
 {
-  double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-  double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
+  double arg1 = 4.0 * forceField(typeA, typeB).parameters.x;
+  double arg2 = forceField(typeA, typeB).parameters.y * forceField(typeA, typeB).parameters.y;
   double temp3 = (arg2 / r2) * (arg2 / r2) * (arg2 / r2);
   double temp3_rc = (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2);
   temp3_rc = 0.0;
@@ -70,10 +73,11 @@ export namespace Potentials
 };
 
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialLennardJonesAttractionTricubicDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const size_t& typeA, const size_t& typeB)
+    const ForceField& forceField, const double& r2, const double& cutoff2, const size_t& typeA,
+    const size_t& typeB)
 {
-  double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-  double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
+  double arg1 = 4.0 * forceField(typeA, typeB).parameters.x;
+  double arg2 = forceField(typeA, typeB).parameters.y * forceField(typeA, typeB).parameters.y;
   double temp3 = (arg2 / r2) * (arg2 / r2) * (arg2 / r2);
   double temp3_rc = (arg2 / cutoff2) * (arg2 / cutoff2) * (arg2 / cutoff2);
   temp3_rc = 0.0;

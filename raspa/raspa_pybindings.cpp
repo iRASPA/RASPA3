@@ -90,7 +90,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readwrite("position", &Atom::position)
       .def("__repr__", &Atom::repr);
 
-  pybind11::class_<SimulationBox> simulationBox(m, "SimulationBox");
+  pybind11::class_<SimulationBox, std::shared_ptr<SimulationBox>> simulationBox(m, "SimulationBox");
   pybind11::enum_<SimulationBox::Type>(simulationBox, "Type")
       .value("Rectangular", SimulationBox::Type::Rectangular)
       .value("Triclinic", SimulationBox::Type::Triclinic)
@@ -117,7 +117,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("polarizability") = 0.0, pybind11::arg("atomicNumber"), pybind11::arg("printToPDB") = true,
            pybind11::arg("source") = "");
 
-  pybind11::class_<ForceField> forceField(m, "ForceField");
+  pybind11::class_<ForceField, std::shared_ptr<ForceField>> forceField(m, "ForceField");
   forceField
       .def(pybind11::init<std::vector<PseudoAtom>, std::vector<VDWParameters>, ForceField::MixingRule, double, double,
                           double, bool, bool, bool>(),
@@ -135,7 +135,7 @@ PYBIND11_MODULE(raspalib, m)
       .value("Lorentz_Berthelot", ForceField::MixingRule::Lorentz_Berthelot)
       .export_values();
 
-  pybind11::class_<Framework> framework(m, "Framework");
+  pybind11::class_<Framework, std::shared_ptr<Framework>> framework(m, "Framework");
 
   pybind11::enum_<Framework::UseChargesFrom>(framework, "UseChargesFrom")
    .value("PseudoAtoms", Framework::UseChargesFrom::PseudoAtoms)
@@ -169,7 +169,7 @@ PYBIND11_MODULE(raspalib, m)
            pybind11::arg("hybridMCProbability") = 0.0)
       .def("join", &MCMoveProbabilities::join);
 
-  pybind11::class_<PropertyLambdaProbabilityHistogram>(m, "PropertyLambdaProbabilityHistogram")
+  pybind11::class_<PropertyLambdaProbabilityHistogram, std::shared_ptr<PropertyLambdaProbabilityHistogram>>(m, "PropertyLambdaProbabilityHistogram")
       .def(pybind11::init<>())
       .def_readonly("biasFactor", &PropertyLambdaProbabilityHistogram::biasFactor)
       .def_readonly("histogram", &PropertyLambdaProbabilityHistogram::histogram)
@@ -212,14 +212,14 @@ PYBIND11_MODULE(raspalib, m)
       .def("printStatus", static_cast<std::string (Loadings::*)(const Component &, const Loadings &, const Loadings &,
                                                                 std::optional<double>) const>(&Loadings::printStatus));
 
-  pybind11::class_<PropertyLoading>(m, "PropertyLoading")
+  pybind11::class_<PropertyLoading, std::shared_ptr<PropertyLoading>>(m, "PropertyLoading")
       .def(pybind11::init<size_t, size_t>())
       .def("averageLoading", &PropertyLoading::averageLoading)
       .def("averageLoadingNumberOfMolecules", &PropertyLoading::averageLoadingNumberOfMolecules)
       .def("writeAveragesStatistics", &PropertyLoading::writeAveragesStatistics)
       .def("__repr__", &PropertyLoading::repr);
 
-  pybind11::class_<System>(m, "System")
+  pybind11::class_<System, std::shared_ptr<System>>(m, "System")
       .def(pybind11::init<size_t, ForceField, std::optional<SimulationBox>, double, std::optional<double>, double,
                           std::vector<Framework>, std::vector<Component>, std::vector<size_t>, size_t,
                           MCMoveProbabilities, std::optional<size_t>>(),
@@ -266,7 +266,7 @@ PYBIND11_MODULE(raspalib, m)
       .value("ParallelTempering", InputReader::SimulationType::ParallelTempering)
       .export_values();
 
-  pybind11::class_<MonteCarlo> mc(m, "MonteCarlo");
+  pybind11::class_<MonteCarlo, std::shared_ptr<MonteCarlo>> mc(m, "MonteCarlo");
   mc.def(pybind11::init<size_t, size_t, size_t, size_t, size_t, size_t, size_t, std::vector<System> &, RandomNumber &,
                         size_t, bool>(),
          pybind11::arg("numberOfCycles"), pybind11::arg("numberOfInitializationCycles"),

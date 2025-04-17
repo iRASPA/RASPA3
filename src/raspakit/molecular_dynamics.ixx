@@ -88,9 +88,9 @@ export struct MolecularDynamics
   size_t currentCycle{0};                                           ///< Current simulation cycle.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current stage of the simulation.
 
-  std::vector<System> systems;         ///< Vector of systems in the simulation.
-  RandomNumber random;                 ///< Random number generator.
-  size_t fractionalMoleculeSystem{0};  ///< Index of the system where the fractional molecule is located.
+  std::vector<std::shared_ptr<System>> systems;  ///< Vector of systems in the simulation.
+  RandomNumber random;                           ///< Random number generator.
+  size_t fractionalMoleculeSystem{0};            ///< Index of the system where the fractional molecule is located.
 
   std::vector<std::ofstream> streams;  ///< Output file streams for each system.
 

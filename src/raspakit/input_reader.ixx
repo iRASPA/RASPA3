@@ -1,40 +1,27 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <complex>
 #include <cstddef>
 #include <cstring>
-#include <format>
-#include <fstream>
-#include <istream>
 #include <locale>
-#include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
-#include <unordered_set>
 #include <vector>
 #endif
 
 export module input_reader;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <set>;
-import <unordered_set>;
-import <vector>;
-import <complex>;
+import <cstddef>;
+import <cstring>;
 import <locale>;
-import <algorithm>;
-import <cctype>;
 import <optional>;
-import <fstream>;
-import <istream>;
+import <set>;
 import <string>;
-import <format>;
+import <vector>;
+import <memory>;
 #endif
 
 import stringutils;
@@ -154,8 +141,8 @@ export struct InputReader
   size_t numberOfThreads{1};  ///< Number of threads to be used in the simulation.
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
 
-  ForceField forceField;          ///< Force field used for defining interactions in the simulation.
-  std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.
+  std::shared_ptr<ForceField> forceField;          ///< Force field used for defining interactions in the simulation.
+  std::vector<std::shared_ptr<System>> systems{};  ///< Vector of simulation systems configured for the simulation.
 
   std::string displayName{"Column"};  ///< Name used for display purposes.
   double temperature{-1.0};           ///< Simulation temperature.

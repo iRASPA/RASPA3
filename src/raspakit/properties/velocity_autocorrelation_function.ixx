@@ -29,9 +29,7 @@ import double3;
 import double4;
 import atom;
 import molecule;
-import molecule;
 import simulationbox;
-import forcefield;
 import component;
 
 // Computes Velocity Auto-Correlation Function (VASF)

@@ -43,60 +43,58 @@ import component;
 import cbmc_chain_data;
 
 [[nodiscard]] std::optional<ChainData> CBMC::growMoleculeSwapInsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-    double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const std::vector<Component> &components, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta,
+    Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
     size_t numberOfTrialDirections) noexcept
 {
   switch (growType)
   {
     default:
       return CBMC::growRigidMoleculeSwapInsertion(
-          random, frameworkComponents, component, hasExternalField, components, forceField, simulationBox,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          random, framework, component, hasExternalField, components, forceField, simulationBox, frameworkAtoms,
+          moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, scaling, groupId, numberOfTrialDirections);
   }
 }
 
 [[nodiscard]] std::optional<ChainData> CBMC::growMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-    double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
-    size_t selectedMolecule, Molecule &molecule, std::span<Atom> molecule_atoms,
-    size_t numberOfTrialDirections) noexcept
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const std::vector<Component> &components, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+    Molecule &molecule, std::span<Atom> molecule_atoms, size_t numberOfTrialDirections) noexcept
 {
-  return CBMC::growRigidMoleculeReinsertion(random, frameworkComponents, component, hasExternalField, components,
-                                            forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta,
-                                            cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
-                                            selectedMolecule, molecule, molecule_atoms, numberOfTrialDirections);
+  return CBMC::growRigidMoleculeReinsertion(random, framework, component, hasExternalField, components, forceField,
+                                            simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW,
+                                            cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule,
+                                            molecule, molecule_atoms, numberOfTrialDirections);
 }
 
 [[nodiscard]] ChainData CBMC::retraceMoleculeReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-    double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
-    size_t selectedMolecule, Molecule &molecule, std::span<Atom> molecule_atoms, double storedR,
-    size_t numberOfTrialDirections) noexcept
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const std::vector<Component> &components, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+    Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, size_t numberOfTrialDirections) noexcept
 {
-  return CBMC::retraceRigidMoleculeReinsertion(
-      random, frameworkComponents, component, hasExternalField, components, forceField, simulationBox, frameworkAtoms,
-      moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule,
-      molecule, molecule_atoms, storedR, numberOfTrialDirections);
+  return CBMC::retraceRigidMoleculeReinsertion(random, framework, component, hasExternalField, components, forceField,
+                                               simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW,
+                                               cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule,
+                                               molecule, molecule_atoms, storedR, numberOfTrialDirections);
 }
 
 [[nodiscard]] ChainData CBMC::retraceMoleculeSwapDeletion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-    double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
-    size_t selectedMolecule, std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const std::vector<Component> &components, const ForceField &forceField, const SimulationBox &simulationBox,
+    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
+    double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule,
+    std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept
 {
-  return CBMC::retraceRigidMoleculeSwapDeletion(random, frameworkComponents, component, hasExternalField, components,
-                                                forceField, simulationBox, frameworkAtoms, moleculeAtoms, beta,
-                                                cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
-                                                selectedMolecule, molecule, scaling, numberOfTrialDirections);
+  return CBMC::retraceRigidMoleculeSwapDeletion(random, framework, component, hasExternalField, components, forceField,
+                                                simulationBox, frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW,
+                                                cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule,
+                                                molecule, scaling, numberOfTrialDirections);
 }

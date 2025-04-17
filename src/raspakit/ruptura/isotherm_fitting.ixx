@@ -1,11 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <array>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include <vector>
 #endif
@@ -13,12 +12,11 @@ module;
 export module isotherm_fitting;
 
 #ifndef USE_LEGACY_HEADERS
-import <tuple>;
-import <array>;
 import <vector>;
 import <string>;
 import <unordered_map>;
 import <iostream>;
+import <memory>;
 #endif
 
 import randomnumbers;
@@ -50,9 +48,9 @@ export struct IsothermFitting
     bool operator<(const DNA &other) const { return fitness < other.fitness; }
   };
 
-  IsothermFitting(System &system) noexcept;
+  IsothermFitting(std::shared_ptr<System> system) noexcept;
 
-  System &system;
+  std::shared_ptr<System> system;
   RandomNumber random;
   std::vector<std::pair<double, double>> readData(size_t componentId);
   void printSolution(size_t Id);

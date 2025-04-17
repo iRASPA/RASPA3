@@ -79,17 +79,17 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Determine cutoff distances based on whether dual cutoff is used.
   double cutOffFrameworkVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
+      system.forceField->useDualCutOff ? system.forceField->dualCutOff : system.forceField->cutOffFrameworkVDW;
   double cutOffMoleculeVDW =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
+      system.forceField->useDualCutOff ? system.forceField->dualCutOff : system.forceField->cutOffMoleculeVDW;
   double cutOffCoulomb =
-      system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
+      system.forceField->useDualCutOff ? system.forceField->dualCutOff : system.forceField->cutOffCoulomb;
 
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainData> growData = CBMC::growMoleculeReinsertion(
-      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
-      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+      random, *system.framework, component, system.hasExternalField, system.components, *system.forceField,
+      *system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
       molecule_atoms, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
@@ -115,8 +115,8 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   ChainData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
-      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+      random, *system.framework, component, system.hasExternalField, system.components, *system.forceField,
+      *system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
       molecule_atoms, growData->storedR, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
@@ -128,8 +128,8 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Compute the energy difference in the Fourier space due to Ewald summation.
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, molecule_atoms);
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, *system.forceField,
+      *system.simulationBox, newMolecule, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the Ewald Fourier part of the move.
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
@@ -138,17 +138,17 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   double correctionFactorDualCutOff = 1.0;
   std::optional<RunningEnergy> energyNew;
   std::optional<RunningEnergy> energyOld;
-  if (system.forceField.useDualCutOff)
+  if (system.forceField->useDualCutOff)
   {
     // If dual cutoff is used, compute correction factor due to non-overlapping energies.
     energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        system.frameworkComponents, component, system.hasExternalField, system.forceField, system.simulationBox,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW,
-        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb, growData->atom);
+        *system.framework, component, system.hasExternalField, *system.forceField, *system.simulationBox,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField->cutOffFrameworkVDW,
+        system.forceField->cutOffMoleculeVDW, system.forceField->cutOffCoulomb, growData->atom);
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        system.frameworkComponents, component, system.hasExternalField, system.forceField, system.simulationBox,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW,
-        system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb, retraceData.atom);
+        *system.framework, component, system.hasExternalField, *system.forceField, *system.simulationBox,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.forceField->cutOffFrameworkVDW,
+        system.forceField->cutOffMoleculeVDW, system.forceField->cutOffCoulomb, retraceData.atom);
     correctionFactorDualCutOff =
         std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
                                  (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
@@ -164,11 +164,11 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
     molecule = growData->molecule;
 
-    if (system.forceField.useDualCutOff)
+    if (system.forceField->useDualCutOff)
     {
       return (energyNew.value() - energyOld.value()) + energyFourierDifference;
     }

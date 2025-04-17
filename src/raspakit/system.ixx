@@ -9,6 +9,7 @@ module;
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <optional>
 #include <ostream>
@@ -31,6 +32,7 @@ import <tuple>;
 import <optional>;
 import <span>;
 import <fstream>;
+import <memory>;
 import <ostream>;
 import <iostream>;
 import <numeric>;
@@ -128,16 +130,16 @@ export struct System
    * \param systemProbabilities The move probabilities for the Monte Carlo simulation.
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
-  System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
-         double heliumVoidFraction, std::vector<Framework> frameworkComponents, std::vector<Component> components,
-         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
+  System(size_t id, std::shared_ptr<ForceField> forceField, std::shared_ptr<SimulationBox> box, double T,
+         std::optional<double> P, double heliumVoidFraction, std::shared_ptr<Framework> framework,
+         std::vector<Component> components, std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
          const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<size_t> sampleMoviesEvery = std::nullopt);
 
-  System(size_t id, double T, std::optional<double> P, double heliumVoidFraction,
-         std::vector<Framework> frameworkComponents, std::vector<Component> components);
+  System(size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::shared_ptr<Framework> framework,
+         std::vector<Component> components);
 
-  uint64_t versionNumber{1};
+  uint64_t versionNumber{2};
 
   size_t systemId{};
 
@@ -148,11 +150,10 @@ export struct System
 
   double heliumVoidFraction{0.29};
 
-  size_t numberOfFrameworks{0};
   size_t numberOfFrameworkAtoms{0};
   size_t numberOfRigidFrameworkAtoms{0};
 
-  std::vector<Framework> frameworkComponents;
+  std::shared_ptr<Framework> framework;
   std::vector<Component> components;
 
   EquationOfState equationOfState;
@@ -186,7 +187,7 @@ export struct System
 
   std::vector<double> idealGasEnergiesPerComponent{};
 
-  ForceField forceField;
+  std::shared_ptr<ForceField> forceField;
   bool hasExternalField;
 
   std::vector<std::vector<size_t>> numberOfPseudoAtoms;
@@ -204,7 +205,7 @@ export struct System
 
   double timeStep{0.0005};
 
-  SimulationBox simulationBox;
+  std::shared_ptr<SimulationBox> simulationBox;
 
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
@@ -245,7 +246,6 @@ export struct System
   MCMoveCpuTime mc_moves_cputime;
 
   Reactions reactions;
-  TransitionMatrix tmmc;
 
   // Breakthrough settings
   size_t columnNumberOfGridPoints{100};
@@ -267,22 +267,23 @@ export struct System
   bool containsTheFractionalMolecule{true};
 
   // property measurements
-  PropertyEnergy averageEnergies;
-  PropertyLoading averageLoadings;
-  PropertyEnthalpy averageEnthalpiesOfAdsorption;
-  PropertyTemperature averageTemperature;
-  PropertyTemperature averageTranslationalTemperature;
-  PropertyTemperature averageRotationalTemperature;
-  PropertyPressure averagePressure;
-  PropertySimulationBox averageSimulationBox;
-  std::optional<SampleMovie> samplePDBMovie;
-  std::optional<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
-  std::optional<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
-  std::optional<PropertyDensityGrid> propertyDensityGrid;
-  std::optional<PropertyEnergyHistogram> averageEnergyHistogram;
-  std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
-  std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
-  std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
+  std::shared_ptr<TransitionMatrix> tmmc;
+  std::shared_ptr<PropertyEnergy> averageEnergies;
+  std::shared_ptr<PropertyLoading> averageLoadings;
+  std::shared_ptr<PropertyEnthalpy> averageEnthalpiesOfAdsorption;
+  std::shared_ptr<PropertyTemperature> averageTemperature;
+  std::shared_ptr<PropertyTemperature> averageTranslationalTemperature;
+  std::shared_ptr<PropertyTemperature> averageRotationalTemperature;
+  std::shared_ptr<PropertyPressure> averagePressure;
+  std::shared_ptr<PropertySimulationBox> averageSimulationBox;
+  std::shared_ptr<SampleMovie> samplePDBMovie;
+  std::shared_ptr<PropertyConventionalRadialDistributionFunction> propertyConventionalRadialDistributionFunction;
+  std::shared_ptr<PropertyRadialDistributionFunction> propertyRadialDistributionFunction;
+  std::shared_ptr<PropertyDensityGrid> propertyDensityGrid;
+  std::shared_ptr<PropertyEnergyHistogram> averageEnergyHistogram;
+  std::shared_ptr<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
+  std::shared_ptr<PropertyMeanSquaredDisplacement> propertyMSD;
+  std::shared_ptr<PropertyVelocityAutoCorrelationFunction> propertyVACF;
 
   /// The fractional molecule for grand-canonical is stored first
   inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0; }
@@ -302,7 +303,7 @@ export struct System
 
   void addComponent(const Component &&component) noexcept(false);
 
-  void createFrameworks();
+  void createFramework();
   void createInitialMolecules(RandomNumber &random);
   void determineSimulationBox();
 
@@ -316,10 +317,6 @@ export struct System
   void computeTotalElectricPotential() noexcept;
   void computeTotalElectricField() noexcept;
 
-  size_t randomFramework(RandomNumber &random)
-  {
-    return size_t(random.uniform() * static_cast<double>(numberOfFrameworks));
-  }
   size_t randomComponent(RandomNumber &random)
   {
     return size_t(random.uniform() * static_cast<double>(components.size()));

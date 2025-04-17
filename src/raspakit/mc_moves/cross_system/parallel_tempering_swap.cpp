@@ -74,9 +74,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::ParallelTemperi
     // Compute energy of system A using system B's force field
     time_begin = std::chrono::system_clock::now();
     RunningEnergy systemAHamiltonianB =
-        Interactions::computeInterMolecularEnergy(systemB.forceField, systemA.simulationBox, systemA.atomPositions);
+        Interactions::computeInterMolecularEnergy(*systemB.forceField, *systemA.simulationBox, systemA.atomPositions);
     RunningEnergy systemBHamiltonianA =
-        Interactions::computeInterMolecularEnergy(systemA.forceField, systemB.simulationBox, systemB.atomPositions);
+        Interactions::computeInterMolecularEnergy(*systemA.forceField, *systemB.simulationBox, systemB.atomPositions);
     time_end = std::chrono::system_clock::now();
 
     systemA.mc_moves_cputime[move]["Energy"] += (time_end - time_begin);

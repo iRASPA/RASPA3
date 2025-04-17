@@ -3,16 +3,14 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
-#include <iostream>
-#include <numbers>
+#include <memory>
 #endif
 
 export module potential_electrostatics;
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
-import <numbers>;
-import <iostream>;
+import <memory>;
 #endif
 
 import double4;
@@ -37,14 +35,14 @@ export namespace Potentials
  * \param chargeB The charge of the second particle.
  * \return The computed electrostatic potential.
  */
-[[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forcefield, const double& scalingB,
+[[clang::always_inline]] inline double potentialElectrostatics(const ForceField& forceField, const double& scalingB,
                                                                const double& r, const double& chargeB)
 {
-  switch (forcefield.chargeMethod)
+  switch (forceField.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
-      double alpha = forcefield.EwaldAlpha;
+      double alpha = forceField.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * scalingB * chargeB * std::erfc(alpha * r) / r;
       return temp;
     }

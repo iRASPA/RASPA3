@@ -49,7 +49,6 @@ import double3;
 import double4;
 import atom;
 import simulationbox;
-import forcefield;
 import component;
 import averages;
 

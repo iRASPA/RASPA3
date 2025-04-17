@@ -87,8 +87,8 @@ export struct EquationOfState
    * \param components The components present in the fluid mixture.
    */
   EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
-                  double temperature, double pressure, const SimulationBox &simulationBox, double heliumVoidFraction,
-                  std::vector<Component> &components);
+                  double temperature, double pressure, const SimulationBox &simulationBox,
+                  double heliumVoidFraction, std::vector<Component> &components);
 
   /**
    * \brief Computes the fluid properties for each component in the mixture.
@@ -107,7 +107,8 @@ export struct EquationOfState
    */
   void computeComponentFluidProperties(EquationOfState::Type equationOfState,
                                        EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
-                                       double temperature, double pressure, const SimulationBox &simulationBox,
+                                       double temperature, double pressure,
+                                       const SimulationBox &simulationBox,
                                        double heliumVoidFraction, std::vector<Component> &components);
 
   /**

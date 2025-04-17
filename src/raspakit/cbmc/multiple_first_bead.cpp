@@ -39,10 +39,10 @@ import forcefield;
 import simulationbox;
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
-    bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
+    RandomNumber& random, const Framework& framework, const Component& component, bool hasExternalField,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
 
@@ -51,7 +51,7 @@ import simulationbox;
                 [&](Atom& a) { a.position = simulationBox.randomPosition(random); });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
-      frameworkComponents, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
+      framework, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
 
   // if all positions over lap return failure
@@ -74,11 +74,10 @@ import simulationbox;
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadSwapDeletion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
-    bool hasExternalField, const ForceField& forcefield, const SimulationBox& simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom atom, double scaling,
-    size_t numberOfTrialDirections) noexcept
+    RandomNumber& random, const Framework& framework, const Component& component, bool hasExternalField,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom atom, double scaling, size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   for (Atom& trialPosition : trialPositions)
@@ -92,7 +91,7 @@ import simulationbox;
                 [&](Atom& a) { a.position = simulationBox.randomPosition(random); });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
-      frameworkComponents, component, hasExternalField, forcefield, simulationBox, frameworkAtoms, moleculeAtoms,
+      framework, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
 
   std::vector<double> logBoltmannFactors{};
@@ -107,17 +106,17 @@ import simulationbox;
 }
 
 [[nodiscard]] std::optional<FirstBeadData> CBMC::growRigidMultipleFirstBeadReinsertion(
-    RandomNumber& random, const std::vector<Framework>& frameworkComponents, const Component& component,
-    bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
+    RandomNumber& random, const Framework& framework, const Component& component, bool hasExternalField,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   std::for_each(trialPositions.begin(), trialPositions.end(),
                 [&](Atom& a) { a.position = simulationBox.randomPosition(random); });
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
-      frameworkComponents, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
+      framework, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
 
   if (externalEnergies.empty()) return std::nullopt;
@@ -142,15 +141,15 @@ import simulationbox;
 }
 
 [[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadReinsertion(
-    [[maybe_unused]] RandomNumber& random, const std::vector<Framework>& frameworkComponents,
-    const Component& component, bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
+    [[maybe_unused]] RandomNumber& random, const Framework& framework, const Component& component,
+    bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
     std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, const Atom& atom, double storedR, size_t numberOfTrialDirections)
 {
   std::vector<Atom> trialPositions({atom});
 
   const std::vector<std::pair<Atom, RunningEnergy>> externalEnergies = computeExternalNonOverlappingEnergies(
-      frameworkComponents, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
+      framework, component, hasExternalField, forceField, simulationBox, frameworkAtoms, moleculeAtoms,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions);
   if (externalEnergies.empty())
   {

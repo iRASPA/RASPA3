@@ -112,7 +112,7 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
 
 System& MolecularDynamics::randomSystem()
 {
-  return systems[size_t(random.uniform() * static_cast<double>(systems.size()))];
+  return *systems[size_t(random.uniform() * static_cast<double>(systems.size()))];
 }
 
 void MolecularDynamics::run()
@@ -142,10 +142,10 @@ continueProductionStage:
 void MolecularDynamics::createOutputFiles()
 {
   std::filesystem::create_directories("output");
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
     std::string fileNameString =
-        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.txt", system->temperature, system->input_pressure, system->systemId);
     streams.emplace_back(fileNameString, std::ios::out);
   }
 }
@@ -161,42 +161,42 @@ void MolecularDynamics::initialize()
 
   createOutputFiles();
 
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
     // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0uz)
-      system.containsTheFractionalMolecule = true;
+    if (system->systemId == 0uz)
+      system->containsTheFractionalMolecule = true;
     else
-      system.containsTheFractionalMolecule = false;
+      system->containsTheFractionalMolecule = false;
   }
 
-  for (const System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system->systemId].rdbuf());
 
-    std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "{}", system->writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
     std::print(stream, "{}\n", HardwareInfo::writeInfo());
     std::print(stream, "{}", Units::printStatus());
-    std::print(stream, "{}", system.writeSystemStatus());
-    std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-    std::print(stream, "{}", system.forceField.printForceFieldStatus());
-    std::print(stream, "{}", system.writeComponentStatus());
-    std::print(stream, "{}", system.reactions.printStatus());
+    std::print(stream, "{}", system->writeSystemStatus());
+    std::print(stream, "{}", system->forceField->printPseudoAtomStatus());
+    std::print(stream, "{}", system->forceField->printForceFieldStatus());
+    std::print(stream, "{}", system->writeComponentStatus());
+    std::print(stream, "{}", system->reactions.printStatus());
   }
 
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    system.precomputeTotalRigidEnergy();
-    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
-    system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
-    system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
+    system->precomputeTotalRigidEnergy();
+    Integrators::createCartesianPositions(system->moleculePositions, system->spanOfMoleculeAtoms(), system->components);
+    system->precomputeTotalGradients();
+    system->runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system->moleculePositions);
+    system->runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system->moleculePositions, system->components);
 
-    std::ostream stream(streams[system.systemId].rdbuf());
-    stream << system.runningEnergies.printMC("Recomputed from scratch");
+    std::ostream stream(streams[system->systemId].rdbuf());
+    stream << system->runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
   };
 
@@ -204,8 +204,8 @@ void MolecularDynamics::initialize()
   {
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
-        [](const System& system) { return system.numberOfMolecules(); });
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+        [](const std::shared_ptr<System>& system) { return system->numberOfMolecules(); });
+    totalNumberOfComponents = systems.front()->numerOfAdsorbateComponents();
 
     numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
@@ -216,41 +216,41 @@ void MolecularDynamics::initialize()
       // std::ranges::views::slide(s, 2uz);
 
       std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
-      System& selectedSystem = systems[selectedSystemPair.first];
-      System& selectSecondSystem = systems[selectedSystemPair.second];
+      System& selectedSystem = *systems[selectedSystemPair.first];
+      System& selectSecondSystem = *systems[selectedSystemPair.second];
 
       size_t selectedComponent = selectedSystem.randomComponent(random);
       MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
                                   fractionalMoleculeSystem);
 
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        for (Component& component : system.components)
+        for (Component& component : system->components)
         {
-          component.lambdaGC.sampleOccupancy(system.containsTheFractionalMolecule);
+          component.lambdaGC.sampleOccupancy(system->containsTheFractionalMolecule);
         }
       }
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system->systemId].rdbuf());
 
-        system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
-        std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
-        std::print(stream, "{}\n\n\n\n", system.runningEnergies.printMC(""));
+        system->loadings =
+            Loadings(system->components.size(), system->numberOfIntegerMoleculesPerComponent, *system->simulationBox);
+        std::print(stream, "{}", system->writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+        std::print(stream, "{}\n\n\n\n", system->runningEnergies.printMC(""));
         std::flush(stream);
       }
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        system.optimizeMCMoves();
+        system->optimizeMCMoves();
       }
     }
 
@@ -276,92 +276,92 @@ void MolecularDynamics::equilibrate()
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
 
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
-    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
-    Integrators::initializeVelocities(random, system.moleculePositions, system.components, system.temperature);
+    std::ostream stream(streams[system->systemId].rdbuf());
+    Integrators::createCartesianPositions(system->moleculePositions, system->spanOfMoleculeAtoms(), system->components);
+    Integrators::initializeVelocities(random, system->moleculePositions, system->components, system->temperature);
 
-    Integrators::removeCenterOfMassVelocityDrift(system.moleculePositions);
-    if (system.thermostat.has_value())
+    Integrators::removeCenterOfMassVelocityDrift(system->moleculePositions);
+    if (system->thermostat.has_value())
     {
-      if (system.frameworkComponents.empty() && system.numberOfMolecules() > 1uz)
+      if (!system->framework && system->numberOfMolecules() > 1uz)
       {
-        system.translationalCenterOfMassConstraint = 3;
-        system.thermostat->translationalCenterOfMassConstraint = 3;
+        system->translationalCenterOfMassConstraint = 3;
+        system->thermostat->translationalCenterOfMassConstraint = 3;
       }
-      system.thermostat->initialize(random);
+      system->thermostat->initialize(random);
     }
 
-    system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
-    system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
-    if (system.thermostat.has_value())
+    system->precomputeTotalGradients();
+    system->runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system->moleculePositions);
+    system->runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system->moleculePositions, system->components);
+    if (system->thermostat.has_value())
     {
-      system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+      system->runningEnergies.NoseHooverEnergy = system->thermostat->getEnergy();
     }
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system->referenceEnergy = system->runningEnergies.conservedEnergy();
 
-    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+    stream << system->runningEnergies.printMD("Recomputed from scratch", system->referenceEnergy);
     std::print(stream, "\n\n\n\n");
 
-    for (Component& component : system.components)
+    for (Component& component : system->components)
     {
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
-                                             system.containsTheFractionalMolecule);
+                                             system->containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
   {
-    for (System& system : systems)
+    for (const std::shared_ptr<System>& system : systems)
     {
-      system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
-          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-          system.numberOfMoleculesPerComponent);
+      system->runningEnergies = Integrators::velocityVerlet(
+          system->moleculePositions, system->spanOfMoleculeAtoms(), system->components, system->timeStep,
+          system->thermostat, system->spanOfFrameworkAtoms(), *system->forceField, *system->simulationBox,
+          system->eik_x, system->eik_y, system->eik_z, system->eik_xy, system->totalEik,
+          system->fixedFrameworkStoredEik, system->numberOfMoleculesPerComponent);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift +=
-          std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system->conservedEnergy = system->runningEnergies.conservedEnergy();
+      system->accumulatedDrift += std::abs(Units::EnergyToKelvin * (system->conservedEnergy - system->referenceEnergy) /
+                                           system->referenceEnergy);
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system->systemId].rdbuf());
 
-        system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+        system->loadings =
+            Loadings(system->components.size(), system->numberOfIntegerMoleculesPerComponent, *system->simulationBox);
 
-        std::print(stream, "{}", system.writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
+        std::print(stream, "{}", system->writeEquilibrationStatusReportMD(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
       }
     }
 
     if (currentCycle % rescaleWangLandauEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        for (Component& component : system.components)
+        for (Component& component : system->components)
         {
           component.lambdaGC.WangLandauIteration(
               PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
-              system.containsTheFractionalMolecule);
+              system->containsTheFractionalMolecule);
         }
       }
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        system.optimizeMCMoves();
+        system->optimizeMCMoves();
       }
     }
 
@@ -389,55 +389,55 @@ void MolecularDynamics::production()
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
 
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system->systemId].rdbuf());
 
-    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
-    system.precomputeTotalGradients();
-    system.runningEnergies.translationalKineticEnergy =
-        Integrators::computeTranslationalKineticEnergy(system.moleculePositions);
-    system.runningEnergies.rotationalKineticEnergy =
-        Integrators::computeRotationalKineticEnergy(system.moleculePositions, system.components);
-    if (system.thermostat.has_value())
+    Integrators::createCartesianPositions(system->moleculePositions, system->spanOfMoleculeAtoms(), system->components);
+    system->precomputeTotalGradients();
+    system->runningEnergies.translationalKineticEnergy =
+        Integrators::computeTranslationalKineticEnergy(system->moleculePositions);
+    system->runningEnergies.rotationalKineticEnergy =
+        Integrators::computeRotationalKineticEnergy(system->moleculePositions, system->components);
+    if (system->thermostat.has_value())
     {
-      system.runningEnergies.NoseHooverEnergy = system.thermostat->getEnergy();
+      system->runningEnergies.NoseHooverEnergy = system->thermostat->getEnergy();
     }
-    system.referenceEnergy = system.runningEnergies.conservedEnergy();
+    system->referenceEnergy = system->runningEnergies.conservedEnergy();
 
-    stream << system.runningEnergies.printMD("Recomputed from scratch", system.referenceEnergy);
+    stream << system->runningEnergies.printMD("Recomputed from scratch", system->referenceEnergy);
     std::print(stream, "\n");
 
-    system.mc_moves_statistics.clearMoveStatistics();
-    system.mc_moves_cputime.clearTimingStatistics();
+    system->mc_moves_statistics.clearMoveStatistics();
+    system->mc_moves_cputime.clearTimingStatistics();
     integratorsCPUTime.clearTimingStatistics();
 
-    system.accumulatedDrift = 0.0;
+    system->accumulatedDrift = 0.0;
 
-    for (Component& component : system.components)
+    for (Component& component : system->components)
     {
       component.mc_moves_statistics.clearMoveStatistics();
       component.mc_moves_cputime.clearTimingStatistics();
 
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
-                                             system.containsTheFractionalMolecule);
+                                             system->containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
   };
 
   minBias = std::numeric_limits<double>::max();
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    for (Component& component : system.components)
+    for (Component& component : system->components)
     {
       double currentMinBias =
           *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
       minBias = currentMinBias < minBias ? currentMinBias : minBias;
     }
   }
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    for (Component& component : system.components)
+    for (Component& component : system->components)
     {
       component.lambdaGC.normalize(minBias);
     }
@@ -450,90 +450,90 @@ void MolecularDynamics::production()
 
     estimation.setCurrentSample(currentCycle);
 
-    for (System& system : systems)
+    for (const std::shared_ptr<System>& system : systems)
     {
-      system.runningEnergies = Integrators::velocityVerlet(
-          system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
-          system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-          system.numberOfMoleculesPerComponent);
+      system->runningEnergies = Integrators::velocityVerlet(
+          system->moleculePositions, system->spanOfMoleculeAtoms(), system->components, system->timeStep,
+          system->thermostat, system->spanOfFrameworkAtoms(), *system->forceField, *system->simulationBox,
+          system->eik_x, system->eik_y, system->eik_z, system->eik_xy, system->totalEik,
+          system->fixedFrameworkStoredEik, system->numberOfMoleculesPerComponent);
 
-      system.conservedEnergy = system.runningEnergies.conservedEnergy();
-      system.accumulatedDrift +=
-          std::abs(Units::EnergyToKelvin * (system.conservedEnergy - system.referenceEnergy) / system.referenceEnergy);
+      system->conservedEnergy = system->runningEnergies.conservedEnergy();
+      system->accumulatedDrift += std::abs(Units::EnergyToKelvin * (system->conservedEnergy - system->referenceEnergy) /
+                                           system->referenceEnergy);
     }
 
     // sample properties
-    for (System& system : systems)
+    for (const std::shared_ptr<System>& system : systems)
     {
-      system.sampleProperties(estimation.currentBin, currentCycle);
+      system->sampleProperties(estimation.currentBin, currentCycle);
     }
 
-    for ([[maybe_unused]] System& system : systems)
+    for ([[maybe_unused]] const std::shared_ptr<System>& system : systems)
     {
       // add the sample energy to the averages
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
         // std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
-        // std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        // system.currentEnergyStatus = molecularPressure.first;
-        // system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        // std::pair<EnergyStatus, double3x3> molecularPressure = system->computeMolecularPressure();
+        // system->currentEnergyStatus = molecularPressure.first;
+        // system->currentExcessPressureTensor = molecularPressure.second / system->simulationBox.volume;
         // std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-        // system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-        // system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+        // system->mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        // system->averageEnergies->addSample(estimation.currentBin, molecularPressure.first, system->weight());
       }
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
-        std::print(stream, "{}", system.writeProductionStatusReportMD(currentCycle, numberOfCycles));
+        std::ostream stream(streams[system->systemId].rdbuf());
+        std::print(stream, "{}", system->writeProductionStatusReportMD(currentCycle, numberOfCycles));
         std::flush(stream);
       }
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
     {
-      for (System& system : systems)
+      for (const std::shared_ptr<System>& system : systems)
       {
-        system.optimizeMCMoves();
+        system->optimizeMCMoves();
       }
     }
 
     // output properties to files
-    for (System& system : systems)
+    for (const std::shared_ptr<System>& system : systems)
     {
-      if (system.propertyConventionalRadialDistributionFunction.has_value())
+      if (system->propertyConventionalRadialDistributionFunction)
       {
-        system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+        system->propertyConventionalRadialDistributionFunction->writeOutput(
+            *system->forceField, system->systemId, system->simulationBox->volume, system->totalNumberOfPseudoAtoms,
             currentCycle);
       }
 
-      if (system.propertyRadialDistributionFunction.has_value())
+      if (system->propertyRadialDistributionFunction)
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
-                                                               system.simulationBox.volume,
-                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+        system->propertyRadialDistributionFunction->writeOutput(*system->forceField, system->systemId,
+                                                                system->simulationBox->volume,
+                                                                system->totalNumberOfPseudoAtoms, currentCycle);
       }
-      if (system.propertyDensityGrid.has_value())
+      if (system->propertyDensityGrid)
       {
-        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                system.frameworkComponents, system.components, currentCycle);
-      }
-
-      if (system.propertyMSD.has_value())
-      {
-        system.propertyMSD->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
-                                        system.timeStep, currentCycle);
+        system->propertyDensityGrid->writeOutput(system->systemId, *system->simulationBox, *system->forceField,
+                                                 system->framework, system->components, currentCycle);
       }
 
-      if (system.propertyVACF.has_value())
+      if (system->propertyMSD)
       {
-        system.propertyVACF->writeOutput(system.systemId, system.components,
-                                         system.numberOfIntegerMoleculesPerComponent, system.timeStep, currentCycle);
+        system->propertyMSD->writeOutput(system->systemId, system->components,
+                                         system->numberOfIntegerMoleculesPerComponent, system->timeStep, currentCycle);
+      }
+
+      if (system->propertyVACF)
+      {
+        system->propertyVACF->writeOutput(system->systemId, system->components,
+                                          system->numberOfIntegerMoleculesPerComponent, system->timeStep, currentCycle);
       }
     }
 
@@ -559,24 +559,24 @@ void MolecularDynamics::output()
 {
   MCMoveCpuTime total;
   MCMoveStatistics countTotal;
-  for (const System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    total += system.mc_moves_cputime;
-    countTotal += system.mc_moves_statistics;
-    for (const Component& component : system.components)
+    total += system->mc_moves_cputime;
+    countTotal += system->mc_moves_statistics;
+    for (const Component& component : system->components)
     {
       countTotal += component.mc_moves_statistics;
     }
   }
 
-  for (System& system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system->systemId].rdbuf());
 
     std::print(stream, "Monte-Carlo moves statistics\n");
     std::print(stream, "===============================================================================\n\n");
 
-    std::print(stream, "{}", system.writeMCMoveStatistics());
+    std::print(stream, "{}", system->writeMCMoveStatistics());
 
     std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
     std::print(stream, "===============================================================================\n\n");
@@ -588,12 +588,12 @@ void MolecularDynamics::output()
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (const Component& component : system.components)
+    for (const Component& component : system->components)
     {
       std::print(stream, "{}",
                  component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
     }
-    std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+    std::print(stream, "{}", system->mc_moves_cputime.writeMCMoveCPUTimeStatistics());
     std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics());
 
     std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
@@ -603,13 +603,14 @@ void MolecularDynamics::output()
     std::print(stream, "\n\n");
 
     std::print(stream, "{}",
-               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.frameworkComponents,
-                                                              system.components));
-    std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
-    std::print(
-        stream, "{}",
-        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
-    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass()));
+               system->averageEnergies->writeAveragesStatistics(system->hasExternalField, system->framework,
+                                                                system->components));
+    std::print(stream, "{}", system->averagePressure->writeAveragesStatistics());
+    std::print(stream, "{}",
+               system->averageEnthalpiesOfAdsorption->writeAveragesStatistics(system->swappableComponents,
+                                                                              system->components));
+    std::print(stream, "{}",
+               system->averageLoadings->writeAveragesStatistics(system->components, system->frameworkMass()));
   }
 }
 

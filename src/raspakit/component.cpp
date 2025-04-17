@@ -117,10 +117,10 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
 }
 
 // create programmatically an 'adsorbate' component
-Component::Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
-                     double P_c, double w, std::vector<Atom> atomList, size_t numberOfBlocks, size_t numberOfLambdaBins,
-                     const MCMoveProbabilities &particleProbabilities, std::optional<double> fugacityCoefficient,
-                     bool thermodynamicIntegration) noexcept(false)
+Component::Component(size_t componentId, const ForceField &forceField, std::string componentName,
+                     double T_c, double P_c, double w, std::vector<Atom> atomList, size_t numberOfBlocks,
+                     size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
+                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
     : type(Type::Adsorbate),
       componentId(componentId),
       name(componentName),

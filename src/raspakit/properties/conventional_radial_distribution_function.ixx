@@ -73,8 +73,8 @@ export struct PropertyConventionalRadialDistributionFunction
   std::vector<size_t> numberOfCounts;
   std::vector<size_t> pairCount;
 
-  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
-              size_t currentCycle, size_t block);
+  void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+              std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
   void writeOutput(const ForceField &forceField, size_t systemId, double volume,
                    std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle);
 

@@ -225,7 +225,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
 
   for (const MoveTypes& moveType : systemMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
+    if (!timingMap.contains(moveType)) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -243,7 +243,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
 
   for (const MoveTypes& moveType : crossSystemMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
+    if (!timingMap.contains(moveType)) continue;
     auto& moveTimings = timingMap.at(moveType);
     if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
     {
@@ -274,7 +274,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId
   std::print(stream, "Component {} {}\n", componentId, componentName);
   for (const MoveTypes& moveType : componentMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
+    if (!timingMap.contains(moveType)) continue;
     auto& moveTimings = timingMap.at(moveType);
     double total = moveTimings.at("Total").count();
     if (total > 0.0)

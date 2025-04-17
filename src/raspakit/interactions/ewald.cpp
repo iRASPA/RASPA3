@@ -1,7 +1,6 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <algorithm>
 #include <cmath>
 #include <complex>
 #include <cstddef>
@@ -21,7 +20,6 @@ import <numbers>;
 import <cmath>;
 import <vector>;
 import <iostream>;
-import <algorithm>;
 import <type_traits>;
 #endif
 
@@ -933,10 +931,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Framework> &frameworkComponents,
-    const std::vector<Component> &components, const std::vector<size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomPositions, double UIon, double netChargeFramework,
-    std::vector<double> netChargePerComponent) noexcept
+    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
+    const std::vector<size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomPositions, double UIon,
+    double netChargeFramework, std::vector<double> netChargePerComponent) noexcept
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -947,7 +944,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
 
-  EnergyStatus energy(1, frameworkComponents.size(), components.size());
+  EnergyStatus energy(1, 1, components.size());
   double3x3 strainDerivative;
 
   if (!forceField.useCharge || forceField.omitEwaldFourier) return std::make_pair(energy, strainDerivative);
@@ -1204,7 +1201,6 @@ void Interactions::computeEwaldFourierElectricPotential(
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
   double3 az = double3(inv_box.az, inv_box.bz, inv_box.cz);
-  RunningEnergy energySum{};
 
   if (!forceField.useCharge) return;
   if (forceField.omitEwaldFourier) return;

@@ -41,6 +41,8 @@ import simulationbox;
  * The ForceField struct contains all parameters and methods related to force field calculations,
  * including van der Waals interactions, electrostatics, Ewald summation parameters,
  * mixing rules, and methods to initialize and compute these parameters.
+ * * NOTE: we need std::enable_shared_from_this as a method of ForceField requires a shared_ptr to *this.
+ * *       see stackoverflow.com/questions/712279/what-is-the-usefulness-of-enable-shared-from-this
  */
 export struct ForceField
 {
@@ -208,8 +210,8 @@ export struct ForceField
    * \param forceFieldFileName Name of the force field file.
    * \return An optional ForceField object if successful.
    */
-  static std::optional<ForceField> readForceField(std::optional<std::string> directoryName,
-                                                  std::string forceFieldFileName) noexcept(false);
+  static std::shared_ptr<ForceField> readForceField(std::optional<std::string> directoryName,
+                                                    std::string forceFieldFileName) noexcept(false);
 
   /**
    * \brief Returns a string representation of the pseudo-atom status.

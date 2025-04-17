@@ -70,7 +70,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   // Calculate the total number of molecules
   double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(),
                                                              system.numberOfIntegerMoleculesPerComponent.end()));
-  double oldVolume = system.simulationBox.volume;
+  double oldVolume = system.simulationBox->volume;
   double maxVolumeChange = system.mc_moves_statistics.getMaxChange(move);
 
   // Propose a new volume change
@@ -78,20 +78,20 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   // Compute scaling factor for box dimensions
   double scale = std::pow(newVolume / oldVolume, 1.0 / 3.0);
 
-  SimulationBox newBox = system.simulationBox.scaled(scale);
+  SimulationBox newBox = system.simulationBox->scaled(scale);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions = system.scaledCenterOfMassPositions(scale);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new intermolecular energy
   RunningEnergy newTotalInterEnergy =
-      Interactions::computeInterMolecularEnergy(system.forceField, newBox, newPositions.second);
+      Interactions::computeInterMolecularEnergy(*system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new tail corrections
   RunningEnergy newTotalTailEnergy =
-      Interactions::computeInterMolecularTailEnergy(system.forceField, newBox, newPositions.second);
+      Interactions::computeInterMolecularTailEnergy(*system.forceField, newBox, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
@@ -99,7 +99,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   // Compute new Ewald Fourier energy
   RunningEnergy newTotalEwaldEnergy = Interactions::computeEwaldFourierEnergy(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.totalEik,
-      system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
+      *system.forceField, newBox, system.components, system.numberOfMoleculesPerComponent, newPositions.second);
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
@@ -118,11 +118,11 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     // Move accepted: update system state
     system.mc_moves_statistics.addAccepted(move);
 
-    system.simulationBox = newBox;
+    system.simulationBox = std::make_shared<SimulationBox>(std::move(newBox));
     std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculePositions.begin());
     std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomPositions.begin());
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
 
     return newTotalEnergy;
   }

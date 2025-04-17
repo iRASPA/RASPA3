@@ -46,11 +46,11 @@ import simulationbox;
 import multi_site_isotherm;
 import isotherm_fitting;
 
-IsothermFittingSimulation::IsothermFittingSimulation(InputReader &inputReader) : systems(std::move(inputReader.systems))
+IsothermFittingSimulation::IsothermFittingSimulation(InputReader& inputReader) : systems(inputReader.systems)
 {
-  for (System &system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
-    std::string directoryNameString = std::format("output/system_{}/", system.systemId);
+    std::string directoryNameString = std::format("output/system_{}/", system->systemId);
     std::filesystem::path directoryName{directoryNameString};
     std::filesystem::create_directories(directoryName);
   }
@@ -58,17 +58,17 @@ IsothermFittingSimulation::IsothermFittingSimulation(InputReader &inputReader) :
 
 void IsothermFittingSimulation::run()
 {
-  for (System &system : systems)
+  for (const std::shared_ptr<System>& system : systems)
   {
     IsothermFitting fitting(system);
 
     std::string fileNameString =
-        std::format("output/system_{}/output_{}_{}.txt", system.systemId, system.temperature, system.input_pressure);
+        std::format("output/system_{}/output_{}_{}.txt", system->systemId, system->temperature, system->input_pressure);
     std::ofstream fstream(fileNameString, std::ios::out);
     std::ostream stream(fstream.rdbuf());
     // std::ostream stream(std::cout.rdbuf());
 
-    std::print(stream, "{}", system.writeOutputHeader());
+    std::print(stream, "{}", system->writeOutputHeader());
     std::print(stream, "{}", HardwareInfo::writeInfo());
     std::print(stream, "{}", fitting.writeHeader());
 

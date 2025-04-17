@@ -26,27 +26,26 @@ import simulationbox;
 export namespace CBMC
 {
 [[nodiscard]] std::optional<FirstBeadData> growMoleculeMultipleFirstBeadSwapInsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadSwapDeletion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forcefield, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom atom, double scaling,
-    size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom atom, double scaling, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] std::optional<FirstBeadData> growRigidMultipleFirstBeadReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadReinsertion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, double storedR, size_t numberOfTrialDirections);
+    RandomNumber &random, const Framework &framework, const Component &component, bool hasExternalField,
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, double storedR, size_t numberOfTrialDirections);
 }  // namespace CBMC

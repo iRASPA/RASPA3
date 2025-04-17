@@ -1,11 +1,7 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <fstream>
-#include <span>
-#include <string>
-#include <tuple>
+#include <memory>
 #include <vector>
 #endif
 
@@ -13,10 +9,7 @@ export module isotherm_fitting_simulation;
 
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
-import <span>;
-import <tuple>;
-import <string>;
-import <fstream>;
+import <memory>;
 #endif
 
 import input_reader;
@@ -33,5 +26,5 @@ export struct IsothermFittingSimulation
   void run();
 
  private:
-  std::vector<System> systems;
+  std::vector<std::shared_ptr<System>> systems;
 };

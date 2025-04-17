@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #endif
 
 export module potential_hessian_vdw;
@@ -11,6 +12,7 @@ export module potential_hessian_vdw;
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <iostream>;
+import <memory>;
 #endif
 
 import double4;
@@ -39,21 +41,22 @@ export namespace Potentials
  *
  * \return A HessianFactor object containing the computed energy, gradient, and Hessian.
  */
-[[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forcefield, const bool& groupIdA,
-                                                                  const bool& groupIdB, const double& scalingA,
-                                                                  const double& scalingB, const double& rr,
-                                                                  const size_t& typeA, const size_t& typeB)
+[[clang::always_inline]] inline HessianFactor potentialVDWHessian(const ForceField& forceField,
+                                                                  const bool& groupIdA, const bool& groupIdB,
+                                                                  const double& scalingA, const double& scalingB,
+                                                                  const double& rr, const size_t& typeA,
+                                                                  const size_t& typeB)
 {
-  VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
+  VDWParameters::Type potentialType = forceField(typeA, typeB).type;
 
   double scaling = scalingA * scalingB;
   switch (potentialType)
   {
     [[likely]] case VDWParameters::Type::LennardJones:
     {
-      double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
+      double arg1 = 4.0 * forceField(typeA, typeB).parameters.x;
+      double arg2 = forceField(typeA, typeB).parameters.y * forceField(typeA, typeB).parameters.y;
+      double arg3 = forceField(typeA, typeB).shift;
       double temp = (rr / arg2);          // (r/sigma)^2
       double temp3 = temp * temp * temp;  // (r/sigma)^6
       double inv_scaling = 1.0 - scaling;

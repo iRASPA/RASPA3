@@ -42,12 +42,28 @@ import mdspan;
 
 extern "C"
 {
+  // Fortran LAPACK routine for solving linear systems.
   void dgesv_(const long long* n, const long long* nrhs, double* a, const long long* lda, long long* ipiv, double* b,
               const long long* ldb, long long* info);
 }
 
-static double getJ(const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms, const std::vector<double>& J,
-                   size_t i, size_t j, ChargeEquilibration::Type type)
+/**
+ * \brief Calculates pairwise hardness contributions for Charge Equilibration.
+ *
+ * Depending on the ChargeEquilibration::Type selected, this function may also
+ * compute orbital overlap contributions and apply periodic boundary conditions.
+ * When \p i == \p j, it simply returns the atomic hardness J[i].
+ *
+ * \param simulationBox   Simulation box defining periodic boundary conditions.
+ * \param frameworkAtoms  The array or span of Atom objects under consideration.
+ * \param J               A reference to the hardness array for each atom in the system.
+ * \param i               Index of the first atom.
+ * \param j               Index of the second atom.
+ * \param type            The chosen QEq method (e.g., NonPeriodic, Periodic, etc.).
+ * \return                The pairwise hardness (off-diagonal term) or atomic hardness (diagonal term).
+ */
+static double getJ(const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms,
+                   const std::vector<double>& J, size_t i, size_t j, ChargeEquilibration::Type type)
 {
   double k = 14.4;      // [Angstroms * electron volts]
   double lambda = 1.2;  // Global hardness scaling parameter
@@ -89,7 +105,6 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
       {
         double3 dr = frameworkAtoms[i].position - frameworkAtoms[j].position;
         dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-
         double r2 = double3::dot(dr, dr);
         double r = std::sqrt(r2);
 
@@ -362,7 +377,23 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
   return 0.0;
 }
 
-void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceField, const SimulationBox& simulationBox,
+/**
+ * \brief Implements the QEq algorithm to compute atomic charges for a given set of atoms.
+ *
+ * The method assembles a linear system based on differences in electronegativities and
+ * off-diagonal hardnesses, then solves it via the LAPACK routine \p dgesv_. Results
+ * are assigned directly to \p frameworkAtoms.
+ *
+ * \param forceField     ForceField pointer providing pseudo-atom data (oxidation states, etc.).
+ * \param simulationBox  SimulationBox that may enforce periodic boundaries.
+ * \param frameworkAtoms A span of Atom objects to be updated with their respective charges.
+ * \param type           Specifies which charge equilibration technique to use.
+ */
+
+// Code that sets up and solves the QEq system
+// ...
+void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceField,
+                                                     const SimulationBox& simulationBox,
                                                      std::span<Atom> frameworkAtoms, ChargeEquilibration::Type type)
 {
   const double k = 14.4;      // [Angstroms * electron volts]

@@ -43,7 +43,8 @@ export namespace Interactions
  * \param moleculeAtoms A span of atoms to compute the energy for.
  * \param energyStatus The running total of energies to be updated.
  */
-void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField,
+                                const SimulationBox &simulationBox,
                                 std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
 
 /**
@@ -59,8 +60,8 @@ void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceFi
  * \param energyStatus The running total of energies to be updated.
  */
 void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &forceField,
-                                    const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-                                    RunningEnergy &energyStatus) noexcept;
+                                    const SimulationBox &simulationBox,
+                                    std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus) noexcept;
 
 /**
  * \brief Computes the difference in external field energy between two states.
@@ -77,17 +78,19 @@ void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &for
  * \return An optional RunningEnergy containing the energy difference, or `std::nullopt` if overlap occurs.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeExternalFieldEnergyDifference(
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-calculateThirdDerivativeAtPositionExternalField(const ForceField &forceField, const SimulationBox &simulationBox,
+calculateThirdDerivativeAtPositionExternalField(const ForceField &forceField,
+                                                const SimulationBox &simulationBox,
                                                 double3 posA);
 
-std::array<double, 8> calculateTricubicFractionalAtPositionExternalField(const ForceField &forceField,
-                                                                         const SimulationBox &simulationBox,
-                                                                         double3 posA);
+std::array<double, 8> calculateTricubicFractionalAtPositionExternalField(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    double3 posA);
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>,
@@ -96,8 +99,8 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
 calculateSixthOrderDerivativeAtPositionExternalField(const ForceField &forceField, double3 pos);
 
-std::array<double, 27> calculateTriquinticFractionalAtPositionExternalField(const ForceField &forceField,
-                                                                            const SimulationBox &simulationBox,
-                                                                            double3 posA);
+std::array<double, 27> calculateTriquinticFractionalAtPositionExternalField(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    double3 posA);
 
 }  // namespace Interactions

@@ -80,7 +80,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   component.mc_moves_statistics.addTrial(move, selectedDirection);
 
   // Copy the current electric field if polarization is computed
-  if (system.forceField.computePolarization)
+  if (system.forceField->computePolarization)
   {
     std::copy(system.electricField.begin(), system.electricField.end(), system.electricFieldNew.begin());
   }
@@ -98,7 +98,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Compute external field energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
+      system.hasExternalField, *system.forceField, *system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
@@ -107,18 +107,18 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Compute framework-molecule energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> frameworkMolecule;
-  if (system.forceField.computePolarization)
+  if (system.forceField->computePolarization)
   {
     // Get the new electric field for the molecule
     std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
     frameworkMolecule = Interactions::computeFrameworkMoleculeElectricFieldDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), electricFieldMoleculeNew,
+        *system.forceField, *system.simulationBox, system.spanOfFrameworkAtoms(), electricFieldMoleculeNew,
         trialMolecule.second, molecule_atoms);
   }
   else
   {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+        *system.forceField, *system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
@@ -128,19 +128,19 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Compute molecule-molecule energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> interMolecule;
-  if (system.forceField.computePolarization)
+  if (system.forceField->computePolarization)
   {
     // Get the new electric fields for all molecules
     std::span<double3> electricFieldNew = system.spanOfMoleculeElectricFieldNew();
     std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
     interMolecule = Interactions::computeInterMolecularElectricFieldDifference(
-        system.forceField, system.simulationBox, electricFieldNew, electricFieldMoleculeNew,
+        *system.forceField, *system.simulationBox, electricFieldNew, electricFieldMoleculeNew,
         system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   }
   else
   {
     interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+        *system.forceField, *system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
@@ -150,18 +150,18 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Compute Ewald energy contribution
   time_begin = std::chrono::system_clock::now();
   RunningEnergy ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, trialMolecule.second, molecule_atoms);
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, *system.forceField,
+      *system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
   RunningEnergy polarization;
-  if (system.forceField.computePolarization)
+  if (system.forceField->computePolarization)
   {
     // Compute polarization energy difference
     polarization = Interactions::computePolarizationEnergyDifference(
-        system.forceField, system.spanOfMoleculeElectricFieldNew(), system.spanOfMoleculeElectricField(),
+        *system.forceField, system.spanOfMoleculeElectricFieldNew(), system.spanOfMoleculeElectricField(),
         system.spanOfMoleculeAtoms());
   }
 
@@ -179,13 +179,13 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
     component.mc_moves_statistics.addAccepted(move, selectedDirection);
 
     // Accept the Ewald move
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
     // Update the molecule atoms with the trial positions
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;
 
     // Update the electric field if polarization is computed
-    if (system.forceField.computePolarization)
+    if (system.forceField->computePolarization)
     {
       std::copy(system.electricFieldNew.begin(), system.electricFieldNew.end(), system.electricField.begin());
     }

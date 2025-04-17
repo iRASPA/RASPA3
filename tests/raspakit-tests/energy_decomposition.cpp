@@ -57,7 +57,7 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
   RunningEnergy energy = system.computeTotalEnergies();
 
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, system.atomPositions);
+      *system.forceField, system.components, *system.simulationBox, system.atomPositions);
   strainDerivative.first.sumTotal();
 
   EXPECT_NEAR(energy.moleculeMoleculeVDW + energy.moleculeMoleculeCharge, strainDerivative.first.totalEnergy.energy,
@@ -94,19 +94,19 @@ TEST(energy_decomposition, CO2_Methane_in_Box_Ewald)
   System system =
       System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {co2, co2_2}, {15, 30}, 5);
 
-  system.forceField.EwaldAlpha = 0.25;
-  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
+  system.forceField->EwaldAlpha = 0.25;
+  system.forceField->numberOfWaveVectors = int3(8, 8, 8);
 
   RunningEnergy energy = system.computeTotalEnergies();
 
   Interactions::computeEwaldFourierEnergySingleIon(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                                   system.forceField, system.simulationBox, double3(0.0, 0.0, 0.0),
+                                                   *system.forceField, *system.simulationBox, double3(0.0, 0.0, 0.0),
                                                    1.0);
 
   system.precomputeTotalRigidEnergy();
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-      system.forceField, system.simulationBox, system.frameworkComponents, system.components,
+      *system.forceField, *system.simulationBox, *system.framework, system.components,
       system.numberOfMoleculesPerComponent, system.spanOfMoleculeAtoms(), system.CoulombicFourierEnergySingleIon,
       system.netChargeFramework, system.netChargePerComponent);
 
@@ -192,7 +192,7 @@ TEST(energy_decomposition, CO2_Methane_in_Framework)
   RunningEnergy energy = system.computeTotalEnergies();
 
   RunningEnergy energyForces = Integrators::updateGradients(
-      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
+      system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), *system.forceField, *system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
       system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 

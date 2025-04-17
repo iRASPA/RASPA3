@@ -27,7 +27,6 @@ import <tuple>;
 import archive;
 import atom;
 import molecule;
-import molecule;
 import simulationbox;
 import forcefield;
 

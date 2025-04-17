@@ -87,12 +87,12 @@ TEST(electrostatic_potential, Test_reference_system_1)
   }
 
   RunningEnergy energy =
-      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, spanOfMoleculeAtoms) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtomPositions,
+      Interactions::computeInterMolecularEnergy(*system.forceField, *system.simulationBox, spanOfMoleculeAtoms) +
+      Interactions::computeFrameworkMoleculeEnergy(*system.forceField, *system.simulationBox, frameworkAtomPositions,
                                                    spanOfMoleculeAtoms) +
       Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                              system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
-                                              system.simulationBox, system.components,
+                                              system.fixedFrameworkStoredEik, system.storedEik, *system.forceField,
+                                              *system.simulationBox, system.components,
                                               system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
 
   system.computeTotalElectricPotential();
@@ -165,12 +165,12 @@ TEST(electrostatic_potential, Test_reference_system_2)
   }
 
   RunningEnergy energy =
-      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, spanOfMoleculeAtoms) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtomPositions,
+      Interactions::computeInterMolecularEnergy(*system.forceField, *system.simulationBox, spanOfMoleculeAtoms) +
+      Interactions::computeFrameworkMoleculeEnergy(*system.forceField, *system.simulationBox, frameworkAtomPositions,
                                                    spanOfMoleculeAtoms) +
       Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                              system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
-                                              system.simulationBox, system.components,
+                                              system.fixedFrameworkStoredEik, system.storedEik, *system.forceField,
+                                              *system.simulationBox, system.components,
                                               system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
 
   system.computeTotalElectricPotential();
@@ -235,9 +235,9 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
       5, 21);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
-  system.forceField.EwaldAlpha = 0.25;
-  system.forceField.numberOfWaveVectors = int3(8, 8, 8);
-  // system.forceField.omitEwaldFourier = true;
+  system.forceField->EwaldAlpha = 0.25;
+  system.forceField->numberOfWaveVectors = int3(8, 8, 8);
+  // system.forceField->omitEwaldFourier = true;
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtomPositions = system.spanOfFrameworkAtoms();
@@ -261,11 +261,11 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
     system.precomputeTotalRigidEnergy();
   }
 
-  RunningEnergy energy = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
+  RunningEnergy energy = Interactions::computeFrameworkMoleculeEnergy(*system.forceField, *system.simulationBox,
                                                                       frameworkAtomPositions, spanOfMoleculeAtoms) +
                          Interactions::computeEwaldFourierEnergy(
                              system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
-                             system.storedEik, system.forceField, system.simulationBox, system.components,
+                             system.storedEik, *system.forceField, *system.simulationBox, system.components,
                              system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
 
   system.computeTotalElectricPotential();

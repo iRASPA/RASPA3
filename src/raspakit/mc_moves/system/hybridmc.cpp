@@ -81,7 +81,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     currentEnergy = Integrators::velocityVerlet(
         moleculePositions, moleculeAtomPositions, system.components, dt, thermostat, system.spanOfFrameworkAtoms(),
-        system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+        *system.forceField, *system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
         system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
   }
   time_end = std::chrono::system_clock::now();
@@ -104,7 +104,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     system.spanOfMoleculeAtoms() = moleculeAtomPositions;
 
     Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
     return currentEnergy;
   }
   return std::nullopt;

@@ -71,16 +71,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   component.mc_moves_statistics.addTrial(move, 0);
 
   // Extract cutoff distances and growth type for the selected component
-  double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  double cutOffFrameworkVDW = system.forceField->cutOffFrameworkVDW;
+  double cutOffMoleculeVDW = system.forceField->cutOffMoleculeVDW;
+  double cutOffCoulomb = system.forceField->cutOffCoulomb;
   Component::GrowType growType = component.growType;
 
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
-      random, system.frameworkComponents, component, system.hasExternalField, system.components, system.forceField,
-      system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      random, *system.framework, component, system.hasExternalField, system.components, *system.forceField,
+      *system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, 1.0, 0uz,
       system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
@@ -106,8 +106,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Compute energy difference due to Ewald Fourier components
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, {});
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, *system.forceField,
+      *system.simulationBox, newMolecule, {});
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the Ewald part of the move
@@ -117,9 +117,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Compute tail energy difference due to long-range corrections
   time_begin = std::chrono::system_clock::now();
   RunningEnergy tailEnergyDifference =
-      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
+      Interactions::computeInterMolecularTailEnergyDifference(*system.forceField, *system.simulationBox,
                                                               system.spanOfMoleculeAtoms(), newMolecule, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(*system.forceField, *system.simulationBox,
                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
   time_end = std::chrono::system_clock::now();
 
@@ -135,20 +135,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
   double preFactor = correctionFactorEwald * system.beta * component.molFraction * fugacity *
-                     system.simulationBox.volume /
+                     system.simulationBox->volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
 
   // Calculate the acceptance probability Pacc
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 
   size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
+  double biasTransitionMatrix = system.tmmc->biasFactor(oldN + 1, oldN);
 
   // Check if TMMC is enabled and macrostate limit is not exceeded
-  if (system.tmmc.doTMMC)
+  if (system.tmmc->doTMMC)
   {
     size_t newN = oldN + 1;
-    if (newN > system.tmmc.maxMacrostate)
+    if (newN > system.tmmc->maxMacrostate)
     {
       return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
     }
@@ -161,7 +161,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     component.mc_moves_statistics.addAccepted(move, 0);
 
     // Accept Ewald move and insert the new molecule into the system
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
     system.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
     return {growData->energies + energyFourierDifference + tailEnergyDifference, double3(0.0, 1.0 - Pacc, Pacc)};

@@ -108,8 +108,8 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
 
 // create programmatically an 'framework' component
 Framework::Framework(size_t frameworkId, const ForceField& forceField, std::string fileName,
-                     SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
-                     int3 numberOfUnitCells) noexcept(false)
+                     std::shared_ptr<SimulationBox> simulationBox, size_t spaceGroupHallNumber,
+                     std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false)
     : simulationBox(simulationBox),
       spaceGroupHallNumber(spaceGroupHallNumber),
       numberOfUnitCells(numberOfUnitCells),
@@ -136,7 +136,7 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
 
   if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
   {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
+    ChargeEquilibration::computeChargeEquilibration(forceField, *simulationBox, unitCellAtoms,
                                                     ChargeEquilibration::Type::PeriodicEwaldSum);
 
     std::vector<size_t> countCharge(definedAtoms.size());
@@ -224,7 +224,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
 
   if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
   {
-    ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
+    ChargeEquilibration::computeChargeEquilibration(forceField, *simulationBox, unitCellAtoms,
                                                     ChargeEquilibration::Type::PeriodicEwaldSum);
 
     std::vector<size_t> countCharge(definedAtoms.size());
@@ -285,7 +285,7 @@ void Framework::expandDefinedAtomsToUnitCell()
     std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
     for (const double3& pos : listOfPositions)
     {
-      atomCopy.position = simulationBox.cell * pos.fract();
+      atomCopy.position = simulationBox->cell * pos.fract();
       expandAtoms.push_back(atomCopy);
     }
   }
@@ -298,7 +298,7 @@ void Framework::expandDefinedAtomsToUnitCell()
     for (size_t j = i + 1; j < expandAtoms.size(); ++j)
     {
       double3 dr = expandAtoms[i].position - expandAtoms[j].position;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      dr = simulationBox->applyPeriodicBoundaryConditions(dr);
       double rr = double3::dot(dr, dr);
       if (rr < 0.1)
       {
@@ -325,7 +325,7 @@ void Framework::makeSuperCell()
         {
           Atom atomCopy = atom;
           atomCopy.position +=
-              simulationBox.cell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+              simulationBox->cell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
           atoms.push_back(atomCopy);
         }
       }

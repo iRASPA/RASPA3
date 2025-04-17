@@ -26,7 +26,6 @@ import component;
 import simd_quatd;
 import double3x3;
 import rigid;
-import forcefield;
 import simulationbox;
 import running_energy;
 import forcefield;
@@ -239,10 +238,11 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 }
 
 RunningEnergy Integrators::updateGradients(
-    std::span<Atom> moleculeAtomPositions, std::span<Atom> frameworkAtomPositions, const ForceField& forceField,
-    const SimulationBox& simulationBox, const std::vector<Component> components,
-    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
-    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::span<Atom> moleculeAtomPositions, std::span<Atom> frameworkAtomPositions,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<Component> components, std::vector<std::complex<double>>& eik_x,
+    std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
+    std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<size_t> numberOfMoleculesPerComponent)

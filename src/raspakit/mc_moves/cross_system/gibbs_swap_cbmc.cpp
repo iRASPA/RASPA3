@@ -63,9 +63,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   componentB.mc_moves_statistics.addTrial(move);
 
   // Retrieve cutoff distances and grow type from system A
-  double cutOffFrameworkVDW = systemA.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = systemA.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = systemA.forceField.cutOffCoulomb;
+  double cutOffFrameworkVDW = systemA.forceField->cutOffFrameworkVDW;
+  double cutOffMoleculeVDW = systemA.forceField->cutOffMoleculeVDW;
+  double cutOffCoulomb = systemA.forceField->cutOffCoulomb;
   Component::GrowType growType = componentA.growType;
 
   // std::vector<Atom> atoms = componentA.recenteredCopy(1.0,
@@ -74,8 +74,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Attempt to grow a new molecule in system A using CBMC insertion
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
-      random, systemA.frameworkComponents, componentA, systemA.hasExternalField, systemA.components, systemA.forceField,
-      systemA.simulationBox, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growType,
+      random, *systemA.framework, componentA, systemA.hasExternalField, systemA.components, *systemA.forceField,
+      *systemA.simulationBox, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(), systemA.beta, growType,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex, 1.0, 0uz,
       systemA.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
@@ -96,7 +96,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceA = Interactions::energyDifferenceEwaldFourier(
       systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.storedEik, systemA.totalEik,
-      systemA.forceField, systemA.simulationBox, newMolecule, {});
+      *systemA.forceField, *systemA.simulationBox, newMolecule, {});
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation
@@ -106,9 +106,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Compute tail energy difference for system A
   time_begin = std::chrono::system_clock::now();
   [[maybe_unused]] RunningEnergy tailEnergyDifferenceA =
-      Interactions::computeInterMolecularTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+      Interactions::computeInterMolecularTailEnergyDifference(*systemA.forceField, *systemA.simulationBox,
                                                               systemA.spanOfMoleculeAtoms(), newMolecule, {}) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemA.forceField, systemA.simulationBox,
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(*systemA.forceField, *systemA.simulationBox,
                                                                  systemA.spanOfFrameworkAtoms(), newMolecule, {});
   time_end = std::chrono::system_clock::now();
 
@@ -127,8 +127,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Retrace the selected molecule in system B for deletion using CBMC
   time_begin = std::chrono::system_clock::now();
   ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
-      random, systemB.frameworkComponents, componentB, systemB.hasExternalField, systemB.components, systemB.forceField,
-      systemB.simulationBox, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
+      random, *systemB.framework, componentB, systemB.hasExternalField, systemB.components, *systemB.forceField,
+      *systemB.simulationBox, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(), systemB.beta,
       cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule, 1.0,
       systemB.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
@@ -141,7 +141,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   time_begin = std::chrono::system_clock::now();
   RunningEnergy energyFourierDifferenceB = Interactions::energyDifferenceEwaldFourier(
       systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.storedEik, systemB.totalEik,
-      systemB.forceField, systemB.simulationBox, {}, molecule);
+      *systemB.forceField, *systemB.simulationBox, {}, molecule);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for Ewald Fourier computation
@@ -151,9 +151,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   // Compute tail energy difference for system B
   time_begin = std::chrono::system_clock::now();
   [[maybe_unused]] RunningEnergy tailEnergyDifferenceB =
-      Interactions::computeInterMolecularTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+      Interactions::computeInterMolecularTailEnergyDifference(*systemB.forceField, *systemB.simulationBox,
                                                               systemB.spanOfMoleculeAtoms(), {}, molecule) +
-      Interactions::computeFrameworkMoleculeTailEnergyDifference(systemB.forceField, systemB.simulationBox,
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(*systemB.forceField, *systemB.simulationBox,
                                                                  systemB.spanOfFrameworkAtoms(), {}, molecule);
   time_end = std::chrono::system_clock::now();
 
@@ -172,23 +172,23 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   if (random.uniform() <
       (correctionFactorEwaldA * growData->RosenbluthWeight *
        static_cast<double>(systemB.numberOfIntegerMoleculesPerComponent[selectedComponent]) *
-       systemA.simulationBox.volume) /
+       systemA.simulationBox->volume) /
           (correctionFactorEwaldB * retraceData.RosenbluthWeight *
            (1.0 + static_cast<double>(systemA.numberOfIntegerMoleculesPerComponent[selectedComponent])) *
-           systemB.simulationBox.volume))
+           systemB.simulationBox->volume))
   {
     // Update accepted move statistics for system A
     componentA.mc_moves_statistics.addAccepted(move);
 
     // Accept Ewald updates and insert the new molecule into system A
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    Interactions::acceptEwaldMove(*systemA.forceField, systemA.storedEik, systemA.totalEik);
     systemA.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
     // Update accepted move statistics for system B
     componentB.mc_moves_statistics.addAccepted(move);
 
     // Accept Ewald updates and delete the selected molecule from system B
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+    Interactions::acceptEwaldMove(*systemB.forceField, systemB.storedEik, systemB.totalEik);
     systemB.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
     // Return the energy differences for both systems

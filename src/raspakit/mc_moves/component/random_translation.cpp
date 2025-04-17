@@ -69,7 +69,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   size_t selectedDirection = size_t(3.0 * random.uniform());
   // Generate a random displacement along the selected direction
   s[selectedDirection] = random.uniform();
-  displacement = system.simulationBox.cell * s;
+  displacement = system.simulationBox->cell * s;
 
   // Update move counts for the selected direction
   component.mc_moves_statistics.addTrial(move, selectedDirection);
@@ -87,7 +87,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   // Compute external field energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, trialMolecule.second, molecule_atoms);
+      system.hasExternalField, *system.forceField, *system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
@@ -96,7 +96,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   // Compute framework-molecule energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+      *system.forceField, *system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
@@ -105,7 +105,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   // Compute molecule-molecule energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+      *system.forceField, *system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
@@ -114,8 +114,8 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   // Compute Ewald energy contribution
   time_begin = std::chrono::system_clock::now();
   RunningEnergy ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, trialMolecule.second, molecule_atoms);
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, *system.forceField,
+      *system.simulationBox, trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
@@ -134,7 +134,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
     component.mc_moves_statistics.addAccepted(move, selectedDirection);
 
     // Accept Ewald move and update system state
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(*system.forceField, system.storedEik, system.totalEik);
     std::copy(trialMolecule.second.cbegin(), trialMolecule.second.cend(), molecule_atoms.begin());
     molecule = trialMolecule.first;
 

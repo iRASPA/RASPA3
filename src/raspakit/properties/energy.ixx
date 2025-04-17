@@ -133,9 +133,9 @@ export struct PropertyEnergy
     return blockEnergies;
   }
 
-  std::string writeAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
+  std::string writeAveragesStatistics(bool externalField, const std::shared_ptr<Framework> &framework,
                                       std::vector<Component> &components) const;
-  nlohmann::json jsonAveragesStatistics(bool externalField, std::vector<Framework> &frameworkComponents,
+  nlohmann::json jsonAveragesStatistics(bool externalField, const std::shared_ptr<Framework> &framework,
                                         std::vector<Component> &components) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);

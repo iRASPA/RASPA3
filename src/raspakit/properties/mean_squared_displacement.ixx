@@ -31,7 +31,6 @@ import atom;
 import molecule;
 import molecule;
 import simulationbox;
-import forcefield;
 import component;
 
 // Computes Mean Squared Displacement (MSD) using order-N algorithm

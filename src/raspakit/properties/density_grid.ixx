@@ -51,13 +51,12 @@ export struct PropertyDensityGrid
 
   PropertyDensityGrid() {}
 
-  PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery,
-                      size_t writeEvery, std::vector<size_t> densityGridPseudoAtomsList, Normalization normType)
-      : numberOfFrameworks(numberOfFrameworks),
-        numberOfComponents(numberOfComponents),
+  PropertyDensityGrid(size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery, size_t writeEvery,
+                      std::vector<size_t> densityGridPseudoAtomsList, Normalization normType)
+      : numberOfComponents(numberOfComponents),
         grid_cell(numberOfComponents *
                   static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-        grid_unitcell(std::min(1uz, numberOfFrameworks) * numberOfComponents *
+        grid_unitcell(numberOfComponents *
                       static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         totalGridSize(static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         numberOfGridPoints(numberOfGridPoints),
@@ -72,7 +71,6 @@ export struct PropertyDensityGrid
 
   uint64_t versionNumber{2};
 
-  size_t numberOfFrameworks;
   size_t numberOfComponents;
   std::vector<double> grid_cell;
   std::vector<double> grid_unitcell;
@@ -85,10 +83,10 @@ export struct PropertyDensityGrid
   Normalization normType{Normalization::Max};
   size_t numberOfSamples{0};
 
-  void sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox,
+  void sample(const std::shared_ptr<Framework> &frameworks, const SimulationBox &simulationBox,
               std::span<const Atom> moleculeAtoms, size_t currrentCycle);
   void writeOutput(size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
-                   const std::vector<Framework> &frameworkComponents, const std::vector<Component> &components,
+                   const std::shared_ptr<Framework> &frameworkComponents, const std::vector<Component> &components,
                    size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp);

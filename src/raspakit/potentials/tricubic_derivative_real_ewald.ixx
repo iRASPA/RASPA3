@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <numbers>
 #endif
 
@@ -13,6 +14,7 @@ export module potential_tricubic_derivative_real_ewald;
 import <cmath>;
 import <iostream>;
 import <numbers>;
+import <memory>;
 #endif
 
 import double4;
@@ -41,9 +43,10 @@ export namespace Potentials
  * \return A ThirdDerivativeFactor object containing the computed derivatives.
  */
 [[clang::always_inline]] inline TricubicDerivativeFactor potentialRealEwaldTricubicDerivative(
-    const ForceField& forcefield, const double& rr, const double& r, const double& chargeA, const double& chargeB)
+    const ForceField& forceField, const double& rr, const double& r, const double& chargeA,
+    const double& chargeB)
 {
-  double alpha = forcefield.EwaldAlpha;
+  double alpha = forceField.EwaldAlpha;
   double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
   return TricubicDerivativeFactor(
       temp,

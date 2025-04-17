@@ -45,29 +45,26 @@ import cbmc_interactions_external_field;
 import cbmc_interactions_framework_molecule;
 import cbmc_interactions_intermolecular;
 
-bool CBMC::insideBlockedPockets(const std::vector<Framework> &frameworkComponents, const Component &component,
+bool CBMC::insideBlockedPockets(const Framework &framework, const Component &component,
                                 std::span<const Atom> molecule_atoms)
 {
-  for (const Framework &framework : frameworkComponents)
+  for (size_t i = 0; i != component.blockingPockets.size(); ++i)
   {
-    for (size_t i = 0; i != component.blockingPockets.size(); ++i)
+    double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
+    double3 pos =
+        framework.simulationBox->cell *
+        double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
+    for (const Atom &atom : molecule_atoms)
     {
-      double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
-      double3 pos =
-          framework.simulationBox.cell *
-          double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
-      for (const Atom &atom : molecule_atoms)
+      double3 dr = atom.position - pos;
+
+      // compute the periodic boundary conditions with the single unit cell of the framework
+      dr = framework.simulationBox->applyPeriodicBoundaryConditions(dr);
+
+      double lambda = atom.scalingVDW;
+      if (dr.length_squared() < lambda * radius_squared)
       {
-        double3 dr = atom.position - pos;
-
-        // compute the periodic boundary conditions with the single unit cell of the framework
-        dr = framework.simulationBox.applyPeriodicBoundaryConditions(dr);
-
-        double lambda = atom.scalingVDW;
-        if (dr.length_squared() < lambda * radius_squared)
-        {
-          return true;
-        }
+        return true;
       }
     }
   }
@@ -81,9 +78,9 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 }
 
 [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(
-    const std::vector<Framework> &frameworkComponents, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    const Framework &framework, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositions) noexcept
 {
   std::vector<std::pair<Atom, RunningEnergy>> energies{};
@@ -91,7 +88,7 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
   // loop over the trial-positions and compute the external energy of each trial position '{it, 1}'
   for (auto it = trialPositions.begin(); it != trialPositions.end(); ++it)
   {
-    if (CBMC::insideBlockedPockets(frameworkComponents, component, {it, 1}))
+    if (CBMC::insideBlockedPockets(framework, component, {it, 1}))
     {
       continue;
     }
@@ -122,16 +119,16 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
 }
 
 const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(
-    const std::vector<Framework> &frameworkComponents, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    const Framework &framework, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip) noexcept
 {
   std::vector<std::pair<std::vector<Atom>, RunningEnergy>> energies{};
 
   for (std::vector<Atom> trialPositionSet : trialPositionSets)
   {
-    if (CBMC::insideBlockedPockets(frameworkComponents, component, trialPositionSet))
+    if (CBMC::insideBlockedPockets(framework, component, trialPositionSet))
     {
       continue;
     }
@@ -155,9 +152,9 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
 }
 
 const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(
-    const std::vector<Framework> &frameworkComponents, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    const Framework &framework, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip) noexcept
 {
@@ -165,7 +162,7 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
 
   for (auto &[molecule, trialPositionSet] : trialPositionSets)
   {
-    if (CBMC::insideBlockedPockets(frameworkComponents, component, trialPositionSet))
+    if (CBMC::insideBlockedPockets(framework, component, trialPositionSet))
     {
       continue;
     }
@@ -189,14 +186,14 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
 }
 
 const std::optional<RunningEnergy> CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-    const std::vector<Framework> &frameworkComponents, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    const Framework &framework, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositionSet) noexcept
 {
   std::pair<std::vector<Atom>, RunningEnergy> energies;
 
-  if (CBMC::insideBlockedPockets(frameworkComponents, component, trialPositionSet))
+  if (CBMC::insideBlockedPockets(framework, component, trialPositionSet))
   {
     return std::nullopt;
   }

@@ -41,8 +41,9 @@ SampleMovie::SampleMovie(size_t systemId, size_t sampleEvery) : sampleEvery(samp
   std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
 }
 
-void SampleMovie::update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox,
-                         std::span<Atom> atomPositions, size_t currentCycle)
+void SampleMovie::update(const ForceField &forceField, size_t systemId,
+                         const SimulationBox simulationBox, std::span<Atom> atomPositions,
+                         size_t currentCycle)
 {
   if (currentCycle % sampleEvery == 0)
   {
@@ -52,7 +53,8 @@ void SampleMovie::update(const ForceField &forceField, size_t systemId, const Si
     std::print(stream, "MODEL {:>4}\n", modelNumber);
     std::print(stream, "CRYST1{:9.3f}{:9.3f}{:9.3f}{:7.2f}{:7.2f}{:7.2f}\n", simulationBox.lengthA,
                simulationBox.lengthB, simulationBox.lengthC, simulationBox.angleAlpha * 180.0 / std::numbers::pi,
-               simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
+               simulationBox.angleBeta * 180.0 / std::numbers::pi,
+               simulationBox.angleGamma * 180.0 / std::numbers::pi);
 
     for (int index = 1; const Atom &atom : atomPositions)
     {

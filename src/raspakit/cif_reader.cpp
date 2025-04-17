@@ -97,8 +97,9 @@ CIFReader::CIFReader(const std::string& content, const ForceField& forceField)
       (std::abs(_alpha - 90.0) > 1.0e-3) || (std::abs(_beta - 90.0) > 1.0e-3) || (std::abs(_gamma - 90.0) > 1.0e-3)
           ? SimulationBox::Type::Triclinic
           : SimulationBox::Type::Rectangular;
-  simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0,
-                                _gamma * std::numbers::pi / 180.0, type);
+  simulationBox =
+      std::make_shared<SimulationBox>(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0,
+                                      _gamma * std::numbers::pi / 180.0, type);
 }
 
 void CIFReader::parseLine([[maybe_unused]] std::string& string) {}

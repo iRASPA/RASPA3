@@ -123,7 +123,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -149,7 +149,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -174,7 +174,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -200,7 +200,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
 
       break;
@@ -239,7 +239,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
           selectedSystem.runningEnergies += energyDifference.value();
         }
 
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -254,7 +254,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // perform move
         const auto [energyDifference, Pacc] = MC_Moves::insertionMove(random, selectedSystem, selectedComponent);
 
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -268,7 +268,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -282,7 +282,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       }
       else
       {
@@ -295,7 +295,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       }
       break;
     }
@@ -309,7 +309,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       break;
     }
     case MoveTypes::SwapCBCFCMC:
@@ -322,7 +322,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       break;
     }
     case MoveTypes::GibbsVolume:
@@ -464,7 +464,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -483,7 +483,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -502,7 +502,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -520,7 +520,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -549,7 +549,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldN);
+        selectedSystem.tmmc->updateMatrix(double3(0.0, 1.0, 0.0), oldN);
       }
       break;
     }
@@ -568,7 +568,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
@@ -585,7 +585,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
@@ -604,7 +604,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
@@ -622,7 +622,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         {
           selectedSystem.runningEnergies -= energyDifference.value();
         }
-        selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+        selectedSystem.tmmc->updateMatrix(Pacc, oldN);
 
         // extra time keeping for insertion / deletion split
         std::chrono::system_clock::time_point t3 = std::chrono::system_clock::now();
@@ -641,7 +641,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       break;
     }
     case MoveTypes::SwapCBCFCMC:
@@ -653,7 +653,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         selectedSystem.runningEnergies += energyDifference.value();
       }
-      selectedSystem.tmmc.updateMatrix(Pacc, oldN);
+      selectedSystem.tmmc->updateMatrix(Pacc, oldN);
       break;
     }
     case MoveTypes::GibbsVolume:

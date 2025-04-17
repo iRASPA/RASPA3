@@ -3,9 +3,8 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <fstream>
-#include <span>
+#include <memory>
 #include <string>
-#include <tuple>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
@@ -16,11 +15,10 @@ export module breakthrough;
 
 #ifndef USE_LEGACY_HEADERS
 import <vector>;
-import <span>;
-import <tuple>;
 import <string>;
 import <fstream>;
 import <mdspan>;
+import <memory>;
 #endif
 
 import input_reader;
@@ -34,7 +32,7 @@ import mdspan;
 export struct Breakthrough
 {
  public:
-  Breakthrough(System &system);
+  Breakthrough(std::shared_ptr<System> system);
 
   void print() const;
 
@@ -45,7 +43,7 @@ export struct Breakthrough
   void createMovieScripts();
 
  private:
-  const System &system;
+  const std::shared_ptr<System> system;
   const std::string displayName;
   const std::vector<Component> components;
   // size_t carrierGasComponent{ 0 };

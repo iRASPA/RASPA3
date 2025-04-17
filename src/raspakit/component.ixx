@@ -154,9 +154,9 @@ export struct Component
    *
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
-  Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
-            double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks, size_t numberOfLambdaBins,
-            const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
+  Component(size_t componentId, const ForceField &forceField, std::string componentName,
+            double T_c, double P_c, double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks,
+            size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
@@ -343,8 +343,8 @@ export struct Component
    * \param simulationBox The simulation box within which to place the molecule.
    * \return A pair containing the equilibrated molecule and its corresponding atoms.
    */
-  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(RandomNumber &random,
-                                                                         const SimulationBox &simulationBox) const;
+  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(
+      RandomNumber &random, const SimulationBox &simulationBox) const;
 
   /**
    * \brief Translates a molecule by a specified displacement.

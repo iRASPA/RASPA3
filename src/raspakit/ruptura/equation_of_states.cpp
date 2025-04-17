@@ -32,8 +32,9 @@ import component;
 import simulationbox;
 
 EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::MultiComponentMixingRules rules,
-                                 double temperature, double pressure, const SimulationBox &simulationBox,
-                                 double heliumVoidFraction, std::vector<Component> &components)
+                                 double temperature, double pressure,
+                                 const SimulationBox &simulationBox, double heliumVoidFraction,
+                                 std::vector<Component> &components)
     : equationOfState(type), multiComponentMixingRules(rules)
 {
   computeComponentFluidProperties(equationOfState, multiComponentMixingRules, temperature, pressure, simulationBox,
@@ -45,8 +46,8 @@ EquationOfState::EquationOfState(EquationOfState::Type type, EquationOfState::Mu
 void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type,
                                                       EquationOfState::MultiComponentMixingRules rules,
                                                       double temperature, double pressure,
-                                                      const SimulationBox &simulationBox, double heliumVoidFraction,
-                                                      std::vector<Component> &components)
+                                                      const SimulationBox &simulationBox,
+                                                      double heliumVoidFraction, std::vector<Component> &components)
 {
   std::vector<double> a(components.size());
   std::vector<double> b(components.size());

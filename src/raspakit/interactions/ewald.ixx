@@ -188,10 +188,9 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<Framework> &frameworkComponents,
-    const std::vector<Component> &components, const std::vector<size_t> &numberOfMoleculesPerComponent,
-    std::span<Atom> atomPositions, double UIon, double netChargeFramework,
-    std::vector<double> netChargePerComponent) noexcept;
+    const SimulationBox &simulationBox, const std::vector<Component> &components,
+    const std::vector<size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomPositions, double UIon,
+    double netChargeFramework, std::vector<double> netChargePerComponent) noexcept;
 
 /**
  * \brief Accepts a move by updating the stored Ewald Fourier components.

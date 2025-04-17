@@ -99,8 +99,8 @@ export struct Framework
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
    */
-  Framework(size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-            std::optional<const std::string> fileName, int3 numberOfUnitCells,
+  Framework(size_t currentComponent, const ForceField &forceField,
+            const std::string &componentName, std::optional<const std::string> fileName, int3 numberOfUnitCells,
             Framework::UseChargesFrom useChargesFrom) noexcept(false);
 
   /**
@@ -117,14 +117,15 @@ export struct Framework
    * \param definedAtoms Vector of atoms defining the positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(size_t componentId, const ForceField &forceField, std::string componentName, SimulationBox simulationBox,
-            size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false);
+  Framework(size_t componentId, const ForceField &forceField, std::string componentName,
+            std::shared_ptr<SimulationBox> simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
+            int3 numberOfUnitCells) noexcept(false);
 
   uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
-  SimulationBox simulationBox;      ///< Simulation box defining the unit cell dimensions.
-  size_t spaceGroupHallNumber{1};   ///< Space group number according to the Hall notation.
-  int3 numberOfUnitCells{1, 1, 1};  ///< Number of unit cells in each dimension for the supercell.
+  std::shared_ptr<SimulationBox> simulationBox;  ///< Simulation box defining the unit cell dimensions.
+  size_t spaceGroupHallNumber{1};                ///< Space group number according to the Hall notation.
+  int3 numberOfUnitCells{1, 1, 1};               ///< Number of unit cells in each dimension for the supercell.
 
   size_t frameworkId{0};                      ///< Identifier for the framework.
   std::string name{};                         ///< Name of the framework component.

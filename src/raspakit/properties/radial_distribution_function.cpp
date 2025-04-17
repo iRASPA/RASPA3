@@ -51,7 +51,8 @@ import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox,
+                                                std::span<Atom> frameworkAtoms,
                                                 [[maybe_unused]] const std::vector<Molecule> &molecules,
                                                 std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block)
 {
@@ -224,8 +225,8 @@ std::pair<std::vector<double>, std::vector<double>> PropertyRadialDistributionFu
   return std::make_pair(average, confidenceIntervalError);
 }
 
-void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, size_t systemId,
-                                                     [[maybe_unused]] double volume,
+void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField,
+                                                     size_t systemId, [[maybe_unused]] double volume,
                                                      [[maybe_unused]] std::vector<size_t> &numberOfPseudoAtomsType,
                                                      size_t currentCycle)
 {

@@ -62,16 +62,15 @@ import mdspan;
 // Gaussian cube file are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
 
-void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const SimulationBox &simulationBox,
+void PropertyDensityGrid::sample(const std::shared_ptr<Framework> &framework, const SimulationBox &simulationBox,
                                  std::span<const Atom> moleculeAtoms, size_t currentCycle)
 {
   if (currentCycle % sampleEvery != 0uz) return;
 
   std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
                                                           numberOfGridPoints.y, numberOfGridPoints.z);
-  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
-                                                              std::min(1uz, numberOfFrameworks), numberOfGridPoints.x,
-                                                              numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<size_t, 4>> data_unitcell(
+      grid_unitcell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for (std::span<const Atom>::iterator it = moleculeAtoms.begin(); it != moleculeAtoms.end(); ++it)
   {
@@ -81,10 +80,10 @@ void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const
     data_cell[comp, static_cast<size_t>(s.x * gridSize.x), static_cast<size_t>(s.y * gridSize.y),
               static_cast<size_t>(s.z * gridSize.z)]++;
 
-    for (size_t k = 0; k != frameworks.size(); ++k)
+    if (framework)
     {
-      double3 t = (frameworks[k].simulationBox.inverseCell * pos).fract();
-      data_unitcell[comp, k, static_cast<size_t>(t.x * gridSize.x), static_cast<size_t>(t.y * gridSize.y),
+      double3 t = (framework->simulationBox->inverseCell * pos).fract();
+      data_unitcell[comp, static_cast<size_t>(t.x * gridSize.x), static_cast<size_t>(t.y * gridSize.y),
                     static_cast<size_t>(t.z * gridSize.z)]++;
     }
   }
@@ -93,7 +92,7 @@ void PropertyDensityGrid::sample(const std::vector<Framework> &frameworks, const
 }
 
 void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const SimulationBox &simulationBox,
-                                      const ForceField &forceField, const std::vector<Framework> &frameworkComponents,
+                                      const ForceField &forceField, const std::shared_ptr<Framework> &framework,
                                       const std::vector<Component> &components, size_t currentCycle)
 {
   if (currentCycle % writeEvery != 0uz) return;
@@ -102,16 +101,15 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
 
   std::mdspan<double, std::dextents<size_t, 4>> data_cell(grid_cell.data(), numberOfComponents, numberOfGridPoints.x,
                                                           numberOfGridPoints.y, numberOfGridPoints.z);
-  std::mdspan<double, std::dextents<size_t, 5>> data_unitcell(grid_unitcell.data(), numberOfComponents,
-                                                              std::min(1uz, numberOfFrameworks), numberOfGridPoints.x,
-                                                              numberOfGridPoints.y, numberOfGridPoints.z);
+  std::mdspan<double, std::dextents<size_t, 4>> data_unitcell(
+      grid_unitcell.data(), numberOfComponents, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   for (size_t i = 0; i < components.size(); ++i)
   {
     std::ofstream ostream(std::format("density_grids/grid_component_{}.s{}.cube", components[i].name, systemId));
     const double3x3 cell = simulationBox.cell;
 
-    std::vector<Atom> frameworkAtoms = frameworkComponents.front().atoms;
+    std::vector<Atom> frameworkAtoms = framework ? framework->atoms : std::vector<Atom>{};
 
     std::print(ostream, "Cube density file\n");
     std::print(ostream, "Written by RASPA-3\n");
@@ -150,15 +148,15 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
     }
   }
 
-  for (size_t i = 0; i < components.size(); ++i)
+  if (framework)
   {
-    for (size_t k = 0; k < frameworkComponents.size(); ++k)
+    for (size_t i = 0; i < components.size(); ++i)
     {
-      std::ofstream ostream(std::format("density_grids/grid_{}_component_{}.s{}.cube", frameworkComponents[k].name,
-                                        components[i].name, systemId));
+      std::ofstream ostream(
+          std::format("density_grids/grid_unitcell_component_{}.s{}.cube", components[i].name, systemId));
 
-      std::vector<Atom> frameworkAtoms = frameworkComponents.front().unitCellAtoms;
-      double3x3 unitCell = frameworkComponents.front().simulationBox.cell;
+      std::vector<Atom> frameworkAtoms = framework->unitCellAtoms;
+      double3x3 unitCell = framework->simulationBox->cell;
 
       std::print(ostream, "Cube density file\n");
       std::print(ostream, "Written by RASPA-3\n");
@@ -181,7 +179,7 @@ void PropertyDensityGrid::writeOutput(size_t systemId, [[maybe_unused]] const Si
       }
 
       std::vector<double>::iterator it_begin =
-          grid_unitcell.begin() + std::distance(&data_unitcell[0, 0, 0, 0, 0], &data_unitcell[i, k, 0, 0, 0]);
+          grid_unitcell.begin() + std::distance(&data_unitcell[0, 0, 0, 0], &data_unitcell[i, 0, 0, 0]);
       std::vector<double>::iterator it_end =
           it_begin + static_cast<std::vector<double>::difference_type>(totalGridSize);
 
@@ -217,7 +215,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 {
   archive << temp.versionNumber;
 
-  archive << temp.numberOfFrameworks;
   archive << temp.numberOfComponents;
   archive << temp.grid_cell;
   archive << temp.grid_unitcell;
@@ -245,7 +242,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDens
                                          location.line(), location.file_name()));
   }
 
-  archive >> temp.numberOfFrameworks;
   archive >> temp.numberOfComponents;
   archive >> temp.grid_cell;
   archive >> temp.grid_unitcell;

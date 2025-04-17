@@ -3,14 +3,14 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cmath>
 #include <cstddef>
-#include <numbers>
+#include <memory>
 #endif
 
 export module potential_energy_coulomb;
 
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
-import <numbers>;
+import <memory>;
 #endif
 
 import forcefield;
@@ -38,18 +38,18 @@ export namespace Potentials
  * \param chargeB Electric charge of atom B.
  * \return An EnergyFactor object containing the computed Coulomb energy and any group-related scaling.
  */
-[[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forcefield, const bool& groupIdA,
+[[clang::always_inline]] inline EnergyFactor potentialCoulombEnergy(const ForceField& forceField, const bool& groupIdA,
                                                                     const bool& groupIdB, const double& scalingA,
                                                                     const double& scalingB, const double& r,
                                                                     const double& chargeA, const double& chargeB)
 {
   double scaling = scalingA * scalingB;
   // scaling is linear and first switch LJ on in 0-0.5, then the electrostatics from 0.5 to 1.0
-  switch (forcefield.chargeMethod)
+  switch (forceField.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
-      double alpha = forcefield.EwaldAlpha;
+      double alpha = forceField.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
       EnergyFactor result =
           EnergyFactor(scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0));

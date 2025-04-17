@@ -162,13 +162,13 @@ export struct CIFReader
   Scanner _scanner;                                   ///< Scanner object for navigating through the CIF content.
   std::string::const_iterator _previousScanLocation;  ///< Iterator pointing to the previous scan location.
 
-  std::vector<Atom> fractionalAtoms;            ///< List of atoms with fractional coordinates.
-  SimulationBox simulationBox;                  ///< The simulation box defined by cell parameters.
-  std::optional<size_t> _spaceGroupHallNumber;  ///< Optional space group Hall number.
-  double _a;                                    ///< Cell length a.
-  double _b;                                    ///< Cell length b.
-  double _c;                                    ///< Cell length c.
-  double _alpha;                                ///< Cell angle alpha in degrees.
-  double _beta;                                 ///< Cell angle beta in degrees.
-  double _gamma;                                ///< Cell angle gamma in degrees.
+  std::vector<Atom> fractionalAtoms;             ///< List of atoms with fractional coordinates.
+  std::shared_ptr<SimulationBox> simulationBox;  ///< The simulation box defined by cell parameters.
+  std::optional<size_t> _spaceGroupHallNumber;   ///< Optional space group Hall number.
+  double _a;                                     ///< Cell length a.
+  double _b;                                     ///< Cell length b.
+  double _c;                                     ///< Cell length c.
+  double _alpha;                                 ///< Cell angle alpha in degrees.
+  double _beta;                                  ///< Cell angle beta in degrees.
+  double _gamma;                                 ///< Cell angle gamma in degrees.
 };

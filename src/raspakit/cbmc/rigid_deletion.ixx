@@ -28,8 +28,8 @@ import component;
 export namespace CBMC
 {
 [[nodiscard]] ChainData retraceRigidMoleculeSwapDeletion(
-    RandomNumber &random, const std::vector<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forcefield,
+    RandomNumber &random, const Framework &framework, const Component &component,
+    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
     const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
     double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
     size_t selectedMolecule, std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept;

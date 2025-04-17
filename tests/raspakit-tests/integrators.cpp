@@ -133,8 +133,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   moleculePositions[1].orientationMomentum = simd_quatd(-10.0, 0.0, 0.0, 0.0);
 
   Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
-                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                              system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), *system.forceField,
+                              *system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                               system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[0].centerOfMassPosition, double3(5.933550, 7.933050, 5.933550), 1e-6);
@@ -147,8 +147,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   QUATD_EXPECT_NEAR(system.moleculePositions[1].orientationMomentum, simd_quatd(-10.000011, 0.0, 0.0, -0.000296), 1e-6);
 
   Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
-                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
-                              system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                              system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), *system.forceField,
+                              *system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                               system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[0].centerOfMassPosition, double3(5.933550, 7.932550, 5.933550), 1e-6);

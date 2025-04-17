@@ -1,14 +1,14 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cmath>
 #include <cstddef>
+#include <memory>
 #endif
 
 export module potential_correction_vdw;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
+import <memory>;
 #endif
 
 import vdwparameters;
@@ -30,18 +30,18 @@ export namespace Potentials
  *
  * \return The calculated VDW potential correction.
  */
-inline double potentialCorrectionVDW(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
+inline double potentialCorrectionVDW(const ForceField& forceField, const size_t& typeA, const size_t& typeB)
 {
-  VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
+  VDWParameters::Type potentialType = forceField(typeA, typeB).type;
 
-  double cutOffVDW = forcefield.cutOffVDW(typeA, typeB);
+  double cutOffVDW = forceField.cutOffVDW(typeA, typeB);
 
   switch (potentialType)
   {
     case VDWParameters::Type::LennardJones:
     {
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y;
+      double arg1 = forceField(typeA, typeB).parameters.x;
+      double arg2 = forceField(typeA, typeB).parameters.y;
       double term3 = (arg2 / cutOffVDW) * (arg2 / cutOffVDW) * (arg2 / cutOffVDW);
       double term6 = term3 * term3;
       return (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);

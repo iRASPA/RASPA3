@@ -388,6 +388,8 @@ void ForceField::preComputePotentialShift()
 }
 
 void ForceField::preComputeTailCorrection()
+// NOTE: we need std::enable_shared_from_this as a method of ForceField requires a shared_ptr to *this.
+//       see stackoverflow.com/questions/712279/what-is-the-usefulness-of-enable-shared-from-this
 {
   for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
@@ -398,8 +400,10 @@ void ForceField::preComputeTailCorrection()
 
       if (tailCorrections[i * numberOfPseudoAtoms + j])
       {
-        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(*this, i, j);
-        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(*this, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy =
+            Potentials::potentialCorrectionVDW(*this, i, j);
+        data[i * numberOfPseudoAtoms + j].tailCorrectionPressure =
+            Potentials::potentialCorrectionPressure(*this, i, j);
         /*
         switch (data[i * numberOfPseudoAtoms + j].type)
         {
@@ -427,8 +431,8 @@ void ForceField::preComputeTailCorrection()
   }
 }
 
-std::optional<ForceField> ForceField::readForceField(std::optional<std::string> directoryName,
-                                                     std::string forceFieldFileName) noexcept(false)
+std::shared_ptr<ForceField> ForceField::readForceField(std::optional<std::string> directoryName,
+                                                       std::string forceFieldFileName) noexcept(false)
 {
   // try to look in directory 'directoryName' if set, otherwise the local directory
   std::string filePath = directoryName.value_or(".") + "/" + forceFieldFileName;
@@ -440,16 +444,16 @@ std::optional<ForceField> ForceField::readForceField(std::optional<std::string> 
     forceFieldPathfile = std::filesystem::path(std::string(env_p) + "/share/raspa3/forcefields/" + filePath);
     if (!std::filesystem::exists(forceFieldPathfile))
     {
-      return std::nullopt;
+      return nullptr;
     }
   }
 
   std::ifstream forceFieldStream{forceFieldPathfile};
   if (!forceFieldStream)
   {
-    return std::nullopt;
+    return nullptr;
   }
-  return ForceField(forceFieldPathfile.string());
+  return std::make_shared<ForceField>(forceFieldPathfile.string());
 }
 
 std::string ForceField::printPseudoAtomStatus() const

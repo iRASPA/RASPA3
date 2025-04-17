@@ -4,6 +4,7 @@ module;
 #include <cmath>
 #include <cstddef>
 #include <iostream>
+#include <memory>
 #include <numbers>
 #endif
 
@@ -12,6 +13,7 @@ export module potential_gradient_coulomb;
 #ifndef USE_LEGACY_HEADERS
 import <cmath>;
 import <numbers>;
+import <memory>;
 import <iostream>;
 #endif
 
@@ -42,7 +44,7 @@ export namespace Potentials
  *
  * \note This function returns D[U[r], r] / r, where U[r] is the potential energy.
  */
-[[clang::always_inline]] inline GradientFactor potentialCoulombGradient(const ForceField& forcefield,
+[[clang::always_inline]] inline GradientFactor potentialCoulombGradient(const ForceField& forceField,
                                                                         const bool& groupIdA, const bool& groupIdB,
                                                                         const double& scalingA, const double& scalingB,
                                                                         const double& r, const double& chargeA,
@@ -50,11 +52,11 @@ export namespace Potentials
 {
   double scaling = scalingA * scalingB;  ///< Combined scaling factor for interactions.
 
-  switch (forcefield.chargeMethod)
+  switch (forceField.chargeMethod)
   {
     [[likely]] case ForceField::ChargeMethod::Ewald:
     {
-      double alpha = forcefield.EwaldAlpha;
+      double alpha = forceField.EwaldAlpha;
       double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erfc(alpha * r) / r;
       return GradientFactor(scaling * temp, (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0),
                             -Units::CoulombicConversionFactor * scaling * chargeA * chargeB *

@@ -605,6 +605,7 @@ void Interactions::computeInterMolecularElectricPotential(const ForceField &forc
     }
   }
 }
+
 RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField &forceField, const SimulationBox &box,
                                                                std::span<double3> electricFieldMolecules,
                                                                std::span<const Atom> moleculeAtoms) noexcept

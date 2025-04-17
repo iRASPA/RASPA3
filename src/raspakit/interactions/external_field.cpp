@@ -44,10 +44,10 @@ import forcefield;
 import tricubic_derivatives_external_field;
 import triquintic_derivatives_external_field;
 
-void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-                                              [[maybe_unused]] const SimulationBox &simulationBox,
-                                              [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-                                              [[maybe_unused]] RunningEnergy &energyStatus) noexcept
+void Interactions::computeExternalFieldEnergy(
+    bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
+    [[maybe_unused]] const SimulationBox &simulationBox,
+    [[maybe_unused]] std::span<const Atom> moleculeAtoms, [[maybe_unused]] RunningEnergy &energyStatus) noexcept
 {
   if (hasExternalField)
   {
@@ -104,9 +104,9 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &forceField,
-                                                              [[maybe_unused]] const SimulationBox &simulationBox,
-                                                              double3 pos)
+Interactions::calculateThirdDerivativeAtPositionExternalField(
+    const ForceField &forceField,
+    [[maybe_unused]] const SimulationBox &simulationBox, double3 pos)
 {
   double energy{0.0};
   std::array<double, 3> first_derivative{};
@@ -140,7 +140,8 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
 }
 
 std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExternalField(
-    const ForceField &forceField, [[maybe_unused]] const SimulationBox &simulationBox, double3 posA)
+    const ForceField &forceField,
+    [[maybe_unused]] const SimulationBox &simulationBox, double3 posA)
 {
   if (forceField.hasExternalField)
   {
@@ -195,7 +196,8 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceField &forceField, double3 pos)
+Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceField &forceField,
+                                                                   double3 pos)
 {
   if (forceField.hasExternalField)
   {
@@ -224,7 +226,8 @@ Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceFi
 }
 
 std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExternalField(
-    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA)
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    double3 posA)
 {
   if (forceField.hasExternalField)
   {
@@ -363,10 +366,10 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
   return {};
 }
 
-void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-                                                  [[maybe_unused]] const SimulationBox &simulationBox,
-                                                  [[maybe_unused]] std::span<const Atom> moleculeAtoms,
-                                                  [[maybe_unused]] RunningEnergy &energyStatus) noexcept
+void Interactions::computeExternalFieldTailEnergy(
+    bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
+    [[maybe_unused]] const SimulationBox &simulationBox,
+    [[maybe_unused]] std::span<const Atom> moleculeAtoms, [[maybe_unused]] RunningEnergy &energyStatus) noexcept
 {
   if (hasExternalField)
   {
@@ -375,8 +378,8 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeExternalFieldEnergyDifference(
     bool hasExternalField, [[maybe_unused]] const ForceField &forceField,
-    [[maybe_unused]] const SimulationBox &simulationBox, [[maybe_unused]] std::span<const Atom> newatoms,
-    [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
+    [[maybe_unused]] const SimulationBox &simulationBox,
+    [[maybe_unused]] std::span<const Atom> newatoms, [[maybe_unused]] std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum;
 

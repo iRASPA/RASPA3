@@ -3,10 +3,10 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <ostream>
 #include <span>
 #include <string>
-#include <tuple>
 #include <vector>
 #endif
 
@@ -16,7 +16,7 @@ export module mixture_prediction;
 import <functional>;
 import <vector>;
 import <span>;
-import <tuple>;
+import <memory>;
 import <string>;
 import <ostream>;
 #endif
@@ -37,7 +37,7 @@ export class MixturePrediction
     NestedLoopBisection = 1
   };
 
-  MixturePrediction(const System &system);
+  MixturePrediction(std::shared_ptr<System> system);
 
   std::string writeHeader() const;
 
@@ -56,7 +56,7 @@ export class MixturePrediction
                                            std::vector<double> &Ni, double *cachedP0, double *cachedPsi);
 
  private:
-  const System &system;
+  std::shared_ptr<System> system;
   std::string displayName;
   std::vector<Component> components;
   std::vector<size_t> sortedComponentIndices;

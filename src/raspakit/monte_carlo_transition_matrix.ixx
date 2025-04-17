@@ -89,8 +89,9 @@ export struct MonteCarloTransitionMatrix
    */
   MonteCarloTransitionMatrix(size_t numberOfCycles, size_t numberOfInitializationCycles,
                              size_t numberOfEquilibrationCycles, size_t printEvery, size_t writeBinaryRestartEvery,
-                             size_t rescaleWangLandauEvery, size_t optimizeMCMovesEvery, std::vector<System> &systems,
-                             RandomNumber &randomSeed, size_t numberOfBlocks);
+                             size_t rescaleWangLandauEvery, size_t optimizeMCMovesEvery,
+                             std::vector<std::shared_ptr<System>> systems, RandomNumber &randomSeed,
+                             size_t numberOfBlocks);
 
   uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -106,9 +107,9 @@ export struct MonteCarloTransitionMatrix
   size_t currentCycle{0};                                           ///< Current cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
-  std::vector<System> systems;         ///< Vector of systems to simulate.
-  RandomNumber random;                 ///< Random number generator.
-  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
+  std::vector<std::shared_ptr<System>> systems;  ///< Vector of systems to simulate.
+  RandomNumber random;                           ///< Random number generator.
+  size_t fractionalMoleculeSystem{0};            // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;            ///< Output streams for writing data.
   std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.

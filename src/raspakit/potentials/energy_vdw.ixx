@@ -42,21 +42,22 @@ export namespace Potentials
  * \param typeB The type identifier for the second atom.
  * \return An EnergyFactor object containing the calculated potential energy and lambda derivative.
  */
-[[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forcefield, const bool& groupIdA,
-                                                                const bool& groupIdB, const double& scalingA,
-                                                                const double& scalingB, const double& rr,
-                                                                const size_t& typeA, const size_t& typeB)
+[[clang::always_inline]] inline EnergyFactor potentialVDWEnergy(const ForceField& forceField,
+                                                                const bool& groupIdA, const bool& groupIdB,
+                                                                const double& scalingA, const double& scalingB,
+                                                                const double& rr, const size_t& typeA,
+                                                                const size_t& typeB)
 {
-  VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
+  VDWParameters::Type potentialType = forceField(typeA, typeB).type;
 
   double scaling = scalingA * scalingB;
   switch (potentialType)
   {
     [[likely]] case VDWParameters::Type::LennardJones:
     {
-      double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
-      double arg3 = forcefield(typeA, typeB).shift;
+      double arg1 = 4.0 * forceField(typeA, typeB).parameters.x;
+      double arg2 = forceField(typeA, typeB).parameters.y * forceField(typeA, typeB).parameters.y;
+      double arg3 = forceField(typeA, typeB).shift;
       double temp = (rr / arg2);
       double temp3 = temp * temp * temp;
       double inv_scaling = 1.0 - scaling;
@@ -70,8 +71,8 @@ export namespace Potentials
     case VDWParameters::Type::RepulsiveHarmonic:
     {
       double r = std::sqrt(rr);
-      double arg1 = forcefield(typeA, typeB).parameters.x;
-      double arg2 = forcefield(typeA, typeB).parameters.y;
+      double arg1 = forceField(typeA, typeB).parameters.x;
+      double arg2 = forceField(typeA, typeB).parameters.y;
       double temp = (1.0 - r / arg2);
       return EnergyFactor(r >= arg2 ? 0.0 : 0.5 * arg1 * temp * temp, 0.0);
     }
