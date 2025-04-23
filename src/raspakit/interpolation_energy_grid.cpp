@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <complex>
 #include <cstddef>
 #include <exception>
@@ -14,6 +15,7 @@ module;
 #include <print>
 #include <source_location>
 #include <sstream>
+#include <tuple>
 #include <utility>
 #include <vector>
 #if defined(__has_include) && __has_include(<mdspan>)
@@ -42,10 +44,12 @@ import <mdspan>;
 #endif
 
 import double3;
+import double3x3;
 import stringutils;
+import atom;
 import framework;
 import simulationbox;
-import interactions_framework_molecule;
+import interactions_framework_molecule_grid;
 import interactions_external_field;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 import mdspan;
@@ -1967,11 +1971,11 @@ import mdspan;
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
-void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGridType interpolationGridType,
+void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
+                                                    ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField &forceField, const Framework &framework,
                                                     [[maybe_unused]] size_t pseudo_atom_index)
 {
-  const SimulationBox &simulationBox = framework.simulationBox;
   double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
                           1.0 / static_cast<double>(numberOfCells.z));
   std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(
@@ -1979,7 +1983,17 @@ void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGri
 
   double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
 
+  const double cutoff = forceField.cutOffFrameworkVDW;
+  const SimulationBox unit_cell_box = framework.simulationBox;
+  const int3 number_of_unit_cells = unit_cell_box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
+  const std::vector<Atom> framework_atoms = framework.makeSuperCell(number_of_unit_cells);
+  const SimulationBox super_cell_box = unit_cell_box.scaled(number_of_unit_cells);
+
+  std::print(stream, "(Using {} {} {} periodic cells to create grid)\n", number_of_unit_cells.x, number_of_unit_cells.y,
+             number_of_unit_cells.z);
+
   double counter{};
+  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
   for (size_t k = 0; k < static_cast<size_t>(numberOfGridPoints.z); ++k)
   {
     for (size_t j = 0; j < static_cast<size_t>(numberOfGridPoints.y); ++j)
@@ -1989,14 +2003,15 @@ void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGri
         counter += 1.0;
         double3 s = double3(static_cast<double>(i) * delta.x, static_cast<double>(j) * delta.y,
                             static_cast<double>(k) * delta.z);
-        double3 pos = simulationBox.cell * s;
+        double3 pos = unit_cell_box.cell * s;
 
         switch (order)
         {
-          case InterpolationEnergyGrid::InterpolationOrder::Tricubic:
+          case ForceField::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPosition(
-                interpolationGridType, forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
+                interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
+                framework_atoms);
             // std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPositionExternalField(
             //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
@@ -2009,21 +2024,37 @@ void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGri
             values[7] /= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y) *
                          static_cast<double>(numberOfCells.z);
 
-            for (size_t l = 0; l < 8; ++l)
+            if (values[0] > forceField.overlapCriteria)
             {
-              data_cell[l, i, j, k] = values[l];
+              // if overlap then make values finite
+              data_cell[0, i, j, k] = 2.0 * forceField.overlapCriteria;
+              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
+              for (size_t l = 4; l < 8; ++l)
+              {
+                data_cell[l, i, j, k] = 0.0;
+              }
+            }
+            else
+            {
+              for (size_t l = 0; l < 8; ++l)
+              {
+                data_cell[l, i, j, k] = values[l];
+              }
             }
           }
           break;
-          case InterpolationEnergyGrid::InterpolationOrder::Triquintic:
+          case ForceField::InterpolationScheme::Triquintic:
             std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPosition(
-                interpolationGridType, forceField, simulationBox, pos, pseudo_atom_index, framework.unitCellAtoms);
+                interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index, unit_cell_box,
+                framework_atoms);
             // std::array<double, 27> values = Interactions::calculateTriquinticFractionalAtPositionExternalField(
             //     forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
 
-            values[1] /= static_cast<double>(numberOfCells[0]);
-            values[2] /= static_cast<double>(numberOfCells[1]);
-            values[3] /= static_cast<double>(numberOfCells[2]);
+            values[1] /= static_cast<double>(numberOfCells.x);
+            values[2] /= static_cast<double>(numberOfCells.y);
+            values[3] /= static_cast<double>(numberOfCells.z);
 
             values[4] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[0]);
             values[5] /= static_cast<double>(numberOfCells[0]) * static_cast<double>(numberOfCells[1]);
@@ -2074,27 +2105,63 @@ void InterpolationEnergyGrid::makeInterpolationGrid(ForceField::InterpolationGri
                           static_cast<double>(numberOfCells[1]) * static_cast<double>(numberOfCells[1]) *
                           static_cast<double>(numberOfCells[2]) * static_cast<double>(numberOfCells[2]);
 
-            for (size_t l = 0; l < 27; ++l)
+            if (values[0] > forceField.overlapCriteria)
             {
-              data_cell[l, i, j, k] = values[l];
+              // if overlap then make values finite
+              data_cell[0, i, j, k] = 2.0 * forceField.overlapCriteria;
+              data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
+              data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
+              for (size_t l = 4; l < 27; ++l)
+              {
+                data_cell[l, i, j, k] = 0.0;
+              }
+            }
+            else
+            {
+              for (size_t l = 0; l < 27; ++l)
+              {
+                data_cell[l, i, j, k] = values[l];
+              }
             }
             break;
         }
 
         if (static_cast<size_t>(counter * percent) > static_cast<size_t>((counter - 1.0) * percent))
         {
-          std::print("Percentage finished: {}\n", static_cast<size_t>(counter * percent));
+          std::print(stream, "Percentage finished: {}\n", static_cast<size_t>(counter * percent));
+          std::flush(stream);
         }
       }
     }
   }
+  std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> time_duration = time_end - time_begin;
+  std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());
+  std::print(stream, "\n");
 }
 
-double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
+inline double my_pow(double x, size_t n)
 {
+  double r = 1.0;
+
+  while (n > 0)
+  {
+    r *= x;
+    --n;
+  }
+
+  return r;
+}
+
+double InterpolationEnergyGrid::interpolate(double3 pos) const
+{
+  double3 s = (unitCellBox.inverseCell * pos).fract();
+
   switch (order)
   {
-    case InterpolationEnergyGrid::InterpolationOrder::Tricubic:
+    case ForceField::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
       std::array<double, 64> a{};
@@ -2118,7 +2185,7 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
           data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
       for (size_t i = 0; i < 8; ++i)
       {
@@ -2143,15 +2210,14 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
 
       // energy
       double value = 0.0;
-      for (size_t i = 0; i < 4; ++i)
-        for (size_t j = 0; j < 4; ++j)
-          for (size_t k = 0; k < 4; ++k)
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
             value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
       return value;
     }
-    break;
-    case InterpolationEnergyGrid::InterpolationOrder::Triquintic:
+    case ForceField::InterpolationScheme::Triquintic:
     {
       std::array<double, 216> X{};
       std::array<double, 216> a{};
@@ -2175,7 +2241,7 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
           data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
       for (size_t i = 0; i < 27; ++i)
       {
@@ -2211,4 +2277,379 @@ double InterpolationEnergyGrid::interpolateVDWGrid(double3 s)
   }
 
   return 0.0;
+}
+
+std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 pos) const
+{
+  double3 s = (unitCellBox.inverseCell * pos).fract();
+
+  switch (order)
+  {
+    case ForceField::InterpolationScheme::Tricubic:
+    {
+      std::array<double, 64> X{};
+      std::array<double, 64> a{};
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<size_t>(numberOfCells.x - 1));
+      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<size_t>(numberOfCells.y - 1));
+      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<size_t>(numberOfCells.z - 1));
+
+      // Determine upper boundary
+      size_t x1 = x0 + 1;
+      size_t y1 = y0 + 1;
+      size_t z1 = z0 + 1;
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+      for (size_t i = 0; i < 8; ++i)
+      {
+        X[8 * i + 0] = data_cell[i, x0, y0, z0];
+        X[8 * i + 1] = data_cell[i, x1, y0, z0];
+        X[8 * i + 2] = data_cell[i, x0, y1, z0];
+        X[8 * i + 3] = data_cell[i, x1, y1, z0];
+        X[8 * i + 4] = data_cell[i, x0, y0, z1];
+        X[8 * i + 5] = data_cell[i, x1, y0, z1];
+        X[8 * i + 6] = data_cell[i, x0, y1, z1];
+        X[8 * i + 7] = data_cell[i, x1, y1, z1];
+      }
+
+      for (size_t i = 0; i < 64; ++i)
+      {
+        a[i] = 0.0;
+        for (size_t j = 0; j < 64; ++j)
+        {
+          a[i] += tricubic_coefficients[i][j] * X[j];
+        }
+      }
+
+      double value{};
+      double3 gradient{};
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 1; i != 4; ++i)
+            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 1; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
+
+      for (size_t k = 1; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+
+      // convert gradient from fractional to Cartesian
+      return {value, unitCellBox.inverseCell.transpose() * gradient};
+    }
+    case ForceField::InterpolationScheme::Triquintic:
+    {
+      std::array<double, 216> X{};
+      std::array<double, 216> a{};
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<size_t>(numberOfCells.x - 1));
+      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<size_t>(numberOfCells.y - 1));
+      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<size_t>(numberOfCells.z - 1));
+
+      // Determine upper boundary
+      size_t x1 = x0 + 1;
+      size_t y1 = y0 + 1;
+      size_t z1 = z0 + 1;
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+      for (size_t i = 0; i < 27; ++i)
+      {
+        X[8 * i + 0] = data_cell[i, x0, y0, z0];
+        X[8 * i + 1] = data_cell[i, x1, y0, z0];
+        X[8 * i + 2] = data_cell[i, x0, y1, z0];
+        X[8 * i + 3] = data_cell[i, x1, y1, z0];
+        X[8 * i + 4] = data_cell[i, x0, y0, z1];
+        X[8 * i + 5] = data_cell[i, x1, y0, z1];
+        X[8 * i + 6] = data_cell[i, x0, y1, z1];
+        X[8 * i + 7] = data_cell[i, x1, y1, z1];
+      }
+
+      for (size_t i = 0; i != 216; ++i)
+      {
+        a[i] = 0.0;
+        for (size_t j = 0; j != 216; ++j)
+        {
+          a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
+        }
+      }
+
+      double value{};
+      double3 gradient{};
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 1; i != 6; ++i)
+            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 1; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
+
+      for (size_t k = 1; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+
+      // convert gradient from fractional to Cartesian
+      return {value, unitCellBox.inverseCell.transpose() * gradient};
+    }
+    break;
+  }
+
+  return {0.0, double3(0.0, 0.0, 0.0)};
+}
+
+std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessian(double3 pos) const
+{
+  double3 s = (unitCellBox.inverseCell * pos).fract();
+
+  switch (order)
+  {
+    case ForceField::InterpolationScheme::Tricubic:
+    {
+      std::array<double, 64> X{};
+      std::array<double, 64> a{};
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<size_t>(numberOfCells.x - 1));
+      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<size_t>(numberOfCells.y - 1));
+      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<size_t>(numberOfCells.z - 1));
+
+      // Determine upper boundary
+      size_t x1 = x0 + 1;
+      size_t y1 = y0 + 1;
+      size_t z1 = z0 + 1;
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+      for (size_t i = 0; i < 8; ++i)
+      {
+        X[8 * i + 0] = data_cell[i, x0, y0, z0];
+        X[8 * i + 1] = data_cell[i, x1, y0, z0];
+        X[8 * i + 2] = data_cell[i, x0, y1, z0];
+        X[8 * i + 3] = data_cell[i, x1, y1, z0];
+        X[8 * i + 4] = data_cell[i, x0, y0, z1];
+        X[8 * i + 5] = data_cell[i, x1, y0, z1];
+        X[8 * i + 6] = data_cell[i, x0, y1, z1];
+        X[8 * i + 7] = data_cell[i, x1, y1, z1];
+      }
+
+      for (size_t i = 0; i < 64; ++i)
+      {
+        a[i] = 0.0;
+        for (size_t j = 0; j < 64; ++j)
+        {
+          a[i] += tricubic_coefficients[i][j] * X[j];
+        }
+      }
+
+      double value{};
+      double3 gradient{};
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 1; i != 4; ++i)
+            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 4; ++k)
+        for (size_t j = 1; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
+
+      for (size_t k = 1; k != 4; ++k)
+        for (size_t j = 0; j != 4; ++j)
+          for (size_t i = 0; i != 4; ++i)
+            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 4 * j + 16 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+
+      // convert gradient from fractional to Cartesian
+      return {value, unitCellBox.inverseCell.transpose() * gradient, double3x3{}};
+    }
+    case ForceField::InterpolationScheme::Triquintic:
+    {
+      std::array<double, 216> X{};
+      std::array<double, 216> a{};
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<size_t>(numberOfCells.x - 1));
+      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<size_t>(numberOfCells.y - 1));
+      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<size_t>(numberOfCells.z - 1));
+
+      // Determine upper boundary
+      size_t x1 = x0 + 1;
+      size_t y1 = y0 + 1;
+      size_t z1 = z0 + 1;
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+      for (size_t i = 0; i < 27; ++i)
+      {
+        X[8 * i + 0] = data_cell[i, x0, y0, z0];
+        X[8 * i + 1] = data_cell[i, x1, y0, z0];
+        X[8 * i + 2] = data_cell[i, x0, y1, z0];
+        X[8 * i + 3] = data_cell[i, x1, y1, z0];
+        X[8 * i + 4] = data_cell[i, x0, y0, z1];
+        X[8 * i + 5] = data_cell[i, x1, y0, z1];
+        X[8 * i + 6] = data_cell[i, x0, y1, z1];
+        X[8 * i + 7] = data_cell[i, x1, y1, z1];
+      }
+
+      for (size_t i = 0; i != 216; ++i)
+      {
+        a[i] = 0.0;
+        for (size_t j = 0; j != 216; ++j)
+        {
+          a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
+        }
+      }
+
+      double value{};
+      double3 gradient{};
+      double3x3 hessian{};
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 1; i != 6; ++i)
+            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 1; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
+
+      for (size_t k = 1; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 2; i != 6; ++i)
+            hessian.ax += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.x) *
+                          static_cast<double>(i) * static_cast<double>(i - 1) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i - 2) * std::pow(s.y, j) * std::pow(s.z, k);
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 1; j != 6; ++j)
+          for (size_t i = 1; i != 6; ++i)
+            hessian.ay += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y) *
+                          static_cast<double>(i) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j - 1) * std::pow(s.z, k);
+      hessian.bx = hessian.ay;
+
+      for (size_t k = 1; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 1; i != 6; ++i)
+            hessian.az += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.z) *
+                          static_cast<double>(i) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+      hessian.cx = hessian.az;
+
+      for (size_t k = 0; k != 6; ++k)
+        for (size_t j = 2; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            hessian.by += static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.y) *
+                          static_cast<double>(j) * static_cast<double>(j - 1) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j - 2) * std::pow(s.z, k);
+
+      for (size_t k = 1; k != 6; ++k)
+        for (size_t j = 1; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            hessian.bz += static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.z) *
+                          static_cast<double>(j) * static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) *
+                          std::pow(s.y, j - 1) * std::pow(s.z, k - 1);
+      hessian.cy = hessian.az;
+
+      for (size_t k = 2; k != 6; ++k)
+        for (size_t j = 0; j != 6; ++j)
+          for (size_t i = 0; i != 6; ++i)
+            hessian.cz += static_cast<double>(numberOfCells.z) * static_cast<double>(numberOfCells.z) *
+                          static_cast<double>(k) * static_cast<double>(k - 1) * a[i + 6 * j + 36 * k] *
+                          std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 2);
+
+      // convert gradient from fractional to Cartesian
+      return {value, unitCellBox.inverseCell.transpose() * gradient,
+              unitCellBox.inverseCell.transpose() * hessian * unitCellBox.inverseCell};
+    }
+    break;
+  }
+
+  return {0.0, double3(0.0, 0.0, 0.0), double3x3{}};
 }

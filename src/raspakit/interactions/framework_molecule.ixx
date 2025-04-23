@@ -30,6 +30,7 @@ import hessian_factor;
 import forcefield;
 import framework;
 import component;
+import interpolation_energy_grid;
 
 export namespace Interactions
 {
@@ -45,9 +46,11 @@ export namespace Interactions
  * \param moleculeAtoms A span of atoms representing the molecule.
  * \return A RunningEnergy object containing the total interaction energy.
  */
-RunningEnergy computeFrameworkMoleculeEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
-                                             std::span<const Atom> frameworkAtoms,
-                                             std::span<const Atom> moleculeAtoms) noexcept;
+RunningEnergy computeFrameworkMoleculeEnergy(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the tail correction energy between the framework and molecule atoms.
@@ -80,8 +83,10 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
  * \return An optional RunningEnergy object containing the energy difference, or std::nullopt if overlap occurs.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
 
 /**
  * \brief Computes the difference in tail correction energy between the framework and molecule atoms.
@@ -202,40 +207,5 @@ std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const F
                                                                          const SimulationBox &simulationBox,
                                                                          double3 posA, double chargeA,
                                                                          std::span<const Atom> frameworkAtoms);
-
-std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
-           std::array<std::array<std::array<double, 3>, 3>, 3>>
-calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                      const ForceField &forceField, const SimulationBox &simulationBox, double3 posB,
-                                      size_t typeB, std::span<const Atom> frameworkAtoms);
-
-std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
-           std::array<std::array<std::array<double, 3>, 3>, 3>,
-           std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
-           std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
-           std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                        const ForceField &forceField, const SimulationBox &simulationBox, double3 posA,
-                                        size_t typeA, std::span<const Atom> frameworkAtoms);
-
-std::array<double, 8> calculateTricubicCartesianAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                                           const ForceField &forceField,
-                                                           const SimulationBox &simulationBox, double3 posA,
-                                                           size_t typeA, std::span<const Atom> frameworkAtoms);
-
-std::array<double, 8> calculateTricubicFractionalAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                                            const ForceField &forceField,
-                                                            const SimulationBox &simulationBox, double3 posA,
-                                                            size_t typeA, std::span<const Atom> frameworkAtoms);
-
-std::array<double, 27> calculateTriquinticCartesianAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                                              const ForceField &forceField,
-                                                              const SimulationBox &simulationBox, double3 posA,
-                                                              size_t typeA, std::span<const Atom> frameworkAtoms);
-
-std::array<double, 27> calculateTriquinticFractionalAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                                               const ForceField &forceField,
-                                                               const SimulationBox &simulationBox, double3 posA,
-                                                               size_t typeA, std::span<const Atom> frameworkAtoms);
 
 };  // namespace Interactions

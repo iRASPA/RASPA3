@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <tuple>
 #include <vector>
@@ -60,13 +60,14 @@ TEST(cbmc_interactions, framework_molecule_1)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                   atomPositions);
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 
-  std::optional<RunningEnergy> frameworkMoleculeEnergy = CBMC::computeFrameworkMoleculeEnergy(
-      system.forceField, system.simulationBox, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
+  std::optional<RunningEnergy> frameworkMoleculeEnergy =
+      CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                           system.framework, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
 
   EXPECT_NEAR(frameworkMoleculeEnergy->frameworkMoleculeVDW * Units::EnergyToKelvin, -337.77056357, 1e-6);
 }
@@ -101,14 +102,15 @@ TEST(cbmc_interactions, framework_molecule_2)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                   atomPositions);
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1599.10322574, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, 2352.42793591, 1e-6);
 
-  std::optional<RunningEnergy> frameworkMoleculeEnergy = CBMC::computeFrameworkMoleculeEnergy(
-      system.forceField, system.simulationBox, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
+  std::optional<RunningEnergy> frameworkMoleculeEnergy =
+      CBMC::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                           system.framework, frameworkAtoms, 12.0, 12.0, atomPositions, -1);
 
   std::optional<RunningEnergy> interMoleculeEnergy1 = CBMC::computeInterMolecularEnergy(
       system.forceField, system.simulationBox, atomPositions, 12.0, 12.0, {atomPositions.begin(), 1}, -1);

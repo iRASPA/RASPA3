@@ -23,7 +23,9 @@ add_executable(unit_tests_raspakit
   hessian_inter_real_ewald.cpp
   tricubic_derivative_inter_lennard_jones.cpp
   triquintic_derivative_inter_lennard_jones.cpp
-# grids.cpp
+  tricubic_derivative_inter_real_ewald.cpp
+  triquintic_derivative_inter_real_ewald.cpp
+  #  grids.cpp
   main.cpp)
 
 

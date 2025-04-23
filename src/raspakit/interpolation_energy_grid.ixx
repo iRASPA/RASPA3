@@ -9,6 +9,7 @@ module;
 #include <ostream>
 #include <print>
 #include <sstream>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 #endif
@@ -33,27 +34,23 @@ import int3;
 import double3;
 import double3x3;
 import stringutils;
-
+import simulationbox;
 import scaling;
 import forcefield;
 import framework;
-import interactions_framework_molecule;
+import interactions_framework_molecule_grid;
 
 export struct InterpolationEnergyGrid
 {
-  enum class InterpolationOrder : size_t
-  {
-    Tricubic = 8,
-    Triquintic = 27
-  };
-
+  SimulationBox unitCellBox;
   int3 numberOfCells;
   int3 numberOfGridPoints;
-  InterpolationOrder order;
+  ForceField::InterpolationScheme order;
   std::vector<double> data;
 
-  InterpolationEnergyGrid(int3 numberOfCells, InterpolationOrder order)
-      : numberOfCells(numberOfCells),
+  InterpolationEnergyGrid(const SimulationBox unitCellBox, int3 numberOfCells, ForceField::InterpolationScheme order)
+      : unitCellBox(unitCellBox),
+        numberOfCells(numberOfCells),
         numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
         order(order),
         data(std::to_underlying(order) *
@@ -61,7 +58,10 @@ export struct InterpolationEnergyGrid
   {
   }
 
-  void makeInterpolationGrid(ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
-                             const Framework &framework, size_t pseudo_atom_index);
-  double interpolateVDWGrid(double3 s);
+  void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
+                             const ForceField &forceField, const Framework &framework, size_t pseudo_atom_index);
+
+  double interpolate(double3 pos) const;
+  std::pair<double, double3> interpolateGradient(double3 pos) const;
+  std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;
 };

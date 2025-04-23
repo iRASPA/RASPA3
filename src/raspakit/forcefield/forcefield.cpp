@@ -71,6 +71,33 @@ import potential_correction_pressure;
 import simulationbox;
 import json;
 
+int3 parseInt3(const std::string& item, auto json)
+{
+  if (json.is_array())
+  {
+    if (json.size() != 3)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
+    }
+    int3 value{};
+    try
+    {
+      value.x = json[0].template get<int32_t>();
+      value.y = json[1].template get<int32_t>();
+      value.z = json[2].template get<int32_t>();
+      return value;
+    }
+    catch (nlohmann::json::exception& ex)
+    {
+      throw std::runtime_error(
+          std::format("[Input reader]: key '{}', value {} should be array of 3 integer numbers\n", item, json.dump()));
+    }
+  }
+  throw std::runtime_error(
+      std::format("[Input reader]: key '{}', value {} should be array of 3 integer  numbers\n", item, json.dump()));
+}
+
 ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParameters> selfInteractions,
                        MixingRule mixingRule, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
                        bool shifted, bool applyTailCorrections, bool useCharge) noexcept(false)
@@ -306,6 +333,68 @@ ForceField::ForceField(std::string filePath)
 
   preComputePotentialShift();
   preComputeTailCorrection();
+
+  std::vector<std::string> pseudoAtomStringGrids =
+      parsed_data.value("UseInterpolationGrids", std::vector<std::string>{});
+
+  for (const std::string& pseudo_atom_name : pseudoAtomStringGrids)
+  {
+    std::optional<size_t> index = findPseudoAtom(pseudo_atom_name);
+
+    if (!index.has_value())
+    {
+      throw std::runtime_error(std::format("[ReadForceFieldSelfInteractions]: unknown pseudo atom {} in {}\n",
+                                           pseudo_atom_name, parsed_data["UseInterpolationGrids"].dump()));
+    }
+
+    if (index.has_value())
+    {
+      gridPseudoAtomIndices.push_back(index.value());
+    }
+  }
+
+  if (parsed_data.contains("SpacingVDWGrid"))
+  {
+    spacingVDWGrid = parsed_data.value("SpacingVDWGrid", parsed_data["SpacingVDWGrid"]);
+  }
+
+  if (parsed_data.contains("SpacingCoulombGrid"))
+  {
+    spacingCoulombGrid = parsed_data.value("SpacingCoulombGrid", parsed_data["SpacingCoulombGrid"]);
+  }
+
+  if (parsed_data.contains("NumberOfVDWGridPoints"))
+  {
+    numberOfVDWGridPoints = parseInt3("NumberOfVDWGridPoints", parsed_data["NumberOfVDWGridPoints"]);
+  }
+  if (parsed_data.contains("NumberOfCoulombGridPoints"))
+  {
+    numberOfCoulombGridPoints = parseInt3("NumberOfCoulombGridPoints", parsed_data["NumberOfCoulombGridPoints"]);
+  }
+
+  if (parsed_data.contains("NumberOfGridTestPoints"))
+  {
+    numberOfGridTestPoints = parsed_data.value("NumberOfGridTestPoints", parsed_data["NumberOfGridTestPoints"]);
+  }
+
+  if (parsed_data.contains("InterpolationScheme"))
+  {
+    size_t scheme = parsed_data.value("InterpolationScheme", parsed_data["InterpolationScheme"]);
+    switch (scheme)
+    {
+      case 3:
+        interpolationScheme = InterpolationScheme::Tricubic;
+        break;
+      case 5:
+        interpolationScheme = InterpolationScheme::Triquintic;
+        break;
+      default:
+        throw std::runtime_error(std::format(
+            "[ReadForceFieldSelfInteractions]: unknown grid interpolation scheme {} in {} (options: 3 or 5)\n", scheme,
+            parsed_data["InterpolationScheme"].dump()));
+        break;
+    }
+  }
 }
 
 void ForceField::applyMixingRule()
@@ -546,6 +635,39 @@ std::string ForceField::printForceFieldStatus() const
     }
   }
   std::print(stream, "\n");
+
+  if (!gridPseudoAtomIndices.empty())
+  {
+    if (numberOfVDWGridPoints.has_value())
+    {
+      std::print(stream, "Number of Van Der Waals grid points: {}x{}x{}\n", numberOfVDWGridPoints->x,
+                 numberOfVDWGridPoints->y, numberOfVDWGridPoints->z);
+    }
+    else
+    {
+      std::print(stream, "Spacing of the Van Der Waals grid: {}\n", spacingVDWGrid);
+    }
+    if (numberOfCoulombGridPoints.has_value())
+    {
+      std::print(stream, "Number of Coulomb grid points: {}x{}x{}\n", numberOfCoulombGridPoints->x,
+                 numberOfCoulombGridPoints->y, numberOfCoulombGridPoints->z);
+    }
+    else
+    {
+      std::print(stream, "Spacing of the Coulomb grid: {}\n", spacingCoulombGrid);
+    }
+    switch (interpolationScheme)
+    {
+      case InterpolationScheme::Tricubic:
+        std::print(stream, "Interpolation-scheme: tricubic\n");
+        break;
+      case InterpolationScheme::Triquintic:
+        std::print(stream, "Interpolation-scheme: triquintic\n");
+        break;
+    }
+    std::print(stream, "\n");
+  }
+
   if (automaticEwald)
   {
     std::print(stream, "Ewald precision: {}\n", EwaldPrecision);

@@ -31,7 +31,7 @@ import interactions_framework_molecule_grid;
 import interactions_ewald;
 import energy_status;
 
-TEST(third_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -107,41 +107,41 @@ TEST(third_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CH
   {
     double3 s = system.simulationBox.inverseCell * posB;
     auto [e, reference_cartesian, d1, d2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
     double3 reference_fractional = system.simulationBox.cell.transpose() * reference_cartesian;
 
     // finite difference x
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
     auto [x2_energy, d1x2, d2x2, d3x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
     auto [x1_energy, d1x1, d2x1, d3x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference y
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
     auto [y2_energy, d1y2, d2y2, d3y2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
     auto [y1_energy, d1y1, d2y1, d3y1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference z
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
     auto [z2_energy, d1z2, d2z2, d3z2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
     auto [z1_energy, d1z1, d2z1, d3z1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     numerical_gradient.x = (x2_energy - x1_energy) / delta;
@@ -154,7 +154,7 @@ TEST(third_derivative_inter_lennard_jones, Test_gradient_cartesian_methane_in_CH
   }
 }
 
-TEST(third_derivative_inter_lennard_jones, Test_gradient_fractional_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_gradient_fractional_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -230,41 +230,41 @@ TEST(third_derivative_inter_lennard_jones, Test_gradient_fractional_methane_in_C
   {
     double3 s = system.simulationBox.inverseCell * posB;
     auto [e, reference_cartesian, d1, d2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
     double3 reference_fractional = system.simulationBox.cell.transpose() * reference_cartesian;
 
     // finite difference x
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
     auto [x2_energy, d1x2, d2x2, d3x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
     auto [x1_energy, d1x1, d2x1, d3x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference y
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
     auto [y2_energy, d1y2, d2y2, d3y2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
     auto [y1_energy, d1y1, d2y1, d3y1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference z
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
     auto [z2_energy, d1z2, d2z2, d3z2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
     auto [z1_energy, d1z1, d2z1, d3z1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     numerical_gradient.x = (x2_energy - x1_energy) / delta;
@@ -277,7 +277,7 @@ TEST(third_derivative_inter_lennard_jones, Test_gradient_fractional_methane_in_C
   }
 }
 
-TEST(third_derivative_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -354,40 +354,40 @@ TEST(third_derivative_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA
     double3 posB;
 
     auto [e, d1, reference_cartesian, d3] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB_reference, typeB,
         frameworkAtoms);
 
     // finite difference x
     posB = double3(posB_reference.x + 0.5 * delta, posB_reference.y, posB_reference.z);
     auto [ex2, x2_gradient, d2x2, d3x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x - 0.5 * delta, posB_reference.y, posB_reference.z);
     auto [ex1, x1_gradient, d2x1, d3x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference y
     posB = double3(posB_reference.x, posB_reference.y + 0.5 * delta, posB_reference.z);
     auto [ey2, y2_gradient, d2y2, d3y2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x, posB_reference.y - 0.5 * delta, posB_reference.z);
     auto [ey1, y1_gradient, d2y1, d3y1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference z
     posB = double3(posB_reference.x, posB_reference.y, posB_reference.z + 0.5 * delta);
     auto [ez2, z2_gradient, d2z2, d3z2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x, posB_reference.y, posB_reference.z - 0.5 * delta);
     auto [ez1, z1_gradient, d2z1, d3z1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     numerical_hessian.ax = (x2_gradient[0] - x1_gradient[0]) / delta;
@@ -416,7 +416,7 @@ TEST(third_derivative_inter_lennard_jones, Test_hessian_cartesian_methane_in_CHA
   }
 }
 
-TEST(third_derivative_inter_lennard_jones, Test_hessian_fractional_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_hessian_fractional_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -492,7 +492,7 @@ TEST(third_derivative_inter_lennard_jones, Test_hessian_fractional_methane_in_CH
   {
     double3 s = system.simulationBox.inverseCell * posB;
     auto [e, d1, reference_cartesian, d3] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
     double3x3 reference_fractional =
         system.simulationBox.cell.transpose() * reference_cartesian * system.simulationBox.cell;
@@ -500,34 +500,34 @@ TEST(third_derivative_inter_lennard_jones, Test_hessian_fractional_methane_in_CH
     // finite difference x
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
     auto [ex2, x2_gradient, d1x2, d2x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
     auto [ex1, x1_gradient, d1x1, d2x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference y
     posB = system.simulationBox.cell * double3(s.x, s.y + 0.5 * delta, s.z);
     auto [ey2, y2_gradient, d1y2, d2y2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y - 0.5 * delta, s.z);
     auto [ey1, y1_gradient, d1y1, d2y1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     // finite difference z
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z + 0.5 * delta);
     auto [ez2, z2_gradient, d1z2, d2z2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x, s.y, s.z - 0.5 * delta);
     auto [ez1, z1_gradient, d1z1, d2z1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double3 x2_gradient_corr = system.simulationBox.cell.transpose() * x2_gradient;
@@ -565,7 +565,7 @@ TEST(third_derivative_inter_lennard_jones, Test_hessian_fractional_methane_in_CH
   }
 }
 
-TEST(third_derivative_inter_lennard_jones, Test_third_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_third_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -641,17 +641,17 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
     double3 posB;
 
     auto [e, d1, d2, reference_cartesian] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB_reference, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB_reference, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x + 0.5 * delta, posB_reference.y, posB_reference.z);
     auto [ex2, d1x2, x2_hessian, d3x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x - 0.5 * delta, posB_reference.y, posB_reference.z);
     auto [ex1, d1x1, x1_hessian, d3x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double numerical_third_derivative_m111 = (x2_hessian[0][0] - x1_hessian[0][0]) / delta;
@@ -676,12 +676,12 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
 
     posB = double3(posB_reference.x, posB_reference.y + 0.5 * delta, posB_reference.z);
     auto [ey2, d1y2, y2_hessian, d3y2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x, posB_reference.y - 0.5 * delta, posB_reference.z);
     auto [ey1, d1y1, y1_hessian, d3y1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double numerical_third_derivative_m211 = (y2_hessian[0][0] - y1_hessian[0][0]) / delta;
@@ -706,12 +706,12 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
 
     posB = double3(posB_reference.x, posB_reference.y, posB_reference.z + 0.5 * delta);
     auto [ez2, d1z2, z2_hessian, d3z2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = double3(posB_reference.x, posB_reference.y, posB_reference.z - 0.5 * delta);
     auto [ez1, d1z1, z1_hessian, d3z1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double numerical_third_derivative_m311 = (z2_hessian[0][0] - z1_hessian[0][0]) / delta;
@@ -736,7 +736,7 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_cartesian_metha
   }
 }
 
-TEST(third_derivative_inter_lennard_jones, Test_third_derivative_fractional_methane_in_CHA_triclinic_1x1x1)
+TEST(third_derivative_inter_real_ewald, Test_third_derivative_fractional_methane_in_CHA_triclinic_1x1x1)
 {
   ForceField forceField = ForceField(
       {
@@ -804,7 +804,7 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_fractional_meth
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
   double delta = 1e-6;
-  double tolerance = 1e-4;
+  double tolerance = 1e-3;
   double3x3 numerical_hessian;
   size_t typeB = 2;
   double3 posB = double3(5.0, 5.0, 5.0);
@@ -812,7 +812,7 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_fractional_meth
   {
     double3 s = system.simulationBox.inverseCell * posB;
     auto [e, d1, d2, reference_cartesian] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double reference_fractional = system.simulationBox.cell.ax * system.simulationBox.cell.bx *
@@ -863,12 +863,12 @@ TEST(third_derivative_inter_lennard_jones, Test_third_derivative_fractional_meth
 
     posB = system.simulationBox.cell * double3(s.x + 0.5 * delta, s.y, s.z);
     auto [ex2, d1x2, x2_hessian, d3x2] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     posB = system.simulationBox.cell * double3(s.x - 0.5 * delta, s.y, s.z);
     auto [ex1, d1x1, x1_hessian, d3x1] = Interactions::calculateTricubicDerivativeAtPosition(
-        ForceField::InterpolationGridType::LennardJones, system.forceField, system.simulationBox, posB, typeB,
+        ForceField::InterpolationGridType::EwaldReal, system.forceField, system.simulationBox, posB, typeB,
         frameworkAtoms);
 
     double3x3 x2_hessian_corr = system.simulationBox.cell.transpose() * x2_hessian * system.simulationBox.cell;

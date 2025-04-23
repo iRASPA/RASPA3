@@ -35,6 +35,7 @@ import simulationbox;
 import units;
 import cbmc_interactions_intermolecular;
 import cbmc_interactions_framework_molecule;
+import interpolation_energy_grid;
 
 export namespace CBMC
 {
@@ -42,27 +43,31 @@ bool insideBlockedPockets(const std::optional<Framework> &frameworks, const Comp
                           std::span<const Atom> molecule_atoms);
 
 [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> computeExternalNonOverlappingEnergies(
-    const std::optional<Framework> &frameworks, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositions) noexcept;
 
 const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
-    const std::optional<Framework> &frameworks, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip = -1) noexcept;
 
 const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> computeExternalNonOverlappingEnergies(
-    const std::optional<Framework> &frameworks, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<std::pair<Molecule, std::vector<Atom>>> &trialPositionSets,
     std::make_signed_t<std::size_t> skip = -1) noexcept;
 
 const std::optional<RunningEnergy> computeExternalNonOverlappingEnergyDualCutOff(
-    const std::optional<Framework> &frameworks, const Component &component, bool hasExternalField,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const Component &component, bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
     std::vector<Atom> &trialPositionSet) noexcept;
 }  // namespace CBMC

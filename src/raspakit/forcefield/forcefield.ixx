@@ -86,6 +86,12 @@ export struct ForceField
     EwaldReal = 3
   };
 
+  enum class InterpolationScheme : size_t
+  {
+    Tricubic = 8,
+    Triquintic = 27
+  };
+
   uint64_t versionNumber{1};  ///< Version number of the force field format.
 
   std::vector<VDWParameters>
@@ -129,6 +135,14 @@ export struct ForceField
   bool hasExternalField{false};
   PotentialEnergySurfaceType potentialEnergySurfaceType{PotentialEnergySurfaceType::SecondOrderPolynomialTestFunction};
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
+
+  std::vector<size_t> gridPseudoAtomIndices;
+  double spacingVDWGrid{0.15};
+  double spacingCoulombGrid{0.15};
+  std::optional<int3> numberOfVDWGridPoints{};
+  std::optional<int3> numberOfCoulombGridPoints{};
+  size_t numberOfGridTestPoints{100000};
+  InterpolationScheme interpolationScheme{InterpolationScheme::Tricubic};
 
   /**
    * \brief Default constructor for the ForceField struct.

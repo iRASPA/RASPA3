@@ -295,6 +295,13 @@ void MonteCarlo::initialize()
 
   for (System& system : systems)
   {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.createInterpolationGrids(random, stream);
+  }
+
+  for (System& system : systems)
+  {
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 

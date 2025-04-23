@@ -161,9 +161,9 @@ export union double3x3
 
   static double3x3 identity();
 
-  double determinant(void);
+  double determinant(void) const;
   double trace(void) const;
-  double3x3 const inverse();
+  double3x3 const inverse() const;
   static double3x3 inverse(const double3x3& right);
   static double3x3 transpose(const double3x3& right);
   double3x3 const transpose(void) const;

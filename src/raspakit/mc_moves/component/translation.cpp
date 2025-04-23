@@ -118,7 +118,8 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   else
   {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <vector>
 
@@ -67,8 +67,8 @@ TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                   atomPositions);
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -1545.62921755, 1e-6);
   EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, -592.13188606, 1e-6);
@@ -153,8 +153,8 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                   atomPositions);
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtoms, atomPositions);
 
   EXPECT_NEAR(energy.frameworkMoleculeVDW * Units::EnergyToKelvin, -2525.36580663, 1e-6);
   EXPECT_NEAR(energy.frameworkMoleculeCharge * Units::EnergyToKelvin, 2167.45591472, 1e-6);
@@ -247,7 +247,7 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -242.94298709, 1e-6);
   EXPECT_NEAR(energy.moleculeMoleculeCharge * Units::EnergyToKelvin, 162.41877650, 1e-6);
   EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.81601515, 1e-6);
-  //EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
+  // EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
   EXPECT_NEAR((energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
               -1197.23909965, 1e-6);
 }

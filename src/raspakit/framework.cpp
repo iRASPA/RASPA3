@@ -333,6 +333,30 @@ void Framework::makeSuperCell()
   }
 }
 
+std::vector<Atom> Framework::makeSuperCell(int3 numberOfCells) const
+{
+  std::vector<Atom> superCellAtoms{};
+
+  for (int32_t i = 0; i < numberOfCells.x; ++i)
+  {
+    for (int32_t j = 0; j < numberOfCells.y; ++j)
+    {
+      for (int32_t k = 0; k < numberOfCells.z; ++k)
+      {
+        for (const Atom& atom : unitCellAtoms)
+        {
+          Atom atomCopy = atom;
+          atomCopy.position +=
+              simulationBox.cell * double3(static_cast<double>(i), static_cast<double>(j), static_cast<double>(k));
+          superCellAtoms.push_back(atomCopy);
+        }
+      }
+    }
+  }
+
+  return superCellAtoms;
+}
+
 std::string Framework::printStatus(const ForceField& forceField) const
 {
   std::ostringstream stream;

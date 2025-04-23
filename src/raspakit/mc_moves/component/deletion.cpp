@@ -80,7 +80,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     // Compute framework-molecule energy contribution
     std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), {}, molecule);
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), {}, molecule);
     if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute molecule-molecule energy contribution

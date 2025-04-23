@@ -22,31 +22,35 @@ import framework;
 import component;
 import forcefield;
 import simulationbox;
+import interpolation_energy_grid;
 
 export namespace CBMC
 {
 [[nodiscard]] std::optional<FirstBeadData> growMoleculeMultipleFirstBeadSwapInsertion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadSwapDeletion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forcefield, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom atom, double scaling,
-    size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forcefield,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom atom, double scaling, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] std::optional<FirstBeadData> growRigidMultipleFirstBeadReinsertion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadReinsertion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, const Atom &atom, double storedR, size_t numberOfTrialDirections);
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, const Atom &atom, double storedR, size_t numberOfTrialDirections);
 }  // namespace CBMC

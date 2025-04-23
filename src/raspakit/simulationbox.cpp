@@ -40,6 +40,7 @@ import <print>;
 import randomnumbers;
 import double3x3;
 import double3;
+import int3;
 import archive;
 import units;
 import stringutils;
@@ -177,6 +178,14 @@ double3 SimulationBox::perpendicularWidths() const
   // calculate cell perpendicular widths
   return double3(v / std::sqrt(double3::dot(c2, c2)), v / std::sqrt(double3::dot(c3, c3)),
                  v / std::sqrt(double3::dot(c1, c1)));
+}
+
+int3 SimulationBox::smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const
+{
+  double3 widths = perpendicularWidths();
+  return int3(static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.x)),
+              static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.y)),
+              static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.z)));
 }
 
 void SimulationBox::setBoxLengths(double3 lengths)

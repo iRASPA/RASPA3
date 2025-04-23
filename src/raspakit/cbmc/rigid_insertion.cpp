@@ -46,14 +46,17 @@ import energy_factor;
 import running_energy;
 import framework;
 import component;
+import interpolation_energy_grid;
 
 // atoms is a recentered copy of the molecule (recentered around the starting bead)
 [[nodiscard]] std::optional<ChainData> CBMC::growRigidMoleculeSwapInsertion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const std::vector<Component> &components, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-    double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent,
-    size_t selectedMolecule, double scaling, size_t groupId, size_t numberOfTrialDirections) noexcept
+    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
+    size_t numberOfTrialDirections) noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
   Atom firstBead = components[selectedComponent].atoms[startingBead];
@@ -62,7 +65,7 @@ import component;
   firstBead.setScaling(scaling);
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-      random, frameworkComponents, component, hasExternalField, forceField, simulationBox, frameworkAtoms,
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
       moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead, numberOfTrialDirections);
 
   if (!firstBeadData) return std::nullopt;
@@ -87,7 +90,7 @@ import component;
                 });
 
   std::optional<ChainData> const rigidRotationData = CBMC::growRigidMoleculeChainInsertion(
-      random, frameworkComponents, component, hasExternalField, forceField, simulationBox, frameworkAtoms,
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
       moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, startingBead, atoms,
       numberOfTrialDirections, selectedMolecule, scaling, groupId, components, selectedComponent);
 
@@ -99,12 +102,13 @@ import component;
 }
 
 [[nodiscard]] std::optional<ChainData> CBMC::growRigidMoleculeChainInsertion(
-    RandomNumber &random, const std::optional<Framework> &frameworkComponents, const Component &component,
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule,
-    size_t numberOfTrialDirections, size_t selectedMolecule, double scaling, size_t groupId,
-    const std::vector<Component> &components, size_t selectedComponent) noexcept
+    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule, size_t numberOfTrialDirections,
+    size_t selectedMolecule, double scaling, size_t groupId, const std::vector<Component> &components,
+    size_t selectedComponent) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
 
@@ -129,9 +133,9 @@ import component;
   };
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
-      CBMC::computeExternalNonOverlappingEnergies(frameworkComponents, component, hasExternalField, forceField,
-                                                  simulationBox, frameworkAtoms, moleculeAtoms, cutOffFrameworkVDW,
-                                                  cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
+      CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
+                                                  interpolationGrids, framework, frameworkAtoms, moleculeAtoms,
+                                                  cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
                                                   std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;
 

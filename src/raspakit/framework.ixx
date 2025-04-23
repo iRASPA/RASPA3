@@ -142,9 +142,9 @@ export struct Framework
   double smallestCharge{0.0};                                  ///< Smallest atomic charge in the framework.
   double largestCharge{0.0};                                   ///< Largest atomic charge in the framework.
 
-  std::vector<Atom> definedAtoms{};  ///< Atoms defining the unit cell before symmetry operations.
-  std::vector<Atom> atoms{};         ///< All atoms in the framework after constructing the supercell.
-  std::vector<Atom> unitCellAtoms;   ///< Atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> definedAtoms{};  ///< Fractional Atoms defining the unit cell before symmetry operations.
+  std::vector<Atom> unitCellAtoms;   ///< Fractional atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> atoms{};         ///< All Cartesian atoms in the framework after constructing the supercell.
 
   std::vector<size_t> chiralCenters{};                      ///< Indices of chiral centers in the framework.
   std::vector<BondPotential> bonds{};                       ///< Bonds within the framework.
@@ -194,6 +194,8 @@ export struct Framework
    * to the specified number of unit cells in each dimension.
    */
   void makeSuperCell();
+
+  std::vector<Atom> makeSuperCell(int3 numberOfCells) const;
 
   /**
    * \brief Generates a string representation of the framework status.

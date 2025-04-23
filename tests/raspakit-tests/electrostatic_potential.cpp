@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <vector>
 
@@ -88,8 +88,8 @@ TEST(electrostatic_potential, Test_reference_system_1)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, spanOfMoleculeAtoms) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtomPositions,
-                                                   spanOfMoleculeAtoms) +
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtomPositions, spanOfMoleculeAtoms) +
       Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                               system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
                                               system.simulationBox, system.components,
@@ -166,8 +166,8 @@ TEST(electrostatic_potential, Test_reference_system_2)
 
   RunningEnergy energy =
       Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, spanOfMoleculeAtoms) +
-      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtomPositions,
-                                                   spanOfMoleculeAtoms) +
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtomPositions, spanOfMoleculeAtoms) +
       Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                               system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
                                               system.simulationBox, system.components,
@@ -261,12 +261,13 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
     system.precomputeTotalRigidEnergy();
   }
 
-  RunningEnergy energy = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox,
-                                                                      frameworkAtomPositions, spanOfMoleculeAtoms) +
-                         Interactions::computeEwaldFourierEnergy(
-                             system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik,
-                             system.storedEik, system.forceField, system.simulationBox, system.components,
-                             system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
+  RunningEnergy energy =
+      Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                   system.framework, frameworkAtomPositions, spanOfMoleculeAtoms) +
+      Interactions::computeEwaldFourierEnergy(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                              system.fixedFrameworkStoredEik, system.storedEik, system.forceField,
+                                              system.simulationBox, system.components,
+                                              system.numberOfMoleculesPerComponent, spanOfMoleculeAtoms);
 
   system.computeTotalElectricPotential();
 

@@ -1,0 +1,171 @@
+{
+  "MixingRule" : "Lorentz-Berthelot",
+  "CutOffFrameworkVDW" : 12.0,
+  "CutOffMoleculeVDW" : 12.0,
+  "CutOffCoulomb" : 12.0,
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
+  "UseInterpolationGrids" : ["C_co2", "O_co2"],
+  "SpacingVDWGrid" : 0.15,
+  "SpacingCoulombGrid" : 0.15,
+  "NumberOfGridTestPoints" : 100000,
+  "InterpolationScheme" : 5,
+  "PseudoAtoms" :
+  [
+    {
+      "name" : "Zn1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "Zn",
+      "print_as" : "Zn",
+      "mass" : 65.37,
+      "charge" :  1.275
+    },
+    {
+      "name" : "O1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -1.5},
+    {
+      "name" : "O2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.6
+    },
+    {
+      "name" : "C1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" :  0.475
+    },
+    {
+      "name" : "C2",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" :  0.125
+    },
+    {
+      "name" : "C3",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0107,
+      "charge" : -0.15
+    },
+    {
+      "name" : "H1",
+      "framework" : true,
+      "print_to_output" : true,
+      "element" : "H",
+      "print_as" : "H",
+      "mass" : 1.00794,
+      "charge" :  0.15
+    },
+    {
+      "name" : "CH4",
+      "framework": false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 16.04246,
+      "charge" :  0.0,
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181"
+    },
+    {
+      "name" : "C_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "C",
+      "print_as" : "C",
+      "mass" : 12.0,
+      "charge" :  0.6512,
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "O_co2",
+      "framework" : false,
+      "print_to_output" : true,
+      "element" : "O",
+      "print_as" : "O",
+      "mass" : 15.9994,
+      "charge" : -0.3256,
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ],
+  "SelfInteractions" : 
+  [
+    {
+      "name" : "Zn1",
+      "type" : "lennard-jones",    
+      "parameters" : [0.42, 2.7],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "O1",
+      "type" : "lennard-jones",    
+      "parameters" : [700.0, 2.98],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "O2",
+      "type" : "lennard-jones",    
+      "parameters" : [70.5, 3.11],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C1",
+      "type" : "lennard-jones",    
+      "parameters" : [47.0, 3.74],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C2",
+      "type" : "lennard-jones",    
+      "parameters" : [47.86, 3.47],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "C3",
+      "type" : "lennard-jones",    
+      "parameters" : [47.86, 3.47],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "H1",
+      "type" : "lennard-jones",    
+      "parameters" : [7.65, 2.85],
+      "source" : "D. Dubbeldam, K.S. Walton, D.E. Ellis, R.Q. Snurr, Angew. Chem. Int. Ed. 2007, 46, 4496-4499."
+    },
+    {
+      "name" : "CH4",
+      "type" : "lennard-jones",
+      "parameters" : [158.5, 3.72],
+      "source" : "M. G. Martin et al., J. Chem. Phys. 2001, 114, 7174-7181."
+    },
+    {
+      "name" : "O_co2",
+      "type" : "lennard-jones",
+      "parameters" : [85.671, 3.017],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    },
+    {
+      "name" : "C_co2",
+      "type" : "lennard-jones",
+      "parameters" : [29.933, 2.745],
+      "source" : "A. Garcia-Sanchez et al., J. Phys. Chem. C 2009, 113, 8814-8820"
+    }
+  ]
+}

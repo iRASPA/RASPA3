@@ -121,7 +121,7 @@ export struct System
    * \param T The temperature of the system.
    * \param P The optional pressure of the system.
    * \param forcefield The force field used in the simulation.
-   * \param frameworkComponents The list of framework components in the system.
+   * \param frameworkComponent The list of framework components in the system.
    * \param components The list of components in the system.
    * \param initialNumberOfMolecules The initial number of molecules per component.
    * \param numberOfBlocks The number of blocks in the simulation.
@@ -284,6 +284,8 @@ export struct System
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
 
+  std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
+
   /// The fractional molecule for grand-canonical is stored first
   inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0; }
 
@@ -413,6 +415,8 @@ export struct System
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
+  void createInterpolationGrids(RandomNumber &random, std::ostream &stream);
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);
 
@@ -420,7 +424,4 @@ export struct System
   void readRestartFile();
 
   std::string repr() const;
-
-  std::vector<size_t> gridPseudoAtomIndices;
-  std::vector<InterpolationEnergyGrid> interpolationGrids;
 };

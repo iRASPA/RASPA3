@@ -743,38 +743,46 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
 
     // finite difference x
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
-    x2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    x2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
-    x1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    x1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
 
     // finite difference y
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
-    y2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    y2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
-    y1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    y1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
+
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
 
     // finite difference z
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
-    z2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    z2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
-    z1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    z1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
+
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
 
     gradient.x =
@@ -833,38 +841,44 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
 
     // finite difference x
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
-    x2 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    x2 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
-    x1 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    x1 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
 
     // finite difference y
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
-    y2 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    y2 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
-    y1 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    y1 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
 
     // finite difference z
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
-    z2 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    z2 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
 
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
-    z1 = Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions) +
-         Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
+    z1 =
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions) +
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
 
     gradient.x =
@@ -975,38 +989,44 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
 
     // finite difference x
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x + 0.5 * delta;
-    x2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    x2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x - 0.5 * delta;
-    x1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    x1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
     atomPositions[i].position.x = spanOfMoleculeAtoms[i].position.x;
 
     // finite difference y
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y + 0.5 * delta;
-    y2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    y2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y - 0.5 * delta;
-    y1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    y1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
     atomPositions[i].position.y = spanOfMoleculeAtoms[i].position.y;
 
     // finite difference z
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z + 0.5 * delta;
-    z2 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    z2 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
 
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z - 0.5 * delta;
-    z1 = Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
-         Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, frameworkAtoms,
-                                                      atomPositions);
+    z1 =
+        Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, atomPositions) +
+        Interactions::computeFrameworkMoleculeEnergy(system.forceField, system.simulationBox, system.interpolationGrids,
+                                                     system.framework, frameworkAtoms, atomPositions);
     atomPositions[i].position.z = spanOfMoleculeAtoms[i].position.z;
 
     gradient.x =

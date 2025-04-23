@@ -108,8 +108,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(), fractionalMoleculeA,
-        oldFractionalMoleculeA);
+        systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+        systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
@@ -166,7 +166,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA2 = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(), newMolecule, {});
+        systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+        systemA.spanOfFrameworkAtoms(), newMolecule, {});
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
@@ -233,8 +234,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceB = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB,
-        oldSelectedIntegerMoleculeB);
+        systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
+        systemB.spanOfFrameworkAtoms(), selectedIntegerMoleculeB, oldSelectedIntegerMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
@@ -301,8 +302,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceB2 = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(), fractionalMoleculeB,
-        oldFractionalMoleculeB);
+        systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
+        systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaInterchange-NonEwald"] += (time_end - time_begin);
@@ -460,8 +461,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceA = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(), fractionalMoleculeA,
-        oldFractionalMoleculeA);
+        systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+        systemA.spanOfFrameworkAtoms(), fractionalMoleculeA, oldFractionalMoleculeA);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaShuffle-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaShuffle-NonEwald"] += (time_end - time_begin);
@@ -514,8 +515,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkDifferenceB = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemB.forceField, systemB.simulationBox, systemB.spanOfFrameworkAtoms(), fractionalMoleculeB,
-        oldFractionalMoleculeB);
+        systemB.forceField, systemB.simulationBox, systemB.interpolationGrids, systemB.framework,
+        systemB.spanOfFrameworkAtoms(), fractionalMoleculeB, oldFractionalMoleculeB);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaShuffle-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaShuffle-NonEwald"] += (time_end - time_begin);
@@ -623,7 +624,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkEnergyDifference = Interactions::computeFrameworkMoleculeEnergyDifference(
-        systemA.forceField, systemA.simulationBox, systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
+        systemA.forceField, systemA.simulationBox, systemA.interpolationGrids, systemA.framework,
+        systemA.spanOfFrameworkAtoms(), trialPositions, fractionalMoleculeA);
     time_end = std::chrono::system_clock::now();
     componentA.mc_moves_cputime[move]["LambdaChange-NonEwald"] += (time_end - time_begin);
     systemA.mc_moves_cputime[move]["LambdaChange-NonEwald"] += (time_end - time_begin);

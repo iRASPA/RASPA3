@@ -247,6 +247,8 @@ export struct SimulationBox
    */
   double3 perpendicularWidths() const;
 
+  int3 smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const;
+
   /**
    * \brief Returns a string representation of the simulation box.
    *
@@ -392,7 +394,7 @@ export struct SimulationBox
    * \param scale An int3 containing the scaling factors along each axis.
    * \return A new scaled SimulationBox.
    */
-  SimulationBox scaled(int3 scale)
+  SimulationBox scaled(int3 scale) const
   {
     SimulationBox v;
 

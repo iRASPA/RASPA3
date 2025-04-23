@@ -86,7 +86,7 @@ double3x3::double3x3(const int3x3& m)
   m23 = m.m23;
   m33 = m.m33;
 }
-double double3x3::determinant(void)
+double double3x3::determinant(void) const
 {
   double determinant = m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31);
 
@@ -113,7 +113,7 @@ double3x3 double3x3::identity()
 
 double double3x3::trace(void) const { return m11 + m22 + m33; }
 
-const double3x3 double3x3::inverse()
+const double3x3 double3x3::inverse() const
 {
   double determinant = m11 * (m22 * m33 - m23 * m32) - m12 * (m21 * m33 - m23 * m31) + m13 * (m21 * m32 - m22 * m31);
 
