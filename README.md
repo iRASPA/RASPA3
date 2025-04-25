@@ -72,11 +72,11 @@ cd examples/basic/1_mc_methane_in_box<br>
 - RDF, MSD-order-N, VACF, density grids (cube files)
 - charge equilibration
 - MC/MD hybrid move
+- tail-corrections for CFCMC
+- grids for rigid frameworks
 
 # Todo-list
-- tail-corrections for CFCMC
 - restart-file
-- grids for rigid frameworks
 - flexible molecules
 - flexible frameworks
 - reaction ensemble

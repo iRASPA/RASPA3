@@ -1974,7 +1974,7 @@ import mdspan;
 void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField &forceField, const Framework &framework,
-                                                    [[maybe_unused]] size_t pseudo_atom_index)
+                                                    double cutOff, size_t pseudo_atom_index)
 {
   double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
                           1.0 / static_cast<double>(numberOfCells.z));
@@ -1983,9 +1983,8 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
 
   double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
 
-  const double cutoff = forceField.cutOffFrameworkVDW;
   const SimulationBox unit_cell_box = framework.simulationBox;
-  const int3 number_of_unit_cells = unit_cell_box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
+  const int3 number_of_unit_cells = unit_cell_box.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
   const std::vector<Atom> framework_atoms = framework.makeSuperCell(number_of_unit_cells);
   const SimulationBox super_cell_box = unit_cell_box.scaled(number_of_unit_cells);
 
@@ -2142,18 +2141,6 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
   std::print(stream, "\n");
 }
 
-inline double my_pow(double x, size_t n)
-{
-  double r = 1.0;
-
-  while (n > 0)
-  {
-    r *= x;
-    --n;
-  }
-
-  return r;
-}
 
 double InterpolationEnergyGrid::interpolate(double3 pos) const
 {
@@ -2187,7 +2174,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
           data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 8; ++i)
+      for (size_t i = 0; i != 8; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -2199,10 +2186,10 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
-      for (size_t i = 0; i < 64; ++i)
+      for (size_t i = 0; i != 64; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j < 64; ++j)
+        for (size_t j = 0; j != 64; ++j)
         {
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
@@ -2213,7 +2200,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       for (size_t k = 0; k != 4; ++k)
         for (size_t j = 0; j != 4; ++j)
           for (size_t i = 0; i != 4; ++i)
-            value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
+            value += a[i + 4 * j + 16 * k] * std::pow<double>(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
       return value;
     }
@@ -2419,20 +2406,24 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 1; i != 6; ++i)
-            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 6 * j + 36 * k] *
-                          std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
+            gradient.x +=  static_cast<double>(i) * a[i + 6 * j + 36 * k] *
+                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 1; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+            gradient.y += static_cast<double>(j) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
 
       for (size_t k = 1; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+            gradient.z += static_cast<double>(k) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
+
+      gradient.x *=  static_cast<double>(numberOfCells.x);
+      gradient.y *=  static_cast<double>(numberOfCells.y);
+      gradient.z *=  static_cast<double>(numberOfCells.z);
 
       // convert gradient from fractional to Cartesian
       return {value, unitCellBox.inverseCell.transpose() * gradient};
@@ -2584,65 +2575,70 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 1; i != 6; ++i)
-            gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 6 * j + 36 * k] *
+            gradient.x += static_cast<double>(i) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 1; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+            gradient.y += static_cast<double>(j) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
 
       for (size_t k = 1; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+            gradient.z += static_cast<double>(k) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 2; i != 6; ++i)
-            hessian.ax += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.x) *
-                          static_cast<double>(i) * static_cast<double>(i - 1) * a[i + 6 * j + 36 * k] *
+            hessian.ax += static_cast<double>(i) * static_cast<double>(i - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 2) * std::pow(s.y, j) * std::pow(s.z, k);
 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 1; j != 6; ++j)
           for (size_t i = 1; i != 6; ++i)
-            hessian.ay += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y) *
-                          static_cast<double>(i) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
+            hessian.ay += static_cast<double>(i) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j - 1) * std::pow(s.z, k);
-      hessian.bx = hessian.ay;
 
       for (size_t k = 1; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 1; i != 6; ++i)
-            hessian.az += static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.z) *
-                          static_cast<double>(i) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
+            hessian.az += static_cast<double>(i) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k - 1);
-      hessian.cx = hessian.az;
 
       for (size_t k = 0; k != 6; ++k)
         for (size_t j = 2; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            hessian.by += static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.y) *
-                          static_cast<double>(j) * static_cast<double>(j - 1) * a[i + 6 * j + 36 * k] *
+            hessian.by += static_cast<double>(j) * static_cast<double>(j - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 2) * std::pow(s.z, k);
 
       for (size_t k = 1; k != 6; ++k)
         for (size_t j = 1; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            hessian.bz += static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.z) *
-                          static_cast<double>(j) * static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) *
+            hessian.bz += static_cast<double>(j) * static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) *
                           std::pow(s.y, j - 1) * std::pow(s.z, k - 1);
-      hessian.cy = hessian.az;
 
       for (size_t k = 2; k != 6; ++k)
         for (size_t j = 0; j != 6; ++j)
           for (size_t i = 0; i != 6; ++i)
-            hessian.cz += static_cast<double>(numberOfCells.z) * static_cast<double>(numberOfCells.z) *
-                          static_cast<double>(k) * static_cast<double>(k - 1) * a[i + 6 * j + 36 * k] *
+            hessian.cz += static_cast<double>(k) * static_cast<double>(k - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 2);
+
+      gradient.x *= static_cast<double>(numberOfCells.x);
+      gradient.y *= static_cast<double>(numberOfCells.y);
+      gradient.z *= static_cast<double>(numberOfCells.z);
+
+      hessian.ax *= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.x);
+      hessian.ay *= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.y);
+      hessian.az *= static_cast<double>(numberOfCells.x) * static_cast<double>(numberOfCells.z);
+      hessian.by *= static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.y);
+      hessian.bz *= static_cast<double>(numberOfCells.y) * static_cast<double>(numberOfCells.z);
+      hessian.cz *= static_cast<double>(numberOfCells.z) * static_cast<double>(numberOfCells.z);
+      hessian.bx = hessian.ay;
+      hessian.cx = hessian.az;
+      hessian.cy = hessian.az;
 
       // convert gradient from fractional to Cartesian
       return {value, unitCellBox.inverseCell.transpose() * gradient,

@@ -2045,7 +2045,7 @@ void System::createInterpolationGrids(RandomNumber& random, std::ostream& stream
       interpolationGrids.back() =
           InterpolationEnergyGrid(framework->simulationBox, numberOfCoulombGridPoints, forceField.interpolationScheme);
       interpolationGrids.back()->makeInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal, forceField,
-                                                       framework.value(), 0);
+                                                       framework.value(), forceField.cutOffCoulomb, 0);
     }
 
     int3 numberOfVDWGridPoints{};
@@ -2071,7 +2071,7 @@ void System::createInterpolationGrids(RandomNumber& random, std::ostream& stream
       interpolationGrids[index] =
           InterpolationEnergyGrid(framework->simulationBox, numberOfVDWGridPoints, forceField.interpolationScheme);
       interpolationGrids[index]->makeInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
-                                                       forceField, framework.value(), index);
+                                                       forceField, framework.value(), forceField.cutOffFrameworkVDW, index);
 
       double boltzmann_weight_summed_vdw{};
       double boltzmann_weighted_energy_full_summed_vdw{};
@@ -2767,7 +2767,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyConventionalRadialDistributionFunction;
   // archive << s.propertyRadialDistributionFunction;
   // archive << s.propertyDensityGrid;
-
+#if DEBUG
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
   return archive;
 }
 
@@ -2872,6 +2874,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyConventionalRadialDistributionFunction;
   // archive >> s.propertyRadialDistributionFunction;
   // archive >> s.propertyDensityGrid;
+#if DEBUG
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("System: Error in binary restart\n"));
+  }
+#endif
 
   return archive;
 }

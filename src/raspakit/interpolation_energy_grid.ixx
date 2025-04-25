@@ -59,7 +59,8 @@ export struct InterpolationEnergyGrid
   }
 
   void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
-                             const ForceField &forceField, const Framework &framework, size_t pseudo_atom_index);
+                             const ForceField &forceField, const Framework &framework, 
+                             double cutOff, size_t pseudo_atom_index);
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;

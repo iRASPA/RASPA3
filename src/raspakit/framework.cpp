@@ -22,6 +22,7 @@ module;
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <numbers>
 #endif
 
 #if !defined(_WIN32)
@@ -362,6 +363,15 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::ostringstream stream;
 
   std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
+
+  std::print(stream, "    Box:     {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ax, simulationBox.cell.bx, simulationBox.cell.cx);
+  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ay, simulationBox.cell.by, simulationBox.cell.cy);
+  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.az, simulationBox.cell.bz, simulationBox.cell.cz);
+  std::print(stream, "    Lengths: {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.lengthA, simulationBox.lengthB, simulationBox.lengthC);
+  double conv = 180.0 / std::numbers::pi;
+  std::print(stream, "    Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * simulationBox.angleAlpha, conv * simulationBox.angleBeta, conv * simulationBox.angleGamma);
+  double3 widths = simulationBox.perpendicularWidths();
+  std::print(stream, "    Perpendicular widths:  {:9.5f} {:9.5f} {:9.5f}\n\n", widths.x, widths.y, widths.z);
 
   std::print(stream, "    number Of Atoms:          {:>12d} [-]\n", unitCellAtoms.size());
   std::print(stream, "    mass:                     {:>12.5f} [amu]\n", mass);

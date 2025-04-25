@@ -253,6 +253,9 @@ std::string SimulationBox::printStatus() const
   else
     std::print(stream, "Triclinic boundary conditions\n");
 
+  double3 widths = perpendicularWidths();
+  std::print(stream, "Perpendicular widths:  {:9.5f} {:9.5f} {:9.5f}\n\n", widths.x, widths.y, widths.z);
+
   return stream.str();
 }
 
