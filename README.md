@@ -136,65 +136,95 @@ The 'skylake-avx512' binary can provide a roughly 25% increase in speed compared
 - openmp
 - hdf5
 
+### Installing dependencies with Conda
+
+The most practical method of compiling raspa from source is through installing the dependencies with conda. This is readily achieved through:
+
+```bash
+conda env create -f env.yml
+conda env acitvate raspa
+cmake --preset=linux_conda   # or -preset=mac_conda
+ninja -C build
+```
+
 ### presets
 
 cmake --list-presets<br>
 Available configure presets:<br>
+> "windows_conda_raspa3"<br>
+> "mac_conda"<br>
+> "mac_conda_raspa3"<br>
+> "linux_conda"<br>
+> "linux_conda_raspa3"<br>
+> "windows_conda_raspalib"<br>
+> "mac_conda_raspalib"<br>
+> "linux_conda_raspalib"<br>
+> "windows-arm64-package"<br>
+> "windows-x64-core-avx2-package"<br>
+> "windows-x64-skylake-avx512-package"<br>
 > "macos-x64-core-avx2"<br>
+> "macos-x64-core-avx2-package"<br>
 > "macos-x64-skylake-avx512"<br>
+> "macos-x64-skylake-avx512-package"<br>
 > "macos-x64-debug"<br>
 > "macos-x64-profile"<br>
 > "macos-apple-silicon"<br>
-> "macos-apple-silicon-debug"<br>
+> "macos-apple-silicon-package"<br>
 > "macos-apple-silicon-profile"<br>
-> "windows-x64"<br>
-> "windows-arm64"<br>
+> "macos-apple-silicon-debug"<br>
 > "linux-x86_64"<br>
 > "linux-x86_64-carbon"<br>
 > "linux-x86_64-core-avx2-opensuse-leap-15.2"<br>
-> "linux-x86_64-core-avx2-opensuse-leap-15.3"<br>
-> "linux-x86_64-core-avx2-opensuse-leap-15.4"<br>
-> "linux-x86_64-core-avx2-opensuse-leap-15.5"<br>
-> "linux-x86_64-core-avx2-opensuse-tumbleweed"<br>
-> "linux-x86_64-core-avx2-archlinux"<br>
-> "linux-x86_64-core-avx2-redhat-6"<br>
-> "linux-x86_64-core-avx2-redhat-7"<br>
-> "linux-x86_64-core-avx2-redhat-8"<br>
-> "linux-x86_64-core-avx2-redhat-9"<br>
-> "linux-x86_64-core-avx2-debian-12"<br>
-> "linux-x86_64-core-avx2-debian-11"<br>
-> "linux-x86_64-core-avx2-debian-10"<br>
-> "linux-x86_64-core-avx2-ubuntu-24"<br>
-> "linux-x86_64-core-avx2-ubuntu-22"<br>
-> "linux-x86_64-core-avx2-ubuntu-20"<br>
-> "linux-x86_64-core-avx2-fedora-35"<br>
-> "linux-x86_64-core-avx2-fedora-36"<br>
-> "linux-x86_64-core-avx2-fedora-37"<br>
-> "linux-x86_64-core-avx2-fedora-38"<br>
-> "linux-x86_64-core-avx2-fedora-39"<br>
-> "linux-x86_64-core-avx2-fedora-40"<br>
 > "linux-x86_64-skylake-avx512-opensuse-leap-15.2"<br>
+> "linux-x86_64-core-avx2-opensuse-leap-15.3"<br>
 > "linux-x86_64-skylake-avx512-opensuse-leap-15.3"<br>
+> "linux-x86_64-core-avx2-opensuse-leap-15.4"<br>
 > "linux-x86_64-skylake-avx512-opensuse-leap-15.4"<br>
+> "linux-x86_64-core-avx2-opensuse-leap-15.5"<br>
 > "linux-x86_64-skylake-avx512-opensuse-leap-15.5"<br>
+> "linux-x86_64-core-avx2-opensuse-leap-15.6"<br>
+> "linux-x86_64-skylake-avx512-opensuse-leap-15.6"<br>
+> "linux-x86_64-core-avx2-opensuse-tumbleweed"<br>
 > "linux-x86_64-skylake-avx512-opensuse-tumbleweed"<br>
+> "linux-x86_64-core-avx2-archlinux"<br>
 > "linux-x86_64-skylake-avx512-archlinux"<br>
+> "linux-x86_64-core-avx2-redhat-6"<br>
 > "linux-x86_64-skylake-avx512-redhat-6"<br>
+> "linux-x86_64-core-avx2-redhat-7"<br>
 > "linux-x86_64-skylake-avx512-redhat-7"<br>
+> "linux-x86_64-core-avx2-redhat-8"<br>
 > "linux-x86_64-skylake-avx512-redhat-8"<br>
+> "linux-x86_64-core-avx2-redhat-9"<br>
 > "linux-x86_64-skylake-avx512-redhat-9"<br>
+> "linux-x86_64-core-avx2-debian-12"<br>
 > "linux-x86_64-skylake-avx512-debian-12"<br>
+> "linux-x86_64-core-avx2-debian-11"<br>
 > "linux-x86_64-skylake-avx512-debian-11"<br>
+> "linux-x86_64-core-avx2-debian-10"<br>
 > "linux-x86_64-skylake-avx512-debian-10"<br>
+> "linux-x86_64-core-avx2-ubuntu-24"<br>
 > "linux-x86_64-skylake-avx512-ubuntu-24"<br>
+> "linux-x86_64-core-avx2-ubuntu-22"<br>
 > "linux-x86_64-skylake-avx512-ubuntu-22"<br>
+> "linux-x86_64-core-avx2-ubuntu-20"<br>
 > "linux-x86_64-skylake-avx512-ubuntu-20"<br>
+> "linux-x86_64-core-avx2-fedora-35"<br>
 > "linux-x86_64-skylake-avx512-fedora-35"<br>
+> "linux-x86_64-core-avx2-fedora-36"<br>
 > "linux-x86_64-skylake-avx512-fedora-36"<br>
+> "linux-x86_64-core-avx2-fedora-37"<br>
 > "linux-x86_64-skylake-avx512-fedora-37"<br>
+> "linux-x86_64-core-avx2-fedora-38"<br>
 > "linux-x86_64-skylake-avx512-fedora-38"<br>
+> "linux-x86_64-core-avx2-fedora-39"<br>
 > "linux-x86_64-skylake-avx512-fedora-39"<br>
-> "linux-x86_64-skylake-avx512-fedora-40"
+> "linux-x86_64-core-avx2-fedora-40"<br>
+> "linux-x86_64-skylake-avx512-fedora-40"<br>
+> "linux-x86_64-core-avx2-fedora-41"<br>
+> "linux-x86_64-skylake-avx512-fedora-41"<br>
+> "linux-aarch64"<br>
+> "linux-aarch64-ubuntu-24"<br>
+> "linux-aarch64-redhat-9"
 
 ### linux
 
