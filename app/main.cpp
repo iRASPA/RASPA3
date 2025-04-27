@@ -103,6 +103,8 @@ int main(int argc, char* argv[])
           Archive<std::ifstream> archive(ifile);
           archive >> mc;
           mc.createOutputFiles();
+          mc.writeOutputHeader();
+          mc.createInterpolationGrids();
         }
 
         mc.run();

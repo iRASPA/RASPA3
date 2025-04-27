@@ -305,7 +305,7 @@ export struct System
   void addComponent(const Component &&component) noexcept(false);
 
   void createFrameworks();
-  void createInitialMolecules(RandomNumber &random);
+  void createInitialMolecules();
 
   void checkCartesianPositions();
 
@@ -415,7 +415,7 @@ export struct System
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
-  void createInterpolationGrids(RandomNumber &random, std::ostream &stream);
+  void createInterpolationGrids(std::ostream &stream);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);

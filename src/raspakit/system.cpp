@@ -207,13 +207,11 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
 
   precomputeTotalRigidEnergy();
 
-  RandomNumber random(1400);
-
   translationalCenterOfMassConstraint = 0;
   translationalDegreesOfFreedom = 0;
   rotationalDegreesOfFreedom = 0;
 
-  createInitialMolecules(random);
+  createInitialMolecules();
 
   equationOfState =
       EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
@@ -473,8 +471,10 @@ void System::checkMoleculeIds()
   }
 }
 
-void System::createInitialMolecules([[maybe_unused]] RandomNumber& random)
+void System::createInitialMolecules()
 {
+  RandomNumber random(std::nullopt);
+
   for (size_t componentId = 0; const Component& component : components)
   {
     if (component.swappable)
@@ -2018,8 +2018,11 @@ std::string System::writeMCMoveStatistics() const
   return stream.str();
 }
 
-void System::createInterpolationGrids(RandomNumber& random, std::ostream& stream)
+void System::createInterpolationGrids(std::ostream& stream)
 {
+  // use local random-number generator (so that it does not interfere with a binary-restart)
+  RandomNumber random{std::nullopt};
+
   if (framework.has_value())
   {
     int3 numberOfCoulombGridPoints{};
@@ -2645,6 +2648,7 @@ void System::createInterpolationGrids(RandomNumber& random, std::ostream& stream
       }
 
       std::print(stream, "\n");
+      std::flush(stream);
     }
   }
 }
@@ -2767,9 +2771,13 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyConventionalRadialDistributionFunction;
   // archive << s.propertyRadialDistributionFunction;
   // archive << s.propertyDensityGrid;
-#if DEBUG
+
+  archive << s.interpolationGrids;
+
+#if DEBUG_ARCHIVE
   archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
+  
   return archive;
 }
 
@@ -2874,7 +2882,10 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyConventionalRadialDistributionFunction;
   // archive >> s.propertyRadialDistributionFunction;
   // archive >> s.propertyDensityGrid;
-#if DEBUG
+
+  archive >> s.interpolationGrids;
+
+#if DEBUG_ARCHIVE
   uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<uint64_t>(0x6f6b6179))

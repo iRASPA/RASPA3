@@ -237,6 +237,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.rejectOutofBound;
   archive << m.rezeroAfterInitialization;
 
+#if DEBUG_ARCHIVE
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
   return archive;
 }
 
@@ -269,6 +273,15 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.useTMBias;
   archive >> m.rejectOutofBound;
   archive >> m.rezeroAfterInitialization;
+
+#if DEBUG_ARCHIVE
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("TransitionMatrix: Error in binary restart\n"));
+  }
+#endif
 
   return archive;
 }

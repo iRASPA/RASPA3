@@ -102,6 +102,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VDWPar
   archive << p.tailCorrectionPressure;
   archive << p.type;
 
+#if DEBUG_ARCHIVE
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
   return archive;
 }
 
@@ -112,6 +116,15 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VDWParameter
   archive >> p.tailCorrectionEnergy;
   archive >> p.tailCorrectionPressure;
   archive >> p.type;
+
+#if DEBUG_ARCHIVE
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("VDWParameters: Error in binary restart\n"));
+  }
+#endif
 
   return archive;
 }

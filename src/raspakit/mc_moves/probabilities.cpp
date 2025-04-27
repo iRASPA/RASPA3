@@ -117,6 +117,11 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
 {
   archive << p.versionNumber;
   archive << p.probabilities;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
   return archive;
 }
 
@@ -131,6 +136,15 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
                                          location.line(), location.file_name()));
   }
   archive >> p.probabilities;
+
+#if DEBUG_ARCHIVE
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("MCMoveProbabilities: Error in binary restart\n"));
+  }
+#endif
 
   return archive;
 }

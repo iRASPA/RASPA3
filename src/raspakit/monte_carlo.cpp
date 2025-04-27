@@ -127,15 +127,27 @@ MonteCarlo::MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycle
 
 System& MonteCarlo::randomSystem() { return systems[size_t(random.uniform() * static_cast<double>(systems.size()))]; }
 
+
 void MonteCarlo::run()
 {
   switch (simulationStage)
   {
     case SimulationStage::Uninitialized:
+      // this case only happens at first run, not when using a binart-restart file
+      for (System& system : systems)
+      {
+        // switch the fractional molecule on in the first system, and off in all others
+        if (system.systemId == 0uz)
+          system.containsTheFractionalMolecule = true;
+        else
+          system.containsTheFractionalMolecule = false;
+      }
       if (outputToFiles)
       {
         createOutputFiles();
+        writeOutputHeader();
       }
+      createInterpolationGrids();
       break;
     case SimulationStage::Initialization:
       goto continueInitializationStage;
@@ -171,6 +183,59 @@ void MonteCarlo::createOutputFiles()
     fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
     outputJsonFileNames.emplace_back(fileNameString);
+  }
+}
+
+void MonteCarlo::writeOutputHeader()
+{
+  if (outputToFiles)
+  {
+    for (const System& system : systems)
+    {
+      std::ostream stream(streams[system.systemId].rdbuf());
+
+      std::print(stream, "{}", system.writeOutputHeader());
+      std::print(stream, "Random seed: {}\n\n", random.seed);
+      std::print(stream, "{}\n", HardwareInfo::writeInfo());
+      std::print(stream, "{}", Units::printStatus());
+      std::print(stream, "{}", system.writeSystemStatus());
+      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(stream, "{}", system.forceField.printForceFieldStatus());
+      std::print(stream, "{}", system.writeComponentStatus());
+      std::print(stream, "{}", system.writeNumberOfPseudoAtoms());
+      std::print(stream, "{}", system.reactions.printStatus());
+
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+      outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+      outputJsons[system.systemId]["seed"] = random.seed;
+      outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+      outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
+      outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+      outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] =
+          system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
+      outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
+
+      std::ofstream json(outputJsonFileNames[system.systemId]);
+      json << outputJsons[system.systemId].dump(4);
+    }
+  }
+
+}
+
+void MonteCarlo::createInterpolationGrids()
+{
+  std::print("createInterpolationGrids\n");
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.createInterpolationGrids(stream);
   }
 }
 
@@ -239,6 +304,7 @@ void MonteCarlo::performCycle()
   }
 }
 
+
 void MonteCarlo::initialize()
 {
   std::chrono::system_clock::time_point t1, t2;
@@ -246,59 +312,7 @@ void MonteCarlo::initialize()
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
 
-  for (System& system : systems)
-  {
-    // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0uz)
-      system.containsTheFractionalMolecule = true;
-    else
-      system.containsTheFractionalMolecule = false;
-  }
 
-  if (outputToFiles)
-  {
-    for (const System& system : systems)
-    {
-      std::ostream stream(streams[system.systemId].rdbuf());
-
-      std::print(stream, "{}", system.writeOutputHeader());
-      std::print(stream, "Random seed: {}\n\n", random.seed);
-      std::print(stream, "{}\n", HardwareInfo::writeInfo());
-      std::print(stream, "{}", Units::printStatus());
-      std::print(stream, "{}", system.writeSystemStatus());
-      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
-      std::print(stream, "{}", system.forceField.printForceFieldStatus());
-      std::print(stream, "{}", system.writeComponentStatus());
-      std::print(stream, "{}", system.writeNumberOfPseudoAtoms());
-      std::print(stream, "{}", system.reactions.printStatus());
-
-#ifdef VERSION
-#define QUOTE(str) #str
-#define EXPAND_AND_QUOTE(str) QUOTE(str)
-      outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
-#endif
-
-      outputJsons[system.systemId]["seed"] = random.seed;
-      outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-      outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
-      outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-      outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] =
-          system.forceField.jsonPseudoAtomStatus();
-      outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
-      outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
-
-      std::ofstream json(outputJsonFileNames[system.systemId]);
-      json << outputJsons[system.systemId].dump(4);
-    }
-  }
-
-  for (System& system : systems)
-  {
-    std::ostream stream(streams[system.systemId].rdbuf());
-
-    system.createInterpolationGrids(random, stream);
-  }
 
   for (System& system : systems)
   {

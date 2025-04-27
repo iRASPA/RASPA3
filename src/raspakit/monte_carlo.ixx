@@ -129,6 +129,16 @@ export struct MonteCarlo
   void createOutputFiles();
 
   /**
+   * \brief Write the output header
+   */
+  void writeOutputHeader();
+
+  /**
+   * \brief Creates energy interpolation grids
+   */
+  void createInterpolationGrids();
+
+  /**
    * \brief Runs the Monte Carlo simulation.
    *
    * Orchestrates the simulation by executing initialization, equilibration,
