@@ -1,5 +1,5 @@
 {
-  "SimulationType" : "MonteCarlo",
+  "SimulationType" : "MolecularDynamics",
   "NumberOfCycles" : 500000,
   "NumberOfInitializationCycles" : 1000,
   "NumberOfEquilibrationCycles" : 100000,

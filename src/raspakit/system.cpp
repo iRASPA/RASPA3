@@ -1726,7 +1726,8 @@ void System::precomputeTotalGradients() noexcept
 {
   runningEnergies = Integrators::updateGradients(spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField,
                                                  simulationBox, components, eik_x, eik_y, eik_z, eik_xy, totalEik,
-                                                 fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
+                                                 fixedFrameworkStoredEik, interpolationGrids,
+                                                 numberOfMoleculesPerComponent);
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -2899,23 +2900,65 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
 void System::writeRestartFile()
 {
-  nlohmann::json j;
+  nlohmann::json json;
 
-  j["simulationBox"] = simulationBox;
-  j["atomPositions"] = atomPositions;
-  j["moleculePositions"] = moleculePositions;
+  json["simulationBox"] = simulationBox;
+  json["atom"] = spanOfMoleculeAtoms();
+  json["molecules"] = moleculePositions;
 
   // use pretty print and indent of 2
   // std::cout << std::setw(2) << j << std::endl;
+  std::string fileNameString =
+        std::format("output/restart_{}_{}.s{}.json", temperature, input_pressure, systemId);
+  std::ofstream file(fileNameString);
+  file << json.dump(2);
 }
 
 void System::readRestartFile()
 {
-  nlohmann::json j;
+  std::string inputFile = std::format("restart.s{}.dat", systemId);
+  if (!std::filesystem::exists(inputFile))
+  {
+    throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", inputFile));
+  }
 
-  simulationBox = j["simulationBox"];
-  atomPositions = j["atomPositions"];
-  moleculePositions = j["moleculePositions"];
+  std::ifstream input(inputFile);
+
+  nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
+
+  try
+  {
+    parsed_data = nlohmann::json::parse(input);
+  }
+  catch (nlohmann::json::parse_error& ex)
+  {
+    std::cerr << "parse error at byte " << ex.byte << std::endl;
+  }
+
+  if (parsed_data.contains("SimulationType"))
+  {
+    simulationBox = parsed_data["simulationBox"];
+  }
+  std::vector<Atom> read_atom_data;
+  if (parsed_data.contains("atoms"))
+  {
+    read_atom_data = parsed_data["atoms"];
+  }
+
+  std::vector<Molecule> read_molecule_data;
+  if (parsed_data.contains("molecules"))
+  {
+    read_molecule_data = parsed_data["molecules"];
+  }
+
+  for(const Atom &atom : read_atom_data)
+  {
+    atomPositions.push_back(atom);
+  }
+  for(const Molecule &molecule : read_molecule_data)
+  {
+    moleculePositions.push_back(molecule);
+  }
 }
 
 std::string System::repr() const { return std::string("system test"); }

@@ -31,6 +31,7 @@ import integrators_update;
 import integrators;
 import integrators_compute;
 import molecule;
+import interpolation_energy_grid;
 
 void DOUBLE3_EXPECT_NEAR(double3 a, double3 b, double tol)
 {
@@ -135,7 +136,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
                               system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
                               system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                              system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+                              system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[0].centerOfMassPosition, double3(5.933550, 7.933050, 5.933550), 1e-6);
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[1].centerOfMassPosition, double3(5.933550, 3.934050, 5.933550), 1e-6);
@@ -149,7 +151,8 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   Integrators::velocityVerlet(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components,
                               system.timeStep, system.thermostat, system.spanOfFrameworkAtoms(), system.forceField,
                               system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                              system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+                              system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+                              system.numberOfMoleculesPerComponent);
 
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[0].centerOfMassPosition, double3(5.933550, 7.932550, 5.933550), 1e-6);
   DOUBLE3_EXPECT_NEAR(system.moleculePositions[1].centerOfMassPosition, double3(5.933550, 3.934550, 5.933550), 1e-6);

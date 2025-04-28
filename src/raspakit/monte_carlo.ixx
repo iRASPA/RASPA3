@@ -102,6 +102,7 @@ export struct MonteCarlo
   size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
   size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
   size_t printEvery;                    ///< Frequency of printing status reports.
+  size_t writeRestartEvery;             ///< Frequency of writing restart files.
   size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
   size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
   size_t optimizeMCMovesEvery;          ///< Frequency of optimizing MC moves.

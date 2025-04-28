@@ -93,6 +93,7 @@ import integrators;
 import integrators_compute;
 import integrators_update;
 import integrators_cputime;
+import interpolation_energy_grid;
 
 MolecularDynamics::MolecularDynamics() : random(std::nullopt) {};
 
@@ -150,6 +151,16 @@ void MolecularDynamics::createOutputFiles()
   }
 }
 
+void MolecularDynamics::createInterpolationGrids()
+{
+  for (System& system : systems)
+  {
+    std::ostream stream(streams[system.systemId].rdbuf());
+
+    system.createInterpolationGrids(stream);
+  }
+}
+
 void MolecularDynamics::initialize()
 {
   size_t totalNumberOfMolecules{0uz};
@@ -184,6 +195,8 @@ void MolecularDynamics::initialize()
     std::print(stream, "{}", system.writeComponentStatus());
     std::print(stream, "{}", system.reactions.printStatus());
   }
+
+  createInterpolationGrids();
 
   for (System& system : systems)
   {
@@ -322,7 +335,7 @@ void MolecularDynamics::equilibrate()
       system.runningEnergies = Integrators::velocityVerlet(
           system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
           system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
@@ -450,13 +463,28 @@ void MolecularDynamics::production()
 
     estimation.setCurrentSample(currentCycle);
 
+    for ([[maybe_unused]] System& system : systems)
+    {
+      // add the sample energy to the averages
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
+        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
+        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+      }
+    }
+
     for (System& system : systems)
     {
       system.runningEnergies = Integrators::velocityVerlet(
           system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
           system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-          system.numberOfMoleculesPerComponent);
+          system.interpolationGrids, system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -469,20 +497,6 @@ void MolecularDynamics::production()
       system.sampleProperties(estimation.currentBin, currentCycle);
     }
 
-    for ([[maybe_unused]] System& system : systems)
-    {
-      // add the sample energy to the averages
-      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
-      {
-        // std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
-        // std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
-        // system.currentEnergyStatus = molecularPressure.first;
-        // system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
-        // std::chrono::system_clock::time_point time2 = std::chrono::system_clock::now();
-        // system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
-        // system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
-      }
-    }
 
     if (currentCycle % printEvery == 0uz)
     {

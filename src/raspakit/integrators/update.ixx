@@ -24,6 +24,7 @@ import running_energy;
 import simulationbox;
 import forcefield;
 import randomnumbers;
+import interpolation_energy_grid;
 
 export namespace Integrators
 {
@@ -132,5 +133,6 @@ RunningEnergy updateGradients(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::vector<size_t> numberOfMoleculesPerComponent);
 }  // namespace Integrators

@@ -1,4 +1,7 @@
 {
+  "MixingRule" : "Lorentz-Berthelot",
+  "TruncationMethod" : "shifted",
+  "TailCorrections" : false,
   "PseudoAtoms" :
   [
     {
@@ -79,7 +82,7 @@
       "element" : "H",
       "print_as" : "H",
       "mass" : 1.00794,
-      "charge" : -0.085
+      "charge" :  0.095
     }
   ],
   "SelfInteractions" : 
@@ -138,8 +141,5 @@
       "parameters" : [25.45, 2.36],
       "source" : "N. Rai and J.I. Siepmann, J. Phys. Chem. B 2007, 111, 10790-10799."
     }
-  ],
-  "MixingRule" : "Lorentz-Berthelot",
-  "TruncationMethod" : "shifted",
-  "TailCorrections" : false
+  ]
 }

@@ -87,6 +87,7 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
+import interpolation_energy_grid;
 
 MonteCarlo::MonteCarlo() : outputToFiles(false), random(std::nullopt) {};
 
@@ -97,6 +98,7 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
+      writeRestartEvery(5000),
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
@@ -116,6 +118,7 @@ MonteCarlo::MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycle
       numberOfInitializationCycles(numberOfInitializationCycles),
       numberOfEquilibrationCycles(numberOfEquilibrationCycles),
       printEvery(printEvery),
+      writeRestartEvery(5000),
       writeBinaryRestartEvery(writeBinaryRestartEvery),
       rescaleWangLandauEvery(rescaleWangLandauEvery),
       optimizeMCMovesEvery(optimizeMCMovesEvery),
@@ -230,7 +233,6 @@ void MonteCarlo::writeOutputHeader()
 
 void MonteCarlo::createInterpolationGrids()
 {
-  std::print("createInterpolationGrids\n");
   for (System& system : systems)
   {
     std::ostream stream(streams[system.systemId].rdbuf());
@@ -375,6 +377,18 @@ void MonteCarlo::initialize()
       }
     }
 
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (System& system : systems)
+        {
+          system.writeRestartFile();
+        }
+      }
+    }
+
     t2 = std::chrono::system_clock::now();
 
     totalInitializationSimulationTime += (t2 - t1);
@@ -468,6 +482,18 @@ void MonteCarlo::equilibrate()
         if (ofile)
         {
           std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
+      }
+    }
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (System& system : systems)
+        {
+          system.writeRestartFile();
         }
       }
     }
@@ -619,6 +645,18 @@ void MonteCarlo::production()
         if (ofile)
         {
           std::filesystem::rename("restart_data.bin_temp", "restart_data.bin");
+        }
+      }
+    }
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (System& system : systems)
+        {
+          system.writeRestartFile();
         }
       }
     }

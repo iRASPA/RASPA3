@@ -105,6 +105,9 @@ export struct MolecularDynamics
    */
   void createOutputFiles();
 
+
+  void createInterpolationGrids();
+
   /**
    * \brief Runs the molecular dynamics simulation.
    *
