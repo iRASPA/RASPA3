@@ -297,7 +297,11 @@ void MonteCarlo::initialize()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
+    t1 = std::chrono::system_clock::now();
     system.createInterpolationGrids(random, stream);
+    t2 = std::chrono::system_clock::now();
+    totalGridCreationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
   }
 
   for (System& system : systems)
@@ -680,6 +684,10 @@ void MonteCarlo::output()
     std::print(stream, "===============================================================================\n\n");
 
     std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
+    if (totalGridCreationTime.count() > 1e-4)
+    {
+      std::print(stream, "Grid creation time:             {:14f} [s]\n", totalGridCreationTime.count());
+    }
     std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
     std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
     std::print(stream, "Production simulation time:     {:14f} [s]\n", totalProductionSimulationTime.count());
@@ -706,6 +714,7 @@ void MonteCarlo::output()
 
     outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
+    outputJsons[system.systemId]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
     outputJsons[system.systemId]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
     outputJsons[system.systemId]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
     outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();

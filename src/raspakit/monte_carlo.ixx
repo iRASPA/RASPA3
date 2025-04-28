@@ -118,6 +118,7 @@ export struct MonteCarlo
 
   BlockErrorEstimation estimation;  ///< Block error estimation object.
 
+  std::chrono::duration<double> totalGridCreationTime{0};  ///< Total time for calculating the interpolation grid.
   std::chrono::duration<double> totalInitializationSimulationTime{0};  ///< Total time for initialization stage.
   std::chrono::duration<double> totalEquilibrationSimulationTime{0};   ///< Total time for equilibration stage.
   std::chrono::duration<double> totalProductionSimulationTime{0};      ///< Total time for production stage.
