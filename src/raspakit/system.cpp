@@ -1860,12 +1860,22 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
+  std::chrono::system_clock::time_point t1, t2;
+  
+  t1 = std::chrono::system_clock::now();
+  std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
+    forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+    t2 = std::chrono::system_clock::now();
+    mc_moves_cputime.pressureFrameworkTime += (t2 - t1);
+
+  t1 = std::chrono::system_clock::now();
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));
+  t2 = std::chrono::system_clock::now();
+  mc_moves_cputime.pressureIntermolecularTime += (t2 - t1);
 
+  t1 = std::chrono::system_clock::now();
   pressureInfo = pair_acc(
       pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
@@ -1873,7 +1883,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
 
   pressureInfo.first.sumTotal();
+  t2 = std::chrono::system_clock::now();
+  mc_moves_cputime.pressureEwaldTime += (t2 - t1);
 
+  t1 = std::chrono::system_clock::now();
   double pressureTailCorrection = 0.0;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
   for (std::vector<Atom>::iterator it1 = atomPositions.begin(); it1 != atomPositions.end(); ++it1)
@@ -1896,7 +1909,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.ax -= pressureTailCorrection;
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
+  t2 = std::chrono::system_clock::now();
+  mc_moves_cputime.pressureTailTime += (t2 - t1);
 
+  t1 = std::chrono::system_clock::now();
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
   for (size_t componentId = 0; componentId < components.size(); ++componentId)
@@ -1942,6 +1958,8 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.az = pressureInfo.second.cx = temp;
   temp = 0.5 * (pressureInfo.second.bz + pressureInfo.second.cy);
   pressureInfo.second.bz = pressureInfo.second.cy = temp;
+  t2 = std::chrono::system_clock::now();
+  mc_moves_cputime.pressureRestTime += (t2 - t1);
 
   return pressureInfo;
 }

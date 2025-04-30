@@ -44,6 +44,11 @@ export struct MCMoveCpuTime
 
   std::chrono::duration<double> propertySampling{0.0};           ///< Time spent on property sampling.
   std::chrono::duration<double> energyPressureComputation{0.0};  ///< Time spent on energy and pressure computations.
+  std::chrono::duration<double> pressureFrameworkTime{0.0};  ///< Time spent on energy and pressure computations.
+  std::chrono::duration<double> pressureIntermolecularTime{0.0};  ///< Time spent on energy and pressure computations.
+  std::chrono::duration<double> pressureEwaldTime{0.0};  ///< Time spent on energy and pressure computations.
+  std::chrono::duration<double> pressureTailTime{0.0};  ///< Time spent on energy and pressure computations.
+  std::chrono::duration<double> pressureRestTime{0.0};  ///< Time spent on energy and pressure computations.
 
   /**
    * \brief Calculates the total CPU time spent on all recorded Monte Carlo moves.
