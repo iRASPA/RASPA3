@@ -121,7 +121,8 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
  * \return A RunningEnergy object containing the total interaction energy.
  */
 RunningEnergy computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                               std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept;
+                     std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
+                     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept;
 
 /**
  * \brief Computes the interaction energy, gradients, and strain derivative between the framework and molecule atoms.

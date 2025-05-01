@@ -29,6 +29,7 @@ import energy_status;
 import integrators;
 import integrators_compute;
 import integrators_update;
+import interpolation_energy_grid;
 
 TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_inter)
 {
@@ -166,7 +167,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   atomPositions[5].position = double3(5.93355, 3.93355, 4.78455);
 
   RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids);
 
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeVDW * Units::EnergyToKelvin, -1932.15586114, 1e-6);
   EXPECT_NEAR(factorFrameworkMolecular.frameworkMoleculeCharge * Units::EnergyToKelvin, 0.00000000, 1e-6);
@@ -265,7 +267,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids);
   RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
@@ -476,7 +479,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   atomPositions[5].position = double3(5.93355, 3.93355, 5.93355 - 1.149);
 
   [[maybe_unused]] RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids);
   [[maybe_unused]] RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
@@ -513,7 +517,7 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_Total)
   [[maybe_unused]] RunningEnergy gradientEnergy = Integrators::updateGradients(
       system.spanOfMoleculeAtoms(), system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox,
       system.components, system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik,
-      system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+      system.fixedFrameworkStoredEik, system.interpolationGrids, system.numberOfMoleculesPerComponent);
 
   // EXPECT_NEAR(gradientEnergy.total()  * Units::EnergyToKelvin, -2179.338665434245, 1e-4);
 
@@ -732,7 +736,8 @@ TEST(gradients, Test_CO2_in_ITQ_29_1x1x1)
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
   [[maybe_unused]] RunningEnergy factor2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids);
 
   double delta = 1e-5;
   double tolerance = 1e-4;
@@ -828,7 +833,8 @@ TEST(gradients, Test_CH4_in_Box_25x25x25)
   }
 
   [[maybe_unused]] RunningEnergy factorFrameworkMolecular = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+      system.interpolationGrids);
   [[maybe_unused]] RunningEnergy factorInterMolecular = Interactions::computeInterMolecularGradient(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
 
@@ -978,7 +984,7 @@ TEST(gradients, Test_CO2_in_MFI_2x2x2)
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
       system.forceField, system.simulationBox, system.spanOfMoleculeAtoms());
   [[maybe_unused]] RunningEnergy factor2 = Interactions::computeFrameworkMoleculeGradient(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
+      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.interpolationGrids);
 
   double delta = 1e-5;
   double tolerance = 1e-4;

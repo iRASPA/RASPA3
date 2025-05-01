@@ -31,6 +31,7 @@ import thermostat;
 import units;
 import interactions_ewald;
 import mc_moves_move_types;
+import interpolation_energy_grid;
 
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
@@ -82,7 +83,8 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
     currentEnergy = Integrators::velocityVerlet(
         moleculePositions, moleculeAtomPositions, system.components, dt, thermostat, system.spanOfFrameworkAtoms(),
         system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-        system.totalEik, system.fixedFrameworkStoredEik, system.numberOfMoleculesPerComponent);
+        system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids, 
+        system.numberOfMoleculesPerComponent);
   }
   time_end = std::chrono::system_clock::now();
 

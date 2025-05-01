@@ -2649,3 +2649,49 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
   return {0.0, double3(0.0, 0.0, 0.0), double3x3{}};
 }
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const InterpolationEnergyGrid& s)
+{
+  archive << s.versionNumber;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
+  archive <<  s.unitCellBox;
+  archive <<  s.numberOfCells;
+  archive <<  s.numberOfGridPoints;
+  archive <<  s.order;
+
+  return archive;
+}
+
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, InterpolationEnergyGrid& s)
+{
+  uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > s.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(
+        std::format("Invalid version reading 'System' at line {} in file {}\n", location.line(), location.file_name()));
+  }
+
+  archive >>  s.unitCellBox;
+  archive >>  s.numberOfCells;
+  archive >>  s.numberOfGridPoints;
+  archive >>  s.order;
+
+#if DEBUG_ARCHIVE
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("System: Error in binary restart\n"));
+  }
+#endif
+
+  return archive;
+}
+

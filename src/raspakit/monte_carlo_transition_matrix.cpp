@@ -85,6 +85,7 @@ import property_pressure;
 import transition_matrix;
 import interactions_ewald;
 import equation_of_states;
+import interpolation_energy_grid;
 
 MonteCarloTransitionMatrix::MonteCarloTransitionMatrix() : random(std::nullopt) {};
 

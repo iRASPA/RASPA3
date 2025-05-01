@@ -42,11 +42,15 @@ import interactions_framework_molecule_grid;
 
 export struct InterpolationEnergyGrid
 {
+  uint64_t versionNumber{1};
+
   SimulationBox unitCellBox;
   int3 numberOfCells;
   int3 numberOfGridPoints;
   ForceField::InterpolationScheme order;
   std::vector<double> data;
+
+  InterpolationEnergyGrid() {}
 
   InterpolationEnergyGrid(const SimulationBox unitCellBox, int3 numberOfCells, ForceField::InterpolationScheme order)
       : unitCellBox(unitCellBox),
@@ -65,4 +69,8 @@ export struct InterpolationEnergyGrid
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;
   std::tuple<double, double3, double3x3> interpolateHessian(double3 pos) const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InterpolationEnergyGrid &s);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InterpolationEnergyGrid &s);
+
 };

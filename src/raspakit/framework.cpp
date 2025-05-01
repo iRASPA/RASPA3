@@ -454,6 +454,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   archive << c.largestCharge;
 
   archive << c.definedAtoms;
+  archive << c.unitCellAtoms;
   archive << c.atoms;
 
   archive << c.chiralCenters;
@@ -473,6 +474,10 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
   // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
   // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
 
   return archive;
 }
@@ -507,6 +512,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   archive >> c.largestCharge;
 
   archive >> c.definedAtoms;
+  archive >> c.unitCellAtoms;
   archive >> c.atoms;
 
   archive >> c.chiralCenters;
@@ -526,6 +532,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
   // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
   // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
+
+#if DEBUG_ARCHIVE
+  uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("Framework: Error in binary restart\n"));
+  }
+#endif
 
   return archive;
 }

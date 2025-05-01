@@ -16,7 +16,8 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.cpp
-  ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.cpp)
+  ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/opencl/*.cpp)
 
 file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/foundationkit/*.ixx
@@ -34,7 +35,8 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/potentials/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/properties/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/integrators/*.ixx
-  ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.ixx)
+  ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/opencl/*.ixx)
 
 
 add_library(${PROJECT_NAME} STATIC "")

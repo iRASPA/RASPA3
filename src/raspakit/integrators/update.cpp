@@ -37,6 +37,7 @@ import integrators_cputime;
 import integrators_compute;
 import randomnumbers;
 import units;
+import interpolation_energy_grid;
 
 void Integrators::scaleVelocities(std::span<Molecule> moleculePositions, std::pair<double, double> scaling)
 {
@@ -245,6 +246,7 @@ RunningEnergy Integrators::updateGradients(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
@@ -257,7 +259,7 @@ RunningEnergy Integrators::updateGradients(
 
   // Compute gradients and energies due to interactions
   RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeGradient(
-      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+      forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions, interpolationGrids);
   RunningEnergy intermolecularEnergy =
       Interactions::computeInterMolecularGradient(forceField, simulationBox, moleculeAtomPositions);
   RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierGradient(

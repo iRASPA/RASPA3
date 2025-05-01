@@ -29,6 +29,7 @@ import thermostat;
 import integrators_compute;
 import integrators_update;
 import integrators_cputime;
+import interpolation_energy_grid;
 
 RunningEnergy Integrators::velocityVerlet(
     std::span<Molecule> moleculePositions, std::span<Atom> moleculeAtomPositions,
@@ -38,6 +39,7 @@ RunningEnergy Integrators::velocityVerlet(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
   // Start timing the integration step
@@ -68,7 +70,8 @@ RunningEnergy Integrators::velocityVerlet(
   // compute the gradient on all the atoms
   RunningEnergy runningEnergies =
       updateGradients(moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x,
-                      eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, numberOfMoleculesPerComponent);
+                      eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, interpolationGrids,
+                      numberOfMoleculesPerComponent);
 
   // compute the gradients on the center of mass and the orientation
   updateCenterOfMassAndQuaternionGradients(moleculePositions, moleculeAtomPositions, components);
