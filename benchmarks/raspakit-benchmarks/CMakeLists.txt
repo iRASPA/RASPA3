@@ -1,8 +1,6 @@
 project(benchmarks_raspakit)
 
 add_executable(${PROJECT_NAME}
-  benchmark1.cpp
-  benchmark2.cpp
   interactions.cpp
   pow.cpp
   main.cpp)
