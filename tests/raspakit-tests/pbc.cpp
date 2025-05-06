@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 #include <tuple>
 #include <vector>
 

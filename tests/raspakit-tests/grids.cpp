@@ -154,14 +154,14 @@ TEST(grids, Test_CHA_grid)
   // InterpolationEnergyGrid grid_repulsion = InterpolationEnergyGrid(numberOfGridPoints,
   // InterpolationEnergyGrid::InterpolationOrder::Tricubic);
   ////InterpolationEnergyGrid grid_repulsion = InterpolationEnergyGrid(numberOfGridPoints,
-  ///InterpolationEnergyGrid::InterpolationOrder::Triquintic);
+  /// InterpolationEnergyGrid::InterpolationOrder::Triquintic);
   // grid_repulsion.makeInterpolationGrid(ForceField::InterpolationGridType::LennardJonesRepulsion, system.forceField,
   // system.framework.value(), typeB);
 
   // InterpolationEnergyGrid grid_attraction = InterpolationEnergyGrid(numberOfGridPoints,
   // InterpolationEnergyGrid::InterpolationOrder::Tricubic);
   ////InterpolationEnergyGrid grid_attraction = InterpolationEnergyGrid(numberOfGridPoints,
-  ///InterpolationEnergyGrid::InterpolationOrder::Triquintic);
+  /// InterpolationEnergyGrid::InterpolationOrder::Triquintic);
   // grid_attraction.makeInterpolationGrid(ForceField::InterpolationGridType::LennardJonesAttraction, system.forceField,
   // system.framework.value(), typeB);
 

@@ -9,7 +9,7 @@
 import int3;
 import double3;
 import double3x3;
-
+import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -27,15 +27,8 @@ import interactions_ewald;
 
 TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 {
-  ForceField forceField =
-      ForceField({PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)}, {VDWParameters(158.5, 3.72)},
-                 ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, false, false, false);
-
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, false, false, false);
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {2}, 5);
 
@@ -50,11 +43,8 @@ TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -132,11 +122,6 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
                            Atom(double3(0.000000000000, 0.184700000000, 0.368300000000), 2.05, 1.0, 0, 0, 0, 0),
                            Atom(double3(0.890200000000, 0.109800000000, 0.342900000000), -1.025, 1.0, 0, 1, 0, 0)},
                           int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
@@ -153,11 +138,8 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_P1)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   Framework f = Framework(0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -235,12 +217,6 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
                            Atom(double3(0.000000000000, 0.184700000000, 0.368300000000), 2.05, 1.0, 0, 0, 0, 0),
                            Atom(double3(0.890200000000, 0.109800000000, 0.342900000000), -1.025, 1.0, 0, 1, 0, 0)},
                           int3(2, 2, 2));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
-
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
@@ -256,25 +232,9 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29_2x2x2_P1)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
@@ -291,59 +251,9 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInITQ_29)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", false, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false);
-
-  Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.42238, 0.0565, -0.33598), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.30716, 0.02772, -0.1893), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.27911, 0.06127, 0.0312), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12215, 0.06298, 0.0267), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.07128, 0.02722, -0.18551), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.18641, 0.05896, -0.32818), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.42265, -0.1725, -0.32718), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.30778, -0.13016, -0.18548), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.27554, -0.17279, 0.03109), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12058, -0.1731, 0.02979), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.07044, -0.13037, -0.182), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.18706, -0.17327, -0.31933), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.3726, 0.0534, -0.2442), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3084, 0.0587, -0.0789), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2007, 0.0592, 0.0289), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.0969, 0.0611, -0.0856), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1149, 0.0541, -0.2763), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2435, 0.0553, -0.246), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3742, -0.1561, -0.2372), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3085, -0.1552, -0.0728), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.198, -0.1554, 0.0288), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.091, -0.1614, -0.0777), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1169, -0.1578, -0.2694), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2448, -0.1594, -0.2422), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3047, -0.051, -0.1866), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.0768, -0.0519, -0.1769), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4161, 0.1276, -0.3896), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4086, -0.0017, -0.4136), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.402, -0.1314, -0.4239), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1886, 0.1298, -0.3836), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.194, 0.0007, -0.4082), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1951, -0.1291, -0.419), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(-0.0037, 0.0502, -0.208), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(-0.004, -0.1528, -0.2078), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4192, -0.25, -0.354), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1884, -0.25, -0.3538), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2883, -0.25, 0.0579), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1085, -0.25, 0.0611), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Framework f = TestFactories::makeMFI_Si(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
@@ -360,59 +270,9 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI2x2x2)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-
-  Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 292,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.42238, 0.0565, -0.33598), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.30716, 0.02772, -0.1893), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.27911, 0.06127, 0.0312), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12215, 0.06298, 0.0267), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.07128, 0.02722, -0.18551), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.18641, 0.05896, -0.32818), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.42265, -0.1725, -0.32718), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.30778, -0.13016, -0.18548), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.27554, -0.17279, 0.03109), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12058, -0.1731, 0.02979), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.07044, -0.13037, -0.182), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.18706, -0.17327, -0.31933), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.3726, 0.0534, -0.2442), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3084, 0.0587, -0.0789), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2007, 0.0592, 0.0289), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.0969, 0.0611, -0.0856), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1149, 0.0541, -0.2763), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2435, 0.0553, -0.246), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3742, -0.1561, -0.2372), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3085, -0.1552, -0.0728), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.198, -0.1554, 0.0288), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.091, -0.1614, -0.0777), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1169, -0.1578, -0.2694), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2448, -0.1594, -0.2422), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.3047, -0.051, -0.1866), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.0768, -0.0519, -0.1769), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4161, 0.1276, -0.3896), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4086, -0.0017, -0.4136), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.402, -0.1314, -0.4239), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1886, 0.1298, -0.3836), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.194, 0.0007, -0.4082), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1951, -0.1291, -0.419), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(-0.0037, 0.0502, -0.208), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(-0.004, -0.1528, -0.2078), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.4192, -0.25, -0.354), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1884, -0.25, -0.3538), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.2883, -0.25, 0.0579), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.1085, -0.25, 0.0611), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(2, 2, 2));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
@@ -429,11 +289,8 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI2x2x2)
 
 TEST(spacegroup, TestLennardJonesVDWMethaneInMFI_P1)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   Framework f = Framework(0, forceField, "MFI_SI", SimulationBox(20.022, 19.899, 13.383), 1,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
@@ -727,11 +584,6 @@ TEST(spacegroup, TestLennardJonesVDWMethaneInMFI_P1)
                            Atom(double3(0.996300000000, 0.449800000000, 0.792000000000), -1.025, 1.0, 0, 1, 0, 0),
                            Atom(double3(0.996000000000, 0.652800000000, 0.792200000000), -1.025, 1.0, 0, 1, 0, 0)},
                           int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 

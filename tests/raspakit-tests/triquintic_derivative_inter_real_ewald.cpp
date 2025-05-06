@@ -12,7 +12,7 @@
 import int3;
 import double3;
 import double3x3;
-
+import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -38,66 +38,9 @@ import energy_status;
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
@@ -162,66 +105,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_gradient_cartesian_me
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
@@ -274,66 +160,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_hessian_cartesian_met
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_third_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
@@ -392,66 +221,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_third_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fourth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
@@ -517,67 +289,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fourth_derivative_car
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fifth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
-
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -648,66 +362,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fifth_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_sixth_derivative_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 21.8, 21.8, 21.8, false, false, true);
-
-  Framework f = Framework(0, forceField, "CHA",
-                          SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                        94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                          1,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                           Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                           Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                          int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {0}, 5);
 
@@ -791,66 +448,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_sixth_derivative_cart
 
 TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_Txxyyzz_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 21.8, 21.8, 21.8, false, false, true);
-
-  Framework framework = Framework(0, forceField, "CHA",
-                                  SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                                94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                                  1,
-                                  {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t
-                                   // type, uint8_t componentId, uint8_t groupId
-                                   Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                                  int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework framework = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {0}, 5);
 
@@ -1154,66 +754,9 @@ TEST(sixth_derivative_inter_lennard_jones_real_ewald, Test_fractional_to_Cartesi
 {
   double tolerance = 1e-3;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 21.8, 21.8, 21.8, false, false, true);
-
-  Framework framework = Framework(0, forceField, "CHA",
-                                  SimulationBox(9.459, 9.459, 9.459, 94.07 * std::numbers::pi / 180.0,
-                                                94.07 * std::numbers::pi / 180.0, 94.07 * std::numbers::pi / 180.0),
-                                  1,
-                                  {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t
-                                   // type, uint8_t componentId, uint8_t groupId
-                                   Atom(double3(0.10330000, 0.33310000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.12570000, 0.89670000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.66690000, 0.89670000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.10330000, 0.87430000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.87430000, 0.33310000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.33310000, 0.87430000, 0.10330000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.12570000, 0.66690000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.33310000, 0.10330000, 0.87430000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.66690000, 0.12570000, 0.89670000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.87430000, 0.10330000, 0.33310000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.89670000, 0.12570000, 0.66690000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.89670000, 0.66690000, 0.12570000), 2.05, 1.0, 0, 0, 0, 0),
-                                   Atom(double3(0.00000000, 0.73350000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.26650000, 0.73350000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.26650000, 1.00000000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.73350000, 1.00000000, 0.26650000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(1.00000000, 0.26650000, 0.73350000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.73350000, 0.26650000, 1.00000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.15060000, 0.84940000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.50000000, 0.84940000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.15060000, 0.50000000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.84940000, 0.15060000, 0.50000000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.84940000, 0.50000000, 0.15060000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.50000000, 0.15060000, 0.84940000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.25030000, 0.89300000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.10700000, 0.74970000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.25030000, 0.25030000, 0.89300000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.89300000, 0.25030000, 0.25030000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.74970000, 0.10700000, 0.74970000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.74970000, 0.74970000, 0.10700000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.02040000, 0.31930000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.68070000, 0.97960000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.02040000, 0.02040000, 0.31930000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.31930000, 0.02040000, 0.02040000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.97960000, 0.68070000, 0.97960000), -1.025, 1.0, 0, 1, 0, 0),
-                                   Atom(double3(0.97960000, 0.97960000, 0.68070000), -1.025, 1.0, 0, 1, 0, 0)},
-                                  int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, 0)},
-                          5, 21);
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  Framework framework = TestFactories::makeCHA(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {0}, 5);
 

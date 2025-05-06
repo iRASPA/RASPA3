@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <complex>
+#include <cstddef>
 #include <span>
 #include <vector>
 
@@ -10,7 +10,7 @@ import int3;
 import double3;
 import double3x3;
 import simd_quatd;
-
+import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -33,36 +33,12 @@ import interpolation_energy_grid;
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(2, 2, 2));
-  Component c = Component(
-      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21);
+  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 
@@ -130,36 +106,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(2, 2, 2));
-  Component c = Component(
-      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21);
+  Component c = TestFactories::makeCO2(forceField, 0, true);
+  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 
@@ -227,49 +179,12 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 
 TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-          PseudoAtom("Ow", false, 15.9996, 0.0, 0.0, 8, false),
-          PseudoAtom("Hw", false, 1.0008, 0.241, 0.0, 1, false),
-          PseudoAtom("Lw", false, 0.0, -0.241, 0.0, 0, false),
-      },
-      {
-          VDWParameters(22.0, 2.30),
-          VDWParameters(53.0, 3.3),
-          VDWParameters(158.5, 3.72),
-          VDWParameters(29.933, 2.745),
-          VDWParameters(85.671, 3.017),
-          VDWParameters(89.633, 3.097),
-          VDWParameters(0.0, 1.0),
-          VDWParameters(0.0, 1.0),
-      },
-      ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-
+  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(2, 2, 2));
-  Component c = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 5, 1, 0),
-                           Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 6, 1, 0),
-                           Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 6, 1, 0),
-                           Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 7, 1, 0),
-                           Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 7, 1, 0)},
-                          5, 21);
+  Component c = TestFactories::makeWater(forceField, 0, true);
+  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 

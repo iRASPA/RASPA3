@@ -10,7 +10,7 @@
 import int3;
 import double3;
 import double3x3;
-
+import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -31,28 +31,10 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
 {
   double tolerance = 1e-4;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   forceField.useCharge = false;
   forceField.omitEwaldFourier = true;
-
-  Component c = Component(
-      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21);
-
+  Component c = TestFactories::makeCO2(forceField, 0, true);
   System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
@@ -117,30 +99,11 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_no_fourier)
 {
   double tolerance = 1e-4;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
-  forceField.useCharge = true;
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   forceField.omitEwaldFourier = true;
   forceField.EwaldAlpha = 0.265058;
   forceField.numberOfWaveVectors = int3(7, 7, 7);
-
-  Component c = Component(
-      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21);
-
+  Component c = TestFactories::makeCO2(forceField, 0, true);
   System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
@@ -207,31 +170,14 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_ewald)
 {
   double tolerance = 1e-4;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("C_co2", false, 12.0, 0.6512, 0.0, 6, false),
-          PseudoAtom("O_co2", false, 15.9994, -0.3256, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(29.933, 2.745),
-       VDWParameters(85.671, 3.017)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   forceField.useCharge = true;
   forceField.omitEwaldFourier = false;
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.265058;
   forceField.numberOfWaveVectors = int3(7, 7, 7);
 
-  Component c = Component(
-      0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, 0), Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, 0),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, 0)},
-      5, 21);
-
+  Component c = TestFactories::makeCO2(forceField, 0, true);
   System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
@@ -304,16 +250,8 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
   double delta = 1e-7;
   double tolerance = 1e-4;
 
-  ForceField forceField =
-      ForceField({PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)}, {VDWParameters(158.5, 3.72)},
-                 ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 0, 0, 0)},
-                          5, 21);
-
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Component c = TestFactories::makeMethane(forceField, 0);
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
@@ -416,32 +354,9 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
   double delta = 1e-7;
   double tolerance = 1e-4;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("Na+", false, 12.0, 1.0, 0.0, 6, false),
-          PseudoAtom("Cl-", false, 15.9994, -1.0, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(15.0966, 2.65755),
-       VDWParameters(142.562, 3.51932)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
-  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
-                           {
-                               // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                               // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 3, 0, 0),
-                           },
-                           5, 21);
-  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
-                           {
-                               // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                               // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 0, 4, 1, 0),
-                           },
-                           5, 21);
-
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {1, 1}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
@@ -548,31 +463,12 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   double delta = 1e-4;
   double tolerance = 1e-3;
 
-  ForceField forceField = ForceField(
-      {
-          PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false),
-          PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-          PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false),
-          PseudoAtom("Na+", false, 12.0, 1.0, 0.0, 6, false),
-          PseudoAtom("Cl-", false, 15.9994, -1.0, 0.0, 8, false),
-      },
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72), VDWParameters(15.0966, 2.65755),
-       VDWParameters(142.562, 3.51932)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, true);
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
+  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
 
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-
-  Component na = Component(0, forceField, "Na", 304.1282, 7377300.0, 0.22394,
-                           {
-                               Atom(double3(0.0, 0.0, 0.0), 1.0, 1.0, 0, 3, 0, 0),
-                           },
-                           5, 21);
-  Component cl = Component(1, forceField, "Cl", 304.1282, 7377300.0, 0.22394,
-                           {
-                               Atom(double3(0.0, 0.0, 0.0), -1.0, 1.0, 1, 4, 1, 0),
-                           },
-                           5, 21);
 
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {20, 20}, 5);
 

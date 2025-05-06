@@ -7,9 +7,11 @@
 #include <tuple>
 #include <vector>
 
+
 import int3;
 import double3;
 import double3x3;
+import factory;
 
 import units;
 import atom;
@@ -33,25 +35,9 @@ import cbmc_interactions_intermolecular;
 
 TEST(cbmc_interactions, framework_molecule_1)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
-
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
@@ -74,25 +60,9 @@ TEST(cbmc_interactions, framework_molecule_1)
 
 TEST(cbmc_interactions, framework_molecule_2)
 {
-  ForceField forceField = ForceField(
-      {PseudoAtom("Si", true, 28.0855, 2.05, 0.0, 14, false), PseudoAtom("O", true, 15.999, -1.025, 0.0, 8, false),
-       PseudoAtom("CH4", false, 16.04246, 0.0, 0.0, 6, false)},
-      {VDWParameters(22.0, 2.30), VDWParameters(53.0, 3.3), VDWParameters(158.5, 3.72)},
-      ForceField::MixingRule::Lorentz_Berthelot, 12.0, 12.0, 12.0, true, false, false);
-  Framework f = Framework(
-      0, forceField, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.3683, 0.1847, 0), 2.05, 1.0, 0, 0, 0, 0), Atom(double3(0.5, 0.2179, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.2939, 0.2939, 0), -1.025, 1.0, 0, 1, 0, 0),
-       Atom(double3(0.3429, 0.1098, 0.1098), -1.025, 1.0, 0, 1, 0, 0)},
-      int3(1, 1, 1));
-  Component c = Component(0, forceField, "methane", 190.564, 45599200, 0.01142,
-                          {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
-                           // uint8_t componentId, uint8_t groupId
-                           Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 1, 0)},
-                          5, 21);
-
+  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
+  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = TestFactories::makeMethane(forceField, 0);
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
