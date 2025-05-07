@@ -21,6 +21,7 @@ module;
 #include <tuple>          
 #include <utility>
 #include <vector>
+#include <string>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
