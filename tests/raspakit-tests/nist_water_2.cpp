@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <array>
 #include <complex>
+#include <cstddef>
 #include <numbers>
 #include <span>
 #include <vector>

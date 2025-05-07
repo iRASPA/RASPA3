@@ -1860,9 +1860,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
-
+  
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+    forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));
@@ -1897,7 +1897,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.ax -= pressureTailCorrection;
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
-
+  
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
   for (size_t componentId = 0; componentId < components.size(); ++componentId)
@@ -1943,7 +1943,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.az = pressureInfo.second.cx = temp;
   temp = 0.5 * (pressureInfo.second.bz + pressureInfo.second.cy);
   pressureInfo.second.bz = pressureInfo.second.cy = temp;
-
+  
   return pressureInfo;
 }
 
