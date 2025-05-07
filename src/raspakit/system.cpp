@@ -1865,7 +1865,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   }
   
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    forceField, framework, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+    forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));

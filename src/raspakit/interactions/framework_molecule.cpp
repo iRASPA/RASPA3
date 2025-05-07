@@ -421,10 +421,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
           energySum.frameworkMoleculeCharge += gradientFactor.energy;
           energySum.dudlambdaCharge += gradientFactor.dUdlambda;
 
-          const double3 f = gradientFactor.gradientFactor * dr;
+          const double3 g = gradientFactor.gradientFactor * dr;
 
-          it1->gradient += f;
-          it2->gradient -= f;
+          it1->gradient += g;
+          it2->gradient -= g;
         }
       }
     }
@@ -433,10 +433,12 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 }
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::optional<Framework> &framework, const std::vector<Component> &components,
-    const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept
+    const ForceField &forceField, const std::optional<Framework> &framework, 
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::vector<Component> &components, const SimulationBox &simulationBox,
+    std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept
 {
-  double3 dr, posA, posB, f;
+  double3 dr, posA, posB;
   double rr;
 
   double3x3 strainDerivativeTensor;
@@ -449,7 +451,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 
   if (moleculeAtoms.empty()) return std::make_pair(energy, strainDerivativeTensor);
 
-  for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     posA = it1->position;
     size_t compA = static_cast<size_t>(it1->componentId);
@@ -458,76 +460,120 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
-    for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
+
+    if (interpolationGrids[typeA].has_value() && (groupIdA == 0))
     {
-      size_t compB = static_cast<size_t>(it2->componentId);
+      auto [energy_vdw, gradient_vdw] = interpolationGrids[typeA]->interpolateGradient(posA);
+      energy.frameworkComponentEnergy(compA, 0).VanDerWaals += Potentials::EnergyFactor(energy_vdw, 0.0);
+      const double3 f = gradient_vdw;
 
-      posB = it2->position;
-      size_t typeB = static_cast<size_t>(it2->type);
-      bool groupIdB = static_cast<bool>(it2->groupId);
-      double scalingVDWB = it2->scalingVDW;
-      double scalingCoulombB = it2->scalingCoulomb;
-      double chargeB = it2->charge;
+      it1->gradient += f;
 
-      dr = posA - posB;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      rr = double3::dot(dr, dr);
+      strainDerivativeTensor.ax += f.x * posA.x;
+      strainDerivativeTensor.bx += f.y * posA.x;
+      strainDerivativeTensor.cx += f.z * posA.x;
 
-      Potentials::EnergyFactor temp(
-          preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
-      energy.frameworkComponentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
+      strainDerivativeTensor.ay += f.x * posA.y;
+      strainDerivativeTensor.by += f.y * posA.y;
+      strainDerivativeTensor.cy += f.z * posA.y;
 
-      if (rr < cutOffFrameworkVDWSquared)
+      strainDerivativeTensor.az += f.x * posA.z;
+      strainDerivativeTensor.bz += f.y * posA.z;
+      strainDerivativeTensor.cz += f.z * posA.z;
+
+      if (useCharge)
       {
-        Potentials::GradientFactor gradientFactor = Potentials::potentialVDWGradient(
-            forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
-
-        energy.frameworkComponentEnergy(compA, compB).VanDerWaals +=
-            Potentials::EnergyFactor(gradientFactor.energy, 0.0);
-
-        const double3 g = gradientFactor.gradientFactor * dr;
+        auto [energy_real_ewald, gradient_real_ewald] = interpolationGrids.back()->interpolateGradient(posA);
+        energy.frameworkComponentEnergy(compA, 0).CoulombicReal += Potentials::EnergyFactor(chargeA * energy_real_ewald, 0.0);
+        const double3 g = chargeA * gradient_real_ewald;
 
         it1->gradient += g;
-        it2->gradient -= g;
 
-        strainDerivativeTensor.ax += g.x * dr.x;
-        strainDerivativeTensor.bx += g.y * dr.x;
-        strainDerivativeTensor.cx += g.z * dr.x;
+        strainDerivativeTensor.ax += g.x * posA.x;
+        strainDerivativeTensor.bx += g.y * posA.x;
+        strainDerivativeTensor.cx += g.z * posA.x;
 
-        strainDerivativeTensor.ay += g.x * dr.y;
-        strainDerivativeTensor.by += g.y * dr.y;
-        strainDerivativeTensor.cy += g.z * dr.y;
+        strainDerivativeTensor.ay += g.x * posA.y;
+        strainDerivativeTensor.by += g.y * posA.y;
+        strainDerivativeTensor.cy += g.z * posA.y;
 
-        strainDerivativeTensor.az += g.x * dr.z;
-        strainDerivativeTensor.bz += g.y * dr.z;
-        strainDerivativeTensor.cz += g.z * dr.z;
+        strainDerivativeTensor.az += g.x * posA.z;
+        strainDerivativeTensor.bz += g.y * posA.z;
+        strainDerivativeTensor.cz += g.z * posA.z;
       }
-      if (useCharge && rr < cutOffChargeSquared)
+    }
+    else
+    {
+      for (std::span<Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
-        double r = std::sqrt(rr);
+        posB = it2->position;
+        size_t compB = static_cast<size_t>(it2->componentId);
+        size_t typeB = static_cast<size_t>(it2->type);
+        bool groupIdB = static_cast<bool>(it2->groupId);
+        double scalingVDWB = it2->scalingVDW;
+        double scalingCoulombB = it2->scalingCoulomb;
+        double chargeB = it2->charge;
 
-        Potentials::GradientFactor gradientFactor = Potentials::potentialCoulombGradient(
-            forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+        dr = posA - posB;
+        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+        rr = double3::dot(dr, dr);
 
-        energy.frameworkComponentEnergy(compA, compB).CoulombicReal +=
-            Potentials::EnergyFactor(gradientFactor.energy, 0.0);
+        Potentials::EnergyFactor temp(
+            preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
+        energy.frameworkComponentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
 
-        const double3 g = gradientFactor.gradientFactor * dr;
+        if (rr < cutOffFrameworkVDWSquared)
+        {
+          Potentials::GradientFactor gradientFactor = Potentials::potentialVDWGradient(
+              forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-        it1->gradient += g;
-        it2->gradient -= g;
+          energy.frameworkComponentEnergy(compA, compB).VanDerWaals +=
+              Potentials::EnergyFactor(gradientFactor.energy, 0.0);
 
-        strainDerivativeTensor.ax += g.x * dr.x;
-        strainDerivativeTensor.bx += g.y * dr.x;
-        strainDerivativeTensor.cx += g.z * dr.x;
+          const double3 f = gradientFactor.gradientFactor * dr;
 
-        strainDerivativeTensor.ay += g.x * dr.y;
-        strainDerivativeTensor.by += g.y * dr.y;
-        strainDerivativeTensor.cy += g.z * dr.y;
+          it1->gradient += f;
+          it2->gradient -= f;
 
-        strainDerivativeTensor.az += g.x * dr.z;
-        strainDerivativeTensor.bz += g.y * dr.z;
-        strainDerivativeTensor.cz += g.z * dr.z;
+          strainDerivativeTensor.ax += f.x * dr.x;
+          strainDerivativeTensor.bx += f.y * dr.x;
+          strainDerivativeTensor.cx += f.z * dr.x;
+
+          strainDerivativeTensor.ay += f.x * dr.y;
+          strainDerivativeTensor.by += f.y * dr.y;
+          strainDerivativeTensor.cy += f.z * dr.y;
+
+          strainDerivativeTensor.az += f.x * dr.z;
+          strainDerivativeTensor.bz += f.y * dr.z;
+          strainDerivativeTensor.cz += f.z * dr.z;
+        }
+        if (useCharge && rr < cutOffChargeSquared)
+        {
+          double r = std::sqrt(rr);
+
+          Potentials::GradientFactor gradientFactor = Potentials::potentialCoulombGradient(
+              forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+
+          energy.frameworkComponentEnergy(compA, compB).CoulombicReal +=
+              Potentials::EnergyFactor(gradientFactor.energy, 0.0);
+
+          const double3 g = gradientFactor.gradientFactor * dr;
+
+          it1->gradient += g;
+          it2->gradient -= g;
+
+          strainDerivativeTensor.ax += g.x * dr.x;
+          strainDerivativeTensor.bx += g.y * dr.x;
+          strainDerivativeTensor.cx += g.z * dr.x;
+
+          strainDerivativeTensor.ay += g.x * dr.y;
+          strainDerivativeTensor.by += g.y * dr.y;
+          strainDerivativeTensor.cy += g.z * dr.y;
+
+          strainDerivativeTensor.az += g.x * dr.z;
+          strainDerivativeTensor.bz += g.y * dr.z;
+          strainDerivativeTensor.cz += g.z * dr.z;
+        }
       }
     }
   }

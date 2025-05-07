@@ -23,6 +23,19 @@ module;
 #endif
 #endif
 
+#ifdef BLAS_ILP64
+typedef long long blas_int;
+#else
+typedef int blas_int;
+#endif
+
+extern "C"
+{
+  void dgemv_(char* TRANS, const blas_int* M, const blas_int* N,
+               double* alpha, double* A, const blas_int* LDA, double* X,
+               const blas_int* INCX, double* beta, double* C, const blas_int* INCY);
+}
+
 module interpolation_energy_grid;
 
 #ifndef USE_LEGACY_HEADERS
@@ -55,6 +68,8 @@ import interactions_external_field;
 import mdspan;
 #endif
 
+
+
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.
 // The amount of points is compute from
 //   (a) option 'SpacingVDWGrid 0.15' for Van der Waal grids
@@ -75,7 +90,7 @@ import mdspan;
 // extrapolated field.
 //
 
-[[maybe_unused]] static int tricubic_coefficients[64][64] = {
+[[maybe_unused]] static double tricubic_coefficients[64][64] = {
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -213,7 +228,7 @@ import mdspan;
      -4, 4,  4,  -4, -4, 4,  4, -4, -4, 4,  2,  2,  2,  2,  -2, -2, -2, -2, 2, 2,  -2, -2,
      2,  2,  -2, -2, 2,  -2, 2, -2, 2,  -2, 2,  -2, 1,  1,  1,  1,  1,  1,  1, 1}};
 
-[[maybe_unused]] static int triquintic_coefficients[216][216] = {
+[[maybe_unused]] static double triquintic_coefficients[216][216] = {
     {8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -2186,6 +2201,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i != 64; ++i)
       {
         a[i] = 0.0;
@@ -2194,6 +2210,12 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
       }
+      */
+
+      double alpha = 1.0, beta = 0.0;
+      char tr = 'T';
+      blas_int m = 64, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &tricubic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       // energy
       double value = 0.0;
@@ -2242,6 +2264,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
@@ -2249,7 +2272,12 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
         {
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
-      }
+      }*/
+
+      double alpha = 0.125, beta = 0.0;
+      char tr = 'T';
+      blas_int m = 216, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &triquintic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       // energy
       double value = 0.0;
@@ -2310,6 +2338,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i < 64; ++i)
       {
         a[i] = 0.0;
@@ -2318,6 +2347,12 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
       }
+      */
+
+      double alpha = 1.0, beta = 0.0;
+      char tr= 'T';
+      blas_int m = 64, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &tricubic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       double value{};
       double3 gradient{};
@@ -2386,6 +2421,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
@@ -2394,6 +2430,12 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
       }
+      */
+
+      double alpha = 0.125, beta = 0.0;
+      char tr = 'T';
+      blas_int m = 216, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &triquintic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       double value{};
       double3 gradient{};
@@ -2478,6 +2520,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i < 64; ++i)
       {
         a[i] = 0.0;
@@ -2486,6 +2529,11 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
       }
+      */
+      double alpha = 1.0, beta = 0.0;
+      char tr= 'T';
+      blas_int m = 64, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &tricubic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       double value{};
       double3 gradient{};
@@ -2554,6 +2602,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
         X[8 * i + 7] = data_cell[i, x1, y1, z1];
       }
 
+      /*
       for (size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
@@ -2562,6 +2611,11 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
       }
+      */
+      double alpha = 0.125, beta = 0.0;
+      char tr = 'T';
+      blas_int m = 216, inc = 1;
+      dgemv_(&tr, &m, &m, &alpha, &triquintic_coefficients[0][0], &m, &X[0], &inc, &beta, &a[0], &inc);
 
       double value{};
       double3 gradient{};
