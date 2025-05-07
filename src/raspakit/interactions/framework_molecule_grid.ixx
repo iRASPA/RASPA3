@@ -6,6 +6,7 @@ module;
 #include <span>
 #include <tuple>
 #include <vector>
+#include <array>
 #endif
 
 export module interactions_framework_molecule_grid;
