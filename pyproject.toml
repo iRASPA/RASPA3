@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "raspa"
-version = "3.0.4"
+version = "3.0.5"
 description = "A general purpose classical simulation package"
 authors = [
     { name = "Drs. Youri Ran, University of Amsterdam" },

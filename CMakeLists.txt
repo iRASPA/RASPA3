@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.29)
 
 project(raspa3
-  VERSION 3.0.4
+  VERSION 3.0.5
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)

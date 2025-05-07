@@ -825,9 +825,15 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
+        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
@@ -838,9 +844,15 @@
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
       "cacheVariables": {
+        "CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS": "/usr/bin/clang-scan-deps",
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=skylake-avx512 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "libblas3, liblapack3, libgfortran5, libquadmath0, libLLVM17, libedit0, libomp17-devel, glibc, libgcc_s1, zlib, ocl-icd, fftw3",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "/usr/lib/x86_64-unknown-linux-gnu/libomp.a",
         "BUILD_LIBTORCH": false,
         "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
