@@ -619,7 +619,12 @@ void MolecularDynamics::output()
     std::print(
         stream, "{}",
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
-    std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
+
+    if(!(system.framework.has_value() && system.framework->rigid))
+    {
+      std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
+    }
+
     std::print(
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
