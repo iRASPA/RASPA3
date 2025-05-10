@@ -12,6 +12,7 @@ if (CONDA)
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         ZLIB::ZLIB
@@ -26,6 +27,7 @@ elseif (LINUX)
         ${HDF5_CXX_LIBRARIES}
         ${HDF5_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         -nostdlib++
@@ -43,6 +45,7 @@ elseif (WIN32)
         ${LAPACK_LIBRARIES}
         ${HDF5_CXX_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         -nostdlib++
@@ -53,8 +56,8 @@ elseif (APPLE)
         libs::raspakit
         ${BLAS_LIBRARIES}
         ${LAPACK_LIBRARIES}
-        ${TORCH_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
         $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
         $ENV{HOMEBREW_PREFIX}/lib/libaec.a 

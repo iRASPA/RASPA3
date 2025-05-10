@@ -29,7 +29,11 @@ find_package(OpenCL)
 
 if(BUILD_LIBTORCH)
   find_package(Torch REQUIRED)
-  add_definitions( -DBUILD_LIBTORCH)
+  add_definitions( -DBUILD_LIBTORCH -Wno-invalid-specialization)
+  message("TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+  include_directories(
+    "${TORCH_INCLUDE_DIRS}" # libtorch headers
+  )
 endif()
 
 include(FetchContent)

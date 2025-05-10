@@ -27,6 +27,7 @@ if (CONDA)
         ${LAPACK_LIBRARIES}
         ${HDF5_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         ZLIB::ZLIB
@@ -42,6 +43,7 @@ elseif (LINUX)
         ${HDF5_CXX_LIBRARIES}
         ${HDF5_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         -nostdlib++
@@ -60,6 +62,7 @@ elseif (WIN32)
         ${HDF5_CXX_LIBRARIES}
         ${HDF5_LIBRARIES}
         voro++
+        ${TORCH_LIBRARIES}
         OpenMP::OpenMP_CXX
         OpenCL::OpenCL
         -nostdlib++)
@@ -75,6 +78,7 @@ elseif (APPLE)
     $ENV{HOMEBREW_PREFIX}/lib/libaec.a
     $ENV{HOMEBREW_PREFIX}/lib/libsz.a
     voro++
+    ${TORCH_LIBRARIES}
     -nostdlib++
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a

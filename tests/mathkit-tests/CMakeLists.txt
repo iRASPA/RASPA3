@@ -10,6 +10,7 @@ if (CONDA)
                         ${LAPACK_LIBRARIES}
                         ${HDF5_LIBRARIES}
                         voro++
+                        ${TORCH_LIBRARIES}
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest
@@ -25,6 +26,7 @@ elseif (LINUX)
                         ${HDF5_CXX_LIBRARIES}
                         ${HDF5_LIBRARIES}
                         voro++
+                        ${TORCH_LIBRARIES}
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest 
@@ -44,6 +46,7 @@ elseif (WIN32)
                         ${LAPACK_LIBRARIES}
                         ${HDF5_CXX_LIBRARIES}
                         voro++
+                        ${TORCH_LIBRARIES}
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest 
@@ -60,6 +63,7 @@ elseif (APPLE)
                         $ENV{HOMEBREW_PREFIX}/lib/libaec.a
                         $ENV{HOMEBREW_PREFIX}/lib/libsz.a
                         voro++
+                        ${TORCH_LIBRARIES}
                         GTest::gtest
                         GTest::gtest_main
                         -nostdlib++
