@@ -9,6 +9,7 @@ if (CONDA)
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         ${HDF5_LIBRARIES}
+                        voro++
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest
@@ -23,6 +24,7 @@ elseif (LINUX)
                         ${LAPACK_LIBRARIES}
                         ${HDF5_CXX_LIBRARIES}
                         ${HDF5_LIBRARIES}
+                        voro++
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest 
@@ -41,6 +43,7 @@ elseif (WIN32)
                         ${BLAS_LIBRARIES}
                         ${LAPACK_LIBRARIES}
                         ${HDF5_CXX_LIBRARIES}
+                        voro++
                         OpenMP::OpenMP_CXX
                         OpenCL::OpenCL
                         GTest::gtest 
@@ -56,6 +59,7 @@ elseif (APPLE)
                         $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
                         $ENV{HOMEBREW_PREFIX}/lib/libaec.a
                         $ENV{HOMEBREW_PREFIX}/lib/libsz.a
+                        voro++
                         GTest::gtest
                         GTest::gtest_main
                         -nostdlib++
@@ -63,6 +67,7 @@ elseif (APPLE)
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
                         $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
+                        /opt/homebrew/Cellar/llvm/20.1.4/lib/clang/20/lib/darwin/libclang_rt.osx.a
                         OpenCL::OpenCL
                         ${ZLIB_LIBRARIES}
                         -lpthread)
