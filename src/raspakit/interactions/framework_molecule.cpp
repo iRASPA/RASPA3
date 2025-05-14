@@ -193,8 +193,19 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  for (const Atom &atom : newatoms)
+  std::vector<uint8_t> forceExplicit(std::max(newatoms.size(), oldatoms.size()));
+  for (std::size_t i = 0; i < newatoms.size(); ++i)
   {
+    forceExplicit[i] = newatoms[i].groupId;
+  }
+  for (std::size_t i = 0; i < oldatoms.size(); ++i)
+  {
+    forceExplicit[i] = forceExplicit[i] || oldatoms[i].groupId;
+  }
+
+  for (size_t i = 0; i < newatoms.size(); ++i)
+  {
+    const Atom &atom = newatoms[i];
     double3 posB = atom.position;
     size_t typeB = static_cast<size_t>(atom.type);
     bool groupIdB = static_cast<bool>(atom.groupId);
@@ -202,7 +213,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && (groupIdB == 0))
+    if (interpolationGrids[typeB].has_value() && !forceExplicit[i])
     {
       double energy = interpolationGrids[typeB]->interpolate(posB);
       if (energy > overlapCriteria)
@@ -252,8 +263,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     }
   }
 
-  for (const Atom &atom : oldatoms)
+  for (size_t i = 0; i < oldatoms.size(); ++i)
   {
+    const Atom &atom = oldatoms[i];
     double3 posB = atom.position;
     size_t typeB = static_cast<size_t>(atom.type);
     bool groupIdB = static_cast<bool>(atom.groupId);
@@ -261,7 +273,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     double scalingCoulombB = atom.scalingCoulomb;
     double chargeB = atom.charge;
 
-    if (interpolationGrids[typeB].has_value() && (groupIdB == 0))
+    if (interpolationGrids[typeB].has_value() && !forceExplicit[i])
     {
       energySum.frameworkMoleculeVDW -= interpolationGrids[typeB]->interpolate(posB);
       if (useCharge)
@@ -348,8 +360,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   return energySum;
 }
 
-RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &forceField, 
-    const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
+RunningEnergy Interactions::computeFrameworkMoleculeGradient(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    std::span<Atom> moleculeAtoms,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept
 {
   RunningEnergy energySum{};
@@ -433,10 +446,10 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
 }
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::optional<Framework> &framework, 
+    const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::vector<Component> &components, const SimulationBox &simulationBox,
-    std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept
+    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
   double rr;
@@ -484,7 +497,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(const ForceField &f
       if (useCharge)
       {
         auto [energy_real_ewald, gradient_real_ewald] = interpolationGrids.back()->interpolateGradient(posA);
-        energy.frameworkComponentEnergy(compA, 0).CoulombicReal += Potentials::EnergyFactor(chargeA * energy_real_ewald, 0.0);
+        energy.frameworkComponentEnergy(compA, 0).CoulombicReal +=
+            Potentials::EnergyFactor(chargeA * energy_real_ewald, 0.0);
         const double3 g = chargeA * gradient_real_ewald;
 
         it1->gradient += g;
