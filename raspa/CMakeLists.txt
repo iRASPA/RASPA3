@@ -79,7 +79,6 @@ elseif (APPLE)
     $ENV{HOMEBREW_PREFIX}/lib/libsz.a
     voro++
     ${TORCH_LIBRARIES}
-    -nostdlib++
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
     $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a

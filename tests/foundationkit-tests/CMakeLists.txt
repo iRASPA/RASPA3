@@ -67,12 +67,10 @@ elseif (APPLE)
                         ${TORCH_LIBRARIES}
                         GTest::gtest
                         GTest::gtest_main
-                        -nostdlib++
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++experimental.a
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
                         $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
                         $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
-                        /opt/homebrew/Cellar/llvm/20.1.4/lib/clang/20/lib/darwin/libclang_rt.osx.a
                         OpenCL::OpenCL
                         ${ZLIB_LIBRARIES}
                         -lpthread)

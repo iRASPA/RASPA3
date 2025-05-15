@@ -10,7 +10,9 @@ module;
 #include <optional>
 #include <ostream>
 #include <string>
+#include <cstring>
 #include <vector>
+#include <set>
 #endif
 
 export module forcefield;
@@ -99,8 +101,11 @@ export struct ForceField
   std::vector<bool> shiftPotentials{};  ///< Indicates if potential shift is applied between pairs of atoms.
   std::vector<bool> tailCorrections{};  ///< Indicates if tail corrections are applied between pairs of atoms.
   MixingRule mixingRule{MixingRule::Lorentz_Berthelot};  ///< Mixing rule used for cross interactions.
+  bool cutOffFrameworkVDWAutomatic{false};
   double cutOffFrameworkVDW{12.0};  ///< Cut-off distance for VDW interactions between framework and molecules.
+  bool cutOffMoleculeVDWAutomatic{false};
   double cutOffMoleculeVDW{12.0};   ///< Cut-off distance for VDW interactions between molecules.
+  bool cutOffCoulombAutomatic{true};
   double cutOffCoulomb{12.0};       ///< Cut-off distance for Coulomb interactions.
   double dualCutOff{6.0};           ///< Inner cut-off distance when using dual cut-off scheme.
 
@@ -302,4 +307,46 @@ export struct ForceField
    * \return A string representing the ForceField.
    */
   std::string repr() const { return printPseudoAtomStatus() + "\n" + printForceFieldStatus(); }
+
+    /**
+   * \struct InsensitiveCompare
+   * \brief Comparator for case-insensitive string comparison.
+   *
+   * This structure provides a functor to compare two strings without considering their case.
+   * It is used to enable case-insensitive lookups within sets of strings.
+   */
+  struct InsensitiveCompare
+  {
+    /**
+     * \brief Compares two strings in a case-insensitive manner.
+     *
+     * This operator overload allows for the comparison of two strings without regard to
+     * their case, facilitating case-insensitive sorting and lookup.
+     *
+     * \param a The first string to compare.
+     * \param b The second string to compare.
+     * \return `true` if `a` is lexicographically less than `b` (case-insensitive), `false` otherwise.
+     */
+    bool operator()(const std::string &a, const std::string &b) const
+    {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+      return _stricmp(a.c_str(), b.c_str()) < 0;
+#else
+      return strcasecmp(a.c_str(), b.c_str()) < 0;
+#endif
+    }
+  };
+
+  void validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data);
+
+  // Static Member Variables
+
+  /**
+   * \brief Set of general option keys accepted in the input data.
+   *
+   * This set contains all the general configuration keys that are recognized
+   * at the top level of the input JSON. It is used to validate the presence
+   * of only known keys.
+   */
+  static const std::set<std::string, InsensitiveCompare> options;
 };

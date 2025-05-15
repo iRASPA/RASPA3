@@ -22,9 +22,11 @@ module;
 #include <source_location>
 #include <sstream>
 #include <string>
+#include <cstring>
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <set>
 #endif
 
 module forcefield;
@@ -158,7 +160,10 @@ ForceField::ForceField(std::string filePath)
         std::format("[Forcefield reader]: Parse error of file {} at byte {}\n{}\n", filePath, ex.byte, ex.what()));
   }
 
-  // Validate and read pseudo atoms
+  // validate input
+  validateInput(parsed_data);
+
+  // read pseudo atoms
   if (!parsed_data.contains("PseudoAtoms"))
   {
     throw std::runtime_error("[Forcefield reader]: No pseudo-atoms found [keyword 'PseudoAtoms' missing]\n");
@@ -324,13 +329,321 @@ ForceField::ForceField(std::string filePath)
     data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = VDWParameters(param0, param1, type);
   }
 
-  // Get charge method
   useCharge = parsed_data.value("ChargeMethod", "Ewald") != "None";
 
-  cutOffFrameworkVDW = parsed_data.value("CutOffFrameworkVDW", 12.0);
-  cutOffMoleculeVDW = parsed_data.value("CutOffMoleculeVDW", 12.0);
-  cutOffCoulomb = parsed_data.value("CutOffCoulomb", 12.0);
+  if (parsed_data.contains("EwaldPrecision"))
+  {
+    if(parsed_data["EwaldPrecision"].is_string())
+    {
+      std::string ewaldPrecisionString = parsed_data["EwaldPrecision"].get<std::string>();
 
+      if (caseInSensStringCompare(ewaldPrecisionString, "High"))
+      {
+        EwaldPrecision = 1e-8;
+        automaticEwald = true;
+      }
+      else if (caseInSensStringCompare(ewaldPrecisionString, "Medium"))
+      {
+        EwaldPrecision = 1e-6;
+        automaticEwald = true;
+      }
+      else if (caseInSensStringCompare(ewaldPrecisionString, "Low"))
+      {
+        EwaldPrecision = 1e-4;
+        automaticEwald = true;
+      }
+      else
+      {
+      }
+    }
+    else if (parsed_data["EwaldPrecision"].is_number_float())
+    {
+      EwaldPrecision = parsed_data["EwaldPrecision"].get<double>();
+      automaticEwald = true;
+    }
+  }
+
+  if (parsed_data.contains("EwaldParameters"))
+  {
+    if(parsed_data["EwaldParameters"].is_array())
+    {
+      if (parsed_data["EwaldParameters"].size() != 4)
+      {
+        throw std::runtime_error(
+            std::format("[ForceField reader]: key '{}', value {} should be array of one floaying point number and 3 integer numbers\n", 
+                        "EwaldParameters", parsed_data["EwaldParameters"].dump()));
+      }
+      double alpha;
+      int3 value{};
+      try
+      {
+        alpha = parsed_data["EwaldParameters"][0].template get<double>();
+        value.x = parsed_data["EwaldParameters"][1].template get<int32_t>();
+        value.y = parsed_data["EwaldParameters"][2].template get<int32_t>();
+        value.z = parsed_data["EwaldParameters"][3].template get<int32_t>();
+      }
+      catch (nlohmann::json::exception& ex)
+      {
+        throw std::runtime_error(
+            std::format("[ForceField reader]: key '{}', value {} should be array of one floaying point number and 3 integer numbers\n", 
+                        "EwaldParameters", parsed_data["EwaldParameters"].dump()));
+      }
+
+      EwaldAlpha = alpha;
+      numberOfWaveVectors = value;
+      automaticEwald = false;
+    }
+  }
+
+  if (parsed_data.contains("CutOff"))
+  {
+    if(parsed_data["CutOff"].is_string())
+    {
+      std::string cutOffCoulombString = parsed_data["CutOff"].get<std::string>();
+
+      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      {
+        cutOffFrameworkVDWAutomatic = true;
+        cutOffMoleculeVDWAutomatic = true;
+      }
+    }
+
+    if(parsed_data["CutOff"].is_number_float())
+    {
+      cutOffFrameworkVDWAutomatic = false;
+      cutOffMoleculeVDWAutomatic = false;
+      cutOffFrameworkVDW = parsed_data["CutOff"].get<double>();
+      cutOffMoleculeVDW = parsed_data["CutOff"].get<double>();
+    }
+  }
+
+  if (parsed_data.contains("CutOffFrameworkVDW"))
+  {
+    if(parsed_data["CutOffFrameworkVDW"].is_string())
+    {
+      std::string cutOffCoulombString = parsed_data["CutOffFrameworkVDW"].get<std::string>();
+
+      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      {
+        cutOffFrameworkVDWAutomatic = true;
+      }
+    }
+
+    if(parsed_data["CutOffFrameworkVDW"].is_number_float())
+    {
+      cutOffFrameworkVDWAutomatic = false;
+      cutOffFrameworkVDW = parsed_data["CutOffFrameworkVDW"].get<double>();
+    }
+  }
+
+  if (parsed_data.contains("CutOffMoleculeVDW"))
+  {
+    if(parsed_data["CutOffMoleculeVDW"].is_string())
+    {
+      std::string cutOffCoulombString = parsed_data["CutOffMoleculeVDW"].get<std::string>();
+
+      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      {
+        cutOffMoleculeVDWAutomatic = true;
+      }
+    }
+
+    if(parsed_data["CutOffMoleculeVDW"].is_number_float())
+    {
+      cutOffMoleculeVDWAutomatic = false;
+      cutOffMoleculeVDW = parsed_data["CutOffMoleculeVDW"].get<double>();
+    }
+  }
+
+  if (parsed_data.contains("CutOffCoulomb"))
+  {
+    if(parsed_data["CutOffCoulomb"].is_string())
+    {
+      std::string cutOffCoulombString = parsed_data["CutOffCoulomb"].get<std::string>();
+
+      if (caseInSensStringCompare(cutOffCoulombString, "auto"))
+      {
+        cutOffCoulombAutomatic = true;
+      }
+    }
+
+    if(parsed_data["CutOffCoulomb"].is_number_float())
+    {
+      cutOffCoulombAutomatic = false;
+      cutOffCoulomb = parsed_data["CutOffCoulomb"].get<double>();
+    }
+  }
+
+  if (parsed_data.contains("ShiftedPotentialPairs"))
+  {
+    if(parsed_data["ShiftedPotentialPairs"].is_array())
+    {
+      for(auto &pair : parsed_data["ShiftedPotentialPairs"])
+      {
+        if (pair.size() != 2)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "ShiftedPotentialPairs", pair.dump()));
+        }
+
+        std::string stringA, stringB;
+        try
+        {
+          stringA = pair[0].template get<std::string>();
+          stringB = pair[1].template get<std::string>();
+        }
+        catch (nlohmann::json::exception& ex)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "ShiftedPotentialPairs", pair.dump()));
+        }
+
+        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        if (!indexA.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
+        }
+
+        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        if (!indexB.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
+        }
+
+        shiftPotentials[indexA.value() * numberOfPseudoAtoms + indexB.value()] = true;
+        shiftPotentials[indexB.value() * numberOfPseudoAtoms + indexA.value()] = true;
+      }
+    }
+  }
+
+  if (parsed_data.contains("TruncatedPotentialPairs"))
+  {
+    if(parsed_data["TruncatedPotentialPairs"].is_array())
+    {
+      for(auto &pair : parsed_data["TruncatedPotentialPairs"])
+      {
+        if (pair.size() != 2)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "TruncatedPotentialPairs", pair.dump()));
+        }
+
+        std::string stringA, stringB;
+        try
+        {
+          stringA = pair[0].template get<std::string>();
+          stringB = pair[1].template get<std::string>();
+        }
+        catch (nlohmann::json::exception& ex)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "TruncatedPotentialPairs", pair.dump()));
+        }
+
+
+        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        if (!indexA.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
+        }
+
+        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        if (!indexB.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
+        }
+
+        shiftPotentials[indexA.value() * numberOfPseudoAtoms + indexB.value()] = false;
+        shiftPotentials[indexB.value() * numberOfPseudoAtoms + indexA.value()] = false;
+      }
+    }
+  }
+
+  if (parsed_data.contains("TailCorrectionPairs"))
+  {
+    if(parsed_data["TailCorrectionPairs"].is_array())
+    {
+      for(auto &pair : parsed_data["TailCorrectionPairs"])
+      {
+        if (pair.size() != 2)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "TailCorrectionPairs", pair.dump()));
+        }
+
+        std::string stringA, stringB;
+        try
+        {
+          stringA = pair[0].template get<std::string>();
+          stringB = pair[1].template get<std::string>();
+        }
+        catch (nlohmann::json::exception& ex)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "TailCorrectionPairs", pair.dump()));
+        }
+
+        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        if (!indexA.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
+        }
+
+        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        if (!indexB.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
+        }
+
+        tailCorrections[indexA.value() * numberOfPseudoAtoms + indexB.value()] = true;
+        tailCorrections[indexB.value() * numberOfPseudoAtoms + indexA.value()] = true;
+      }
+    }
+  }
+
+  if (parsed_data.contains("NoTailCorrectionPairs"))
+  {
+    if(parsed_data["NoTailCorrectionPairs"].is_array())
+    {
+      for(auto &pair : parsed_data["NoTailCorrectionPairs"])
+      {
+        if (pair.size() != 2)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "NoTailCorrectionPairs", pair.dump()));
+        }
+
+        std::string stringA, stringB;
+        try
+        {
+          stringA = pair[0].template get<std::string>();
+          stringB = pair[1].template get<std::string>();
+        }
+        catch (nlohmann::json::exception& ex)
+        {
+          throw std::runtime_error(
+              std::format("[ForceField reader]: key '{}', value {} should be array of 2 strings\n", "NoTailCorrectionPairs", pair.dump()));
+        }
+
+        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        if (!indexA.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
+        }
+
+        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        if (!indexB.has_value())
+        {
+          throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
+        }
+
+        tailCorrections[indexA.value() * numberOfPseudoAtoms + indexB.value()] = false;
+        tailCorrections[indexB.value() * numberOfPseudoAtoms + indexA.value()] = false;
+      }
+    }
+  }
+
+  // after knowing the tail-correction settings and the cutoff, compute the shifts and tail-corrections for each pair
   preComputePotentialShift();
   preComputeTailCorrection();
 
@@ -489,28 +802,6 @@ void ForceField::preComputeTailCorrection()
       {
         data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = Potentials::potentialCorrectionVDW(*this, i, j);
         data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = Potentials::potentialCorrectionPressure(*this, i, j);
-        /*
-        switch (data[i * numberOfPseudoAtoms + j].type)
-        {
-          case VDWParameters::Type::LennardJones:
-          {
-            double arg1 = data[i * numberOfPseudoAtoms + j].parameters.x;
-            double arg2 = data[i * numberOfPseudoAtoms + j].parameters.y;
-            double cut_off_vdw = cutOffVDW(i, j);
-            double term3 = (arg2 / cut_off_vdw) * (arg2 / cut_off_vdw) * (arg2 / cut_off_vdw);
-            double term6 = term3 * term3;
-            data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy =
-                (4.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((1.0 / 3.0) * term6 * term3 - term3);
-            data[i * numberOfPseudoAtoms + j].tailCorrectionPressure =
-                (8.0 / 3.0) * arg1 * arg2 * arg2 * arg2 * ((2.0 / 3.0) * term6 * term3 - term3);
-            break;
-          }
-          default:
-            data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
-            data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = 0.0;
-            break;
-        }
-      */
       }
     }
   }
@@ -602,12 +893,33 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Force field status\n");
   std::print(stream, "===============================================================================\n\n");
 
-  std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
-             Units::displayedUnitOfLengthString);
-  std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW,
-             Units::displayedUnitOfLengthString);
-  std::print(stream, "Cutoff Coulomb:                {:9.5f} [{}]\n\n", cutOffCoulomb,
-             Units::displayedUnitOfLengthString);
+  if(cutOffFrameworkVDWAutomatic)
+  {
+    std::print(stream, "Cutoff Framework-Molecule VDW:  auto\n");
+  }
+  else
+  {
+    std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
+               Units::displayedUnitOfLengthString);
+  }
+  if(cutOffMoleculeVDWAutomatic)
+  {
+    std::print(stream, "Cutoff Molecule-Molecule VDW:   auto\n");
+  }
+  else
+  {
+    std::print(stream, "Cutoff Molecule-Molecule VDW:  {:9.5f} [{}]\n", cutOffFrameworkVDW,
+               Units::displayedUnitOfLengthString);
+  }
+  if(cutOffCoulombAutomatic)
+  {
+    std::print(stream, "Cutoff Coulomb:                 auto\n");
+  }
+  else
+  {
+    std::print(stream, "Cutoff Coulomb:                {:9.5f} [{}]\n\n", cutOffCoulomb,
+               Units::displayedUnitOfLengthString);
+  }
 
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria,
              Units::displayedUnitOfEnergyString);
@@ -782,8 +1094,11 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.data;
   archive << f.shiftPotentials;
   archive << f.tailCorrections;
+  archive << f.cutOffFrameworkVDWAutomatic;
   archive << f.cutOffFrameworkVDW;
+  archive << f.cutOffMoleculeVDWAutomatic;
   archive << f.cutOffMoleculeVDW;
+  archive << f.cutOffCoulombAutomatic;
   archive << f.cutOffCoulomb;
   archive << f.dualCutOff;
 
@@ -844,8 +1159,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.data;
   archive >> f.shiftPotentials;
   archive >> f.tailCorrections;
+  archive >> f.cutOffFrameworkVDWAutomatic;
   archive >> f.cutOffFrameworkVDW;
+  archive >> f.cutOffMoleculeVDWAutomatic;
   archive >> f.cutOffMoleculeVDW;
+  archive >> f.cutOffCoulombAutomatic;
   archive >> f.cutOffCoulomb;
   archive >> f.dualCutOff;
 
@@ -928,4 +1246,42 @@ bool ForceField::operator==(const ForceField& other) const
     }
   }
   return true;
+}
+
+const std::set<std::string, ForceField::InsensitiveCompare> ForceField::options = {
+    "MixingRule",
+    "TruncationMethod",
+    "TailCorrections",
+    "TruncatedPotentialPairs",
+    "ShiftedPotentialPairs",
+    "TailCorrectionPairs",
+    "NoTailCorrectionPairs",
+    "CutOff",
+    "CutOffVDW",
+    "CutOffFrameworkVDW",
+    "CutOffMoleculeVDW",
+    "CutOffCoulomb",
+    "ChargeMethod",
+    "PseudoAtoms",
+    "SelfInteractions",
+    "BinaryInteractions",
+    "EwaldPrecision",
+    "EwaldParameters",
+    "ReciprocalCutOff",
+    "ReciprocalIntegerCutOff",
+    "UseInterpolationGrids",
+    "SpacingVDWGrid",
+    "SpacingCoulombGrid",
+    "NumberOfGridTestPoints",
+    "InterpolationScheme"};
+
+void ForceField::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
+{
+  for (auto& [key, _] : parsed_data.items())
+  {
+    if (!options.contains(key))
+    {
+      throw std::runtime_error(std::format("[ForceField Error] : Unknown input '{}'\n", key));
+    }
+  }
 }
