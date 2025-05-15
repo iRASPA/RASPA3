@@ -88,6 +88,32 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
     const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept;
 
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifferenceOriginal(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes the difference in interaction energy between the framework and molecule atoms.
+ *
+ * Calculates the difference in van der Waals and Coulombic interaction energy between the framework
+ * and the molecule atoms, due to changes from oldatoms to newatoms. If an overlap is detected (energy
+ * exceeds overlap criteria), returns std::nullopt.
+ *
+ * \param forceField The force field parameters for the simulation.
+ * \param simulationBox The simulation box containing periodic boundary conditions.
+ * \param frameworkAtoms A span of atoms representing the framework.
+ * \param newatoms A span of new atom positions representing the molecule.
+ * \param oldatoms A span of old atom positions representing the molecule.
+ * \return An optional RunningEnergy object containing the energy difference, or std::nullopt if overlap occurs.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> atoms) noexcept;
+
 /**
  * \brief Computes the difference in tail correction energy between the framework and molecule atoms.
  *
@@ -120,9 +146,10 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
  * \param moleculeAtoms A span of atoms representing the molecule; their gradients will be updated.
  * \return A RunningEnergy object containing the total interaction energy.
  */
-RunningEnergy computeFrameworkMoleculeGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                     std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms,
-                     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept;
+RunningEnergy computeFrameworkMoleculeGradient(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    std::span<Atom> moleculeAtoms,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept;
 
 /**
  * \brief Computes the interaction energy, gradients, and strain derivative between the framework and molecule atoms.
@@ -140,10 +167,10 @@ RunningEnergy computeFrameworkMoleculeGradient(const ForceField &forceField, con
  * the strain derivative.
  */
 [[nodiscard]] std::pair<EnergyStatus, double3x3> computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::optional<Framework> &framework, 
+    const ForceField &forceField, const std::optional<Framework> &framework,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::vector<Component> &components, const SimulationBox &simulationBox,
-    std::span<Atom> frameworkAtoms, std::span<Atom> moleculeAtoms) noexcept;
+    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    std::span<Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the electric potential at molecule atom positions due to the framework atoms.

@@ -104,7 +104,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Fractional particle becomes integer (lambda=1.0)
     for (Atom& atom : fractionalMolecule)
     {
-      atom.setScalingToInteger();
+      atom.setScalingFullyOn();
     }
 
     if ((system.insideBlockedPockets(component, fractionalMolecule)))
@@ -309,6 +309,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
+      for (auto& atom : fractionalMolecule)
+      {
+        atom.groupId = uint8_t{0};
+      }
+      std::optional<RunningEnergy> energyDifferenceInterpolation =
+          Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
+              system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+              system.spanOfFrameworkAtoms(), fractionalMolecule);
+
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
       component.lambdaGC.setCurrentBin(newBin);
@@ -326,7 +335,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
       component.mc_moves_statistics.addAccepted(move, 0);
 
-      return {energyDifferenceStep1 + energyDifferenceStep2, double3(0.0, 1.0 - Pacc, Pacc)};
+      return {energyDifferenceStep1 + energyDifferenceStep2 - energyDifferenceInterpolation.value(),
+              double3(0.0, 1.0 - Pacc, Pacc)};
     };
 
     // Restore old lambda
@@ -362,7 +372,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       for (Atom& atom : fractionalMolecule)
       {
         atom.setScalingFullyOff();
-        atom.groupId = uint8_t{0};
       }
 
       if ((system.insideBlockedPockets(component, fractionalMolecule)))
@@ -556,6 +565,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       // Apply acceptance/rejection rule
       if (random.uniform() < biasTransitionMatrix * Pacc)
       {
+        for (auto& atom : fractionalMolecule)
+        {
+          atom.groupId = uint8_t{0};
+        }
+
+        for (auto& atom : savedFractionalMolecule)
+        {
+          atom.groupId = uint8_t{0};
+        }
+
+        std::optional<RunningEnergy> energyDifferenceInterpolation =
+            Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
+                system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+                system.spanOfFrameworkAtoms(), savedFractionalMolecule);
+
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
         component.lambdaGC.setCurrentBin(newBin);
 
@@ -568,7 +592,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
 
         component.mc_moves_statistics.addAccepted(move, 1);
 
-        return {energyDifferenceStep1 + energyDifferenceStep2, double3(Pacc, 1.0 - Pacc, 0.0)};
+        return {energyDifferenceStep1 + energyDifferenceStep2 + energyDifferenceInterpolation.value(),
+                double3(Pacc, 1.0 - Pacc, 0.0)};
       };
 
       // Restore the old and the newly chosen fractional molecule
