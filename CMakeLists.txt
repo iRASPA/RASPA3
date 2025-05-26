@@ -62,6 +62,7 @@ if(NOT SKIP_EXECUTABLE)
   add_subdirectory(examples)
 
   add_subdirectory(app)
+  add_subdirectory(cli)
 endif()
 if(BUILD_DOXYGEN)
   add_subdirectory(docs)

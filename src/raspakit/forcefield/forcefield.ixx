@@ -184,6 +184,7 @@ export struct ForceField
   ForceField(std::string filePath) noexcept(false);
 
   VDWParameters &operator()(size_t row, size_t col) { return data[row * numberOfPseudoAtoms + col]; }
+  const VDWParameters &operator[](size_t row) const { return data[row * numberOfPseudoAtoms + row]; }
   const VDWParameters &operator()(size_t row, size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
   bool operator==(const ForceField &other) const;
 

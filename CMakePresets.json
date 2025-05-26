@@ -565,7 +565,7 @@
         "CMAKE_LINKER_TYPE": "LLD",
         "CMAKE_INSTALL_PREFIX": "/usr/local",
         "PACKAGE_INSTALL_PREFIX": "/usr/local",
-        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -target arm64-apple-macos11.7 -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math -isysroot /Library/Developer/CommandlineTools/SDKs/MacOSX.sdk",
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": true,
         "OpenMP_C_FLAGS": "-Xclang -fopenmp",
         "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",

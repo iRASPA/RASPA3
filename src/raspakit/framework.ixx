@@ -100,7 +100,7 @@ export struct Framework
    * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
    */
   Framework(size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-            std::optional<const std::string> fileName, int3 numberOfUnitCells,
+            std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
             Framework::UseChargesFrom useChargesFrom) noexcept(false);
 
   /**
@@ -196,6 +196,9 @@ export struct Framework
   void makeSuperCell();
 
   std::vector<Atom> makeSuperCell(int3 numberOfCells) const;
+
+  std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position, double well_depth_factor) const;
+  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, size_t skip) const;
 
   /**
    * \brief Generates a string representation of the framework status.

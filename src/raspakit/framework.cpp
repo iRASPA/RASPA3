@@ -23,6 +23,7 @@ module;
 #include <type_traits>
 #include <vector>
 #include <numbers>
+#include <limits>
 #endif
 
 #if !defined(_WIN32)
@@ -57,6 +58,7 @@ import <source_location>;
 import <complex>;
 import <type_traits>;
 import <print>;
+import <limits>;
 #endif
 
 import archive;
@@ -87,10 +89,9 @@ Framework::Framework() {}
 
 // create Component in 'inputreader.cpp'
 Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string& componentName,
-                     std::optional<const std::string> fileName, int3 numberOfUnitCells,
+                     std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
                      Framework::UseChargesFrom useChargesFrom) noexcept(false)
-    : numberOfUnitCells(numberOfUnitCells),
-      frameworkId(currentFramework),
+    : frameworkId(currentFramework),
       name(componentName),
       filenameData(fileName),
       useChargesFrom(useChargesFrom)
@@ -98,6 +99,33 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
   if (filenameData.has_value())
   {
     readFramework(forceField, filenameData.value());
+
+    double cutOff = forceField.cutOffFrameworkVDW;
+    const int3 minimum_number_of_unit_cells = simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutOff);
+
+    this->numberOfUnitCells = numberOfUnitCells.value_or(minimum_number_of_unit_cells);
+
+    makeSuperCell();
+
+    unitCellMass = 0.0;
+    for (const Atom& atom : unitCellAtoms)
+    {
+      size_t atomType = static_cast<size_t>(atom.type);
+      unitCellMass += forceField.pseudoAtoms[atomType].mass;
+    }
+
+    mass = 0.0;
+    netCharge = 0.0;
+    smallestCharge = std::numeric_limits<double>::max();
+    largestCharge = std::numeric_limits<double>::lowest();
+    for (const Atom& atom : atoms)
+    {
+      size_t atomType = static_cast<size_t>(atom.type);
+      mass += forceField.pseudoAtoms[atomType].mass;
+      netCharge += atom.charge;
+      if (atom.charge > largestCharge) largestCharge = atom.charge;
+      if (atom.charge < smallestCharge) smallestCharge = atom.charge;
+    }
 
     for (size_t i = 0; i < unitCellAtoms.size(); ++i)
     {
@@ -245,32 +273,6 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
     }
   }
 
-  makeSuperCell();
-
-  unitCellMass = 0.0;
-  for (const Atom& atom : unitCellAtoms)
-  {
-    size_t atomType = static_cast<size_t>(atom.type);
-    unitCellMass += forceField.pseudoAtoms[atomType].mass;
-  }
-
-  mass = 0.0;
-  netCharge = 0.0;
-  smallestCharge = std::numeric_limits<double>::max();
-  largestCharge = std::numeric_limits<double>::lowest();
-  for (const Atom& atom : atoms)
-  {
-    size_t atomType = static_cast<size_t>(atom.type);
-    mass += forceField.pseudoAtoms[atomType].mass;
-    netCharge += atom.charge;
-    if (atom.charge > largestCharge) largestCharge = atom.charge;
-    if (atom.charge < smallestCharge) smallestCharge = atom.charge;
-  }
-
-  for (size_t i = 0; i < unitCellAtoms.size(); ++i)
-  {
-    unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
-  }
 }
 
 void Framework::expandDefinedAtomsToUnitCell()
@@ -356,6 +358,60 @@ std::vector<Atom> Framework::makeSuperCell(int3 numberOfCells) const
   }
 
   return superCellAtoms;
+}
+
+std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position, double well_depth_factor) const
+{
+  double smallest_radius = std::numeric_limits<double>::max();
+
+
+  // if inside blockingpocket, then return
+  //    return std::nullopt;
+
+  for(const Atom& atom: unitCellAtoms)
+  {
+    size_t atomType = static_cast<size_t>(atom.type);
+    double size_parameter = forceField[atomType].sizeParameter();
+    double3 dr = probe_position - atom.position;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    double mixing_radius = 0.5 * well_depth_factor * size_parameter;
+    if(rr < mixing_radius * mixing_radius)
+    {
+      return std::nullopt;
+    }
+
+    double radius = std::sqrt(rr) - mixing_radius;
+    smallest_radius = std::min(smallest_radius, radius);
+  }
+
+  return smallest_radius;
+}
+
+bool Framework::computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, size_t skip) const
+{
+  for(size_t atom_index = 0; const Atom& atom: unitCellAtoms)
+  {
+    if(atom_index != skip)
+    {
+      size_t atomType = static_cast<size_t>(atom.type);
+      double size_parameter = forceField(probe_type, atomType).sizeParameter();
+      double3 dr = probe_position - atom.position;
+      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+
+      double radius = well_depth_factor * size_parameter;
+      if(rr < radius * radius)
+      {
+        return true;
+      }
+    }
+
+    ++atom_index;
+  }
+
+  return false;
 }
 
 std::string Framework::printStatus(const ForceField& forceField) const
