@@ -19,7 +19,8 @@ file(GLOB SRC_CPP_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo/*.cpp
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo_opencl/*.cpp
-  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/opencl/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy/*.cpp
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy_opencl/*.cpp
   ${PROJECT_SOURCE_DIR}/utilitykit/*.cpp)
 
 file(GLOB SRC_IXX_FILES
@@ -41,7 +42,8 @@ file(GLOB SRC_IXX_FILES
   ${PROJECT_SOURCE_DIR}/raspakit/ruptura/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo/*.ixx
   ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/monte_carlo_opencl/*.ixx
-  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/opencl/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy/*.ixx
+  ${PROJECT_SOURCE_DIR}/raspakit/structure_properties/energy_opencl/*.ixx
   ${PROJECT_SOURCE_DIR}/utilitykit/*.ixx)
 
 

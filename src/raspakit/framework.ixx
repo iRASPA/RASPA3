@@ -43,6 +43,7 @@ import archive;
 import randomnumbers;
 import int3;
 import double3;
+import double2;
 import averages;
 import atom;
 import forcefield;
@@ -197,8 +198,12 @@ export struct Framework
 
   std::vector<Atom> makeSuperCell(int3 numberOfCells) const;
 
+  std::vector<double3> fractionalAtomPositionsUnitCell() const;
+  std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const;
+
   std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position, double well_depth_factor) const;
-  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, size_t skip) const;
+  bool computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const;
+  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, std::make_signed_t<std::size_t> skip) const;
 
   /**
    * \brief Generates a string representation of the framework status.

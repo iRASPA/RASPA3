@@ -42,6 +42,9 @@ import mc_moves_widom;
 void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, size_t number_of_iterations)
 {
   RandomNumber random{std::nullopt};
+  std::chrono::system_clock::time_point time_begin, time_end;
+
+  time_begin = std::chrono::system_clock::now();
 
   std::optional<size_t> probeType = forceField.findPseudoAtom("He");
 
@@ -55,17 +58,29 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {helium}, {0}, 5);
 
-  double average_Rosenbluth_weight{};
+  double no_overlap{};
   double count{};
-  for(size_t i = 0; i < number_of_iterations; ++i)
+  for(size_t i = 0; i < 20 * number_of_iterations; ++i)
   {
-    std::pair<double, double> result = MC_Moves::WidomMove(random, system, 0);
-    average_Rosenbluth_weight += result.first;
+    double3 s = double3(random.uniform(), random.uniform(), random.uniform());
+    double3 pos = framework.simulationBox.cell * s;
+
+    if(!framework.computeVanDerWaalsRadiusOverlap(forceField, pos))
+    {
+      no_overlap += 1.0;
+    }
     count += 1.0;
 
   }
+
+  time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> timing = time_end - time_begin;
+
   std::ofstream myfile;
-  myfile.open(framework.name + ".mc.vf.txt");
-  myfile << average_Rosenbluth_weight / count << std::endl;
+  myfile.open(framework.name + ".mc.vf.cpu.txt");
+  std::print(myfile, "# Void-fraction using Mont Carlo-based method\n");
+  std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
+  myfile << no_overlap / count << std::endl;
   myfile.close();
 }

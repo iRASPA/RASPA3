@@ -64,8 +64,10 @@ import <limits>;
 import archive;
 import int3;
 import double3;
+import double2;
 import double3x3;
 import skposcarparser;
+import skelement;
 import characterset;
 import stringutils;
 import skparser;
@@ -389,9 +391,28 @@ std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const Fo
   return smallest_radius;
 }
 
-bool Framework::computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, size_t skip) const
+bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const
 {
-  for(size_t atom_index = 0; const Atom& atom: unitCellAtoms)
+  for(const Atom& atom: unitCellAtoms)
+  {
+    size_t atomType = static_cast<size_t>(atom.type);
+    size_t atomicNumber = forceField.pseudoAtoms[atomType].atomicNumber;
+    double radius = PredefinedElements::predefinedElements[atomicNumber]._VDWRadius;
+    double3 dr = probe_position - atom.position;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = double3::dot(dr, dr);
+
+    if(rr < radius * radius)
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+bool Framework::computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, std::make_signed_t<std::size_t> skip) const
+{
+  for(std::make_signed_t<std::size_t> atom_index = 0; const Atom& atom: unitCellAtoms)
   {
     if(atom_index != skip)
     {
@@ -412,6 +433,35 @@ bool Framework::computeOverlap(const ForceField &forceField, double3 probe_posit
   }
 
   return false;
+}
+
+std::vector<double3> Framework::fractionalAtomPositionsUnitCell() const
+{
+  std::vector<double3> positions(unitCellAtoms.size());
+
+  double3x3 inverseCell = simulationBox.inverseCell;
+  for(const Atom& atom: unitCellAtoms)
+  {
+    double3 s = (inverseCell * atom.position).fract();
+    positions.push_back(s);
+  }
+
+  return positions;
+}
+
+std::vector<double2> Framework::atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const
+{
+  std::vector<double2> parameters(unitCellAtoms.size());
+
+  for(const Atom& atom: unitCellAtoms)
+  {
+    size_t type = atom.type; 
+    double2 parameter = double2(forceField[type].parameters.x, forceField[type].parameters.y);
+    parameters.push_back(parameter);
+  }
+
+
+  return parameters;
 }
 
 std::string Framework::printStatus(const ForceField& forceField) const

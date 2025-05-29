@@ -41,8 +41,9 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
                          std::string probe_pseudo_atom, size_t number_of_iterations) const
 {
   RandomNumber random{std::nullopt};
+  std::chrono::system_clock::time_point time_begin, time_end;
 
-  std::cout << "start\n";
+  time_begin = std::chrono::system_clock::now();
 
   std::optional<size_t> probeType = forceField.findPseudoAtom(probe_pseudo_atom);
 
@@ -52,7 +53,7 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
   }
 
   double accumulated_surface_area{};
-  for(size_t atom_index = 0; const Atom& atom: framework.unitCellAtoms)
+  for(std::make_signed_t<std::size_t> atom_index = 0; const Atom& atom: framework.unitCellAtoms)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     double size_parameter = forceField(probeType.value(), atomType).sizeParameter();
@@ -79,8 +80,14 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
     ++atom_index;
   }
 
+  time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> timing = time_end - time_begin;
+
   std::ofstream myfile;
-  myfile.open(framework.name + ".mc.sa.txt");
+  myfile.open(framework.name + ".mc.sa.cpu.txt");
+  std::print(myfile, "# Surface area using Mont Carlo-based method\n");
+  std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
   myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.unitCellMass << " [m^2/g]" << std::endl;
   myfile << 1.0e4 * accumulated_surface_area / framework.simulationBox.volume << " [m^2/cm^3]" << std::endl;

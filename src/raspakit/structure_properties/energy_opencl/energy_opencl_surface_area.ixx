@@ -16,7 +16,7 @@ module;
 #endif
 #endif
 
-export module isosurface;
+export module energy_opencl_surface_area;
 
 import int3;
 import double2;
@@ -24,21 +24,28 @@ import double3;
 import double4;
 import float4;
 import double3x3;
+import forcefield;
+import framework;
 
 
-export struct Isosurface
+export struct EnergyOpenCLSurfaceArea
 {
-  Isosurface();
-  ~Isosurface();
+  EnergyOpenCLSurfaceArea();
+  ~EnergyOpenCLSurfaceArea();
 
-  cl_program program;
+  cl_program energyGridProgram;
+  cl_kernel energyGridKernel;
+  static const char* energyGridKernelSource;
+  size_t energyGridWorkGroupSize;
+
+  cl_program energyEnergyOpenCLSurfaceAreaProgram;
   cl_kernel constructHPLevelKernel;
   cl_kernel classifyCubesKernel;
   cl_kernel traverseHPKernel[10];
   size_t constructHPLevelKernelWorkGroupSize;
   size_t classifyCubesKernelWorkGroupSize;
   size_t traverseHPKernelWorkGroupSize[10];
-  static std::string marchingCubesKernel;
+  static std::string marchingCubesKernelSource;
 
-  std::vector<float4> computeIsosurface(int3 dimensions, std::vector<cl_float>* voxels, double isoValue) noexcept(false);
+  void run(const ForceField &forceField, const Framework &framework);
 };

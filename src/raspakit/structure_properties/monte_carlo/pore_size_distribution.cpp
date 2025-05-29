@@ -4,6 +4,7 @@ module;
 #include <cstddef>
 #include <random>
 #include <print>
+#include <chrono>
 #include <string>
 #include <vector>
 #include <optional>
@@ -38,6 +39,9 @@ import atom;
 void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework &framework, double well_depth_factor, size_t number_of_iterations)
 {
   RandomNumber random{std::nullopt};
+  std::chrono::system_clock::time_point time_begin, time_end;
+
+  time_begin = std::chrono::system_clock::now();
 
   double delta_r = 10.0 / static_cast<double>(data.size());
 
@@ -77,8 +81,14 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
     }
   }
 
+  time_end = std::chrono::system_clock::now();
+
+  std::chrono::duration<double> timing = time_end - time_begin;
+
   std::ofstream myfile;
-  myfile.open(framework.name + ".mc.psd.txt");
+  myfile.open(framework.name + ".mc.psd.cpu.txt");
+  std::print(myfile, "# Pore-size distribution using Mont Carlo-based method\n");
+  std::print(myfile, "# CPU Timing: {} [s]\n", timing.count());
   double normalization = 1.0 / static_cast<double>(10000);
   myfile << "# column 1: diameter d [A]\n";
   myfile << "# column 2: cumulative pore volume\n";

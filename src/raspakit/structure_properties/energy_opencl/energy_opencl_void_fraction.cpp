@@ -34,80 +34,102 @@ module;
 #endif
 #endif
   
-module energy_grid;
+module energy_opencl_void_fraction;
 
 import opencl;
 import float4;
 import double4;
+import forcefield;
+import framework;
+import units;
 
-EnergyGrid::EnergyGrid()
+EnergyOpenCLVoidFraction::EnergyOpenCLVoidFraction()
 {
   if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
     cl_int err;
-    const char* shaderSourceCode = EnergyGrid::energyGridKernel;
-    program = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &shaderSourceCode, nullptr, &err);
+
+    const char* energyGridShaderSourceCode = EnergyOpenCLVoidFraction::energyGridKernelSource;
+    energyGridProgram = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &energyGridShaderSourceCode, nullptr, &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));}
 
-    // Build the program executable
-    err = clBuildProgram(program, 0, nullptr, nullptr, nullptr, nullptr);
-    if (err != CL_SUCCESS) 
+    err = clBuildProgram(energyGridProgram, 0, nullptr, nullptr, nullptr, nullptr);
+    if (err != CL_SUCCESS)
     {
       size_t len;
       char buffer[2048];
-      clGetProgramBuildInfo(program, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+      clGetProgramBuildInfo(energyGridProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
       std::string message = std::format("SKComputeIsosurface: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__, __LINE__, std::string(buffer));
       throw std::runtime_error(message);
     }
 
-    kernel = clCreateKernel(program, "ComputeEnergyGrid", &err);
+    energyGridKernel = clCreateKernel(energyGridProgram, "ComputeEnergyGrid", &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__ , __LINE__));}
 
-    err = clGetKernelWorkGroupInfo(kernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &workGroupSize, nullptr);
+    err = clGetKernelWorkGroupInfo(energyGridKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &energyGridWorkGroupSize, nullptr);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));}
+
+
+
+    const char* energyVoidFractionShaderSourceCode = EnergyOpenCLVoidFraction::energyVoidFractionKernelSource;
+    energyVoidFractionProgram = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &energyVoidFractionShaderSourceCode, nullptr, &err);
+    if (err != CL_SUCCESS) {throw std::runtime_error("clCreateProgramWithSource failed");}
+
+    err = clBuildProgram(energyVoidFractionProgram, 0, nullptr, nullptr, nullptr, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error("clBuildProgram failed");}
+
+    energyVoidFractionKernel = clCreateKernel(energyVoidFractionProgram, "ComputeVoidFraction", &err);
+    if (err != CL_SUCCESS) {throw std::runtime_error("clCreateKernel failed");}
+
+    err = clGetKernelWorkGroupInfo(energyVoidFractionKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &energyVoidFractionWorkGroupSize, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error("clGetKernelWorkGroupInfo failed");}
   }
 };
 
-EnergyGrid::~EnergyGrid()
+
+EnergyOpenCLVoidFraction::~EnergyOpenCLVoidFraction()
 {
   if(OpenCL::clContext.has_value())
   {
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
+    clReleaseKernel(energyGridKernel);
+    clReleaseProgram(energyGridProgram);
+
+    clReleaseKernel(energyVoidFractionKernel);
+    clReleaseProgram(energyVoidFractionProgram);
   }
 }
 
 
-std::vector<cl_float> EnergyGrid::computeEnergyGrid(int3 size, double2 probeParameter,
-                                        std::vector<double3> positions, std::vector<double2> potentialParameters,
-                                        double3x3 unitCell, int3 numberOfReplicas) noexcept(false)
+void EnergyOpenCLVoidFraction::run(const ForceField &forceField, const Framework &framework)
 {
+  int3 grid_size = int3(128,128,128);
+  double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
+  double cutoff = forceField.cutOffFrameworkVDW;
+  double3x3 unitCell = framework.simulationBox.cell;
+  int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
+  std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
+  std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
+  std::chrono::system_clock::time_point time_begin, time_end;
 
-  if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
-  {
-    return EnergyGrid::computeEnergyGridGPUImplementation(size, probeParameter, positions, potentialParameters, unitCell, numberOfReplicas);
-  }
-  return EnergyGrid::computeEnergyGridCPUImplementation(size, probeParameter, positions, potentialParameters, unitCell, numberOfReplicas);
-}
+  time_begin = std::chrono::system_clock::now();
 
-std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, double2 probeParameter,
-                                                                              std::vector<double3> positions, std::vector<double2> potentialParameters,
-                                                                              double3x3 unitCell, int3 numberOfReplicas) noexcept(false)
-{
+  // Energy-grid computation step
+  // ==================================================================================================================================================================
+
   size_t numberOfAtoms = positions.size();
-  size_t temp = static_cast<size_t>(size.x * size.y * size.z);
+  size_t temp = static_cast<size_t>(grid_size.x * grid_size.y * grid_size.z);
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size
   // (detected on NVIDIA)
-  size_t numberOfGridPoints = (temp  + workGroupSize-1) & ~(workGroupSize-1);
+  size_t numberOfGridPoints = (temp  + energyGridWorkGroupSize-1) & ~(energyGridWorkGroupSize-1);
   size_t global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);
   std::vector<cl_float> epsilon(numberOfAtoms);
   std::vector<cl_float> sigma(numberOfAtoms);
 
-  std::vector<cl_float> outputData = std::vector<cl_float>(numberOfGridPoints);
+  //std::vector<cl_float> outputData = std::vector<cl_float>(numberOfGridPoints);
 
   std::vector<cl_float4> gridPositions(numberOfGridPoints);
   std::vector<cl_float> output(numberOfGridPoints);
@@ -132,16 +154,16 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
     }
 
     size_t index = 0;
-    for(int k=0; k<size.z;k++)
+    for(int k = 0; k < grid_size.z; ++k)
     {
-      for(int j=0; j<size.y; j++)
+      for(int j = 0; j < grid_size.y; ++j)
       {
         // X various the fastest (contiguous in x)
-        for(int i=0 ; i<size.x;i++)
+        for(int i = 0 ; i < grid_size.x; ++i)
         {
-          double3 position = correction * double3(double(i)/double(size.x-1),double(j)/double(size.y-1),double(k)/double(size.z-1));
-          gridPositions[index] = {{cl_float(position.x),cl_float(position.y),cl_float(position.z),cl_float(0.0)}};
-          index += 1;
+          double3 position = correction * double3(double(i) / double(grid_size.x-1), double(j) / double(grid_size.y-1), double(k) / double(grid_size.z-1));
+          gridPositions[index] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), cl_float(0.0)}};
+          ++index;
         }
       }
     }
@@ -170,7 +192,6 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
     err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(), sigma.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
 
-    // set work-item dimensions
     size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
     cl_int clNumberOfReplicas =  cl_int(totalNumberOfReplicas);
     std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
@@ -191,14 +212,13 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
       }
     }
 
-    // allocate xpos memory and queue it to the device
+
     cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,  sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
     err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), replicaCellBuffer, CL_TRUE, 0, sizeof(cl_float4) * replicaVector.size(), replicaVector.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
-    // allocate memory for the output and queue it to the device
     cl_mem outputMemory = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
     if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
 
@@ -221,19 +241,19 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
 
       cl_int startIndex = cl_int(unitsOfWorkDone);
       cl_int endIndex = cl_int(unitsOfWorkDone + numberOfAtomsPerThreadgroup);
-      err  = clSetKernelArg(kernel,  0, sizeof(cl_mem), &inputPos);
-      err |= clSetKernelArg(kernel,  1, sizeof(cl_mem), &inputGridPos);
-      err |= clSetKernelArg(kernel,  2, sizeof(cl_mem), &inputEpsilon);
-      err |= clSetKernelArg(kernel,  3, sizeof(cl_mem), &inputSigma);
-      err |= clSetKernelArg(kernel,  4, sizeof(cl_mem), &replicaCellBuffer);
-      err |= clSetKernelArg(kernel,  5, sizeof(cl_mem), &outputMemory);
-      err |= clSetKernelArg(kernel,  6, sizeof(cl_int), &clNumberOfReplicas);
-      err |= clSetKernelArg(kernel,  7, sizeof(cl_float4), &clCella);
-      err |= clSetKernelArg(kernel,  8, sizeof(cl_float4), &clCellb);
-      err |= clSetKernelArg(kernel,  9, sizeof(cl_float4), &clCellc);
-      err |= clSetKernelArg(kernel,  10, sizeof(cl_int), &startIndex);
-      err |= clSetKernelArg(kernel,  11, sizeof(cl_int), &endIndex);
-      err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), kernel, 1, nullptr, &global_work_size, &workGroupSize, 0, nullptr, nullptr);
+      err  = clSetKernelArg(energyGridKernel,  0, sizeof(cl_mem), &inputPos);
+      err |= clSetKernelArg(energyGridKernel,  1, sizeof(cl_mem), &inputGridPos);
+      err |= clSetKernelArg(energyGridKernel,  2, sizeof(cl_mem), &inputEpsilon);
+      err |= clSetKernelArg(energyGridKernel,  3, sizeof(cl_mem), &inputSigma);
+      err |= clSetKernelArg(energyGridKernel,  4, sizeof(cl_mem), &replicaCellBuffer);
+      err |= clSetKernelArg(energyGridKernel,  5, sizeof(cl_mem), &outputMemory);
+      err |= clSetKernelArg(energyGridKernel,  6, sizeof(cl_int), &clNumberOfReplicas);
+      err |= clSetKernelArg(energyGridKernel,  7, sizeof(cl_float4), &clCella);
+      err |= clSetKernelArg(energyGridKernel,  8, sizeof(cl_float4), &clCellb);
+      err |= clSetKernelArg(energyGridKernel,  9, sizeof(cl_float4), &clCellc);
+      err |= clSetKernelArg(energyGridKernel,  10, sizeof(cl_int), &startIndex);
+      err |= clSetKernelArg(energyGridKernel,  11, sizeof(cl_int), &endIndex);
+      err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr, &global_work_size, &energyGridWorkGroupSize, 0, nullptr, nullptr);
       if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed {} : {}\n", __FILE__, __LINE__));}
 
       clFinish(OpenCL::clCommandQueue.value());
@@ -241,13 +261,47 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
       unitsOfWorkDone += sizeOfWorkBatch;
     }
 
-    // read output image using SAME size as before
-    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0, sizeof(cl_float) * outputData.size(), outputData.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+
+    // Accumulation step
+    // ==================================================================================================================================================================
+
+    size_t nWorkGroups = numberOfGridPoints/energyVoidFractionWorkGroupSize;
+
+    float* sumReduction = new float[nWorkGroups];
+    cl_mem reductionBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, nWorkGroups*sizeof(float), nullptr, &err);
+
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups*sizeof(float), sumReduction, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueWriteBuffer");}
+
+    clSetKernelArg(energyVoidFractionKernel, 0, sizeof(cl_mem), &outputMemory);
+    clSetKernelArg(energyVoidFractionKernel, 1, sizeof(cl_mem), &reductionBuffer);
+    clSetKernelArg(energyVoidFractionKernel, 2, energyVoidFractionWorkGroupSize*sizeof(cl_float),nullptr);
+
+    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyVoidFractionKernel, 1, nullptr, &global_work_size, &energyVoidFractionWorkGroupSize, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueNDRangeKernel");}
+
+    // Read the buffer back to the array
+    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), reductionBuffer, CL_TRUE, 0, nWorkGroups*sizeof(float), sumReduction, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS) {throw std::runtime_error("SKComputeVoidFraction: error in clEnqueueReadBuffer");}
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    outputData.resize(static_cast<size_t>(size.x * size.y * size.z));
+    // Final summation with CPU
+    double fraction = 0.0;
+    for (size_t i=0; i<nWorkGroups; i++)
+      fraction += double(sumReduction[i]);
+
+    time_end = std::chrono::system_clock::now();
+
+    std::chrono::duration<double> timing = time_end - time_begin;
+
+
+    std::ofstream myfile;
+    myfile.open(framework.name + ".energy.vf.gpu.txt");
+    std::print(myfile, "# Void-fraction using energy-based method\n");
+    std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
+    myfile << fraction / (static_cast<double>(grid_size.x) * static_cast<double>(grid_size.y) * static_cast<double>(grid_size.z)) << std::endl;
+    myfile.close();
 
     clReleaseMemObject(inputPos);
     clReleaseMemObject(inputGridPos);
@@ -255,93 +309,13 @@ std::vector<cl_float> EnergyGrid::computeEnergyGridGPUImplementation(int3 size, 
     clReleaseMemObject(inputSigma);
     clReleaseMemObject(replicaCellBuffer);
     clReleaseMemObject(outputMemory);
+    clReleaseMemObject(reductionBuffer);
   }
-  return outputData;
 }
 
 
 
-// brute-force implementation
-std::vector<cl_float> EnergyGrid::computeEnergyGridCPUImplementation(int3 size, double2 probeParameter,
-                                                                              std::vector<double3> positions, std::vector<double2> potentialParameters,
-                                                                              double3x3 unitCell, int3 numberOfReplicas) noexcept
-{
-
-  size_t numberOfAtoms = positions.size();
-  size_t temp = static_cast<size_t>(size.x * size.y * size.z);
-
-  std::vector<cl_float> outputData = std::vector<cl_float>(temp);
-
-  double3 correction = double3(1.0/double(numberOfReplicas.x), 1.0/double(numberOfReplicas.y), 1.0/double(numberOfReplicas.z));
-
-  double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0],
-                                    double(numberOfReplicas.y) * unitCell[1],
-                                    double(numberOfReplicas.z) * unitCell[2]);
-
-  size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
-  std::vector<double3> replicaVector(totalNumberOfReplicas);
-  size_t index = 0;
-  for(size_t i=0; i < static_cast<size_t>(numberOfReplicas.x); i++)
-  {
-    for(size_t j=0; j < static_cast<size_t>(numberOfReplicas.y); j++)
-    {
-      for(size_t k=0; k < static_cast<size_t>(numberOfReplicas.z); k++)
-      {
-        replicaVector[index] = double3((double(i)/double(numberOfReplicas.x)),
-                                       (double(j)/double(numberOfReplicas.y)),
-                                       (double(k)/double(numberOfReplicas.z)));
-        index += 1;
-      }
-    }
-  }
-
-  for(size_t z=0; z < static_cast<size_t>(size.z); z++)
-  {
-    for(size_t y=0; y < static_cast<size_t>(size.y); y++)
-    {
-      for(size_t x=0 ; x < static_cast<size_t>(size.x); x++)
-      {
-        double3 gridPosition = correction * double3(double(x)/double(size.x-1),double(y)/double(size.y-1),double(z)/double(size.z-1));
-
-        double value = 0.0;
-        for(size_t i=0 ; i<numberOfAtoms; i++)
-        {
-          double3 position = correction * positions[i];
-          double2 currentPotentialParameters = potentialParameters[i];
-
-          // use 4 x epsilon for a probe epsilon of unity
-          double epsilon = 4.0*sqrt(currentPotentialParameters.x * probeParameter.x);
-
-          // mixing rule for the atom and the probe
-          double sigma = 0.5 * (currentPotentialParameters.y + probeParameter.y);
-
-          for(size_t j=0;j<totalNumberOfReplicas;j++)
-          {
-            double3 ds = gridPosition - position - replicaVector[j];
-            ds.x -= std::rint(ds.x);
-            ds.y -= std::rint(ds.y);
-            ds.z -= std::rint(ds.z);
-            double3 dr = replicaCell * ds;
-
-            double rr = dr.x*dr.x + dr.y*dr.y + dr.z*dr.z;
-            if (rr<12.0*12.0)
-            {
-              double sigma2rr = sigma*sigma/rr;
-              double rri3 = sigma2rr * sigma2rr * sigma2rr;
-              value += epsilon*(rri3*(rri3-1.0));
-            }
-          }
-        }
-
-        outputData[x + y * static_cast<size_t>(size.x) + z * static_cast<size_t>(size.x * size.y)] += static_cast<cl_float>(std::min(value,10000000.0));
-      }
-    }
-  }
-
-  return outputData;
-}
-
-const char* EnergyGrid::energyGridKernel = R"foo(
+const char* EnergyOpenCLVoidFraction::energyGridKernelSource = R"foo(
 __kernel void ComputeEnergyGrid(__global float4 *position,
                                 __global float4 *gridposition,
                                 __global float *epsilon,
@@ -395,3 +369,35 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
   output[ igrid ] += min(value,10000000.0f);
 }
 )foo";
+
+const char* EnergyOpenCLVoidFraction::energyVoidFractionKernelSource = R"foo(
+__kernel void ComputeVoidFraction (__global const float *input,
+                           __global float *partialSums,
+                           __local float *localSums)
+{
+   size_t local_id = get_local_id(0);
+   size_t global_id = get_global_id(0);
+   size_t group_size = get_local_size(0);
+   size_t group_id = get_group_id(0);
+
+   // Copy from global memory to local memory
+   localSums[local_id] = exp(-(1.0/(0.831446261815324f * 298.0f))*input[global_id]);
+
+   // Loop for computing localSums
+   for (uint stride = group_size/2; stride>0; stride/=2)
+   {
+      // Waiting for each 2x2 addition into given workgroup
+      barrier(CLK_LOCAL_MEM_FENCE);
+
+      // Divide WorkGroup into 2 parts and add elements 2 by 2
+      // between local_id and local_id + stride
+      if (local_id < stride)
+        localSums[local_id] += localSums[local_id + stride];
+   }
+
+   // Write result into partialSums[nWorkGroups]
+   if (local_id == 0)
+     partialSums[group_id] = localSums[0];
+}
+)foo";
+

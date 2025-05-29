@@ -50,6 +50,10 @@ import mc_pore_size_distribution;
 import mc_opencl_void_fraction;
 import mc_opencl_surface_area;
 import mc_opencl_pore_size_distribution;
+import energy_opencl_void_fraction;
+import energy_opencl_surface_area;
+import energy_void_fraction;
+import energy_surface_area;
 import getopt;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
@@ -114,43 +118,44 @@ ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailC
                      {"CH4", false, 16.04246, 0.0, 0.0, 6, false},
                      {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
-                    {{ 48.1581,  3.03315},
-                     { 38.9492,  3.26256},
-                     { 47.8562,  3.47299},
-                     { 36.4834,  3.0932 },
-                     { 47.8058,  3.58141},
-                     {161.03,    3.69723},
-                     {173.107,   3.59032},
-                     {142.562,   3.51932},
-                     {186.191,   3.51905},
-                     {  7.64893, 2.84642},
-                     {155.998,   3.91105},
-                     {155.998,   3.80414},
-                     { 62.3992,  2.46155},
-                     { 42.7736,  2.44552},
-                     {  7.54829, 2.69319},
-                     {  6.54185, 2.5943 },
-                     {  6.54185, 2.63795},
-                     {  2.5161,  3.11369},
-                     {  7.04507, 2.55866},
-                     {208.836,   3.90481},
-                     {  8.55473, 2.8286 },
-                     {  9.56117, 2.93551},
-                     {  8.05151, 2.80099},
-                     {  7.54829, 2.52481},
-                     { 34.7221,  2.78317},
-                     { 55.8574,  2.69141},
-                     { 21.1352,  2.88918},
-                     { 18.1159,  2.80455},
-                     {301.428,   3.97608},
-                     {114.734,   2.53728},
-                     {225.946,   3.93777},
-                     {200.281,   3.98232},
-                     { 10.9,     2.64},
-                     {124.070,   3.38},
-                     {158.5,     3.72},
-                     { 29.933,   2.745},
-                     { 85.671,   3.017}},
+                    //{{ 48.1581,  3.03315},
+                    {{ 53.0,       3.30},             // O
+                     { 38.9492,    3.26256},          // N
+                     { 47.8562,    3.47299},          // C
+                     { 36.4834,    3.0932 },          // F
+                     { 47.8058,    3.58141},          // B
+                     {161.03,      3.69723},          // P
+                     {173.107,     3.59032},          // S
+                     {142.562,     3.51932},          // Cl
+                     {186.191,     3.51905},          // Br
+                     {  7.64893,   2.84642},          // H
+                     {155.998,     3.91105},          // Al
+                     {155.998,     3.80414},          // Si
+                     { 62.3988584, 2.461553158},      // Zn
+                     { 42.7736,    2.44552},          // Be
+                     {  7.54829,   2.69319},          // Cr
+                     {  6.54185,   2.5943 },          // Fe
+                     {  6.54185,   2.63795},          // Mn
+                     {  2.5161,    3.11369},          // Cu
+                     {  7.04507,   2.55866},          // Co
+                     {208.836,     3.90481},          // Ga
+                     {  8.55473,   2.8286 },          // Ti
+                     {  9.56117,   2.93551},          // Sc
+                     {  8.05151,   2.80099},          // V
+                     {  7.54829,   2.52481},          // Ni
+                     { 34.7221,    2.78317},          // Zr
+                     { 55.8574,    2.69141},          // Mg
+                     { 21.1352,    2.88918},          // Ne
+                     { 18.1159,    2.80455},          // Ag
+                     {301.428,     3.97608},          // In
+                     {114.734,     2.53728},          // Cd
+                     {225.946,     3.93777},          // Sb
+                     {200.281,     3.98232},          // Te
+                     { 10.9,       2.64},             // He
+                     {124.070,     3.38},             // Ar
+                     {158.5,       3.72},             // CH4
+                     { 29.933,     2.745},            // C_co2
+                     { 85.671,     3.017}},           // O_co2
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 
@@ -160,6 +165,8 @@ void CommandLine::run(int argc, char* argv[])
   unsigned long num_threads = 1;
   bool use_gridbased_methods{false};
   bool use_monte_carlo_methods{false};
+  bool use_energy_methods{false};
+  bool use_cpu{false};
   bool use_gpu{false};
   std::bitset<CommandLine::Flag::Last> state;
   std::string input_files;
@@ -234,6 +241,13 @@ void CommandLine::run(int argc, char* argv[])
          {
            use_gridbased_methods = true;
          })
+    .reg({"--cpu"},
+         argparser::no_argument,
+         "Compute on the gpu",
+         [&use_cpu](std::string const &)
+         {
+           use_cpu = true;
+         })
     .reg({"--gpu"},
          argparser::no_argument,
          "Compute on the gpu",
@@ -247,6 +261,13 @@ void CommandLine::run(int argc, char* argv[])
          [&use_monte_carlo_methods](std::string const &)
          {
            use_monte_carlo_methods = true;
+         })
+    .reg({"--energy"},
+         argparser::no_argument,
+         "Use energy-based methods",
+         [&use_energy_methods](std::string const &)
+         {
+           use_energy_methods = true;
          })
     .reg({"-s", "--surface-area"},
          argparser::no_argument,
@@ -276,6 +297,7 @@ void CommandLine::run(int argc, char* argv[])
          { 
            input_files = arg;
          });
+
   try
   {
     // parse command-line and execute handlers accordingly
@@ -307,6 +329,8 @@ void CommandLine::run(int argc, char* argv[])
     exit(-3);
   }
 
+  if(!use_cpu && !use_gpu) use_cpu = true;
+
   // start running
   std::vector<std::string> filenames = std::ranges::to<std::vector<std::string>>(std::string_view(input_files) | std::ranges::views::split(' '));
   for(const std::string &filename : filenames)
@@ -324,11 +348,11 @@ void CommandLine::run(int argc, char* argv[])
     // if no force-field specified, use the default one
     if(is_zeolite)
     {
-      forceField = forceField.value_or(defaultForceFieldZeolite());
+      forceField = forceField.value_or(defaultForceFieldZeolite(12.0, false, false, false));
     }
     else
     {
-      forceField = forceField.value_or(defaultForceFieldMOF());
+      forceField = forceField.value_or(defaultForceFieldMOF(12.0, false, false, false));
     }
 
     Framework framework = Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
@@ -339,15 +363,31 @@ void CommandLine::run(int argc, char* argv[])
 
       if(use_monte_carlo_methods)
       {
-        if(use_gpu)
-        {
-          MC_OpenCL_SurfaceArea sa;
-          sa.run(forceField.value(), framework, 1.0, "Ar", number_of_iterations);
-        }
-        else
+        if(use_cpu)
         {
           MC_SurfaceArea sa;
           sa.run(forceField.value(), framework, 1.0, "Ar", number_of_iterations);
+        }
+
+        if(use_gpu)
+        {
+          EnergyOpenCLSurfaceArea sa;
+          sa.run(forceField.value(), framework);
+        }
+      }
+
+      if(use_energy_methods)
+      {
+        if(use_cpu)
+        {
+          EnergySurfaceArea sa;
+          sa.run(forceField.value(), framework);
+        }
+
+        if(use_gpu)
+        {
+          EnergyOpenCLSurfaceArea sa;
+          sa.run(forceField.value(), framework);
         }
       }
     }
@@ -358,15 +398,31 @@ void CommandLine::run(int argc, char* argv[])
 
       if(use_monte_carlo_methods)
       {
-        if(use_gpu)
-        {
-          MC_OpenCL_VoidFraction vf;
-          vf.run(forceField.value(), framework, number_of_iterations);
-        }
-        else
+        if(use_cpu)
         {
           MC_VoidFraction vf;
           vf.run(forceField.value(), framework, number_of_iterations);
+        }
+
+        if(use_gpu)
+        {
+          EnergyOpenCLVoidFraction vf;
+          vf.run(forceField.value(), framework);
+        }
+      }
+
+      if(use_energy_methods)
+      {
+        if(use_cpu)
+        {
+          EnergyVoidFraction vf;
+          vf.run(forceField.value(), framework);
+        }
+
+        if(use_gpu)
+        {
+          EnergyOpenCLVoidFraction vf;
+          vf.run(forceField.value(), framework);
         }
       }
     }
@@ -376,16 +432,22 @@ void CommandLine::run(int argc, char* argv[])
       std::cout << "Compute PSD" << std::endl;
       if(use_monte_carlo_methods)
       {
+        if(use_cpu)
+        {
+          MC_PoreSizeDistribution psd(1000);
+          psd.run(forceField.value(), framework, 1.0, number_of_iterations);
+        }
+
         if(use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
           psd.run(forceField.value(), framework, 1.0, number_of_iterations);
         }
-        else
-        {
-          MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, 1.0, number_of_iterations);
-        }
+      }
+
+      if(use_energy_methods)
+      {
+        std::print("TODO: not implemented yet\n");
       }
 
     }
