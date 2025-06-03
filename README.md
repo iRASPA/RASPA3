@@ -142,7 +142,7 @@ The most practical method of compiling raspa from source is through installing t
 
 ```bash
 conda env create -f env.yml
-conda env acitvate raspa
+conda acitvate raspa
 cmake --preset=linux_conda   # or -preset=mac_conda
 ninja -C build
 ```
