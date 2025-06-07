@@ -11,6 +11,7 @@ module;
 #include <iostream>
 #include <fstream>
 #include <tuple>
+#include <chrono>
 #endif
 
 module mc_void_fraction;

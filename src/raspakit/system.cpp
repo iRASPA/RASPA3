@@ -200,7 +200,10 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
   }
 
+  forceField.initializeAutomaticCutOff(simulationBox);
+
   forceField.initializeEwaldParameters(simulationBox);
+
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
@@ -956,7 +959,8 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
-  std::print(stream, "net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
   for (size_t i = 0; const Component& c : components)
@@ -1003,7 +1007,8 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
-  std::print(stream, "net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
   for (size_t i = 0; const Component& c : components)
@@ -1139,7 +1144,8 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
 
   std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
   std::print(stream, "{}\n", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
-  std::print(stream, "net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
+  std::print(stream, "{}", forceField.printCutOffAutoStatus());
   std::print(stream, "\n");
 
   for (size_t i = 0; const Component& c : components)

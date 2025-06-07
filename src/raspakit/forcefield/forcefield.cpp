@@ -27,6 +27,7 @@ module;
 #include <type_traits>
 #include <vector>
 #include <set>
+#include <limits>
 #endif
 
 module forcefield;
@@ -886,6 +887,39 @@ std::vector<nlohmann::json> ForceField::jsonPseudoAtomStatus() const
   return jsonPseudoAtoms;
 }
 
+std::string ForceField::printCutOffAutoStatus() const
+{
+  std::ostringstream stream;
+
+  if(cutOffFrameworkVDWAutomatic)
+  {
+    std::print(stream, "Cutoff Framework-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
+               Units::displayedUnitOfLengthString);
+  }
+  if(cutOffMoleculeVDWAutomatic)
+  {
+    std::print(stream, "Cutoff Molecule-Molecule VDW: {:9.5f} [{}]\n", cutOffFrameworkVDW,
+               Units::displayedUnitOfLengthString);
+  }
+  if(cutOffCoulombAutomatic)
+  {
+    std::print(stream, "Cutoff Coulomb: {:9.5f} [{}]\n", cutOffCoulomb,
+               Units::displayedUnitOfLengthString);
+
+    std::print(stream, "Ewald alpha: {}\n", EwaldAlpha);
+    std::print(stream, "Ewald k-vectors: {} {} {}\n", numberOfWaveVectors.x, numberOfWaveVectors.y,
+               numberOfWaveVectors.z);
+  }
+  if(cutOffFrameworkVDWAutomatic || 
+     cutOffFrameworkVDWAutomatic ||
+     cutOffCoulombAutomatic)
+  {
+    std::print(stream, "\n");
+  }
+
+  return stream.str();
+}
+
 std::string ForceField::printForceFieldStatus() const
 {
   std::ostringstream stream;
@@ -1084,6 +1118,28 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
     size_t maxNumberOfWaveVector =
         static_cast<size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
     reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
+  }
+}
+
+void ForceField::initializeAutomaticCutOff(const SimulationBox &simulationBox)
+{
+  double3 perpendicularWidths = simulationBox.perpendicularWidths();
+  
+  double smallest_perpendicular_width = std::min({perpendicularWidths.x, perpendicularWidths.y, perpendicularWidths.z});
+
+  if(cutOffFrameworkVDWAutomatic)
+  {
+    cutOffFrameworkVDW = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
+  }
+
+  if(cutOffMoleculeVDWAutomatic)
+  {
+    cutOffMoleculeVDW = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
+  }
+
+  if(cutOffCoulombAutomatic)
+  {
+    cutOffCoulomb = 0.5 * smallest_perpendicular_width - std::numeric_limits<double>::epsilon();
   }
 }
 

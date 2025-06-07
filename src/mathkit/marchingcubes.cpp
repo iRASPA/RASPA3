@@ -18,6 +18,7 @@ module;
 #include <cmath>
 #include <limits>
 #include <iostream>
+#include <cstring>
 #endif
 
 module marching_cubes;
@@ -106,9 +107,9 @@ void MarchingCubes::init_temps()
     _y_verts.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
     _z_verts.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
 
-    memset( _x_verts.data(), -1, _x_verts.size() * sizeof( int ) ) ;
-  memset( _y_verts.data(), -1, _y_verts.size() * sizeof( int ) ) ;
-  memset( _z_verts.data(), -1, _z_verts.size() * sizeof( int ) ) ;
+    std::memset( _x_verts.data(), -1, _x_verts.size() * sizeof( int ) ) ;
+    std::memset( _y_verts.data(), -1, _y_verts.size() * sizeof( int ) ) ;
+    std::memset( _z_verts.data(), -1, _z_verts.size() * sizeof( int ) ) ;
 }
 //_____________________________________________________________________________
 

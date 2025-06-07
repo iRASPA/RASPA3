@@ -38,6 +38,7 @@ import <iomanip>;
 import component;
 import atom;
 import molecule;
+import int3;
 import double3;
 import double3x3;
 import simd_quatd;
@@ -85,6 +86,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
 
+  double cutOffFrameworkVDW_stored_A = systemA.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW_stored_A = systemA.forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb_stored_A = systemA.forceField.cutOffCoulomb;
+  double ewald_alpha_stored_A = systemA.forceField.EwaldAlpha;
+  int3 ewald_k_stored_A = systemA.forceField.numberOfWaveVectors;
+
+  systemA.forceField.initializeAutomaticCutOff(newBoxA);
+  systemA.forceField.initializeEwaldParameters(newBoxA);
+
   // Compute new intermolecular energy for systemA
   time_begin = std::chrono::system_clock::now();
   RunningEnergy newTotalInterEnergyA =
@@ -119,6 +129,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
+
+  double cutOffFrameworkVDW_stored_B = systemB.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW_stored_B = systemB.forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb_stored_B = systemB.forceField.cutOffCoulomb;
+  double ewald_alpha_stored_B = systemB.forceField.EwaldAlpha;
+  int3 ewald_k_stored_B = systemB.forceField.numberOfWaveVectors;
+
+  systemB.forceField.initializeAutomaticCutOff(newBoxB);
+  systemB.forceField.initializeEwaldParameters(newBoxB);
 
   // Compute new intermolecular energy for systemB
   time_begin = std::chrono::system_clock::now();
@@ -173,6 +192,19 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
     return std::make_pair(newTotalEnergyA, newTotalEnergyB);
   }
+
+  systemA.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_A;
+  systemA.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_A;
+  systemA.forceField.cutOffCoulomb = cutOffCoulomb_stored_A;
+  systemA.forceField.EwaldAlpha = ewald_alpha_stored_A;
+  systemA.forceField.numberOfWaveVectors = ewald_k_stored_A;
+
+  systemB.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored_B;
+  systemB.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored_B;
+  systemB.forceField.cutOffCoulomb = cutOffCoulomb_stored_B;
+  systemB.forceField.EwaldAlpha = ewald_alpha_stored_B;
+  systemB.forceField.numberOfWaveVectors = ewald_k_stored_B;
+
 
   return std::nullopt;
 }

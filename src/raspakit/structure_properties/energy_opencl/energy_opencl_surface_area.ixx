@@ -47,5 +47,5 @@ export struct EnergyOpenCLSurfaceArea
   size_t traverseHPKernelWorkGroupSize[10];
   static std::string marchingCubesKernelSource;
 
-  void run(const ForceField &forceField, const Framework &framework);
+  void run(const ForceField &forceField, const Framework &framework, int3 grid_size);
 };

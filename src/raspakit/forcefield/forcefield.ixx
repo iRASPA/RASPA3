@@ -240,6 +240,9 @@ export struct ForceField
    */
   std::string printPseudoAtomStatus() const;
 
+
+  std::string printCutOffAutoStatus() const;
+
   /**
    * \brief Returns a string representation of the force field status.
    *
@@ -296,6 +299,8 @@ export struct ForceField
    * \param simulationBox The simulation box to use for initialization.
    */
   void initializeEwaldParameters(const SimulationBox &simulationBox);
+
+  void initializeAutomaticCutOff(const SimulationBox &simulationBox);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f);

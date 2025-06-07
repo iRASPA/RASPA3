@@ -142,10 +142,9 @@ EnergyOpenCLSurfaceArea::~EnergyOpenCLSurfaceArea()
   }
 }
 
-void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework &framework)
+void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework &framework, int3 grid_size)
 {
   float isoValue = 0.0;
-  int3 grid_size = int3(128,128,128);
 
   double2 probeParameter = double2(38.9492 * Units::KelvinToEnergy, 3.26256);
   double cutoff = forceField.cutOffFrameworkVDW;

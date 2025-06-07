@@ -17,6 +17,8 @@ module;
 #include <string_view>
 #include <filesystem>
 #include <bitset>
+#include <format>
+#include <print>
 #endif
 
 module commandline;
@@ -168,12 +170,13 @@ void CommandLine::run(int argc, char* argv[])
   bool use_energy_methods{false};
   bool use_cpu{false};
   bool use_gpu{false};
-  std::bitset<CommandLine::Flag::Last> state;
+  std::bitset<CommandLine::State::Last> state;
   std::string input_files;
   size_t number_of_iterations{10000};
   std::optional<ForceField> forceField;
   bool is_zeolite{false};
   bool is_mof{true};
+  int3 gridSize{128, 128, 128};
 
   // definition of command-line switches
   using argparser = argparser::argparser;
@@ -269,26 +272,47 @@ void CommandLine::run(int argc, char* argv[])
          {
            use_energy_methods = true;
          })
+    .reg({"--128"},
+         argparser::no_argument,
+         "Use low-accuracy 128x128x128 grid",
+         [&gridSize](std::string const &)
+         {
+           gridSize = int3(128, 128, 128);
+         })
+    .reg({"--256"},
+         argparser::no_argument,
+         "Use medium-accuracy 256x256x256 grid",
+         [&gridSize](std::string const &)
+         {
+           gridSize = int3(256, 256, 256);
+         })
+    .reg({"--512"},
+         argparser::no_argument,
+         "Use high-accuracy 512x512x512 grid",
+         [&gridSize](std::string const &)
+         {
+           gridSize = int3(512, 512, 512);
+         })
     .reg({"-s", "--surface-area"},
          argparser::no_argument,
          "Compute surface area",
          [&state](std::string const &)
          {
-           state.set(Flag::SurfaceArea);
+           state.set(State::SurfaceArea);
          })
     .reg({"-v", "--void-fraction"},
          argparser::no_argument,
          "Compute void fraction",
          [&state](std::string const &)
          {
-           state.set(Flag::VoidFraction);
+           state.set(State::VoidFraction);
          })
     .reg({"-p", "--pore-size-distribution"},
          argparser::no_argument,
          "Compute pore size distribution",
          [&state](std::string const &)
          {
-           state.set(Flag::PSD);
+           state.set(State::PSD);
          })
     // register positional arguments
     .pos("INPUT_CIF_FILE", // will be used in help to illustrate the argument
@@ -357,7 +381,7 @@ void CommandLine::run(int argc, char* argv[])
 
     Framework framework = Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
 
-    if(state.test(CommandLine::Flag::State::SurfaceArea))
+    if(state.test(CommandLine::State::SurfaceArea))
     {
       std::cout << "Compute surface area" << std::endl;
 
@@ -372,7 +396,7 @@ void CommandLine::run(int argc, char* argv[])
         if(use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework);
+          sa.run(forceField.value(), framework, gridSize);
         }
       }
 
@@ -387,12 +411,12 @@ void CommandLine::run(int argc, char* argv[])
         if(use_gpu)
         {
           EnergyOpenCLSurfaceArea sa;
-          sa.run(forceField.value(), framework);
+          sa.run(forceField.value(), framework, gridSize);
         }
       }
     }
 
-    if(state.test(CommandLine::Flag::State::VoidFraction))
+    if(state.test(CommandLine::State::VoidFraction))
     {
       std::cout << "Compute void fraction" << std::endl;
 
@@ -427,7 +451,7 @@ void CommandLine::run(int argc, char* argv[])
       }
     }
 
-    if(state.test(CommandLine::Flag::State::PSD))
+    if(state.test(CommandLine::State::PSD))
     {
       std::cout << "Compute PSD" << std::endl;
       if(use_monte_carlo_methods)

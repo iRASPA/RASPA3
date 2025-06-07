@@ -38,6 +38,7 @@ import <iomanip>;
 import component;
 import atom;
 import molecule;
+import int3;
 import double3;
 import double3x3;
 import simd_quatd;
@@ -80,6 +81,15 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   SimulationBox newBox = system.simulationBox.scaled(scale);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositions = system.scaledCenterOfMassPositions(scale);
+
+  double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
+  double ewald_alpha_stored = system.forceField.EwaldAlpha;
+  int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
+
+  system.forceField.initializeAutomaticCutOff(newBox);
+  system.forceField.initializeEwaldParameters(newBox);
 
   time_begin = std::chrono::system_clock::now();
   // Compute new intermolecular energy
@@ -126,6 +136,12 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     return newTotalEnergy;
   }
+
+  system.forceField.cutOffFrameworkVDW = cutOffFrameworkVDW_stored;
+  system.forceField.cutOffMoleculeVDW = cutOffMoleculeVDW_stored;
+  system.forceField.cutOffCoulomb = cutOffCoulomb_stored;
+  system.forceField.EwaldAlpha = ewald_alpha_stored;
+  system.forceField.numberOfWaveVectors = ewald_k_stored;
 
   return std::nullopt;
 }

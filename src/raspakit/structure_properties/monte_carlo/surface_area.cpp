@@ -12,6 +12,7 @@ module;
 #include <iostream>
 #include <fstream>
 #include <exception>
+#include <chrono>
 #endif
 
 module mc_surface_area;

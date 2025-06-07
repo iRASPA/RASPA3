@@ -57,20 +57,17 @@ import libtorch_test;
 
 export namespace CommandLine
 {
-  namespace Flag
+  enum State : uint8_t
   {
-    enum State : uint8_t
-    {
-      None = 0,
-      Help = 1,
-      OpenCL = 2,
-      Input = 3,
-      SurfaceArea = 4,
-      VoidFraction = 5,
-      PSD = 6,
-      Last = 7
-    };
-  }
+    None = 0,
+    Help = 1,
+    OpenCL = 2,
+    Input = 3,
+    SurfaceArea = 4,
+    VoidFraction = 5,
+    PSD = 6,
+    Last = 7
+  };
 
   ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);
   ForceField defaultForceFieldMOF(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);
