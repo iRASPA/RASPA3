@@ -736,15 +736,15 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
         rr = double3::dot(dr, dr);
 
         Potentials::EnergyFactor temp(
-            preFactor * scalingVDWA * scalingVDWB * forceField(typeA, typeB).tailCorrectionEnergy, 0.0);
-        energy.frameworkComponentEnergy(compA, compB).VanDerWaalsTailCorrection += 2.0 * temp;
+            preFactor * scalingVDWA * scalingVDWB * forceField(typeB, typeA).tailCorrectionEnergy, 0.0);
+        energy.frameworkComponentEnergy(compB, compA).VanDerWaalsTailCorrection += 2.0 * temp;
 
         if (rr < cutOffFrameworkVDWSquared)
         {
           Potentials::GradientFactor gradientFactor = Potentials::potentialVDWGradient(
               forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-          energy.frameworkComponentEnergy(compA, compB).VanDerWaals +=
+          energy.frameworkComponentEnergy(compB, compA).VanDerWaals +=
               Potentials::EnergyFactor(gradientFactor.energy, 0.0);
 
           const double3 f = gradientFactor.gradientFactor * dr;
@@ -771,7 +771,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
           Potentials::GradientFactor gradientFactor = Potentials::potentialCoulombGradient(
               forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
-          energy.frameworkComponentEnergy(compA, compB).CoulombicReal +=
+          energy.frameworkComponentEnergy(compB, compA).CoulombicReal +=
               Potentials::EnergyFactor(gradientFactor.energy, 0.0);
 
           const double3 g = gradientFactor.gradientFactor * dr;

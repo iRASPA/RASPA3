@@ -139,6 +139,9 @@ void MonteCarlo::run()
       // this case only happens at first run, not when using a binart-restart file
       for (System& system : systems)
       {
+        system.forceField.initializeAutomaticCutOff(system.simulationBox);
+        system.forceField.initializeEwaldParameters(system.simulationBox);
+
         // switch the fractional molecule on in the first system, and off in all others
         if (system.systemId == 0uz)
           system.containsTheFractionalMolecule = true;

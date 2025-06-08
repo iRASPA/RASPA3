@@ -200,10 +200,7 @@ System::System(size_t id, ForceField forcefield, std::optional<SimulationBox> bo
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
   }
 
-  forceField.initializeAutomaticCutOff(simulationBox);
-
   forceField.initializeEwaldParameters(simulationBox);
-
 
   CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
       eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
