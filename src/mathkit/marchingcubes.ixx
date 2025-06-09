@@ -185,7 +185,7 @@ protected :
    * \param n    the number of triangles to produce
    * \param v12  the index of the interior vertex to use, if necessary
    */
-  void add_triangle ( const char* trig, char n, int v12 = -1 ) ;
+  void add_triangle ( const schar* trig, char n, int v12 = -1 ) ;
 
   int add_vertex(const int3 &grid_coord, const int3&dir, int corner, double *cube);
   /** adds a vertex inside the current cube */
@@ -287,54 +287,54 @@ protected :
   uchar     _subconfig  ;  /**< subconfiguration of the active cube */
 
 public:
-  static const char cases[256][2];
-static const char tiling1[16][3];
-static const char tiling2[24][6];
-static const char test3[24];
-static const char tiling3_1[24][6];
-static const char tiling3_2[24][12];
-static const char test4[8];
-static const char tiling4_1[8][6];
-static const char tiling4_2[8][18];
-static const char tiling5[48][9];
-static const char test6[48][3];
-static const char tiling6_1_1[48][9];
-static const char tiling6_1_2[48][27];
-static const char tiling6_2[48][15];
-static const char test7[16][5];
-static const char tiling7_1[16][9];
-static const char tiling7_2[16][3][15];
-static const char tiling7_3[16][3][27];
-static const char tiling7_4_1[16][15];
-static const char tiling7_4_2[16][27];
-static const char tiling8[6][6];
-static const char tiling9[8][12];
-static const char test10[6][3];
-static const char tiling10_1_1[6][12];
-static const char tiling10_1_1_[6][12];
-static const char tiling10_1_2[6][24];
-static const char tiling10_2[6][24];
-static const char tiling10_2_[6][24];
-static const char tiling11[12][12];
-static const char test12[24][4];
-static const char tiling12_1_1[24][12];
-static const char tiling12_1_1_[24][12];
-static const char tiling12_1_2[24][24];
-static const char tiling12_2[24][24];
-static const char tiling12_2_[24][24];
-static const char test13[2][7];
-static const char subconfig13[64];
-static const char tiling13_1[2][12];
-static const char tiling13_1_[2][12];
-static const char tiling13_2[2][6][18];
-static const char tiling13_2_[2][6][18];
-static const char tiling13_3[2][12][30];
-static const char tiling13_3_[2][12][30];
-static const char tiling13_4[2][4][36];
-static const char tiling13_5_1[2][4][18];
-static const char tiling13_5_2[2][4][30];
-static const char tiling14[12][12];
-static const char casesClassic[256][16];
+static const schar cases[256][2];
+static const schar tiling1[16][3];
+static const schar tiling2[24][6];
+static const schar test3[24];
+static const schar tiling3_1[24][6];
+static const schar tiling3_2[24][12];
+static const schar test4[8];
+static const schar tiling4_1[8][6];
+static const schar tiling4_2[8][18];
+static const schar tiling5[48][9];
+static const schar test6[48][3];
+static const schar tiling6_1_1[48][9];
+static const schar tiling6_1_2[48][27];
+static const schar tiling6_2[48][15];
+static const schar test7[16][5];
+static const schar tiling7_1[16][9];
+static const schar tiling7_2[16][3][15];
+static const schar tiling7_3[16][3][27];
+static const schar tiling7_4_1[16][15];
+static const schar tiling7_4_2[16][27];
+static const schar tiling8[6][6];
+static const schar tiling9[8][12];
+static const schar test10[6][3];
+static const schar tiling10_1_1[6][12];
+static const schar tiling10_1_1_[6][12];
+static const schar tiling10_1_2[6][24];
+static const schar tiling10_2[6][24];
+static const schar tiling10_2_[6][24];
+static const schar tiling11[12][12];
+static const schar test12[24][4];
+static const schar tiling12_1_1[24][12];
+static const schar tiling12_1_1_[24][12];
+static const schar tiling12_1_2[24][24];
+static const schar tiling12_2[24][24];
+static const schar tiling12_2_[24][24];
+static const schar test13[2][7];
+static const schar subconfig13[64];
+static const schar tiling13_1[2][12];
+static const schar tiling13_1_[2][12];
+static const schar tiling13_2[2][6][18];
+static const schar tiling13_2_[2][6][18];
+static const schar tiling13_3[2][12][30];
+static const schar tiling13_3_[2][12][30];
+static const schar tiling13_4[2][4][36];
+static const schar tiling13_5_1[2][4][18];
+static const schar tiling13_5_2[2][4][30];
+static const schar tiling14[12][12];
+static const schar casesClassic[256][16];
 bool test_face( schar face, double *cube );
 };
 //_____________________________________________________________________________
