@@ -1,6 +1,6 @@
 # Maintainer: David Dubbeldam <d.dubbeldam@uva.nl>
 pkgname=raspa
-pkgver=3.0.5
+pkgver=3.0.6
 pkgrel=1
 pkgdesc="Molecular simulation code for adsorption and diffusion in nanoporours materials."
 arch=('x86_64')
