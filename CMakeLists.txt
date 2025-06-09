@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.29)
 
 project(raspa3
-  VERSION 3.0.5
+  VERSION 3.0.6
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
@@ -26,6 +26,8 @@ find_package(OpenMP)
 find_package(HDF5 REQUIRED COMPONENTS CXX)
 include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
+include_directories(${OpenCL_INCLUDE_DIRS})
+
 
 if(BUILD_LIBTORCH)
   find_package(Torch REQUIRED)

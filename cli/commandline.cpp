@@ -367,7 +367,7 @@ void CommandLine::run(int argc, char* argv[])
       throw std::runtime_error(std::format("File '{}' not found\n", filename));
     }
 
-    std::string stem = std::filesystem::path(filename).stem();
+    std::string stem = std::filesystem::path(filename).stem().string();
 
     // if no force-field specified, use the default one
     if(is_zeolite)

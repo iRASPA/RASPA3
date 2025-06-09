@@ -8,10 +8,13 @@ module;
 #include <sstream>
 #include <print>
 #include <format>
+#define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
-#include <OpenCL/cl.h>
+  #include <OpenCL/cl.h>
+#elif _WIN32
+  #include <CL/cl.h>
 #else
-#include <CL/cl.h>
+  #include <CL/opencl.h>
 #endif
 
 
