@@ -830,7 +830,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         forceFields[systemId]->cutOffFrameworkVDW = value["CutOff"].get<double>();
         forceFields[systemId]->cutOffMoleculeVDW = value["CutOff"].get<double>();
-        forceFields[systemId]->cutOffCoulomb = value["CutOff"].get<double>();
         forceFields[systemId]->preComputePotentialShift();
         forceFields[systemId]->preComputeTailCorrection();
       }
