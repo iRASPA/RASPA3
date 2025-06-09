@@ -69,8 +69,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   RunningEnergy oldTotalEnergy = system.runningEnergies;
   // Calculate the total number of molecules
-  double numberOfMolecules = static_cast<double>(std::reduce(system.numberOfIntegerMoleculesPerComponent.begin(),
-                                                             system.numberOfIntegerMoleculesPerComponent.end()));
+  double numberOfMolecules = static_cast<double>(std::accumulate(system.numberOfIntegerMoleculesPerComponent.begin(),
+                                                             system.numberOfIntegerMoleculesPerComponent.end(), 0));
   double oldVolume = system.simulationBox.volume;
   double maxVolumeChange = system.mc_moves_statistics.getMaxChange(move);
 

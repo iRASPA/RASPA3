@@ -349,13 +349,13 @@ export struct System
 
   size_t numberOfMolecules() const
   {
-    return std::reduce(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
+    return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
                        [](const size_t &acc, const size_t &b) { return acc + b; });
   }
 
   size_t numberOfIntegerMolecules() const
   {
-    return std::reduce(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(),
+    return std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(),
                        size_t(0), [](const size_t &acc, const size_t &b) { return acc + b; });
   }
 

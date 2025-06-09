@@ -92,7 +92,7 @@ cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule) noexcept
 
   size_t selected = selectTrialPosition(random, logBoltmannFactors);
 
-  double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
       [](const double& acc, const double& logBoltmannFactor) {return acc + std::exp(logBoltmannFactor); });
 
   if (RosenbluthWeight < minimumRosenbluthFactor) return std::nullopt;

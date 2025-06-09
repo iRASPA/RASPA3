@@ -123,7 +123,7 @@ import interpolation_energy_grid;
                  { return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight =
-      std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                   [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
 
   return ChainData(

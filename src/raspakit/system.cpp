@@ -1595,7 +1595,7 @@ void System::sampleProperties(size_t currentBlock, size_t currentCycle)
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
 
   size_t numberOfMolecules =
-      std::reduce(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end());
+      std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), 0uz);
   double currentIdealPressure = static_cast<double>(numberOfMolecules) / (beta * simulationBox.volume);
 
   averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);

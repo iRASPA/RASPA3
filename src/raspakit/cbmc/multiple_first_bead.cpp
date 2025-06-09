@@ -66,7 +66,7 @@ import interpolation_energy_grid;
 
   size_t selected = selectTrialPosition(random, logBoltmannFactors);
 
-  double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                         [&](const double& acc, const double& logBoltmannFactor)
                                         { return acc + std::exp(logBoltmannFactor); });
 
@@ -103,7 +103,7 @@ import interpolation_energy_grid;
                  [&](const std::pair<Atom, RunningEnergy>& v) { return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight =
-      std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                   [](const double& acc, const double& logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
 
   return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
@@ -141,7 +141,7 @@ import interpolation_energy_grid;
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
-  double RosenbluthWeight = std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                         [&](const double& acc, const double& logBoltmannFactor)
                                         { return acc + std::exp(logBoltmannFactor); });
 
@@ -179,7 +179,7 @@ import interpolation_energy_grid;
                  [&](const std::pair<Atom, RunningEnergy>& v) { return -beta * v.second.potentialEnergy(); });
 
   double RosenbluthWeight =
-      std::reduce(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                   [](const double& acc, const double& logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
 
   // w(o)=exp(-beta u(o))+r  Eq. 18 from Esselink et al.

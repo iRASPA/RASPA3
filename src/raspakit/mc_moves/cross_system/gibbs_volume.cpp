@@ -80,8 +80,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Scale systemA to new volume and calculate new positions
   RunningEnergy oldTotalEnergyA = systemA.runningEnergies;
-  double numberOfMoleculesA = static_cast<double>(std::reduce(systemA.numberOfIntegerMoleculesPerComponent.begin(),
-                                                              systemA.numberOfIntegerMoleculesPerComponent.end()));
+  double numberOfMoleculesA = static_cast<double>(std::accumulate(systemA.numberOfIntegerMoleculesPerComponent.begin(),
+                                                              systemA.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
@@ -124,8 +124,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
 
   // Scale systemB to new volume and calculate new positions
   RunningEnergy oldTotalEnergyB = systemB.runningEnergies;
-  double numberOfMoleculesB = static_cast<double>(std::reduce(systemB.numberOfIntegerMoleculesPerComponent.begin(),
-                                                              systemB.numberOfIntegerMoleculesPerComponent.end()));
+  double numberOfMoleculesB = static_cast<double>(std::accumulate(systemB.numberOfIntegerMoleculesPerComponent.begin(),
+                                                              systemB.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
   std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
