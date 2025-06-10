@@ -473,7 +473,8 @@ void System::checkMoleculeIds()
 
 void System::createInitialMolecules()
 {
-  RandomNumber random(std::nullopt);
+  // keep a fixed seed
+  RandomNumber random(1200);
 
   for (size_t componentId = 0; const Component& component : components)
   {
