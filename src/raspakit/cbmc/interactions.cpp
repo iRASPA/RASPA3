@@ -88,6 +88,7 @@ inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus,
     std::vector<Atom> &trialPositions) noexcept
 {
   std::vector<std::pair<Atom, RunningEnergy>> energies{};
+  energies.reserve(trialPositions.size());
 
   // loop over the trial-positions and compute the external energy of each trial position '{it, 1}'
   for (auto it = trialPositions.begin(); it != trialPositions.end(); ++it)
@@ -131,6 +132,7 @@ const std::vector<std::pair<std::vector<Atom>, RunningEnergy>> CBMC::computeExte
     std::vector<std::vector<Atom>> &trialPositionSets, std::make_signed_t<std::size_t> skip) noexcept
 {
   std::vector<std::pair<std::vector<Atom>, RunningEnergy>> energies{};
+  energies.reserve(trialPositionSets.size());
 
   for (std::vector<Atom> trialPositionSet : trialPositionSets)
   {
@@ -167,6 +169,7 @@ const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> CBMC::
     std::make_signed_t<std::size_t> skip) noexcept
 {
   std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> energies{};
+  energies.reserve(trialPositionSets.size());
 
   for (auto &[molecule, trialPositionSet] : trialPositionSets)
   {
