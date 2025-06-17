@@ -6,7 +6,7 @@ var structFramework =
       [ "ChargeEquilibration", "structFramework.html#a24274d3b51622f60c265b4caa8ee05baa31c3ebb741cdfa0661ca2e821e2c7dde", null ]
     ] ],
     [ "Framework", "structFramework.html#ad6e5ec2ae2d5b1309b75065911b29bb5", null ],
-    [ "Framework", "structFramework.html#ab99b0af1d7fc3bb36f6ab383943edab9", null ],
+    [ "Framework", "structFramework.html#adcc631d9e1d4de409a1e97c50d4e743b", null ],
     [ "Framework", "structFramework.html#afe5820e5de839e0a02c5e8d335d983ac", null ],
     [ "expandDefinedAtomsToUnitCell", "structFramework.html#a5233b6bd6e7b32e8247e921a30ed3bd7", null ],
     [ "jsonStatus", "structFramework.html#a9010afb68992da3d1af28c9d001f3b86", null ],

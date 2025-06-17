@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -181,24 +181,34 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <h2>Simulation duration</h2>
 <ul>
 <li><code>"NumberOfCycles" : integer</code> The number of cycles for the production run. For Monte Carlo a cycle consists of $N$ steps, where $N$ is the amount of molecules with a minimum of 20 steps. This means that on average during each cycle on each molecule a Monte Carlo move has been attempted (either successful or unsuccessful). For MD the number of cycles is simply the amount of integration steps.</li>
-<li><code>"NumberOfInitializationCycles": integer</code> The number of cycles used to initialize the system using Monte Carlo. This can be used for both Monte Carlo as well as Molecular Dynamics to quickly equilibrate the positions of the atoms in the system.</li>
-<li><code>"NumberOfEquilibrationCycles" : integer</code> For Molecular Dynamics it is the number of MD steps to equilibrate the velocities in the systems. After this equilibration the production run is started. For Monte Carlo, in particular <code>CFCMC</code>, the equilibration-phase is used to measure the biasing factors.</li>
+<li><code>"NumberOfInitializationCycles": integer</code> The number of cycles used to initialize the system using Monte Carlo. This can be used for both Monte Carlo as well as Molecular Dynamics to quickly minimize the positions of the atoms in the system.</li>
+<li><code>"NumberOfEquilibrationCycles" : integer</code> For Molecular Dynamics it is the number of MD steps to equilibrate the velocities in the systems. After this equilibration the production run is started. For Monte Carlo, in particular <code>CFCMC</code>, the equilibration-phase is used to measure the biasing factors, using Wang-Landau estimation.</li>
 </ul>
 <h2>Restart and crash-recovery</h2>
 <ul>
 <li><code>"RestartFile" : boolean</code> Reads the positions, velocities, and force from the directory 'RestartInitial'. Any creation of molecules in the 'simulation.input' file will be in addition and after this first read from file. This is useful to load initial positions of cations for example, and after that create adsorbates. The restart file is written at 'PrintEvery' intervals.</li>
-<li><code>"ContinueAfterCrash" : boolean</code> Write a binary file containing the complete status of the program. The file name is 'binary_restart.dat' and is located in the directory 'CrashRestart'. With this option to <code>true</code> the presence of this file will result in continuation from the point where the program was at the moment of outputting this file. The file can be quite big (several hundreds of megabytes) and will be outputted every 'WriteBinaryRestartFileEvery' cycles.</li>
+<li><code>"ContinueAfterCrash" : boolean</code> Write a binary file containing the complete status of the program. The file name is 'restart_data.bin'. With this option to <code>true</code> the presence of this file will result in continuation from the point where the program was at the moment of outputting this file. The file can be quite big (several hundreds of megabytes) and will be outputted every 'WriteBinaryRestartFileEvery' cycles.</li>
 <li><code>"WriteBinaryRestartFileEvery" : integer</code> The output frequency (i.e. every <code>int</code> cycles) of writing the crash-recovery file.</li>
 </ul>
 <h2>Printing options</h2>
 <ul>
 <li><code>"PrintEvery" : integer</code> Prints the loadings (when a framework is present) and energies every <code>int</code> cycles. For MD information like energy conservation and stress are printed.</li>
 </ul>
+<h2>Parameter tuning</h2>
+<ul>
+<li><code>"RescaleWangLandauEvery" : integer</code> Determines the frequency of updates for optimizing the λ parameter in for example Continuous Fractional <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> Monte Carlo during the equilibration phase of the simulation.</li>
+<li><code>"OptimizeMCMovesEvery" : integer</code> Determines the frequency of updating the maximum change in the Monte Carlo moves towards an optimal acceptance ratio (default: 0.5). For Translation, the maximum displacement is optimized, for rotation the maximum angle, for hybrid MC the maximum timestep etc.</li>
+</ul>
+<h2>Systems &amp; Components</h2>
+<ul>
+<li><code>"Systems" : list</code> List of system settings, each containing a dictionary with possible key-value pairs described below. Multiple systems can be owned by one process and Monte Carlo moves starting with Gibbs and parallel tempering act on two systems.</li>
+<li><code>"Components" : list</code> List of component settings, each containing a dictionary with possible key-value pairs described below.</li>
+</ul>
 <hr  />
 <h1><a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> options</h1>
 <h2>Operating conditions and thermostat/barostat-parameters</h2>
 <ul>
-<li><code>"ExternalTemperature" : floating-point-number</code> The external temperature in Kelvin for the system. Default: <code>298</code></li>
+<li><code>"ExternalTemperature" : floating-point-number</code> The external temperature in Kelvin for the system. From this, the system beta is calculated, which is central in all statistics. Default: <code>298</code></li>
 <li><code>"ExternalPressure" : floating-point-number</code> The external pressure in Pascal for the system. Default: <code>0</code></li>
 <li><code>"ThermostatChainLength" : integer</code> The length of the chain to thermostat the system. Default: <code>5</code></li>
 <li><code>"NumberOfYoshidaSuzukiSteps" : integer</code> The number of Yoshida/Suzuki multiple timesteps. Default: <code>5</code></li>
@@ -242,6 +252,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <ul>
 <li><code>"VolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a volume-change. Rigid molecules are scaled by center-of-mass, while flexible molecules and the framework is atomically scaled.</li>
 <li><code>"GibbVolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a Gibbs volume-change <code>MC</code> move during a Gibbs ensemble simulation. The total volume of the two boxes (usually one for the gas phase, one for the liquid phase) remains constant, but the individual volume of the boxes are changed. The volumes are changed by a random change in $\ln(V_I/V_{II})$.</li>
+<li><code>"GibbVolumeChangeProbability" : floating-point-number</code> The probability per cycle to attempt a Hybrid MC move. A hybrid MC move propagates the Hamiltonian via a short Molecular Dynamics simulation and accepts the new state based on the drift.</li>
 </ul>
 <h2>Molecular dynamics parameters</h2>
 <ul>
@@ -328,13 +339,18 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
            [0.0,       0.5,        0.0,       0.5],
            [0.0,       0.0,        0.5,       0.5]
          ]
-</pre> <h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> **<code>MC</code>**-moves</h2>
-</li>
+</pre></li>
+<li><code>"LambdaBiasFileName" : string</code> Pointing this parameter to a json file containing preset λ values allows optimized CFCMC simulations to be run without Wang-Landau estimation of the biasing weights.</li>
+<li><code>"ThermodynamicIntegration" : boolean</code> Boolean switch to determine whether to do a thermodynamic integration over dU/dλ for the fractional component.</li>
+</ul>
+<h2><a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> **<code>MC</code>**-moves</h2>
+<ul>
 <li><code>"TranslationProbability" : floating-point-number</code> The relative probability to attempt a translation move for the current component. A random displacement is chosen in the allowed directions (see 'TranslationDirection'). Note that the internal configuration of the molecule is unchanged by this move. The maximum displacement is scaled during the simulation to achieve an acceptance ratio of 50%.</li>
 <li><code>"RandomTranslationProbability" : floating-point-number</code> The relative probability to attempt a random translation move for the current component. The displacement is chosen such that any position in the box can reached. It is therefore similar as reinsertion, but 'reinsertion' changes the internal conformation of a molecule and uses biasing.</li>
 <li><code>"RotationProbability" : floating-point-number</code> The relative probability to attempt a random rotation move for the current component. The rotation is around the starting bead. A random vector on a sphere is generated, and the rotation is random around this vector.</li>
 <li><code>"ReinsertionProbability" : floating-point-number</code> The relative probability to attempt a full reinsertion move for the current component. Multiple first beads are chosen, and one of these is selected according to its Boltzmann weight. The remaining part of the molecule is grown using biasing. This move is very useful, and often necessary, to change the internal configuration of flexible molecules.</li>
-<li><code>"SwapProbability" : floating-point-number</code> The relative probability to attempt a insertion or deletion move. Whether to insert or delete is decided randomly with a probability of 50% for each. The swap move imposes a chemical equilibrium between the system and an imaginary particle reservoir for the current component. The move starts with multiple first bead, and grows the remainder of the molecule using biasing.</li>
+<li><code>"SwapConventionalProbability" : floating-point-number</code> The relative probability to attempt a insertion or deletion move. Whether to insert or delete is decided randomly with a probability of 50% for each. The swap move imposes a chemical equilibrium between the system and an imaginary particle reservoir for the current component.</li>
+<li><code>"SwapProbability" : floating-point-number</code> The relative probability to attempt a insertion or deletion move using CBMC. Whether to insert or delete is decided randomly with a probability of 50% for each. The swap move imposes a chemical equilibrium between the system and an imaginary particle reservoir for the current component. The move starts with multiple first bead, and grows the remainder of the molecule using biasing.</li>
 <li><code>"CFCMC_SwapProbability" : floating-point-number</code> The relative probability to attempt a insertion or deletion move via <code>CFCMC</code> scheme.</li>
 <li><code>"CFCMC_CBMC_SwapProbability" : floating-point-number</code> The relative probability to attempt a insertion or deletion move via <code>CB/CFCMC</code> scheme.</li>
 <li><code>GibbsSwapProbability" : floating-point-number&lt;/tt&gt;
@@ -352,7 +368,7 @@ $(document).ready(function(){initNavTree('commands.html',''); initResizable(); }
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="md_docs_2raspa-manual.html">User Manual</a></li>
+    <li class="navelem"><a class="el" href="md_docs_2manual.html">User Manual</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
   </ul>
 </div>

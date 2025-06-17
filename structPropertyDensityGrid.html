@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -100,6 +100,7 @@ $(document).ready(function(){initNavTree('structPropertyDensityGrid.html',''); i
 
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
@@ -120,22 +121,29 @@ Collaboration diagram for PropertyDensityGrid:</div>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a188b125d5aa939e6f908cac0b6175a19" id="r_a188b125d5aa939e6f908cac0b6175a19"><td class="memItemLeft" align="right" valign="top"><a id="a188b125d5aa939e6f908cac0b6175a19" name="a188b125d5aa939e6f908cac0b6175a19"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Normalization</b> : size_t { <b>Max</b> = 0
+, <b>NumberDensity</b> = 1
+ }</td></tr>
+<tr class="separator:a188b125d5aa939e6f908cac0b6175a19"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a2a35be5555f94ab3598dc7cb89ee4641" id="r_a2a35be5555f94ab3598dc7cb89ee4641"><td class="memItemLeft" align="right" valign="top"><a id="a2a35be5555f94ab3598dc7cb89ee4641" name="a2a35be5555f94ab3598dc7cb89ee4641"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyDensityGrid</b> (size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery, size_t writeEvery, std::vector&lt; size_t &gt; densityGridPseudoAtomsList)</td></tr>
-<tr class="separator:a2a35be5555f94ab3598dc7cb89ee4641"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a88a894b8d05a7487fd2d5ace2a4bad9f" id="r_a88a894b8d05a7487fd2d5ace2a4bad9f"><td class="memItemLeft" align="right" valign="top"><a id="a88a894b8d05a7487fd2d5ace2a4bad9f" name="a88a894b8d05a7487fd2d5ace2a4bad9f"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, size_t currrentCycle)</td></tr>
-<tr class="separator:a88a894b8d05a7487fd2d5ace2a4bad9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0f01fcb8231b7caaed9b1d6205773b67" id="r_a0f01fcb8231b7caaed9b1d6205773b67"><td class="memItemLeft" align="right" valign="top"><a id="a0f01fcb8231b7caaed9b1d6205773b67" name="a0f01fcb8231b7caaed9b1d6205773b67"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (size_t systemId, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::vector&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, size_t currentCycle)</td></tr>
-<tr class="separator:a0f01fcb8231b7caaed9b1d6205773b67"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add66c75fc382bf323a42e48bbe3ab71a" id="r_add66c75fc382bf323a42e48bbe3ab71a"><td class="memItemLeft" align="right" valign="top"><a id="add66c75fc382bf323a42e48bbe3ab71a" name="add66c75fc382bf323a42e48bbe3ab71a"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyDensityGrid</b> (size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery, size_t writeEvery, std::vector&lt; size_t &gt; densityGridPseudoAtomsList, Normalization normType)</td></tr>
+<tr class="separator:add66c75fc382bf323a42e48bbe3ab71a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a06a999b3747d6671662dba884b9d5c99" id="r_a06a999b3747d6671662dba884b9d5c99"><td class="memItemLeft" align="right" valign="top"><a id="a06a999b3747d6671662dba884b9d5c99" name="a06a999b3747d6671662dba884b9d5c99"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const std::optional&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworks, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, size_t currrentCycle)</td></tr>
+<tr class="separator:a06a999b3747d6671662dba884b9d5c99"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac321a50daca9a8140da96070669bdd1" id="r_aac321a50daca9a8140da96070669bdd1"><td class="memItemLeft" align="right" valign="top"><a id="aac321a50daca9a8140da96070669bdd1" name="aac321a50daca9a8140da96070669bdd1"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (size_t systemId, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const std::optional&lt; <a class="el" href="structFramework.html">Framework</a> &gt; &amp;frameworkComponents, const std::vector&lt; <a class="el" href="structComponent.html">Component</a> &gt; &amp;components, size_t currentCycle)</td></tr>
+<tr class="separator:aac321a50daca9a8140da96070669bdd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a9e6cb022bc864c9ace8035b987d37e43" id="r_a9e6cb022bc864c9ace8035b987d37e43"><td class="memItemLeft" align="right" valign="top"><a id="a9e6cb022bc864c9ace8035b987d37e43" name="a9e6cb022bc864c9ace8035b987d37e43"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
 <tr class="separator:a9e6cb022bc864c9ace8035b987d37e43"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4515c000ff496ca15aaac4451456ee6c" id="r_a4515c000ff496ca15aaac4451456ee6c"><td class="memItemLeft" align="right" valign="top"><a id="a4515c000ff496ca15aaac4451456ee6c" name="a4515c000ff496ca15aaac4451456ee6c"></a>
 size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfFrameworks</b></td></tr>
@@ -167,6 +175,12 @@ size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td>
 <tr class="memitem:afc2db7e5df9c442736c1c721d6337732" id="r_afc2db7e5df9c442736c1c721d6337732"><td class="memItemLeft" align="right" valign="top"><a id="afc2db7e5df9c442736c1c721d6337732" name="afc2db7e5df9c442736c1c721d6337732"></a>
 std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>densityGridPseudoAtomsList</b></td></tr>
 <tr class="separator:afc2db7e5df9c442736c1c721d6337732"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0d87f013df6d1e4c7d45cb2615a591ce" id="r_a0d87f013df6d1e4c7d45cb2615a591ce"><td class="memItemLeft" align="right" valign="top"><a id="a0d87f013df6d1e4c7d45cb2615a591ce" name="a0d87f013df6d1e4c7d45cb2615a591ce"></a>
+Normalization&#160;</td><td class="memItemRight" valign="bottom"><b>normType</b> {Normalization::Max}</td></tr>
+<tr class="separator:a0d87f013df6d1e4c7d45cb2615a591ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a24f09e9eca14656c4a74e076e7202219" id="r_a24f09e9eca14656c4a74e076e7202219"><td class="memItemLeft" align="right" valign="top"><a id="a24f09e9eca14656c4a74e076e7202219" name="a24f09e9eca14656c4a74e076e7202219"></a>
+size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfSamples</b> {0}</td></tr>
+<tr class="separator:a24f09e9eca14656c4a74e076e7202219"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

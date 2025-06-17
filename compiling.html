@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -124,39 +124,90 @@ $(document).ready(function(){initNavTree('compiling.html',''); initResizable(); 
 </pre> <h1>Compiling <code>RASPA</code></h1>
 <p>Using <code>cmake --list-presets</code> you can see the list of <code>CMake</code> presets. These include</p>
 <ul>
-<li><code>macos-x64</code></li>
+<li><code>python</code></li>
+<li><code>windows_conda_raspa3</code></li>
+<li><code>mac_conda_raspa3</code></li>
+<li><code>linux_conda_raspa3</code></li>
+<li><code>windows_conda_raspalib</code></li>
+<li><code>mac_conda_raspalib</code></li>
+<li><code>linux_conda_raspalib</code></li>
+<li><code>windows-arm64-package</code></li>
+<li><code>windows-x64-core-avx2-package</code></li>
+<li><code>windows-x64-skylake-avx512-package</code></li>
+<li><code>macos-universal</code></li>
+<li><code>macos-universal-package</code></li>
+<li><code>macos-x64-core-avx2</code></li>
+<li><code>macos-x64-core-avx2-package</code></li>
+<li><code>macos-x64-skylake-avx512</code></li>
+<li><code>macos-x64-skylake-avx512-package</code></li>
 <li><code>macos-x64-debug</code></li>
+<li><code>macos-x64-profile</code></li>
 <li><code>macos-apple-silicon</code></li>
+<li><code>macos-apple-silicon-package</code></li>
+<li><code>macos-apple-silicon-profile</code></li>
 <li><code>macos-apple-silicon-debug</code></li>
-<li><code>windows-x64</code></li>
-<li><code>windows-arm64</code></li>
-<li><code>linux</code></li>
-<li><code>linux-opensuse-leap-15.2</code></li>
-<li><code>linux-opensuse-leap-15.3</code></li>
-<li><code>linux-opensuse-leap-15.4</code></li>
-<li><code>linux-opensuse-leap-15.5</code></li>
-<li><code>linux-opensuse-tumbleweed</code></li>
-<li><code>linux-archlinux</code></li>
-<li><code>linux-redhat-6</code></li>
-<li><code>linux-redhat-7</code></li>
-<li><code>linux-redhat-8</code></li>
-<li><code>linux-redhat-9</code></li>
-<li><code>linux-debian-12</code></li>
-<li><code>linux-debian-11</code></li>
-<li><code>linux-debian-10</code></li>
-<li><code>linux-ubuntu-24</code></li>
-<li><code>linux-ubuntu-22</code></li>
-<li><code>linux-ubuntu-20</code></li>
-<li><code>linux-fedora-35</code></li>
-<li><code>linux-fedora-36</code></li>
-<li><code>linux-fedora-37</code></li>
-<li><code>linux-fedora-38</code></li>
-<li><code>linux-fedora-39</code></li>
-<li><code>linux-fedora-40</code></li>
+<li><code>linux-x86_64</code></li>
+<li><code>linux-x86_64-carbon</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-leap-15.2</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-leap-15.2</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-leap-15.3</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-leap-15.3</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-leap-15.4</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-leap-15.4</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-leap-15.5</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-leap-15.5</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-leap-15.6</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-leap-15.6</code></li>
+<li><code>linux-x86_64-core-avx2-opensuse-tumbleweed</code></li>
+<li><code>linux-x86_64-skylake-avx512-opensuse-tumbleweed</code></li>
+<li><code>linux-x86_64-core-avx2-archlinux</code></li>
+<li><code>linux-x86_64-skylake-avx512-archlinux</code></li>
+<li><code>linux-x86_64-core-avx2-redhat-6</code></li>
+<li><code>linux-x86_64-skylake-avx512-redhat-6</code></li>
+<li><code>linux-x86_64-core-avx2-redhat-7</code></li>
+<li><code>linux-x86_64-skylake-avx512-redhat-7</code></li>
+<li><code>linux-x86_64-core-avx2-redhat-8</code></li>
+<li><code>linux-x86_64-skylake-avx512-redhat-8</code></li>
+<li><code>linux-x86_64-core-avx2-redhat-9</code></li>
+<li><code>linux-x86_64-skylake-avx512-redhat-9</code></li>
+<li><code>linux-x86_64-core-avx2-debian-12</code></li>
+<li><code>linux-x86_64-skylake-avx512-debian-12</code></li>
+<li><code>linux-x86_64-core-avx2-debian-11</code></li>
+<li><code>linux-x86_64-skylake-avx512-debian-11</code></li>
+<li><code>linux-x86_64-core-avx2-debian-10</code></li>
+<li><code>linux-x86_64-skylake-avx512-debian-10</code></li>
+<li><code>linux-x86_64-core-avx2-ubuntu-24</code></li>
+<li><code>linux-x86_64-skylake-avx512-ubuntu-24</code></li>
+<li><code>linux-x86_64-core-avx2-ubuntu-22</code></li>
+<li><code>linux-x86_64-skylake-avx512-ubuntu-22</code></li>
+<li><code>linux-x86_64-core-avx2-ubuntu-20</code></li>
+<li><code>linux-x86_64-skylake-avx512-ubuntu-20</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-35</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-35</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-36</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-36</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-37</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-37</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-38</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-38</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-39</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-39</code></li>
+<li><code>linux-x86_64-core-avx2-fedora-40</code></li>
+<li><code>linux-x86_64-skylake-avx512-fedora-40</code></li>
+<li><code>linux-aarch64</code></li>
+<li><code>linux-aarch64-ubuntu-22</code></li>
+<li><code>linux-aarch64-ubuntu-24</code></li>
+<li><code>linux-aarch64-redhat-9</code></li>
+</ul>
+<p>Presets predetermine for your system what the cmake options are. For example, the paths to compilers and libraries are given. Also, the CXX flags determining the optimization level and system architecture are preset. Pick your preset, depending on your system:</p><ul>
+<li>OS base (linux / mac / windows)</li>
+<li>Architecture (x86_64 for intel, aarch64 for arm or apple-silicon)</li>
+<li>Instruction set (skylake avx512 offers improved performance only on intel chips)</li>
+<li>Linux distribution</li>
 </ul>
 <p>Installation on recent <code>macOS</code> computers is then accomplished for example by </p><pre class="fragment">cmake -B build --preset macos-apple-silicon
 ninja -C build install
-</pre><p> or on <code>Linux</code> </p><pre class="fragment">cmake -B build --preset linux-ubuntu-22
+</pre><p> or on <code>Linux</code> </p><pre class="fragment">cmake -B build --preset linux-x86_64-core-avx2-ubuntu-22
 ninja -C build install
 </pre><p> afterwhich the unit tests can be run </p><pre class="fragment">ctest --test-dir build/tests --verbose
 </pre><p> Packages can be created with </p><pre class="fragment">ninja -C build package
@@ -191,7 +242,7 @@ dnf install -y pybind11-devel hdf5
 <!-- start footer part -->
 <div id="nav-path" class="navpath"><!-- id is needed for treeview function! -->
   <ul>
-    <li class="navelem"><a class="el" href="md_docs_2raspa-manual.html">User Manual</a></li>
+    <li class="navelem"><a class="el" href="md_docs_2manual.html">User Manual</a></li>
     <li class="footer">Generated by <a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.8 </li>
   </ul>
 </div>

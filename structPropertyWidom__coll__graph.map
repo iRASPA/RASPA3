@@ -1,5 +1,9 @@
 <map id="PropertyWidom" name="PropertyWidom">
-<area shape="rect" id="Node000001" title=" " alt="" coords="25,123,148,148"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="5,5,168,45"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="89,59,89,122,84,122,84,59"/>
+<area shape="rect" id="Node000001" title=" " alt="" coords="728,54,851,79"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="335,5,541,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="555,36,728,57,727,62,555,42"/>
+<area shape="rect" id="Node000003" href="$structPropertyWidom_1_1BookKeeping.html" title=" " alt="" coords="5,13,221,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="235,23,335,23,335,28,235,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="357,69,519,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="533,85,704,76,728,73,728,79,704,81,533,91"/>
 </map>

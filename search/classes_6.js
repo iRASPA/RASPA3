@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['grid_0',['Grid',['../structGrid.html',1,'']]],
+  ['gradientfactor_0',['GradientFactor',['../structPotentials_1_1GradientFactor.html',1,'Potentials']]],
   ['growingstatus_1',['GrowingStatus',['../structGrowingStatus.html',1,'']]]
 ];

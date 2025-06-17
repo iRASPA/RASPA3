@@ -1,4 +1,4 @@
 var module_move__statistics =
 [
-    [ "MoveStatistics", "structMoveStatistics.html", null ]
+    [ "MoveStatistics", "structMoveStatistics.html", "structMoveStatistics" ]
 ];

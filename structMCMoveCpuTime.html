@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -107,36 +107,56 @@ $(document).ready(function(){initNavTree('structMCMoveCpuTime.html',''); initRes
   <div class="headertitle"><div class="title">MCMoveCpuTime Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_mc__moves__cputime.html">mc_moves_cputime</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Stores CPU timing statistics for various Monte Carlo moves.  
+ <a href="structMCMoveCpuTime.html#details">More...</a></p>
+<div class="dynheader">
+Collaboration diagram for MCMoveCpuTime:</div>
+<div class="dyncontent">
+<div class="center"><img src="structMCMoveCpuTime__coll__graph.png" border="0" usemap="#aMCMoveCpuTime_coll__map" alt="Collaboration graph"/></div>
+<map name="aMCMoveCpuTime_coll__map" id="aMCMoveCpuTime_coll__map">
+<area shape="rect" title="Stores CPU timing statistics for various Monte Carlo moves." alt="" coords="22,137,159,163"/>
+<area shape="rect" title=" " alt="" coords="5,5,176,75"/>
+<area shape="poly" title=" " alt="" coords="93,88,93,137,88,137,88,88"/>
+</map>
+<center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a22c4c2f1669f9260b71e1c8d7ed47068" id="r_a22c4c2f1669f9260b71e1c8d7ed47068"><td class="memItemLeft" align="right" valign="top"><a id="a22c4c2f1669f9260b71e1c8d7ed47068" name="a22c4c2f1669f9260b71e1c8d7ed47068"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>total</b> () const</td></tr>
+<tr class="memitem:aee1fbf32e831ccda6bf8ee1bd4bc2bdd" id="r_aee1fbf32e831ccda6bf8ee1bd4bc2bdd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#aee1fbf32e831ccda6bf8ee1bd4bc2bdd">MCMoveCpuTime</a> ()</td></tr>
+<tr class="memdesc:aee1fbf32e831ccda6bf8ee1bd4bc2bdd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Default constructor.  <br /></td></tr>
+<tr class="separator:aee1fbf32e831ccda6bf8ee1bd4bc2bdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a22c4c2f1669f9260b71e1c8d7ed47068" id="r_a22c4c2f1669f9260b71e1c8d7ed47068"><td class="memItemLeft" align="right" valign="top">std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#a22c4c2f1669f9260b71e1c8d7ed47068">total</a> () const</td></tr>
+<tr class="memdesc:a22c4c2f1669f9260b71e1c8d7ed47068"><td class="mdescLeft">&#160;</td><td class="mdescRight">Calculates the total CPU time spent on all recorded Monte Carlo moves.  <br /></td></tr>
 <tr class="separator:a22c4c2f1669f9260b71e1c8d7ed47068"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6926ecb53802e176874c33878f49ddc1" id="r_a6926ecb53802e176874c33878f49ddc1"><td class="memItemLeft" align="right" valign="top"><a id="a6926ecb53802e176874c33878f49ddc1" name="a6926ecb53802e176874c33878f49ddc1"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>clearTimingStatistics</b> ()</td></tr>
+<tr class="memdesc:a6926ecb53802e176874c33878f49ddc1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets all timing statistics to zero. <br /></td></tr>
 <tr class="separator:a6926ecb53802e176874c33878f49ddc1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a675cef0e30c5db277cef4e59a33770e8" id="r_a675cef0e30c5db277cef4e59a33770e8"><td class="memItemLeft" align="right" valign="top"><a id="a675cef0e30c5db277cef4e59a33770e8" name="a675cef0e30c5db277cef4e59a33770e8"></a>
-const std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeMCMoveCPUTimeStatistics</b> () const</td></tr>
+<tr class="memitem:a675cef0e30c5db277cef4e59a33770e8" id="r_a675cef0e30c5db277cef4e59a33770e8"><td class="memItemLeft" align="right" valign="top">const std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#a675cef0e30c5db277cef4e59a33770e8">writeMCMoveCPUTimeStatistics</a> () const</td></tr>
+<tr class="memdesc:a675cef0e30c5db277cef4e59a33770e8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes the CPU time statistics to a string.  <br /></td></tr>
 <tr class="separator:a675cef0e30c5db277cef4e59a33770e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa5c7e2e55b2fb338fd5e925dcd12b4f1" id="r_aa5c7e2e55b2fb338fd5e925dcd12b4f1"><td class="memItemLeft" align="right" valign="top"><a id="aa5c7e2e55b2fb338fd5e925dcd12b4f1" name="aa5c7e2e55b2fb338fd5e925dcd12b4f1"></a>
-const std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeMCMoveCPUTimeStatistics</b> (size_t componentId, const std::string &amp;componentName) const</td></tr>
+<tr class="memitem:aa5c7e2e55b2fb338fd5e925dcd12b4f1" id="r_aa5c7e2e55b2fb338fd5e925dcd12b4f1"><td class="memItemLeft" align="right" valign="top">const std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#aa5c7e2e55b2fb338fd5e925dcd12b4f1">writeMCMoveCPUTimeStatistics</a> (size_t componentId, const std::string &amp;componentName) const</td></tr>
+<tr class="memdesc:aa5c7e2e55b2fb338fd5e925dcd12b4f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes the CPU time statistics for a specific component.  <br /></td></tr>
 <tr class="separator:aa5c7e2e55b2fb338fd5e925dcd12b4f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3c46161440d64c3e04e854747bd89065" id="r_a3c46161440d64c3e04e854747bd89065"><td class="memItemLeft" align="right" valign="top"><a id="a3c46161440d64c3e04e854747bd89065" name="a3c46161440d64c3e04e854747bd89065"></a>
-const std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeMCMoveCPUTimeStatistics</b> (std::chrono::duration&lt; double &gt; total) const</td></tr>
+<tr class="memitem:a3c46161440d64c3e04e854747bd89065" id="r_a3c46161440d64c3e04e854747bd89065"><td class="memItemLeft" align="right" valign="top">const std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#a3c46161440d64c3e04e854747bd89065">writeMCMoveCPUTimeStatistics</a> (std::chrono::duration&lt; double &gt; <a class="el" href="structMCMoveCpuTime.html#a22c4c2f1669f9260b71e1c8d7ed47068">total</a>) const</td></tr>
+<tr class="memdesc:a3c46161440d64c3e04e854747bd89065"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes the overall CPU time statistics.  <br /></td></tr>
 <tr class="separator:a3c46161440d64c3e04e854747bd89065"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1d4a2d9fb860c2cf93a0fe106aa3e71b" id="r_a1d4a2d9fb860c2cf93a0fe106aa3e71b"><td class="memItemLeft" align="right" valign="top"><a id="a1d4a2d9fb860c2cf93a0fe106aa3e71b" name="a1d4a2d9fb860c2cf93a0fe106aa3e71b"></a>
-const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonSystemMCMoveCPUTimeStatistics</b> () const</td></tr>
+<tr class="memitem:a1d4a2d9fb860c2cf93a0fe106aa3e71b" id="r_a1d4a2d9fb860c2cf93a0fe106aa3e71b"><td class="memItemLeft" align="right" valign="top">const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#a1d4a2d9fb860c2cf93a0fe106aa3e71b">jsonSystemMCMoveCPUTimeStatistics</a> () const</td></tr>
+<tr class="memdesc:a1d4a2d9fb860c2cf93a0fe106aa3e71b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the system-level CPU time statistics in JSON format.  <br /></td></tr>
 <tr class="separator:a1d4a2d9fb860c2cf93a0fe106aa3e71b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0dde75a54eed645bdd547cb1482a00e" id="r_ab0dde75a54eed645bdd547cb1482a00e"><td class="memItemLeft" align="right" valign="top"><a id="ab0dde75a54eed645bdd547cb1482a00e" name="ab0dde75a54eed645bdd547cb1482a00e"></a>
-const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonComponentMCMoveCPUTimeStatistics</b> () const</td></tr>
+<tr class="memitem:ab0dde75a54eed645bdd547cb1482a00e" id="r_ab0dde75a54eed645bdd547cb1482a00e"><td class="memItemLeft" align="right" valign="top">const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#ab0dde75a54eed645bdd547cb1482a00e">jsonComponentMCMoveCPUTimeStatistics</a> () const</td></tr>
+<tr class="memdesc:ab0dde75a54eed645bdd547cb1482a00e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the component-level CPU time statistics in JSON format.  <br /></td></tr>
 <tr class="separator:ab0dde75a54eed645bdd547cb1482a00e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5fe593548d3b8db2f767ef0462ecdfb5" id="r_a5fe593548d3b8db2f767ef0462ecdfb5"><td class="memItemLeft" align="right" valign="top"><a id="a5fe593548d3b8db2f767ef0462ecdfb5" name="a5fe593548d3b8db2f767ef0462ecdfb5"></a>
-const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonOverallMCMoveCPUTimeStatistics</b> (std::chrono::duration&lt; double &gt; total) const</td></tr>
+<tr class="memitem:a5fe593548d3b8db2f767ef0462ecdfb5" id="r_a5fe593548d3b8db2f767ef0462ecdfb5"><td class="memItemLeft" align="right" valign="top">const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMCMoveCpuTime.html#a5fe593548d3b8db2f767ef0462ecdfb5">jsonOverallMCMoveCPUTimeStatistics</a> (std::chrono::duration&lt; double &gt; <a class="el" href="structMCMoveCpuTime.html#a22c4c2f1669f9260b71e1c8d7ed47068">total</a>) const</td></tr>
+<tr class="memdesc:a5fe593548d3b8db2f767ef0462ecdfb5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the overall CPU time statistics in JSON format.  <br /></td></tr>
 <tr class="separator:a5fe593548d3b8db2f767ef0462ecdfb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afae978f6af042cf79c4f22ef65201417" id="r_afae978f6af042cf79c4f22ef65201417"><td class="memItemLeft" align="right" valign="top"><a id="afae978f6af042cf79c4f22ef65201417" name="afae978f6af042cf79c4f22ef65201417"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>MCMoveCpuTime</b> (const <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;)=default</td></tr>
 <tr class="separator:afae978f6af042cf79c4f22ef65201417"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4998ef53b9e2e99caa832710f6a3d84" id="r_ae4998ef53b9e2e99caa832710f6a3d84"><td class="memItemLeft" align="right" valign="top"><a id="ae4998ef53b9e2e99caa832710f6a3d84" name="ae4998ef53b9e2e99caa832710f6a3d84"></a>
+std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator[]</b> (const MoveTypes &amp;move)</td></tr>
+<tr class="separator:ae4998ef53b9e2e99caa832710f6a3d84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae9ce9191dae79a22f2fbd1ecf21bb5d4" id="r_ae9ce9191dae79a22f2fbd1ecf21bb5d4"><td class="memItemLeft" align="right" valign="top"><a id="ae9ce9191dae79a22f2fbd1ecf21bb5d4" name="ae9ce9191dae79a22f2fbd1ecf21bb5d4"></a>
 <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator=</b> (const <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;b)</td></tr>
 <tr class="separator:ae9ce9191dae79a22f2fbd1ecf21bb5d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -147,368 +167,40 @@ const nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonO
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a292eeaa4e04638a4ea36cb6345ed99bc" id="r_a292eeaa4e04638a4ea36cb6345ed99bc"><td class="memItemLeft" align="right" valign="top"><a id="a292eeaa4e04638a4ea36cb6345ed99bc" name="a292eeaa4e04638a4ea36cb6345ed99bc"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
+<tr class="memdesc:a292eeaa4e04638a4ea36cb6345ed99bc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization purposes. <br /></td></tr>
 <tr class="separator:a292eeaa4e04638a4ea36cb6345ed99bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a357424fbd494dfdd949c73c9e326934e" id="r_a357424fbd494dfdd949c73c9e326934e"><td class="memItemLeft" align="right" valign="top"><a id="a357424fbd494dfdd949c73c9e326934e" name="a357424fbd494dfdd949c73c9e326934e"></a>
+std::map&lt; MoveTypes, std::map&lt; std::string, std::chrono::duration&lt; double &gt; &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>timingMap</b></td></tr>
+<tr class="separator:a357424fbd494dfdd949c73c9e326934e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1db5bfd79186edf851b6b3f67d729b84" id="r_a1db5bfd79186edf851b6b3f67d729b84"><td class="memItemLeft" align="right" valign="top"><a id="a1db5bfd79186edf851b6b3f67d729b84" name="a1db5bfd79186edf851b6b3f67d729b84"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>propertySampling</b> {0.0}</td></tr>
+<tr class="memdesc:a1db5bfd79186edf851b6b3f67d729b84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on property sampling. <br /></td></tr>
 <tr class="separator:a1db5bfd79186edf851b6b3f67d729b84"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3ba10e6d15880f86fb274f21912ec612" id="r_a3ba10e6d15880f86fb274f21912ec612"><td class="memItemLeft" align="right" valign="top"><a id="a3ba10e6d15880f86fb274f21912ec612" name="a3ba10e6d15880f86fb274f21912ec612"></a>
 std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>energyPressureComputation</b> {0.0}</td></tr>
+<tr class="memdesc:a3ba10e6d15880f86fb274f21912ec612"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
 <tr class="separator:a3ba10e6d15880f86fb274f21912ec612"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72cdcccbf9c9c1ff444f9d240bae345b" id="r_a72cdcccbf9c9c1ff444f9d240bae345b"><td class="memItemLeft" align="right" valign="top"><a id="a72cdcccbf9c9c1ff444f9d240bae345b" name="a72cdcccbf9c9c1ff444f9d240bae345b"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translationMove</b> {0.0}</td></tr>
-<tr class="separator:a72cdcccbf9c9c1ff444f9d240bae345b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47686c1a945065005bf8f0d5cf0b4c3a" id="r_a47686c1a945065005bf8f0d5cf0b4c3a"><td class="memItemLeft" align="right" valign="top"><a id="a47686c1a945065005bf8f0d5cf0b4c3a" name="a47686c1a945065005bf8f0d5cf0b4c3a"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translationMoveExternalFieldMolecule</b> {0.0}</td></tr>
-<tr class="separator:a47686c1a945065005bf8f0d5cf0b4c3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4b3f0b016f55fedaf05cb1f2f1b75ce5" id="r_a4b3f0b016f55fedaf05cb1f2f1b75ce5"><td class="memItemLeft" align="right" valign="top"><a id="a4b3f0b016f55fedaf05cb1f2f1b75ce5" name="a4b3f0b016f55fedaf05cb1f2f1b75ce5"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translationMoveFrameworkMolecule</b> {0.0}</td></tr>
-<tr class="separator:a4b3f0b016f55fedaf05cb1f2f1b75ce5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a538d1e6b60ead85d11514dfe35c791df" id="r_a538d1e6b60ead85d11514dfe35c791df"><td class="memItemLeft" align="right" valign="top"><a id="a538d1e6b60ead85d11514dfe35c791df" name="a538d1e6b60ead85d11514dfe35c791df"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translationMoveMoleculeMolecule</b> {0.0}</td></tr>
-<tr class="separator:a538d1e6b60ead85d11514dfe35c791df"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab222204d8296896cf7d070baedb55421" id="r_ab222204d8296896cf7d070baedb55421"><td class="memItemLeft" align="right" valign="top"><a id="ab222204d8296896cf7d070baedb55421" name="ab222204d8296896cf7d070baedb55421"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>translationMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:ab222204d8296896cf7d070baedb55421"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a092fb2ae4c0ea7fed4afd0d89f77880a" id="r_a092fb2ae4c0ea7fed4afd0d89f77880a"><td class="memItemLeft" align="right" valign="top"><a id="a092fb2ae4c0ea7fed4afd0d89f77880a" name="a092fb2ae4c0ea7fed4afd0d89f77880a"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomTranslationMove</b> {0.0}</td></tr>
-<tr class="separator:a092fb2ae4c0ea7fed4afd0d89f77880a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae0fa9a3f9f1f59dd99db5d3b240d2f11" id="r_ae0fa9a3f9f1f59dd99db5d3b240d2f11"><td class="memItemLeft" align="right" valign="top"><a id="ae0fa9a3f9f1f59dd99db5d3b240d2f11" name="ae0fa9a3f9f1f59dd99db5d3b240d2f11"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomTranslationMoveExternalFieldMolecule</b> {0.0}</td></tr>
-<tr class="separator:ae0fa9a3f9f1f59dd99db5d3b240d2f11"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a221d884f21c5e32bb80086aeab58dccd" id="r_a221d884f21c5e32bb80086aeab58dccd"><td class="memItemLeft" align="right" valign="top"><a id="a221d884f21c5e32bb80086aeab58dccd" name="a221d884f21c5e32bb80086aeab58dccd"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomTranslationMoveFrameworkMolecule</b> {0.0}</td></tr>
-<tr class="separator:a221d884f21c5e32bb80086aeab58dccd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a561faa69763a6fe51da74abc89e02249" id="r_a561faa69763a6fe51da74abc89e02249"><td class="memItemLeft" align="right" valign="top"><a id="a561faa69763a6fe51da74abc89e02249" name="a561faa69763a6fe51da74abc89e02249"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomTranslationMoveMoleculeMolecule</b> {0.0}</td></tr>
-<tr class="separator:a561faa69763a6fe51da74abc89e02249"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac2e74eb9604c73eb667bde2a8344a49d" id="r_ac2e74eb9604c73eb667bde2a8344a49d"><td class="memItemLeft" align="right" valign="top"><a id="ac2e74eb9604c73eb667bde2a8344a49d" name="ac2e74eb9604c73eb667bde2a8344a49d"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomTranslationMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:ac2e74eb9604c73eb667bde2a8344a49d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a27cde30c3802a42faae184c25324b659" id="r_a27cde30c3802a42faae184c25324b659"><td class="memItemLeft" align="right" valign="top"><a id="a27cde30c3802a42faae184c25324b659" name="a27cde30c3802a42faae184c25324b659"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotationMove</b> {0.0}</td></tr>
-<tr class="separator:a27cde30c3802a42faae184c25324b659"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad8782016c0dfcd7be831f3daa3b9af90" id="r_ad8782016c0dfcd7be831f3daa3b9af90"><td class="memItemLeft" align="right" valign="top"><a id="ad8782016c0dfcd7be831f3daa3b9af90" name="ad8782016c0dfcd7be831f3daa3b9af90"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotationMoveExternalFieldMolecule</b> {0.0}</td></tr>
-<tr class="separator:ad8782016c0dfcd7be831f3daa3b9af90"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5db0f7efdb1886b444bc9cb54ea4de8c" id="r_a5db0f7efdb1886b444bc9cb54ea4de8c"><td class="memItemLeft" align="right" valign="top"><a id="a5db0f7efdb1886b444bc9cb54ea4de8c" name="a5db0f7efdb1886b444bc9cb54ea4de8c"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotationMoveFrameworkMolecule</b> {0.0}</td></tr>
-<tr class="separator:a5db0f7efdb1886b444bc9cb54ea4de8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad296a5fbbc3b5d6907863b9933d76faa" id="r_ad296a5fbbc3b5d6907863b9933d76faa"><td class="memItemLeft" align="right" valign="top"><a id="ad296a5fbbc3b5d6907863b9933d76faa" name="ad296a5fbbc3b5d6907863b9933d76faa"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotationMoveMoleculeMolecule</b> {0.0}</td></tr>
-<tr class="separator:ad296a5fbbc3b5d6907863b9933d76faa"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9a58f50d04a694377c118ed058b186d2" id="r_a9a58f50d04a694377c118ed058b186d2"><td class="memItemLeft" align="right" valign="top"><a id="a9a58f50d04a694377c118ed058b186d2" name="a9a58f50d04a694377c118ed058b186d2"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>rotationMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a9a58f50d04a694377c118ed058b186d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a902488a41a18617b7e4f153369d5274d" id="r_a902488a41a18617b7e4f153369d5274d"><td class="memItemLeft" align="right" valign="top"><a id="a902488a41a18617b7e4f153369d5274d" name="a902488a41a18617b7e4f153369d5274d"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomRotationMove</b> {0.0}</td></tr>
-<tr class="separator:a902488a41a18617b7e4f153369d5274d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adeb7f174a36b7e9da7f2d623c1fe054e" id="r_adeb7f174a36b7e9da7f2d623c1fe054e"><td class="memItemLeft" align="right" valign="top"><a id="adeb7f174a36b7e9da7f2d623c1fe054e" name="adeb7f174a36b7e9da7f2d623c1fe054e"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomRotationMoveExternalFieldMolecule</b> {0.0}</td></tr>
-<tr class="separator:adeb7f174a36b7e9da7f2d623c1fe054e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaa78fff4b06a07afab9693041f70aa85" id="r_aaa78fff4b06a07afab9693041f70aa85"><td class="memItemLeft" align="right" valign="top"><a id="aaa78fff4b06a07afab9693041f70aa85" name="aaa78fff4b06a07afab9693041f70aa85"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomRotationMoveFrameworkMolecule</b> {0.0}</td></tr>
-<tr class="separator:aaa78fff4b06a07afab9693041f70aa85"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abc037786577b28531edba94cb9ac86ce" id="r_abc037786577b28531edba94cb9ac86ce"><td class="memItemLeft" align="right" valign="top"><a id="abc037786577b28531edba94cb9ac86ce" name="abc037786577b28531edba94cb9ac86ce"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomRotationMoveMoleculeMolecule</b> {0.0}</td></tr>
-<tr class="separator:abc037786577b28531edba94cb9ac86ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0029b228355154aab4d8a8c17ef1e6e8" id="r_a0029b228355154aab4d8a8c17ef1e6e8"><td class="memItemLeft" align="right" valign="top"><a id="a0029b228355154aab4d8a8c17ef1e6e8" name="a0029b228355154aab4d8a8c17ef1e6e8"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>randomRotationMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a0029b228355154aab4d8a8c17ef1e6e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a31cf7df86eb328f60fb16b5b142b6ddc" id="r_a31cf7df86eb328f60fb16b5b142b6ddc"><td class="memItemLeft" align="right" valign="top"><a id="a31cf7df86eb328f60fb16b5b142b6ddc" name="a31cf7df86eb328f60fb16b5b142b6ddc"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>reinsertionMoveCBMC</b> {0.0}</td></tr>
-<tr class="separator:a31cf7df86eb328f60fb16b5b142b6ddc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a85296d6accd461dabc1efc338b5f90e8" id="r_a85296d6accd461dabc1efc338b5f90e8"><td class="memItemLeft" align="right" valign="top"><a id="a85296d6accd461dabc1efc338b5f90e8" name="a85296d6accd461dabc1efc338b5f90e8"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>reinsertionMoveCBMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a85296d6accd461dabc1efc338b5f90e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acef64161dcee74b69f95eb67ab2ec28b" id="r_acef64161dcee74b69f95eb67ab2ec28b"><td class="memItemLeft" align="right" valign="top"><a id="acef64161dcee74b69f95eb67ab2ec28b" name="acef64161dcee74b69f95eb67ab2ec28b"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>reinsertionMoveCBMCEwald</b> {0.0}</td></tr>
-<tr class="separator:acef64161dcee74b69f95eb67ab2ec28b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aad8358d155f6dd0476a8791e2445934f" id="r_aad8358d155f6dd0476a8791e2445934f"><td class="memItemLeft" align="right" valign="top"><a id="aad8358d155f6dd0476a8791e2445934f" name="aad8358d155f6dd0476a8791e2445934f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMove</b> {0.0}</td></tr>
-<tr class="separator:aad8358d155f6dd0476a8791e2445934f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3945adf0d287dabe0302ed2bcc578eae" id="r_a3945adf0d287dabe0302ed2bcc578eae"><td class="memItemLeft" align="right" valign="top"><a id="a3945adf0d287dabe0302ed2bcc578eae" name="a3945adf0d287dabe0302ed2bcc578eae"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a3945adf0d287dabe0302ed2bcc578eae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8e93aae485387cf04b048d63f4534810" id="r_a8e93aae485387cf04b048d63f4534810"><td class="memItemLeft" align="right" valign="top"><a id="a8e93aae485387cf04b048d63f4534810" name="a8e93aae485387cf04b048d63f4534810"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a8e93aae485387cf04b048d63f4534810"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a796c82c2a401ed348a3478d950e9dea6" id="r_a796c82c2a401ed348a3478d950e9dea6"><td class="memItemLeft" align="right" valign="top"><a id="a796c82c2a401ed348a3478d950e9dea6" name="a796c82c2a401ed348a3478d950e9dea6"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveTail</b> {0.0}</td></tr>
-<tr class="separator:a796c82c2a401ed348a3478d950e9dea6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6869ddf6f02d8e9adec0a5ca06333f97" id="r_a6869ddf6f02d8e9adec0a5ca06333f97"><td class="memItemLeft" align="right" valign="top"><a id="a6869ddf6f02d8e9adec0a5ca06333f97" name="a6869ddf6f02d8e9adec0a5ca06333f97"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMove</b> {0.0}</td></tr>
-<tr class="separator:a6869ddf6f02d8e9adec0a5ca06333f97"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3f20179b7c492699ee6b583189f944ff" id="r_a3f20179b7c492699ee6b583189f944ff"><td class="memItemLeft" align="right" valign="top"><a id="a3f20179b7c492699ee6b583189f944ff" name="a3f20179b7c492699ee6b583189f944ff"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a3f20179b7c492699ee6b583189f944ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4bee3fef74d415813b6e6fe1a72c4474" id="r_a4bee3fef74d415813b6e6fe1a72c4474"><td class="memItemLeft" align="right" valign="top"><a id="a4bee3fef74d415813b6e6fe1a72c4474" name="a4bee3fef74d415813b6e6fe1a72c4474"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a4bee3fef74d415813b6e6fe1a72c4474"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acdba43fe77e89b2de329656d1df80094" id="r_acdba43fe77e89b2de329656d1df80094"><td class="memItemLeft" align="right" valign="top"><a id="acdba43fe77e89b2de329656d1df80094" name="acdba43fe77e89b2de329656d1df80094"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveTail</b> {0.0}</td></tr>
-<tr class="separator:acdba43fe77e89b2de329656d1df80094"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b41963db35b3da6a7e89c116d43d030" id="r_a5b41963db35b3da6a7e89c116d43d030"><td class="memItemLeft" align="right" valign="top"><a id="a5b41963db35b3da6a7e89c116d43d030" name="a5b41963db35b3da6a7e89c116d43d030"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveCBMC</b> {0.0}</td></tr>
-<tr class="separator:a5b41963db35b3da6a7e89c116d43d030"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a65aac4f83cad72eba8d80eb5ddd8abba" id="r_a65aac4f83cad72eba8d80eb5ddd8abba"><td class="memItemLeft" align="right" valign="top"><a id="a65aac4f83cad72eba8d80eb5ddd8abba" name="a65aac4f83cad72eba8d80eb5ddd8abba"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveCBMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a65aac4f83cad72eba8d80eb5ddd8abba"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af55abf918e11e586d4385329e3f10edc" id="r_af55abf918e11e586d4385329e3f10edc"><td class="memItemLeft" align="right" valign="top"><a id="af55abf918e11e586d4385329e3f10edc" name="af55abf918e11e586d4385329e3f10edc"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveCBMCEwald</b> {0.0}</td></tr>
-<tr class="separator:af55abf918e11e586d4385329e3f10edc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab5cd89d4525ce83b76eca52932d35d2c" id="r_ab5cd89d4525ce83b76eca52932d35d2c"><td class="memItemLeft" align="right" valign="top"><a id="ab5cd89d4525ce83b76eca52932d35d2c" name="ab5cd89d4525ce83b76eca52932d35d2c"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapInsertionMoveCBMCTail</b> {0.0}</td></tr>
-<tr class="separator:ab5cd89d4525ce83b76eca52932d35d2c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab76dfc8fde68c54f1c6815c8ecb8ef06" id="r_ab76dfc8fde68c54f1c6815c8ecb8ef06"><td class="memItemLeft" align="right" valign="top"><a id="ab76dfc8fde68c54f1c6815c8ecb8ef06" name="ab76dfc8fde68c54f1c6815c8ecb8ef06"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveCBMC</b> {0.0}</td></tr>
-<tr class="separator:ab76dfc8fde68c54f1c6815c8ecb8ef06"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2fc901624e84d5b5f3ce752baa2a57ee" id="r_a2fc901624e84d5b5f3ce752baa2a57ee"><td class="memItemLeft" align="right" valign="top"><a id="a2fc901624e84d5b5f3ce752baa2a57ee" name="a2fc901624e84d5b5f3ce752baa2a57ee"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveCBMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a2fc901624e84d5b5f3ce752baa2a57ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afb4b6d159916c96beaf85de88cd24495" id="r_afb4b6d159916c96beaf85de88cd24495"><td class="memItemLeft" align="right" valign="top"><a id="afb4b6d159916c96beaf85de88cd24495" name="afb4b6d159916c96beaf85de88cd24495"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveCBMCEwald</b> {0.0}</td></tr>
-<tr class="separator:afb4b6d159916c96beaf85de88cd24495"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab233e66ddd0c85897464f3e9039a0853" id="r_ab233e66ddd0c85897464f3e9039a0853"><td class="memItemLeft" align="right" valign="top"><a id="ab233e66ddd0c85897464f3e9039a0853" name="ab233e66ddd0c85897464f3e9039a0853"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapDeletionMoveCBMCTail</b> {0.0}</td></tr>
-<tr class="separator:ab233e66ddd0c85897464f3e9039a0853"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2854147d28942484c75de358d4afbd44" id="r_a2854147d28942484c75de358d4afbd44"><td class="memItemLeft" align="right" valign="top"><a id="a2854147d28942484c75de358d4afbd44" name="a2854147d28942484c75de358d4afbd44"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMove</b> {0.0}</td></tr>
-<tr class="separator:a2854147d28942484c75de358d4afbd44"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae12e221ce7c5a823084e75ce9a50f03d" id="r_ae12e221ce7c5a823084e75ce9a50f03d"><td class="memItemLeft" align="right" valign="top"><a id="ae12e221ce7c5a823084e75ce9a50f03d" name="ae12e221ce7c5a823084e75ce9a50f03d"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveNonEwald</b> {0.0}</td></tr>
-<tr class="separator:ae12e221ce7c5a823084e75ce9a50f03d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a079377341f0ec895e9d200b954fb8411" id="r_a079377341f0ec895e9d200b954fb8411"><td class="memItemLeft" align="right" valign="top"><a id="a079377341f0ec895e9d200b954fb8411" name="a079377341f0ec895e9d200b954fb8411"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a079377341f0ec895e9d200b954fb8411"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a89cc2f1d14a947ff28c5c3a8d30e9fbc" id="r_a89cc2f1d14a947ff28c5c3a8d30e9fbc"><td class="memItemLeft" align="right" valign="top"><a id="a89cc2f1d14a947ff28c5c3a8d30e9fbc" name="a89cc2f1d14a947ff28c5c3a8d30e9fbc"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaMoveCFCMC</b> {0.0}</td></tr>
-<tr class="separator:a89cc2f1d14a947ff28c5c3a8d30e9fbc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab1d1201c6cae2785b53161ea57ec2117" id="r_ab1d1201c6cae2785b53161ea57ec2117"><td class="memItemLeft" align="right" valign="top"><a id="ab1d1201c6cae2785b53161ea57ec2117" name="ab1d1201c6cae2785b53161ea57ec2117"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:ab1d1201c6cae2785b53161ea57ec2117"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2fe13702df78f115545c3fc44b33ec4c" id="r_a2fe13702df78f115545c3fc44b33ec4c"><td class="memItemLeft" align="right" valign="top"><a id="a2fe13702df78f115545c3fc44b33ec4c" name="a2fe13702df78f115545c3fc44b33ec4c"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a2fe13702df78f115545c3fc44b33ec4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab2ce83d7fbb3f2b846be14fc0b209d4e" id="r_ab2ce83d7fbb3f2b846be14fc0b209d4e"><td class="memItemLeft" align="right" valign="top"><a id="ab2ce83d7fbb3f2b846be14fc0b209d4e" name="ab2ce83d7fbb3f2b846be14fc0b209d4e"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:ab2ce83d7fbb3f2b846be14fc0b209d4e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a689432ed0ef505f676376ef6d147feca" id="r_a689432ed0ef505f676376ef6d147feca"><td class="memItemLeft" align="right" valign="top"><a id="a689432ed0ef505f676376ef6d147feca" name="a689432ed0ef505f676376ef6d147feca"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a689432ed0ef505f676376ef6d147feca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a959d9d322ca69411ce190cd334d9ec18" id="r_a959d9d322ca69411ce190cd334d9ec18"><td class="memItemLeft" align="right" valign="top"><a id="a959d9d322ca69411ce190cd334d9ec18" name="a959d9d322ca69411ce190cd334d9ec18"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a959d9d322ca69411ce190cd334d9ec18"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adfb359a8c343a959f76dc02fbe0d07f5" id="r_adfb359a8c343a959f76dc02fbe0d07f5"><td class="memItemLeft" align="right" valign="top"><a id="adfb359a8c343a959f76dc02fbe0d07f5" name="adfb359a8c343a959f76dc02fbe0d07f5"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:adfb359a8c343a959f76dc02fbe0d07f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a03294d74ccd522a878fb016a8de5e3c5" id="r_a03294d74ccd522a878fb016a8de5e3c5"><td class="memItemLeft" align="right" valign="top"><a id="a03294d74ccd522a878fb016a8de5e3c5" name="a03294d74ccd522a878fb016a8de5e3c5"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a03294d74ccd522a878fb016a8de5e3c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae758bcdeae5dd2bb75f7b2b2294596ad" id="r_ae758bcdeae5dd2bb75f7b2b2294596ad"><td class="memItemLeft" align="right" valign="top"><a id="ae758bcdeae5dd2bb75f7b2b2294596ad" name="ae758bcdeae5dd2bb75f7b2b2294596ad"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:ae758bcdeae5dd2bb75f7b2b2294596ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4e6a4173188806cd85f9d5bd92e34049" id="r_a4e6a4173188806cd85f9d5bd92e34049"><td class="memItemLeft" align="right" valign="top"><a id="a4e6a4173188806cd85f9d5bd92e34049" name="a4e6a4173188806cd85f9d5bd92e34049"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a4e6a4173188806cd85f9d5bd92e34049"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad7957b38873afab7d0e3061a88583257" id="r_ad7957b38873afab7d0e3061a88583257"><td class="memItemLeft" align="right" valign="top"><a id="ad7957b38873afab7d0e3061a88583257" name="ad7957b38873afab7d0e3061a88583257"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:ad7957b38873afab7d0e3061a88583257"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3136cb7135c6aa19dce56196c6731dc8" id="r_a3136cb7135c6aa19dce56196c6731dc8"><td class="memItemLeft" align="right" valign="top"><a id="a3136cb7135c6aa19dce56196c6731dc8" name="a3136cb7135c6aa19dce56196c6731dc8"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:a3136cb7135c6aa19dce56196c6731dc8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3f4dc5ca82279150d239d59bd0f9795f" id="r_a3f4dc5ca82279150d239d59bd0f9795f"><td class="memItemLeft" align="right" valign="top"><a id="a3f4dc5ca82279150d239d59bd0f9795f" name="a3f4dc5ca82279150d239d59bd0f9795f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a3f4dc5ca82279150d239d59bd0f9795f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4a88315cd54b0c9cb7976a0a1ed421b6" id="r_a4a88315cd54b0c9cb7976a0a1ed421b6"><td class="memItemLeft" align="right" valign="top"><a id="a4a88315cd54b0c9cb7976a0a1ed421b6" name="a4a88315cd54b0c9cb7976a0a1ed421b6"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:a4a88315cd54b0c9cb7976a0a1ed421b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a807c9e9cb3ee5be7d0cfd80ebf5b28fe" id="r_a807c9e9cb3ee5be7d0cfd80ebf5b28fe"><td class="memItemLeft" align="right" valign="top"><a id="a807c9e9cb3ee5be7d0cfd80ebf5b28fe" name="a807c9e9cb3ee5be7d0cfd80ebf5b28fe"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a807c9e9cb3ee5be7d0cfd80ebf5b28fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a009803e12f2e69a1b6cd151143624248" id="r_a009803e12f2e69a1b6cd151143624248"><td class="memItemLeft" align="right" valign="top"><a id="a009803e12f2e69a1b6cd151143624248" name="a009803e12f2e69a1b6cd151143624248"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a009803e12f2e69a1b6cd151143624248"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab53d98b54c1cc469b7ba53f59951642b" id="r_ab53d98b54c1cc469b7ba53f59951642b"><td class="memItemLeft" align="right" valign="top"><a id="ab53d98b54c1cc469b7ba53f59951642b" name="ab53d98b54c1cc469b7ba53f59951642b"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaMoveCBCFCMC</b> {0.0}</td></tr>
-<tr class="separator:ab53d98b54c1cc469b7ba53f59951642b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a923dbb2c17b3859b68a6a2e7655c92d8" id="r_a923dbb2c17b3859b68a6a2e7655c92d8"><td class="memItemLeft" align="right" valign="top"><a id="a923dbb2c17b3859b68a6a2e7655c92d8" name="a923dbb2c17b3859b68a6a2e7655c92d8"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:a923dbb2c17b3859b68a6a2e7655c92d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adbf308a39c8fdb2ef033c7066c3ef1f7" id="r_adbf308a39c8fdb2ef033c7066c3ef1f7"><td class="memItemLeft" align="right" valign="top"><a id="adbf308a39c8fdb2ef033c7066c3ef1f7" name="adbf308a39c8fdb2ef033c7066c3ef1f7"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:adbf308a39c8fdb2ef033c7066c3ef1f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a125a0c632e62b0231160d56a0c5a9094" id="r_a125a0c632e62b0231160d56a0c5a9094"><td class="memItemLeft" align="right" valign="top"><a id="a125a0c632e62b0231160d56a0c5a9094" name="a125a0c632e62b0231160d56a0c5a9094"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:a125a0c632e62b0231160d56a0c5a9094"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a31586a3593306c0fd6b9af22b60e4992" id="r_a31586a3593306c0fd6b9af22b60e4992"><td class="memItemLeft" align="right" valign="top"><a id="a31586a3593306c0fd6b9af22b60e4992" name="a31586a3593306c0fd6b9af22b60e4992"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a31586a3593306c0fd6b9af22b60e4992"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad668bc8e36adaba0c2424e789e45c0e5" id="r_ad668bc8e36adaba0c2424e789e45c0e5"><td class="memItemLeft" align="right" valign="top"><a id="ad668bc8e36adaba0c2424e789e45c0e5" name="ad668bc8e36adaba0c2424e789e45c0e5"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:ad668bc8e36adaba0c2424e789e45c0e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a94482afd4b5c3cac3345348ac053348d" id="r_a94482afd4b5c3cac3345348ac053348d"><td class="memItemLeft" align="right" valign="top"><a id="a94482afd4b5c3cac3345348ac053348d" name="a94482afd4b5c3cac3345348ac053348d"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaInsertionMoveCBCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a94482afd4b5c3cac3345348ac053348d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1ba90d7fdde0bc5c885cb7755b5b9508" id="r_a1ba90d7fdde0bc5c885cb7755b5b9508"><td class="memItemLeft" align="right" valign="top"><a id="a1ba90d7fdde0bc5c885cb7755b5b9508" name="a1ba90d7fdde0bc5c885cb7755b5b9508"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCBCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:a1ba90d7fdde0bc5c885cb7755b5b9508"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a09a9b94ea48e40655671cbf663491ce4" id="r_a09a9b94ea48e40655671cbf663491ce4"><td class="memItemLeft" align="right" valign="top"><a id="a09a9b94ea48e40655671cbf663491ce4" name="a09a9b94ea48e40655671cbf663491ce4"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCBCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a09a9b94ea48e40655671cbf663491ce4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa8d33182f7159366aaffc94315837880" id="r_aa8d33182f7159366aaffc94315837880"><td class="memItemLeft" align="right" valign="top"><a id="aa8d33182f7159366aaffc94315837880" name="aa8d33182f7159366aaffc94315837880"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCBCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:aa8d33182f7159366aaffc94315837880"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac1767d84443d449e5a13b9e0dd7b70c3" id="r_ac1767d84443d449e5a13b9e0dd7b70c3"><td class="memItemLeft" align="right" valign="top"><a id="ac1767d84443d449e5a13b9e0dd7b70c3" name="ac1767d84443d449e5a13b9e0dd7b70c3"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCBCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:ac1767d84443d449e5a13b9e0dd7b70c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9a0988b093dd8fabdf10e8a986ca4c27" id="r_a9a0988b093dd8fabdf10e8a986ca4c27"><td class="memItemLeft" align="right" valign="top"><a id="a9a0988b093dd8fabdf10e8a986ca4c27" name="a9a0988b093dd8fabdf10e8a986ca4c27"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaChangeMoveCBCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a9a0988b093dd8fabdf10e8a986ca4c27"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ace8623d9ec9a5dc04d380ee6c8b7be63" id="r_ace8623d9ec9a5dc04d380ee6c8b7be63"><td class="memItemLeft" align="right" valign="top"><a id="ace8623d9ec9a5dc04d380ee6c8b7be63" name="ace8623d9ec9a5dc04d380ee6c8b7be63"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:ace8623d9ec9a5dc04d380ee6c8b7be63"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a38f6217210545dd616806e9223efd38f" id="r_a38f6217210545dd616806e9223efd38f"><td class="memItemLeft" align="right" valign="top"><a id="a38f6217210545dd616806e9223efd38f" name="a38f6217210545dd616806e9223efd38f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a38f6217210545dd616806e9223efd38f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a933d144dde781ea06f3d401443944955" id="r_a933d144dde781ea06f3d401443944955"><td class="memItemLeft" align="right" valign="top"><a id="a933d144dde781ea06f3d401443944955" name="a933d144dde781ea06f3d401443944955"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:a933d144dde781ea06f3d401443944955"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad8fa394e3011f125c5cf5f43358c22de" id="r_ad8fa394e3011f125c5cf5f43358c22de"><td class="memItemLeft" align="right" valign="top"><a id="ad8fa394e3011f125c5cf5f43358c22de" name="ad8fa394e3011f125c5cf5f43358c22de"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:ad8fa394e3011f125c5cf5f43358c22de"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc583aca623064d4b5397052d03c5ac1" id="r_acc583aca623064d4b5397052d03c5ac1"><td class="memItemLeft" align="right" valign="top"><a id="acc583aca623064d4b5397052d03c5ac1" name="acc583aca623064d4b5397052d03c5ac1"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:acc583aca623064d4b5397052d03c5ac1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abf8a99aa425fea0a19aa6552fd3989e1" id="r_abf8a99aa425fea0a19aa6552fd3989e1"><td class="memItemLeft" align="right" valign="top"><a id="abf8a99aa425fea0a19aa6552fd3989e1" name="abf8a99aa425fea0a19aa6552fd3989e1"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>swapLambdaDeletionMoveCBCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:abf8a99aa425fea0a19aa6552fd3989e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ed700068fd71bf1490c7e923c173382" id="r_a8ed700068fd71bf1490c7e923c173382"><td class="memItemLeft" align="right" valign="top"><a id="a8ed700068fd71bf1490c7e923c173382" name="a8ed700068fd71bf1490c7e923c173382"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapMoveCBMC</b> {0.0}</td></tr>
-<tr class="separator:a8ed700068fd71bf1490c7e923c173382"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a24b029093fa843c98dfe9e083cf202ad" id="r_a24b029093fa843c98dfe9e083cf202ad"><td class="memItemLeft" align="right" valign="top"><a id="a24b029093fa843c98dfe9e083cf202ad" name="a24b029093fa843c98dfe9e083cf202ad"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapMoveCBMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a24b029093fa843c98dfe9e083cf202ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af7f458819892511093d4dbb1d72c923f" id="r_af7f458819892511093d4dbb1d72c923f"><td class="memItemLeft" align="right" valign="top"><a id="af7f458819892511093d4dbb1d72c923f" name="af7f458819892511093d4dbb1d72c923f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapMoveCBMCEwald</b> {0.0}</td></tr>
-<tr class="separator:af7f458819892511093d4dbb1d72c923f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad16e1aa66e978c13e7d5997f147d0545" id="r_ad16e1aa66e978c13e7d5997f147d0545"><td class="memItemLeft" align="right" valign="top"><a id="ad16e1aa66e978c13e7d5997f147d0545" name="ad16e1aa66e978c13e7d5997f147d0545"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapMoveCBMCTail</b> {0.0}</td></tr>
-<tr class="separator:ad16e1aa66e978c13e7d5997f147d0545"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9caca02f2ceb1a8f511cd0cc5f3277c9" id="r_a9caca02f2ceb1a8f511cd0cc5f3277c9"><td class="memItemLeft" align="right" valign="top"><a id="a9caca02f2ceb1a8f511cd0cc5f3277c9" name="a9caca02f2ceb1a8f511cd0cc5f3277c9"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaMoveCFCMC</b> {0.0}</td></tr>
-<tr class="separator:a9caca02f2ceb1a8f511cd0cc5f3277c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af01ea80ef856e32d598fa85f4406f6bc" id="r_af01ea80ef856e32d598fa85f4406f6bc"><td class="memItemLeft" align="right" valign="top"><a id="af01ea80ef856e32d598fa85f4406f6bc" name="af01ea80ef856e32d598fa85f4406f6bc"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaInterChangeMoveCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:af01ea80ef856e32d598fa85f4406f6bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8f55017a7eeb4b4b80da2a5f31115915" id="r_a8f55017a7eeb4b4b80da2a5f31115915"><td class="memItemLeft" align="right" valign="top"><a id="a8f55017a7eeb4b4b80da2a5f31115915" name="a8f55017a7eeb4b4b80da2a5f31115915"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaInterChangeMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a8f55017a7eeb4b4b80da2a5f31115915"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7bba74473a3e18c1927aa4f5d78d83e4" id="r_a7bba74473a3e18c1927aa4f5d78d83e4"><td class="memItemLeft" align="right" valign="top"><a id="a7bba74473a3e18c1927aa4f5d78d83e4" name="a7bba74473a3e18c1927aa4f5d78d83e4"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaInterChangeMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a7bba74473a3e18c1927aa4f5d78d83e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad9fff1ca8b3daaba465f8d127d9d0f42" id="r_ad9fff1ca8b3daaba465f8d127d9d0f42"><td class="memItemLeft" align="right" valign="top"><a id="ad9fff1ca8b3daaba465f8d127d9d0f42" name="ad9fff1ca8b3daaba465f8d127d9d0f42"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaChangeMoveCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:ad9fff1ca8b3daaba465f8d127d9d0f42"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a95ee81ef3baf7b150b9afaf46b3b8494" id="r_a95ee81ef3baf7b150b9afaf46b3b8494"><td class="memItemLeft" align="right" valign="top"><a id="a95ee81ef3baf7b150b9afaf46b3b8494" name="a95ee81ef3baf7b150b9afaf46b3b8494"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaChangeMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a95ee81ef3baf7b150b9afaf46b3b8494"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab0d70dd9b43ed5556deec146f0d00435" id="r_ab0d70dd9b43ed5556deec146f0d00435"><td class="memItemLeft" align="right" valign="top"><a id="ab0d70dd9b43ed5556deec146f0d00435" name="ab0d70dd9b43ed5556deec146f0d00435"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaChangeMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:ab0d70dd9b43ed5556deec146f0d00435"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5e726586017138c59a6c79607ce4fdf2" id="r_a5e726586017138c59a6c79607ce4fdf2"><td class="memItemLeft" align="right" valign="top"><a id="a5e726586017138c59a6c79607ce4fdf2" name="a5e726586017138c59a6c79607ce4fdf2"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaShuffleMoveCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a5e726586017138c59a6c79607ce4fdf2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a87b3f2f5f63f2cd1b747a8f144dd290f" id="r_a87b3f2f5f63f2cd1b747a8f144dd290f"><td class="memItemLeft" align="right" valign="top"><a id="a87b3f2f5f63f2cd1b747a8f144dd290f" name="a87b3f2f5f63f2cd1b747a8f144dd290f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaShuffleMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a87b3f2f5f63f2cd1b747a8f144dd290f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad63e556fecd1208d81b80bf7cbd64c01" id="r_ad63e556fecd1208d81b80bf7cbd64c01"><td class="memItemLeft" align="right" valign="top"><a id="ad63e556fecd1208d81b80bf7cbd64c01" name="ad63e556fecd1208d81b80bf7cbd64c01"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsSwapLambdaShuffleMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:ad63e556fecd1208d81b80bf7cbd64c01"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af82f2bcb5baedd7fcc3a6167c29dc328" id="r_af82f2bcb5baedd7fcc3a6167c29dc328"><td class="memItemLeft" align="right" valign="top"><a id="af82f2bcb5baedd7fcc3a6167c29dc328" name="af82f2bcb5baedd7fcc3a6167c29dc328"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBMC</b> {0.0}</td></tr>
-<tr class="separator:af82f2bcb5baedd7fcc3a6167c29dc328"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a69b6f88532300dd3570b1607e72447d9" id="r_a69b6f88532300dd3570b1607e72447d9"><td class="memItemLeft" align="right" valign="top"><a id="a69b6f88532300dd3570b1607e72447d9" name="a69b6f88532300dd3570b1607e72447d9"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:a69b6f88532300dd3570b1607e72447d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad79b72e07352b32f9537c52905df30a2" id="r_ad79b72e07352b32f9537c52905df30a2"><td class="memItemLeft" align="right" valign="top"><a id="ad79b72e07352b32f9537c52905df30a2" name="ad79b72e07352b32f9537c52905df30a2"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBMCEwald</b> {0.0}</td></tr>
-<tr class="separator:ad79b72e07352b32f9537c52905df30a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a93cb7a570985cc3ab33f576eb21b1477" id="r_a93cb7a570985cc3ab33f576eb21b1477"><td class="memItemLeft" align="right" valign="top"><a id="a93cb7a570985cc3ab33f576eb21b1477" name="a93cb7a570985cc3ab33f576eb21b1477"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBMCTail</b> {0.0}</td></tr>
-<tr class="separator:a93cb7a570985cc3ab33f576eb21b1477"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a991c34e70764ffbfe3bcf020ba1847cb" id="r_a991c34e70764ffbfe3bcf020ba1847cb"><td class="memItemLeft" align="right" valign="top"><a id="a991c34e70764ffbfe3bcf020ba1847cb" name="a991c34e70764ffbfe3bcf020ba1847cb"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMC</b> {0.0}</td></tr>
-<tr class="separator:a991c34e70764ffbfe3bcf020ba1847cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adce36177f0577f404b54da589a244f6b" id="r_adce36177f0577f404b54da589a244f6b"><td class="memItemLeft" align="right" valign="top"><a id="adce36177f0577f404b54da589a244f6b" name="adce36177f0577f404b54da589a244f6b"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:adce36177f0577f404b54da589a244f6b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e3128a3dbde9075df4fdb8e5d6124ad" id="r_a6e3128a3dbde9075df4fdb8e5d6124ad"><td class="memItemLeft" align="right" valign="top"><a id="a6e3128a3dbde9075df4fdb8e5d6124ad" name="a6e3128a3dbde9075df4fdb8e5d6124ad"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a6e3128a3dbde9075df4fdb8e5d6124ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a67ece66d98edfbe1dbb20350ee4ee1c3" id="r_a67ece66d98edfbe1dbb20350ee4ee1c3"><td class="memItemLeft" align="right" valign="top"><a id="a67ece66d98edfbe1dbb20350ee4ee1c3" name="a67ece66d98edfbe1dbb20350ee4ee1c3"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:a67ece66d98edfbe1dbb20350ee4ee1c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d265537c10045c461099caac9fe5104" id="r_a0d265537c10045c461099caac9fe5104"><td class="memItemLeft" align="right" valign="top"><a id="a0d265537c10045c461099caac9fe5104" name="a0d265537c10045c461099caac9fe5104"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a0d265537c10045c461099caac9fe5104"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0edab475694c94e6cef91033ec71ff95" id="r_a0edab475694c94e6cef91033ec71ff95"><td class="memItemLeft" align="right" valign="top"><a id="a0edab475694c94e6cef91033ec71ff95" name="a0edab475694c94e6cef91033ec71ff95"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:a0edab475694c94e6cef91033ec71ff95"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a75bb733474b61f580251806344549d18" id="r_a75bb733474b61f580251806344549d18"><td class="memItemLeft" align="right" valign="top"><a id="a75bb733474b61f580251806344549d18" name="a75bb733474b61f580251806344549d18"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMC</b> {0.0}</td></tr>
-<tr class="separator:a75bb733474b61f580251806344549d18"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a68d4287540da122791725f292dda8a4f" id="r_a68d4287540da122791725f292dda8a4f"><td class="memItemLeft" align="right" valign="top"><a id="a68d4287540da122791725f292dda8a4f" name="a68d4287540da122791725f292dda8a4f"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCExternalField</b> {0.0}</td></tr>
-<tr class="separator:a68d4287540da122791725f292dda8a4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13ee04ab58dfc0a7b971d6348c1ae7ad" id="r_a13ee04ab58dfc0a7b971d6348c1ae7ad"><td class="memItemLeft" align="right" valign="top"><a id="a13ee04ab58dfc0a7b971d6348c1ae7ad" name="a13ee04ab58dfc0a7b971d6348c1ae7ad"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCFramework</b> {0.0}</td></tr>
-<tr class="separator:a13ee04ab58dfc0a7b971d6348c1ae7ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb1be629a17263fea7b81a316b657808" id="r_adb1be629a17263fea7b81a316b657808"><td class="memItemLeft" align="right" valign="top"><a id="adb1be629a17263fea7b81a316b657808" name="adb1be629a17263fea7b81a316b657808"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCMolecule</b> {0.0}</td></tr>
-<tr class="separator:adb1be629a17263fea7b81a316b657808"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac0c34223a8f2b152d8be9afb9d52bf95" id="r_ac0c34223a8f2b152d8be9afb9d52bf95"><td class="memItemLeft" align="right" valign="top"><a id="ac0c34223a8f2b152d8be9afb9d52bf95" name="ac0c34223a8f2b152d8be9afb9d52bf95"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCNonEwald</b> {0.0}</td></tr>
-<tr class="separator:ac0c34223a8f2b152d8be9afb9d52bf95"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a520fd33d1d2917256c1c4e8cb5ad3305" id="r_a520fd33d1d2917256c1c4e8cb5ad3305"><td class="memItemLeft" align="right" valign="top"><a id="a520fd33d1d2917256c1c4e8cb5ad3305" name="a520fd33d1d2917256c1c4e8cb5ad3305"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCEwald</b> {0.0}</td></tr>
-<tr class="separator:a520fd33d1d2917256c1c4e8cb5ad3305"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acf6d6f51da0d4150ab5521b4a280c7c4" id="r_acf6d6f51da0d4150ab5521b4a280c7c4"><td class="memItemLeft" align="right" valign="top"><a id="acf6d6f51da0d4150ab5521b4a280c7c4" name="acf6d6f51da0d4150ab5521b4a280c7c4"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>WidomMoveCBCFCMCTail</b> {0.0}</td></tr>
-<tr class="separator:acf6d6f51da0d4150ab5521b4a280c7c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae070047f15f2bf75627538f2e0d3f7d9" id="r_ae070047f15f2bf75627538f2e0d3f7d9"><td class="memItemLeft" align="right" valign="top"><a id="ae070047f15f2bf75627538f2e0d3f7d9" name="ae070047f15f2bf75627538f2e0d3f7d9"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>volumeMove</b> {0.0}</td></tr>
-<tr class="separator:ae070047f15f2bf75627538f2e0d3f7d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa79a5d02d70034d0dbd6d4941f519d5e" id="r_aa79a5d02d70034d0dbd6d4941f519d5e"><td class="memItemLeft" align="right" valign="top"><a id="aa79a5d02d70034d0dbd6d4941f519d5e" name="aa79a5d02d70034d0dbd6d4941f519d5e"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>volumeMoveNonEwald</b> {0.0}</td></tr>
-<tr class="separator:aa79a5d02d70034d0dbd6d4941f519d5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9993f6a9f37a6d0f083fb5cec4693763" id="r_a9993f6a9f37a6d0f083fb5cec4693763"><td class="memItemLeft" align="right" valign="top"><a id="a9993f6a9f37a6d0f083fb5cec4693763" name="a9993f6a9f37a6d0f083fb5cec4693763"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>volumeMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a9993f6a9f37a6d0f083fb5cec4693763"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aab34ae421337434a4174cb254d3aff92" id="r_aab34ae421337434a4174cb254d3aff92"><td class="memItemLeft" align="right" valign="top"><a id="aab34ae421337434a4174cb254d3aff92" name="aab34ae421337434a4174cb254d3aff92"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>volumeMoveTail</b> {0.0}</td></tr>
-<tr class="separator:aab34ae421337434a4174cb254d3aff92"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3db31286075da7c7c0dd5bd4b2f8f075" id="r_a3db31286075da7c7c0dd5bd4b2f8f075"><td class="memItemLeft" align="right" valign="top"><a id="a3db31286075da7c7c0dd5bd4b2f8f075" name="a3db31286075da7c7c0dd5bd4b2f8f075"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsVolumeMove</b> {0.0}</td></tr>
-<tr class="separator:a3db31286075da7c7c0dd5bd4b2f8f075"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af5d9a2910328d3446f9fdc5e648bdd30" id="r_af5d9a2910328d3446f9fdc5e648bdd30"><td class="memItemLeft" align="right" valign="top"><a id="af5d9a2910328d3446f9fdc5e648bdd30" name="af5d9a2910328d3446f9fdc5e648bdd30"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsVolumeMoveNonEwald</b> {0.0}</td></tr>
-<tr class="separator:af5d9a2910328d3446f9fdc5e648bdd30"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a17d813ddfe776ce45b30ce9eea62c3e0" id="r_a17d813ddfe776ce45b30ce9eea62c3e0"><td class="memItemLeft" align="right" valign="top"><a id="a17d813ddfe776ce45b30ce9eea62c3e0" name="a17d813ddfe776ce45b30ce9eea62c3e0"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsVolumeMoveEwald</b> {0.0}</td></tr>
-<tr class="separator:a17d813ddfe776ce45b30ce9eea62c3e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa2fd65a2c2cf41ab08070e13ac7652b7" id="r_aa2fd65a2c2cf41ab08070e13ac7652b7"><td class="memItemLeft" align="right" valign="top"><a id="aa2fd65a2c2cf41ab08070e13ac7652b7" name="aa2fd65a2c2cf41ab08070e13ac7652b7"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>GibbsVolumeMoveTail</b> {0.0}</td></tr>
-<tr class="separator:aa2fd65a2c2cf41ab08070e13ac7652b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a54b5359af27610c63e92028ef899e8db" id="r_a54b5359af27610c63e92028ef899e8db"><td class="memItemLeft" align="right" valign="top"><a id="a54b5359af27610c63e92028ef899e8db" name="a54b5359af27610c63e92028ef899e8db"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ParallelTemperingSwap</b> {0.0}</td></tr>
-<tr class="separator:a54b5359af27610c63e92028ef899e8db"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a527f12056f689d83c14980e33d4b2999" id="r_a527f12056f689d83c14980e33d4b2999"><td class="memItemLeft" align="right" valign="top"><a id="a527f12056f689d83c14980e33d4b2999" name="a527f12056f689d83c14980e33d4b2999"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ParallelTemperingSwapEnergy</b> {0.0}</td></tr>
-<tr class="separator:a527f12056f689d83c14980e33d4b2999"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a91d4ba6d6b0fd117f1b5bbbf4a775555" id="r_a91d4ba6d6b0fd117f1b5bbbf4a775555"><td class="memItemLeft" align="right" valign="top"><a id="a91d4ba6d6b0fd117f1b5bbbf4a775555" name="a91d4ba6d6b0fd117f1b5bbbf4a775555"></a>
-std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>ParallelTemperingSwapFugacity</b> {0.0}</td></tr>
-<tr class="separator:a91d4ba6d6b0fd117f1b5bbbf4a775555"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a31fac3201f3b361720323229b414c8f6" id="r_a31fac3201f3b361720323229b414c8f6"><td class="memItemLeft" align="right" valign="top"><a id="a31fac3201f3b361720323229b414c8f6" name="a31fac3201f3b361720323229b414c8f6"></a>
+std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pressureFrameworkTime</b> {0.0}</td></tr>
+<tr class="memdesc:a31fac3201f3b361720323229b414c8f6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
+<tr class="separator:a31fac3201f3b361720323229b414c8f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2c034fe3a1ae985890120a3cc22d7eb8" id="r_a2c034fe3a1ae985890120a3cc22d7eb8"><td class="memItemLeft" align="right" valign="top"><a id="a2c034fe3a1ae985890120a3cc22d7eb8" name="a2c034fe3a1ae985890120a3cc22d7eb8"></a>
+std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pressureIntermolecularTime</b> {0.0}</td></tr>
+<tr class="memdesc:a2c034fe3a1ae985890120a3cc22d7eb8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
+<tr class="separator:a2c034fe3a1ae985890120a3cc22d7eb8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaf09b539c3038cc0b557213747156aff" id="r_aaf09b539c3038cc0b557213747156aff"><td class="memItemLeft" align="right" valign="top"><a id="aaf09b539c3038cc0b557213747156aff" name="aaf09b539c3038cc0b557213747156aff"></a>
+std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pressureEwaldTime</b> {0.0}</td></tr>
+<tr class="memdesc:aaf09b539c3038cc0b557213747156aff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
+<tr class="separator:aaf09b539c3038cc0b557213747156aff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7dac62851d261777b48052b9464e2856" id="r_a7dac62851d261777b48052b9464e2856"><td class="memItemLeft" align="right" valign="top"><a id="a7dac62851d261777b48052b9464e2856" name="a7dac62851d261777b48052b9464e2856"></a>
+std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pressureTailTime</b> {0.0}</td></tr>
+<tr class="memdesc:a7dac62851d261777b48052b9464e2856"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
+<tr class="separator:a7dac62851d261777b48052b9464e2856"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add829842185541c1bb7ac3c2ea801ffc" id="r_add829842185541c1bb7ac3c2ea801ffc"><td class="memItemLeft" align="right" valign="top"><a id="add829842185541c1bb7ac3c2ea801ffc" name="add829842185541c1bb7ac3c2ea801ffc"></a>
+std::chrono::duration&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pressureRestTime</b> {0.0}</td></tr>
+<tr class="memdesc:add829842185541c1bb7ac3c2ea801ffc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Time spent on energy and pressure computations. <br /></td></tr>
+<tr class="separator:add829842185541c1bb7ac3c2ea801ffc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -519,6 +211,229 @@ Archive&lt; std::ofstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structMCMoveCpuTime.html">MCMoveCpuTime</a> &amp;t)</td></tr>
 <tr class="separator:aff6863fa9111b66cd1b5ca96bcbdb5a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Stores CPU timing statistics for various Monte Carlo moves. </p>
+<p>The <a class="el" href="structMCMoveCpuTime.html" title="Stores CPU timing statistics for various Monte Carlo moves.">MCMoveCpuTime</a> struct accumulates the duration of different Monte Carlo moves and their components in a simulation. It provides methods to reset the timings, write the timing statistics to strings, and output them in JSON format. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a id="aee1fbf32e831ccda6bf8ee1bd4bc2bdd" name="aee1fbf32e831ccda6bf8ee1bd4bc2bdd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee1fbf32e831ccda6bf8ee1bd4bc2bdd">&#9670;&#160;</a></span>MCMoveCpuTime()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">MCMoveCpuTime::MCMoveCpuTime </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Default constructor. </p>
+<p>Initializes all timing statistics to zero. </p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="ab0dde75a54eed645bdd547cb1482a00e" name="ab0dde75a54eed645bdd547cb1482a00e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab0dde75a54eed645bdd547cb1482a00e">&#9670;&#160;</a></span>jsonComponentMCMoveCPUTimeStatistics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the component-level CPU time statistics in JSON format. </p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object containing the component-level timing statistics. </dd></dl>
+
+</div>
+</div>
+<a id="a5fe593548d3b8db2f767ef0462ecdfb5" name="a5fe593548d3b8db2f767ef0462ecdfb5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5fe593548d3b8db2f767ef0462ecdfb5">&#9670;&#160;</a></span>jsonOverallMCMoveCPUTimeStatistics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const nlohmann::json MCMoveCpuTime::jsonOverallMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramtype">std::chrono::duration&lt; double &gt;&#160;</td>
+          <td class="paramname"><em>total</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the overall CPU time statistics in JSON format. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">total</td><td>The total simulation time. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object containing the overall timing statistics. </dd></dl>
+
+</div>
+</div>
+<a id="a1d4a2d9fb860c2cf93a0fe106aa3e71b" name="a1d4a2d9fb860c2cf93a0fe106aa3e71b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1d4a2d9fb860c2cf93a0fe106aa3e71b">&#9670;&#160;</a></span>jsonSystemMCMoveCPUTimeStatistics()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns the system-level CPU time statistics in JSON format. </p>
+<dl class="section return"><dt>Returns</dt><dd>A JSON object containing the system-level timing statistics. </dd></dl>
+
+</div>
+</div>
+<a id="a22c4c2f1669f9260b71e1c8d7ed47068" name="a22c4c2f1669f9260b71e1c8d7ed47068"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a22c4c2f1669f9260b71e1c8d7ed47068">&#9670;&#160;</a></span>total()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::chrono::duration&lt; double &gt; MCMoveCpuTime::total </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Calculates the total CPU time spent on all recorded Monte Carlo moves. </p>
+<dl class="section return"><dt>Returns</dt><dd>The total duration of all moves. </dd></dl>
+<div class="dynheader">
+Here is the call graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_cgraph.png" border="0" usemap="#astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_cgraph" alt=""/></div>
+<map name="astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_cgraph" id="astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_cgraph">
+<area shape="rect" title="Calculates the total CPU time spent on all recorded Monte Carlo moves." alt="" coords="5,29,180,55"/>
+<area shape="poly" title=" " alt="" coords="64,31,58,21,61,11,73,5,93,3,117,6,127,15,123,19,114,11,93,8,74,10,65,15,63,20,68,28"/>
+</map>
+</div>
+<div class="dynheader">
+Here is the caller graph for this function:</div>
+<div class="dyncontent">
+<div class="center"><img src="structMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_icgraph.png" border="0" usemap="#astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_icgraph" alt=""/></div>
+<map name="astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_icgraph" id="astructMCMoveCpuTime_a22c4c2f1669f9260b71e1c8d7ed47068_icgraph">
+<area shape="rect" title="Calculates the total CPU time spent on all recorded Monte Carlo moves." alt="" coords="5,29,180,55"/>
+<area shape="poly" title=" " alt="" coords="123,19,114,11,93,8,74,10,65,15,63,20,68,28,64,31,58,21,61,11,73,5,93,3,117,6,127,15"/>
+</map>
+</div>
+
+</div>
+</div>
+<a id="a675cef0e30c5db277cef4e59a33770e8" name="a675cef0e30c5db277cef4e59a33770e8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a675cef0e30c5db277cef4e59a33770e8">&#9670;&#160;</a></span>writeMCMoveCPUTimeStatistics() <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes the CPU time statistics to a string. </p>
+<dl class="section return"><dt>Returns</dt><dd>A string containing the timing statistics. </dd></dl>
+
+</div>
+</div>
+<a id="aa5c7e2e55b2fb338fd5e925dcd12b4f1" name="aa5c7e2e55b2fb338fd5e925dcd12b4f1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa5c7e2e55b2fb338fd5e925dcd12b4f1">&#9670;&#160;</a></span>writeMCMoveCPUTimeStatistics() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>componentId</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>componentName</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes the CPU time statistics for a specific component. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">componentId</td><td>The identifier of the component. </td></tr>
+    <tr><td class="paramname">componentName</td><td>The name of the component. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string containing the timing statistics for the component. </dd></dl>
+
+</div>
+</div>
+<a id="a3c46161440d64c3e04e854747bd89065" name="a3c46161440d64c3e04e854747bd89065"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3c46161440d64c3e04e854747bd89065">&#9670;&#160;</a></span>writeMCMoveCPUTimeStatistics() <span class="overload">[3/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics </td>
+          <td>(</td>
+          <td class="paramtype">std::chrono::duration&lt; double &gt;&#160;</td>
+          <td class="paramname"><em>total</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes the overall CPU time statistics. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">total</td><td>The total simulation time. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A string containing the overall timing statistics. </dd></dl>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/mc_moves/<b>cputime.ixx</b></li>
 </ul>

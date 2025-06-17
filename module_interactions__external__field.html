@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -117,6 +117,18 @@ Functions</h2></td></tr>
 <tr class="memitem:af46dfeb3960abf3e592620a39881edd0" id="r_af46dfeb3960abf3e592620a39881edd0"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structRunningEnergy.html">RunningEnergy</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="external__field_8ixx.html#af46dfeb3960abf3e592620a39881edd0">Interactions::computeExternalFieldEnergyDifference</a> (bool hasExternalField, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; newatoms, std::span&lt; const <a class="el" href="structAtom.html">Atom</a> &gt; oldatoms) noexcept</td></tr>
 <tr class="memdesc:af46dfeb3960abf3e592620a39881edd0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Computes the difference in external field energy between two states.  <br /></td></tr>
 <tr class="separator:af46dfeb3960abf3e592620a39881edd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a324374b65f98336e4773928155fb65e6" id="r_a324374b65f98336e4773928155fb65e6"><td class="memItemLeft" align="right" valign="top"><a id="a324374b65f98336e4773928155fb65e6" name="a324374b65f98336e4773928155fb65e6"></a>
+std::tuple&lt; double, std::array&lt; double, 3 &gt;, std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, std::array&lt; std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, 3 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::calculateThirdDerivativeAtPositionExternalField</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double3 posA)</td></tr>
+<tr class="separator:a324374b65f98336e4773928155fb65e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8fc133457225bb9714fa5c96f2d8fb18" id="r_a8fc133457225bb9714fa5c96f2d8fb18"><td class="memItemLeft" align="right" valign="top"><a id="a8fc133457225bb9714fa5c96f2d8fb18" name="a8fc133457225bb9714fa5c96f2d8fb18"></a>
+std::array&lt; double, 8 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::calculateTricubicFractionalAtPositionExternalField</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double3 posA)</td></tr>
+<tr class="separator:a8fc133457225bb9714fa5c96f2d8fb18"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a07215bdc43d4fed39be6998dd05ffb" id="r_a7a07215bdc43d4fed39be6998dd05ffb"><td class="memItemLeft" align="right" valign="top"><a id="a7a07215bdc43d4fed39be6998dd05ffb" name="a7a07215bdc43d4fed39be6998dd05ffb"></a>
+std::tuple&lt; double, std::array&lt; double, 3 &gt;, std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, std::array&lt; std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, 3 &gt;, std::array&lt; std::array&lt; std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt;, std::array&lt; std::array&lt; std::array&lt; std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt;, std::array&lt; std::array&lt; std::array&lt; std::array&lt; std::array&lt; std::array&lt; double, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt;, 3 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::calculateSixthOrderDerivativeAtPositionExternalField</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, double3 pos)</td></tr>
+<tr class="separator:a7a07215bdc43d4fed39be6998dd05ffb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2088c0ec3302b945b1bfbd6f26e4facf" id="r_a2088c0ec3302b945b1bfbd6f26e4facf"><td class="memItemLeft" align="right" valign="top"><a id="a2088c0ec3302b945b1bfbd6f26e4facf" name="a2088c0ec3302b945b1bfbd6f26e4facf"></a>
+std::array&lt; double, 27 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>Interactions::calculateTriquinticFractionalAtPositionExternalField</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, double3 posA)</td></tr>
+<tr class="separator:a2088c0ec3302b945b1bfbd6f26e4facf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="files" name="files"></a>

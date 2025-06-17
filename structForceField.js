@@ -1,5 +1,6 @@
 var structForceField =
 [
+    [ "InsensitiveCompare", "structForceField_1_1InsensitiveCompare.html", "structForceField_1_1InsensitiveCompare" ],
     [ "ChargeMethod", "structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983", [
       [ "Ewald", "structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983a4ca32cf75df1f52742531e3a08c470e4", null ],
       [ "Coulomb", "structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983a3ebf69400847360a2fce3bed2e99f8d7", null ],
@@ -7,13 +8,14 @@ var structForceField =
       [ "ModifiedWolf", "structForceField.html#a0d9be9acf8dcb0e4e8c8d674bf006983af454383d798c4f438d7da4ae9226a9b2", null ]
     ] ],
     [ "MixingRule", "structForceField.html#a3414738e7f6343c7b8993b7af19fe878", [
-      [ "Lorentz_Berthelot", "structForceField.html#a3414738e7f6343c7b8993b7af19fe878a9a64296881083d284df9f5bdb6638aaa", null ]
+      [ "Lorentz_Berthelot", "structForceField.html#a3414738e7f6343c7b8993b7af19fe878a9a64296881083d284df9f5bdb6638aaa", null ],
+      [ "Jorgensen", "structForceField.html#a3414738e7f6343c7b8993b7af19fe878af29115cb2a2411b2d00dcc23d310abd5", null ]
     ] ],
     [ "ForceField", "structForceField.html#ad2f42cb741107586dcb112da944bf077", null ],
     [ "ForceField", "structForceField.html#a190e70239e80a9ef945518a4a226d3de", null ],
     [ "ForceField", "structForceField.html#ac1e0dcbec80868fc31381a251e0b66bd", null ],
     [ "applyMixingRule", "structForceField.html#aa0af00d9d8d608f71348e014c15d6f05", null ],
-    [ "cutOffVDW", "structForceField.html#a26bab027b101816c49d21993ed56b2ef", null ],
+    [ "cutOffVDW", "structForceField.html#a22d790e785d4310f5346b1373b3374b8", null ],
     [ "findPseudoAtom", "structForceField.html#ab2359c2a131107e08535ad86c3e121ff", null ],
     [ "initializeEwaldParameters", "structForceField.html#af431507e3f22b5e17a16fef89425e1af", null ],
     [ "jsonForceFieldStatus", "structForceField.html#adb501d2e5648589aca8d3ff046479552", null ],

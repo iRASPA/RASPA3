@@ -1,0 +1,11 @@
+<map id="MCMoveStatistics" name="MCMoveStatistics">
+<area shape="rect" id="Node000001" title=" " alt="" coords="704,45,843,70"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="323,5,533,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="547,34,704,48,704,54,547,39"/>
+<area shape="rect" id="Node000003" href="$structMoveStatistics.html" title=" " alt="" coords="9,13,201,38"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="215,23,322,23,322,28,215,28"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="319,69,537,109"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="551,77,680,65,703,63,704,68,680,71,551,82"/>
+<area shape="rect" id="Node000005" href="$structMoveStatistics.html" title=" " alt="" coords="5,77,205,102"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="219,87,319,87,319,92,219,92"/>
+</map>

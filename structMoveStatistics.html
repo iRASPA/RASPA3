@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -107,51 +107,77 @@ $(document).ready(function(){initNavTree('structMoveStatistics.html',''); initRe
   <div class="headertitle"><div class="title">MoveStatistics&lt; T &gt; Struct Template Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_move__statistics.html">move_statistics</a></div></div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Collects and manages statistical data for move operations.  
+ <a href="structMoveStatistics.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a8a853d7dd64c568904a356820270bb41" id="r_a8a853d7dd64c568904a356820270bb41"><td class="memItemLeft" align="right" valign="top"><a id="a8a853d7dd64c568904a356820270bb41" name="a8a853d7dd64c568904a356820270bb41"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; T &gt; const &amp;) const =default</td></tr>
 <tr class="separator:a8a853d7dd64c568904a356820270bb41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a064af0c06c2e743f37b0af66e30f63dc" id="r_a064af0c06c2e743f37b0af66e30f63dc"><td class="memItemLeft" align="right" valign="top"><a id="a064af0c06c2e743f37b0af66e30f63dc" name="a064af0c06c2e743f37b0af66e30f63dc"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>clear</b> ()</td></tr>
+<tr class="memitem:a064af0c06c2e743f37b0af66e30f63dc" id="r_a064af0c06c2e743f37b0af66e30f63dc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMoveStatistics.html#a064af0c06c2e743f37b0af66e30f63dc">clear</a> ()</td></tr>
+<tr class="memdesc:a064af0c06c2e743f37b0af66e30f63dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Resets the statistical counters.  <br /></td></tr>
 <tr class="separator:a064af0c06c2e743f37b0af66e30f63dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a926568b402f9c0a0a4ba913512f1f39b" id="r_a926568b402f9c0a0a4ba913512f1f39b"><td class="memItemLeft" align="right" valign="top"><a id="a926568b402f9c0a0a4ba913512f1f39b" name="a926568b402f9c0a0a4ba913512f1f39b"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>optimizeAcceptance</b> (T lowerLimit=T(0.0), T upperLimit=T(1.0))</td></tr>
-<tr class="separator:a926568b402f9c0a0a4ba913512f1f39b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7f51d67d7658df6bf32cec152391bb2e" id="r_a7f51d67d7658df6bf32cec152391bb2e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMoveStatistics.html#a7f51d67d7658df6bf32cec152391bb2e">optimizeAcceptance</a> ()</td></tr>
+<tr class="memdesc:a7f51d67d7658df6bf32cec152391bb2e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optimizes the acceptance rate of moves.  <br /></td></tr>
+<tr class="separator:a7f51d67d7658df6bf32cec152391bb2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0cea306a32dc96b4512349855a4a1cf4" id="r_a0cea306a32dc96b4512349855a4a1cf4"><td class="memTemplParams" colspan="2"><a id="a0cea306a32dc96b4512349855a4a1cf4" name="a0cea306a32dc96b4512349855a4a1cf4"></a>
+template&lt;class U &gt; </td></tr>
+<tr class="memitem:a0cea306a32dc96b4512349855a4a1cf4"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="structMoveStatistics.html">MoveStatistics</a> &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>operator+=</b> (const <a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; U &gt; &amp;b)</td></tr>
+<tr class="separator:a0cea306a32dc96b4512349855a4a1cf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ae9348a8831b926728758c159aca96f67" id="r_ae9348a8831b926728758c159aca96f67"><td class="memItemLeft" align="right" valign="top"><a id="ae9348a8831b926728758c159aca96f67" name="ae9348a8831b926728758c159aca96f67"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {2}</td></tr>
+<tr class="memdesc:ae9348a8831b926728758c159aca96f67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization purposes. <br /></td></tr>
 <tr class="separator:ae9348a8831b926728758c159aca96f67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6fdd601d8355e04b8615bfb67a1bb975" id="r_a6fdd601d8355e04b8615bfb67a1bb975"><td class="memItemLeft" align="right" valign="top"><a id="a6fdd601d8355e04b8615bfb67a1bb975" name="a6fdd601d8355e04b8615bfb67a1bb975"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>counts</b> {}</td></tr>
+<tr class="memdesc:a6fdd601d8355e04b8615bfb67a1bb975"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of move attempts. <br /></td></tr>
 <tr class="separator:a6fdd601d8355e04b8615bfb67a1bb975"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c8d02d513d97aae62f00ddbf99ae816" id="r_a7c8d02d513d97aae62f00ddbf99ae816"><td class="memItemLeft" align="right" valign="top"><a id="a7c8d02d513d97aae62f00ddbf99ae816" name="a7c8d02d513d97aae62f00ddbf99ae816"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>constructed</b> {}</td></tr>
+<tr class="memdesc:a7c8d02d513d97aae62f00ddbf99ae816"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of moves constructed. <br /></td></tr>
 <tr class="separator:a7c8d02d513d97aae62f00ddbf99ae816"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a799069d5dbb12fdb5b51227f3baf2ca4" id="r_a799069d5dbb12fdb5b51227f3baf2ca4"><td class="memItemLeft" align="right" valign="top"><a id="a799069d5dbb12fdb5b51227f3baf2ca4" name="a799069d5dbb12fdb5b51227f3baf2ca4"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>accepted</b> {}</td></tr>
+<tr class="memdesc:a799069d5dbb12fdb5b51227f3baf2ca4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of moves accepted. <br /></td></tr>
 <tr class="separator:a799069d5dbb12fdb5b51227f3baf2ca4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1eceaa46f9b9ba66c5eb3a6824aa98be" id="r_a1eceaa46f9b9ba66c5eb3a6824aa98be"><td class="memItemLeft" align="right" valign="top"><a id="a1eceaa46f9b9ba66c5eb3a6824aa98be" name="a1eceaa46f9b9ba66c5eb3a6824aa98be"></a>
 std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>allCounts</b> {}</td></tr>
+<tr class="memdesc:a1eceaa46f9b9ba66c5eb3a6824aa98be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total number of counts across all types. <br /></td></tr>
 <tr class="separator:a1eceaa46f9b9ba66c5eb3a6824aa98be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a281604fa5eca42ea9ae0912dbf2d121f" id="r_a281604fa5eca42ea9ae0912dbf2d121f"><td class="memItemLeft" align="right" valign="top"><a id="a281604fa5eca42ea9ae0912dbf2d121f" name="a281604fa5eca42ea9ae0912dbf2d121f"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>totalCounts</b> {}</td></tr>
+<tr class="memdesc:a281604fa5eca42ea9ae0912dbf2d121f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total move attempts across all simulations. <br /></td></tr>
 <tr class="separator:a281604fa5eca42ea9ae0912dbf2d121f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a414e98d30a2468ced9b383b86a1f6825" id="r_a414e98d30a2468ced9b383b86a1f6825"><td class="memItemLeft" align="right" valign="top"><a id="a414e98d30a2468ced9b383b86a1f6825" name="a414e98d30a2468ced9b383b86a1f6825"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>totalConstructed</b> {}</td></tr>
+<tr class="memdesc:a414e98d30a2468ced9b383b86a1f6825"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total moves constructed across all simulations. <br /></td></tr>
 <tr class="separator:a414e98d30a2468ced9b383b86a1f6825"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d546cab5fff2095667239d800003b54" id="r_a1d546cab5fff2095667239d800003b54"><td class="memItemLeft" align="right" valign="top"><a id="a1d546cab5fff2095667239d800003b54" name="a1d546cab5fff2095667239d800003b54"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>totalAccepted</b> {}</td></tr>
+<tr class="memdesc:a1d546cab5fff2095667239d800003b54"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total moves accepted across all simulations. <br /></td></tr>
 <tr class="separator:a1d546cab5fff2095667239d800003b54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acfce90f91e679b874d4c063c14420b76" id="r_acfce90f91e679b874d4c063c14420b76"><td class="memItemLeft" align="right" valign="top"><a id="acfce90f91e679b874d4c063c14420b76" name="acfce90f91e679b874d4c063c14420b76"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>maxChange</b> {}</td></tr>
+<tr class="memdesc:acfce90f91e679b874d4c063c14420b76"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum allowed change in move parameters. <br /></td></tr>
 <tr class="separator:acfce90f91e679b874d4c063c14420b76"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a00de5a8a9c6ff5cf4bea3f8248fd07ea" id="r_a00de5a8a9c6ff5cf4bea3f8248fd07ea"><td class="memItemLeft" align="right" valign="top"><a id="a00de5a8a9c6ff5cf4bea3f8248fd07ea" name="a00de5a8a9c6ff5cf4bea3f8248fd07ea"></a>
 T&#160;</td><td class="memItemRight" valign="bottom"><b>targetAcceptance</b> {0.5}</td></tr>
+<tr class="memdesc:a00de5a8a9c6ff5cf4bea3f8248fd07ea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Target acceptance rate for moves. <br /></td></tr>
 <tr class="separator:a00de5a8a9c6ff5cf4bea3f8248fd07ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaca78b60bf66650a3c50e57c9f28330c" id="r_aaca78b60bf66650a3c50e57c9f28330c"><td class="memItemLeft" align="right" valign="top"><a id="aaca78b60bf66650a3c50e57c9f28330c" name="aaca78b60bf66650a3c50e57c9f28330c"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>lowerLimit</b> {}</td></tr>
+<tr class="separator:aaca78b60bf66650a3c50e57c9f28330c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afb8e0eaa9eeff9cadae01077063bede3" id="r_afb8e0eaa9eeff9cadae01077063bede3"><td class="memItemLeft" align="right" valign="top"><a id="afb8e0eaa9eeff9cadae01077063bede3" name="afb8e0eaa9eeff9cadae01077063bede3"></a>
+T&#160;</td><td class="memItemRight" valign="bottom"><b>upperLimit</b> {}</td></tr>
+<tr class="separator:afb8e0eaa9eeff9cadae01077063bede3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa7ec4c09ff73255dece91f1983e8e92c" id="r_aa7ec4c09ff73255dece91f1983e8e92c"><td class="memItemLeft" align="right" valign="top"><a id="aa7ec4c09ff73255dece91f1983e8e92c" name="aa7ec4c09ff73255dece91f1983e8e92c"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>optimize</b> {true}</td></tr>
+<tr class="separator:aa7ec4c09ff73255dece91f1983e8e92c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>
@@ -164,6 +190,77 @@ template&lt;class U &gt; </td></tr>
 <tr class="memitem:ac15540041b47510cfc3200ff070b819d"><td class="memTemplItemLeft" align="right" valign="top">Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memTemplItemRight" valign="bottom"><b>operator&gt;&gt;</b> (Archive&lt; std::ifstream &gt; &amp;archive, <a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; U &gt; &amp;m)</td></tr>
 <tr class="separator:ac15540041b47510cfc3200ff070b819d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><div class="compoundTemplParams">template&lt;typename T&gt;<br />
+struct MoveStatistics&lt; T &gt;</div><p>Collects and manages statistical data for move operations. </p>
+<p>The <code><a class="el" href="structMoveStatistics.html" title="Collects and manages statistical data for move operations.">MoveStatistics</a></code> struct accumulates statistics related to move operations in simulations. It keeps track of counts, acceptance rates, and allows for optimization of move parameters based on these statistics.</p>
+<dl class="tparams"><dt>Template Parameters</dt><dd>
+  <table class="tparams">
+    <tr><td class="paramname">T</td><td>The numeric type used for counting and statistical calculations (e.g., <code>double</code>). </td></tr>
+  </table>
+  </dd>
+</dl>
+</div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="a064af0c06c2e743f37b0af66e30f63dc" name="a064af0c06c2e743f37b0af66e30f63dc"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a064af0c06c2e743f37b0af66e30f63dc">&#9670;&#160;</a></span>clear()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; T &gt;::clear </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Resets the statistical counters. </p>
+<p>Clears all the counts and statistics to start fresh. </p>
+
+</div>
+</div>
+<a id="a7f51d67d7658df6bf32cec152391bb2e" name="a7f51d67d7658df6bf32cec152391bb2e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f51d67d7658df6bf32cec152391bb2e">&#9670;&#160;</a></span>optimizeAcceptance()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void <a class="el" href="structMoveStatistics.html">MoveStatistics</a>&lt; T &gt;::optimizeAcceptance </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Optimizes the acceptance rate of moves. </p>
+<p>Adjusts the maximum change allowed in move parameters based on the acceptance rate to approach the target acceptance rate. </p>
+
+</div>
+</div>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/mc_moves/<b>move_statistics.ixx</b></li>
 </ul>

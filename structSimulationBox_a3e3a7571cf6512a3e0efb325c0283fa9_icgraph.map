@@ -5,6 +5,6 @@
 <area shape="poly" id="edge2_Node000001_Node000002" title=" " alt="" coords="231,54,143,33,144,28,232,49"/>
 <area shape="rect" id="Node000003" href="$structSimulationBox.html#ad0f9c0ec316c0e1a89748d299140d1b2" title="Returns a new SimulationBox scaled by a scalar factor." alt="" coords="5,55,172,80"/>
 <area shape="poly" id="edge3_Node000001_Node000003" title=" " alt="" coords="206,70,172,70,172,65,206,65"/>
-<area shape="rect" id="Node000004" href="$structSimulationBox.html#ae0842001f6569cbd621baf666b834ed9" title="Returns a new SimulationBox scaled by integer factors along each axis." alt="" coords="5,104,172,129"/>
+<area shape="rect" id="Node000004" href="$structSimulationBox.html#a3e48588008dd6b112164cb4e44da2439" title="Returns a new SimulationBox scaled by integer factors along each axis." alt="" coords="5,104,172,129"/>
 <area shape="poly" id="edge4_Node000001_Node000004" title=" " alt="" coords="232,86,144,107,143,101,231,81"/>
 </map>

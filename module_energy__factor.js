@@ -1,4 +1,4 @@
 var module_energy__factor =
 [
-    [ "EnergyFactor", "structEnergyFactor.html", "structEnergyFactor" ]
+    [ "EnergyFactor", "structPotentials_1_1EnergyFactor.html", null ]
 ];

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -176,6 +176,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>weight</b> () const
 <tr class="memitem:ab0cfba76e6d45dd681c8c7fad6f01ecb" id="r_ab0cfba76e6d45dd681c8c7fad6f01ecb"><td class="memItemLeft" align="right" valign="top"><a id="ab0cfba76e6d45dd681c8c7fad6f01ecb" name="ab0cfba76e6d45dd681c8c7fad6f01ecb"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WangLandauIteration</b> (PropertyLambdaProbabilityHistogram::WangLandauPhase phase, bool containsTheFractionalMolecule, double value=1.0)</td></tr>
 <tr class="separator:ab0cfba76e6d45dd681c8c7fad6f01ecb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cafb20cc8f4d4ed8b137021dde66f72" id="r_a4cafb20cc8f4d4ed8b137021dde66f72"><td class="memItemLeft" align="right" valign="top"><a id="a4cafb20cc8f4d4ed8b137021dde66f72" name="a4cafb20cc8f4d4ed8b137021dde66f72"></a>
+std::pair&lt; std::vector&lt; double &gt;, std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>normalizedAverageProbabilityHistogram</b> ()</td></tr>
+<tr class="separator:a4cafb20cc8f4d4ed8b137021dde66f72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ff2e7dd7c4523853594a8d6e8511cdf" id="r_a0ff2e7dd7c4523853594a8d6e8511cdf"><td class="memItemLeft" align="right" valign="top"><a id="a0ff2e7dd7c4523853594a8d6e8511cdf" name="a0ff2e7dd7c4523853594a8d6e8511cdf"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>writeAveragesStatistics</b> (double beta, std::optional&lt; double &gt; imposedChemicalPotential, std::optional&lt; double &gt; imposedFugacity) const</td></tr>
 <tr class="separator:a0ff2e7dd7c4523853594a8d6e8511cdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -263,6 +266,12 @@ std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bot
 <tr class="memitem:ab2bf0fcab52ad8bb7efee94d9eb25235" id="r_ab2bf0fcab52ad8bb7efee94d9eb25235"><td class="memItemLeft" align="right" valign="top"><a id="ab2bf0fcab52ad8bb7efee94d9eb25235" name="ab2bf0fcab52ad8bb7efee94d9eb25235"></a>
 std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageFugacityDUdlambda</b> (double beta) const</td></tr>
 <tr class="separator:ab2bf0fcab52ad8bb7efee94d9eb25235"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6a8a57dd8846b67e216c3e49763f7f5" id="r_af6a8a57dd8846b67e216c3e49763f7f5"><td class="memItemLeft" align="right" valign="top"><a id="af6a8a57dd8846b67e216c3e49763f7f5" name="af6a8a57dd8846b67e216c3e49763f7f5"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>readBiasingFile</b> (std::filesystem::path path)</td></tr>
+<tr class="separator:af6a8a57dd8846b67e216c3e49763f7f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80e86a6e80b2bc44a17f8793615ec1bb" id="r_a80e86a6e80b2bc44a17f8793615ec1bb"><td class="memItemLeft" align="right" valign="top"><a id="a80e86a6e80b2bc44a17f8793615ec1bb" name="a80e86a6e80b2bc44a17f8793615ec1bb"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>writeBiasingFile</b> (std::filesystem::path path)</td></tr>
+<tr class="separator:a80e86a6e80b2bc44a17f8793615ec1bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>

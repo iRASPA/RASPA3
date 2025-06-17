@@ -21,7 +21,7 @@ var structSimulationBox =
     [ "scale", "structSimulationBox.html#a3e3a7571cf6512a3e0efb325c0283fa9", null ],
     [ "scale", "structSimulationBox.html#a3709bea5d05f5c0e42e13be72529451e", null ],
     [ "scaled", "structSimulationBox.html#ad0f9c0ec316c0e1a89748d299140d1b2", null ],
-    [ "scaled", "structSimulationBox.html#ae0842001f6569cbd621baf666b834ed9", null ],
+    [ "scaled", "structSimulationBox.html#a3e48588008dd6b112164cb4e44da2439", null ],
     [ "setBoxAngles", "structSimulationBox.html#a18bec4a4b25603f55d404cb9993662a8", null ],
     [ "setBoxLengths", "structSimulationBox.html#a018ee71b61f42715e924e5f61e157bcd", null ]
 ];

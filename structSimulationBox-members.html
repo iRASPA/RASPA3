@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -129,7 +129,7 @@ $(document).ready(function(){initNavTree('structSimulationBox.html',''); initRes
   <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#a3e3a7571cf6512a3e0efb325c0283fa9">scale</a>(double scale)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#a3709bea5d05f5c0e42e13be72529451e">scale</a>(int3 scale)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#ad0f9c0ec316c0e1a89748d299140d1b2">scaled</a>(double scale)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#ae0842001f6569cbd621baf666b834ed9">scaled</a>(int3 scale)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
+  <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#a3e48588008dd6b112164cb4e44da2439">scaled</a>(int3 scale) const</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#a18bec4a4b25603f55d404cb9993662a8">setBoxAngles</a>(double3 angles)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#a018ee71b61f42715e924e5f61e157bcd">setBoxLengths</a>(double3 lengths)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#a17abbed119eba7feaec55ca61e9e9407">SimulationBox</a>()</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">inline</span></td></tr>
@@ -138,11 +138,12 @@ $(document).ready(function(){initNavTree('structSimulationBox.html',''); initRes
   <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#ada93ac48615d5bf6d3062194ef342b0e">SimulationBox</a>(double a, double b, double c, double alpha, double beta, double gamma, Type type)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">explicit</span></td></tr>
   <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#aa9a150cb698613e8ea60b0c73950fb8b">SimulationBox</a>(double3x3 m)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">explicit</span></td></tr>
   <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#a087110db444696d3293256bac59eebe6">SimulationBox</a>(double3x3 m, Type type)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">explicit</span></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>to_json</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
-  <tr class="even"><td class="entry"><a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a> enum name</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>type</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>versionNumber</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
-  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>volume</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>smallestNumberOfUnitCellsForMinimumImagesConvention</b>(double cutOff) const (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>to_json</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"><span class="mlabel">friend</span></td></tr>
+  <tr class="odd"><td class="entry"><a class="el" href="structSimulationBox.html#a0b5d2bc5482a5f210c432f06d00f258b">Type</a> enum name</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>type</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="odd"><td class="entry"><b>versionNumber</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
+  <tr bgcolor="#f0f0f0" class="even"><td class="entry"><b>volume</b> (defined in <a class="el" href="structSimulationBox.html">SimulationBox</a>)</td><td class="entry"><a class="el" href="structSimulationBox.html">SimulationBox</a></td><td class="entry"></td></tr>
 </table></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

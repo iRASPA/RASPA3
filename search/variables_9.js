@@ -8,10 +8,11 @@ var searchData=
   ['initialnumberofmolecules_5',['initialNumberOfMolecules',['../structComponent.html#ae61c189255075e2e2dd6607ece850179',1,'Component']]],
   ['inputstring_6',['inputString',['../structInputReader.html#a41eda75f00d9415d2e775501ce9808af',1,'InputReader']]],
   ['intracoul_7',['intraCoul',['../structRunningEnergy.html#a30b1ec533ad027497b2d4d9bed936ddd',1,'RunningEnergy']]],
-  ['intracoulomb_8',['intracoulomb',['../structComponent.html#a7b15b1623983677fca6493eaef6c43b1',1,'Component::intraCoulomb'],['../structFramework.html#a81e787595c67aabe2ae1bec2ebafd6ff',1,'Framework::intraCoulomb']]],
+  ['intracoulomb_8',['intracoulomb',['../structFramework.html#a81e787595c67aabe2ae1bec2ebafd6ff',1,'Framework::intraCoulomb'],['../structComponent.html#a7b15b1623983677fca6493eaef6c43b1',1,'Component::intraCoulomb']]],
   ['intravdw_9',['intravdw',['../structComponent.html#a0dead5a2e3dbdbeb0bbdbfbfd1546bcb',1,'Component::intraVDW'],['../structFramework.html#aad4d654ef6f0f109626ebd1255c4f23e',1,'Framework::intraVDW'],['../structRunningEnergy.html#a6e4b1176212f678c23bd5bc7f8d3d3af',1,'RunningEnergy::intraVDW']]],
   ['inverseinertiavector_10',['inverseInertiaVector',['../structComponent.html#a968417688263e19e11c6ebafb80d54c0',1,'Component']]],
   ['inversionbends_11',['inversionbends',['../structComponent.html#aab3bb6511536c94da913d7223db9e7bd',1,'Component::inversionBends'],['../structFramework.html#ae79fb947c861b50cabc4eaaa2fdda164',1,'Framework::inversionBends']]],
-  ['iscarriergas_12',['isCarrierGas',['../structComponent.html#ab3ffea792d45bdeb913c7fbec63f272f',1,'Component']]],
-  ['isotherm_13',['isotherm',['../structComponent.html#a5078016b338c5ce128074445efcf8e32',1,'Component']]]
+  ['invmass_12',['invMass',['../structMolecule.html#acb1704646872ce5c98ad93cddabd2b08',1,'Molecule']]],
+  ['iscarriergas_13',['isCarrierGas',['../structComponent.html#ab3ffea792d45bdeb913c7fbec63f272f',1,'Component']]],
+  ['isotherm_14',['isotherm',['../structComponent.html#a5078016b338c5ce128074445efcf8e32',1,'Component']]]
 ];

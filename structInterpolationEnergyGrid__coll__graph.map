@@ -1,0 +1,7 @@
+<map id="InterpolationEnergyGrid" name="InterpolationEnergyGrid">
+<area shape="rect" id="Node000001" title=" " alt="" coords="58,93,235,119"/>
+<area shape="rect" id="Node000002" href="$structSimulationBox.html" title="Represents a simulation box used in simulations." alt="" coords="5,5,123,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="87,39,137,91,133,95,83,43"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="147,5,312,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="218,44,198,71,168,95,165,91,194,67,214,41"/>
+</map>

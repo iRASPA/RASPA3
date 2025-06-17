@@ -1,4 +1,4 @@
 var module_mc__moves__cputime =
 [
-    [ "MCMoveCpuTime", "structMCMoveCpuTime.html", null ]
+    [ "MCMoveCpuTime", "structMCMoveCpuTime.html", "structMCMoveCpuTime" ]
 ];

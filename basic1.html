@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -105,8 +105,8 @@ $(document).ready(function(){initNavTree('basic1.html',''); initResizable(); });
 <div class="textblock"><p>Here we run a basic Lennard-Jones simulation, using a United-Atom representation of methane.</p>
 <p>You can find the directory with the all input files at <code>examples/basic/1_mc_methane_in_box</code>.</p>
 <p>As this is likely your first simulation, let me explain what is happening after the input file is read.</p>
-<p>First, your <code>simulation.input</code> file is read by the <a class="el" href="structInputReader.html" title="Class responsible for reading and parsing simulation input files.">InputReader</a>. It parses the input in three sections. First of all, general simulation settings like <code>SimulationType</code> and <code>NumberOfCycles</code> is read and set to the right attributes. Also, it will read the <code>force_field.json</code>.</p>
-<p>Then, from the <b>list</b> of systems a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object is created for every entry. The <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object is central to all simulations and holds the lists of <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a>, <a class="el" href="structMolecule.html" title="Represents a molecule in the simulation system.">Molecule</a>, <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a>, <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>, <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a>, and also a variety of other trackers and property objects. While in this run we don't include a framework, this is also the place where a <a class="el" href="structFramework.html" title="Represents a framework in the simulation system.">Framework</a> object can be created.</p>
+<p>First, your <code>simulation.json</code> file is read by the <a class="el" href="structInputReader.html" title="Class responsible for reading and parsing simulation input files.">InputReader</a>. It parses the input in three sections. First of all, general simulation settings like <code>SimulationType</code> and <code>NumberOfCycles</code> is read and set to the right attributes. Also, it will read the <code>force_field.json</code>.</p>
+<p>Then, from the <b>list</b> of systems a <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object is created for every entry. The <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> object is central to all simulations and holds the lists of <a class="el" href="structAtom.html" title="Represents an atom in the simulation system.">Atom</a>, <a class="el" href="structMolecule.html">Molecule</a>, <a class="el" href="structThermostat.html" title="Represents a Nose-Hoover thermostat for molecular dynamics simulations.">Thermostat</a>, <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>, MCMoveProbabilitiesParticles, and also a variety of other trackers and property objects. While in this run we don't include a framework, this is also the place where a <a class="el" href="structFramework.html" title="Represents a framework in the simulation system.">Framework</a> object can be created.</p>
 <p>Next, it will create a <a class="el" href="structComponent.html" title="Represents a component within the simulation system.">Component</a> object. This object holds information about the specific molecule, which holds thermodynamic and structural information.</p>
 <p>Next, it will create a <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> object, which is then initialized with the <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> objects and runs the simulation. This object loops over the cycles and performs the moves on the system.</p>
 <p>During your run a few things will be created. First of all, an <code>output/</code> directory will be created with a <code>.txt</code> file which holds logging statements. Here, you can find all information about the run. Before the run all the settings are logged. Here you can find, for example, all force field settings, information about your system, units, components, frameworks, etc. During the run, with a frequency of <code>PrintEvery</code> cycles, statistics about the system are logged. This includes the pressure, energy, number of molecules, etc. At the end all these properties are then wrapped up in reports that give the block averages and report the energy drift of the system.</p>
@@ -140,19 +140,29 @@ $(document).ready(function(){initNavTree('basic1.html',''); initResizable(); });
 <div class="line">  ]</div>
 <div class="line">}</div>
 </div><!-- fragment --><h1>Run with python</h1>
-<p>Very similarly to what happens behind the scene during a run initiated from a <code>simulation.input</code> file, we can also carry out these steps ourselves, using python code.</p>
-<p>We first create a <code>raspa.ForceField</code> object, which without arguments, uses a default force field, which can be found in <code>data/forcefields/force_field.json</code>. Then, we have to create the <a class="el" href="structMCMoveProbabilitiesParticles.html">MCMoveProbabilitiesParticles</a> object ourselves, in this case we add just a <code>translationProbability</code> of 1.0. Then, we create the component, which in this case is the default methane component given by <code>raspa.Component.exampleCH4</code>. We also create a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>. Then we add all these things to <code>raspa.System</code>. Afterwards, we pass the <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> to <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> and call run, after which the simulation is started. This allows us to interact with the simulation objects after the run.</p>
-<div class="fragment"><div class="line"><span class="keyword">import</span> raspa</div>
+<p>Very similarly to what happens behind the scene during a run initiated from a <code>simulation.json</code> file, we can also carry out these steps ourselves, using python code.</p>
+<p>We first create a <code>raspalib.ForceField</code> object, which without arguments, uses a default force field, which can be found in <code>data/forcefields/force_field.json</code>. Then, we have to create the MCMoveProbabilitiesParticles object ourselves, in this case we add just a <code>translationProbability</code> of 1.0. Then, we create the component, which in this case is the default methane component given by <code>raspa.Component</code>. We also create a <a class="el" href="structSimulationBox.html" title="Represents a simulation box used in simulations.">SimulationBox</a>. Then we add all these things to <code>raspa.System</code>. Afterwards, we pass the <a class="el" href="structSystem.html" title="Represents the central system for simulations.">System</a> to <a class="el" href="structMonteCarlo.html" title="Performs Monte Carlo simulations for molecular systems.">MonteCarlo</a> and call run, after which the simulation is started. This allows us to interact with the simulation objects after the run.</p>
+<div class="fragment"><div class="line"><span class="keyword">import</span> raspalib</div>
 <div class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</div>
 <div class="line"> </div>
-<div class="line">ff = raspa.ForceField.exampleMoleculeForceField()</div>
+<div class="line">ff = raspalib.ForceField(<span class="stringliteral">&quot;force_field.json&quot;</span>)</div>
+<div class="line">ff.useCharge = <span class="keyword">False</span></div>
 <div class="line"> </div>
-<div class="line">mcmoves = raspa.MCMoveProbabilitiesParticles(translationProbability=1.0)</div>
-<div class="line">methane = raspa.Component.exampleCH4(0, ff, particleProbabilities=mcmoves)</div>
-<div class="line">box = raspa.SimulationBox(30.0 * np.ones(3))</div>
-<div class="line">system = raspa.System(</div>
+<div class="line">mcmoves = raspalib.MCMoveProbabilities(translationProbability=1.0)</div>
+<div class="line"> </div>
+<div class="line">methane = raspalib.Component(</div>
+<div class="line">    componentId=0,</div>
+<div class="line">    forceField=ff,</div>
+<div class="line">    componentName=<span class="stringliteral">&quot;methane&quot;</span>,</div>
+<div class="line">    fileName=<span class="stringliteral">&quot;methane.json&quot;</span>,</div>
+<div class="line">    particleProbabilities=mcmoves,</div>
+<div class="line">)</div>
+<div class="line"> </div>
+<div class="line">box = raspalib.SimulationBox(30.0, 30.0, 30.0)</div>
+<div class="line"> </div>
+<div class="line">system = raspalib.System(</div>
 <div class="line">    systemId=0,</div>
-<div class="line">    temperature=300.0,</div>
+<div class="line">    externalTemperature=300.0,</div>
 <div class="line">    forceField=ff,</div>
 <div class="line">    components=[methane],</div>
 <div class="line">    initialNumberOfMolecules=[100],</div>
@@ -160,10 +170,11 @@ $(document).ready(function(){initNavTree('basic1.html',''); initResizable(); });
 <div class="line">    sampleMoviesEvery=10,</div>
 <div class="line">)</div>
 <div class="line"> </div>
-<div class="line">mc = raspa.MonteCarlo(</div>
+<div class="line">mc = raspalib.MonteCarlo(</div>
 <div class="line">    numberOfCycles=10000,</div>
 <div class="line">    numberOfInitializationCycles=1000,</div>
 <div class="line">    systems=[system],</div>
+<div class="line">    outputToFiles=<span class="keyword">True</span>,</div>
 <div class="line">)</div>
 <div class="line">mc.run()</div>
 </div><!-- fragment --> </div></div><!-- contents -->

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.0</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -144,13 +144,13 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <li>PDB-movies, energy histograms, number of molecule histograms</li>
 <li>RDF, MSD-order-N, VACF, density grids (cube files)</li>
 <li>charge equilibration</li>
+<li>MC/MD hybrid move</li>
+<li>tail-corrections for CFCMC</li>
+<li>grids for rigid frameworks</li>
 </ul>
 <h1>Todo-list</h1>
 <ul>
-<li>tail-corrections for CFCMC</li>
 <li>restart-file</li>
-<li>MC/MD hybrid move</li>
-<li>grids for rigid frameworks</li>
 <li>flexible molecules</li>
 <li>flexible frameworks</li>
 <li>reaction ensemble</li>
@@ -212,67 +212,92 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 </li>
 <li>blas and lapack (64-bit integers)</li>
 <li>openmp</li>
-<li>hfd5</li>
+<li>hdf5</li>
 </ul>
-<h3>presets</h3>
+<h3>Installing dependencies with Conda</h3>
+<p>The most practical method of compiling raspa from source is through installing the dependencies with conda. This is readily achieved through:</p>
+<div class="fragment"><div class="line">conda env create -f env.yml</div>
+<div class="line">conda acitvate raspa</div>
+<div class="line">cmake --preset=linux_conda   # or -preset=mac_conda</div>
+<div class="line">ninja -C build</div>
+</div><!-- fragment --><h3>presets</h3>
 <p>cmake &ndash;list-presets<br  />
  Available configure presets:<br  />
  </p><blockquote class="doxtable">
-<p>&zwj;"macos-x64-core-avx2"<br  />
+<p>&zwj;"windows_conda_raspa3"<br  />
+ "mac_conda"<br  />
+ "mac_conda_raspa3"<br  />
+ "linux_conda"<br  />
+ "linux_conda_raspa3"<br  />
+ "windows_conda_raspalib"<br  />
+ "mac_conda_raspalib"<br  />
+ "linux_conda_raspalib"<br  />
+ "windows-arm64-package"<br  />
+ "windows-x64-core-avx2-package"<br  />
+ "windows-x64-skylake-avx512-package"<br  />
+ "macos-x64-core-avx2"<br  />
+ "macos-x64-core-avx2-package"<br  />
  "macos-x64-skylake-avx512"<br  />
+ "macos-x64-skylake-avx512-package"<br  />
  "macos-x64-debug"<br  />
  "macos-x64-profile"<br  />
  "macos-apple-silicon"<br  />
- "macos-apple-silicon-debug"<br  />
+ "macos-apple-silicon-package"<br  />
  "macos-apple-silicon-profile"<br  />
- "windows-x64"<br  />
- "windows-arm64"<br  />
+ "macos-apple-silicon-debug"<br  />
  "linux-x86_64"<br  />
  "linux-x86_64-carbon"<br  />
  "linux-x86_64-core-avx2-opensuse-leap-15.2"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.3"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.4"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.5"<br  />
- "linux-x86_64-core-avx2-opensuse-tumbleweed"<br  />
- "linux-x86_64-core-avx2-archlinux"<br  />
- "linux-x86_64-core-avx2-redhat-6"<br  />
- "linux-x86_64-core-avx2-redhat-7"<br  />
- "linux-x86_64-core-avx2-redhat-8"<br  />
- "linux-x86_64-core-avx2-redhat-9"<br  />
- "linux-x86_64-core-avx2-debian-12"<br  />
- "linux-x86_64-core-avx2-debian-11"<br  />
- "linux-x86_64-core-avx2-debian-10"<br  />
- "linux-x86_64-core-avx2-ubuntu-24"<br  />
- "linux-x86_64-core-avx2-ubuntu-22"<br  />
- "linux-x86_64-core-avx2-ubuntu-20"<br  />
- "linux-x86_64-core-avx2-fedora-35"<br  />
- "linux-x86_64-core-avx2-fedora-36"<br  />
- "linux-x86_64-core-avx2-fedora-37"<br  />
- "linux-x86_64-core-avx2-fedora-38"<br  />
- "linux-x86_64-core-avx2-fedora-39"<br  />
- "linux-x86_64-core-avx2-fedora-40"<br  />
  "linux-x86_64-skylake-avx512-opensuse-leap-15.2"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.3"<br  />
  "linux-x86_64-skylake-avx512-opensuse-leap-15.3"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.4"<br  />
  "linux-x86_64-skylake-avx512-opensuse-leap-15.4"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.5"<br  />
  "linux-x86_64-skylake-avx512-opensuse-leap-15.5"<br  />
+ "linux-x86_64-core-avx2-opensuse-leap-15.6"<br  />
+ "linux-x86_64-skylake-avx512-opensuse-leap-15.6"<br  />
+ "linux-x86_64-core-avx2-opensuse-tumbleweed"<br  />
  "linux-x86_64-skylake-avx512-opensuse-tumbleweed"<br  />
+ "linux-x86_64-core-avx2-archlinux"<br  />
  "linux-x86_64-skylake-avx512-archlinux"<br  />
+ "linux-x86_64-core-avx2-redhat-6"<br  />
  "linux-x86_64-skylake-avx512-redhat-6"<br  />
+ "linux-x86_64-core-avx2-redhat-7"<br  />
  "linux-x86_64-skylake-avx512-redhat-7"<br  />
+ "linux-x86_64-core-avx2-redhat-8"<br  />
  "linux-x86_64-skylake-avx512-redhat-8"<br  />
+ "linux-x86_64-core-avx2-redhat-9"<br  />
  "linux-x86_64-skylake-avx512-redhat-9"<br  />
+ "linux-x86_64-core-avx2-debian-12"<br  />
  "linux-x86_64-skylake-avx512-debian-12"<br  />
+ "linux-x86_64-core-avx2-debian-11"<br  />
  "linux-x86_64-skylake-avx512-debian-11"<br  />
+ "linux-x86_64-core-avx2-debian-10"<br  />
  "linux-x86_64-skylake-avx512-debian-10"<br  />
+ "linux-x86_64-core-avx2-ubuntu-24"<br  />
  "linux-x86_64-skylake-avx512-ubuntu-24"<br  />
+ "linux-x86_64-core-avx2-ubuntu-22"<br  />
  "linux-x86_64-skylake-avx512-ubuntu-22"<br  />
+ "linux-x86_64-core-avx2-ubuntu-20"<br  />
  "linux-x86_64-skylake-avx512-ubuntu-20"<br  />
+ "linux-x86_64-core-avx2-fedora-35"<br  />
  "linux-x86_64-skylake-avx512-fedora-35"<br  />
+ "linux-x86_64-core-avx2-fedora-36"<br  />
  "linux-x86_64-skylake-avx512-fedora-36"<br  />
+ "linux-x86_64-core-avx2-fedora-37"<br  />
  "linux-x86_64-skylake-avx512-fedora-37"<br  />
+ "linux-x86_64-core-avx2-fedora-38"<br  />
  "linux-x86_64-skylake-avx512-fedora-38"<br  />
+ "linux-x86_64-core-avx2-fedora-39"<br  />
  "linux-x86_64-skylake-avx512-fedora-39"<br  />
- "linux-x86_64-skylake-avx512-fedora-40" </p>
+ "linux-x86_64-core-avx2-fedora-40"<br  />
+ "linux-x86_64-skylake-avx512-fedora-40"<br  />
+ "linux-x86_64-core-avx2-fedora-41"<br  />
+ "linux-x86_64-skylake-avx512-fedora-41"<br  />
+ "linux-aarch64"<br  />
+ "linux-aarch64-ubuntu-24"<br  />
+ "linux-aarch64-redhat-9" </p>
 </blockquote>
 <h3>linux</h3>
 <h4>Ubuntu 24</h4>
