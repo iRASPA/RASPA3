@@ -65,8 +65,9 @@ export namespace CommandLine
     Input = 3,
     SurfaceArea = 4,
     VoidFraction = 5,
-    PSD = 6,
-    Last = 7
+    TessellationComputation = 6,
+    PSD = 7,
+    Last = 8
   };
 
   ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);

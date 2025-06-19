@@ -57,6 +57,7 @@ import energy_opencl_surface_area;
 import energy_void_fraction;
 import energy_surface_area;
 import getopt;
+import tessellation;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
 #endif
@@ -165,11 +166,11 @@ void CommandLine::run(int argc, char* argv[])
 {
   // variables modified by command-line switches
   unsigned long num_threads = 1;
-  bool use_gridbased_methods{false};
-  bool use_monte_carlo_methods{false};
-  bool use_energy_methods{false};
-  bool use_cpu{false};
-  bool use_gpu{false};
+  bool use_gridbased_methods{ false };
+  bool use_monte_carlo_methods{ false };
+  bool use_energy_methods{ false };
+  bool use_cpu{ false };
+  bool use_gpu{ false };
   std::bitset<CommandLine::State::Last> state;
   std::string input_files;
   size_t number_of_iterations{10000};
@@ -243,6 +244,13 @@ void CommandLine::run(int argc, char* argv[])
          [&use_gridbased_methods](std::string const &)
          {
            use_gridbased_methods = true;
+         })
+    .reg({"--tessellation"},
+         argparser::no_argument,
+         "Use tesselation method",
+         [&state](std::string const &)
+         {
+           state.set(State::TessellationComputation);
          })
     .reg({"--cpu"},
          argparser::no_argument,
@@ -380,6 +388,24 @@ void CommandLine::run(int argc, char* argv[])
     }
 
     Framework framework = Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
+
+    if(state.test(CommandLine::State::TessellationComputation))
+    {
+      std::cout << "Compute tesselation" << std::endl;
+
+      if(use_gridbased_methods)
+      {
+        if(use_cpu)
+        {
+        }
+
+        if(use_gpu)
+        {
+          Tessellation s(gridSize);
+          s.run(forceField.value(), framework);
+        }
+      }
+    }
 
     if(state.test(CommandLine::State::SurfaceArea))
     {

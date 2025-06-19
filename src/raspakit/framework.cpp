@@ -437,7 +437,8 @@ bool Framework::computeOverlap(const ForceField &forceField, double3 probe_posit
 
 std::vector<double3> Framework::fractionalAtomPositionsUnitCell() const
 {
-  std::vector<double3> positions(unitCellAtoms.size());
+  std::vector<double3> positions;
+  positions.reserve(unitCellAtoms.size());
 
   double3x3 inverseCell = simulationBox.inverseCell;
   for(const Atom& atom: unitCellAtoms)
@@ -451,7 +452,8 @@ std::vector<double3> Framework::fractionalAtomPositionsUnitCell() const
 
 std::vector<double2> Framework::atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const
 {
-  std::vector<double2> parameters(unitCellAtoms.size());
+  std::vector<double2> parameters;
+  parameters.reserve(unitCellAtoms.size());
 
   for(const Atom& atom: unitCellAtoms)
   {
