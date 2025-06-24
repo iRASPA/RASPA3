@@ -71,6 +71,52 @@ import triquintic_derivative_factor;
 import framework;
 import component;
 
+double Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType,
+                                               const ForceField &forceField, const SimulationBox &simulationBox,
+                                               double3 posA, size_t typeA, std::span<const Atom> frameworkAtoms)
+{
+  const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
+
+  double energy{0.0};
+  Potentials::TricubicDerivativeFactor v{};
+
+  for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  {
+    double3 posB = it1->position;
+    size_t typeB = static_cast<size_t>(it1->type);
+    double chargeB = it1->charge;
+
+    double3 dr = posA - posB;
+    dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+    double rr = std::max(0.1, double3::dot(dr, dr));
+
+    if (rr < cutOffFrameworkVDWSquared)
+    {
+      switch (interpolationGridType)
+      {
+        case ForceField::InterpolationGridType::LennardJones:
+          v = Potentials::potentialLennardJonesTricubicDerivative(forceField, rr, typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesRepulsion:
+          v = Potentials::potentialLennardJonesRepulsionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
+                                                                           typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::LennardJonesAttraction:
+          v = Potentials::potentialLennardJonesAttractionTricubicDerivative(forceField, rr, cutOffFrameworkVDWSquared,
+                                                                            typeA, typeB);
+          break;
+        case ForceField::InterpolationGridType::EwaldReal:
+          v = Potentials::potentialRealEwaldTricubicDerivative(forceField, rr, std::sqrt(rr), 1.0, chargeB);
+          break;
+      }
+
+      energy += v.energy;
+    }
+  }
+
+  return energy;
+}
+
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
 Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,

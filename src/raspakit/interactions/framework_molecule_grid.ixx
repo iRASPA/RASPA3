@@ -34,6 +34,10 @@ import component;
 
 export namespace Interactions
 {
+double calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType,
+                                 const ForceField &forceField, const SimulationBox &simulationBox, double3 posB,
+                                 size_t typeB, std::span<const Atom> frameworkAtoms);
+
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
 calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,

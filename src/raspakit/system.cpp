@@ -2145,6 +2145,15 @@ void System::createInterpolationGrids(std::ostream& stream)
         double3x3 analytical_vdw_hessian{};
         switch (forceField.interpolationScheme)
         {
+          case ForceField::InterpolationScheme::Polynomial:
+          {
+            double analytical_vdw_quintic = Interactions::calculateEnergyAtPosition(
+                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, 
+                pos, index, spanOfFrameworkAtoms());
+
+            analytical_vdw_energy = analytical_vdw_quintic * Units::EnergyToKelvin;
+          }
+          break;
           case ForceField::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> analytical_vdw_tricubic = Interactions::calculateTricubicFractionalAtPosition(
@@ -2312,6 +2321,15 @@ void System::createInterpolationGrids(std::ostream& stream)
           double3x3 analytical_real_ewald_hessian{};
           switch (forceField.interpolationScheme)
           {
+            case ForceField::InterpolationScheme::Polynomial:
+            {
+              double analytical_real_ewald_tricubic = Interactions::calculateEnergyAtPosition(
+                  ForceField::InterpolationGridType::EwaldReal, forceField, simulationBox, 
+                  pos, index, spanOfFrameworkAtoms());
+
+              analytical_real_ewald_energy = charge * analytical_real_ewald_tricubic * Units::EnergyToKelvin;
+            }
+            break;
             case ForceField::InterpolationScheme::Tricubic:
             {
               std::array<double, 8> analytical_real_ewald_tricubic =
@@ -2492,29 +2510,33 @@ void System::createInterpolationGrids(std::ostream& stream)
           stream, "Boltzmann relative error:                  {}\n\n",
           std::sqrt(boltzmann_weighted_difference_squared_summed_vdw / boltzmann_weighted_full_squared_summed_vdw));
 
-      std::print(stream, "Boltzmann average gradient(x) VDW (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_vdw.x / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann average gradient(x) VDW (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_vdw.x / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.x /
-                           boltzmann_weighted_full_squared_summed_vdw_gradient.x));
+      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
+          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      {
+        std::print(stream, "Boltzmann average gradient(x) VDW (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_vdw.x / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann average gradient(x) VDW (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_vdw.x / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann relative error:                  {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.x /
+                             boltzmann_weighted_full_squared_summed_vdw_gradient.x));
 
-      std::print(stream, "Boltzmann average gradient(y) VDW (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_vdw.y / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann average gradient(y) VDW (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_vdw.y / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.y /
-                           boltzmann_weighted_full_squared_summed_vdw_gradient.y));
+        std::print(stream, "Boltzmann average gradient(y) VDW (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_vdw.y / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann average gradient(y) VDW (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_vdw.y / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann relative error:                  {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.y /
+                             boltzmann_weighted_full_squared_summed_vdw_gradient.y));
 
-      std::print(stream, "Boltzmann average gradient(z) VDW (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_vdw.z / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann average gradient(z) VDW (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_vdw.z / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.z /
-                           boltzmann_weighted_full_squared_summed_vdw_gradient.z));
+        std::print(stream, "Boltzmann average gradient(z) VDW (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_vdw.z / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann average gradient(z) VDW (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_vdw.z / boltzmann_weight_summed_vdw);
+        std::print(stream, "Boltzmann relative error:                  {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.z /
+                             boltzmann_weighted_full_squared_summed_vdw_gradient.z));
+      }
 
       if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
       {
@@ -2580,29 +2602,33 @@ void System::createInterpolationGrids(std::ostream& stream)
                  std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald /
                            boltzmann_weighted_full_squared_summed_real_ewald));
 
-      std::print(stream, "Boltzmann average gradient(x) Real Ewald (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann average gradient(x) Real Ewald (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.x /
-                           boltzmann_weighted_full_squared_summed_real_ewald_gradient.x));
+      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
+          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
+      {
+        std::print(stream, "Boltzmann average gradient(x) Real Ewald (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann average gradient(x) Real Ewald (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann relative error:                         {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.x /
+                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.x));
 
-      std::print(stream, "Boltzmann average gradient(y) Real Ewald (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann average gradient(y) Real Ewald (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.y /
-                           boltzmann_weighted_full_squared_summed_real_ewald_gradient.y));
+        std::print(stream, "Boltzmann average gradient(y) Real Ewald (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann average gradient(y) Real Ewald (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann relative error:                         {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.y /
+                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.y));
 
-      std::print(stream, "Boltzmann average gradient(z) Real Ewald (table): {}\n",
-                 boltzmann_weighted_gradient_interpolated_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann average gradient(z) Real Ewald (full):  {}\n",
-                 boltzmann_weighted_gradient_full_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.z /
-                           boltzmann_weighted_full_squared_summed_real_ewald_gradient.z));
+        std::print(stream, "Boltzmann average gradient(z) Real Ewald (table): {}\n",
+                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann average gradient(z) Real Ewald (full):  {}\n",
+                   boltzmann_weighted_gradient_full_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
+        std::print(stream, "Boltzmann relative error:                         {}\n\n",
+                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.z /
+                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.z));
+      }
 
       if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
       {

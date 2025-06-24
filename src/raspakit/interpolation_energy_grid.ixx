@@ -63,6 +63,8 @@ export struct InterpolationEnergyGrid
   {
   }
 
+  constexpr static std::make_signed_t<std::size_t> num_points_interpolation{6};
+
   void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
                              const ForceField &forceField, const Framework &framework, 
                              double cutOff, size_t pseudo_atom_index);

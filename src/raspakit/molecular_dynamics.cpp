@@ -179,6 +179,12 @@ void MolecularDynamics::initialize()
       system.containsTheFractionalMolecule = true;
     else
       system.containsTheFractionalMolecule = false;
+
+    // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
+    if (system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    {
+      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+    }
   }
 
   for (const System& system : systems)

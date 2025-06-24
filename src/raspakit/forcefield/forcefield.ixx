@@ -90,6 +90,7 @@ export struct ForceField
 
   enum class InterpolationScheme : size_t
   {
+    Polynomial = 1,
     Tricubic = 8,
     Triquintic = 27
   };
@@ -142,12 +143,13 @@ export struct ForceField
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
 
   std::vector<size_t> gridPseudoAtomIndices;
-  double spacingVDWGrid{0.15};
-  double spacingCoulombGrid{0.15};
+  double spacingVDWGrid{ 0.15 };
+  double spacingCoulombGrid{ 0.15 };
   std::optional<int3> numberOfVDWGridPoints{};
   std::optional<int3> numberOfCoulombGridPoints{};
-  size_t numberOfGridTestPoints{100000};
-  InterpolationScheme interpolationScheme{InterpolationScheme::Tricubic};
+  size_t numberOfGridTestPoints{ 100000 };
+  bool interpolationSchemeAuto{ true };
+  InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
 
   /**
    * \brief Default constructor for the ForceField struct.

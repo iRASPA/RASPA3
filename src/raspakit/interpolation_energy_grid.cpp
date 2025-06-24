@@ -59,6 +59,7 @@ import <mdspan>;
 import double3;
 import double3x3;
 import stringutils;
+import polint;
 import atom;
 import framework;
 import simulationbox;
@@ -2021,6 +2022,14 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream &stream,
 
         switch (order)
         {
+          case ForceField::InterpolationScheme::Polynomial:
+          {
+            double value = Interactions::calculateEnergyAtPosition(
+                interpolationGridType, forceField, super_cell_box, pos, pseudo_atom_index,
+                framework_atoms);
+            data_cell[0, i, j, k] = (value > forceField.overlapCriteria) ? 2.0 * forceField.overlapCriteria : value;
+          }
+          break;
           case ForceField::InterpolationScheme::Tricubic:
           {
             std::array<double, 8> values = Interactions::calculateTricubicFractionalAtPosition(
@@ -2163,6 +2172,68 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
   switch (order)
   {
+    case ForceField::InterpolationScheme::Polynomial:
+    {
+      double energy, dummy;
+      std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
+      std::array<double, num_points_interpolation> xt, yt, zt;
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      std::make_signed_t<std::size_t> x0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.x - 1));
+      std::make_signed_t<std::size_t> y0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.y - 1));
+      std::make_signed_t<std::size_t> z0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.z - 1));
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+
+      std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;  
+      std::make_signed_t<std::size_t> mstart = mend + 1 - static_cast<std::make_signed_t<std::size_t>>(num_points_interpolation); // for 4: -1, for 5: -2, for 6: -2
+
+
+      for(std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
+      {
+        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+
+        std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
+        if (lp < 0) lp += numberOfGridPoints.z;
+        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+
+        for(std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
+        {
+          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+
+          std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
+          if (kp < 0) kp += numberOfGridPoints.y;
+          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+
+          for(std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
+          {
+            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+
+            std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
+            if (jp < 0) jp += numberOfGridPoints.x;
+            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+
+            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+
+          }
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+        }
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+      }
+      Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
+
+      return energy;
+    }
     case ForceField::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
@@ -2300,6 +2371,68 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
   switch (order)
   {
+    case ForceField::InterpolationScheme::Polynomial:
+    {
+      double energy, dummy;
+      std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
+      std::array<double, num_points_interpolation> xt, yt, zt;
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      std::make_signed_t<std::size_t> x0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.x - 1));
+      std::make_signed_t<std::size_t> y0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.y - 1));
+      std::make_signed_t<std::size_t> z0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.z - 1));
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+
+      std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;  
+      std::make_signed_t<std::size_t> mstart = mend + 1 - static_cast<std::make_signed_t<std::size_t>>(num_points_interpolation); // for 4: -1, for 5: -2, for 6: -2
+
+
+      for(std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
+      {
+        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+
+        std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
+        if (lp < 0) lp += numberOfGridPoints.z;
+        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+
+        for(std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
+        {
+          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+
+          std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
+          if (kp < 0) kp += numberOfGridPoints.y;
+          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+
+          for(std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
+          {
+            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+
+            std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
+            if (jp < 0) jp += numberOfGridPoints.x;
+            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+
+            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+
+          }
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+        }
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+      }
+      Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
+
+      return {energy, {0.0, 0.0, 0.0}};
+    }
     case ForceField::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};
@@ -2482,6 +2615,68 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
   switch (order)
   {
+    case ForceField::InterpolationScheme::Polynomial:
+    {
+      double energy, dummy;
+      std::array<double, num_points_interpolation> yjtmp, yktmp, yltmp;
+      std::array<double, num_points_interpolation> xt, yt, zt;
+
+      // Determine lower boundary
+      // Note: the case s==1.0 will be handled by the last cell
+      std::make_signed_t<std::size_t> x0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.x - 1));
+      std::make_signed_t<std::size_t> y0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.y - 1));
+      std::make_signed_t<std::size_t> z0 = std::min(static_cast<std::make_signed_t<std::size_t>>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::make_signed_t<std::size_t>>(numberOfCells.z - 1));
+
+      // find the corresponding position within that cell (between 0.0 and 1.0)
+      s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
+      s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
+      s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
+
+      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+          data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
+
+      std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;  
+      std::make_signed_t<std::size_t> mstart = mend + 1 - static_cast<std::make_signed_t<std::size_t>>(num_points_interpolation); // for 4: -1, for 5: -2, for 6: -2
+
+
+      for(std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
+      {
+        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+
+        std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
+        if (lp < 0) lp += numberOfGridPoints.z;
+        if (lp >= numberOfGridPoints.z) lp -= numberOfGridPoints.z;
+
+        for(std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
+        {
+          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+
+          std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
+          if (kp < 0) kp += numberOfGridPoints.y;
+          if (kp >= numberOfGridPoints.y) kp -= numberOfGridPoints.y;
+
+          for(std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
+          {
+            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+
+            std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
+            if (jp < 0) jp += numberOfGridPoints.x;
+            if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
+
+            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+
+          }
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+        }
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+      }
+      Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
+
+      return {energy, {0.0, 0.0, 0.0}, double3x3{}};
+    }
     case ForceField::InterpolationScheme::Tricubic:
     {
       std::array<double, 64> X{};

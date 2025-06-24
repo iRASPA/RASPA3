@@ -696,10 +696,16 @@ ForceField::ForceField(std::string filePath)
     size_t scheme = parsed_data.value("InterpolationScheme", parsed_data["InterpolationScheme"]);
     switch (scheme)
     {
+      case 1:
+        interpolationSchemeAuto = false;
+        interpolationScheme = InterpolationScheme::Polynomial;
+        break;
       case 3:
+        interpolationSchemeAuto = false;
         interpolationScheme = InterpolationScheme::Tricubic;
         break;
       case 5:
+        interpolationSchemeAuto = false;
         interpolationScheme = InterpolationScheme::Triquintic;
         break;
       default:
@@ -1004,6 +1010,9 @@ std::string ForceField::printForceFieldStatus() const
     }
     switch (interpolationScheme)
     {
+      case InterpolationScheme::Polynomial:
+        std::print(stream, "Interpolation-scheme: quintic\n");
+        break;
       case InterpolationScheme::Tricubic:
         std::print(stream, "Interpolation-scheme: tricubic\n");
         break;
