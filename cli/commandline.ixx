@@ -67,7 +67,8 @@ export namespace CommandLine
     VoidFraction = 5,
     TessellationComputation = 6,
     PSD = 7,
-    Last = 8
+    EnergyGrid = 8,
+    Last = 9
   };
 
   ForceField defaultForceFieldZeolite(double rc = 12.0, bool shifted = false, bool tailCorrections = false, bool useEwald = false);
