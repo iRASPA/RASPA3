@@ -300,6 +300,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
               system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
               system.spanOfFrameworkAtoms(), fractionalMolecule);
 
+      for (auto& atom : fractionalMolecule)
+      {
+        atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
+      }
+
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
@@ -399,6 +404,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       for (Atom& atom : fractionalMolecule)
       {
         atom.setScalingFullyOff();
+        atom.groupId = uint8_t{0};
       }
 
       // Save the state of the new fractional molecule
@@ -540,6 +546,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
             Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
                 system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
                 system.spanOfFrameworkAtoms(), savedFractionalMolecule);
+
+        for (auto& atom : fractionalMolecule)
+        {
+          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
+        }
+        for (auto& atom : savedFractionalMolecule)
+        {
+          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
+        }
 
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
