@@ -291,19 +291,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
-      for (auto& atom : fractionalMolecule)
-      {
-        atom.groupId = uint8_t{0};
-      }
       std::optional<RunningEnergy> energyDifferenceInterpolation =
           Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
               system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
               system.spanOfFrameworkAtoms(), fractionalMolecule);
-
-      for (auto& atom : fractionalMolecule)
-      {
-        atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
-      }
 
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
@@ -535,26 +526,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       {
         for (auto& atom : fractionalMolecule)
         {
-          atom.groupId = uint8_t{0};
-        }
-        for (auto& atom : savedFractionalMolecule)
-        {
-          atom.groupId = uint8_t{0};
+          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
         }
 
         std::optional<RunningEnergy> energyDifferenceInterpolation =
             Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
                 system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
                 system.spanOfFrameworkAtoms(), savedFractionalMolecule);
-
-        for (auto& atom : fractionalMolecule)
-        {
-          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
-        }
-        for (auto& atom : savedFractionalMolecule)
-        {
-          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
-        }
 
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
