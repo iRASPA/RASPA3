@@ -77,7 +77,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       random, componentA, systemA.hasExternalField, systemA.components, systemA.forceField, systemA.simulationBox,
       systemA.interpolationGrids, systemA.framework, systemA.spanOfFrameworkAtoms(), systemA.spanOfMoleculeAtoms(),
       systemA.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, newMoleculeIndex,
-      1.0, 0uz, systemA.numberOfTrialDirections);
+      1.0, false, false, systemA.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for CBMC insertion (non-Ewald part)

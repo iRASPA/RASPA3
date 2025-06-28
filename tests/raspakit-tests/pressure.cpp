@@ -297,7 +297,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
                    [&strainBox_forward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward2 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward2,
                                                                              moleculeAtomPositions_forward2);
@@ -310,7 +310,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
                    [&strainBox_forward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward1 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward1,
                                                                              moleculeAtomPositions_forward1);
@@ -323,7 +323,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
                    [&strainBox_backward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward1 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward1,
                                                                               moleculeAtomPositions_backward1);
@@ -336,7 +336,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
                    [&strainBox_backward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward2 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward2,
                                                                               moleculeAtomPositions_backward2);
@@ -406,7 +406,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
                    [&strainBox_forward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward2 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward2,
                                                                              moleculeAtomPositions_forward2);
@@ -419,7 +419,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
                    [&strainBox_forward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward1 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_forward1,
                                                                              moleculeAtomPositions_forward1);
@@ -432,7 +432,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
                    [&strainBox_backward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward1 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward1,
                                                                               moleculeAtomPositions_backward1);
@@ -445,7 +445,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
                    [&strainBox_backward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward2 = Interactions::computeInterMolecularEnergy(system.forceField, strainBox_backward2,
                                                                               moleculeAtomPositions_backward2);
@@ -538,7 +538,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                    [&strainBox_forward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
 
     RunningEnergy EnergyForward2 = Interactions::computeEwaldFourierEnergy(
@@ -554,7 +554,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                    [&strainBox_forward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_forward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
 
     RunningEnergy EnergyForward1 = Interactions::computeEwaldFourierEnergy(
@@ -570,7 +570,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                    [&strainBox_backward1, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward1.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
 
     RunningEnergy EnergyBackward1 = Interactions::computeEwaldFourierEnergy(
@@ -586,7 +586,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
                    [&strainBox_backward2, &inv](const Atom& m)
                    {
                      return Atom(strainBox_backward2.cell * (inv * m.position), m.charge, 1.0, m.moleculeId, m.type,
-                                 m.componentId, m.groupId);
+                                 m.componentId, m.groupId, m.isFractional);
                    });
 
     RunningEnergy EnergyBackward2 = Interactions::computeEwaldFourierEnergy(

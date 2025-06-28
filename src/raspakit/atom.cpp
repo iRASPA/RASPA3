@@ -53,6 +53,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &
   archive << atom.type;
   archive << atom.componentId;
   archive << atom.groupId;
+  archive << atom.isFractional;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -63,6 +64,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Atom &
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom)
 {
+  uint8_t groupIdBitField;
+  uint8_t isFractionalBitField;
   archive >> atom.position;
   archive >> atom.velocity;
   archive >> atom.gradient;
@@ -72,7 +75,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Atom &atom)
   archive >> atom.moleculeId;
   archive >> atom.type;
   archive >> atom.componentId;
-  archive >> atom.groupId;
+  archive >> groupIdBitField;
+  atom.groupId = groupIdBitField;
+  archive >> isFractionalBitField;
+  atom.isFractional = isFractionalBitField;
 
 #if DEBUG_ARCHIVE
   uint64_t magicNumber;

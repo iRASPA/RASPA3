@@ -456,7 +456,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
                    [](const Atom& a, const Atom& b)
                    {
                      return Atom(b.position, a.charge, a.scalingVDW, a.scalingCoulomb, a.moleculeId, a.type,
-                                 a.componentId, a.groupId);
+                                 a.componentId, a.groupId, a.isFractional);
                    });
 
     time_begin = std::chrono::system_clock::now();

@@ -280,7 +280,8 @@ void System::insertFractionalMolecule(size_t selectedComponent, [[maybe_unused]]
   for (Atom& atom : atoms)
   {
     atom.moleculeId = static_cast<uint16_t>(moleculeId);
-    atom.groupId = uint8_t{components[selectedComponent].lambdaGC.computeDUdlambda};
+    atom.groupId = components[selectedComponent].lambdaGC.computeDUdlambda;
+    atom.isFractional = true;
     atom.setScaling(l);
   }
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
@@ -486,12 +487,13 @@ void System::createInitialMolecules()
         std::optional<ChainData> growData = std::nullopt;
         do
         {
+          bool groupId = components[componentId].lambdaGC.computeDUdlambda;
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
               random, components[componentId], hasExternalField, components, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
               forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
-              numberOfMoleculesPerComponent[componentId], 0.0, 1uz, numberOfTrialDirections);
+              numberOfMoleculesPerComponent[componentId], 0.0, groupId, true, numberOfTrialDirections);
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
 
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
@@ -511,7 +513,7 @@ void System::createInitialMolecules()
               random, components[componentId], hasExternalField, components, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
               forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
-              numberOfMoleculesPerComponent[componentId], 1.0, 0uz, numberOfTrialDirections);
+              numberOfMoleculesPerComponent[componentId], 1.0, false, false, numberOfTrialDirections);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
 

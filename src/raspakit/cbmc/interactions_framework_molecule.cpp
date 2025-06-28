@@ -85,11 +85,12 @@ template <>
       double3 posB = atom.position;
       size_t typeB = static_cast<size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
+      bool isFractional = static_cast<bool>(atom.isFractional);
       double scalingVDWB = atom.scalingVDW;
       double scalingCoulombB = atom.scalingCoulomb;
       double chargeB = atom.charge;
 
-      if (interpolationGrids[typeB].has_value() && (groupIdB == 0))
+      if (interpolationGrids[typeB].has_value() && !isFractional)
       {
         double energy = interpolationGrids[typeB]->interpolate(posB);
         if (energy > overlapCriteria)

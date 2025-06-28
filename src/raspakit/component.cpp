@@ -319,7 +319,7 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     double scaling = 1.0;
 
     definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]), charge, scaling, 0,
-                                 static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0),
+                            static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0, 0),
                             mass});
   }
 

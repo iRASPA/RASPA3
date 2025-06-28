@@ -66,6 +66,7 @@ import threadpool;
       [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
       [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
+      [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
       [[maybe_unused]] double chargeA = it1->charge;

@@ -35,8 +35,8 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
-    size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, 
+    bool groupId, bool isFractional, size_t numberOfTrialDirections) noexcept;
 }
 
 namespace CBMC
@@ -47,6 +47,6 @@ namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule, size_t numberOfTrialDirections,
-    size_t selectedMolecule, double scaling, size_t groupId, const std::vector<Component> &components,
+    size_t selectedMolecule, double scaling, bool groupId, bool isFractional, const std::vector<Component> &components,
     size_t selectedComponent) noexcept;
 }

@@ -59,6 +59,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
+import scaling;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(RandomNumber& random, System& system,
                                                                                size_t selectedComponent,
@@ -125,9 +126,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     std::vector<Atom> oldFractionalMolecule(fractionalMolecule.begin(), fractionalMolecule.end());
 
     // Fractional particle becomes integer (lambda=1.0)
+    // Before: lambda and fractional computed fully
+    // After: 1.0 and integer computed using grids (or fully if without grids)
     for (Atom& atom : fractionalMolecule)
     {
-      atom.setScalingFullyOn();
+      atom.setScalingToInteger();
     }
 
     // Check if the molecule is inside blocked pockets
@@ -217,7 +220,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
         system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, newMolecule,
-        newLambda, static_cast<size_t>(oldFractionalMolecule.front().groupId), system.numberOfTrialDirections);
+        newLambda, system.components[selectedComponent].lambdaGC.computeDUdlambda, true, system.numberOfTrialDirections);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -291,11 +294,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Apply acceptance/rejection rule
     if (random.uniform() < biasTransitionMatrix * Pacc)
     {
-      std::optional<RunningEnergy> energyDifferenceInterpolation =
-          Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
-              system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-              system.spanOfFrameworkAtoms(), fractionalMolecule);
-
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
@@ -314,8 +312,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       component.mc_moves_statistics.addAccepted(move, 0);
 
-      return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow -
-                  energyDifferenceInterpolation.value(),
+      return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow,
               double3(0.0, 1.0 - Pacc, Pacc)};
     };
 
@@ -392,10 +389,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
           -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifferenceRetrace.potentialEnergy()));
 
       // Deactivate scaling for the fractional molecule
+      // Before: lambda and fractional computed fully
+      // After: 0.0 and integer computed using grids (or fully if without grids)
       for (Atom& atom : fractionalMolecule)
       {
         atom.setScalingFullyOff();
-        atom.groupId = uint8_t{0};
+        atom.groupId = false;
+        atom.isFractional = false;
       }
 
       // Save the state of the new fractional molecule
@@ -407,9 +407,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double newLambda = deltaLambda * static_cast<double>(newBin);
 
       // Update the new fractional molecule with the new lambda
-      std::transform(newFractionalMolecule.begin(), newFractionalMolecule.end(), oldFractionalMolecule.begin(),
-                     newFractionalMolecule.begin(), [newLambda](const Atom& a, const Atom& b)
-                     { return Atom(a.position, a.charge, newLambda, a.moleculeId, a.type, a.componentId, b.groupId); });
+      bool groupId = system.components[selectedComponent].lambdaGC.computeDUdlambda;
+      for (Atom& atom : newFractionalMolecule)
+      {
+        atom.scalingVDW = Scaling::scalingVDW(newLambda);
+        atom.scalingCoulomb = Scaling::scalingCoulomb(newLambda);
+        atom.groupId = groupId;
+        atom.isFractional = true;
+      }
 
       // Check if the new fractional molecule is inside blocked pockets
       if ((system.insideBlockedPockets(component, newFractionalMolecule)))
@@ -524,16 +529,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Apply acceptance/rejection rule
       if (random.uniform() < biasTransitionMatrix * Pacc)
       {
-        for (auto& atom : fractionalMolecule)
-        {
-          atom.groupId = uint8_t{system.components[selectedComponent].lambdaGC.computeDUdlambda};
-        }
-
-        std::optional<RunningEnergy> energyDifferenceInterpolation =
-            Interactions::computeFrameworkMoleculeEnergyDifferenceInterpolationExplicit(
-                system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-                system.spanOfFrameworkAtoms(), savedFractionalMolecule);
-
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
         component.lambdaGC.setCurrentBin(newBin);
@@ -549,8 +544,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
         component.mc_moves_statistics.addAccepted(move, 1);
 
-        return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies +
-                    energyDifferenceInterpolation.value(),
+        return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies,
                 double3(Pacc, 1.0 - Pacc, 0.0)};
       };
 

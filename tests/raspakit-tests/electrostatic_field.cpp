@@ -46,28 +46,28 @@ TEST(electrostatic_field, Test_reference_system_1)
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, 0),
+                               Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false),
                            },
                            5, 21);
   Component c2 = Component(1, forceField, "t2", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 1, 1, 0),
+                               Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 1, 1, false, false),
                            },
                            5, 21);
   Component c3 = Component(2, forceField, "t3", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 2, 2, 2, 0),
+                               Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 2, 2, 2, false, false),
                            },
                            5, 21);
   Component c4 = Component(3, forceField, "t4", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, uint8_t groupId
-                               Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 3, 3, 3, 0),
+                               Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 3, 3, 3, false, false),
                            },
                            5, 21);
 
@@ -119,13 +119,13 @@ TEST(electrostatic_field, Test_reference_system_2)
       0, forceField, "t1", 0.0, 0.0, 0.0,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
-       Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, 0), Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 0, 1, 0, 0)},
+       Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false), Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 0, 1, 0, false, false)},
       5, 21);
   Component c2 = Component(
       1, forceField, "t2", 0.0, 0.0, 0.0,
       {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
        // uint8_t groupId
-       Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 2, 1, 0), Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 1, 3, 1, 0)},
+       Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 2, 1, false, false), Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 1, 3, 1, false, false)},
       5, 21);
 
   System system = System(0, forceField, SimulationBox(100.0, 100.0, 100.0), 300.0, 1e4, 1.0, {}, {c1, c2}, {1, 1}, 5);

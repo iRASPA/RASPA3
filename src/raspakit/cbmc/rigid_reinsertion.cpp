@@ -117,6 +117,7 @@ import interpolation_energy_grid;
       randomlyRotatedAtoms[j].moleculeId = molecule_atoms[j].moleculeId;
       randomlyRotatedAtoms[j].componentId = molecule_atoms[j].componentId;
       randomlyRotatedAtoms[j].groupId = molecule_atoms[j].groupId;
+      randomlyRotatedAtoms[j].isFractional = molecule_atoms[j].isFractional;
     }
 
     trialPositions.push_back(

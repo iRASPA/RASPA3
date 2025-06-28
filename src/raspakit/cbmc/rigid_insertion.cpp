@@ -55,13 +55,14 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, size_t groupId,
-    size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, 
+    bool groupId, bool isFractional, size_t numberOfTrialDirections) noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
   Atom firstBead = components[selectedComponent].atoms[startingBead];
   firstBead.moleculeId = static_cast<uint32_t>(selectedMolecule);
-  firstBead.groupId = static_cast<uint8_t>(groupId);
+  firstBead.groupId = groupId;
+  firstBead.isFractional = isFractional;
   firstBead.setScaling(scaling);
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
@@ -85,14 +86,15 @@ import interpolation_energy_grid;
                   atom.position +=
                       firstBeadData->atom.position - components[selectedComponent].atoms[startingBead].position;
                   atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
-                  atom.groupId = static_cast<uint8_t>(groupId);
+                  atom.groupId = groupId;
+                  atom.isFractional = isFractional;
                   atom.setScaling(scaling);
                 });
 
   std::optional<ChainData> const rigidRotationData = CBMC::growRigidMoleculeChainInsertion(
       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
       moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, startingBead, atoms,
-      numberOfTrialDirections, selectedMolecule, scaling, groupId, components, selectedComponent);
+      numberOfTrialDirections, selectedMolecule, scaling, groupId, isFractional, components, selectedComponent);
 
   if (!rigidRotationData) return std::nullopt;
 
@@ -107,7 +109,7 @@ import interpolation_energy_grid;
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule, size_t numberOfTrialDirections,
-    size_t selectedMolecule, double scaling, size_t groupId, const std::vector<Component> &components,
+    size_t selectedMolecule, double scaling, bool groupId, bool isFractional, const std::vector<Component> &components,
     size_t selectedComponent) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
@@ -119,11 +121,12 @@ import interpolation_energy_grid;
     std::vector<Atom> randomlyRotatedAtoms = components[selectedComponent].rotatePositions(orientation);
     double3 shift = molecule[startingBead].position - randomlyRotatedAtoms[startingBead].position;
     std::for_each(std::begin(randomlyRotatedAtoms), std::end(randomlyRotatedAtoms),
-                  [shift, selectedMolecule, scaling, groupId](Atom &atom)
+                  [shift, selectedMolecule, scaling, groupId, isFractional](Atom &atom)
                   {
                     atom.position += shift;
                     atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
-                    atom.groupId = static_cast<uint8_t>(groupId);
+                    atom.groupId = groupId;
+                    atom.isFractional = isFractional;
                     atom.setScaling(scaling);
                   });
 

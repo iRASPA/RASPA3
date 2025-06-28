@@ -84,9 +84,9 @@ PYBIND11_MODULE(raspalib, m)
 
   pybind11::class_<Atom>(m, "Atom")
       .def(pybind11::init<>())
-      .def(pybind11::init<double3, double, double, uint32_t, uint16_t, uint8_t, uint8_t>(), pybind11::arg("position"),
+      .def(pybind11::init<double3, double, double, uint32_t, uint16_t, uint8_t, bool, bool>(), pybind11::arg("position"),
            pybind11::arg("charge") = 0.0, pybind11::arg("lambda") = 0.0, pybind11::arg("moleculeId") = 0,
-           pybind11::arg("type") = 0, pybind11::arg("componentId") = 0, pybind11::arg("groupId") = 0)
+           pybind11::arg("type") = 0, pybind11::arg("componentId") = 0, pybind11::arg("groupId") = 0, pybind11::arg("isFractional") = 0)
       .def_readwrite("position", &Atom::position)
       .def("__repr__", &Atom::repr);
 

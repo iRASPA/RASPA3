@@ -41,7 +41,7 @@ export namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling,
-    size_t groupId, size_t numberOfTrialDirections) noexcept;
+    bool groupId, bool isFractional, size_t numberOfTrialDirections) noexcept;
 
 // deletion
 [[nodiscard]] ChainData retraceMoleculeSwapDeletion(
