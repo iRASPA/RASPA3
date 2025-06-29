@@ -3,6 +3,7 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <cstring>
 #include <iostream>
 #include <vector>
@@ -33,8 +34,8 @@ import algorithm;
 export class HDF5Writer
 {
  public:
-  HDF5Writer(const std::string& filename) : file(filename, H5F_ACC_TRUNC) {}
-  void createGroup(const std::string& groupName) { file.createGroup(groupName); }
+  HDF5Writer(const std::string& filename) : file(filename.c_str(), H5F_ACC_TRUNC) {}
+  void createGroup(const std::string& groupName) { file.createGroup(groupName.c_str()); }
 
   // It is not yet possible with H5Cpp.h to add dimension scales. This should be added in future versions,
   // but for now we should document the dimension names to datasets with multiple dimensions
@@ -45,10 +46,10 @@ export class HDF5Writer
                      const std::vector<size_t>& dimensions,
                      const std::vector<std::pair<std::string, std::string>>& metadata)
   {
-    H5::Group group = file.openGroup(groupName);
+    H5::Group group = file.openGroup(groupName.c_str());
     std::vector<hsize_t> vec_hsize_t(dimensions.begin(), dimensions.end());
     H5::DataSpace dataspace(static_cast<int>(vec_hsize_t.size()), vec_hsize_t.data());
-    H5::DataSet dataset = group.createDataSet(datasetName, getH5Type<T>(), dataspace);
+    H5::DataSet dataset = group.createDataSet(datasetName.c_str(), getH5Type<T>(), dataspace);
 
     // metadata
     H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
@@ -64,18 +65,18 @@ export class HDF5Writer
   void createStringDataset(const std::string& groupName, const std::string& datasetName,
                            const std::vector<size_t>& dimensions, size_t maxLength)
   {
-    H5::Group group = file.openGroup(groupName);
+    H5::Group group = file.openGroup(groupName.c_str());
     std::vector<hsize_t> vec_hsize_t(dimensions.begin(), dimensions.end());
     H5::DataSpace dataspace(static_cast<int>(vec_hsize_t.size()), vec_hsize_t.data());
     H5::StrType strtype(H5::PredType::C_S1, maxLength);
-    H5::DataSet dataset = group.createDataSet(datasetName, strtype, dataspace);
+    H5::DataSet dataset = group.createDataSet(datasetName.c_str(), strtype, dataspace);
   }
 
   template <typename T>
   void writeVector(const std::string& groupName, const std::string& datasetName, const std::vector<T>& data)
   {
-    H5::Group group = file.openGroup(groupName);
-    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::Group group = file.openGroup(groupName.c_str());
+    H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
     H5::PredType datatype = getH5Type<T>();
     dataset.write(data.data(), datatype);
@@ -84,8 +85,8 @@ export class HDF5Writer
   template <>
   void writeVector<bool>(const std::string& groupName, const std::string& datasetName, const std::vector<bool>& data)
   {
-    H5::Group group = file.openGroup(groupName);
-    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::Group group = file.openGroup(groupName.c_str());
+    H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
     H5::PredType datatype = getH5Type<bool>();
 
@@ -98,8 +99,8 @@ export class HDF5Writer
   void writeVector<std::string>(const std::string& groupName, const std::string& datasetName,
                                 const std::vector<std::string>& data)
   {
-    H5::Group group = file.openGroup(groupName);
-    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::Group group = file.openGroup(groupName.c_str());
+    H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
     H5::StrType strtype = dataset.getStrType();
     size_t maxLength = strtype.getSize();
@@ -117,8 +118,8 @@ export class HDF5Writer
   void writeSingleValue(const std::string& groupName, const std::string& datasetName,
                         const std::vector<hsize_t>& indices, T value)
   {
-    H5::Group group = file.openGroup(groupName);
-    H5::DataSet dataset = group.openDataSet(datasetName);
+    H5::Group group = file.openGroup(groupName.c_str());
+    H5::DataSet dataset = group.openDataSet(datasetName.c_str());
     H5::DataSpace dataspace = dataset.getSpace();
 
     H5::DataSpace memspace(1, &indices[indices.size() - 1], NULL);
@@ -129,30 +130,30 @@ export class HDF5Writer
   void writeMetaInfo(const std::string& groupName, const std::string& infoName, const std::string& infoValue)
   {
     // Create a string attribute at the root of the file
-    H5::Group group = file.openGroup(groupName);
+    H5::Group group = file.openGroup(groupName.c_str());
     H5::StrType strType(H5::PredType::C_S1, H5T_VARIABLE);
     H5::DataSpace attrSpace(H5S_SCALAR);
-    H5::Attribute attr = group.createAttribute(infoName, strType, attrSpace);
+    H5::Attribute attr = group.createAttribute(infoName.c_str(), strType, attrSpace);
     attr.write(strType, infoValue);
   }
 
   void writeMetaInfo(const std::string& groupName, const std::string& infoName, const double& infoValue)
   {
     // Create a string attribute at the root of the file
-    H5::Group group = file.openGroup(groupName);
+    H5::Group group = file.openGroup(groupName.c_str());
     H5::PredType datatype = getH5Type<double>();
     H5::DataSpace attrSpace(H5S_SCALAR);
-    H5::Attribute attr = group.createAttribute(infoName, datatype, attrSpace);
+    H5::Attribute attr = group.createAttribute(infoName.c_str(), datatype, attrSpace);
     attr.write(datatype, &infoValue);
   }
 
   void writeMetaInfo(const std::string& groupName, const std::string& infoName, const size_t& infoValue)
   {
     // Create a string attribute at the root of the file
-    H5::Group group = file.openGroup(groupName);
+    H5::Group group = file.openGroup(groupName.c_str());
     H5::PredType datatype = getH5Type<size_t>();
     H5::DataSpace attrSpace(H5S_SCALAR);
-    H5::Attribute attr = group.createAttribute(infoName, datatype, attrSpace);
+    H5::Attribute attr = group.createAttribute(infoName.c_str(), datatype, attrSpace);
     attr.write(datatype, &infoValue);
   }
 
