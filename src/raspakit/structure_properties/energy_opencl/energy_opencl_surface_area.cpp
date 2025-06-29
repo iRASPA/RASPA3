@@ -43,6 +43,9 @@ import double4;
 import forcefield;
 import framework;
 import units;
+#if !(defined(__has_include) && __has_include(<mdspan>))
+import mdspan;
+#endif
 
 EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
 {
