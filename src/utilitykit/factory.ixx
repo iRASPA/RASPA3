@@ -109,6 +109,19 @@ inline Component makeIon(const ForceField& ff, uint8_t id, std::string_view name
   return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, 5, 21);
 }
 
+inline Framework makeFAU(const ForceField& ff, int3 replicate = {1, 1, 1})
+{
+  return Framework(
+      0, ff, "FAU", SimulationBox(24.2576, 24.2576, 24.2576), 526,
+
+      {Atom({-0.05392,  0.1253,   0.03589},  2.05,  1, 0, 0, 0, false, false),
+       Atom({ 0,       -0.10623,  0.10623}, -1.025, 1, 0, 1, 0, false, false),
+       Atom({-0.00323, -0.00323,  0.14066}, -1.025, 1, 0, 1, 0, false, false),
+       Atom({ 0.0757,   0.0757,  -0.03577}, -1.025, 1, 0, 1, 0, false, false),
+       Atom({ 0.07063,  0.07063,  0.32115}, -1.025, 1, 0, 1, 0, false, false)},
+      replicate);
+}
+
 inline Framework makeITQ29(const ForceField& ff, int3 replicate = {1, 1, 1})
 {
   return Framework(

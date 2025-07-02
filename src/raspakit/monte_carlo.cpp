@@ -248,9 +248,16 @@ void MonteCarlo::createInterpolationGrids()
 {
   for (System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
-
-    system.createInterpolationGrids(stream);
+    if(outputToFiles)
+    {
+      std::ostream stream(streams[system.systemId].rdbuf());
+      system.createInterpolationGrids(stream);
+    }
+    else
+    {
+      std::ostringstream local;
+      system.createInterpolationGrids(local);
+    }
   }
 }
 
