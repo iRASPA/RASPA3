@@ -67,6 +67,7 @@
       "inherits": ["base"],
       "cacheVariables": {
         "CONDA": true,
+	"CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/clang",
         "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/clang++",
@@ -133,6 +134,7 @@
       "inherits": ["base"],
       "cacheVariables": {
         "CONDA": true,
+	"CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/clang",
         "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/clang++",
