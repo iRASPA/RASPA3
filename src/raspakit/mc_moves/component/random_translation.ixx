@@ -41,7 +41,8 @@ export namespace MC_Moves
  * @return An optional `RunningEnergy` containing the energy difference if the move is accepted;
  *         `std::nullopt` if the move is rejected.
  */
-std::optional<RunningEnergy> randomTranslationMove(RandomNumber &random, System &system, size_t selectedComponent,
+std::optional<RunningEnergy> randomTranslationMove(RandomNumber &random, System &system, 
+                                                   size_t selectedComponent, size_t selectedMolecule,
                                                    const std::vector<Component> &components, Molecule &molecule,
                                                    std::span<Atom> molecule_atoms);
 }  // namespace MC_Moves

@@ -86,8 +86,55 @@ RunningEnergy computeFrameworkMoleculeTailEnergy(const ForceField &forceField, c
 [[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
-    std::span<const Atom> oldatoms) noexcept;
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, 
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes the difference in interaction energy and electric-field between the framework and molecule atoms.
+ *
+ * Calculates the difference in van der Waals and Coulombic interaction energy between the framework
+ * and the molecule atoms, due to changes from oldatoms to newatoms. If an overlap is detected (energy
+ * exceeds overlap criteria), returns std::nullopt.
+ *
+ * \param forceField The force field parameters for the simulation.
+ * \param simulationBox The simulation box containing periodic boundary conditions.
+ * \param frameworkAtoms A span of atoms representing the framework.
+ * \param newatoms A span of new atom positions representing the molecule.
+ * \param oldatoms A span of old atom positions representing the molecule.
+ * \param electricFieldMoleculeNew A span of new electric-field at the molecule atom positions
+ * \param electricFieldMoleculeOld A span of old electric-field at the molecule atom positions
+ * \return An optional RunningEnergy object containing the energy difference, or std::nullopt if overlap occurs.
+ */
+
+[[nodiscard]] std::optional<RunningEnergy> computeFrameworkMoleculeEnergyDifference(
+    const ForceField &forceField, const SimulationBox &simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes the difference in electric field due to changes in molecule atoms.
+ *
+ * Calculates the difference in Coulombic electric field at molecule atom positions due to changes from
+ * oldatoms to newatoms, resulting from interactions with the framework atoms. Updates the electric field vector
+ * accordingly. Also computes the difference in van der Waals and Coulombic interaction energy.
+ * Returns std::nullopt if an overlap occurs.
+ *
+ * \param forceField The force field parameters for the simulation.
+ * \param simulationBox The simulation box containing periodic boundary conditions.
+ * \param frameworkAtoms A span of atoms representing the framework.
+ * \param electricFieldMoleculeNew A span of new electric field
+ * \param electricFieldMoleculeOld A span of old electric field
+ * \param newatoms A span of new atom positions representing the molecule.
+ * \param oldatoms A span of old atom positions representing the molecule.
+ * \return An optional RunningEnergy object containing the energy difference, or std::nullopt if overlap occurs.
+ */
+
+void computeFrameworkMoleculeElectricFieldDifference(
+    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
+    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
  * \brief Computes the difference in tail correction energy between the framework and molecule atoms.
@@ -183,25 +230,6 @@ RunningEnergy computeFrameworkMoleculeElectricField(const ForceField &forceField
                                                     std::span<const Atom> frameworkAtoms,
                                                     std::span<const Atom> moleculeAtoms) noexcept;
 
-/**
- * \brief Computes the difference in electric field and interaction energy due to changes in molecule atoms.
- *
- * Calculates the difference in Coulombic electric field at molecule atom positions due to changes from
- * oldatoms to newatoms, resulting from interactions with the framework atoms. Updates the electric field vector
- * accordingly. Also computes the difference in van der Waals and Coulombic interaction energy.
- * Returns std::nullopt if an overlap occurs.
- *
- * \param forceField The force field parameters for the simulation.
- * \param simulationBox The simulation box containing periodic boundary conditions.
- * \param frameworkAtoms A span of atoms representing the framework.
- * \param electricFieldMolecule A span of double3 where the electric field differences will be accumulated.
- * \param newatoms A span of new atom positions representing the molecule.
- * \param oldatoms A span of old atom positions representing the molecule.
- * \return An optional RunningEnergy object containing the energy difference, or std::nullopt if overlap occurs.
- */
-std::optional<RunningEnergy> computeFrameworkMoleculeElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
-    std::span<double3> electricFieldMolecule, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField,
                                                                      const SimulationBox &simulationBox, double3 posA,

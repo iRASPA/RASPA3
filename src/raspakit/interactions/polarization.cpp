@@ -63,3 +63,28 @@ RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField
 
   return energy;
 }
+
+RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField &forceField,
+                                                                std::span<double3> electricFieldNew,
+                                                                std::span<double3> electricField,
+                                                                std::span<Atom> moleculeAtomPositionsNew,
+                                                                std::span<Atom> moleculeAtomPositionsOld)
+{
+  RunningEnergy energy;
+
+  for (size_t i = 0; i < moleculeAtomPositionsNew.size(); ++i)
+  {
+    size_t type = moleculeAtomPositionsNew[i].type;
+    double polarizability = forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
+    energy.polarization -= 0.5 * polarizability * double3::dot(electricFieldNew[i], electricFieldNew[i]);
+  }
+
+  for (size_t i = 0; i < moleculeAtomPositionsOld.size(); ++i)
+  {
+    size_t type = moleculeAtomPositionsOld[i].type;
+    double polarizability = forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
+    energy.polarization += 0.5 * polarizability * double3::dot(electricField[i], electricField[i]);
+  }
+
+  return energy;
+}

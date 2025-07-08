@@ -477,11 +477,22 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
       std::print(stream, "\n");
     }
   }
+
+  std::print(stream, "Polarization energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "-------------------------------------------------------------------------------\n");
+  double prefactor = Units::EnergyToKelvin;
+  for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
+  {
+    EnergyStatus blockAverage = averagedEnergy(i);
+    std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.polarizationEnergy.energy);
+  }
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    Average  {: .6e} +/- {: .6e} [{}]\n", prefactor * computedAverage.first.polarizationEnergy.energy,
+             prefactor * computedAverage.second.polarizationEnergy.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
   std::print(stream, "Total energy{}\n", Units::displayedUnitOfEnergyConversionString);
   std::print(stream, "-------------------------------------------------------------------------------\n");
-  double prefactor = Units::EnergyToKelvin;
   for (size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
   {
     EnergyStatus blockAverage = averagedEnergy(i);

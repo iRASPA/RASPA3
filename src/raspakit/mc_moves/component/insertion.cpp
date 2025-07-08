@@ -58,6 +58,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import interactions_polarization;
 import mc_moves_move_types;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomNumber& random, System& system,
@@ -74,6 +75,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // Generate a trial molecule with a random position inside the simulation box.
   std::pair<Molecule, std::vector<Atom>> trialMolecule =
       component.equilibratedMoleculeRandomInBox(random, system.simulationBox);
+
+  std::vector<double3> electricFieldMoleculeNew(trialMolecule.second.size());
 
   // Check if the trial molecule is inside blocked pockets; reject if true.
   if (system.insideBlockedPockets(component, trialMolecule.second))
@@ -100,9 +103,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute framework-molecule energy contribution
-  std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-      system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-      system.spanOfFrameworkAtoms(), trialMolecule.second, {});
+  std::optional<RunningEnergy> frameworkMolecule;
+  if (system.forceField.computePolarization)
+  { 
+    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, {}, trialMolecule.second, {});
+  }
+  else
+  {
+    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+        system.spanOfFrameworkAtoms(), trialMolecule.second, {});
+  }
   if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
   // compute molecule-molecule energy contribution
@@ -112,9 +125,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
   // Compute Ewald Fourier energy difference and update CPU time statistics.
   time_begin = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, trialMolecule.second, {});
+  RunningEnergy energyFourierDifference;
+  if (system.forceField.computePolarization)
+  {
+    energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+        system.fixedFrameworkStoredEik, system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, electricFieldMoleculeNew, {}, trialMolecule.second, {});
+  }
+  else
+  {
+    energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+        system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, trialMolecule.second, {});
+  }
   time_end = std::chrono::system_clock::now();
 
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
@@ -132,9 +157,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
+  RunningEnergy polarizationDifference;
+  if (system.forceField.computePolarization)
+  {
+    // Compute polarization energy difference
+    polarizationDifference = Interactions::computePolarizationEnergyDifference(
+        system.forceField, electricFieldMoleculeNew, {}, trialMolecule.second, {});
+  }
+
   // get the total difference in energy
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   energyFourierDifference + tailEnergyDifference;
+                                   energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
   double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * component.molFraction * fugacity * system.simulationBox.volume /
@@ -160,7 +193,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     component.mc_moves_statistics.addAccepted(move, 0);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-    system.insertMolecule(selectedComponent, trialMolecule.first, trialMolecule.second);
+    system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second, electricFieldMoleculeNew);
 
     return {energyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };

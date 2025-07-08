@@ -375,6 +375,57 @@ void System::insertMolecule(size_t selectedComponent, [[maybe_unused]] const Mol
   }
 }
 
+void System::insertMoleculePolarization(size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
+                            std::vector<Atom> atoms, std::span<double3> electric_field)
+{
+  std::vector<Atom>::const_iterator iterator =
+      iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  atomPositions.insert(iterator, atoms.begin(), atoms.end());
+
+  std::vector<double3>::const_iterator iterator_electric_field =
+      iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  electricField.insert(iterator_electric_field, electric_field.begin(), electric_field.end());
+
+  std::vector<Molecule>::iterator moleculeIterator =
+      indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
+  moleculePositions.insert(moleculeIterator, molecule);
+
+  electricPotential.resize(electricPotential.size() + atoms.size());
+  electricFieldNew.resize(electricFieldNew.size() + atoms.size());
+
+  numberOfMoleculesPerComponent[selectedComponent] += 1;
+  numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
+
+  netCharge += components[selectedComponent].netCharge;
+  netChargeAdsorbates += components[selectedComponent].netCharge;
+  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
+
+  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
+  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
+
+  // Update the number of pseudo atoms per type (used for tail-corrections)
+  for (Atom& atom : atoms)
+  {
+    atom.moleculeId = static_cast<uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
+    numberOfPseudoAtoms[selectedComponent][static_cast<size_t>(atom.type)] += 1;
+    totalNumberOfPseudoAtoms[static_cast<size_t>(atom.type)] += 1;
+  }
+
+  size_t index = numberOfFrameworkAtoms;
+  for (size_t componentId = 0; componentId < components.size(); componentId++)
+  {
+    for (size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    {
+      for (size_t j = 0; j < components[componentId].atoms.size(); ++j)
+      {
+        atomPositions[index].moleculeId = static_cast<uint16_t>(i);
+        atomPositions[index].componentId = static_cast<uint8_t>(componentId);
+        ++index;
+      }
+    }
+  }
+}
+
 void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> molecule)
 {
   // Update the number of pseudo atoms per type (used for tail-corrections)
@@ -386,6 +437,9 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   atomPositions.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+
+  std::vector<double3>::const_iterator iterator_electric_field = iteratorForElectricField(selectedComponent, selectedMolecule);
+  electricField.erase(iterator_electric_field, iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, selectedMolecule);
   moleculePositions.erase(moleculeIterator, moleculeIterator + 1);
@@ -577,6 +631,20 @@ std::vector<Atom>::iterator System::iteratorForMolecule(size_t selectedComponent
   return atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
+std::vector<double3>::iterator System::iteratorForElectricField(size_t selectedComponent, size_t selectedMolecule)
+{
+  size_t index{0};
+  for (size_t i = 0; i < selectedComponent; ++i)
+  {
+    size_t size = components[i].atoms.size();
+    index += size * numberOfMoleculesPerComponent[i];
+  }
+  size_t size = components[selectedComponent].atoms.size();
+  index += size * selectedMolecule + numberOfFrameworkAtoms;
+  return electricField.begin() + static_cast<std::vector<double3>::difference_type>(index);
+}
+
+
 std::vector<Molecule>::iterator System::indexForMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
   size_t index{0};
@@ -699,6 +767,32 @@ const std::span<const double3> System::spanElectricFieldNew(size_t selectedCompo
   size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
   return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
+}
+
+std::span<double3> System::spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule)
+{
+  size_t index{0};
+  for (size_t i = 0; i < selectedComponent; ++i)
+  {
+    size_t size = components[i].atoms.size();
+    index += size * numberOfMoleculesPerComponent[i];
+  }
+  size_t size = components[selectedComponent].atoms.size();
+  index += size * selectedMolecule;
+  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
+}
+
+const std::span<const double3> System::spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule) const
+{
+  size_t index{0};
+  for (size_t i = 0; i < selectedComponent; ++i)
+  {
+    size_t size = components[i].atoms.size();
+    index += size * numberOfMoleculesPerComponent[i];
+  }
+  size_t size = components[selectedComponent].atoms.size();
+  index += size * selectedMolecule;
+  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
 }
 
 size_t System::indexOfFirstMolecule(size_t selectedComponent)
@@ -1301,6 +1395,10 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.intraEnergy.total().energy,
              conv * energyData.first.intraEnergy.total().energy, conv * energyData.second.intraEnergy.total().energy,
              Units::displayedUnitOfEnergyString);
+  std::print(stream, "Polarization energy{}     {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.polarizationEnergy.energy,
+             conv * energyData.first.polarizationEnergy.energy, conv * energyData.second.polarizationEnergy.energy,
+             Units::displayedUnitOfEnergyString);
 
   std::print(stream, "\n");
 
@@ -1760,8 +1858,10 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeElectricField(
         forceField, simulationBox, moleculeElectricField, frameworkAtomPositions, moleculeAtomPositions);
 
-    RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-        forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    RunningEnergy intermolecularEnergy =
+        Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+    //RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
+    //    forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
 
     RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
         forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
@@ -1881,6 +1981,12 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
+
+  if (forceField.computePolarization)
+  {
+    RunningEnergy e = computePolarizationEnergy();
+    pressureInfo.first.polarizationEnergy = Potentials::EnergyFactor(e.polarization, 0.0);
+  }
 
   pressureInfo.first.sumTotal();
 

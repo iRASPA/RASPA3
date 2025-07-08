@@ -56,6 +56,7 @@ import interactions_framework_molecule;
 import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
+import interactions_polarization;
 import mc_moves_move_types;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNumber& random, System& system,
@@ -73,15 +74,28 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
   {
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
 
+    // Copy the current electric field if polarization is computed
+    std::vector<double3> electricFieldMoleculeOld(molecule.size());
+
     // Compute external field energy contribution
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
         system.hasExternalField, system.forceField, system.simulationBox, {}, molecule);
     if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute framework-molecule energy contribution
-    std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), {}, molecule);
+    std::optional<RunningEnergy> frameworkMolecule;
+    if (system.forceField.computePolarization)
+    {
+      frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+          system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+          system.spanOfFrameworkAtoms(), {}, electricFieldMoleculeOld, {}, molecule);
+    }
+    else
+    {
+      frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+          system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+          system.spanOfFrameworkAtoms(), {}, molecule);
+    }
     if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // Compute molecule-molecule energy contribution
@@ -91,9 +105,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     // Compute Ewald Fourier energy difference
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, {}, molecule);
+    RunningEnergy energyFourierDifference;
+    if (system.forceField.computePolarization)
+    {
+      energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+          system.fixedFrameworkStoredEik,  system.storedEik, system.totalEik, system.forceField,
+          system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule);
+    }
+    else
+    {
+      energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
+          system.storedEik, system.totalEik, system.forceField,
+          system.simulationBox, {}, molecule);
+    }
     time_end = std::chrono::system_clock::now();
 
     // Update CPU time statistics for Ewald calculations
@@ -113,9 +139,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
+    RunningEnergy polarizationDifference;
+    if (system.forceField.computePolarization)
+    {
+      // Compute polarization energy difference
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(
+          system.forceField, {}, electricFieldMoleculeOld, {}, molecule);
+    }
+
     // Get the total difference in energy
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                     energyFourierDifference + tailEnergyDifference;
+                                     energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);

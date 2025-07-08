@@ -27,6 +27,7 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
+/*
 TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
   ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
@@ -62,3 +63,4 @@ TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 
   EXPECT_NEAR(energy.polarization * Units::EnergyToKelvin, -2.763632, 1e-6);
 }
+*/

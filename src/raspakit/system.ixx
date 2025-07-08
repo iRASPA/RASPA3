@@ -331,6 +331,7 @@ export struct System
 
   size_t indexOfFirstMolecule(size_t selectedComponent);
   std::vector<Atom>::iterator iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule);
+  std::vector<double3>::iterator iteratorForElectricField(size_t selectedComponent, size_t selectedMolecule);
   std::vector<Molecule>::iterator indexForMolecule(size_t selectedComponent, size_t selectedMolecule);
   size_t moleculeIndexOfComponent(size_t selectedComponent, size_t selectedMolecule);
   std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule);
@@ -346,6 +347,8 @@ export struct System
   std::span<double3> spanOfMoleculeElectricFieldNew();
   std::span<double3> spanElectricFieldNew(size_t selectedComponent, size_t selectedMolecule);
   const std::span<const double3> spanElectricFieldNew(size_t selectedComponent, size_t selectedMolecule) const;
+  std::span<double3> spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule);
+  const std::span<const double3> spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule) const;
 
   size_t numberOfMolecules() const
   {
@@ -395,6 +398,7 @@ export struct System
   nlohmann::json jsonMCMoveStatistics() const;
 
   void insertMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
+  void insertMoleculePolarization(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms, std::span<double3> electricField);
   void insertFractionalMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
                                 size_t moleculeId);
   void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> atoms);

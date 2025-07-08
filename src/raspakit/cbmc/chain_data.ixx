@@ -22,13 +22,14 @@ export struct ChainData
 {
   Molecule molecule;
   std::vector<Atom> atom;
+  std::vector<double3> electricField;
   RunningEnergy energies;
   double RosenbluthWeight;
   double storedR;
 
   ChainData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
             double storedR) noexcept
-      : molecule(molecule), atom(atom), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
+      : molecule(molecule), atom(atom), electricField(atom.size()), energies(energies), RosenbluthWeight(RosenbluthWeight), storedR(storedR)
   {
   }
 };

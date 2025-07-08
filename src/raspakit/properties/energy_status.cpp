@@ -70,6 +70,8 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
              conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
              conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    polarization:                            {: .6e} [{}/-]\n", conv * polarizationEnergy.energy,
+             Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
              Units::displayedUnitOfEnergyString);
 
@@ -144,6 +146,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.externalFieldComponentEnergies;
   archive << e.frameworkComponentEnergies;
   archive << e.interComponentEnergies;
+  archive << e.polarizationEnergy;
   archive << e.dUdlambda;
 
 #if DEBUG_ARCHIVE
@@ -176,6 +179,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.externalFieldComponentEnergies;
   archive >> e.frameworkComponentEnergies;
   archive >> e.interComponentEnergies;
+  archive >> e.polarizationEnergy;
   archive >> e.dUdlambda;
 
 #if DEBUG_ARCHIVE
