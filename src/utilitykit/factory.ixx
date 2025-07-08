@@ -1,12 +1,12 @@
-module; 
+module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <numbers>
 #include <span>
 #include <vector>
-#include <numbers>
 #endif
 
 export module factory;
@@ -83,11 +83,11 @@ inline Component makeCO2(const ForceField& ff, uint8_t id = 0, bool useCharges =
   const double qC = useCharges ? 0.6512 : 0.0;
   const double qO = useCharges ? -0.3256 : 0.0;
 
-  return Component(id, ff, "CO2", 304.1282, 7377300.0, 0.22394,
-                   {Atom({0, 0,  1.149}, qO, 1.0, 0, 4, id, false, false), 
-                    Atom({0, 0,  0.000}, qC, 1.0, 0, 3, id, false, false),
-                    Atom({0, 0, -1.149}, qO, 1.0, 0, 4, id, false, false)},
-                   5, 21);
+  return Component(
+      id, ff, "CO2", 304.1282, 7377300.0, 0.22394,
+      {Atom({0, 0, 1.149}, qO, 1.0, 0, 4, id, false, false), Atom({0, 0, 0.000}, qC, 1.0, 0, 3, id, false, false),
+       Atom({0, 0, -1.149}, qO, 1.0, 0, 4, id, false, false)},
+      5, 21);
 }
 
 inline Component makeWater(const ForceField& ff, uint8_t id = 0, bool useCharges = false)
@@ -95,41 +95,43 @@ inline Component makeWater(const ForceField& ff, uint8_t id = 0, bool useCharges
   const double qh = useCharges ? 0.241 : 0.0;
   const double ql = useCharges ? -0.241 : 0.0;
 
-  return Component(id, ff, "water", 0.0, 0.0, 0.0,
-                   {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, id, false, false),
-                    Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, 8, id, false, false),
-                    Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, 8, id, false, false),
-                    Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false),
-                    Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false)},
-                   5, 21);
+  return Component(
+      id, ff, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, id, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, 8, id, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, 8, id, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false)},
+      5, 21);
 }
 
 inline Component makeIon(const ForceField& ff, uint8_t id, std::string_view name, uint16_t type, double q)
 {
-  return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, 5, 21);
+  return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, 5,
+                   21);
 }
 
 inline Framework makeFAU(const ForceField& ff, int3 replicate = {1, 1, 1})
 {
-  return Framework(
-      0, ff, "FAU", SimulationBox(24.2576, 24.2576, 24.2576), 526,
+  return Framework(0, ff, "FAU", SimulationBox(24.2576, 24.2576, 24.2576), 526,
 
-      {Atom({-0.05392,  0.1253,   0.03589},  2.05,  1, 0, 0, 0, false, false),
-       Atom({ 0,       -0.10623,  0.10623}, -1.025, 1, 0, 1, 0, false, false),
-       Atom({-0.00323, -0.00323,  0.14066}, -1.025, 1, 0, 1, 0, false, false),
-       Atom({ 0.0757,   0.0757,  -0.03577}, -1.025, 1, 0, 1, 0, false, false),
-       Atom({ 0.07063,  0.07063,  0.32115}, -1.025, 1, 0, 1, 0, false, false)},
-      replicate);
+                   {Atom({-0.05392, 0.1253, 0.03589}, 2.05, 1, 0, 0, 0, false, false),
+                    Atom({0, -0.10623, 0.10623}, -1.025, 1, 0, 1, 0, false, false),
+                    Atom({-0.00323, -0.00323, 0.14066}, -1.025, 1, 0, 1, 0, false, false),
+                    Atom({0.0757, 0.0757, -0.03577}, -1.025, 1, 0, 1, 0, false, false),
+                    Atom({0.07063, 0.07063, 0.32115}, -1.025, 1, 0, 1, 0, false, false)},
+                   replicate);
 }
 
 inline Framework makeITQ29(const ForceField& ff, int3 replicate = {1, 1, 1})
 {
-  return Framework(
-      0, ff, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
+  return Framework(0, ff, "ITQ-29", SimulationBox(11.8671, 11.8671, 11.8671), 517,
 
-      {Atom({0.3683, 0.1847, 0}, 2.05, 1, 0, 0, 0, false, false), Atom({0.5, 0.2179, 0}, -1.025, 1, 0, 1, 0, false, false),
-       Atom({0.2939, 0.2939, 0}, -1.025, 1, 0, 1, 0, false, false), Atom({0.3429, 0.1098, 0.1098}, -1.025, 1, 0, 1, 0, false, false)},
-      replicate);
+                   {Atom({0.3683, 0.1847, 0}, 2.05, 1, 0, 0, 0, false, false),
+                    Atom({0.5, 0.2179, 0}, -1.025, 1, 0, 1, 0, false, false),
+                    Atom({0.2939, 0.2939, 0}, -1.025, 1, 0, 1, 0, false, false),
+                    Atom({0.3429, 0.1098, 0.1098}, -1.025, 1, 0, 1, 0, false, false)},
+                   replicate);
 }
 
 inline Framework makeMFI_Si(const ForceField& ff, int3 replicate = {1, 1, 1})

@@ -22,12 +22,11 @@ typedef long long blas_int;
 typedef int blas_int;
 #endif
 
-
 /* DSYEV prototype */
 extern "C"
 {
-  void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work,
-              blas_int* lwork, blas_int* info);
+  void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
+              blas_int* info);
 }
 
 module double3x3;

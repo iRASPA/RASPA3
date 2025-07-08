@@ -81,22 +81,22 @@ static const InterpolationEnergyGrid& getGrid(ForceField::InterpolationScheme sc
   // Make sure grids are only computed once by making them static within this benchmarking routine
   static std::optional<InterpolationEnergyGrid> cache[4];
   static std::once_flag flags[4];
-  
+
   size_t scheme_idx = (scheme == ForceField::InterpolationScheme::Tricubic) ? 0 : 1;
   size_t type_idx = (type == ForceField::InterpolationGridType::LennardJones) ? 0 : 2;
   size_t idx = scheme_idx + type_idx;
-  
+
   std::call_once(flags[idx],
-    [&]
-    {
-        ForceField ff = TestFactories::makeDefaultFF(12.0, true, false,
-            type == ForceField::InterpolationGridType::EwaldReal);
-            Framework f = TestFactories::makeCHA(ff, int3(1, 1, 1));
-            
-            int3 numberOfGridPoints{64, 64, 64};
-            cache[idx].emplace(f.simulationBox, numberOfGridPoints, scheme);
-            
-            std::stringstream null_stream;
+                 [&]
+                 {
+                   ForceField ff = TestFactories::makeDefaultFF(12.0, true, false,
+                                                                type == ForceField::InterpolationGridType::EwaldReal);
+                   Framework f = TestFactories::makeCHA(ff, int3(1, 1, 1));
+
+                   int3 numberOfGridPoints{64, 64, 64};
+                   cache[idx].emplace(f.simulationBox, numberOfGridPoints, scheme);
+
+                   std::stringstream null_stream;
                    cache[idx]->makeInterpolationGrid(null_stream, type, ff, f, 12.0,
                                                      type == ForceField::InterpolationGridType::EwaldReal ? 5 : 2);
                  });

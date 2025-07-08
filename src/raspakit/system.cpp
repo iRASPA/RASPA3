@@ -376,7 +376,7 @@ void System::insertMolecule(size_t selectedComponent, [[maybe_unused]] const Mol
 }
 
 void System::insertMoleculePolarization(size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
-                            std::vector<Atom> atoms, std::span<double3> electric_field)
+                                        std::vector<Atom> atoms, std::span<double3> electric_field)
 {
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -438,8 +438,10 @@ void System::deleteMolecule(size_t selectedComponent, size_t selectedMolecule, c
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
   atomPositions.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
 
-  std::vector<double3>::const_iterator iterator_electric_field = iteratorForElectricField(selectedComponent, selectedMolecule);
-  electricField.erase(iterator_electric_field, iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
+  std::vector<double3>::const_iterator iterator_electric_field =
+      iteratorForElectricField(selectedComponent, selectedMolecule);
+  electricField.erase(iterator_electric_field,
+                      iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, selectedMolecule);
   moleculePositions.erase(moleculeIterator, moleculeIterator + 1);
@@ -643,7 +645,6 @@ std::vector<double3>::iterator System::iteratorForElectricField(size_t selectedC
   index += size * selectedMolecule + numberOfFrameworkAtoms;
   return electricField.begin() + static_cast<std::vector<double3>::difference_type>(index);
 }
-
 
 std::vector<Molecule>::iterator System::indexForMolecule(size_t selectedComponent, size_t selectedMolecule)
 {
@@ -1273,7 +1274,7 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
 
-  if(!(framework.has_value() && framework->rigid))
+  if (!(framework.has_value() && framework->rigid))
   {
     std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
 
@@ -1831,10 +1832,9 @@ void System::precomputeTotalRigidEnergy() noexcept
 
 void System::precomputeTotalGradients() noexcept
 {
-  runningEnergies = Integrators::updateGradients(spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField,
-                                                 simulationBox, components, eik_x, eik_y, eik_z, eik_xy, totalEik,
-                                                 fixedFrameworkStoredEik, interpolationGrids,
-                                                 numberOfMoleculesPerComponent);
+  runningEnergies = Integrators::updateGradients(
+      spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 }
 
 RunningEnergy System::computeTotalEnergies() noexcept
@@ -1860,8 +1860,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy intermolecularEnergy =
         Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
-    //RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-    //    forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    // RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
+    //     forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
 
     RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
         forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
@@ -1969,9 +1969,10 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
-  
+
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+      forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
+      spanOfMoleculeAtoms());
 
   pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
                                             forceField, components, simulationBox, spanOfMoleculeAtoms()));
@@ -2012,7 +2013,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.ax -= pressureTailCorrection;
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
-  
+
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
   for (size_t componentId = 0; componentId < components.size(); ++componentId)
@@ -2058,7 +2059,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.az = pressureInfo.second.cx = temp;
   temp = 0.5 * (pressureInfo.second.bz + pressureInfo.second.cy);
   pressureInfo.second.bz = pressureInfo.second.cy = temp;
-  
+
   return pressureInfo;
 }
 
@@ -2190,7 +2191,8 @@ void System::createInterpolationGrids(std::ostream& stream)
       interpolationGrids[index] =
           InterpolationEnergyGrid(framework->simulationBox, numberOfVDWGridPoints, forceField.interpolationScheme);
       interpolationGrids[index]->makeInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
-                                                       forceField, framework.value(), forceField.cutOffFrameworkVDW, index);
+                                                       forceField, framework.value(), forceField.cutOffFrameworkVDW,
+                                                       index);
 
       double boltzmann_weight_summed_vdw{};
       double boltzmann_weighted_energy_full_summed_vdw{};
@@ -2255,9 +2257,9 @@ void System::createInterpolationGrids(std::ostream& stream)
         {
           case ForceField::InterpolationScheme::Polynomial:
           {
-            double analytical_vdw_quintic = Interactions::calculateEnergyAtPosition(
-                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, 
-                pos, index, spanOfFrameworkAtoms());
+            double analytical_vdw_quintic =
+                Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::LennardJones, forceField,
+                                                        simulationBox, pos, index, spanOfFrameworkAtoms());
 
             analytical_vdw_energy = analytical_vdw_quintic * Units::EnergyToKelvin;
           }
@@ -2431,9 +2433,9 @@ void System::createInterpolationGrids(std::ostream& stream)
           {
             case ForceField::InterpolationScheme::Polynomial:
             {
-              double analytical_real_ewald_tricubic = Interactions::calculateEnergyAtPosition(
-                  ForceField::InterpolationGridType::EwaldReal, forceField, simulationBox, 
-                  pos, index, spanOfFrameworkAtoms());
+              double analytical_real_ewald_tricubic =
+                  Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::EwaldReal, forceField,
+                                                          simulationBox, pos, index, spanOfFrameworkAtoms());
 
               analytical_real_ewald_energy = charge * analytical_real_ewald_tricubic * Units::EnergyToKelvin;
             }
@@ -2919,7 +2921,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 #if DEBUG_ARCHIVE
   archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
-  
+
   return archive;
 }
 
@@ -3049,8 +3051,7 @@ void System::writeRestartFile()
 
   // use pretty print and indent of 2
   // std::cout << std::setw(2) << j << std::endl;
-  std::string fileNameString =
-        std::format("output/restart_{}_{}.s{}.json", temperature, input_pressure, systemId);
+  std::string fileNameString = std::format("output/restart_{}_{}.s{}.json", temperature, input_pressure, systemId);
   std::ofstream file(fileNameString);
   file << json.dump(2);
 }
@@ -3092,11 +3093,11 @@ void System::readRestartFile()
     read_molecule_data = parsed_data["molecules"];
   }
 
-  for(const Atom &atom : read_atom_data)
+  for (const Atom& atom : read_atom_data)
   {
     atomPositions.push_back(atom);
   }
-  for(const Molecule &molecule : read_molecule_data)
+  for (const Molecule& molecule : read_molecule_data)
   {
     moleculePositions.push_back(molecule);
   }

@@ -3,9 +3,9 @@ module;
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
 #include <cstddef>
-#include <string>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include <vector>
 #endif
 

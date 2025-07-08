@@ -199,11 +199,16 @@ export struct Atom
 
 export void to_json(nlohmann::json &j, const Atom &a)
 {
-  j = nlohmann::json{{"position", a.position},       {"velocity", a.velocity},
-                     {"gradient", a.gradient},       {"charge", a.charge},
-                     {"scalingVDW", a.scalingVDW},   {"scalingCoulomb", a.scalingCoulomb},
-                     {"moleculeId", a.moleculeId},   {"type", a.type},
-                     {"componentId", a.componentId}, {"groupId", static_cast<uint8_t>(a.groupId)},
+  j = nlohmann::json{{"position", a.position},
+                     {"velocity", a.velocity},
+                     {"gradient", a.gradient},
+                     {"charge", a.charge},
+                     {"scalingVDW", a.scalingVDW},
+                     {"scalingCoulomb", a.scalingCoulomb},
+                     {"moleculeId", a.moleculeId},
+                     {"type", a.type},
+                     {"componentId", a.componentId},
+                     {"groupId", static_cast<uint8_t>(a.groupId)},
                      {"isFractional", static_cast<uint8_t>(a.isFractional)}};
 }
 

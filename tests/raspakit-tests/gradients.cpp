@@ -151,9 +151,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_framework_molecule)
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      system.forceField, system.framework, system.interpolationGrids,
-      system.components, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms());
+      system.forceField, system.framework, system.interpolationGrids, system.components, system.simulationBox,
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
 
   EXPECT_NEAR(atomPositions[0].gradient.x, 0.000000000000, 1e-6);
   EXPECT_NEAR(atomPositions[0].gradient.y, -131.516544539514, 1e-6);
@@ -233,9 +232,8 @@ TEST(gradients, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo1 = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-      system.forceField, system.framework, system.interpolationGrids,
-      system.components, system.simulationBox, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms());
+      system.forceField, system.framework, system.interpolationGrids, system.components, system.simulationBox,
+      system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms());
 
   std::pair<EnergyStatus, double3x3> pressureInfo2 = Interactions::computeInterMolecularEnergyStrainDerivative(
       system.forceField, system.components, system.simulationBox, system.spanOfMoleculeAtoms());

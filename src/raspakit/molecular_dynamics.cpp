@@ -489,8 +489,8 @@ void MolecularDynamics::production()
       system.runningEnergies = Integrators::velocityVerlet(
           system.moleculePositions, system.spanOfMoleculeAtoms(), system.components, system.timeStep, system.thermostat,
           system.spanOfFrameworkAtoms(), system.forceField, system.simulationBox, system.eik_x, system.eik_y,
-          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-          system.interpolationGrids, system.numberOfMoleculesPerComponent);
+          system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids,
+          system.numberOfMoleculesPerComponent);
 
       system.conservedEnergy = system.runningEnergies.conservedEnergy();
       system.accumulatedDrift +=
@@ -502,7 +502,6 @@ void MolecularDynamics::production()
     {
       system.sampleProperties(estimation.currentBin, currentCycle);
     }
-
 
     if (currentCycle % printEvery == 0uz)
     {
@@ -626,7 +625,7 @@ void MolecularDynamics::output()
         stream, "{}",
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
 
-    if(!(system.framework.has_value() && system.framework->rigid))
+    if (!(system.framework.has_value() && system.framework->rigid))
     {
       std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     }

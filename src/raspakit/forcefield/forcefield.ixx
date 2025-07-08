@@ -4,15 +4,15 @@ module;
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <optional>
 #include <ostream>
-#include <string>
-#include <cstring>
-#include <vector>
 #include <set>
+#include <string>
+#include <vector>
 #endif
 
 export module forcefield;
@@ -105,10 +105,10 @@ export struct ForceField
   bool cutOffFrameworkVDWAutomatic{false};
   double cutOffFrameworkVDW{12.0};  ///< Cut-off distance for VDW interactions between framework and molecules.
   bool cutOffMoleculeVDWAutomatic{false};
-  double cutOffMoleculeVDW{12.0};   ///< Cut-off distance for VDW interactions between molecules.
+  double cutOffMoleculeVDW{12.0};  ///< Cut-off distance for VDW interactions between molecules.
   bool cutOffCoulombAutomatic{true};
-  double cutOffCoulomb{12.0};       ///< Cut-off distance for Coulomb interactions.
-  double dualCutOff{6.0};           ///< Inner cut-off distance when using dual cut-off scheme.
+  double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
+  double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
 
   size_t numberOfPseudoAtoms{0};          ///< Number of pseudo-atoms defined in the force field.
   std::vector<PseudoAtom> pseudoAtoms{};  ///< List of pseudo-atoms in the force field.
@@ -143,12 +143,12 @@ export struct ForceField
   double3 potentialEnergySurfaceOrigin{0.0, 0.0, 0.0};
 
   std::vector<size_t> gridPseudoAtomIndices;
-  double spacingVDWGrid{ 0.15 };
-  double spacingCoulombGrid{ 0.15 };
+  double spacingVDWGrid{0.15};
+  double spacingCoulombGrid{0.15};
   std::optional<int3> numberOfVDWGridPoints{};
   std::optional<int3> numberOfCoulombGridPoints{};
-  size_t numberOfGridTestPoints{ 100000 };
-  bool interpolationSchemeAuto{ true };
+  size_t numberOfGridTestPoints{100000};
+  bool interpolationSchemeAuto{true};
   InterpolationScheme interpolationScheme{InterpolationScheme::Polynomial};
 
   /**
@@ -242,7 +242,6 @@ export struct ForceField
    */
   std::string printPseudoAtomStatus() const;
 
-
   std::string printCutOffAutoStatus() const;
 
   /**
@@ -316,7 +315,7 @@ export struct ForceField
    */
   std::string repr() const { return printPseudoAtomStatus() + "\n" + printForceFieldStatus(); }
 
-    /**
+  /**
    * \struct InsensitiveCompare
    * \brief Comparator for case-insensitive string comparison.
    *
@@ -345,7 +344,7 @@ export struct ForceField
     }
   };
 
-  void validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data);
+  void validateInput(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   // Static Member Variables
 

@@ -1,10 +1,10 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
-#include <vector>
+#include <cstddef>
 #include <optional>
+#include <vector>
 #endif
 
 export module energy_void_fraction;

@@ -1,32 +1,32 @@
 module;
-  
+
 #ifdef USE_LEGACY_HEADERS
+#include <algorithm>
+#include <chrono>
 #include <cstddef>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <optional>
 #include <print>
 #include <string>
-#include <vector>              
-#include <optional>
-#include <limits> 
-#include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <tuple> 
-#include <chrono>
+#include <tuple>
+#include <vector>
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
-  #include <OpenCL/cl.h>
+#include <OpenCL/cl.h>
 #elif _WIN32
-  #include <CL/cl.h>
+#include <CL/cl.h>
 #else
-  #include <CL/opencl.h>
+#include <CL/opencl.h>
 #endif
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
 #endif
-    
+
 module tessellation;
-    
+
 #ifndef USE_LEGACY_HEADERS
 import <cstddef>;
 import <print>;
@@ -57,45 +57,57 @@ import units;
 import mdspan;
 #endif
 
-Tessellation::Tessellation(int3 grid_size):
-  grid_size(grid_size)
+Tessellation::Tessellation(int3 grid_size) : grid_size(grid_size)
 {
-  if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
+  if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
     cl_int err;
 
     const char* tessellationShaderSourceCode = Tessellation::tessellationKernelSource;
-    tessellationProgram = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &tessellationShaderSourceCode, nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));}
+    tessellationProgram =
+        clCreateProgramWithSource(OpenCL::clContext.value(), 1, &tessellationShaderSourceCode, nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
+    }
 
     err = clBuildProgram(tessellationProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       size_t len;
       char buffer[2048];
-      clGetProgramBuildInfo(tessellationProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-      std::string message = std::format("Tessellation: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__, __LINE__, std::string(buffer));
+      clGetProgramBuildInfo(tessellationProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer),
+                            buffer, &len);
+      std::string message = std::format("Tessellation: OpenCL Failed to build program at {} (line {} error: {})\n",
+                                        __FILE__, __LINE__, std::string(buffer));
       throw std::runtime_error(message);
     }
 
     tessellationKernel = clCreateKernel(tessellationProgram, "Tessellation", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__ , __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__, __LINE__));
+    }
 
-    err = clGetKernelWorkGroupInfo(tessellationKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &tessellationWorkGroupSize, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));}
+    err = clGetKernelWorkGroupInfo(tessellationKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &tessellationWorkGroupSize, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
+    }
   }
 }
 
 Tessellation::~Tessellation()
 {
-  if(OpenCL::clContext.has_value())
+  if (OpenCL::clContext.has_value())
   {
     clReleaseKernel(tessellationKernel);
     clReleaseProgram(tessellationProgram);
   }
 }
 
-void Tessellation::run(const ForceField &forceField, const Framework &framework)
+void Tessellation::run(const ForceField& forceField, const Framework& framework)
 {
   double2 probeParameter = double2(10.9 * Units::KelvinToEnergy, 2.64);
   double cutoff = forceField.cutOffFrameworkVDW;
@@ -106,7 +118,7 @@ void Tessellation::run(const ForceField &forceField, const Framework &framework)
   std::chrono::system_clock::time_point time_begin, time_end;
   cl_int err;
 
-  if(!OpenCL::clContext.has_value()) return;
+  if (!OpenCL::clContext.has_value()) return;
 
   time_begin = std::chrono::system_clock::now();
 
@@ -115,70 +127,112 @@ void Tessellation::run(const ForceField &forceField, const Framework &framework)
 
   cl_mem image;
   cl_image_format cl_image_format{CL_R, CL_UNSIGNED_INT32};
-  cl_image_desc imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D, static_cast<size_t>(grid_size.x), 
-          static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z), 0, 0, 0, 0, 0, nullptr};
-  image = clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &cl_image_format, &imageDescriptor, nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));}
+  cl_image_desc imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D,
+                                                static_cast<size_t>(grid_size.x),
+                                                static_cast<size_t>(grid_size.y),
+                                                static_cast<size_t>(grid_size.z),
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                0,
+                                                nullptr};
+  image =
+      clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &cl_image_format, &imageDescriptor, nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   std::vector<int32_t> output_data(static_cast<size_t>(grid_size.x * grid_size.y * grid_size.x));
 
   if (positions.size() > 0)
-  { 
-    double3 correction = double3(1.0/double(numberOfReplicas.x), 1.0/double(numberOfReplicas.y), 1.0/double(numberOfReplicas.z));
-    for(size_t i = 0 ; i < positions.size(); ++i)
-    { 
+  {
+    double3 correction =
+        double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
+    for (size_t i = 0; i < positions.size(); ++i)
+    {
       double3 position = correction * positions[i];
       double2 currentPotentialParameters = potentialParameters[i];
-        
+
       // fill in the fractional position
-      pos[i] = {{cl_float(position.x),cl_float(position.y),cl_float(position.z),0.0f}};
-          
+      pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
+
       // mixing rule for the atom and the probe
       sigma[i] = cl_float(currentPotentialParameters.y);
     }
 
-    cl_mem inputPos = clCreateBuffer(OpenCL::clContext.value(),  CL_MEM_READ_ONLY,  sizeof(float4) * pos.size(), nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+    cl_mem inputPos =
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+    }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(), pos.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
+                               pos.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+    }
 
-    cl_mem inputSigma = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+    cl_mem inputSigma =
+        clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+    }
 
-    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(), sigma.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+    err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
+                               sigma.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+    }
 
+    double3x3 replicaCell =
+        double3x3(double(numberOfReplicas.x) * unitCell[0], double(numberOfReplicas.y) * unitCell[1],
+                  double(numberOfReplicas.z) * unitCell[2]);
 
-    double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0],
-                                      double(numberOfReplicas.y) * unitCell[1],
-                                      double(numberOfReplicas.z) * unitCell[2]);
-
-    cl_float4 clCella = {{cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
-    cl_float4 clCellb = {{cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
-    cl_float4 clCellc = {{cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
+    cl_float4 clCella = {
+        {cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
+    cl_float4 clCellb = {
+        {cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
+    cl_float4 clCellc = {
+        {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
 
     cl_int numberOfAtoms = static_cast<cl_int>(positions.size());
-    err  = clSetKernelArg(tessellationKernel,  0, sizeof(cl_mem), &inputPos);
-    err |= clSetKernelArg(tessellationKernel,  1, sizeof(cl_mem), &inputSigma);
-    err |= clSetKernelArg(tessellationKernel,  2, sizeof(cl_mem), &image);
-    err |= clSetKernelArg(tessellationKernel,  3, sizeof(cl_float4), &clCella);
-    err |= clSetKernelArg(tessellationKernel,  4, sizeof(cl_float4), &clCellb);
-    err |= clSetKernelArg(tessellationKernel,  5, sizeof(cl_float4), &clCellc);
-    err |= clSetKernelArg(tessellationKernel,  6, sizeof(cl_int), &numberOfAtoms);
-    err |= clSetKernelArg(tessellationKernel,  7, sizeof(cl_int3), &numberOfReplicas);
-    err |= clSetKernelArg(tessellationKernel,  8, sizeof(cl_int3), &grid_size);
+    err = clSetKernelArg(tessellationKernel, 0, sizeof(cl_mem), &inputPos);
+    err |= clSetKernelArg(tessellationKernel, 1, sizeof(cl_mem), &inputSigma);
+    err |= clSetKernelArg(tessellationKernel, 2, sizeof(cl_mem), &image);
+    err |= clSetKernelArg(tessellationKernel, 3, sizeof(cl_float4), &clCella);
+    err |= clSetKernelArg(tessellationKernel, 4, sizeof(cl_float4), &clCellb);
+    err |= clSetKernelArg(tessellationKernel, 5, sizeof(cl_float4), &clCellc);
+    err |= clSetKernelArg(tessellationKernel, 6, sizeof(cl_int), &numberOfAtoms);
+    err |= clSetKernelArg(tessellationKernel, 7, sizeof(cl_int3), &numberOfReplicas);
+    err |= clSetKernelArg(tessellationKernel, 8, sizeof(cl_int3), &grid_size);
 
-    size_t global_work_size[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z)};
-    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), tessellationKernel, 3, nullptr, global_work_size, nullptr, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel tessellationKernel failed at {} line {}\n", __FILE__, __LINE__));}
+    size_t global_work_size[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
+                                  static_cast<size_t>(grid_size.z)};
+    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), tessellationKernel, 3, nullptr, global_work_size,
+                                 nullptr, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clEnqueueNDRangeKernel tessellationKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    size_t originRawData[3] = {0,0,0};
-    size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z)};
-    err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), image, CL_TRUE, originRawData, regionRawData, 0, 0, output_data.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+    size_t originRawData[3] = {0, 0, 0};
+    size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
+                               static_cast<size_t>(grid_size.z)};
+    err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), image, CL_TRUE, originRawData, regionRawData, 0, 0,
+                             output_data.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+    }
 
     clFinish(OpenCL::clCommandQueue.value());
 
@@ -187,14 +241,12 @@ void Tessellation::run(const ForceField &forceField, const Framework &framework)
     clReleaseMemObject(image);
   }
 
-
-
   time_end = std::chrono::system_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 
-  std::mdspan<int32_t, std::dextents<size_t, 3>, std::layout_left> data_view(
-      output_data.data(),  grid_size.x, grid_size.y, grid_size.z);
+  std::mdspan<int32_t, std::dextents<size_t, 3>, std::layout_left> data_view(output_data.data(), grid_size.x,
+                                                                             grid_size.y, grid_size.z);
 
   std::ofstream myfile;
   myfile.open(framework.name + ".tessellation.gpu.txt");
@@ -206,13 +258,12 @@ void Tessellation::run(const ForceField &forceField, const Framework &framework)
     {
       for (size_t i = 0; i < static_cast<size_t>(grid_size.x); ++i)
       {
-        std::print(myfile,"{} {} {} {}\n", i, j, k, data_view[i, j, k]);
+        std::print(myfile, "{} {} {} {}\n", i, j, k, data_view[i, j, k]);
       }
     }
   }
 
   myfile.close();
-
 }
 
 const char* Tessellation::tessellationKernelSource = R"foo(

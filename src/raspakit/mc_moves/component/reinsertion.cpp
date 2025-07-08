@@ -78,7 +78,6 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     return std::nullopt;
   }
 
-
   // Determine cutoff distances based on whether dual cutoff is used.
   double cutOffFrameworkVDW =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffFrameworkVDW;
@@ -162,17 +161,13 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   if (system.forceField.computePolarization)
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(
-      system.forceField, system.simulationBox, 
-      system.spanOfFrameworkAtoms(), 
-      growData->electricField, retraceData.electricField, 
-      growData->atom, retraceData.atom);
+        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), growData->electricField,
+        retraceData.electricField, growData->atom, retraceData.atom);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.fixedFrameworkStoredEik, system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox,
-                                         growData->electricField, retraceData.electricField,
-                                         growData->atom, retraceData.atom);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, growData->electricField, retraceData.electricField,
+        growData->atom, retraceData.atom);
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
@@ -180,7 +175,8 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   }
 
   // Compute correction factor from the Fourier energy difference.
-  double correctionFactorFourier = std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  double correctionFactorFourier =
+      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
 
   // Apply Metropolis acceptance criterion.
   if (random.uniform() <

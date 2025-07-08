@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <complex>
 #include <cstddef>
+#include <iostream>
+#include <optional>
+#include <print>
 #include <ranges>
 #include <span>
 #include <tuple>
-#include <optional>
 #include <vector>
-#include <iostream>
-#include <print>
 
 import int3;
 import double3;
@@ -51,8 +51,8 @@ TEST(MC_MUVT_DRIFT, insertion)
   probabilities_co2.setProbability(MoveTypes::Swap, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -62,46 +62,46 @@ TEST(MC_MUVT_DRIFT, insertion)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::Swap, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -139,8 +139,8 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   probabilities_co2.setProbability(MoveTypes::SwapCBMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -150,46 +150,46 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -227,8 +227,8 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -238,46 +238,46 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -315,8 +315,8 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -326,46 +326,46 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -403,8 +403,8 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
   probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, true);
 
@@ -414,46 +414,46 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -491,8 +491,8 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
   probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, true);
 
@@ -502,46 +502,46 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, false);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -579,8 +579,8 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
   probabilities_co2.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -590,46 +590,46 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, true);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;
@@ -667,8 +667,8 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
   probabilities_co2.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
   Component co2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                            {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false), 
-                             Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
                              Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
                             5, 21, probabilities_co2, std::nullopt, false);
 
@@ -678,46 +678,46 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
   probabilities_methane.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
   probabilities_methane.setProbability(MoveTypes::SwapCBCFCMC, 1.0);
 
-  Component methane = Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
-                                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, true);
+  Component methane =
+      Component(1, forceField, "methane", 190.564, 45599200, 0.01142,
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, 1, false, false)}, 5, 21, probabilities_methane, std::nullopt, true);
 
   MCMoveProbabilities probabilities_water = MCMoveProbabilities();
   probabilities_water.setProbability(MoveTypes::Translation, 1.0);
   probabilities_water.setProbability(MoveTypes::Rotation, 1.0);
   probabilities_water.setProbability(MoveTypes::ReinsertionCBMC, 1.0);
 
-  Component water = Component(2, forceField, "water", 0.0, 0.0, 0.0,
-                              {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
-                               Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
-                               Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
-                               Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
-                              5, 21, probabilities_water, std::nullopt, false);
+  Component water = Component(
+      2, forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 2, false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), 0.241, 1.0, 0, 8, 2, false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
+      5, 21, probabilities_water, std::nullopt, false);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
 
-  std::vector<System> systems{ system };
-  size_t numberOfCycles{ 1000 };
-  size_t numberOfInitializationCycles { 500 };
-  size_t numberOfEquilibrationCycles{ 1000 };
-  size_t printEvery{ 1000 };
-  size_t writeBinaryRestartEvery { 10000 };
-  size_t rescaleWangLandauEvery { 5000 };
-  size_t optimizeMCMovesEvery{ 5000 };
-  size_t numberOfBlocks{ 5 };
-  bool outputToFiles{ false };
+  std::vector<System> systems{system};
+  size_t numberOfCycles{1000};
+  size_t numberOfInitializationCycles{500};
+  size_t numberOfEquilibrationCycles{1000};
+  size_t printEvery{1000};
+  size_t writeBinaryRestartEvery{10000};
+  size_t rescaleWangLandauEvery{5000};
+  size_t optimizeMCMovesEvery{5000};
+  size_t numberOfBlocks{5};
+  bool outputToFiles{false};
 
   RandomNumber randomSeed(std::nullopt);
 
-  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles,
-                             printEvery, writeBinaryRestartEvery, rescaleWangLandauEvery,
-                             optimizeMCMovesEvery, systems, randomSeed,
+  MonteCarlo mc = MonteCarlo(numberOfCycles, numberOfInitializationCycles, numberOfEquilibrationCycles, printEvery,
+                             writeBinaryRestartEvery, rescaleWangLandauEvery, optimizeMCMovesEvery, systems, randomSeed,
                              numberOfBlocks, outputToFiles);
-
 
   mc.run();
 
-  for(System &s : mc.systems)
+  for (System &s : mc.systems)
   {
     RunningEnergy recomputedEnergies = s.computeTotalEnergies();
     RunningEnergy drift = s.runningEnergies - recomputedEnergies;

@@ -54,10 +54,9 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, 
-                                                    size_t selectedComponent, size_t selectedMolecule,
-                                                    const std::vector<Component> &components, Molecule &molecule,
-                                                    std::span<Atom> molecule_atoms)
+std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, size_t selectedComponent,
+                                                    size_t selectedMolecule, const std::vector<Component> &components,
+                                                    Molecule &molecule, std::span<Atom> molecule_atoms)
 {
   double3 angle{};
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -104,7 +103,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+        molecule_atoms);
   }
   else
   {
@@ -132,19 +132,15 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   if (system.forceField.computePolarization)
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.fixedFrameworkStoredEik, system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox,
-                                         electricFieldMoleculeNew, electricFieldMoleculeOld,
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox,
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
@@ -155,14 +151,12 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld,
-        trialMolecule.second, molecule_atoms);
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
   }
 
-
   // get the total difference in energy
-  RunningEnergy energyDifference =
-      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+                                   ewaldFourierEnergy + polarizationDifference;
 
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
 

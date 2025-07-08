@@ -23,10 +23,7 @@ export struct MC_OpenCL_VoidFraction
 {
   std::vector<double> data;
 
-  MC_OpenCL_VoidFraction()
-  {
-  };
+  MC_OpenCL_VoidFraction() {};
 
   void run(const ForceField &forceField, const Framework &framework, size_t number_of_iterations);
-
 };

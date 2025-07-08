@@ -9,11 +9,11 @@ module;
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <numbers>
 #include <optional>
 #include <span>
 #include <tuple>
 #include <vector>
-#include <numbers>
 #endif
 
 module mc_moves_random_rotation;
@@ -108,7 +108,8 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+        molecule_atoms);
   }
   else
   {
@@ -138,19 +139,15 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   if (system.forceField.computePolarization)
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.fixedFrameworkStoredEik, system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox,
-                                         electricFieldMoleculeNew, electricFieldMoleculeOld,
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox,
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
 
@@ -162,14 +159,12 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   {
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld,
-        trialMolecule.second, molecule_atoms);
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
   }
 
   // Get the total difference in energy
-  RunningEnergy energyDifference =
-      externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + 
-      ewaldFourierEnergy + polarizationDifference;
+  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+                                   ewaldFourierEnergy + polarizationDifference;
 
   // Update constructed move statistics
   component.mc_moves_statistics.addConstructed(move, selectedDirection);

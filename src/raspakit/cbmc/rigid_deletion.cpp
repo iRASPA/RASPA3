@@ -122,9 +122,9 @@ import interpolation_energy_grid;
                  [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * v.second.potentialEnergy(); });
 
-  double RosenbluthWeight =
-      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                  [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltmannFactor)
+                                            { return acc + std::exp(logBoltmannFactor); });
 
   return ChainData(
       Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),

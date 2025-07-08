@@ -7,7 +7,6 @@
 #include <tuple>
 #include <vector>
 
-
 import int3;
 import double3;
 import double3x3;

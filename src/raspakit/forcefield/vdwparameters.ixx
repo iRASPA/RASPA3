@@ -136,7 +136,7 @@ export struct VDWParameters
 
   double sizeParameter() const
   {
-    switch(type)
+    switch (type)
     {
       case Type::LennardJones:
         return parameters.y;

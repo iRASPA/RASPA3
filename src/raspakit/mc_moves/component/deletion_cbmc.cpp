@@ -76,7 +76,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     // Get a reference to the molecule being deleted
     std::span<Atom> molecule = system.spanOfMolecule(selectedComponent, selectedMolecule);
     std::copy(system.electricField.begin(), system.electricField.end(), system.electricFieldNew.begin());
-    //std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
+    // std::span<double3> electricFieldMoleculeNew = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
 
     // Retrieve cutoff distances from the force field
     double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
@@ -124,29 +124,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
-      Interactions::computeFrameworkMoleculeElectricFieldDifference(
-        system.forceField, system.simulationBox, 
-        system.spanOfFrameworkAtoms(), 
-        {}, retraceData.electricField,
-        {}, retraceData.atom);
+      Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                    system.spanOfFrameworkAtoms(), {},
+                                                                    retraceData.electricField, {}, retraceData.atom);
 
-      Interactions::computeEwaldFourierElectricFieldDifference(
-                                           system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                           system.fixedFrameworkStoredEik, system.storedEik, system.totalEik,
-                                           system.forceField, system.simulationBox, 
-                                           {}, retraceData.electricField,
-                                           {}, retraceData.atom);
+      Interactions::computeEwaldFourierElectricFieldDifference(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
+                                                               system.fixedFrameworkStoredEik, system.storedEik,
+                                                               system.totalEik, system.forceField, system.simulationBox,
+                                                               {}, retraceData.electricField, {}, retraceData.atom);
 
       // Compute polarization energy difference
       polarizationDifference = Interactions::computePolarizationEnergyDifference(
           system.forceField, {}, retraceData.electricField, {}, retraceData.atom);
     }
 
-
     // Calculate the correction factor for Ewald summation
     double correctionFactorEwald =
         std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
-              polarizationDifference.potentialEnergy()));
+                                 polarizationDifference.potentialEnergy()));
 
     // Compute acceptance probability factors
     double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -175,7 +170,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
-      return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference, 
+      return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,
               double3(Pacc, 1.0 - Pacc, 0.0)};
     };
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};

@@ -80,11 +80,11 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   time_begin = std::chrono::system_clock::now();
   for (size_t step = 0; step < system.numberOfHybridMCSteps; ++step)
   {
-    currentEnergy = Integrators::velocityVerlet(
-        moleculePositions, moleculeAtomPositions, system.components, dt, thermostat, system.spanOfFrameworkAtoms(),
-        system.forceField, system.simulationBox, system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-        system.totalEik, system.fixedFrameworkStoredEik, system.interpolationGrids, 
-        system.numberOfMoleculesPerComponent);
+    currentEnergy = Integrators::velocityVerlet(moleculePositions, moleculeAtomPositions, system.components, dt,
+                                                thermostat, system.spanOfFrameworkAtoms(), system.forceField,
+                                                system.simulationBox, system.eik_x, system.eik_y, system.eik_z,
+                                                system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+                                                system.interpolationGrids, system.numberOfMoleculesPerComponent);
   }
   time_end = std::chrono::system_clock::now();
 

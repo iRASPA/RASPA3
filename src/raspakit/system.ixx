@@ -353,13 +353,13 @@ export struct System
   size_t numberOfMolecules() const
   {
     return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
-                       [](const size_t &acc, const size_t &b) { return acc + b; });
+                           [](const size_t &acc, const size_t &b) { return acc + b; });
   }
 
   size_t numberOfIntegerMolecules() const
   {
     return std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(),
-                       size_t(0), [](const size_t &acc, const size_t &b) { return acc + b; });
+                           size_t(0), [](const size_t &acc, const size_t &b) { return acc + b; });
   }
 
   // The system weight is the sum of the weights of all the components
@@ -398,7 +398,8 @@ export struct System
   nlohmann::json jsonMCMoveStatistics() const;
 
   void insertMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
-  void insertMoleculePolarization(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms, std::span<double3> electricField);
+  void insertMoleculePolarization(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
+                                  std::span<double3> electricField);
   void insertFractionalMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
                                 size_t moleculeId);
   void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> atoms);

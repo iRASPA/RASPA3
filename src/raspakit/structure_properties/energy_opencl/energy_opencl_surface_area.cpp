@@ -1,40 +1,39 @@
 module;
-     
+
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
-#include <array>  
-#include <chrono> 
+#include <array>
+#include <chrono>
+#include <cmath>
 #include <complex>
 #include <cstddef>
-#include <cmath>
-#include <algorithm>
 #include <exception>
 #include <format>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <istream>
-#include <map>                                      
-#include <ostream>                                  
-#include <print>                                    
+#include <map>
+#include <ostream>
+#include <print>
 #include <source_location>
 #include <sstream>
-#include <tuple>          
+#include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <string>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
-  #include <OpenCL/cl.h>
+#include <OpenCL/cl.h>
 #elif _WIN32
-  #include <CL/cl.h>
+#include <CL/cl.h>
 #else
-  #include <CL/opencl.h>
+#include <CL/opencl.h>
 #endif
 #endif
-  
+
 module energy_opencl_surface_area;
 
 import opencl;
@@ -49,35 +48,53 @@ import mdspan;
 
 EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
 {
-  if(OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
+  if (OpenCL::clContext.has_value() && OpenCL::clDeviceId.has_value())
   {
     cl_int err;
 
-    const char* energyGridShaderSourceCode = EnergyOpenCLSurfaceArea::energyGridKernelSource;
-    energyGridProgram = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &energyGridShaderSourceCode, nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));}
+    const char *energyGridShaderSourceCode = EnergyOpenCLSurfaceArea::energyGridKernelSource;
+    energyGridProgram =
+        clCreateProgramWithSource(OpenCL::clContext.value(), 1, &energyGridShaderSourceCode, nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {}\n", __LINE__));
+    }
 
     err = clBuildProgram(energyGridProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
       size_t len;
       char buffer[2048];
-      clGetProgramBuildInfo(energyGridProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-      std::string message = std::format("SKComputeIsosurface: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__, __LINE__, std::string(buffer));
+      clGetProgramBuildInfo(energyGridProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer,
+                            &len);
+      std::string message =
+          std::format("SKComputeIsosurface: OpenCL Failed to build program at {} (line {} error: {})\n", __FILE__,
+                      __LINE__, std::string(buffer));
       throw std::runtime_error(message);
     }
 
     energyGridKernel = clCreateKernel(energyGridProgram, "ComputeEnergyGrid", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__ , __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed {} : {}\n", __FILE__, __LINE__));
+    }
 
-    err = clGetKernelWorkGroupInfo(energyGridKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &energyGridWorkGroupSize, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));}
+    err = clGetKernelWorkGroupInfo(energyGridKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &energyGridWorkGroupSize, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
+    }
 
-
-
-    const char* energyEnergyOpenCLSurfaceAreaShaderSourceCode = EnergyOpenCLSurfaceArea::marchingCubesKernelSource.c_str();
-    energyEnergyOpenCLSurfaceAreaProgram = clCreateProgramWithSource(OpenCL::clContext.value(), 1, &energyEnergyOpenCLSurfaceAreaShaderSourceCode, nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("EnergyOpenCLSurfaceArea: OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));}
+    const char *energyEnergyOpenCLSurfaceAreaShaderSourceCode =
+        EnergyOpenCLSurfaceArea::marchingCubesKernelSource.c_str();
+    energyEnergyOpenCLSurfaceAreaProgram = clCreateProgramWithSource(
+        OpenCL::clContext.value(), 1, &energyEnergyOpenCLSurfaceAreaShaderSourceCode, nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format(
+          "EnergyOpenCLSurfaceArea: OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     // Build the program executable
     err = clBuildProgram(energyEnergyOpenCLSurfaceAreaProgram, 0, nullptr, nullptr, nullptr, nullptr);
@@ -85,50 +102,118 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
     {
       size_t len;
       char buffer[2048];
-      clGetProgramBuildInfo(energyEnergyOpenCLSurfaceAreaProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-      throw std::runtime_error(std::format("Isorface: OpenCL Failed to build program at {}1 (line {} error: {})\n", __FILE__, __LINE__, buffer));
+      clGetProgramBuildInfo(energyEnergyOpenCLSurfaceAreaProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG,
+                            sizeof(buffer), buffer, &len);
+      throw std::runtime_error(std::format("Isorface: OpenCL Failed to build program at {}1 (line {} error: {})\n",
+                                           __FILE__, __LINE__, buffer));
     }
 
     constructHPLevelKernel = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "constructHPLevel", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &constructHPLevelKernelWorkGroupSize, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &constructHPLevelKernelWorkGroupSize, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     classifyCubesKernel = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "classifyCubes", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &classifyCubesKernelWorkGroupSize, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &classifyCubesKernelWorkGroupSize, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     traverseHPKernel[4] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP16", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[4], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[4], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("cOpenCL lGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[4], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[4], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("cOpenCL lGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
     traverseHPKernel[5] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP32", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[5], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[5], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[5], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[5], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
     traverseHPKernel[6] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP64", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[6], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[6], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[6], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[6], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
     traverseHPKernel[7] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP128", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[7], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[7], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[7], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[7], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
     traverseHPKernel[8] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP256", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[8], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[8], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[8], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[8], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
     traverseHPKernel[9] = clCreateKernel(energyEnergyOpenCLSurfaceAreaProgram, "traverseHP512", &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));}
-    err = clGetKernelWorkGroupInfo(traverseHPKernel[9], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &traverseHPKernelWorkGroupSize[9], nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));}
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
+    err = clGetKernelWorkGroupInfo(traverseHPKernel[9], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[9], nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clGetKernelWorkGroupInfo failed at {} line {}\n", __FILE__, __LINE__));
+    }
   }
 };
 
 EnergyOpenCLSurfaceArea::~EnergyOpenCLSurfaceArea()
 {
-  if(OpenCL::clContext.has_value())
+  if (OpenCL::clContext.has_value())
   {
     clReleaseKernel(energyGridKernel);
     clReleaseProgram(energyGridProgram);
@@ -159,16 +244,18 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
 
   time_begin = std::chrono::system_clock::now();
 
-  size_t largestSize = static_cast<size_t>(std::max({grid_size.x,grid_size.y,grid_size.z}));
+  size_t largestSize = static_cast<size_t>(std::max({grid_size.x, grid_size.y, grid_size.z}));
   size_t powerOfTwo = 1uz;
-  while(largestSize > static_cast<size_t>(pow(2, powerOfTwo)))
+  while (largestSize > static_cast<size_t>(pow(2, powerOfTwo)))
   {
     powerOfTwo += 1;
   }
-  size_t size = static_cast<size_t>(std::pow(2uz,powerOfTwo)); // the encompassing size to use as textures (size 16,32,64,128,256, and 512 are supported).
+  size_t size = static_cast<size_t>(std::pow(
+      2uz, powerOfTwo));  // the encompassing size to use as textures (size 16,32,64,128,256, and 512 are supported).
 
-  //std::vector<float> voxels = EnergyGrid().computeEnergyGrid(grid_size, probeParameter, positions, potentialParameters, unitCell, numberOfReplicas);
- 
+  // std::vector<float> voxels = EnergyGrid().computeEnergyGrid(grid_size, probeParameter, positions,
+  // potentialParameters, unitCell, numberOfReplicas);
+
   // Energy-grid computation step
   // ==================================================================================================================================================================
 
@@ -178,7 +265,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
 
   // make sure the the global work size is an multiple of the work group size
   // (detected on NVIDIA)
-  size_t numberOfGridPoints = (temp  + energyGridWorkGroupSize-1) & ~(energyGridWorkGroupSize-1);
+  size_t numberOfGridPoints = (temp + energyGridWorkGroupSize - 1) & ~(energyGridWorkGroupSize - 1);
   size_t energy_global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);
@@ -188,130 +275,183 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   std::vector<cl_float4> gridPositions(numberOfGridPoints);
   std::vector<cl_float> output(numberOfGridPoints);
 
-  double3 correction = double3(1.0/double(numberOfReplicas.x), 1.0/double(numberOfReplicas.y), 1.0/double(numberOfReplicas.z));
+  double3 correction =
+      double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
 
   if (numberOfAtoms == 0)
   {
     return;
   }
-  
-  for(size_t i=0 ; i<numberOfAtoms; i++)
+
+  for (size_t i = 0; i < numberOfAtoms; i++)
   {
     double3 position = correction * positions[i];
     double2 currentPotentialParameters = potentialParameters[i];
 
     // fill in the Cartesian position
-    pos[i] = {{cl_float(position.x),cl_float(position.y),cl_float(position.z),0.0f}};
+    pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
 
     // use 4 x epsilon for a probe epsilon of unity
-    epsilon[i] = cl_float(4.0*sqrt(currentPotentialParameters.x * probeParameter.x));
+    epsilon[i] = cl_float(4.0 * sqrt(currentPotentialParameters.x * probeParameter.x));
 
     // mixing rule for the atom and the probe
     sigma[i] = cl_float(0.5 * (currentPotentialParameters.y + probeParameter.y));
   }
 
   size_t index = 0;
-  for(int k = 0; k < grid_size.z; ++k)
+  for (int k = 0; k < grid_size.z; ++k)
   {
-    for(int j = 0; j < grid_size.y; ++j)
+    for (int j = 0; j < grid_size.y; ++j)
     {
       // X various the fastest (contiguous in x)
-      for(int i = 0 ; i < grid_size.x; ++i)
+      for (int i = 0; i < grid_size.x; ++i)
       {
-        double3 position = correction * double3(double(i) / double(grid_size.x-1), double(j) / double(grid_size.y-1), double(k) / double(grid_size.z-1));
+        double3 position =
+            correction * double3(double(i) / double(grid_size.x - 1), double(j) / double(grid_size.y - 1),
+                                 double(k) / double(grid_size.z - 1));
         gridPositions[index] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), cl_float(0.0)}};
         ++index;
       }
     }
   }
 
-  cl_mem inputPos = clCreateBuffer(OpenCL::clContext.value(),  CL_MEM_READ_ONLY,  sizeof(float4) * pos.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem inputPos =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(float4) * pos.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(), pos.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputPos, CL_TRUE, 0, sizeof(float4) * pos.size(),
+                             pos.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,  sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem inputGridPos = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                       sizeof(cl_float4) * gridPositions.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputGridPos, CL_TRUE, 0, sizeof(cl_float4) * gridPositions.size(), gridPositions.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputGridPos, CL_TRUE, 0,
+                             sizeof(cl_float4) * gridPositions.size(), gridPositions.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  cl_mem inputEpsilon = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,  sizeof(cl_float) * epsilon.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem inputEpsilon =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * epsilon.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputEpsilon, CL_TRUE, 0, sizeof(cl_float) * epsilon.size(), epsilon.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputEpsilon, CL_TRUE, 0,
+                             sizeof(cl_float) * epsilon.size(), epsilon.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  cl_mem inputSigma = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem inputSigma =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY, sizeof(cl_float) * sigma.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(), sigma.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));}
-
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), inputSigma, CL_TRUE, 0, sizeof(cl_float) * sigma.size(),
+                             sigma.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
+  }
 
   size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
-  cl_int clNumberOfReplicas =  cl_int(totalNumberOfReplicas);
+  cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
   std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
   index = 0;
-  for(int i=0; i<numberOfReplicas.x; i++)
+  for (int i = 0; i < numberOfReplicas.x; i++)
   {
-    for(int j=0; j<numberOfReplicas.y; j++)
+    for (int j = 0; j < numberOfReplicas.y; j++)
     {
-      for(int k=0; k<numberOfReplicas.z; k++)
+      for (int k = 0; k < numberOfReplicas.z; k++)
       {
-        replicaVector[index] = {
-                 {cl_float(double(i)/double(numberOfReplicas.x)),
-                 cl_float(double(j)/double(numberOfReplicas.y)),
-                 cl_float(double(k)/double(numberOfReplicas.z)),
-                 cl_float(0.0)}};
+        replicaVector[index] = {{cl_float(double(i) / double(numberOfReplicas.x)),
+                                 cl_float(double(j) / double(numberOfReplicas.y)),
+                                 cl_float(double(k) / double(numberOfReplicas.z)), cl_float(0.0)}};
         index += 1;
       }
     }
   }
 
-      cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,  sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem replicaCellBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_ONLY,
+                                            sizeof(cl_float4) * replicaVector.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), replicaCellBuffer, CL_TRUE, 0, sizeof(cl_float4) * replicaVector.size(), replicaVector.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), replicaCellBuffer, CL_TRUE, 0,
+                             sizeof(cl_float4) * replicaVector.size(), replicaVector.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-  cl_mem outputMemory = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));}
-  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0, sizeof(cl_float) * output.size(), output.data(), 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));}
+  cl_mem outputMemory =
+      clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, sizeof(cl_float) * output.size(), nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
+  err = clEnqueueWriteBuffer(OpenCL::clCommandQueue.value(), outputMemory, CL_TRUE, 0, sizeof(cl_float) * output.size(),
+                             output.data(), 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueWriteBuffer failed {} : {}\n", __FILE__, __LINE__));
+  }
 
-
-  double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0],
-                                    double(numberOfReplicas.y) * unitCell[1],
+  double3x3 replicaCell = double3x3(double(numberOfReplicas.x) * unitCell[0], double(numberOfReplicas.y) * unitCell[1],
                                     double(numberOfReplicas.z) * unitCell[2]);
 
-  cl_float4 clCella = {{cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
-  cl_float4 clCellb = {{cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
-  cl_float4 clCellc = {{cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
+  cl_float4 clCella = {
+      {cl_float(replicaCell[0][0]), cl_float(replicaCell[1][0]), cl_float(replicaCell[2][0]), cl_float(0.0)}};
+  cl_float4 clCellb = {
+      {cl_float(replicaCell[0][1]), cl_float(replicaCell[1][1]), cl_float(replicaCell[2][1]), cl_float(0.0)}};
+  cl_float4 clCellc = {
+      {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
 
   size_t unitsOfWorkDone = 0;
   size_t sizeOfWorkBatch = 4096;
-  while(unitsOfWorkDone < positions.size())
+  while (unitsOfWorkDone < positions.size())
   {
     size_t numberOfAtomsPerThreadgroup = std::min(sizeOfWorkBatch, positions.size()) - unitsOfWorkDone;
 
     cl_int startIndex = cl_int(unitsOfWorkDone);
     cl_int endIndex = cl_int(unitsOfWorkDone + numberOfAtomsPerThreadgroup);
-    err  = clSetKernelArg(energyGridKernel,  0, sizeof(cl_mem), &inputPos);
-    err |= clSetKernelArg(energyGridKernel,  1, sizeof(cl_mem), &inputGridPos);
-    err |= clSetKernelArg(energyGridKernel,  2, sizeof(cl_mem), &inputEpsilon);
-    err |= clSetKernelArg(energyGridKernel,  3, sizeof(cl_mem), &inputSigma);
-    err |= clSetKernelArg(energyGridKernel,  4, sizeof(cl_mem), &replicaCellBuffer);
-    err |= clSetKernelArg(energyGridKernel,  5, sizeof(cl_mem), &outputMemory);
-    err |= clSetKernelArg(energyGridKernel,  6, sizeof(cl_int), &clNumberOfReplicas);
-    err |= clSetKernelArg(energyGridKernel,  7, sizeof(cl_float4), &clCella);
-    err |= clSetKernelArg(energyGridKernel,  8, sizeof(cl_float4), &clCellb);
-    err |= clSetKernelArg(energyGridKernel,  9, sizeof(cl_float4), &clCellc);
-    err |= clSetKernelArg(energyGridKernel,  10, sizeof(cl_int), &startIndex);
-    err |= clSetKernelArg(energyGridKernel,  11, sizeof(cl_int), &endIndex);
-    err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr, &energy_global_work_size, &energyGridWorkGroupSize, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed {} : {}\n", __FILE__, __LINE__));}
+    err = clSetKernelArg(energyGridKernel, 0, sizeof(cl_mem), &inputPos);
+    err |= clSetKernelArg(energyGridKernel, 1, sizeof(cl_mem), &inputGridPos);
+    err |= clSetKernelArg(energyGridKernel, 2, sizeof(cl_mem), &inputEpsilon);
+    err |= clSetKernelArg(energyGridKernel, 3, sizeof(cl_mem), &inputSigma);
+    err |= clSetKernelArg(energyGridKernel, 4, sizeof(cl_mem), &replicaCellBuffer);
+    err |= clSetKernelArg(energyGridKernel, 5, sizeof(cl_mem), &outputMemory);
+    err |= clSetKernelArg(energyGridKernel, 6, sizeof(cl_int), &clNumberOfReplicas);
+    err |= clSetKernelArg(energyGridKernel, 7, sizeof(cl_float4), &clCella);
+    err |= clSetKernelArg(energyGridKernel, 8, sizeof(cl_float4), &clCellb);
+    err |= clSetKernelArg(energyGridKernel, 9, sizeof(cl_float4), &clCellc);
+    err |= clSetKernelArg(energyGridKernel, 10, sizeof(cl_int), &startIndex);
+    err |= clSetKernelArg(energyGridKernel, 11, sizeof(cl_int), &endIndex);
+    err |= clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), energyGridKernel, 1, nullptr,
+                                  &energy_global_work_size, &energyGridWorkGroupSize, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel failed {} : {}\n", __FILE__, __LINE__));
+    }
 
     clFinish(OpenCL::clCommandQueue.value());
 
@@ -331,109 +471,145 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   std::vector<cl_mem> images;
   std::vector<cl_mem> buffers;
 
-  for(size_t i=1; i< powerOfTwo; i++)
+  for (size_t i = 1; i < powerOfTwo; i++)
   {
     cl_image_format imageFormat{};
-    switch(i)
+    switch (i)
     {
-    case 1:
-      imageFormat = cl_image_format{CL_RGBA, CL_UNSIGNED_INT8};
-      break;
-    case 2:
-      imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT8};
-      break;
-    case 3:
-      imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT16};
-      break;
-    case 4:
-      imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT16};
-      break;
-    default:
-      imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT32};
-      break;
+      case 1:
+        imageFormat = cl_image_format{CL_RGBA, CL_UNSIGNED_INT8};
+        break;
+      case 2:
+        imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT8};
+        break;
+      case 3:
+        imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT16};
+        break;
+      case 4:
+        imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT16};
+        break;
+      default:
+        imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT32};
+        break;
     }
 
-    cl_image_desc imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D, bufferSize, bufferSize, bufferSize, 0, 0, 0, 0, 0, nullptr};
-    images.push_back(clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err));
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));}
+    cl_image_desc imageDescriptor =
+        cl_image_desc{CL_MEM_OBJECT_IMAGE3D, bufferSize, bufferSize, bufferSize, 0, 0, 0, 0, 0, nullptr};
+    images.push_back(
+        clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err));
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
+    }
     bufferSize /= 2;
   }
 
   // last one should always be CL_UNSIGNED_INT32 (because the sum is read back as integers)
   cl_image_format imageFormat = cl_image_format{CL_R, CL_UNSIGNED_INT32};
-  cl_image_desc imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D, bufferSize, bufferSize, bufferSize, 0, 0, 0, 0, 0, nullptr};
-  images.push_back(clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err));
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));}
-
+  cl_image_desc imageDescriptor =
+      cl_image_desc{CL_MEM_OBJECT_IMAGE3D, bufferSize, bufferSize, bufferSize, 0, 0, 0, 0, 0, nullptr};
+  images.push_back(
+      clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err));
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   // Transfer dataset to device
   imageFormat = cl_image_format{CL_R, CL_FLOAT};
   imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D, size, size, size, 0, 0, 0, 0, 0, nullptr};
-  cl_mem rawData = clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));}
+  cl_mem rawData =
+      clCreateImage(OpenCL::clContext.value(), CL_MEM_READ_WRITE, &imageFormat, &imageDescriptor, nullptr, &err);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   // Copy the energy-grid to the input for the Marching Cubes
-  size_t originRawData[3] = {0,0,0};
-  size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y), static_cast<size_t>(grid_size.z)};
-  err = clEnqueueCopyBufferToImage(OpenCL::clCommandQueue.value(), outputMemory, rawData, 0, originRawData, regionRawData, 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueCopyBuffer failed {} at {} line {}\n", err, __FILE__, __LINE__));}
-
+  size_t originRawData[3] = {0, 0, 0};
+  size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
+                             static_cast<size_t>(grid_size.z)};
+  err = clEnqueueCopyBufferToImage(OpenCL::clCommandQueue.value(), outputMemory, rawData, 0, originRawData,
+                                   regionRawData, 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(
+        std::format("OpenCL clEnqueueCopyBuffer failed {} at {} line {}\n", err, __FILE__, __LINE__));
+  }
 
   // update scalar field
   //===================================================================================================================================
 
   cl_float clIsoValue = cl_float(isoValue);
-  cl_int4 clDimensions = {{grid_size.x,grid_size.y,grid_size.z,1}};
+  cl_int4 clDimensions = {{grid_size.x, grid_size.y, grid_size.z, 1}};
 
-  clSetKernelArg(classifyCubesKernel,  0, sizeof(cl_mem), &images[0]);
-  clSetKernelArg(classifyCubesKernel,  1, sizeof(cl_mem), &rawData);
-  clSetKernelArg(classifyCubesKernel,  2, sizeof(cl_int4), &clDimensions);
-  clSetKernelArg(classifyCubesKernel,  3, sizeof(cl_float), &clIsoValue);
+  clSetKernelArg(classifyCubesKernel, 0, sizeof(cl_mem), &images[0]);
+  clSetKernelArg(classifyCubesKernel, 1, sizeof(cl_mem), &rawData);
+  clSetKernelArg(classifyCubesKernel, 2, sizeof(cl_int4), &clDimensions);
+  clSetKernelArg(classifyCubesKernel, 3, sizeof(cl_float), &clIsoValue);
 
-
-  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t), &classifyCubesKernelWorkGroupSize, nullptr);
+  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t),
+                           &classifyCubesKernelWorkGroupSize, nullptr);
 
   // set work-item dimensions
   size_t global_work_size[3] = {size, size, size};
 
-  err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), classifyCubesKernel, 3, nullptr, global_work_size, nullptr, 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel classifyCubesKernel failed at {} line {}\n", __FILE__, __LINE__));}
+  err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), classifyCubesKernel, 3, nullptr, global_work_size,
+                               nullptr, 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(
+        std::format("OpenCL clEnqueueNDRangeKernel classifyCubesKernel failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   // histoPyramidConstruction
   //===================================================================================================================================
 
   // Run base to first level
-  clSetKernelArg(constructHPLevelKernel,  0, sizeof(cl_mem), &images[0]);
-  clSetKernelArg(constructHPLevelKernel,  1, sizeof(cl_mem), &images[1]);
+  clSetKernelArg(constructHPLevelKernel, 0, sizeof(cl_mem), &images[0]);
+  clSetKernelArg(constructHPLevelKernel, 1, sizeof(cl_mem), &images[1]);
 
-  size_t global_work_size2[3] = {size/2, size/2, size/2};
+  size_t global_work_size2[3] = {size / 2, size / 2, size / 2};
 
-  err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size2, nullptr, 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel constructHPLevelKernel failed at {} line {}\n", __FILE__, __LINE__));}
-
+  err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size2,
+                               nullptr, 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(
+        std::format("OpenCL clEnqueueNDRangeKernel constructHPLevelKernel failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   size_t previous = size / 2;
   // Run level 2 to top level
-  for(size_t i = 1; i < static_cast<size_t>(ceil(log2(double(size))) - 1); i++)
+  for (size_t i = 1; i < static_cast<size_t>(ceil(log2(double(size))) - 1); i++)
   {
-    clSetKernelArg(constructHPLevelKernel,  0, sizeof(cl_mem), &images[i]);
-    clSetKernelArg(constructHPLevelKernel,  1, sizeof(cl_mem), &images[i+1]);
+    clSetKernelArg(constructHPLevelKernel, 0, sizeof(cl_mem), &images[i]);
+    clSetKernelArg(constructHPLevelKernel, 1, sizeof(cl_mem), &images[i + 1]);
 
     previous /= 2;
     size_t global_work_size3[3] = {previous, previous, previous};
-    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size3, nullptr, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel constructHPLevelKernel failed at {} line {}\n", __FILE__, __LINE__));}
+    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size3,
+                                 nullptr, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format(
+          "OpenCL clEnqueueNDRangeKernel constructHPLevelKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
   }
 
   // Read top of histoPyramid an use this size to allocate VBO below
   //===================================================================================================================================
 
-  cl_int sum[8] = {0,0,0,0,0,0,0,0};
-  size_t origin[3] = {0,0,0};
-  size_t region[3] = {2,2,2};
+  cl_int sum[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+  size_t origin[3] = {0, 0, 0};
+  size_t region[3] = {2, 2, 2};
 
-  err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), images[images.size()-1], CL_FALSE, origin, region, 0, 0, &sum, 0, nullptr, nullptr);
-  if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueReadImage failed at {} line {}\n", __FILE__, __LINE__));}
+  err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), images[images.size() - 1], CL_FALSE, origin, region, 0, 0,
+                           &sum, 0, nullptr, nullptr);
+  if (err != CL_SUCCESS)
+  {
+    throw std::runtime_error(std::format("OpenCL clEnqueueReadImage failed at {} line {}\n", __FILE__, __LINE__));
+  }
 
   clFinish(OpenCL::clCommandQueue.value());
 
@@ -442,49 +618,62 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   cl_int sum2 = sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5] + sum[6] + sum[7];
   size_t numberOfTriangles = size_t(sum2);
 
-
   // get the results and convert them to an OpenGL Vertex buffer object
   //===================================================================================================================================
 
   std::vector<float4> triangleData(numberOfTriangles * 3 * 3);
 
-  if(numberOfTriangles == 0)
+  if (numberOfTriangles == 0)
   {
-    //return triangleData;
+    // return triangleData;
   }
 
-  if(numberOfTriangles>0)
+  if (numberOfTriangles > 0)
   {
     cl_int clSum = cl_int(numberOfTriangles);
 
     // Increase the global_work_size so that it is divideable by the workgroup-size
     size_t workGroupSize = traverseHPKernelWorkGroupSize[powerOfTwo];
     size_t local_work_size[1] = {size_t(workGroupSize)};
-    size_t globalWorkSize = numberOfTriangles + workGroupSize - (numberOfTriangles - workGroupSize * (numberOfTriangles / workGroupSize));
+    size_t globalWorkSize =
+        numberOfTriangles + workGroupSize - (numberOfTriangles - workGroupSize * (numberOfTriangles / workGroupSize));
     size_t global_work_size4[1] = {size_t(globalWorkSize)};
 
-    for(size_t j=0; j<images.size(); j++)
+    for (size_t j = 0; j < images.size(); j++)
     {
       clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(j), sizeof(cl_mem), &images[j]);
     }
     clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(images.size()), sizeof(cl_mem), &rawData);
 
     size_t i = images.size() + 1;
-    cl_mem  VBOBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE, triangleData.size()*sizeof(cl_float4), nullptr, &err);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clCreateBuffer failed at {} line {}\n", __FILE__, __LINE__));}
+    cl_mem VBOBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE,
+                                      triangleData.size() * sizeof(cl_float4), nullptr, &err);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clCreateBuffer failed at {} line {}\n", __FILE__, __LINE__));
+    }
     clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i), sizeof(cl_mem), &VBOBuffer);
-    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i+1), sizeof(cl_int4), &clDimensions);
-    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i+2), sizeof(cl_float), &clIsoValue);
-    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i+3), sizeof(cl_int), &clSum);
+    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i + 1), sizeof(cl_int4), &clDimensions);
+    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i + 2), sizeof(cl_float), &clIsoValue);
+    clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(i + 3), sizeof(cl_int), &clSum);
 
     // Run a NDRange kernel over this buffer which traverses back to the base level
-    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), traverseHPKernel[powerOfTwo], 1, nullptr, global_work_size4, local_work_size, 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueNDRangeKernel traverseHPKernel failed at {} line {}\n", __FILE__, __LINE__));}
+    err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), traverseHPKernel[powerOfTwo], 1, nullptr,
+                                 global_work_size4, local_work_size, 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(
+          std::format("OpenCL clEnqueueNDRangeKernel traverseHPKernel failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), VBOBuffer, CL_TRUE, 0, triangleData.size() * sizeof(float4), triangleData.data(), 0, nullptr, nullptr);
-    if (err != CL_SUCCESS) {throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed at {} line {}\n", __FILE__, __LINE__));}
+    err = clEnqueueReadBuffer(OpenCL::clCommandQueue.value(), VBOBuffer, CL_TRUE, 0,
+                              triangleData.size() * sizeof(float4), triangleData.data(), 0, nullptr, nullptr);
+    if (err != CL_SUCCESS)
+    {
+      throw std::runtime_error(std::format("OpenCL clEnqueueReadBuffer failed at {} line {}\n", __FILE__, __LINE__));
+    }
 
     clFinish(OpenCL::clCommandQueue.value());
 
@@ -493,25 +682,30 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
 
   clReleaseMemObject(rawData);
 
-  for(cl_mem &image: images)
+  for (cl_mem &image : images)
   {
     clReleaseMemObject(image);
   }
 
-  for(cl_mem &buffer:  buffers)
+  for (cl_mem &buffer : buffers)
   {
     clReleaseMemObject(buffer);
   }
 
-  double accumulated_surface_area=0.0;
-  for(size_t i=0; i<triangleData.size(); i+=9)
+  double accumulated_surface_area = 0.0;
+  for (size_t i = 0; i < triangleData.size(); i += 9)
   {
-    double3 p1 = unitCell * double3(static_cast<double>(triangleData[i].x), static_cast<double>(triangleData[i].y), static_cast<double>(triangleData[i].z));
-    double3 p2 = unitCell * double3(static_cast<double>(triangleData[i+3].x), static_cast<double>(triangleData[i+3].y), static_cast<double>(triangleData[i+3].z));
-    double3 p3 = unitCell * double3(static_cast<double>(triangleData[i+6].x) , static_cast<double>(triangleData[i+6].y), static_cast<double>(triangleData[i+6].z));
-    double3 v = double3::cross(p2-p1, p3-p1);
+    double3 p1 = unitCell * double3(static_cast<double>(triangleData[i].x), static_cast<double>(triangleData[i].y),
+                                    static_cast<double>(triangleData[i].z));
+    double3 p2 =
+        unitCell * double3(static_cast<double>(triangleData[i + 3].x), static_cast<double>(triangleData[i + 3].y),
+                           static_cast<double>(triangleData[i + 3].z));
+    double3 p3 =
+        unitCell * double3(static_cast<double>(triangleData[i + 6].x), static_cast<double>(triangleData[i + 6].y),
+                           static_cast<double>(triangleData[i + 6].z));
+    double3 v = double3::cross(p2 - p1, p3 - p1);
     double area = 0.5 * v.length();
-    if(std::isfinite(area) && std::fabs(area) < 1.0 )
+    if (std::isfinite(area) && std::fabs(area) < 1.0)
     {
       accumulated_surface_area += area;
     }
@@ -526,12 +720,14 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   std::print(myfile, "# Surface area using energy-based method\n");
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
   myfile << accumulated_surface_area << " [A^2]" << std::endl;
-  myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant / framework.unitCellMass << " [m^2/g]" << std::endl;
+  myfile << accumulated_surface_area * Units::Angstrom * Units::Angstrom * Units::AvogadroConstant /
+                framework.unitCellMass
+         << " [m^2/g]" << std::endl;
   myfile << 1.0e4 * accumulated_surface_area / framework.simulationBox.volume << " [m^2/cm^3]" << std::endl;
   myfile.close();
 }
 
-const char* EnergyOpenCLSurfaceArea::energyGridKernelSource = R"foo(
+const char *EnergyOpenCLSurfaceArea::energyGridKernelSource = R"foo(
 __kernel void ComputeEnergyGrid(__global float4 *position,
                                 __global float4 *gridposition,
                                 __global float *epsilon,
@@ -585,7 +781,6 @@ __kernel void ComputeEnergyGrid(__global float4 *position,
   output[ igrid ] += min(value,10000000.0f);
 }
 )foo";
-
 
 std::string EnergyOpenCLSurfaceArea::marchingCubesKernelSource = std::string(R"foo(
 
@@ -666,7 +861,7 @@ __constant uchar numberOfTriangles[256] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2
 
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 
 // The last part of the algorithm involves forming the correct facets from the positions that the isosurface intersects the edges of the grid cell.
 // Again a table (by Cory Gene Bloyd) is used which this time uses the same cubeindex but allows the vertex sequence to be looked up for as many triangular
@@ -931,7 +1126,7 @@ __constant int triTable[4096] =
 
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void constructHPLevel(
                                __read_only image3d_t readHistoPyramid,
                                __write_only image3d_t writeHistoPyramid
@@ -998,7 +1193,7 @@ int4 scanHPLevel(int target, __read_only image3d_t hp, int4 current) {
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP16(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1074,7 +1269,7 @@ __kernel void traverseHP16(
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP32(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1152,7 +1347,7 @@ __kernel void traverseHP32(
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP64(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1233,7 +1428,7 @@ __kernel void traverseHP64(
 
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP128(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1315,7 +1510,7 @@ __kernel void traverseHP128(
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP256(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1399,7 +1594,7 @@ __kernel void traverseHP256(
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 __kernel void traverseHP512(
                          __read_only image3d_t hp0, // Largest HP
                          __read_only image3d_t hp1,
@@ -1485,7 +1680,7 @@ __kernel void traverseHP512(
 }
 )foo") +
 
-std::string(R"foo(
+                                                                 std::string(R"foo(
 // The first part of the algorithm uses a table (edgeTable) which maps the vertices under the isosurface to the intersecting edges.
 // An 8 bit index is formed where each bit corresponds to a vertex.
 __kernel void classifyCubes(__write_only image3d_t histoPyramid,

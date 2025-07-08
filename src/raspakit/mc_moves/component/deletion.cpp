@@ -109,15 +109,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     if (system.forceField.computePolarization)
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-          system.fixedFrameworkStoredEik,  system.storedEik, system.totalEik, system.forceField,
-          system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule);
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+          system.totalEik, system.forceField, system.simulationBox, {}, electricFieldMoleculeOld, {}, molecule);
     }
     else
     {
       energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-          system.storedEik, system.totalEik, system.forceField,
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
           system.simulationBox, {}, molecule);
     }
     time_end = std::chrono::system_clock::now();

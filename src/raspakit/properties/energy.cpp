@@ -487,7 +487,8 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
     std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.polarizationEnergy.energy);
   }
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  std::print(stream, "    Average  {: .6e} +/- {: .6e} [{}]\n", prefactor * computedAverage.first.polarizationEnergy.energy,
+  std::print(stream, "    Average  {: .6e} +/- {: .6e} [{}]\n",
+             prefactor * computedAverage.first.polarizationEnergy.energy,
              prefactor * computedAverage.second.polarizationEnergy.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "\n");
 
@@ -669,6 +670,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
     throw std::runtime_error(std::format("PropertyEnergy: Error in binary restart\n"));
   }
 #endif
-  
+
   return archive;
 }

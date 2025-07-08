@@ -105,7 +105,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // compute framework-molecule energy contribution
   std::optional<RunningEnergy> frameworkMolecule;
   if (system.forceField.computePolarization)
-  { 
+  {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, {}, trialMolecule.second, {});
@@ -129,15 +129,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   if (system.forceField.computePolarization)
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-        system.fixedFrameworkStoredEik, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, electricFieldMoleculeNew, {}, trialMolecule.second, {});
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, {}, trialMolecule.second,
+        {});
   }
   else
   {
     energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-        system.storedEik, system.totalEik, system.forceField,
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
         system.simulationBox, trialMolecule.second, {});
   }
   time_end = std::chrono::system_clock::now();
@@ -193,7 +192,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     component.mc_moves_statistics.addAccepted(move, 0);
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
-    system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second, electricFieldMoleculeNew);
+    system.insertMoleculePolarization(selectedComponent, trialMolecule.first, trialMolecule.second,
+                                      electricFieldMoleculeNew);
 
     return {energyDifference, double3(0.0, 1.0 - Pacc, Pacc)};
   };

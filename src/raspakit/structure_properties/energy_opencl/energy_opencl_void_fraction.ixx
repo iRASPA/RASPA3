@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
-#include <vector>
+#include <cstddef>
 #include <optional>
+#include <vector>
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
-  #include <OpenCL/cl.h>
+#include <OpenCL/cl.h>
 #elif _WIN32
-  #include <CL/cl.h>
+#include <CL/cl.h>
 #else
-  #include <CL/opencl.h>
+#include <CL/opencl.h>
 #endif
 #endif
 
@@ -39,5 +39,5 @@ export struct EnergyOpenCLVoidFraction
   static const char* energyVoidFractionKernelSource;
   size_t energyVoidFractionWorkGroupSize;
 
-  void run(const ForceField &forceField, const Framework &framework);
+  void run(const ForceField& forceField, const Framework& framework);
 };

@@ -40,4 +40,4 @@ RunningEnergy computePolarizationEnergyDifference(const ForceField &forceField, 
                                                   std::span<double3> electricFieldNew,
                                                   std::span<Atom> moleculeAtomPositionsNew,
                                                   std::span<Atom> moleculeAtomPositionsOld);
-}
+}  // namespace Interactions

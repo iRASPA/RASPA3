@@ -23,12 +23,8 @@ export struct MC_SurfaceArea
 {
   std::vector<double> data;
 
-  MC_SurfaceArea()
-  {
-  };
+  MC_SurfaceArea() {};
 
-  void run(const ForceField &forceField, const Framework &framework, double probe_distance, 
+  void run(const ForceField &forceField, const Framework &framework, double probe_distance,
            std::string probe_pseudo_atom, size_t number_of_iterations) const;
-
 };
-

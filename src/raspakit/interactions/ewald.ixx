@@ -133,17 +133,15 @@ RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, 
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 RunningEnergy energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, 
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 /**
@@ -197,8 +195,7 @@ RunningEnergy eletricFieldEwaldFourierEnergyDifference(
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, 
-    std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 void computeEwaldFourierElectricFieldDifference(
@@ -206,9 +203,8 @@ void computeEwaldFourierElectricFieldDifference(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, 
-    const ForceField &forceField, const SimulationBox &simulationBox, 
-    std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 /**

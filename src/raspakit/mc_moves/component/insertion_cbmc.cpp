@@ -128,22 +128,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
-
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
-    Interactions::computeFrameworkMoleculeElectricFieldDifference(
-      system.forceField, system.simulationBox, 
-      system.spanOfFrameworkAtoms(), 
-      growData->electricField, {}, 
-      growData->atom, {});
+    Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
+                                                                  system.spanOfFrameworkAtoms(),
+                                                                  growData->electricField, {}, growData->atom, {});
 
     Interactions::computeEwaldFourierElectricFieldDifference(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
-                                         system.fixedFrameworkStoredEik, system.storedEik, system.totalEik,
-                                         system.forceField, system.simulationBox, 
-                                         growData->electricField, {},
-                                         growData->atom, {});
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, growData->electricField, {}, growData->atom, {});
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
@@ -154,7 +148,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double correctionFactorEwald =
       std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                                polarizationDifference.potentialEnergy()));
-
 
   // Compute the acceptance probability pre-factor
   double fugacity = component.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -189,7 +182,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atom, growData->electricField);
 
-    return {growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference, 
+    return {growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference,
             double3(0.0, 1.0 - Pacc, Pacc)};
   };
 

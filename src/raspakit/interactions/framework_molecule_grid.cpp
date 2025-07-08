@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
@@ -16,7 +17,6 @@ module;
 #include <thread>
 #include <utility>
 #include <vector>
-#include <array>
 #endif
 
 module interactions_framework_molecule_grid;

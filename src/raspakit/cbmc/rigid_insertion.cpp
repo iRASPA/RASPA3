@@ -55,8 +55,8 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, 
-    bool groupId, bool isFractional, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, bool groupId,
+    bool isFractional, size_t numberOfTrialDirections) noexcept
 {
   size_t startingBead = components[selectedComponent].startingBead;
   Atom firstBead = components[selectedComponent].atoms[startingBead];
@@ -149,9 +149,9 @@ import interpolation_energy_grid;
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
-  double RosenbluthWeight =
-      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                  [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltmannFactor)
+                                            { return acc + std::exp(logBoltmannFactor); });
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 

@@ -179,8 +179,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, 
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
+    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept
 {
   double3 dr, s, t;
   double rr;
@@ -702,8 +702,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
           Potentials::GradientFactor gradientFactor = Potentials::potentialVDWGradient(
               forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
-          energy.frameworkComponentEnergy(0, compA).VanDerWaals +=
-              Potentials::EnergyFactor(gradientFactor.energy, 0.0);
+          energy.frameworkComponentEnergy(0, compA).VanDerWaals += Potentials::EnergyFactor(gradientFactor.energy, 0.0);
 
           const double3 f = gradientFactor.gradientFactor * dr;
 
@@ -865,7 +864,6 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
 
   return energySum;
 }
-
 
 std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField,
                                                                                    const SimulationBox &simulationBox,

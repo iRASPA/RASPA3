@@ -12,7 +12,9 @@ module;
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
+#include <numbers>
 #include <optional>
 #include <ostream>
 #include <print>
@@ -22,8 +24,6 @@ module;
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <numbers>
-#include <limits>
 #endif
 
 #if !defined(_WIN32)
@@ -93,10 +93,7 @@ Framework::Framework() {}
 Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string& componentName,
                      std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
                      Framework::UseChargesFrom useChargesFrom) noexcept(false)
-    : frameworkId(currentFramework),
-      name(componentName),
-      filenameData(fileName),
-      useChargesFrom(useChargesFrom)
+    : frameworkId(currentFramework), name(componentName), filenameData(fileName), useChargesFrom(useChargesFrom)
 {
   if (filenameData.has_value())
   {
@@ -274,7 +271,6 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
       atom.charge = definedAtoms[atom.moleculeId].charge;
     }
   }
-
 }
 
 void Framework::expandDefinedAtomsToUnitCell()
@@ -362,15 +358,16 @@ std::vector<Atom> Framework::makeSuperCell(int3 numberOfCells) const
   return superCellAtoms;
 }
 
-std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position, double well_depth_factor) const
+std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const ForceField& forceField,
+                                                                        double3 probe_position,
+                                                                        double well_depth_factor) const
 {
   double smallest_radius = std::numeric_limits<double>::max();
-
 
   // if inside blockingpocket, then return
   //    return std::nullopt;
 
-  for(const Atom& atom: unitCellAtoms)
+  for (const Atom& atom : unitCellAtoms)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     double size_parameter = forceField[atomType].sizeParameter();
@@ -379,7 +376,7 @@ std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const Fo
     double rr = double3::dot(dr, dr);
 
     double mixing_radius = 0.5 * well_depth_factor * size_parameter;
-    if(rr < mixing_radius * mixing_radius)
+    if (rr < mixing_radius * mixing_radius)
     {
       return std::nullopt;
     }
@@ -391,9 +388,9 @@ std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const Fo
   return smallest_radius;
 }
 
-bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const
+bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField& forceField, double3 probe_position) const
 {
-  for(const Atom& atom: unitCellAtoms)
+  for (const Atom& atom : unitCellAtoms)
   {
     size_t atomType = static_cast<size_t>(atom.type);
     size_t atomicNumber = forceField.pseudoAtoms[atomType].atomicNumber;
@@ -402,7 +399,7 @@ bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField &forceField, do
     dr = simulationBox.applyPeriodicBoundaryConditions(dr);
     double rr = double3::dot(dr, dr);
 
-    if(rr < radius * radius)
+    if (rr < radius * radius)
     {
       return true;
     }
@@ -410,11 +407,12 @@ bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField &forceField, do
 
   return false;
 }
-bool Framework::computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type, std::make_signed_t<std::size_t> skip) const
+bool Framework::computeOverlap(const ForceField& forceField, double3 probe_position, double well_depth_factor,
+                               size_t probe_type, std::make_signed_t<std::size_t> skip) const
 {
-  for(std::make_signed_t<std::size_t> atom_index = 0; const Atom& atom: unitCellAtoms)
+  for (std::make_signed_t<std::size_t> atom_index = 0; const Atom& atom : unitCellAtoms)
   {
-    if(atom_index != skip)
+    if (atom_index != skip)
     {
       size_t atomType = static_cast<size_t>(atom.type);
       double size_parameter = forceField(probe_type, atomType).sizeParameter();
@@ -423,7 +421,7 @@ bool Framework::computeOverlap(const ForceField &forceField, double3 probe_posit
       double rr = double3::dot(dr, dr);
 
       double radius = well_depth_factor * size_parameter;
-      if(rr < radius * radius)
+      if (rr < radius * radius)
       {
         return true;
       }
@@ -441,7 +439,7 @@ std::vector<double3> Framework::fractionalAtomPositionsUnitCell() const
   positions.reserve(unitCellAtoms.size());
 
   double3x3 inverseCell = simulationBox.inverseCell;
-  for(const Atom& atom: unitCellAtoms)
+  for (const Atom& atom : unitCellAtoms)
   {
     double3 s = (inverseCell * atom.position).fract();
     positions.push_back(s);
@@ -455,13 +453,12 @@ std::vector<double2> Framework::atomUnitCellLennardJonesPotentialParameters(cons
   std::vector<double2> parameters;
   parameters.reserve(unitCellAtoms.size());
 
-  for(const Atom& atom: unitCellAtoms)
+  for (const Atom& atom : unitCellAtoms)
   {
-    size_t type = atom.type; 
+    size_t type = atom.type;
     double2 parameter = double2(forceField[type].parameters.x, forceField[type].parameters.y);
     parameters.push_back(parameter);
   }
-
 
   return parameters;
 }
@@ -472,12 +469,17 @@ std::string Framework::printStatus(const ForceField& forceField) const
 
   std::print(stream, "Framework {} [{}]\n\n", frameworkId, name);
 
-  std::print(stream, "    Box:     {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ax, simulationBox.cell.bx, simulationBox.cell.cx);
-  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ay, simulationBox.cell.by, simulationBox.cell.cy);
-  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.az, simulationBox.cell.bz, simulationBox.cell.cz);
-  std::print(stream, "    Lengths: {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.lengthA, simulationBox.lengthB, simulationBox.lengthC);
+  std::print(stream, "    Box:     {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ax, simulationBox.cell.bx,
+             simulationBox.cell.cx);
+  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.ay, simulationBox.cell.by,
+             simulationBox.cell.cy);
+  std::print(stream, "             {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.cell.az, simulationBox.cell.bz,
+             simulationBox.cell.cz);
+  std::print(stream, "    Lengths: {:9.5f} {:9.5f} {:9.5f}\n", simulationBox.lengthA, simulationBox.lengthB,
+             simulationBox.lengthC);
   double conv = 180.0 / std::numbers::pi;
-  std::print(stream, "    Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * simulationBox.angleAlpha, conv * simulationBox.angleBeta, conv * simulationBox.angleGamma);
+  std::print(stream, "    Angles:  {:9.5f} {:9.5f} {:9.5f}\n", conv * simulationBox.angleAlpha,
+             conv * simulationBox.angleBeta, conv * simulationBox.angleGamma);
   double3 widths = simulationBox.perpendicularWidths();
   std::print(stream, "    Perpendicular widths:  {:9.5f} {:9.5f} {:9.5f}\n\n", widths.x, widths.y, widths.z);
 

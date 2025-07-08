@@ -39,7 +39,7 @@ RunningEnergy Integrators::velocityVerlet(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
   // Start timing the integration step
@@ -68,10 +68,9 @@ RunningEnergy Integrators::velocityVerlet(
   createCartesianPositions(moleculePositions, moleculeAtomPositions, components);
 
   // compute the gradient on all the atoms
-  RunningEnergy runningEnergies =
-      updateGradients(moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x,
-                      eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, interpolationGrids,
-                      numberOfMoleculesPerComponent);
+  RunningEnergy runningEnergies = updateGradients(
+      moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
+      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
 
   // compute the gradients on the center of mass and the orientation
   updateCenterOfMassAndQuaternionGradients(moleculePositions, moleculeAtomPositions, components);

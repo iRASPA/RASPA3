@@ -105,7 +105,6 @@ export struct MolecularDynamics
    */
   void createOutputFiles();
 
-
   void createInterpolationGrids();
 
   /**

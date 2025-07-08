@@ -178,11 +178,10 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[1], 3);
 
   // insert new CO2
-  system.insertMolecule(
-      1, Molecule(),
-      {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false), 
-       Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+  system.insertMolecule(1, Molecule(),
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
 
   // refresh span
   atomPositions = system.spanOfMoleculeAtoms();
@@ -325,11 +324,10 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[14].componentId, 1);
 
   // insert new CO2
-  system.insertMolecule(
-      1, Molecule(),
-      {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false), 
-       Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+  system.insertMolecule(1, Molecule(),
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 3);
@@ -608,11 +606,10 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomPositions[12].componentId, 1);
 
   // insert new CO2
-  system.insertMolecule(
-      1, Molecule(),
-      {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false), 
-       Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-       Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+  system.insertMolecule(1, Molecule(),
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);

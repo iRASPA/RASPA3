@@ -135,20 +135,18 @@ TEST(electrostatic_potential, Test_reference_system_2)
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = false;
-  Component c1 = Component(
-      0, forceField, "t1", 0.0, 0.0, 0.0,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false), 
-       Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 0, 1, 0, false, false)},
-      5, 21);
-  Component c2 = Component(
-      1, forceField, "t2", 0.0, 0.0, 0.0,
-      {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type, uint8_t componentId,
-       // uint8_t groupId
-       Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 2, 1, false, false), 
-       Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 1, 3, 1, false, false)},
-      5, 21);
+  Component c1 = Component(0, forceField, "t1", 0.0, 0.0, 0.0,
+                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
+                            // uint8_t componentId, uint8_t groupId
+                            Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false),
+                            Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 0, 1, 0, false, false)},
+                           5, 21);
+  Component c2 = Component(1, forceField, "t2", 0.0, 0.0, 0.0,
+                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
+                            // uint8_t componentId, uint8_t groupId
+                            Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 2, 1, false, false),
+                            Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 1, 3, 1, false, false)},
+                           5, 21);
 
   System system =
       System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2}, {1, 1}, 5);

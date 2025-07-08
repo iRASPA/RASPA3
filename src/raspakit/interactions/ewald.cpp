@@ -7,10 +7,10 @@ module;
 #include <cstddef>
 #include <iostream>
 #include <numbers>
+#include <print>
 #include <span>
 #include <type_traits>
 #include <vector>
-#include <print>
 #endif
 
 module interactions_ewald;
@@ -688,14 +688,12 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   return energySum;
 }
 
-
 RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, 
-    const ForceField &forceField, const SimulationBox &simulationBox, 
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   RunningEnergy energy;
 
@@ -926,9 +924,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   RunningEnergy energy;
@@ -1057,7 +1054,8 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
             bool groupIdA = static_cast<bool>(oldatoms[i].groupId);
             cksum_old.first += scaling * charge * (eik_xy[i] * eikz_temp);
             cksum_old.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
-            electricFieldOld[i] -= 2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
+            electricFieldOld[i] -=
+                2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
           }
 
           cksum_new = std::make_pair(std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0));
@@ -1163,7 +1161,6 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
     energy.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
     energy.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
-  
 
   return energy;
 }
@@ -1171,15 +1168,13 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
 // Used to compute the difference in electricField for a grown or retraced state
 // Used in insertion_CBCMC and deletion_CBCMC
 
-
 void Interactions::computeEwaldFourierElectricFieldDifference(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, 
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
+    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   if (!forceField.useCharge) return;
@@ -1301,7 +1296,8 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
-            electricFieldOld[i] -= 2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
+            electricFieldOld[i] -=
+                2.0 * temp * (cki.imag() * rigid.first.real() - cki.real() * rigid.first.imag()) * rk;
           }
 
           cksum_new = std::make_pair(std::complex<double>(0.0, 0.0), std::complex<double>(0.0, 0.0));
@@ -1948,7 +1944,6 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
     energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
     energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
   }
-  
 
   // Subtract exclusion-energy
   size_t index{0};
@@ -2004,4 +1999,3 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
   return energySum;
 }
-

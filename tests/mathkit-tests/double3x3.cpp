@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 
 import double3;
 import double4;
@@ -102,8 +102,8 @@ TEST(double3x3, Test_quaternion)
     }
     std::cout << std::endl;
 
-    //double3x3 newm = m.toDouble3x3();
-    //double3 trans = double3(m.m41, m.m42, m.m43);
+    // double3x3 newm = m.toDouble3x3();
+    // double3 trans = double3(m.m41, m.m42, m.m43);
 
     for (const double3 &pos : positions)
     {
@@ -114,10 +114,10 @@ TEST(double3x3, Test_quaternion)
     std::cout << std::endl;
   }
   {
-    //double4x4 translation1 =
-        double4x4(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, com.x, com.y, com.z, 1.0);
-    //double4x4 m1 = translation1 * double4x4(rotationMatrix) * double4x4::inverse(translation1);
-    //double3x3 newm1 = m1.toDouble3x3();
+    // double4x4 translation1 =
+    double4x4(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, com.x, com.y, com.z, 1.0);
+    // double4x4 m1 = translation1 * double4x4(rotationMatrix) * double4x4::inverse(translation1);
+    // double3x3 newm1 = m1.toDouble3x3();
 
     double3 t = rotationMatrix * (com - origin) - (com - origin) + com_position;
     for (const double3 &pos : positions)

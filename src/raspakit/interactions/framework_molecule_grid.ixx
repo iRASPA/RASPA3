@@ -1,12 +1,12 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <span>
 #include <tuple>
 #include <vector>
-#include <array>
 #endif
 
 export module interactions_framework_molecule_grid;
@@ -34,9 +34,9 @@ import component;
 
 export namespace Interactions
 {
-double calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType,
-                                 const ForceField &forceField, const SimulationBox &simulationBox, double3 posB,
-                                 size_t typeB, std::span<const Atom> frameworkAtoms);
+double calculateEnergyAtPosition(ForceField::InterpolationGridType interpolationGridType, const ForceField &forceField,
+                                 const SimulationBox &simulationBox, double3 posB, size_t typeB,
+                                 std::span<const Atom> frameworkAtoms);
 
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>

@@ -1,20 +1,20 @@
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <exception>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <span>
-#include <deque>
-#include <optional>
-#include <semaphore>
-#include <mutex>
-#include <complex>
-#include <locale>
-#include <ranges>
-#include <string_view>
-#include <filesystem>
 #include <bitset>
+#include <complex>
+#include <cstddef>
+#include <deque>
+#include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <locale>
+#include <mutex>
+#include <optional>
+#include <ranges>
+#include <semaphore>
+#include <span>
+#include <string_view>
+#include <vector>
 #endif
 
 #ifndef USE_LEGACY_HEADERS
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
   {
     CommandLine::run(argc, argv);
   }
-  catch (const std::exception &e)
+  catch (const std::exception& e)
   {
     std::cerr << e.what();
     exit(-1);

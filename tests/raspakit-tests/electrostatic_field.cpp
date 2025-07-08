@@ -27,23 +27,19 @@ import interactions_framework_molecule;
 import interactions_ewald;
 import energy_status;
 
-
 // Test if E = F / q for framework-molecule interactions
 TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
-{ 
+{
   double tolerance = 1e-6;
 
-  ForceField forceField =  ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
-                     {"O", true, 15.999, -1.025, 0.0, 8, false},
-                     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
+  ForceField forceField = ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
+                                      {"O", true, 15.999, -1.025, 0.0, 8, false},
+                                      {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+                                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
 
-                    {{0.0, 2.30},
-                     {0.0, 3.30},
-                     {0.0, 2.745},
-                     {0.0, 3.017}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-  
+                                     {{0.0, 2.30}, {0.0, 3.30}, {0.0, 2.745}, {0.0, 3.017}},
+                                     ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
+
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
@@ -51,23 +47,23 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                   {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                    Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
-                    Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                   5, 21);
-  
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            5, 21);
+
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {1}, 5);
-  
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms(); 
+
+  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 2.0 + 5.93355 - 1.149);
-      
-  //system.precomputeTotalRigidEnergy();
-  //RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
-  //    system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
-  //    system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
-  //    system.spanOfMoleculeAtoms());
+
+  // system.precomputeTotalRigidEnergy();
+  // RunningEnergy factorEwald = Interactions::computeEwaldFourierGradient(
+  //     system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.totalEik, system.fixedFrameworkStoredEik,
+  //     system.forceField, system.simulationBox, system.components, system.numberOfMoleculesPerComponent,
+  //     system.spanOfMoleculeAtoms());
 
   std::span<double3> moleculeElectricField = system.spanOfMoleculeElectricField();
   std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -75,11 +71,10 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
   std::fill(moleculeElectricField.begin(), moleculeElectricField.end(), double3(0.0, 0.0, 0.0));
 
   RunningEnergy energy1 = Interactions::computeFrameworkMoleculeElectricField(
-        system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomPositions);
+      system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomPositions);
 
   RunningEnergy energy2 = Interactions::computeFrameworkMoleculeGradient(
       system.forceField, system.simulationBox, frameworkAtoms, atomPositions, system.interpolationGrids);
-
 
   EXPECT_NEAR(energy1.frameworkMoleculeVDW, energy2.frameworkMoleculeVDW, tolerance);
   EXPECT_NEAR(energy1.frameworkMoleculeCharge, energy2.frameworkMoleculeCharge, tolerance);
@@ -96,20 +91,17 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
 
 // Test if E = F / q for Ewald interactions
 TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
-{ 
+{
   double tolerance = 1e-6;
 
-  ForceField forceField =  ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
-                     {"O", true, 15.999, -1.025, 0.0, 8, false},
-                     {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
+  ForceField forceField = ForceField({{"Si", true, 28.0855, 2.05, 0.0, 14, false},
+                                      {"O", true, 15.999, -1.025, 0.0, 8, false},
+                                      {"C_co2", false, 12.0, 0.6512, 0.2, 6, false},
+                                      {"O_co2", false, 15.9994, -0.3256, 0.1, 8, false}},
 
-                    {{0.0, 2.30},
-                     {0.0, 3.30},
-                     {0.0, 2.745},
-                     {0.0, 3.017}},
-                    ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
-  
+                                     {{0.0, 2.30}, {0.0, 3.30}, {0.0, 2.745}, {0.0, 3.017}},
+                                     ForceField::MixingRule::Lorentz_Berthelot, 11.8, 11.8, 11.8, true, false, true);
+
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
@@ -117,18 +109,17 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
 
   Component CO2 = Component(0, forceField, "CO2", 304.1282, 7377300.0, 0.22394,
-                   {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
-                    Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
-                    Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                   5, 21);
-  
+                            {Atom({0, 0, 1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
+                             Atom({0, 0, 0.000}, 0.6512, 1.0, 0, 3, 0, false, false),
+                             Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
+                            5, 21);
+
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {1}, 5);
-  
-  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms(); 
+
+  std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
   atomPositions[0].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 1.149);
   atomPositions[1].position = double3(5.93355, 7.93355, 2.0 + 5.93355 + 0.0);
   atomPositions[2].position = double3(5.93355, 7.93355, 2.0 + 5.93355 - 1.149);
-      
 
   std::span<double3> moleculeElectricField = system.spanOfMoleculeElectricField();
   std::span<Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -136,7 +127,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
   std::fill(moleculeElectricField.begin(), moleculeElectricField.end(), double3(0.0, 0.0, 0.0));
 
   RunningEnergy energy1 = Interactions::computeFrameworkMoleculeElectricField(
-        system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomPositions);
+      system.forceField, system.simulationBox, moleculeElectricField, frameworkAtoms, atomPositions);
 
   system.precomputeTotalRigidEnergy();
   RunningEnergy energy2 = Interactions::computeEwaldFourierGradient(

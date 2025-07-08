@@ -131,7 +131,6 @@ MonteCarlo::MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycle
 
 System& MonteCarlo::randomSystem() { return systems[size_t(random.uniform() * static_cast<double>(systems.size()))]; }
 
-
 void MonteCarlo::run()
 {
   switch (simulationStage)
@@ -150,8 +149,8 @@ void MonteCarlo::run()
           system.containsTheFractionalMolecule = false;
 
         // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
-        if(system.mc_moves_probabilities.getProbability(MoveTypes::HybridMC) > 0.0 && 
-           system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+        if (system.mc_moves_probabilities.getProbability(MoveTypes::HybridMC) > 0.0 &&
+            system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
         {
           system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
         }
@@ -161,7 +160,6 @@ void MonteCarlo::run()
         createOutputFiles();
         writeOutputHeader();
       }
-
 
       createInterpolationGrids();
       break;
@@ -241,14 +239,13 @@ void MonteCarlo::writeOutputHeader()
       json << outputJsons[system.systemId].dump(4);
     }
   }
-
 }
 
 void MonteCarlo::createInterpolationGrids()
 {
   for (System& system : systems)
   {
-    if(outputToFiles)
+    if (outputToFiles)
     {
       std::ostream stream(streams[system.systemId].rdbuf());
       system.createInterpolationGrids(stream);
@@ -326,15 +323,12 @@ void MonteCarlo::performCycle()
   }
 }
 
-
 void MonteCarlo::initialize()
 {
   std::chrono::system_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
-
-
 
   for (System& system : systems)
   {
@@ -766,7 +760,7 @@ void MonteCarlo::output()
         stream, "{}",
         system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
 
-    if(!(system.framework.has_value() && system.framework->rigid))
+    if (!(system.framework.has_value() && system.framework->rigid))
     {
       std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
     }

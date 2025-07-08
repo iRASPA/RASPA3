@@ -11,8 +11,8 @@ module;
 #include <sstream>
 #include <tuple>
 #include <type_traits>
-#include <vector>
 #include <utility>
+#include <vector>
 #endif
 
 export module interpolation_energy_grid;
@@ -66,8 +66,8 @@ export struct InterpolationEnergyGrid
   constexpr static std::make_signed_t<std::size_t> num_points_interpolation{6};
 
   void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
-                             const ForceField &forceField, const Framework &framework, 
-                             double cutOff, size_t pseudo_atom_index);
+                             const ForceField &forceField, const Framework &framework, double cutOff,
+                             size_t pseudo_atom_index);
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;
@@ -75,5 +75,4 @@ export struct InterpolationEnergyGrid
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InterpolationEnergyGrid &s);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InterpolationEnergyGrid &s);
-
 };

@@ -67,6 +67,17 @@ export namespace Potentials
       return EnergyFactor(scaling * term, (groupIdA ? scalingB * (term + dlambda_term) : 0.0) +
                                               (groupIdB ? scalingA * (term + dlambda_term) : 0.0));
     }
+    case VDWParameters::Type::Morse:
+    {
+      double wellDepth = forceField(typeA, typeB).parameters.x;
+      double stiffness = forceField(typeA, typeB).parameters.y;
+      double equilibriumDistance = forceField(typeA, typeB).parameters.z;
+      double r = std::sqrt(rr);
+      double scaledDistance = -stiffness * (r - equilibriumDistance);
+      double expTerm = std::exp(scaledDistance);
+      double energy = wellDepth * (1 - expTerm) * (1 - expTerm);
+      return EnergyFactor(energy, 0.0);
+    }
     case VDWParameters::Type::RepulsiveHarmonic:
     {
       double r = std::sqrt(rr);

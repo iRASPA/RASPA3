@@ -26,7 +26,6 @@ module;
 #include <istream>   // istream
 #include <iterator>  // random_access_iterator_tag
 #include <limits>    // numeric_limits
-#include <limits>    // numeric_limits
 #include <map>       // map
 #include <memory>    // unique_ptr
 #include <numeric>   // accumulate
@@ -9301,9 +9300,10 @@ class binary_reader
       default:  // anything else not supported (yet)
       {
         std::array<char, 3> cr{{}};
-        static_cast<void>((std::snprintf)(
-            cr.data(), cr.size(), "%.2hhX",
-            static_cast<unsigned char>(element_type)));  // NOLINT(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+        static_cast<void>(
+            (std::snprintf)(cr.data(), cr.size(), "%.2hhX",
+                            static_cast<unsigned char>(
+                                element_type)));  // NOLINT(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
         const std::string cr_str{cr.data()};
         return sax->parse_error(element_type_parse_position, cr_str,
                                 parse_error::create(114, element_type_parse_position,
@@ -11963,9 +11963,9 @@ class binary_reader
   std::string get_token_string() const
   {
     std::array<char, 3> cr{{}};
-    static_cast<void>((std::snprintf)(
-        cr.data(), cr.size(), "%.2hhX",
-        static_cast<unsigned char>(current)));  // NOLINT(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
+    static_cast<void>((
+        std::snprintf)(cr.data(), cr.size(), "%.2hhX",
+                       static_cast<unsigned char>(current)));  // NOLINT(cppcoreguidelines-pro-type-vararg,hicpp-vararg)
     return std::string{cr.data()};
   }
 

@@ -246,7 +246,7 @@ RunningEnergy Integrators::updateGradients(
     std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     const std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::vector<size_t> numberOfMoleculesPerComponent)
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();

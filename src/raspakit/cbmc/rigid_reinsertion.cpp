@@ -140,9 +140,9 @@ import interpolation_energy_grid;
 
   size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
-  double RosenbluthWeight =
-      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                  [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltmannFactor)
+                                            { return acc + std::exp(logBoltmannFactor); });
 
   if (RosenbluthWeight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
@@ -209,9 +209,9 @@ import interpolation_energy_grid;
                  [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * v.second.potentialEnergy(); });
 
-  double RosenbluthWeight =
-      std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                  [](const double &acc, const double &logBoltmannFactor) { return acc + std::exp(logBoltmannFactor); });
+  double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
+                                            [](const double &acc, const double &logBoltmannFactor)
+                                            { return acc + std::exp(logBoltmannFactor); });
 
   return ChainData(molecule, trialPositions[0], externalEnergies[0].second,
                    RosenbluthWeight / double(numberOfTrialDirections), 0.0);

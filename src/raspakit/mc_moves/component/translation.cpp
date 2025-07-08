@@ -108,7 +108,8 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   {
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+        molecule_atoms);
   }
   else
   {
@@ -124,7 +125,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Compute molecule-molecule energy contribution
   time_begin = std::chrono::system_clock::now();
   std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
   system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
@@ -136,19 +137,15 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   if (system.forceField.computePolarization)
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-                                         system.fixedFrameworkStoredEik, system.storedEik, system.totalEik, 
-                                         system.forceField, system.simulationBox, 
-                                         electricFieldMoleculeNew, electricFieldMoleculeOld,
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+        trialMolecule.second, molecule_atoms);
   }
   else
   {
     ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-                                         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, 
-                                         system.storedEik, system.totalEik, 
-                                         system.forceField, system.simulationBox, 
-                                         trialMolecule.second, molecule_atoms);
+        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+        system.simulationBox, trialMolecule.second, molecule_atoms);
   }
   time_end = std::chrono::system_clock::now();
   component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
@@ -159,8 +156,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   {
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld,
-        trialMolecule.second, molecule_atoms);
+        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
   }
 
   // Calculate the total energy difference

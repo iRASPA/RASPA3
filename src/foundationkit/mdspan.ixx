@@ -6,7 +6,6 @@ module;
 #include <complex>
 #include <concepts>
 #include <cstddef>  // size_t
-#include <cstddef>  // size_t
 #include <cstdio>
 #include <cstdlib>
 #include <limits>  // numeric_limits
@@ -569,66 +568,66 @@ MDSPAN_FORCE_INLINE_FUNCTION
 constexpr decltype(auto) __fold_right_and_impl() { return true; }
 
 template <class Arg, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr decltype(auto) __fold_right_and_impl(Arg&& arg, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr decltype(auto) __fold_right_and_impl(Arg &&arg, Args &&...args)
 {
-  return ((Arg&&)arg) && __fold_compatibility_impl::__fold_right_and_impl((Args&&)args...);
+  return ((Arg &&)arg) && __fold_compatibility_impl::__fold_right_and_impl((Args &&)args...);
 }
 
 MDSPAN_FORCE_INLINE_FUNCTION
 constexpr decltype(auto) __fold_right_or_impl() { return false; }
 
 template <class Arg, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_or_impl(Arg&& arg, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_or_impl(Arg &&arg, Args &&...args)
 {
-  return ((Arg&&)arg) || __fold_compatibility_impl::__fold_right_or_impl((Args&&)args...);
+  return ((Arg &&)arg) || __fold_compatibility_impl::__fold_right_or_impl((Args &&)args...);
 }
 
 template <class Arg1>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_left_assign_impl(Arg1&& arg1)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_left_assign_impl(Arg1 &&arg1)
 {
-  return (Arg1&&)arg1;
+  return (Arg1 &&)arg1;
 }
 
 template <class Arg1, class Arg2, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_left_assign_impl(Arg1&& arg1, Arg2&& arg2, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_left_assign_impl(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-  return __fold_compatibility_impl::__fold_left_assign_impl((((Arg1&&)arg1) = ((Arg2&&)arg2)), (Args&&)args...);
+  return __fold_compatibility_impl::__fold_left_assign_impl((((Arg1 &&)arg1) = ((Arg2 &&)arg2)), (Args &&)args...);
 }
 
 template <class Arg1>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_assign_impl(Arg1&& arg1)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_assign_impl(Arg1 &&arg1)
 {
-  return (Arg1&&)arg1;
+  return (Arg1 &&)arg1;
 }
 
 template <class Arg1, class Arg2, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_assign_impl(Arg1&& arg1, Arg2&& arg2, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_assign_impl(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-  return ((Arg1&&)arg1) = __fold_compatibility_impl::__fold_right_assign_impl((Arg2&&)arg2, (Args&&)args...);
+  return ((Arg1 &&)arg1) = __fold_compatibility_impl::__fold_right_assign_impl((Arg2 &&)arg2, (Args &&)args...);
 }
 
 template <class Arg1>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_plus_impl(Arg1&& arg1)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_plus_impl(Arg1 &&arg1)
 {
-  return (Arg1&&)arg1;
+  return (Arg1 &&)arg1;
 }
 
 template <class Arg1, class Arg2, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_plus_impl(Arg1&& arg1, Arg2&& arg2, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_plus_impl(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-  return ((Arg1&&)arg1) + __fold_compatibility_impl::__fold_right_plus_impl((Arg2&&)arg2, (Args&&)args...);
+  return ((Arg1 &&)arg1) + __fold_compatibility_impl::__fold_right_plus_impl((Arg2 &&)arg2, (Args &&)args...);
 }
 
 template <class Arg1>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_times_impl(Arg1&& arg1)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_times_impl(Arg1 &&arg1)
 {
-  return (Arg1&&)arg1;
+  return (Arg1 &&)arg1;
 }
 
 template <class Arg1, class Arg2, class... Args>
-MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_times_impl(Arg1&& arg1, Arg2&& arg2, Args&&... args)
+MDSPAN_FORCE_INLINE_FUNCTION constexpr auto __fold_right_times_impl(Arg1 &&arg1, Arg2 &&arg2, Args &&...args)
 {
-  return ((Arg1&&)arg1) * __fold_compatibility_impl::__fold_right_times_impl((Arg2&&)arg2, (Args&&)args...);
+  return ((Arg1 &&)arg1) * __fold_compatibility_impl::__fold_right_times_impl((Arg2 &&)arg2, (Args &&)args...);
 }
 
 #else
@@ -651,17 +650,17 @@ struct __fold_right_and_impl_<Arg, Args...>
   using __next_t = __fold_right_and_impl_<Args...>;
   using __rv = decltype(std::declval<Arg>() && std::declval<typename __next_t::__rv>());
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg &&arg, Args &&...args) noexcept
   {
-    return ((Arg&&)arg) && __next_t::__impl((Args&&)args...);
+    return ((Arg &&)arg) && __next_t::__impl((Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_right_and_impl_<Args...>::__rv __fold_right_and_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_right_and_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_right_and_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end right and }}}2
@@ -685,17 +684,17 @@ struct __fold_right_or_impl_<Arg, Args...>
   using __next_t = __fold_right_or_impl_<Args...>;
   using __rv = decltype(std::declval<Arg>() || std::declval<typename __next_t::__rv>());
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg &&arg, Args &&...args) noexcept
   {
-    return ((Arg&&)arg) || __next_t::__impl((Args&&)args...);
+    return ((Arg &&)arg) || __next_t::__impl((Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_right_or_impl_<Args...>::__rv __fold_right_or_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_right_or_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_right_or_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end right or }}}2
@@ -709,9 +708,9 @@ struct __fold_right_plus_impl_;
 template <class Arg>
 struct __fold_right_plus_impl_<Arg>
 {
-  using __rv = Arg&&;
+  using __rv = Arg &&;
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg) noexcept { return (Arg&&)arg; }
+  static constexpr __rv __impl(Arg &&arg) noexcept { return (Arg &&)arg; }
 };
 template <class Arg1, class Arg2, class... Args>
 struct __fold_right_plus_impl_<Arg1, Arg2, Args...>
@@ -719,17 +718,17 @@ struct __fold_right_plus_impl_<Arg1, Arg2, Args...>
   using __next_t = __fold_right_plus_impl_<Arg2, Args...>;
   using __rv = decltype(std::declval<Arg1>() + std::declval<typename __next_t::__rv>());
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg1&& arg, Arg2&& arg2, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg1 &&arg, Arg2 &&arg2, Args &&...args) noexcept
   {
-    return ((Arg1&&)arg) + __next_t::__impl((Arg2&&)arg2, (Args&&)args...);
+    return ((Arg1 &&)arg) + __next_t::__impl((Arg2 &&)arg2, (Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_right_plus_impl_<Args...>::__rv __fold_right_plus_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_right_plus_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_right_plus_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end right plus }}}2
@@ -743,9 +742,9 @@ struct __fold_right_times_impl_;
 template <class Arg>
 struct __fold_right_times_impl_<Arg>
 {
-  using __rv = Arg&&;
+  using __rv = Arg &&;
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg) noexcept { return (Arg&&)arg; }
+  static constexpr __rv __impl(Arg &&arg) noexcept { return (Arg &&)arg; }
 };
 template <class Arg1, class Arg2, class... Args>
 struct __fold_right_times_impl_<Arg1, Arg2, Args...>
@@ -753,17 +752,17 @@ struct __fold_right_times_impl_<Arg1, Arg2, Args...>
   using __next_t = __fold_right_times_impl_<Arg2, Args...>;
   using __rv = decltype(std::declval<Arg1>() * std::declval<typename __next_t::__rv>());
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg1&& arg, Arg2&& arg2, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg1 &&arg, Arg2 &&arg2, Args &&...args) noexcept
   {
-    return ((Arg1&&)arg) * __next_t::__impl((Arg2&&)arg2, (Args&&)args...);
+    return ((Arg1 &&)arg) * __next_t::__impl((Arg2 &&)arg2, (Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_right_times_impl_<Args...>::__rv __fold_right_times_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_right_times_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_right_times_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end right times }}}2
@@ -777,9 +776,9 @@ struct __fold_right_assign_impl_;
 template <class Arg>
 struct __fold_right_assign_impl_<Arg>
 {
-  using __rv = Arg&&;
+  using __rv = Arg &&;
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg) noexcept { return (Arg&&)arg; }
+  static constexpr __rv __impl(Arg &&arg) noexcept { return (Arg &&)arg; }
 };
 template <class Arg1, class Arg2, class... Args>
 struct __fold_right_assign_impl_<Arg1, Arg2, Args...>
@@ -787,17 +786,17 @@ struct __fold_right_assign_impl_<Arg1, Arg2, Args...>
   using __next_t = __fold_right_assign_impl_<Arg2, Args...>;
   using __rv = decltype(std::declval<Arg1>() = std::declval<typename __next_t::__rv>());
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg1&& arg, Arg2&& arg2, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg1 &&arg, Arg2 &&arg2, Args &&...args) noexcept
   {
-    return ((Arg1&&)arg) = __next_t::__impl((Arg2&&)arg2, (Args&&)args...);
+    return ((Arg1 &&)arg) = __next_t::__impl((Arg2 &&)arg2, (Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_right_assign_impl_<Args...>::__rv __fold_right_assign_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_right_assign_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_right_assign_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end right assign }}}2
@@ -811,9 +810,9 @@ struct __fold_left_assign_impl_;
 template <class Arg>
 struct __fold_left_assign_impl_<Arg>
 {
-  using __rv = Arg&&;
+  using __rv = Arg &&;
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg&& arg) noexcept { return (Arg&&)arg; }
+  static constexpr __rv __impl(Arg &&arg) noexcept { return (Arg &&)arg; }
 };
 template <class Arg1, class Arg2, class... Args>
 struct __fold_left_assign_impl_<Arg1, Arg2, Args...>
@@ -822,17 +821,17 @@ struct __fold_left_assign_impl_<Arg1, Arg2, Args...>
   using __next_t = __fold_left_assign_impl_<__assign_result_t, Args...>;
   using __rv = typename __next_t::__rv;
   MDSPAN_FORCE_INLINE_FUNCTION
-  static constexpr __rv __impl(Arg1&& arg, Arg2&& arg2, Args&&... args) noexcept
+  static constexpr __rv __impl(Arg1 &&arg, Arg2 &&arg2, Args &&...args) noexcept
   {
-    return __next_t::__impl(((Arg1&&)arg) = (Arg2&&)arg2, (Args&&)args...);
+    return __next_t::__impl(((Arg1 &&)arg) = (Arg2 &&)arg2, (Args &&)args...);
   }
 };
 
 template <class... Args>
 MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_left_assign_impl_<Args...>::__rv __fold_left_assign_impl(
-    Args&&... args)
+    Args &&...args)
 {
-  return __fold_left_assign_impl_<Args...>::__impl((Args&&)args...);
+  return __fold_left_assign_impl_<Args...>::__impl((Args &&)args...);
 }
 
 // </editor-fold> end left assign }}}2
@@ -841,7 +840,7 @@ MDSPAN_FORCE_INLINE_FUNCTION constexpr typename __fold_left_assign_impl_<Args...
 #endif
 
 template <class... Args>
-constexpr __mdspan_enable_fold_comma __fold_comma_impl(Args&&... args) noexcept
+constexpr __mdspan_enable_fold_comma __fold_comma_impl(Args &&...args) noexcept
 {
   return {};
 }
@@ -2130,8 +2129,8 @@ struct __partially_static_sizes_tagged
 #else
       = default;
 #endif
-        MDSPAN_INLINE_FUNCTION_DEFAULTED constexpr __partially_static_sizes_tagged(
-            __partially_static_sizes_tagged const &) noexcept = default;
+        MDSPAN_INLINE_FUNCTION_DEFAULTED
+        constexpr __partially_static_sizes_tagged(__partially_static_sizes_tagged const &) noexcept = default;
   MDSPAN_INLINE_FUNCTION_DEFAULTED
   constexpr __partially_static_sizes_tagged(__partially_static_sizes_tagged &&) noexcept = default;
   MDSPAN_INLINE_FUNCTION_DEFAULTED
@@ -3177,7 +3176,7 @@ struct layout_stride
 #if defined(_MDSPAN_USE_ATTRIBUTE_NO_UNIQUE_ADDRESS)
     MDSPAN_INLINE_FUNCTION constexpr explicit mapping(__member_pair_t &&__m) : __members(::std::move(__m)) {}
 #else
-    MDSPAN_INLINE_FUNCTION constexpr explicit mapping(__base_t&& __b) : __base_t(::std::move(__b)) {}
+    MDSPAN_INLINE_FUNCTION constexpr explicit mapping(__base_t &&__b) : __base_t(::std::move(__b)) {}
 #endif
 
    public:  // but not really

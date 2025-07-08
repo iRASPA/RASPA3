@@ -141,8 +141,9 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
 
         // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::randomTranslationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                            selectedSystem.components, molecule, molecule_atoms);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -166,8 +167,9 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
 
         // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::rotationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                   selectedSystem.components, molecule, molecule_atoms);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -192,8 +194,9 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
 
         // perform move
-        std::optional<RunningEnergy> energyDifference = MC_Moves::randomRotationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                         selectedSystem.components, molecule, molecule_atoms);
 
         // accept if energy difference is not 0
         if (energyDifference)
@@ -477,8 +480,9 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
-        std::optional<RunningEnergy> energyDifference = MC_Moves::randomTranslationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                            selectedSystem.components, molecule, molecule_atoms);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -496,8 +500,9 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
-        std::optional<RunningEnergy> energyDifference = MC_Moves::rotationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                   selectedSystem.components, molecule, molecule_atoms);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();
@@ -514,8 +519,9 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
         Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
-        std::optional<RunningEnergy> energyDifference = MC_Moves::randomRotationMove(
-            random, selectedSystem, selectedComponent, selectedMolecule, selectedSystem.components, molecule, molecule_atoms);
+        std::optional<RunningEnergy> energyDifference =
+            MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
+                                         selectedSystem.components, molecule, molecule_atoms);
         if (energyDifference)
         {
           selectedSystem.runningEnergies += energyDifference.value();

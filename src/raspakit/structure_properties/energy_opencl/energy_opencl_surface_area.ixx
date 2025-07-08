@@ -1,18 +1,18 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
 #include <array>
-#include <vector>
+#include <cstddef>
 #include <optional>
 #include <string>
+#include <vector>
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
-  #include <OpenCL/cl.h>
+#include <OpenCL/cl.h>
 #elif _WIN32
-  #include <CL/cl.h>
+#include <CL/cl.h>
 #else
-  #include <CL/opencl.h>
+#include <CL/opencl.h>
 #endif
 #endif
 
@@ -27,7 +27,6 @@ import double3x3;
 import forcefield;
 import framework;
 
-
 export struct EnergyOpenCLSurfaceArea
 {
   EnergyOpenCLSurfaceArea();
@@ -35,7 +34,7 @@ export struct EnergyOpenCLSurfaceArea
 
   cl_program energyGridProgram;
   cl_kernel energyGridKernel;
-  static const char* energyGridKernelSource;
+  static const char *energyGridKernelSource;
   size_t energyGridWorkGroupSize;
 
   cl_program energyEnergyOpenCLSurfaceAreaProgram;
