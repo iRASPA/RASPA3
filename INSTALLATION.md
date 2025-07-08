@@ -1,7 +1,5 @@
 # RASPA 3 – Installation Guide
 
-*Revised: 7 July 2025*
-
 RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23.
 Pre‑built binaries are **statically linked** and therefore do not require any external runtime libraries.
 If you only want to *use* RASPA 3, download a pre‑built package.
@@ -33,13 +31,13 @@ conda install -c conda-forge raspa3 raspalib
 ### 1.2 Debian / Ubuntu (.deb)
 
 ```bash
-sudo apt install ./raspa3-<VERSION>-ubuntu<20|22|24>-<ARCH>-<AVX>.deb
+apt install ./raspa3-<VERSION>-ubuntu<20|22|24>-<ARCH>-<AVX>.deb
 ```
 
 ### 1.3 RPM‑based Linux (.rpm)
 
 ```bash
-sudo rpm -i raspa3-<VERSION>-<OS>-<ARCH>-<AVX>.rpm
+rpm -i raspa3-<VERSION>-<OS>-<ARCH>-<AVX>.rpm
 ```
 
 *To unpack without installing:* `rpm2cpio raspa3-*.rpm | cpio -idmv`
@@ -73,7 +71,8 @@ Run the `.exe`; the wizard adds `%RASPA3_HOME%\bin` to your `%PATH%`.
 | python                 | 3.11         |
 | pybind11               | 2.12         |
 | BLAS + LAPACK          | 64‑bit ints  |
-| OpenMP · HDF5 · OpenCL | latest       |
+| HDF5                   | 1.12         |
+| OpenMP · OpenCL        | latest       |
 
 ### 2.2 Build with Conda (recommended)
 
@@ -85,8 +84,9 @@ conda activate raspa
 cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3
 ninja -C build
 ninja -C build install      # optional
-ctest --test-dir build/tests --output-on-failure
 ```
+
+**Note**: remove the package ocl-icd from env.yml for Mac and Windows installations, as OpenCL is only available for Linux. For Max using the system OpenCL is recommended.
 
 ### 2.3 Linux examples
 
@@ -102,7 +102,7 @@ git clone https://github.com/raspa3/raspa3.git
 cd raspa3
 cmake -B build --preset=linux-x86_64-core-avx2-ubuntu-24
 ninja -C build
-sudo ninja -C build install
+ninja -C build install
 ```
 
 #### Fedora 40
@@ -116,7 +116,7 @@ git clone https://github.com/raspa3/raspa3.git
 cd raspa3
 cmake -B build --preset=linux-x86_64-core-avx2-fedora-40
 ninja -C build
-sudo ninja -C build install
+ninja -C build install
 ```
 
 ### 2.4 macOS (Homebrew)
@@ -129,7 +129,7 @@ git clone https://github.com/raspa3/raspa3.git
 cd raspa3
 cmake -B build --preset=macos-apple-silicon  # or macos-x64-core-avx2
 ninja -C build
-sudo ninja -C build install
+ninja -C build install
 ```
 
 ---
