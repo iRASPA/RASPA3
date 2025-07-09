@@ -69,9 +69,9 @@ export namespace Potentials
     }
     case VDWParameters::Type::Morse:
     {
-      double wellDepth = forceField(typeA, typeB).parameters.x;
-      double stiffness = forceField(typeA, typeB).parameters.y;
-      double equilibriumDistance = forceField(typeA, typeB).parameters.z;
+      double wellDepth = forcefield(typeA, typeB).parameters.x;
+      double stiffness = forcefield(typeA, typeB).parameters.y;
+      double equilibriumDistance = forcefield(typeA, typeB).parameters.z;
       double r = std::sqrt(rr);
       double scaledDistance = -stiffness * (r - equilibriumDistance);
       double expTerm = std::exp(scaledDistance);
