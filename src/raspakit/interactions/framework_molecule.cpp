@@ -755,11 +755,11 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   return std::make_pair(energy, strainDerivativeTensor);
 }
 
-void Interactions::computeFrameworkMoleculeElectricPotential(const ForceField &forceField,
-                                                             const SimulationBox &simulationBox,
-                                                             std::span<double> electricPotentialMolecules,
-                                                             std::span<const Atom> frameworkAtoms,
-                                                             std::span<const Atom> moleculeAtoms) noexcept
+void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceField &forceField,
+                                                                  const SimulationBox &simulationBox,
+                                                                  std::span<double> electricPotentialMolecules,
+                                                                  std::span<const Atom> frameworkAtoms,
+                                                                  std::span<const Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
@@ -788,9 +788,10 @@ void Interactions::computeFrameworkMoleculeElectricPotential(const ForceField &f
       {
         double r = std::sqrt(rr);
 
-        size_t index = static_cast<size_t>(std::distance(moleculeAtoms.begin(), it2));
-        electricPotentialMolecules[index] +=
-            2.0 * Potentials::potentialElectrostatics(forceField, scalingCoulombA, r, chargeA);
+        double potential = Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0);
+
+        size_t indexB = static_cast<size_t>(std::distance(moleculeAtoms.begin(), it2));
+        electricPotentialMolecules[indexB] += scalingCoulombA * chargeA * potential;
       }
     }
   }

@@ -297,10 +297,11 @@ void acceptEwaldMove(const ForceField &forceField,
  * \param numberOfMoleculesPerComponent Number of molecules per component.
  * \param moleculeAtomPositions Positions and properties of the molecules' atoms.
  */
-void computeEwaldFourierElectricPotential(
+void computeEwaldFourierElectrostaticPotential(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::span<double> electricPotentialMolecules, const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<Component> &components, const std::vector<size_t> &numberOfMoleculesPerComponent,
     std::span<const Atom> moleculeAtomPositions);

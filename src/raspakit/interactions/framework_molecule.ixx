@@ -208,10 +208,10 @@ RunningEnergy computeFrameworkMoleculeGradient(
  * \param frameworkAtoms A span of atoms representing the framework.
  * \param moleculeAtoms A span of atoms representing the molecule.
  */
-void computeFrameworkMoleculeElectricPotential(const ForceField &forceField, const SimulationBox &simulationBox,
-                                               std::span<double> electricPotentialMolecules,
-                                               std::span<const Atom> frameworkAtoms,
-                                               std::span<const Atom> moleculeAtoms) noexcept;
+void computeFrameworkMoleculeElectrostaticPotential(const ForceField &forceField, const SimulationBox &simulationBox,
+                                                    std::span<double> electricPotentialMolecules,
+                                                    std::span<const Atom> frameworkAtoms,
+                                                    std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the electric field at molecule atom positions due to the framework atoms.

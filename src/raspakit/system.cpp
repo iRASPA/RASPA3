@@ -698,7 +698,7 @@ std::span<Atom> System::spanOfMoleculeAtoms()
                    atomPositions.end());
 }
 
-std::span<double> System::spanOfMoleculeElectricPotential()
+std::span<double> System::spanOfMoleculeElectrostaticPotential()
 {
   return std::span(
       electricPotential.begin() + static_cast<std::vector<double3>::difference_type>(numberOfFrameworkAtoms),
@@ -1915,7 +1915,7 @@ RunningEnergy System::computePolarizationEnergy() noexcept
   return energy;
 }
 
-void System::computeTotalElectricPotential() noexcept
+void System::computeTotalElectrostaticPotential() noexcept
 {
   if (fixedFrameworkStoredEik.empty())
   {
@@ -1924,19 +1924,19 @@ void System::computeTotalElectricPotential() noexcept
 
   std::span<Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-  std::span<double> moleculeElectricPotential = spanOfMoleculeElectricPotential();
+  std::span<double> moleculeElectrostaticPotential = spanOfMoleculeElectrostaticPotential();
 
-  std::fill(moleculeElectricPotential.begin(), moleculeElectricPotential.end(), 0.0);
+  std::fill(moleculeElectrostaticPotential.begin(), moleculeElectrostaticPotential.end(), 0.0);
 
-  Interactions::computeInterMolecularElectricPotential(forceField, simulationBox, moleculeElectricPotential,
-                                                       moleculeAtomPositions);
+  Interactions::computeInterMolecularElectrostaticPotential(forceField, simulationBox, moleculeElectrostaticPotential,
+                                                             moleculeAtomPositions);
 
-  Interactions::computeFrameworkMoleculeElectricPotential(forceField, simulationBox, moleculeElectricPotential,
-                                                          frameworkAtomPositions, moleculeAtomPositions);
+  Interactions::computeFrameworkMoleculeElectrostaticPotential(forceField, simulationBox, moleculeElectrostaticPotential,
+                                                               frameworkAtomPositions, moleculeAtomPositions);
 
-  Interactions::computeEwaldFourierElectricPotential(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik,
-                                                     moleculeElectricPotential, forceField, simulationBox, components,
-                                                     numberOfMoleculesPerComponent, moleculeAtomPositions);
+  Interactions::computeEwaldFourierElectrostaticPotential(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik,
+                                                          moleculeElectrostaticPotential, forceField, simulationBox, components,
+                                                          numberOfMoleculesPerComponent, moleculeAtomPositions);
 }
 
 void System::computeTotalElectricField() noexcept

@@ -314,7 +314,7 @@ export struct System
   RunningEnergy computeTotalEnergies() noexcept;
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
-  void computeTotalElectricPotential() noexcept;
+  void computeTotalElectrostaticPotential() noexcept;
   void computeTotalElectricField() noexcept;
 
   size_t randomFramework(RandomNumber &random)
@@ -342,7 +342,7 @@ export struct System
   std::span<const Atom> spanOfFlexibleAtoms() const;
   std::span<const Atom> spanOfMoleculeAtoms() const;
   std::span<Atom> spanOfMoleculeAtoms();
-  std::span<double> spanOfMoleculeElectricPotential();
+  std::span<double> spanOfMoleculeElectrostaticPotential();
   std::span<double3> spanOfMoleculeElectricField();
   std::span<double3> spanOfMoleculeElectricFieldNew();
   std::span<double3> spanElectricFieldNew(size_t selectedComponent, size_t selectedMolecule);

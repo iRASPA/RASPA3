@@ -473,6 +473,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
   double alpha_squared = alpha * alpha;
   size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
+  bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -604,6 +605,12 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
           energySum.dudlambdaEwald -=
               2.0 * temp * (rigid.first.real() * rigid.second.real() + rigid.first.imag() * rigid.second.imag());
 
+          if (forceField.omitInterInteractions)
+          {
+            total.first -= cksum.first;
+            total.second -= cksum.second;
+          }
+
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
@@ -622,6 +629,8 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
     }
   }
 
+  if (!omitInterInteractions)
+  {
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
   for (size_t i = 0; i != numberOfAtoms; ++i)
@@ -674,6 +683,7 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
       }
       index += size;
     }
+  }
   }
 
   // Handle net-charges
@@ -1586,10 +1596,11 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
   return std::make_pair(energy, strainDerivative);
 }
 
-void Interactions::computeEwaldFourierElectricPotential(
+void Interactions::computeEwaldFourierElectrostaticPotential(
     std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
     std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
     std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
+    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
     std::span<double> electricPotentialMolecules, const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<Component> &components, const std::vector<size_t> &numberOfMoleculesPerComponent,
     std::span<const Atom> moleculeAtomPositions)
@@ -1691,30 +1702,40 @@ void Interactions::computeEwaldFourierElectricPotential(
         size_t ksq = static_cast<size_t>(kx * kx + ky * ky + kz * kz);
         if ((ksq != 0uz) && (ksq <= recip_integer_cutoff_squared) && (rksq < recip_cutoff_squared))
         {
-          std::complex<double> cksum;
-          if (!omitInterInteractions)
+          std::pair<std::complex<double>, std::complex<double>> cksum;
+          for (size_t i = 0; i != numberOfAtoms; ++i)
           {
-            for (size_t i = 0; i != numberOfAtoms; ++i)
-            {
-              std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
-              eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
-              double charge = moleculeAtomPositions[i].charge;
-              double scaling = moleculeAtomPositions[i].scalingCoulomb;
-              cksum += scaling * charge * (eik_xy[i] * eikz_temp);
-            }
+            std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
+            eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
+            double charge = moleculeAtomPositions[i].charge;
+            double scaling = moleculeAtomPositions[i].scalingCoulomb;
+            bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
+            cksum.first += scaling * charge * (eik_xy[i] * eikz_temp);
+            cksum.second += groupIdA ? charge * eik_xy[i] * eikz_temp : 0.0;
           }
 
-          std::complex<double> rigid = fixedFrameworkStoredEik[nvec].first;
-          cksum += rigid;
+          std::pair<std::complex<double>, std::complex<double>> rigid = fixedFrameworkStoredEik[nvec];
+
+          std::pair<std::complex<double>, std::complex<double>> total;
+          total.first = rigid.first + cksum.first;
+          total.second = rigid.second + cksum.second;
 
           double temp = factor * std::exp((-0.25 / alpha_squared) * rksq) / rksq;
+
+          if (forceField.omitInterInteractions)
+          {
+            total.first -= cksum.first;
+            total.second -= cksum.second;
+          }
+
           for (size_t i = 0; i != numberOfAtoms; ++i)
           {
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
-            electricPotentialMolecules[i] += 2.0 * temp * (cki.real() * cksum.real() + cki.imag() * cksum.imag()) +
-                                             2.0 * temp * (cki.real() * rigid.real() + cki.imag() * rigid.imag());
+            double charge = moleculeAtomPositions[i].charge;
+            double scaling = moleculeAtomPositions[i].scalingCoulomb;
+            electricPotentialMolecules[i] += 2.0 * temp * (cki.real() * total.first.real() + cki.imag() * total.first.imag());
           }
 
           ++nvec;
@@ -1894,11 +1915,11 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
           std::pair<std::complex<double>, std::complex<double>> rigid = fixedFrameworkStoredEik[nvec];
 
           std::pair<std::complex<double>, std::complex<double>> total = rigid;
-          if (!omitInterInteractions || !omitInterPolarization)
-          {
+          //if (!omitInterInteractions || !omitInterPolarization)
+          //{
             total.first += cksum.first;
             total.second += cksum.second;
-          }
+          //}
 
           energySum.ewald_fourier +=
               temp * (total.first.real() * total.first.real() + total.first.imag() * total.first.imag());
@@ -1934,6 +1955,8 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
     }
   }
 
+  if (!omitInterInteractions)
+  {
   // Subtract self-energy
   double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
   for (size_t i = 0; i != moleculeAtomPositions.size(); ++i)
@@ -1995,6 +2018,7 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
       }
       index += size;
     }
+  }
   }
 
   return energySum;

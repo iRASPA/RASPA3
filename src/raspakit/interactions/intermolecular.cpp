@@ -411,6 +411,7 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 
           it1->gradient += f;
           it2->gradient -= f;
+
         }
         if (useCharge && rr < cutOffChargeSquared)
         {
@@ -550,9 +551,9 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
   return {energy, strainDerivativeTensor};
 }
 
-void Interactions::computeInterMolecularElectricPotential(const ForceField &forceField, const SimulationBox &box,
-                                                          std::span<double> electricPotentialMolecules,
-                                                          std::span<const Atom> moleculeAtoms) noexcept
+void Interactions::computeInterMolecularElectrostaticPotential(const ForceField &forceField, const SimulationBox &box,
+                                                               std::span<double> electricPotentialMolecules,
+                                                               std::span<const Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB, f;
   double rr;
@@ -605,6 +606,7 @@ void Interactions::computeInterMolecularElectricPotential(const ForceField &forc
     }
   }
 }
+
 RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField &forceField, const SimulationBox &box,
                                                                std::span<double3> electricFieldMolecules,
                                                                std::span<const Atom> moleculeAtoms) noexcept
