@@ -12,7 +12,7 @@ the `LLVM/Clang 16.0` and newer, `MSVC toolset 14.34` and newer, or
 contain unicode characters (e.g. for Å). `RASPA3` depends on
 
 -   `C++23` compliant compiler
--   `Cmake 3.28`
+-   `Cmake 3.29`
 -   `Ninja Generator 1.11`
 -   `Openmp`
 -   `hdf5`
