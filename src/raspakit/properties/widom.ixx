@@ -32,6 +32,7 @@ import <fstream>;
 #endif
 
 import archive;
+import int3;
 import averages;
 
 export struct PropertyWidom
@@ -81,8 +82,10 @@ export struct PropertyWidom
   std::vector<BookKeeping> bookKeepingWidom;
   std::vector<std::pair<double, double>> bookKeepingDensity;
 
-  std::string writeAveragesStatistics(double beta, std::optional<double> imposedChemicalPotential,
-                                      std::optional<double> imposedFugacity) const;
+  std::string writeAveragesRosenbluthWeightStatistics(double temperature, double volume, 
+             std::optional<double> frameworkMass, std::optional<int3> number_of_unit_cells) const;
+  std::string writeAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
+                                                       std::optional<double> imposedFugacity) const;
 
   inline void addWidomSample(size_t blockIndex, double WidomValue, double tailCorrection, double weight)
   {

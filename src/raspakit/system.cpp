@@ -1083,7 +1083,8 @@ std::string System::writeInitializationStatusReport(size_t currentCycle, size_t 
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass()));
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
+          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1131,7 +1132,8 @@ std::string System::writeEquilibrationStatusReportMC(size_t currentCycle, size_t
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass()));
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
+          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1223,7 +1225,8 @@ std::string System::writeEquilibrationStatusReportMD(size_t currentCycle, size_t
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass()));
+    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
+            framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1269,7 +1272,8 @@ std::string System::writeProductionStatusReportMC(size_t currentCycle, size_t nu
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass()));
+    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -1544,7 +1548,8 @@ std::string System::writeProductionStatusReportMD(size_t currentCycle, size_t nu
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass()));
+    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -2124,7 +2129,11 @@ std::string System::writeMCMoveStatistics() const
       double imposedFugacity = component.molFraction * pressure;
       std::print(
           stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
+          component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(temperature, simulationBox.volume, frameworkMass(), 
+                                                          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+      std::print(
+          stream, "{}",
+          component.averageRosenbluthWeights.writeAveragesChemicalPotentialStatistics(beta, imposedChemicalPotential, imposedFugacity));
     }
 
     ++componentId;

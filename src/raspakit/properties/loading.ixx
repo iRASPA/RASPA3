@@ -32,6 +32,7 @@ import <fstream>;
 #endif
 
 import archive;
+import int3;
 import averages;
 import loadings;
 import component;
@@ -120,7 +121,8 @@ export struct PropertyLoading
 
   std::pair<double, double> averageLoadingNumberOfMolecules(size_t comp) const;
 
-  std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass) const;
+  std::string writeAveragesStatistics(std::vector<Component> components, std::optional<double> frameworkMass,
+                                      std::optional<int3> numberOfUnitCells) const;
 
   /**
    * \brief Returns a string representation of the PropertyLoading.
