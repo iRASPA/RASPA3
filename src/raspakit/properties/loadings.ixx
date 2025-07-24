@@ -22,6 +22,7 @@ import <fstream>;
 #endif
 
 import archive;
+import int3;
 import simulationbox;
 import component;
 
@@ -66,9 +67,9 @@ export struct Loadings
 
   double& operator()(size_t compA) { return numberOfMolecules[compA]; }
 
-  std::string printStatus(const Component& compA, std::optional<double> frameworkMass) const;
+  std::string printStatus(const Component& compA, std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const;
   std::string printStatus(const Component& compA, const Loadings& average, const Loadings& error,
-                          std::optional<double> frameworkMass) const;
+                          std::optional<double> frameworkMass, std::optional<int3> numberOfUnitCells) const;
 
   inline Loadings& operator+=(const Loadings& b)
   {

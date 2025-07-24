@@ -55,6 +55,7 @@ import stringutils;
 import hardware_info;
 import archive;
 import system;
+import framework;
 import randomnumbers;
 import input_reader;
 import component;
@@ -768,7 +769,8 @@ void MonteCarlo::output()
     std::print(
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
-    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass()));
+    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass(),
+          system.framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
 
     // json statistics
     outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
