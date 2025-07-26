@@ -8,7 +8,7 @@ module;
 module characterset;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
+import std;
 #endif
 
 CharacterSet::CharacterSet() {}

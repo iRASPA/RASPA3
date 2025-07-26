@@ -32,15 +32,7 @@ extern "C"
 module double3x3;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <numbers>;
-import <ostream>;
-import <fstream>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <complex>;
+import std;
 #endif
 
 import int3x3;

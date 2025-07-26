@@ -9,9 +9,7 @@ module;
 export module cbmc_rigid_insertion;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-import <span>;
+import std;
 #endif
 
 import atom;

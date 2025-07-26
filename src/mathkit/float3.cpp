@@ -9,8 +9,7 @@ module;
 module float3;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
+import std;
 #endif
 
 float3 float3::normalise()

@@ -17,16 +17,7 @@ module;
 export module cbmc_interactions_external_field;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <optional>;
-import <thread>;
-import <future>;
-import <type_traits>;
+import std;
 #endif
 
 import energy_status;

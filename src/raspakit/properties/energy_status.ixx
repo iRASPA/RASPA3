@@ -15,15 +15,7 @@ module;
 export module energy_status;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <cmath>;
-import <algorithm>;
-import <iostream>;
-import <numeric>;
-import <string>;
-import <sstream>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

@@ -21,20 +21,7 @@ module;
 export module archive;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <tuple>;
-import <vector>;
-import <array>;
-import <map>;
-import <ranges>;
-import <istream>;
-import <ostream>;
-import <iostream>;
-import <algorithm>;
-import <bit>;
-import <chrono>;
-import <complex>;
-import <functional>;
+import std;
 #endif
 
 // on linux uint64_t is unsigned long        8

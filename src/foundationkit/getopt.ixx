@@ -27,6 +27,7 @@
 
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cstdlib>
 #include <exception>
 #include <functional>
@@ -34,8 +35,13 @@ module;
 #include <string>
 #include <unordered_map>
 #include <vector>
+#endif
 
 export module getopt;
+
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
 
 export namespace argparser
 {

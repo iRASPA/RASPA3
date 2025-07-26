@@ -13,13 +13,7 @@ module;
 export module stringutils;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <cstring>;
-import <locale>;
-import <algorithm>;
-import <cctype>;
-import <format>;
-import <type_traits>;
+import std;
 #endif
 
 export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)

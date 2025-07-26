@@ -12,9 +12,7 @@ module;
 module rigid;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <print>;
+import std;
 #endif
 
 import archive;

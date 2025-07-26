@@ -21,20 +21,7 @@ module;
 module isotherm_fitting_simulation;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <span>;
-import <cmath>;
-import <string>;
-import <iostream>;
-import <fstream>;
-import <limits>;
-import <filesystem>;
-import <algorithm>;
-import <numeric>;
-import <sstream>;
-import <chrono>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

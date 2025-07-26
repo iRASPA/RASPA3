@@ -26,25 +26,7 @@ module;
 module input_reader;
 
 #ifndef USE_LEGACY_HEADERS
-import <filesystem>;
-import <fstream>;
-import <streambuf>;
-import <cstdlib>;
-import <iostream>;
-import <sstream>;
-import <exception>;
-import <numbers>;
-import <vector>;
-import <array>;
-import <complex>;
-import <ios>;
-import <optional>;
-import <algorithm>;
-import <map>;
-import <set>;
-import <iterator>;
-import <functional>;
-import <print>;
+import std;
 #endif
 
 import int3;

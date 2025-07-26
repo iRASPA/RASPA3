@@ -12,11 +12,7 @@ module;
 export module mc_moves;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

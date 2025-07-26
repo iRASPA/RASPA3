@@ -22,20 +22,7 @@ module;
 module interactions_framework_molecule_grid;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <optional>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <thread>;
-import <future>;
-import <deque>;
-import <semaphore>;
-import <atomic>;
-import <utility>;
-import <limits>;
+import std;
 #endif
 
 import double3;

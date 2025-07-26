@@ -11,11 +11,7 @@ module;
 export module mc_moves_translation;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <optional>;
-import <span>;
-import <vector>;
-import <tuple>;
+import std;
 #endif
 
 import randomnumbers;

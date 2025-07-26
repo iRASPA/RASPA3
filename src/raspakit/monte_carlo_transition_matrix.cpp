@@ -28,27 +28,7 @@ module;
 module monte_carlo_transition_matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <algorithm>;
-import <numeric>;
-import <ranges>;
-import <chrono>;
-import <vector>;
-import <array>;
-import <map>;
-import <utility>;
-import <span>;
-import <string>;
-import <optional>;
-import <fstream>;
-import <sstream>;
-import <filesystem>;
-import <tuple>;
-import <ios>;
-import <complex>;
-import <exception>;
-import <source_location>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

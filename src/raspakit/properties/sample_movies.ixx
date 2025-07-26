@@ -13,12 +13,7 @@ module;
 export module sample_movies;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <span>;
-import <numeric>;
-import <fstream>;
-import <utility>;
-import <string>;
+import std;
 #endif
 
 import atom;

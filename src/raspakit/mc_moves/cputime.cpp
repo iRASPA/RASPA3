@@ -21,19 +21,7 @@ module;
 module mc_moves_cputime;
 
 #ifndef USE_LEGACY_HEADERS
-import <chrono>;
-import <string>;
-import <sstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <fstream>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import double3;

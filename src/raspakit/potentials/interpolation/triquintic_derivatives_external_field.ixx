@@ -10,9 +10,7 @@ module;
 export module triquintic_derivatives_external_field;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <array>;
-import <iostream>;
+import std;
 #endif
 
 import double3;

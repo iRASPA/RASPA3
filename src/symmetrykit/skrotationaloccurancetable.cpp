@@ -9,8 +9,7 @@ module;
 module skrotationaloccurancetable;
 
 #ifndef USE_LEGACY_HEADERS
-import <map>;
-import <type_traits>;
+import std;
 #endif
 
 import skrotationmatrix;

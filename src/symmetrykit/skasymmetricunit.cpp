@@ -9,8 +9,7 @@ module;
 module skasymmetricunit;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <tuple>;
+import std;
 #endif
 
 import int3;

@@ -23,16 +23,7 @@ module;
 module marching_cubes;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cstddef>;
-import <math.h>;
-import <time.h>;
-import <memory.h>;
-import <stdlib.h>;
-import <double.h>;
-import <cmath>;
-import <limits>;
-import <iostream>;
+import std;
 #endif
 
 import int3;

@@ -14,14 +14,7 @@ module;
 export module isotherm;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <array>;
-import <vector>;
-import <cmath>;
-import <iostream>;
-import <string>;
-import <exception>;
-import <numbers>;
+import std;
 #endif
 
 import special_functions;

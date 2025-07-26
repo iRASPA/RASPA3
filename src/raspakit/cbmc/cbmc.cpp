@@ -14,13 +14,7 @@ module;
 module cbmc;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <iostream>;
-import <algorithm>;
-import <numeric>;
+import std;
 #endif
 
 import randomnumbers;

@@ -13,12 +13,7 @@ module;
 module int3;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
+import std;
 #endif
 
 import ring;

@@ -1,5 +1,6 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <format>
 #include <optional>
@@ -8,6 +9,8 @@ module;
 #include <sstream>
 #include <string>
 #include <vector>
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -18,6 +21,10 @@ module;
 #endif
 
 module opencl;
+
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
 
 std::optional<cl_context> OpenCL::clContext = std::nullopt;
 std::optional<cl_device_id> OpenCL::clDeviceId = std::nullopt;

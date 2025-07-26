@@ -19,20 +19,7 @@ module;
 module mc_moves_parallel_tempering_swap;
 
 #ifndef USE_LEGACY_HEADERS
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <numeric>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
+import std;
 #endif
 
 import component;

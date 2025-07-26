@@ -18,16 +18,7 @@ module;
 module mc_moves_statistics;
 
 #ifndef USE_LEGACY_HEADERS
-import <exception>;
-import <format>;
-import <fstream>;
-import <map>;
-import <print>;
-import <format>;
-import <source_location>;
-import <sstream>;
-import <string>;
-import <vector>;
+import std;
 #endif
 
 import archive;

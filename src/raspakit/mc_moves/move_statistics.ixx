@@ -16,15 +16,7 @@ module;
 export module move_statistics;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <algorithm>;
-import <fstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <map>;
-import <print>;
-import <functional>;
+import std;
 #endif
 
 import archive;

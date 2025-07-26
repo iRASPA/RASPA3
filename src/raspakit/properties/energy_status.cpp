@@ -21,20 +21,7 @@ module;
 module energy_status;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <iostream>;
-import <sstream>;
-import <fstream>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import archive;

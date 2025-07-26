@@ -12,11 +12,7 @@ module;
 export module interactions_polarization;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
-import <tuple>;
-import <complex>;
-import <vector>;
+import std;
 #endif
 
 import double3;

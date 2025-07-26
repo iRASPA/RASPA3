@@ -11,10 +11,7 @@ module;
 export module units;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <string>;
-import <sstream>;
-import <print>;
+import std;
 #endif
 
 import json;

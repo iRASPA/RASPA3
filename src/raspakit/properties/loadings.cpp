@@ -22,21 +22,7 @@ module;
 module loadings;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <optional>;
-import <fstream>;
-import <iostream>;
-import <sstream>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <ostream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

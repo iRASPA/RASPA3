@@ -10,9 +10,7 @@ module;
 module integrators_compute;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
-import <chrono>;
+import std;
 #endif
 
 import molecule;

@@ -9,8 +9,7 @@ module;
 export module characterset;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
+import std;
 #endif
 
 export class CharacterSet

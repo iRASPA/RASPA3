@@ -8,7 +8,7 @@ module;
 export module float3x3;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
+import std;
 #endif
 
 import float3;

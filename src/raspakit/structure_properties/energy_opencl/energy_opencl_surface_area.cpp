@@ -36,6 +36,10 @@ module;
 
 module energy_opencl_surface_area;
 
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
 import opencl;
 import float4;
 import double4;

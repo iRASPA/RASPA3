@@ -9,8 +9,7 @@ module;
 module skspacegroupsetting;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <vector>;
+import std;
 #endif
 
 import int3;

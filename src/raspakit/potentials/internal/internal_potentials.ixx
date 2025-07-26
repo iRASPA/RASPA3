@@ -10,8 +10,7 @@ module;
 export module internal_potentials;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

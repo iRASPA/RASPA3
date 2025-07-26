@@ -10,9 +10,7 @@ module;
 module sksymmetryoperationset;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <vector>;
-import <iterator>;
+import std;
 #endif
 
 import double3;

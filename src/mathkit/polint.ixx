@@ -11,8 +11,7 @@ module;
 export module polint;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <ostream>;
+import std;
 #endif
 
 export namespace Interpolation

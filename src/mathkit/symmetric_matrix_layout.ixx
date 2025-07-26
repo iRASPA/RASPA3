@@ -14,13 +14,7 @@ import mdspan;
 export module symmetric_matrix_layout;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-#if defined(__has_include) && __has_include(<mdspan>)
-import <mdspan>;
-#else
-import mdspan;
-#endif
+import std;
 #endif
 
 export struct layout_symmetric_matrix

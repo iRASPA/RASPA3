@@ -10,9 +10,7 @@ module;
 export module potential_triquintic_derivative_real_ewald;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
-import <numbers>;
+import std;
 #endif
 
 import double4;

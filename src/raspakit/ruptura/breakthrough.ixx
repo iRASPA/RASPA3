@@ -15,12 +15,7 @@ module;
 export module breakthrough;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <span>;
-import <tuple>;
-import <string>;
-import <fstream>;
-import <mdspan>;
+import std;
 #endif
 
 import input_reader;

@@ -24,25 +24,7 @@ module;
 module property_lambda_probability_histogram;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <map>;
-import <array>;
-import <iostream>;
-import <cmath>;
-import <string>;
-import <sstream>;
-import <fstream>;
-import <format>;
-import <algorithm>;
-import <numeric>;
-import <cmath>;
-import <numbers>;
-import <optional>;
-import <complex>;
-import <print>;
-import <ranges>;
-import <numeric>;
-import <filesystem>;
+import std;
 #endif
 
 import double3;

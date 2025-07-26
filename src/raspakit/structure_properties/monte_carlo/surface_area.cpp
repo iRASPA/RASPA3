@@ -18,17 +18,7 @@ module;
 module mc_surface_area;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <print>;
-import <string>;
-import <vector>;
-import <optional>;
-import <numbers>;
-import <limits>;
-import <algorithm>;
-import <iostream>;
-import <fstream>;
-import <exception>;
+import std;
 #endif
 
 import double3;

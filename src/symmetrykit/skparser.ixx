@@ -12,11 +12,7 @@ module;
 export module skparser;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdlib>;
-import <vector>;
-import <tuple>;
-import <memory>;
-import <numbers>;
+import std;
 #endif
 
 import double3;

@@ -10,9 +10,7 @@ module;
 export module cbmc_rigid_reinsertion;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-import <span>;
+import std;
 #endif
 
 import atom;

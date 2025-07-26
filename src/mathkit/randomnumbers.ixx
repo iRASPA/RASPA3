@@ -14,13 +14,7 @@ module;
 export module randomnumbers;
 
 #ifndef USE_LEGACY_HEADERS
-import <tuple>;
-import <random>;
-import <cmath>;
-import <utility>;
-import <fstream>;
-import <iostream>;
-import <optional>;
+import std;
 #endif
 
 import archive;

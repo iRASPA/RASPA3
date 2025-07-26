@@ -14,13 +14,7 @@ module;
 module skcell;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <numbers>;
-import <vector>;
-import <array>;
-import <cstdlib>;
-import <cmath>;
-import <memory>;
+import std;
 #endif
 
 import int3;

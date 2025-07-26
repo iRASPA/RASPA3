@@ -9,8 +9,7 @@ module;
 export module float3;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <ostream>;
+import std;
 #endif
 
 import int3;

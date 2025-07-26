@@ -10,9 +10,7 @@ module;
 module skrotationmatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <iostream>;
-import <tuple>;
+import std;
 #endif
 
 import int3;

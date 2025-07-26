@@ -8,7 +8,7 @@ module;
 module float2;
 
 #ifndef USE_LEGACY_HEADERS
-import <sstream>;
+import std;
 #endif
 
 std::ostream& operator<<(std::ostream& stream, const float2& vec) { return stream << vec.x << vec.y; }

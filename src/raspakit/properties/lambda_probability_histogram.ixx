@@ -19,18 +19,7 @@ module;
 export module property_lambda_probability_histogram;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <array>;
-import <optional>;
-import <cmath>;
-import <string>;
-import <algorithm>;
-import <numeric>;
-import <numbers>;
-import <tuple>;
-import <iostream>;
-import <fstream>;
-import <filesystem>;
+import std;
 #endif
 
 import double3;

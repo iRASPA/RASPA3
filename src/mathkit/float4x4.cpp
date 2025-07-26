@@ -9,8 +9,7 @@ module;
 module float4x4;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
+import std;
 #endif
 
 import float3;

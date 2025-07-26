@@ -15,15 +15,7 @@ module;
 module skspacegroup;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <map>;
-import <array>;
-import <vector>;
-import <string>;
-import <iterator>;
-import <unordered_set>;
-import <string>;
-import <vector>;
+import std;
 #endif
 
 import int3;

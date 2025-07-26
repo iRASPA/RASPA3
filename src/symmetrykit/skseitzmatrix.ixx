@@ -10,9 +10,7 @@ module;
 export module skseitzmatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <cmath>;
+import std;
 #endif
 
 import int3;

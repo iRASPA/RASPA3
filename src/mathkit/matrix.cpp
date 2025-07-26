@@ -10,9 +10,7 @@ module;
 module matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <cctype>;
-import <vector>;
-import <algorithm>;
+import std;
 #endif
 
 Matrix::Matrix(size_t rows, size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows * columns)

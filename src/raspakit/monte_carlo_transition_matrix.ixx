@@ -12,11 +12,7 @@ module;
 export module monte_carlo_transition_matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <iostream>;
-import <fstream>;
-import <chrono>;
-import <optional>;
+import std;
 #endif
 
 import randomnumbers;

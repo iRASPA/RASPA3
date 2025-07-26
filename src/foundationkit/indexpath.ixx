@@ -8,7 +8,7 @@ module;
 export module indexpath;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
+import std;
 #endif
 
 export class IndexPath

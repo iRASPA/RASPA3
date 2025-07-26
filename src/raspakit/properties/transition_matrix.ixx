@@ -10,10 +10,7 @@ module;
 export module transition_matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cstddef>;
-import <vector>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

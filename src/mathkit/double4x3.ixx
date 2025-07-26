@@ -7,7 +7,7 @@ module;
 export module double4x3;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
+import std;
 #endif
 
 import double3;

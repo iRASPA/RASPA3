@@ -9,8 +9,7 @@ module;
 export module potential_triquintic_derivative_lj;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
+import std;
 #endif
 
 import double4;

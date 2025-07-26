@@ -24,24 +24,7 @@ module;
 module property_rdf;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <string>;
-import <iostream>;
-import <fstream>;
-import <sstream>;
-import <tuple>;
-import <vector>;
-import <algorithm>;
-import <complex>;
-import <format>;
-import <numbers>;
-import <span>;
-import <array>;
-import <cmath>;
-import <exception>;
-import <source_location>;
-import <print>;
-import <filesystem>;
+import std;
 #endif
 
 import archive;

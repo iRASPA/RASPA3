@@ -8,7 +8,7 @@ module;
 export module double4x4;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
+import std;
 #endif
 
 import double3;

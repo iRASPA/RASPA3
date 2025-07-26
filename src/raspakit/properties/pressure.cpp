@@ -21,20 +21,7 @@ module;
 module property_pressure;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <iostream>;
-import <sstream>;
-import <fstream>;
-import <tuple>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

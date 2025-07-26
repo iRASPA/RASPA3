@@ -12,12 +12,7 @@ module;
 export module skboundingbox;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <array>;
-import <tuple>;
-import <utility>;
-import <memory>;
-import <cstdint>;
+import std;
 #endif
 
 import double4x4;

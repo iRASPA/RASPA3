@@ -1,8 +1,11 @@
 module;
 
+#ifdef USE_LEGACY_HEADERS
 #include <cstddef>
 #include <optional>
 #include <string>
+#endif
+
 #define CL_TARGET_OPENCL_VERSION 120
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -13,6 +16,10 @@ module;
 #endif
 
 export module opencl;
+
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
 
 export namespace OpenCL
 {

@@ -11,9 +11,7 @@ module;
 export module integrators;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
-import <complex>;
+import std;
 #endif
 
 import molecule;

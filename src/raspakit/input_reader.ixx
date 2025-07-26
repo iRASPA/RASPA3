@@ -21,20 +21,7 @@ module;
 export module input_reader;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <set>;
-import <unordered_set>;
-import <vector>;
-import <complex>;
-import <locale>;
-import <algorithm>;
-import <cctype>;
-import <optional>;
-import <fstream>;
-import <istream>;
-import <string>;
-import <format>;
+import std;
 #endif
 
 import stringutils;

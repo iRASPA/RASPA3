@@ -13,12 +13,7 @@ module;
 export module loadings;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <optional>;
-import <cmath>;
-import <ostream>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

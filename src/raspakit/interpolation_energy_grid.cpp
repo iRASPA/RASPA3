@@ -38,21 +38,7 @@ extern "C"
 module interpolation_energy_grid;
 
 #ifndef USE_LEGACY_HEADERS
-import <istream>;
-import <ostream>;
-import <sstream>;
-import <fstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <utility>;
-import <algorithm>;
-import <print>;
-import <mdspan>;
+import std;
 #endif
 
 import double3;

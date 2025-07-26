@@ -10,9 +10,7 @@ module;
 export module skposcarlegacyparser;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <optional>;
-import <memory>;
+import std;
 #endif
 
 import scanner;

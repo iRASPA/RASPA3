@@ -27,6 +27,10 @@ module;
 
 module energy_surface_area;
 
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
 import opencl;
 import float4;
 import double4;

@@ -18,17 +18,7 @@ module;
 export module property_number_of_molecules_histogram;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <array>;
-import <optional>;
-import <cmath>;
-import <string>;
-import <algorithm>;
-import <numeric>;
-import <numbers>;
-import <tuple>;
-import <iostream>;
-import <fstream>;
+import std;
 #endif
 
 import double4;

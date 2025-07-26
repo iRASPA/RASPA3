@@ -10,17 +10,8 @@ module;
 
 export module double3x3x3;
 
-// #if defined(WIN32)
-//     import <intrin.h>;
-// #elif defined(__AVX__)
-//     import <immintrin.h>;
-// #endif
-
 #ifndef USE_LEGACY_HEADERS
-import <istream>;
-import <ostream>;
-import <fstream>;
-import <cmath>;
+import std;
 #endif
 
 import archive;

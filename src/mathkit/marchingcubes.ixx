@@ -20,9 +20,7 @@ module;
 export module marching_cubes;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cstddef>;
-import <vector>;
+import std;
 #endif
 
 import int3;

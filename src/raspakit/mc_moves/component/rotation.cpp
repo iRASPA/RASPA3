@@ -17,17 +17,7 @@ module;
 module mc_moves_rotation;
 
 #ifndef USE_LEGACY_HEADERS
-import <complex>;
-import <vector>;
-import <array>;
-import <optional>;
-import <span>;
-import <optional>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
+import std;
 #endif
 
 import component;

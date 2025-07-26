@@ -20,19 +20,7 @@ module;
 module property_energy;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <random>;
-import <sstream>;
-import <fstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

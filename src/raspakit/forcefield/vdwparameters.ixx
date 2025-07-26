@@ -14,13 +14,7 @@ module;
 export module vdwparameters;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <string>;
-import <algorithm>;
-import <iostream>;
-import <ostream>;
-import <fstream>;
-import <optional>;
+import std;
 #endif
 
 import archive;

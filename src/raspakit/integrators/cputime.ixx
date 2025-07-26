@@ -10,9 +10,7 @@ module;
 export module integrators_cputime;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <chrono>;
-import <fstream>;
+import std;
 #endif
 
 import double3;

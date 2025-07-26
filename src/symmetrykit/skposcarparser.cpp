@@ -14,13 +14,7 @@ module;
 module skposcarparser;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <map>;
-import <locale>;
-import <optional>;
-import <memory>;
-import <iostream>;
+import std;
 #endif
 
 import skelement;

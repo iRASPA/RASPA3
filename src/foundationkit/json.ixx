@@ -50,9 +50,7 @@ module;
 export module json;
 
 #ifndef USE_LEGACY_HEADERS
-import <functional>;
-import <iostream>;
-import <type_traits>;
+import std;
 #endif
 
 import stringutils;

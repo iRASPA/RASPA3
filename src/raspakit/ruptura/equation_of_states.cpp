@@ -15,14 +15,7 @@ module;
 module equation_of_states;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <cmath>;
-import <optional>;
-import <iostream>;
-import <fstream>;
-import <source_location>;
-import <format>;
-import <print>;
+import std;
 #endif
 
 import archive;

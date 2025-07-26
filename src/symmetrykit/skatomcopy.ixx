@@ -9,8 +9,7 @@ module;
 export module skatom:skatomcopy;
 
 #ifndef USE_LEGACY_HEADERS
-import <memory>;
-import <vector>;
+import std;
 #endif
 
 import double3;

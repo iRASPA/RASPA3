@@ -16,13 +16,7 @@ module;
 export module chiral_center;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <vector>;
-import <array>;
-import <fstream>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

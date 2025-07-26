@@ -21,20 +21,7 @@ module;
 module simulationbox;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <numbers>;
-import <string>;
-import <iostream>;
-import <ostream>;
-import <sstream>;
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import randomnumbers;

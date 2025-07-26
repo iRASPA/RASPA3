@@ -11,10 +11,7 @@ module;
 export module skspacegroupsetting;
 
 #ifndef USE_LEGACY_HEADERS
-import <ostream>;
-import <string>;
-import <vector>;
-import <cstdint>;
+import std;
 #endif
 
 import int3;

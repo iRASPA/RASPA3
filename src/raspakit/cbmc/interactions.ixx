@@ -12,11 +12,7 @@ module;
 export module cbmc_interactions;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <type_traits>;
-import <span>;
-import <optional>;
+import std;
 #endif
 
 import atom;

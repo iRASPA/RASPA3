@@ -12,11 +12,7 @@ module;
 module special_functions;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
-import <cstring>;
-import <bitset>;
-import <limits>;
+import std;
 #endif
 
 // routine by Alexander Voigt

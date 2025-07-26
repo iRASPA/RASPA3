@@ -13,12 +13,7 @@ module;
 export module energy_status_intra;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <iostream>;
-import <sstream>;
-import <fstream>;
-import <cmath>;
-import <print>;
+import std;
 #endif
 
 import archive;

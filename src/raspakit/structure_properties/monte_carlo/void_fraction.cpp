@@ -17,16 +17,7 @@ module;
 module mc_void_fraction;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <print>;
-import <string>;
-import <vector>;
-import <optional>;
-import <limits>;
-import <algorithm>;
-import <iostream>;
-import <fstream>;
-import <tuple>;
+import std;
 #endif
 
 import double3;

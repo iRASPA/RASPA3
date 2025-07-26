@@ -18,14 +18,7 @@ module;
 export module property_density_grid;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <array>;
-import <optional>;
-import <cmath>;
-import <string>;
-import <span>;
-import <algorithm>;
-import <mdspan>;
+import std;
 #endif
 
 import archive;

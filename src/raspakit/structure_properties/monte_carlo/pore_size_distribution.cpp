@@ -17,16 +17,7 @@ module;
 module mc_pore_size_distribution;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <random>;
-import <print>;
-import <string>;
-import <vector>;
-import <optional>;
-import <limits>;
-import <algorithm>;
-import <iostream>;
-import <fstream>;
+import std;
 #endif
 
 import double3;

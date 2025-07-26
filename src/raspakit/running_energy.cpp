@@ -23,22 +23,7 @@ module;
 module running_energy;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <functional>;
-import <iostream>;
-import <sstream>;
-import <ostream>;
-import <fstream>;
-import <vector>;
-import <array>;
-import <ranges>;
-import <algorithm>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import units;

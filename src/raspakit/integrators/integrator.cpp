@@ -13,12 +13,7 @@ module;
 module integrators;
 
 #ifndef USE_LEGACY_HEADERS
-import <optional>;
-import <span>;
-import <vector>;
-import <complex>;
-import <chrono>;
-import <iostream>;
+import std;
 #endif
 
 import molecule;

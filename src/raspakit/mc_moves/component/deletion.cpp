@@ -18,19 +18,7 @@ module;
 module mc_moves_deletion;
 
 #ifndef USE_LEGACY_HEADERS
-import <complex>;
-import <vector>;
-import <array>;
-import <tuple>;
-import <optional>;
-import <span>;
-import <optional>;
-import <tuple>;
-import <algorithm>;
-import <chrono>;
-import <cmath>;
-import <iostream>;
-import <iomanip>;
+import std;
 #endif
 
 import double3;

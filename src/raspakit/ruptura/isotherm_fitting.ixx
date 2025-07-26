@@ -13,12 +13,7 @@ module;
 export module isotherm_fitting;
 
 #ifndef USE_LEGACY_HEADERS
-import <tuple>;
-import <array>;
-import <vector>;
-import <string>;
-import <unordered_map>;
-import <iostream>;
+import std;
 #endif
 
 import randomnumbers;

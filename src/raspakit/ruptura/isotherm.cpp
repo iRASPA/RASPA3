@@ -13,12 +13,7 @@ module;
 module isotherm;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdlib>;
-import <iostream>;
-import <sstream>;
-import <cmath>;
-import <vector>;
-import <print>;
+import std;
 #endif
 
 import randomnumbers;

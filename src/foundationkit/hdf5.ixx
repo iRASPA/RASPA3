@@ -18,9 +18,7 @@ module;
 export module hdf5;
 
 #ifndef USE_LEGACY_HEADERS
-import iostream;
-import vector;
-import algorithm;
+import std;
 #endif
 
 /*!

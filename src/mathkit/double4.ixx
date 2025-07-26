@@ -15,7 +15,7 @@ export module double4;
 // #endif
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
+import std;
 #endif
 
 import archive;

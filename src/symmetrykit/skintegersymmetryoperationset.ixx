@@ -12,11 +12,7 @@ module;
 export module skintegersymmetryoperationset;
 
 #ifndef USE_LEGACY_HEADERS
-import <set>;
-import <unordered_set>;
-import <vector>;
-import <tuple>;
-import <type_traits>;
+import std;
 #endif
 
 import int3;

@@ -33,32 +33,7 @@ module;
 module framework;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <ostream>;
-import <sstream>;
-import <algorithm>;
-import <vector>;
-import <array>;
-import <map>;
-import <string>;
-import <span>;
-import <optional>;
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <exception>;
-import <iterator>;
-import <chrono>;
-import <cstddef>;
-#if defined(_WIN32)
-import <cassert>;
-#endif
-import <exception>;
-import <source_location>;
-import <complex>;
-import <type_traits>;
-import <print>;
-import <limits>;
+import std;
 #endif
 
 import archive;

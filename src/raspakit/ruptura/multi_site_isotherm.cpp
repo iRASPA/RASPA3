@@ -13,12 +13,7 @@ module;
 module multi_site_isotherm;
 
 #ifndef USE_LEGACY_HEADERS
-import <sstream>;
-import <cmath>;
-import <vector>;
-import <iostream>;
-import <ostream>;
-import <print>;
+import std;
 #endif
 
 import special_functions;

@@ -10,10 +10,7 @@ module;
 export module mc_moves_gibbs_volume;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <optional>;
-import <span>;
-import <tuple>;
+import std;
 #endif
 
 import double3;

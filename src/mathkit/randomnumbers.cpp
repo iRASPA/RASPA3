@@ -16,15 +16,7 @@ module;
 module randomnumbers;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <iostream>;
-import <complex>;
-import <numbers>;
-import <random>;
-import <vector>;
-import <array>;
-import <map>;
-import <utility>;
+import std;
 #endif
 
 import double3;

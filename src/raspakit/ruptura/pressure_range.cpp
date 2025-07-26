@@ -17,16 +17,7 @@ module;
 module pressure_range;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <utility>;
-import <print>;
+import std;
 #endif
 
 import archive;

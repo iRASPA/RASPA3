@@ -13,11 +13,7 @@ module;
 module skboundingbox;
 
 #ifndef USE_LEGACY_HEADERS
-import <array>;
-import <cstdlib>;
-import <algorithm>;
-import <tuple>;
-import <utility>;
+import std;
 #endif
 
 import double3;

@@ -10,9 +10,7 @@ module;
 export module mc_moves_random_rotation;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <optional>;
-import <vector>;
+import std;
 #endif
 
 import randomnumbers;

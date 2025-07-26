@@ -22,21 +22,7 @@ module;
 module property_enthalpy;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <iostream>;
-import <fstream>;
-import <sstream>;
-import <vector>;
-import <cmath>;
-import <optional>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

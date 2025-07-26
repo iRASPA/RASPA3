@@ -16,15 +16,7 @@ module;
 module scanner;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <iostream>;
-import <sstream>;
-import <algorithm>;
-import <iterator>;
-import <iomanip>;
-import <string_view>;
-import <type_traits>;
+import std;
 #endif
 
 import characterset;

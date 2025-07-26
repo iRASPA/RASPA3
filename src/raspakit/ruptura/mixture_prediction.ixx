@@ -13,12 +13,7 @@ module;
 export module mixture_prediction;
 
 #ifndef USE_LEGACY_HEADERS
-import <functional>;
-import <vector>;
-import <span>;
-import <tuple>;
-import <string>;
-import <ostream>;
+import std;
 #endif
 
 import atom;

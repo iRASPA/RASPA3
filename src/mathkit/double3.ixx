@@ -11,18 +11,8 @@ module;
 
 export module double3;
 
-// #if defined(WIN32)
-// import <intrin.h>;
-// #elif defined(__AVX__)
-// import <immintrin.h>;
-// #endif
-
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <algorithm>;
-import <ostream>;
-import <fstream>;
-import <string>;
+import std;
 #endif
 
 import int3;

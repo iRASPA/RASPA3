@@ -11,10 +11,7 @@ module;
 export module skcell;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <cstdlib>;
-import <memory>;
-import <array>;
+import std;
 #endif
 
 import int3;

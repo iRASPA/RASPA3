@@ -14,14 +14,7 @@ module;
 export module atom;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cstddef>;
-import <istream>;
-import <ostream>;
-import <fstream>;
-import <sstream>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import archive;

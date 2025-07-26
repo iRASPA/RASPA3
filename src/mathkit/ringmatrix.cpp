@@ -12,11 +12,7 @@ module;
 module ringmatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <cmath>;
-import <limits>;
-import <vector>;
-import <variant>;
+import std;
 #endif
 
 import ring;

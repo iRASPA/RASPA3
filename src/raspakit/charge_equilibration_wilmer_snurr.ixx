@@ -13,12 +13,7 @@ module;
 export module charge_equilibration_wilmer_snurr;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <tuple>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <string>;
+import std;
 #endif
 
 import atom;

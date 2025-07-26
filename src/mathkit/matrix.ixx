@@ -10,9 +10,7 @@ module;
 export module matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-import <iostream>;
+import std;
 #endif
 
 import ringmatrix;

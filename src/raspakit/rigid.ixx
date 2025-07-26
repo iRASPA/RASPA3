@@ -10,9 +10,7 @@ module;
 export module rigid;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <tuple>;
-import <print>;
+import std;
 #endif
 
 import archive;

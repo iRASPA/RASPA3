@@ -8,7 +8,7 @@ module;
 export module hardware_info;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
+import std;
 #endif
 
 import json;

@@ -12,10 +12,7 @@ module;
 module mc_moves_hybridmc;
 
 #ifndef USE_LEGACY_HEADERS
-import <chrono>;
-import <span>;
-import <optional>;
-import <iostream>;
+import std;
 #endif
 
 import double3;

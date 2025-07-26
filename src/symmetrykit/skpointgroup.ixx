@@ -12,11 +12,7 @@ module;
 export module skpointgroup;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <map>;
-import <cstdint>;
-import <optional>;
+import std;
 #endif
 
 import skdefinitions;

@@ -14,12 +14,7 @@ module;
 module mc_moves_probabilities;
 
 #ifndef USE_LEGACY_HEADERS
-import <random>;
-import <map>;
-import <vector>;
-import <fstream>;
-import <sstream>;
-import <source_location>;
+import std;
 #endif
 
 import randomnumbers;

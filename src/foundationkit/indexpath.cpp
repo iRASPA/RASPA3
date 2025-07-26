@@ -9,8 +9,7 @@ module;
 module indexpath;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <vector>;
+import std;
 #endif
 
 IndexPath::IndexPath() { _path.reserve(10); }

@@ -25,24 +25,7 @@ module;
 module pseudo_atom;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <iostream>;
-import <sstream>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <type_traits>;
-import <iterator>;
-import <functional>;
-import <print>;
+import std;
 #endif
 
 import archive;
