@@ -18,17 +18,7 @@ module;
 module sksymmetrycell;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cfloat>;
-import <algorithm>;
-import <utility>;
-import <numbers>;
-import <tuple>;
-import <iterator>;
-import <array>;
-import <vector>;
-import <string>;
-import <optional>;
+import std;
 #endif
 
 import int3;

@@ -18,16 +18,7 @@ module;
 module reaction;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <sstream>;
-import <vector>;
-import <map>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <fstream>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

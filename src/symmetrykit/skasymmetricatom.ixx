@@ -14,12 +14,7 @@ class SKAtomCopy;
 export module skatom:skasymmetricatom;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <cstdlib>;
-import <vector>;
-import <memory>;
-import <utility>;
-import <cstdlib>;
+import std;
 #endif
 
 import bool3;

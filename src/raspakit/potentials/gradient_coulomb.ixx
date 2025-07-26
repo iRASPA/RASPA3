@@ -10,9 +10,7 @@ module;
 export module potential_gradient_coulomb;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <numbers>;
-import <iostream>;
+import std;
 #endif
 
 import double4;

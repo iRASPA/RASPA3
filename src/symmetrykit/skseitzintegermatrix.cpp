@@ -9,8 +9,7 @@ module;
 module skseitzintegermatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <string>;
+import std;
 #endif
 
 import int3;

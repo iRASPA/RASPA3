@@ -21,21 +21,7 @@ module;
 export module framework;
 
 #ifndef USE_LEGACY_HEADERS
-import <format>;
-import <tuple>;
-import <vector>;
-import <string>;
-import <chrono>;
-import <cstdint>;
-import <fstream>;
-import <sstream>;
-import <ostream>;
-import <vector>;
-import <array>;
-import <map>;
-import <optional>;
-import <span>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

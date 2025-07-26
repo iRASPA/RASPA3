@@ -8,7 +8,7 @@ module;
 export module skrotationalchangeofbasis;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
+import std;
 #endif
 
 import int3;

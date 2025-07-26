@@ -24,21 +24,7 @@ module;
 module breakthrough;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <span>;
-import <cmath>;
-import <string>;
-import <iostream>;
-import <fstream>;
-import <limits>;
-import <filesystem>;
-import <algorithm>;
-import <numeric>;
-import <sstream>;
-import <chrono>;
-import <type_traits>;
-import <print>;
-import <mdspan>;
+import std;
 #endif
 
 import stringutils;

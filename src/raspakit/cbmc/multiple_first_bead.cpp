@@ -17,15 +17,7 @@ module;
 module cbmc_multiple_first_bead;
 
 #ifndef USE_LEGACY_HEADERS
-import <optional>;
-import <cmath>;
-import <vector>;
-import <algorithm>;
-import <numeric>;
-import <iterator>;
-import <span>;
-import <tuple>;
-import <stdexcept>;
+import std;
 #endif
 
 import cbmc_util;

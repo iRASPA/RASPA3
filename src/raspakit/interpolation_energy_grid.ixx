@@ -18,16 +18,7 @@ module;
 export module interpolation_energy_grid;
 
 #ifndef USE_LEGACY_HEADERS
-import <array>;
-import <vector>;
-import <cmath>;
-import <cstddef>;
-import <istream>;
-import <ostream>;
-import <fstream>;
-import <sstream>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import archive;

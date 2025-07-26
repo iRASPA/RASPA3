@@ -16,13 +16,7 @@ module;
 export module van_der_waals_potential;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <vector>;
-import <array>;
-import <fstream>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

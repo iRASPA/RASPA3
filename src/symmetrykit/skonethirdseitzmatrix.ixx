@@ -9,7 +9,7 @@ module;
 export module skonethirdseitzmatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
+import std;
 #endif
 
 export class SKOneThirdSeitzMatrix

@@ -8,7 +8,7 @@ module;
 export module ring;
 
 #ifndef USE_LEGACY_HEADERS
-import <tuple>;
+import std;
 #endif
 
 export struct Ring

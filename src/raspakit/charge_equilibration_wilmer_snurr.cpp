@@ -21,14 +21,7 @@ module;
 module charge_equilibration_wilmer_snurr;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <vector>;
-import <span>;
-import <mdspan>;
-import <cmath>;
-import <iostream>;
-import <numbers>;
-import <exception>;
+import std;
 #endif
 
 import double3;

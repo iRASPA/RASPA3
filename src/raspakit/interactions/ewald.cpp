@@ -16,14 +16,7 @@ module;
 module interactions_ewald;
 
 #ifndef USE_LEGACY_HEADERS
-import <complex>;
-import <span>;
-import <numbers>;
-import <cmath>;
-import <vector>;
-import <iostream>;
-import <algorithm>;
-import <type_traits>;
+import std;
 #endif
 
 import int3;

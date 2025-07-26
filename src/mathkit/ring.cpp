@@ -10,10 +10,7 @@ module;
 module ring;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <cmath>;
-import <tuple>;
-import <utility>;
+import std;
 #endif
 
 Ring::Ring() {}

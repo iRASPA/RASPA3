@@ -24,24 +24,7 @@ module;
 module property_widom;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <map>;
-import <array>;
-import <iostream>;
-import <cmath>;
-import <string>;
-import <sstream>;
-import <format>;
-import <algorithm>;
-import <numeric>;
-import <cmath>;
-import <numbers>;
-import <optional>;
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

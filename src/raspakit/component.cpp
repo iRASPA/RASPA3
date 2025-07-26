@@ -33,30 +33,7 @@ module;
 module component;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <ostream>;
-import <sstream>;
-import <algorithm>;
-import <vector>;
-import <array>;
-import <map>;
-import <string>;
-import <span>;
-import <optional>;
-import <filesystem>;
-import <fstream>;
-import <cstdlib>;
-import <exception>;
-import <iterator>;
-import <chrono>;
-import <cstddef>;
-import <type_traits>;
-import <utility>;
-import <functional>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import int3;

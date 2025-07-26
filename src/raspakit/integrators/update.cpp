@@ -12,11 +12,7 @@ module;
 module integrators_update;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <vector>;
-import <complex>;
-import <chrono>;
-import <iostream>;
+import std;
 #endif
 
 import molecule;

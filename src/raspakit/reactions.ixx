@@ -12,11 +12,7 @@ module;
 export module reactions;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <numbers>;
-import <string>;
-import <sstream>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

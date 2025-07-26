@@ -18,6 +18,10 @@ module;
 
 export module energy_opencl_surface_area;
 
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
 import int3;
 import double2;
 import double3;

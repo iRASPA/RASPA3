@@ -11,10 +11,7 @@ module;
 export module thermostat;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <tuple>;
-import <vector>;
-import <print>;
+import std;
 #endif
 
 import archive;

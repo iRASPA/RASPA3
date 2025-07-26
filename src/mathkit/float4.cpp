@@ -8,7 +8,7 @@ module;
 module float4;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
+import std;
 #endif
 
 void float4::normalise()

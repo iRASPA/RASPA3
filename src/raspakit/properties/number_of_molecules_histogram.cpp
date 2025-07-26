@@ -20,17 +20,7 @@ module;
 module property_number_of_molecules_histogram;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <map>;
-import <array>;
-import <vector>;
-import <algorithm>;
-import <print>;
-import <format>;
-import <filesystem>;
+import std;
 #endif
 
 import archive;

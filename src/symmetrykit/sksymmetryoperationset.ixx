@@ -8,7 +8,7 @@ module;
 export module sksymmetryoperationset;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
+import std;
 #endif
 
 import skdefinitions;

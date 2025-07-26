@@ -10,9 +10,7 @@ module;
 module float3x3;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <vector>;
-import <cmath>;
+import std;
 #endif
 
 import simd_quatd;

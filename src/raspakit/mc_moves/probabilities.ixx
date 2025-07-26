@@ -10,9 +10,7 @@ module;
 export module mc_moves_probabilities;
 
 #ifndef USE_LEGACY_HEADERS
-import <random>;
-import <map>;
-import <vector>;
+import std;
 #endif
 
 import archive;

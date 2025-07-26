@@ -18,17 +18,7 @@ module;
 module cbmc_util;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <algorithm>;
-import <cmath>;
-import <iostream>;
-import <exception>;
-import <format>;
-#if defined(__has_include) && __has_include(<stacktrace>)
-import <stacktrace>;
-#endif
-import <print>;
+import std;
 #endif
 
 import atom;

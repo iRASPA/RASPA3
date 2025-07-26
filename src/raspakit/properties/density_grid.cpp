@@ -25,23 +25,7 @@ module;
 module property_density_grid;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <string>;
-import <iostream>;
-import <fstream>;
-import <sstream>;
-import <tuple>;
-import <vector>;
-import <algorithm>;
-import <complex>;
-import <format>;
-import <numbers>;
-import <span>;
-import <exception>;
-import <source_location>;
-import <print>;
-import <mdspan>;
-import <filesystem>;
+import std;
 #endif
 
 import archive;

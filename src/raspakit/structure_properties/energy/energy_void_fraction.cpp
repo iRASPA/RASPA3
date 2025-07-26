@@ -27,6 +27,10 @@ module;
 
 module energy_void_fraction;
 
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
 import opencl;
 import float4;
 import double4;

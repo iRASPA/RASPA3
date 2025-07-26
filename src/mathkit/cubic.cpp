@@ -10,9 +10,7 @@ module;
 module cubic;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <numeric>;
-import <algorithm>;
+import std;
 #endif
 
 int signR(double Z)

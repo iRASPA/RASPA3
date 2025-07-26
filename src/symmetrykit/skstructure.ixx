@@ -13,12 +13,7 @@ module;
 export module skstructure;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdlib>;
-import <vector>;
-import <optional>;
-import <string>;
-import <set>;
-import <memory>;
+import std;
 #endif
 
 import int3;

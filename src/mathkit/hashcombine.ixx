@@ -10,9 +10,7 @@ module;
 export module hashcombine;
 
 #ifndef USE_LEGACY_HEADERS
-import <functional>;
-import <limits>;
-import <cstdint>;
+import std;
 #endif
 
 // https://stackoverflow.com/questions/35985960/c-why-is-boosthash-combine-the-best-way-to-combine-hash-values/50978188

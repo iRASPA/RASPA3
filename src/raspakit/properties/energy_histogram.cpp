@@ -21,18 +21,7 @@ module;
 module property_energy_histogram;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <sstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <map>;
-import <array>;
-import <vector>;
-import <algorithm>;
-import <print>;
-import <format>;
-import <filesystem>;
+import std;
 #endif
 
 import double4;

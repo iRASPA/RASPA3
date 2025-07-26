@@ -9,6 +9,10 @@ module;
 
 export module energy_void_fraction;
 
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
 import int3;
 import double2;
 import double3;

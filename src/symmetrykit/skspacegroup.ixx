@@ -13,12 +13,7 @@ module;
 export module skspacegroup;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <array>;
-import <string>;
-import <optional>;
-import <unordered_set>;
+import std;
 #endif
 
 import int3;

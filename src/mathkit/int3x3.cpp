@@ -9,8 +9,7 @@ module;
 module int3x3;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <numeric>;
+import std;
 #endif
 
 import ring;

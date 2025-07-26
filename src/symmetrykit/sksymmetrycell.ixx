@@ -12,11 +12,7 @@ module;
 export module sksymmetrycell;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-import <tuple>;
-import <memory>;
-import <string>;
+import std;
 #endif
 
 import int3;

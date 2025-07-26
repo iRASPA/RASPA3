@@ -9,8 +9,7 @@ module;
 export module gradient_factor;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

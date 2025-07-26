@@ -11,10 +11,7 @@ module;
 module units;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <sstream>;
-import <ostream>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

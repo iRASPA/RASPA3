@@ -17,15 +17,7 @@ module;
 module property_temperature;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <map>;
-import <array>;
-import <vector>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

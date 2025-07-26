@@ -10,9 +10,7 @@ module;
 export module cbmc_multiple_first_bead;
 
 #ifndef USE_LEGACY_HEADERS
-import <optional>;
-import <span>;
-import <vector>;
+import std;
 #endif
 
 import atom;

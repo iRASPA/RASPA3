@@ -10,10 +10,7 @@ module;
 export module mc_opencl_pore_size_distribution;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <print>;
-import <string>;
-import <vector>;
+import std;
 #endif
 
 import framework;

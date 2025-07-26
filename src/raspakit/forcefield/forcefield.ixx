@@ -18,15 +18,7 @@ module;
 export module forcefield;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <vector>;
-import <string>;
-import <algorithm>;
-import <iostream>;
-import <ostream>;
-import <fstream>;
-import <optional>;
-import <limits>;
+import std;
 #endif
 
 import archive;

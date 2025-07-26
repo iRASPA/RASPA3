@@ -12,12 +12,7 @@ module;
 export module mc_moves_statistics;
 
 #ifndef USE_LEGACY_HEADERS
-import <variant>;
-import <string>;
-import <map>;
-import <print>;
-import <format>;
-import <string>;
+import std;
 #endif
 
 import archive;

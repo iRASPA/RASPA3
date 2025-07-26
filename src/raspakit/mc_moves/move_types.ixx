@@ -10,9 +10,7 @@ module;
 export module mc_moves_move_types;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <map>;
-import <unordered_set>;
+import std;
 #endif
 
 export enum class MoveTypes : size_t {

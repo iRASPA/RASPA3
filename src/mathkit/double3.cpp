@@ -16,15 +16,7 @@ module;
 module double3;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <fstream>;
-import <cmath>;
-import <complex>;
-import <map>;
-import <array>;
-import <utility>;
-import <algorithm>;
-import <string>;
+import std;
 #endif
 
 import archive;

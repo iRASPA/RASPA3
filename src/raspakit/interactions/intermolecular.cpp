@@ -16,15 +16,7 @@ module;
 module interactions_intermolecular;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <optional>;
-import <thread>;
-import <future>;
+import std;
 #endif
 
 import energy_status;

@@ -10,9 +10,7 @@ module;
 module float3x4;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
-import <ostream>;
+import std;
 #endif
 
 float3x4::float3x4(const float3x4& a)  // copy constructor

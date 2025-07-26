@@ -16,15 +16,7 @@ module;
 module cbmc_interactions;
 
 #ifndef USE_LEGACY_HEADERS
-import <iomanip>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <optional>;
-import <cmath>;
-import <tuple>;
-import <type_traits>;
+import std;
 #endif
 
 import atom;

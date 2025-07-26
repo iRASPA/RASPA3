@@ -12,12 +12,7 @@ module;
 export module factory;
 
 #ifndef USE_LEGACY_HEADERS
-import <algorithm>;
-import <complex>;
-import <cstddef>;
-import <span>;
-import <vector>;
-import <numbers>;
+import std;
 #endif
 
 import int3;

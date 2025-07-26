@@ -18,18 +18,7 @@ module;
 export module running_energy;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <map>;
-import <cmath>;
-import <algorithm>;
-import <iostream>;
-import <numeric>;
-import <string>;
-import <sstream>;
-import <ostream>;
-import <fstream>;
-import <functional>;
+import std;
 #endif
 
 import archive;

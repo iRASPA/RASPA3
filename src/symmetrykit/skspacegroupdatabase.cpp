@@ -11,10 +11,7 @@ module;
 module skspacegroupdatabase;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <array>;
-import <string>;
-import <tuple>;
+import std;
 #endif
 
 import int3;

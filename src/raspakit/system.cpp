@@ -34,33 +34,7 @@ module;
 module system;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <numbers>;
-import <complex>;
-import <vector>;
-import <random>;
-import <span>;
-import <tuple>;
-import <iostream>;
-import <ostream>;
-import <fstream>;
-import <streambuf>;
-import <filesystem>;
-import <optional>;
-import <cmath>;
-import <chrono>;
-import <algorithm>;
-import <numeric>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <map>;
-import <vector>;
-import <array>;
-import <string>;
-import <string_view>;
-import <print>;
-import <mdspan>;
+import std;
 #endif
 
 import archive;

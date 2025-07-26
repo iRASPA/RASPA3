@@ -10,10 +10,7 @@ module;
 export module multi_site_isotherm;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <array>;
-import <vector>;
-import <iostream>;
+import std;
 #endif
 
 import hashcombine;

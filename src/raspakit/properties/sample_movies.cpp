@@ -16,15 +16,7 @@ module;
 module sample_movies;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <span>;
-import <iostream>;
-import <fstream>;
-import <streambuf>;
-import <filesystem>;
-import <numbers>;
-import <print>;
+import std;
 #endif
 
 import double3;

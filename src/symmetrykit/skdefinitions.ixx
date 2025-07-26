@@ -9,8 +9,7 @@ module;
 export module skdefinitions;
 
 #ifndef USE_LEGACY_HEADERS
-import <type_traits>;
-import <cstdint>;
+import std;
 #endif
 
 export enum class Symmorphicity : size_t { asymmorphic = 0, symmorphic = 1, hemisymmorphic = 2 };

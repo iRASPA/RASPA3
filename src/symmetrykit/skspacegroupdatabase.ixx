@@ -9,8 +9,7 @@ module;
 export module skspacegroupdatabase;
 
 #ifndef USE_LEGACY_HEADERS
-import <array>;
-import <vector>;
+import std;
 #endif
 
 import skspacegroupsetting;

@@ -16,15 +16,7 @@ module;
 module mc_moves_gibbs_swap_cfcmc;
 
 #ifndef USE_LEGACY_HEADERS
-import <optional>;
-import <span>;
-import <chrono>;
-import <vector>;
-import <cmath>;
-import <tuple>;
-import <algorithm>;
-import <utility>;
-import <type_traits>;
+import std;
 #endif
 
 import randomnumbers;

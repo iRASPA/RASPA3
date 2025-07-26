@@ -17,16 +17,7 @@ module;
 export module enthalpy_of_adsorption;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <numeric>;
-import <fstream>;
-import <utility>;
-import <string>;
-import <cmath>;
-import <iostream>;
-#if defined(_WIN32)
-import <cassert>;
-#endif
+import std;
 #endif
 
 import matrix;

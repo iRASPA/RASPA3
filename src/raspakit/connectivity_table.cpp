@@ -21,17 +21,7 @@ module;
 module connectivity_table;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <tuple>;
-import <array>;
-import <map>;
-import <utility>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

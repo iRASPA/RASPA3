@@ -11,10 +11,7 @@ module;
 export module interactions_framework_molecule;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
-import <tuple>;
-import <vector>;
+import std;
 #endif
 
 import double3;

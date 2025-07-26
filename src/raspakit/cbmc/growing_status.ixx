@@ -9,8 +9,7 @@ module;
 export module cbmc_growing_status;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
+import std;
 #endif
 
 import component;

@@ -12,11 +12,7 @@ module;
 export module simd_quatd;
 
 #ifndef USE_LEGACY_HEADERS
-import <ostream>;
-import <fstream>;
-import <map>;
-import <vector>;
-import <string>;
+import std;
 #endif
 
 import double3;

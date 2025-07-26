@@ -9,8 +9,7 @@ module;
 export module potential_energy_vdw;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <iostream>;
+import std;
 #endif
 
 import vdwparameters;

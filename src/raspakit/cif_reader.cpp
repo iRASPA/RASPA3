@@ -20,19 +20,7 @@ module;
 module cif_reader;
 
 #ifndef USE_LEGACY_HEADERS
-import <map>;
-import <vector>;
-import <string>;
-import <optional>;
-import <algorithm>;
-import <sstream>;
-import <cmath>;
-import <cctype>;
-import <numbers>;
-import <iostream>;
-import <exception>;
-import <format>;
-import <print>;
+import std;
 #endif
 
 import double3;

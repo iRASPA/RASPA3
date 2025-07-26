@@ -15,14 +15,7 @@ module;
 module simd_quatd;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <cmath>;
-import <fstream>;
-import <complex>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <string>;
+import std;
 #endif
 
 import double3;

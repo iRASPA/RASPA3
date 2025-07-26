@@ -13,12 +13,7 @@ module;
 export module skelement;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <cstdlib>;
-import <vector>;
-import <map>;
-import <set>;
-import <type_traits>;
+import std;
 #endif
 
 export struct SKElement

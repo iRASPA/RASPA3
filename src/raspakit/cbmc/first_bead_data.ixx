@@ -8,7 +8,7 @@ module;
 export module cbmc_first_bead_data;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
+import std;
 #endif
 
 import atom;

@@ -10,9 +10,7 @@ module;
 export module cif_reader;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <optional>;
-import <vector>;
+import std;
 #endif
 
 import scanner;

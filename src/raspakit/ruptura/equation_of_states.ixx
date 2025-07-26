@@ -9,8 +9,7 @@ module;
 export module equation_of_states;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <fstream>;
+import std;
 #endif
 
 import archive;

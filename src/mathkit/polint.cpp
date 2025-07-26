@@ -10,10 +10,7 @@ module;
 module polint;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <cmath>;
-import <array>;
-import <vector>;
+import std;
 #endif
 
 /*

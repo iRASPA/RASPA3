@@ -10,9 +10,7 @@ module;
 module double4x4;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <ostream>;
-import <cmath>;
+import std;
 #endif
 
 import double3;

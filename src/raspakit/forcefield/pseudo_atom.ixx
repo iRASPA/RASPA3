@@ -15,14 +15,7 @@ module;
 export module pseudo_atom;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstdint>;
-import <vector>;
-import <string>;
-import <algorithm>;
-import <iostream>;
-import <ostream>;
-import <fstream>;
-import <optional>;
+import std;
 #endif
 
 import archive;

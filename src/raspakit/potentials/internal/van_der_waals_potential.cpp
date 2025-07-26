@@ -18,16 +18,7 @@ module;
 module van_der_waals_potential;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <utility>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

@@ -23,23 +23,7 @@ module;
 module transition_matrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <cstddef>;
-import <vector>;
-import <array>;
-import <map>;
-import <functional>;
-import <algorithm>;
-import <utility>;
-import <numeric>;
-import <filesystem>;
-import <fstream>;
-import <iostream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <print>;
+import std;
 #endif
 
 import archive;

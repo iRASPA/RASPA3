@@ -14,13 +14,7 @@ module;
 module double4;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <fstream>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
+import std;
 #endif
 
 import archive;

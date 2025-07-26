@@ -12,11 +12,7 @@ module;
 export module ringmatrix;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <optional>;
-import <any>;
-import <variant>;
-import <string>;
+import std;
 #endif
 
 import int3x3;

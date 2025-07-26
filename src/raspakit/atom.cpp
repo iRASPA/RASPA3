@@ -21,20 +21,7 @@ module;
 module atom;
 
 #ifndef USE_LEGACY_HEADERS
-import <istream>;
-import <ostream>;
-import <sstream>;
-import <fstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <utility>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

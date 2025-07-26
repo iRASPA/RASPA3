@@ -13,11 +13,7 @@ module;
 module thermostat;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <cmath>;
-import <print>;
-import <source_location>;
+import std;
 #endif
 
 import archive;

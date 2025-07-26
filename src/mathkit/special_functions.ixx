@@ -11,10 +11,7 @@ module;
 export module special_functions;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <numeric>;
-import <algorithm>;
-import <string>;
+import std;
 #endif
 
 export extern double li2(double x);

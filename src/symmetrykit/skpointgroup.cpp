@@ -15,14 +15,7 @@ module;
 module skpointgroup;
 
 #ifndef USE_LEGACY_HEADERS
-import <type_traits>;
-import <algorithm>;
-import <iterator>;
-import <map>;
-import <string>;
-import <unordered_set>;
-import <vector>;
-import <iterator>;
+import std;
 #endif
 
 import int3;

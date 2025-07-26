@@ -12,10 +12,7 @@ module;
 module skposcarlegacyparser;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <locale>;
-import <optional>;
+import std;
 #endif
 
 import skstructure;

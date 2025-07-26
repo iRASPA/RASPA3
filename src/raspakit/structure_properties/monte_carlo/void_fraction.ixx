@@ -10,10 +10,7 @@ module;
 export module mc_void_fraction;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <print>;
-import <string>;
-import <vector>;
+import std;
 #endif
 
 import framework;

@@ -11,10 +11,7 @@ module;
 export module integrators_update;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <vector>;
-import <complex>;
-import <optional>;
+import std;
 #endif
 
 import molecule;

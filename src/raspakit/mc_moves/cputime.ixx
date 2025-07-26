@@ -11,10 +11,7 @@ module;
 export module mc_moves_cputime;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <chrono>;
-import <fstream>;
-import <map>;
+import std;
 #endif
 
 import double3;

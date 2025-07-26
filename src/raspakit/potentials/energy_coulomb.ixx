@@ -9,8 +9,7 @@ module;
 export module potential_energy_coulomb;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <numbers>;
+import std;
 #endif
 
 import forcefield;

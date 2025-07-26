@@ -22,21 +22,7 @@ module;
 module mixture_prediction;
 
 #ifndef USE_LEGACY_HEADERS
-import <functional>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <string>;
-import <iostream>;
-import <iomanip>;
-import <fstream>;
-import <sstream>;
-import <limits>;
-import <algorithm>;
-import <numeric>;
-import <ostream>;
-import <filesystem>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

@@ -34,12 +34,7 @@ module;
 module hardware_info;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <random>;
-import <chrono>;
-import <sstream>;
-import <type_traits>;
-import <print>;
+import std;
 #endif
 
 import stringutils;

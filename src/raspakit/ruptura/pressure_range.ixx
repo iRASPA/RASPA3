@@ -11,10 +11,7 @@ module;
 export module pressure_range;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <cmath>;
-import <fstream>;
-import <complex>;
+import std;
 #endif
 
 import archive;

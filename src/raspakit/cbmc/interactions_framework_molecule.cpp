@@ -21,20 +21,7 @@ module;
 module cbmc_interactions_framework_molecule;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <optional>;
-import <type_traits>;
-import <thread>;
-import <future>;
-import <deque>;
-import <semaphore>;
-import <atomic>;
-import <functional>;
+import std;
 #endif
 
 import energy_status;

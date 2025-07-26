@@ -9,8 +9,7 @@ module;
 export module mc_moves_hybridmc;
 
 #ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
+import std;
 #endif
 
 import running_energy;

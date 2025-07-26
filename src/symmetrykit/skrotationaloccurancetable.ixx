@@ -9,8 +9,7 @@ module;
 export module skrotationaloccurancetable;
 
 #ifndef USE_LEGACY_HEADERS
-import <map>;
-import <type_traits>;
+import std;
 #endif
 
 export struct SKRotationalOccuranceTable

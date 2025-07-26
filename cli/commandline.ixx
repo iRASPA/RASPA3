@@ -22,19 +22,7 @@ module;
 export module commandline;
 
 #ifndef USE_LEGACY_HEADERS
-import <cstddef>;
-import <exception>;
-import <iostream>;
-import <fstream>;
-import <vector>;
-import <span>;
-import <deque>;
-import <optional>;
-import <semaphore>;
-import <mutex>;
-import <complex>;
-import <locale>;
-import <string_view>;
+import std;
 #endif
 
 import archive;

@@ -17,16 +17,7 @@ module;
 module averages;
 
 #ifndef USE_LEGACY_HEADERS
-import <iostream>;
-import <istream>;
-import <ostream>;
-import <fstream>;
-import <complex>;
-import <vector>;
-import <map>;
-import <array>;
-import <utility>;
-import <algorithm>;
+import std;
 #endif
 
 import archive;

@@ -19,18 +19,7 @@ module;
 export module simulationbox;
 
 #ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <string>;
-import <iostream>;
-import <cmath>;
-import <algorithm>;
-import <istream>;
-import <ostream>;
-import <sstream>;
-import <fstream>;
-import <type_traits>;
-import <map>;
-import <functional>;
+import std;
 #endif
 
 import archive;

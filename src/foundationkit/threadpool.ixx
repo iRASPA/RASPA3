@@ -30,25 +30,7 @@ module;
 export module threadpool;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
-import <atomic>;
-import <chrono>;
-import <exception>;
-import <functional>;
-import <future>;
-import <iostream>;
-import <memory>;
-import <mutex>;
-import <thread>;
-import <type_traits>;
-import <utility>;
-import <optional>;
-import <semaphore>;
-import <deque>;
-import <vector>;
-import <concepts>;
-import <thread>;
-import <stop_token>;
+import std;
 #endif
 
 // https://github.com/DeveloperPaul123/thread-pool

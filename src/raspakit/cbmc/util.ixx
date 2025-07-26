@@ -11,10 +11,7 @@ module;
 export module cbmc_util;
 
 #ifndef USE_LEGACY_HEADERS
-import <vector>;
-import <tuple>;
-import <cmath>;
-import <algorithm>;
+import std;
 #endif
 
 import atom;

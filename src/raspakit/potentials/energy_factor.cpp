@@ -17,16 +17,7 @@ module;
 module energy_factor;
 
 #ifndef USE_LEGACY_HEADERS
-import <fstream>;
-import <format>;
-import <exception>;
-import <source_location>;
-import <complex>;
-import <vector>;
-import <array>;
-import <map>;
-import <algorithm>;
-import <print>;
+import std;
 #endif
 
 import archive;

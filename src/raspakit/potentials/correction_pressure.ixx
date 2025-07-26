@@ -8,7 +8,7 @@ module;
 export module potential_correction_pressure;
 
 #ifndef USE_LEGACY_HEADERS
-import <cmath>;
+import std;
 #endif
 
 import vdwparameters;

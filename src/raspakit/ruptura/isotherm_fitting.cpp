@@ -26,25 +26,7 @@ module;
 module isotherm_fitting;
 
 #ifndef USE_LEGACY_HEADERS
-import <string>;
-import <vector>;
-import <iostream>;
-import <fstream>;
-import <filesystem>;
-import <sstream>;
-import <iterator>;
-import <map>;
-import <algorithm>;
-import <exception>;
-import <cmath>;
-import <cstdlib>;
-import <bitset>;
-import <cstring>;
-import <climits>;
-import <unordered_set>;
-import <chrono>;
-import <optional>;
-import <print>;
+import std;
 #endif
 
 import randomnumbers;
