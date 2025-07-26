@@ -29,7 +29,7 @@ import <string>;
 
 import archive;
 
-double3 double3::normalise()
+double3 double3::normalized()
 {
   double magnitude = std::sqrt((x * x) + (y * y) + (z * z));
 

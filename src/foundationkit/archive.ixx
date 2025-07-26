@@ -511,6 +511,34 @@ class Archive
     return *this;
   }
 
+  template <class T1, class T2, class T3>
+  Archive& operator>>(std::tuple<T1, T2, T3>& v)
+  {
+    *this >> std::get<0>(v) >> std::get<1>(v) >> std::get<2>(v);
+    return *this;
+  }
+
+  template <class T1, class T2, class T3>
+  Archive& operator<<(const std::tuple<T1, T2, T3>& v)
+  {
+    *this << std::get<0>(v) << std::get<1>(v) << std::get<2>(v);
+    return *this;
+  }
+
+  template <class T1, class T2, class T3, class T4>
+  Archive& operator>>(std::tuple<T1, T2, T3, T4>& v)
+  {
+    *this >> std::get<0>(v) >> std::get<1>(v) >> std::get<2>(v) >> std::get<3>(v);
+    return *this;
+  }
+
+  template <class T1, class T2, class T3, class T4>
+  Archive& operator<<(const std::tuple<T1, T2, T3, T4>& v)
+  {
+    *this << std::get<0>(v) << std::get<1>(v) << std::get<2>(v) << std::get<3>(v);
+    return *this;
+  }
+
   Archive& operator>>(std::string& v)
   {
     size_t len;

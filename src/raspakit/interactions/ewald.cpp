@@ -947,7 +947,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   double alpha_squared = alpha * alpha;
   size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
-  bool omitInterInteractions = forceField.omitInterInteractions;
+  //bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -1194,7 +1194,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
   double alpha_squared = alpha * alpha;
   size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
-  bool omitInterInteractions = forceField.omitInterInteractions;
+  //bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -1733,8 +1733,6 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
-            double charge = moleculeAtomPositions[i].charge;
-            double scaling = moleculeAtomPositions[i].scalingCoulomb;
             electricPotentialMolecules[i] += 2.0 * temp * (cki.real() * total.first.real() + cki.imag() * total.first.imag());
           }
 
