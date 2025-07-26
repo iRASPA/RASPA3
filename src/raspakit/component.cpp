@@ -84,11 +84,22 @@ import multi_site_isotherm;
 import simulationbox;
 import cif_reader;
 import move_statistics;
-import bond_potential;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_statistics;
 import mc_moves_cputime;
+import bond_potential;
+import urey_bradley_potential;
+import bend_potential;
+import inversion_bend_potential;
+import out_of_plane_bend_potential;
+import torsion_potential;
+import bond_bond_potential;
+import bond_bend_potential;
+import bond_torsion_potential;
+import bend_bend_potential;
+import bend_torsion_potential;
+import internal_potentials;
 import json;
 
 // default constructor, needed for binary restart-file
@@ -114,6 +125,15 @@ Component::Component(Component::Type type, size_t currentComponent, const ForceF
     readComponent(forceField, filenameData.value());
   }
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
+
+  connectivityTable = ConnectivityTable(definedAtoms.size());
+
+  for(const BondPotential &bond_potential : internalPotentials.bonds)
+  {
+    size_t A = bond_potential.identifiers[0];
+    size_t B = bond_potential.identifiers[1];
+    connectivityTable[A, B] = true;
+  }
 }
 
 // create programmatically an 'adsorbate' component
@@ -131,7 +151,8 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
-      averageRosenbluthWeights(numberOfBlocks)
+      averageRosenbluthWeights(numberOfBlocks),
+      connectivityTable(atomList.size())
 {
   totalMass = 0.0;
   netCharge = 0.0;
@@ -146,6 +167,13 @@ Component::Component(size_t componentId, const ForceField &forceField, std::stri
 
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
+
+  for(const BondPotential &bond_potential : internalPotentials.bonds)
+  {
+    size_t A = bond_potential.identifiers[0];
+    size_t B = bond_potential.identifiers[1];
+    connectivityTable[A, B] = true;
+  }
 }
 
 // read the component from the molecule-file
@@ -322,6 +350,130 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
                                  static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0, 0),
                             mass});
   }
+
+
+  // Read bonds
+  if (parsed_data.contains("Bonds"))
+  {
+    internalPotentials.bonds.reserve(parsed_data["Bonds"].size());
+
+    for (auto &[_, item] : parsed_data["Bonds"].items())
+    {
+      if (!item.is_array())
+      {
+        throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+      }
+
+      if (item.size() != 3)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: item {} must be an array with at least three elements, "
+                        "(1) an array with the two identifiers of the bond, (2) the potential type, "
+                        "and (3) an array containg the potential parameters\n",
+                        item.dump()));
+      }
+
+      try
+      {
+        std::vector<size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<size_t>>() : std::vector<size_t>{};
+        std::string potential_name = item[1].get<std::string>();
+        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+        BondPotential bond = BondPotential({identifiers[0], identifiers[1]},
+                                           BondPotential::definitionForString.at(potential_name), 
+                                           potential_parameters);
+
+        internalPotentials.bonds.push_back(bond);
+      }
+      catch(std::exception const& e)
+      {
+        throw std::runtime_error(std::format("Error in Bond-potential ({}): {}\n",
+                      item.dump(), e.what()));
+      }
+    }
+  }
+
+  // Read bends
+  if (parsed_data.contains("Bends"))
+  {
+    internalPotentials.bends.reserve(parsed_data["Bends"].size());
+
+    for (auto &[_, item] : parsed_data["Bends"].items())
+    {
+      if (!item.is_array())
+      {
+        throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+      }
+
+      if (item.size() != 3)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: item {} must be an array with at least three elements, "
+                        "(1) an array with the three identifiers of the bend, (2) the potential type, "
+                        "and (3) an array containg the potential parameters\n",
+                        item.dump()));
+      }
+
+      try
+      {
+        std::vector<size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<size_t>>() : std::vector<size_t>{};
+        std::string potential_name = item[1].get<std::string>();
+        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+
+        BendPotential bend = BendPotential({identifiers[0], identifiers[1], identifiers[2]},
+                                           BendPotential::definitionForString.at(potential_name), 
+                                           potential_parameters);
+
+        internalPotentials.bends.push_back(bend);
+      }
+      catch(std::exception const& e)
+      {
+        throw std::runtime_error(std::format("Error in Bend-potential ({}): {}\n",
+                      item.dump(), e.what()));
+      }
+    }
+  }
+
+  // Read torsions
+  if (parsed_data.contains("Torsions"))
+  {
+    internalPotentials.torsions.reserve(parsed_data["Torsions"].size());
+
+    for (auto &[_, item] : parsed_data["Torsions"].items())
+    {
+      if (!item.is_array())
+      {
+        throw std::runtime_error(std::format("[Component reader]: item {} must be an array\n", item.dump()));
+      }
+
+      if (item.size() != 3)
+      {
+        throw std::runtime_error(
+            std::format("[Component reader]: item {} must be an array with at least three elements, "
+                        "(1) an array with the four identifiers of the dihedrals, (2) the potential type, "
+                        "and (3) an array containg the potential parameters\n",
+                        item.dump()));
+      }
+
+      try
+      {
+        std::vector<size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<size_t>>() : std::vector<size_t>{};
+        std::string potential_name = item[1].get<std::string>();
+        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+
+        TorsionPotential torsion = TorsionPotential({identifiers[0], identifiers[1], identifiers[2], identifiers[3]},
+                                                     TorsionPotential::definitionForString.at(potential_name), 
+                                                     potential_parameters);
+
+        internalPotentials.torsions.push_back(torsion);
+      }
+      catch(std::exception const& e)
+      {
+        throw std::runtime_error(std::format("Error in Torsion-potential ({}): {}\n",
+                      item.dump(), e.what()));
+      }
+    }
+  }
+
 
   totalMass = 0.0;
   netCharge = 0.0;
@@ -552,10 +704,13 @@ std::string Component::printStatus(const ForceField &forceField) const
   }
   std::print(stream, "\n");
 
-  std::print(stream, "    number of bonds: {}\n", bonds.size());
-  for (size_t i = 0; i < bonds.size(); ++i)
+  std::print(stream, "    connectivity:\n");
+  std::print(stream, "{}\n", connectivityTable.print("        "));
+
+  std::print(stream, "    number of bonds: {}\n", internalPotentials.bonds.size());
+  for (size_t i = 0; i < internalPotentials.bonds.size(); ++i)
   {
-    std::print(stream, "        {}", bonds[i].print());
+    std::print(stream, "        {}", internalPotentials.bonds[i].print());
   }
   std::print(stream, "\n");
 
@@ -607,11 +762,11 @@ nlohmann::json Component::jsonStatus() const
   }
   status["moveProbabilities"] = moves;
 
-  status["n_bonds"] = bonds.size();
-  std::vector<std::string> bondTypes(bonds.size());
-  for (size_t i = 0; i < bonds.size(); ++i)
+  status["n_bonds"] = internalPotentials.bonds.size();
+  std::vector<std::string> bondTypes(internalPotentials.bonds.size());
+  for (size_t i = 0; i < internalPotentials.bonds.size(); ++i)
   {
-    bondTypes[i] = bonds[i].print();
+    bondTypes[i] = internalPotentials.bonds[i].print();
   }
   status["bondTypes"] = bondTypes;
   return status;
@@ -773,24 +928,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGibbs;
   archive << c.hasFractionalMolecule;
 
-  archive << c.chiralCenters;
-  archive << c.bonds;
+  archive << c.internalPotentials;
+
   archive << c.connectivityTable;
-  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  // std::vector<std::pair<size_t, size_t>> intraVDW{};
-  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive << c.mc_moves_probabilities;
   archive << c.mc_moves_statistics;
@@ -868,24 +1008,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGibbs;
   archive >> c.hasFractionalMolecule;
 
-  archive >> c.chiralCenters;
-  archive >> c.bonds;
+  archive >> c.internalPotentials;
+
   archive >> c.connectivityTable;
-  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
-  // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};
-  // std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};
-  // std::vector<std::pair<size_t, size_t>> intraVDW{};
-  // std::vector<std::pair<size_t, size_t>> intraCoulomb{};
-  // std::vector<std::pair<size_t, size_t>> excludedIntraCoulomb{};
-  // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;

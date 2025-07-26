@@ -14,6 +14,7 @@ export module stringutils;
 
 #ifndef USE_LEGACY_HEADERS
 import <string>;
+import <cstring>;
 import <locale>;
 import <algorithm>;
 import <cctype>;
@@ -26,6 +27,19 @@ export inline bool caseInSensStringCompare(const std::string& str1, const std::s
   return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
                                                   [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
 }
+
+export struct caseInsensitiveComparator
+{
+  bool operator()(const std::string &lhs, const std::string &rhs) const
+  {
+#if defined(_WIN32)
+    return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
+#else
+    return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+#endif
+  }
+};
+
 
 export inline bool startsWith(const std::string& str, const std::string& prefix)
 {

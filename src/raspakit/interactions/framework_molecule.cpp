@@ -313,8 +313,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
 
 std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
     const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
+    [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    [[maybe_unused]] const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {

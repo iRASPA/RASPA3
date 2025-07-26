@@ -28,7 +28,7 @@ export struct GrowingStatus
     //     ++index;
     // }
 
-    for (size_t i = 0; i != component.bonds.size(); ++i)
+    for (size_t i = 0; i != component.internalPotentials.bonds.size(); ++i)
     {
       // connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
       // connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;

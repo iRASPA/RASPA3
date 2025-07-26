@@ -57,7 +57,7 @@ export union double3
   inline double& operator[](size_t i) { return v[i]; }
   inline const double& operator[](size_t i) const { return v[i]; }
 
-  double3 normalise();
+  double3 normalized();
   double3 fract() const;
 
   inline double length() { return std::sqrt(x * x + y * y + z * z); }
@@ -126,6 +126,16 @@ export union double3
   double3& operator-=(const double3& b)
   {
     this->x -= b.x, this->y -= b.y, this->z -= b.z;
+    return *this;
+  }
+  double3& operator*=(const double& b)
+  {
+    this->x *= b, this->y *= b, this->z *= b;
+    return *this;
+  }
+  double3& operator/=(const double& b)
+  {
+    this->x /= b, this->y /= b, this->z /= b;
     return *this;
   }
 

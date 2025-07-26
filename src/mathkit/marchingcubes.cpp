@@ -941,7 +941,7 @@ int MarchingCubes::add_vertex(const int3 &grid_coord, const int3 &dir, int corne
               u * get_z_grad(grid_coord2_x, grid_coord2_y, grid_coord2_z);
 
   // double3 n = arma::normalise(double3{nx, ny, nz});
-  double3 n = double3{nx, ny, nz}.normalise();
+  double3 n = double3{nx, ny, nz}.normalized();
 
   double pos_x = pos.x;
   double pos_y = pos.y;
@@ -1015,7 +1015,7 @@ int MarchingCubes::add_c_vertex()
   pos.y *= 1.0 / u;
   pos.z *= 1.0 / u;
   // n = arma::normalise(n);
-  n = n.normalise();
+  n = n.normalized();
 
   double pos_x = pos.x;
   double pos_y = pos.y;

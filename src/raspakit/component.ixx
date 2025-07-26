@@ -54,12 +54,24 @@ import simulationbox;
 import property_widom;
 import isotherm;
 import multi_site_isotherm;
-import bond_potential;
 import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 import mc_moves_statistics;
 import mc_moves_cputime;
+import bond_potential;
+import urey_bradley_potential;
+import bend_potential;
+import inversion_bend_potential;
+import out_of_plane_bend_potential;
+import torsion_potential;
+import bond_bond_potential;
+import bond_bend_potential;
+import bond_torsion_potential;
+import bend_bend_potential;
+import bend_torsion_potential;
+import internal_potentials;
+import connectivity_table;
 import json;
 
 /**
@@ -100,6 +112,13 @@ export struct Component
     NonLinear = 0,  ///< Non-linear molecular shape.
     Linear = 1,     ///< Linear molecular shape.
     Point = 2       ///< Point-particle molecular shape.
+  };
+
+  enum class Chirality : size_t
+  {
+    NoCharility = 0,  
+    S_Chiral = 1,     
+    R_Chiral = 2       
   };
 
   /**
@@ -206,28 +225,7 @@ export struct Component
   PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Gibbs-Chebyshev integration.
   PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs integration.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
-
-  std::vector<size_t> chiralCenters{};                      ///< List of chiral centers in the component.
-  std::vector<BondPotential> bonds{};                       ///< List of bond potentials.
-  std::vector<std::pair<size_t, size_t>> bondDipoles{};     ///< List of bond dipoles.
-  std::vector<std::tuple<size_t, size_t, size_t>> bends{};  ///< List of bending potentials.
-  std::vector<std::pair<size_t, size_t>> UreyBradley{};     ///< List of Urey-Bradley potentials.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};    ///< List of inversion bends.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};           ///< List of torsion potentials.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> ImproperTorsions{};  ///< List of improper torsions.
-  std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};                 ///< List of bond-bond interactions.
-  std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};              ///< List of stretch-bend interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendBends{};         ///< List of bend-bend interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> stretchTorsions{};  ///< List of stretch-torsion interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> bendTorsions{};     ///< List of bend-torsion interactions.
-  std::vector<std::pair<size_t, size_t>> intraVDW{};      ///< List of intra-molecular van der Waals interactions.
-  std::vector<std::pair<size_t, size_t>> intraCoulomb{};  ///< List of intra-molecular Coulomb interactions.
-  std::vector<std::pair<size_t, size_t>>
-      excludedIntraCoulomb{};  ///< List of excluded intra-molecular Coulomb interactions.
-  std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};  ///< List of configuration moves.
-
-  std::vector<bool> connectivityTable{};  ///< Connectivity table for the component.
-
+ 
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
@@ -255,6 +253,11 @@ export struct Component
   };
 
   PressureScale pressureScale{PressureScale::Log};  ///< Pressure scaling type.
+
+  Potentials::InternalPotentials internalPotentials{};      ///< List of internal potentials.
+
+  ConnectivityTable connectivityTable{};                    ///< Connectivity table for the component.
+
 
   /**
    * \brief Reads component data from a file.
