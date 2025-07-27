@@ -24,7 +24,7 @@ import json;
  * derived units and their conversion factors, which are used to convert between simulation units and SI units.
  * The namespace also provides functions to output the unit settings in human-readable or JSON format.
  */
-export namespace Units
+export struct Units
 {
 enum class System : std::size_t
 {
@@ -32,376 +32,205 @@ enum class System : std::size_t
   ReducedUnits = 1
 };
 
-Units::System unitSystem{Units::System::RASPA};
+static Units::System unitSystem;
 
 // Fundamental constants of nature
 /// The length of one angstrom in meters.
-constexpr double Angstrom = 1e-10;
+static constexpr double Angstrom = 1e-10;
 /// The volume of one cubic angstrom in cubic meters.
-constexpr double AngstromCubed = 1e-30;
+static constexpr double AngstromCubed = 1e-30;
 /// The length of one nanosecond in seconds.
-constexpr double NanoSecond = 1e-9;
+static constexpr double NanoSecond = 1e-9;
 /// The length of one picosecond in seconds.
-constexpr double PicoSecond = 1e-12;
+static constexpr double PicoSecond = 1e-12;
 /// The length of one femtosecond in seconds.
-constexpr double FemtoSecond = 1e-15;
+static constexpr double FemtoSecond = 1e-15;
 /// The mass of one atomic mass unit in kilograms.
-constexpr double AtomicMassUnit = 1.6605402e-27;  // kg
+static constexpr double AtomicMassUnit = 1.6605402e-27;  // kg
 /// The charge of an electron in coulombs per particle.
-constexpr double ElectronicChargeUnit = 1.60217733e-19;  // C/particle
+static constexpr double ElectronicChargeUnit = 1.60217733e-19;  // C/particle
 /// The molar gas constant in joules per mole per kelvin.
-constexpr double MolarGasConstant = 8.314464919;  // J mol^-1 K^-1
+static constexpr double MolarGasConstant = 8.314464919;  // J mol^-1 K^-1
 /// The Boltzmann constant in joules per kelvin.
-double BoltzmannConstant = 1.380650324e-23;  // J K^-1
+static constexpr double BoltzmannConstant = 1.380650324e-23;  // J K^-1
 /// The speed of light in meters per second.
-constexpr double SpeedOfLight = 299792458.0;  // m s^-1
+static constexpr double SpeedOfLight = 299792458.0;  // m s^-1
 /// Avogadro's constant in particles per mole.
-constexpr double AvogadroConstant = 6.0221419947e23;  // mol^-1
+static constexpr double AvogadroConstant = 6.0221419947e23;  // mol^-1
 /// The electric constant (vacuum permittivity) in coulombs squared per newton square meters.
-constexpr double ElectricConstant = 8.8541878176e-12;  // C^2/(N.m^2)
+static constexpr double ElectricConstant = 8.8541878176e-12;  // C^2/(N.m^2)
 /// Planck's constant in joule seconds.
-constexpr double PlanckConstant = 6.6260687652e-34;  // J.s
+static constexpr double PlanckConstant = 6.6260687652e-34;  // J.s
 /// The vacuum dielectric constant in farads per meter.
-constexpr double DielectricConstantVacuum = 8.8541878176e-12;  // F/m
+static constexpr double DielectricConstantVacuum = 8.8541878176e-12;  // F/m
 /// The value of one Debye in coulomb meters.
-constexpr double Debye = 3.335640952e-30;  // C.m
+static constexpr double Debye = 3.335640952e-30;  // C.m
 
 // 1 calorie (International Table) = 4.1868 J
 // 1 calorie (thermochemical) = 4.184 J
 // 1 calorie (15C) = 4.1855 J
 /// Conversion factor from calories to joules.
-constexpr double CalToJoule = 4.184;
+static constexpr double CalToJoule = 4.184;
 /// Conversion factor from joules to calories.
-constexpr double JouleToCal = 1.0 / CalToJoule;
+static constexpr double JouleToCal = 1.0 / CalToJoule;
 /// Conversion factor from electron volts to kilojoules per mole.
-constexpr double EvToKJPerMol = 96.48534;
+static constexpr double EvToKJPerMol = 96.48534;
 /// Conversion factor from electron volts to kelvin.
-constexpr double EvToKelvin = EvToKJPerMol * 1000.0 / MolarGasConstant;
+static constexpr double EvToKelvin = EvToKJPerMol * 1000.0 / MolarGasConstant;
 
 // Pressure conversion factors
 /// Conversion factor from pascals to atmospheres.
-constexpr double PaToAtm = (1.0 / 101325.0);
+static constexpr double PaToAtm = (1.0 / 101325.0);
 /// Conversion factor from pascals to bars.
-constexpr double PatoBar = 0.00001;
+static constexpr double PatoBar = 0.00001;
 /// Conversion factor from pascals to torr.
-constexpr double PaToTorr = 0.0075;
+static constexpr double PaToTorr = 0.0075;
 /// Conversion factor from kilopascals to atmospheres.
-constexpr double KPaToAtm = 1.0 / 101.325;
+static constexpr double KPaToAtm = 1.0 / 101.325;
 /// Conversion factor from kilopascals to bars.
-constexpr double KPaToBar = 0.01;
+static constexpr double KPaToBar = 0.01;
 /// Conversion factor from kilopascals to torr.
-constexpr double KPaToTorr = 7.5;
+static constexpr double KPaToTorr = 7.5;
 /// Conversion factor from bars to torr.
-constexpr double BarToTorr = 750.062;
+static constexpr double BarToTorr = 750.062;
 /// Conversion factor from bars to atmospheres.
-constexpr double BarToAtm = 0.9869;
+static constexpr double BarToAtm = 0.9869;
 /// Conversion factor from bars to kilopascals.
-constexpr double BarTokPa = 100.0;
+static constexpr double BarTokPa = 100.0;
 /// Conversion factor from atmospheres to torr.
-constexpr double AtmToTorr = 760;
+static constexpr double AtmToTorr = 760;
 /// Conversion factor from atmospheres to bars.
-constexpr double AtmToBar = 1.0 / 0.9869;
+static constexpr double AtmToBar = 1.0 / 0.9869;
 /// Conversion factor from atmospheres to kilopascals.
-constexpr double AtmTokPa = 101.325;
+static constexpr double AtmTokPa = 101.325;
 /// Conversion factor from atmospheres to pascals.
-constexpr double AtmToPa = 101325.0;
+static constexpr double AtmToPa = 101325.0;
 
-constexpr double DegreesToRadians = std::numbers::pi / 180.0;
-constexpr double RadiansToDegrees = 180.0 / std::numbers::pi;
+static constexpr double DegreesToRadians = std::numbers::pi / 180.0;
+static constexpr double RadiansToDegrees = 180.0 / std::numbers::pi;
 
 // Set of base units
 /// The simulation's base unit of length in meters.
-double LengthUnit = Angstrom;
+static double LengthUnit;
 /// The simulation's base unit of time in seconds.
-double TimeUnit = PicoSecond;
+static double TimeUnit;
 /// The simulation's base unit of mass in kilograms.
-double MassUnit = AtomicMassUnit;
+static double MassUnit;
 /// The simulation's base unit of charge in coulombs per particle.
-double ChargeUnit = ElectronicChargeUnit;
+static double ChargeUnit;
 
 /// Conversion factor for energy from simulation units to J.
-double EnergyUnit = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);
+static double EnergyUnit;
 
 /// Derived units and their conversion factors
 ///
 /// Conversion factor for length from simulation units to meter.
-double LengthConversionFactor = LengthUnit;  // m
+static double LengthConversionFactor;
 /// Conversion factor for energy from simulation units to joules.
-double EnergyConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // J
+static double EnergyConversionFactor;
 /// Conversion factor for mass from simulation units to kilograms.
-double MassConversionFactor = AtomicMassUnit;  // kg
+static double MassConversionFactor;
 /// Conversion factor for charge from simulation units to Coulomb per particle.
-double ChargeConversionFactor = ChargeUnit;  // C/particle
+static double ChargeConversionFactor;
 /// Conversion factor for time from simulation units to seconds.
-double TimeConversionFactor = TimeUnit;  // s
+static double TimeConversionFactor;
 /// Conversion factor for velocity from simulation units to meters per second.
-double VelocityConversionFactor = LengthUnit / TimeUnit;  // m/s
+static double VelocityConversionFactor;
 /// Conversion factor for force from simulation units to newtons.
-double ForceConversionFactor = EnergyConversionFactor / LengthUnit;  // N (=m/s^2)
+static double ForceConversionFactor;
 /// Conversion factor for diffusion from simulation units to square meters per second.
-double DiffusionConversionFactor = LengthUnit * LengthUnit / TimeUnit;  // m^2/s
+static double DiffusionConversionFactor;
 /// Conversion factor for acceleration from simulation units to meters per square second.
-double AccelerationConversionFactor = LengthUnit * LengthUnit / TimeUnit;  // m^2/s
+static double AccelerationConversionFactor;
 /// Conversion factor for torque from simulation units to Newton meters.
-double TorqueConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // kg.m^2.s^-2
+static double TorqueConversionFactor;
 /// Conversion factor for temperature from simulation units to K
-double TemperatureConversionFactor = 1.0;
+static double TemperatureConversionFactor;
 
-double KB = BoltzmannConstant / EnergyConversionFactor;
+static double KB;
 /// Conversion factor for pressure from simulation units to pascals.
-double PressureConversionFactor = MassUnit / (LengthUnit * TimeUnit * TimeUnit);  // Pa(=N/m^2)
+static double PressureConversionFactor;
 /// Conversion factor for volume from simulation units to cubic meters.
-double VolumeConversionFactor = LengthUnit * LengthUnit * LengthUnit;  // m^-3
+static double VolumeConversionFactor;
 /// Conversion factor for density from simulation units to kilograms per cubic meter.
-double DensityConversionFactor = MassConversionFactor / VolumeConversionFactor;  // kg/m^3
+static double DensityConversionFactor;
 /// Conversion factor for dynamic viscosity from simulation units to Pascal second.
-double DynamicViscosityConversionFactor = MassConversionFactor / LengthUnit / TimeUnit;  // kg.m^-1.s^-1
+static double DynamicViscosityConversionFactor;
 /// Conversion factor for enthalpy from simulation units to J
-double EnthalpyConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // J
+static double EnthalpyConversionFactor;
 /// Conversion factor for polarizability from simulation units to SI units.
-double PolarizilibityConversionFactor = ChargeUnit * ChargeUnit * LengthUnit * LengthUnit / EnergyConversionFactor;
+static double PolarizilibityConversionFactor;
 /// Conversion factor for dielectric constant from simulation units to SI units.
-double DielectricConstantConversionFactor =
-    TimeUnit * TimeUnit * ChargeUnit * ChargeUnit / (AtomicMassUnit * LengthUnit * LengthUnit * LengthUnit);
+static double DielectricConstantConversionFactor;
 /// Conversion factor for Coulomb potential from simulation units to SI units.
-double CoulombicConversionFactor =
-    ChargeUnit * ChargeUnit / (4.0 * std::numbers::pi * DielectricConstantVacuum * LengthUnit * EnergyConversionFactor);
+static double CoulombicConversionFactor;
 /// Conversion factor for position from simulation units to meters.
-double DipoleMomentConversionFactor = ChargeUnit * LengthUnit;  // C.m
+static double DipoleMomentConversionFactor;
 /// Conversion factor from simulation units to Debye units.
-double DebyeConversionFactor = ChargeUnit * LengthUnit / Debye;  // C.m
+static double DebyeConversionFactor;
 /// Conversion factor for electric potential from simulation units to volts.
-double ElectricPotentialConversionFactor = (EnergyConversionFactor / ChargeUnit);  // V
+static double ElectricPotentialConversionFactor;
 /// Conversion factor for electric field from simulation units to volts per meter.
-double ElectricFieldConversionFactor = ElectricPotentialConversionFactor / LengthUnit;  // V
+static double ElectricFieldConversionFactor;
 /// Conversion factor for isothermal compressibility from simulation units to per Pascal
-double IsothermalCompressibilityConversionFactor = 1.0 / PressureConversionFactor;  // Pa^-1
+static double IsothermalCompressibilityConversionFactor;
 /// Conversion factor for heat capacity from simulation units to joules per mole per kelvin.
-double HeatCapacityConversionFactor = (EnergyConversionFactor * AvogadroConstant);  // J/mol/K
+static double HeatCapacityConversionFactor;
 /// Conversion factor for volumetric expansion coefficient from simulation units to SI units.
-double VolumetricExpansionCoefficientConversionFactor = 1.0;  // 1/K
+static double VolumetricExpansionCoefficientConversionFactor;
 /// Conversion factor for Feynman-Hibbs correction from simulation units to SI units.
-double FeymannHibbsConversionFactor = (PlanckConstant * PlanckConstant / (2.0 * std::numbers::pi)) /
-                                      (24.0 * AtomicMassUnit * BoltzmannConstant * LengthUnit * LengthUnit);
+static double FeymannHibbsConversionFactor;
 
 /// Conversion factor from simulation energy units to kelvin.
-double EnergyToKelvin = EnergyConversionFactor * AvogadroConstant / MolarGasConstant;
+static double EnergyToKelvin;
 /// Conversion factor from kelvin to simulation energy units.
-double KelvinToEnergy = MolarGasConstant / (EnergyConversionFactor * AvogadroConstant);
+static double KelvinToEnergy;
 /// Conversion factor from simulation energy units to kilojoules per mole.
-double EnergyToKJPerMol = EnergyConversionFactor * AvogadroConstant / 1000.0;
+static double EnergyToKJPerMol;
 /// Conversion factor from simulation energy units to electron volts.
-double EnergyToEV = EnergyToKelvin / 11604.23;
+static double EnergyToEV;
 /// Conversion factor from simulation energy units to kilocalories per mole.
-double EnergyToKCalPerMol = EnergyConversionFactor * AvogadroConstant / 4184.0;
+static double EnergyToKCalPerMol;
 /// Conversion factor from kilocalories per mole to simulation energy units.
-double KCalPerMolToEnergy = 4184.0 / (EnergyConversionFactor * AvogadroConstant);
+static double KCalPerMolToEnergy;
 
 
-std::string unitOfLengthString{"m"};
-std::string unitOfEnergyString{"J"};
-std::string unitOfEnergyPerMolString{"J.mol⁻¹"};
-std::string unitOfMassString{"kg"};
-std::string unitOfChargeString{"C/particle"};
-std::string unitOfTimeString{"s"};
+static std::string unitOfLengthString;
+static std::string unitOfEnergyString;
+static std::string unitOfEnergyPerMolString;
+static std::string unitOfMassString;
+static std::string unitOfChargeString;
+static std::string unitOfTimeString;
 
-std::string displayedUnitOfLengthString{"Å"};
-std::string displayedUnitOfEnergyString{"K"};
-std::string displayedUnitOfEnergyConversionString = "/kʙ";
+static std::string displayedUnitOfLengthString;
+static std::string displayedUnitOfEnergyString;
+static std::string displayedUnitOfEnergyConversionString;
 
-std::string unitOfVelocityString{"m.s⁻¹"};
-std::string unitOfForceString{"N"};
-std::string unitOfDiffusionString{"m².s⁻¹"};
-std::string unitOfAccelerationString{"m².s⁻¹"};
-std::string unitOfTorqueString{"N.m"};
-std::string unitOfTemperatureString{"K"};
-std::string unitOfBoltzmannFactorString{"m².kg.s⁻².K⁻¹"};
-std::string unitOfPressureString{"Pa"};
-std::string unitOfVolumeString{"m³"};
-std::string unitOfDensityString{"kg.m⁻³"};
-std::string unitOfDynamicViscosityString{"N.s.m⁻²"};
-std::string unitOfEnthalpyString{"J"};
-std::string unitOfEnthalpyPerMolString{"J.mol⁻¹"};
-std::string unitOfPolarizabilityString{"-"};
-std::string unitOfCoulombPotentialString{"K"};
-std::string unitOfDielectricConstantString{"s².C².kg⁻¹.m⁻³"};
-std::string unitOfDipoleMomentString{"C.m"};
-std::string unitOfDebyeString{"C.m"};
-std::string unitOfElectricPotentialString{"V"};
-std::string unitOfElectricFieldString{"V.m⁻¹"};
-std::string unitOfIsothermalCompressibilityString{"Pa⁻¹"};
-std::string unitOfHeatCapacityString{"J.mol⁻¹.K⁻¹"};
-std::string unitOfVolumetricExpansionCoefficientString{"K⁻¹"};
+static std::string unitOfVelocityString;
+static std::string unitOfForceString;
+static std::string unitOfDiffusionString;
+static std::string unitOfAccelerationString;
+static std::string unitOfTorqueString;
+static std::string unitOfTemperatureString;
+static std::string unitOfBoltzmannFactorString;
+static std::string unitOfPressureString;
+static std::string unitOfVolumeString;
+static std::string unitOfDensityString;
+static std::string unitOfDynamicViscosityString;
+static std::string unitOfEnthalpyString;
+static std::string unitOfEnthalpyPerMolString;
+static std::string unitOfPolarizabilityString;
+static std::string unitOfCoulombPotentialString;
+static std::string unitOfDielectricConstantString;
+static std::string unitOfDipoleMomentString;
+static std::string unitOfDebyeString;
+static std::string unitOfElectricPotentialString;
+static std::string unitOfElectricFieldString;
+static std::string unitOfIsothermalCompressibilityString;
+static std::string unitOfHeatCapacityString;
+static std::string unitOfVolumetricExpansionCoefficientString;
 
-void setUnits(Units::System unit_system)
-{
-  unitSystem = unit_system;
-  switch (unit_system)
-  {
-    case System::RASPA:
-      LengthUnit = Angstrom;
-      TimeUnit = PicoSecond;
-      MassUnit = AtomicMassUnit;
-      ChargeUnit = ElectronicChargeUnit;
-
-      EnergyUnit = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);
-
-      LengthConversionFactor = LengthUnit;                                                  // m
-      EnergyConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // J
-      MassConversionFactor = AtomicMassUnit;                                                // kg
-      ChargeConversionFactor = ChargeUnit;                                                  // C/particle
-      TimeConversionFactor = TimeUnit;                                                      // s
-      VelocityConversionFactor = LengthUnit / TimeUnit;                                     // m/s
-      ForceConversionFactor = EnergyConversionFactor / LengthUnit;                          // N (=m/s^2)
-      DiffusionConversionFactor = LengthUnit * LengthUnit / TimeUnit;                       // m^2/s
-      AccelerationConversionFactor = LengthUnit * LengthUnit / TimeUnit;                    // m^2/s
-      TorqueConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // kg.m^2.s^-2
-      TemperatureConversionFactor = 1.0;
-
-      KB = BoltzmannConstant / EnergyConversionFactor;
-      PressureConversionFactor = MassUnit / (LengthUnit * TimeUnit * TimeUnit);               // Pa(=N/m^2)
-      VolumeConversionFactor = LengthUnit * LengthUnit * LengthUnit;                          // m^-3
-      DensityConversionFactor = MassConversionFactor / VolumeConversionFactor;                // kg/m^3
-      DynamicViscosityConversionFactor = MassConversionFactor / LengthUnit / TimeUnit;        // kg.m^-1.s^-1
-      EnthalpyConversionFactor = MassUnit * LengthUnit * LengthUnit / (TimeUnit * TimeUnit);  // J
-      PolarizilibityConversionFactor = ChargeUnit * ChargeUnit * LengthUnit * LengthUnit / EnergyConversionFactor;
-      DielectricConstantConversionFactor =
-          TimeUnit * TimeUnit * ChargeUnit * ChargeUnit / (AtomicMassUnit * LengthUnit * LengthUnit * LengthUnit);
-      CoulombicConversionFactor =
-          ChargeUnit * ChargeUnit /
-          (4.0 * std::numbers::pi * DielectricConstantVacuum * LengthUnit * EnergyConversionFactor);
-      DipoleMomentConversionFactor = ChargeUnit * LengthUnit;                          // C.m
-      DebyeConversionFactor = ChargeUnit * LengthUnit / Debye;                         // C.m
-      ElectricPotentialConversionFactor = (EnergyConversionFactor / ChargeUnit);       // V
-      ElectricFieldConversionFactor = ElectricPotentialConversionFactor / LengthUnit;  // V
-      IsothermalCompressibilityConversionFactor = 1.0 / PressureConversionFactor;      // Pa^-1
-      HeatCapacityConversionFactor = (EnergyConversionFactor * AvogadroConstant);      // J/mol/K
-      VolumetricExpansionCoefficientConversionFactor = 1.0;                            // 1/K
-      FeymannHibbsConversionFactor = (PlanckConstant * PlanckConstant / (2.0 * std::numbers::pi)) /
-                                     (24.0 * AtomicMassUnit * BoltzmannConstant * LengthUnit * LengthUnit);
-
-      EnergyToKelvin = EnergyConversionFactor * AvogadroConstant / MolarGasConstant;
-      KelvinToEnergy = MolarGasConstant / (EnergyConversionFactor * AvogadroConstant);
-      EnergyToKJPerMol = EnergyConversionFactor * AvogadroConstant / 1000.0;
-      EnergyToEV = EnergyToKelvin / 11604.23;
-      EnergyToKCalPerMol = EnergyConversionFactor * AvogadroConstant / 4184.0;
-      KCalPerMolToEnergy = 4184.0 / (EnergyConversionFactor * AvogadroConstant);
-
-      unitOfLengthString = "m";
-      unitOfEnergyString = "J";
-      unitOfEnergyPerMolString = "J.mol⁻¹";
-      unitOfMassString = "kg";
-      unitOfChargeString = "C/particle";
-      unitOfTimeString = "s";
-
-      displayedUnitOfLengthString = "Å";
-      displayedUnitOfEnergyString = "K";
-      displayedUnitOfEnergyConversionString = "/kʙ";
-
-      unitOfVelocityString = "m.s⁻¹";
-      unitOfForceString = "N";
-      unitOfDiffusionString = "m².s⁻¹";
-      unitOfAccelerationString = "m².s⁻¹";
-      unitOfTorqueString = "N.m";
-      unitOfTemperatureString = "K";
-      unitOfBoltzmannFactorString = "m².kg.s⁻².K⁻¹";
-      unitOfPressureString = "Pa";
-      unitOfVolumeString = "m³";
-      unitOfDensityString = "kg.m⁻³";
-      unitOfDynamicViscosityString = "N.s.m⁻²";
-      unitOfEnthalpyString = "J";
-      unitOfEnthalpyPerMolString = "J.mol⁻¹";
-      unitOfPolarizabilityString = "-";
-      unitOfCoulombPotentialString = "K";
-      unitOfDielectricConstantString = "s².C².kg⁻¹.m⁻³";
-      unitOfDipoleMomentString = "C.m";
-      unitOfDebyeString = "C.m";
-      unitOfElectricPotentialString = "V";
-      unitOfElectricFieldString = "V.m⁻¹";
-      unitOfIsothermalCompressibilityString = "Pa⁻¹";
-      unitOfHeatCapacityString = "J.mol⁻¹.K⁻¹";
-      unitOfVolumetricExpansionCoefficientString = "K⁻¹";
-      break;
-    case System::ReducedUnits:
-      LengthUnit = 1.0;
-      TimeUnit = 1.0;
-      MassUnit = 1.0;
-      ChargeUnit = 1.0;
-      EnergyUnit = 1.0;
-
-      LengthConversionFactor = 1.0;
-      EnergyConversionFactor = 1.0;
-      MassConversionFactor = 1.0;
-      ChargeConversionFactor = 1.0;
-      TimeConversionFactor = 1.0;
-      VelocityConversionFactor = 1.0;
-      ForceConversionFactor = 1.0;
-      DiffusionConversionFactor = 1.0;
-      AccelerationConversionFactor = 1.0;
-      TorqueConversionFactor = 1.0;
-      TemperatureConversionFactor = 1.0;
-
-      KB = 1.0;
-      PressureConversionFactor = 1.0;
-      VolumeConversionFactor = 1.0;
-      DensityConversionFactor = 1.0;
-      DynamicViscosityConversionFactor = 1.0;
-      EnthalpyConversionFactor = 1.0;
-      PolarizilibityConversionFactor = 1.0;
-      DielectricConstantConversionFactor = 1.0;
-      CoulombicConversionFactor = 1.0;
-      DipoleMomentConversionFactor = 1.0;
-      DebyeConversionFactor = 1.0;
-      ElectricPotentialConversionFactor = 1.0;
-      ElectricFieldConversionFactor = 1.0;
-      IsothermalCompressibilityConversionFactor = 1.0;
-      HeatCapacityConversionFactor = 1.0;
-      VolumetricExpansionCoefficientConversionFactor = 1.0;
-      FeymannHibbsConversionFactor = 1.0;
-
-      EnergyToKelvin = 1.0;
-      KelvinToEnergy = 1.0;
-      EnergyToKJPerMol = 0.0;
-      EnergyToEV = 0.0;
-      EnergyToKCalPerMol = 0.0;
-      KCalPerMolToEnergy = 0.0;
-
-      unitOfLengthString = "σ";
-      unitOfEnergyString = "ε";
-      unitOfMassString = "m";
-      unitOfChargeString = "q′";
-      unitOfTimeString = "𝜏=σ√(m/ε)";
-
-      displayedUnitOfLengthString = "σ";
-      displayedUnitOfEnergyString = "ε";
-      displayedUnitOfEnergyConversionString = "   ";
-
-      unitOfVelocityString = "σ.𝜏⁻¹";
-      unitOfForceString = "ε.σ⁻¹";
-      unitOfDiffusionString = "ε.σ⁻¹.m⁻¹";
-      unitOfAccelerationString = "ε.σ⁻¹.m⁻¹";
-      unitOfTorqueString = "ε";
-      unitOfTemperatureString = "ε.kʙ⁻¹";
-      unitOfBoltzmannFactorString = "kʙ";
-      unitOfPressureString = "ε.σ⁻³";
-      unitOfVolumeString = "σ³";
-      unitOfDensityString = "m.σ⁻³";
-      unitOfDynamicViscosityString = "ε.𝜏.σ⁻³";
-      unitOfEnthalpyString = "ε";
-      unitOfEnthalpyPerMolString = "";
-      unitOfPolarizabilityString = "-";
-      unitOfCoulombPotentialString = "ε";
-      unitOfDielectricConstantString = "q².ε⁻¹.σ⁻¹";
-      unitOfDipoleMomentString = "√(4πε₀σ³ε)";
-      unitOfDebyeString = "q.σ";
-      unitOfElectricPotentialString = "ε.q⁻¹";
-      unitOfElectricFieldString = "ε.σ⁻¹.(√(4πε₀σε))⁻¹";
-      unitOfIsothermalCompressibilityString = "σ³.ε⁻¹";
-      unitOfHeatCapacityString = "kʙ";
-      unitOfVolumetricExpansionCoefficientString = "kʙ.ε⁻¹";
-      break;
-  }
-}
+static void setUnits(Units::System unit_system);
 
 /**
  * \brief Generates a string representation of the current unit settings.
@@ -411,7 +240,7 @@ void setUnits(Units::System unit_system)
  *
  * \return A string containing the unit settings.
  */
-std::string printStatus();
+static std::string printStatus();
 
 /**
  * \brief Generates a JSON object containing the current unit settings.
@@ -421,5 +250,5 @@ std::string printStatus();
  *
  * \return A JSON object with the unit settings.
  */
-nlohmann::json jsonStatus();
+static nlohmann::json jsonStatus();
 };  // namespace Units
