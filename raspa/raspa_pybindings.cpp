@@ -209,10 +209,10 @@ PYBIND11_MODULE(raspalib, m)
   pybind11::class_<Loadings>(m, "Loadings")
       .def(pybind11::init<size_t>())
       .def_readonly("numberOfMolecules", &Loadings::numberOfMolecules)
-      .def("printStatus", static_cast<std::string (Loadings::*)(const Component &, std::optional<double>) const>(
+      .def("printStatus", static_cast<std::string (Loadings::*)(const Component &, std::optional<double>, std::optional<int3>) const>(
                               &Loadings::printStatus))
       .def("printStatus", static_cast<std::string (Loadings::*)(const Component &, const Loadings &, const Loadings &,
-                                                                std::optional<double>) const>(&Loadings::printStatus));
+                                                                std::optional<double>, std::optional<int3>) const>(&Loadings::printStatus));
 
   pybind11::class_<PropertyLoading>(m, "PropertyLoading")
       .def(pybind11::init<size_t, size_t>())
