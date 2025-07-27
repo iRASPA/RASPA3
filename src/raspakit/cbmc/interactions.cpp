@@ -42,7 +42,7 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
 {
   if (framework.has_value())
   {
-    for (size_t i = 0; i != component.blockingPockets.size(); ++i)
+    for (std::size_t i = 0; i != component.blockingPockets.size(); ++i)
     {
       double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
       double3 pos =

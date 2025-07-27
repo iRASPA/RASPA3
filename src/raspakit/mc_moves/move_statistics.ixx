@@ -17,6 +17,7 @@ export module move_statistics;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import archive;

@@ -36,9 +36,9 @@ SKParser::~SKParser()
 
 std::vector<std::vector<std::shared_ptr<SKStructure>>> SKParser::movies() { return _movies; }
 
-std::vector<std::tuple<double3, size_t, double>> SKParser::firstTestFrame()
+std::vector<std::tuple<double3, std::size_t, double>> SKParser::firstTestFrame()
 {
-  std::vector<std::tuple<double3, size_t, double>> atoms{};
+  std::vector<std::tuple<double3, std::size_t, double>> atoms{};
 
   for (const std::vector<std::shared_ptr<SKStructure>>& movie : _movies)
   {
@@ -46,8 +46,8 @@ std::vector<std::tuple<double3, size_t, double>> SKParser::firstTestFrame()
     {
       for (const std::shared_ptr<SKAsymmetricAtom>& atom : structure->atoms)
       {
-        std::tuple<double3, size_t, double> atomTuple = std::make_tuple<double3, size_t, double>(
-            atom->position(), static_cast<size_t>(atom->elementIdentifier()), 1.0);
+        std::tuple<double3, std::size_t, double> atomTuple = std::make_tuple<double3, std::size_t, double>(
+            atom->position(), static_cast<std::size_t>(atom->elementIdentifier()), 1.0);
         atoms.push_back(atomTuple);
       }
     }

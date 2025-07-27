@@ -82,15 +82,15 @@ std::vector<double> sqrt(const std::vector<double> &a)
   return result;
 }
 
-void PropertyNumberOfMoleculesHistogram::addSample(size_t blockIndex, size_t currentCycle,
-                                                   std::vector<size_t> numberOfIntegerMoleculesPerComponent,
+void PropertyNumberOfMoleculesHistogram::addSample(std::size_t blockIndex, std::size_t currentCycle,
+                                                   std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                                    const double &weight)
 {
-  size_t bin;
+  std::size_t bin;
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  for (size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
+  for (std::size_t i = 0; i < numberOfIntegerMoleculesPerComponent.size(); ++i)
   {
     bin = numberOfIntegerMoleculesPerComponent[i] - range.first;
     if (bin >= 0 && bin < numberOfBins)
@@ -104,7 +104,7 @@ void PropertyNumberOfMoleculesHistogram::addSample(size_t blockIndex, size_t cur
 }
 
 std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram(
-    size_t blockIndex) const
+    std::size_t blockIndex) const
 {
   std::vector<std::vector<double>> averagedData(numberOfBins, std::vector<double>(size));
   std::transform(bookKeepingEnergyHistogram[blockIndex].begin(), bookKeepingEnergyHistogram[blockIndex].end(),
@@ -116,7 +116,7 @@ std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedPro
 std::vector<std::vector<double>> PropertyNumberOfMoleculesHistogram::averagedProbabilityHistogram() const
 {
   std::vector<std::vector<double>> summedBlocks(numberOfBins, std::vector<double>(size));
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex].begin(),
                    summedBlocks.begin(),
@@ -136,14 +136,14 @@ PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
   std::vector<std::vector<double>> average = averagedProbabilityHistogram();
 
   std::vector<std::vector<double>> sumOfSquares(numberOfBins, std::vector<double>(size));
-  size_t numberOfSamples = 0;
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  std::size_t numberOfSamples = 0;
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::vector<std::vector<double>> blockAverage = averagedProbabilityHistogram(blockIndex);
 
     if (numberOfCounts[blockIndex] > 0.0)
     {
-      for (size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+      for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
       {
         std::vector<double> value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] = sumOfSquares[binIndex] + value * value;
@@ -154,7 +154,7 @@ PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
   std::vector<std::vector<double>> confidenceIntervalError(numberOfBins, std::vector<double>(size));
   if (numberOfSamples >= 3)
   {
-    size_t degreesOfFreedom = numberOfBlocks - 1;
+    std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<std::vector<double>> standardDeviation(numberOfBins, std::vector<double>(size));
     std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(),
@@ -173,8 +173,8 @@ PropertyNumberOfMoleculesHistogram::averageProbabilityHistogram() const
   return std::make_pair(average, confidenceIntervalError);
 }
 
-void PropertyNumberOfMoleculesHistogram::writeOutput(size_t systemId, std::vector<Component> &components,
-                                                     size_t currentCycle)
+void PropertyNumberOfMoleculesHistogram::writeOutput(std::size_t systemId, std::vector<Component> &components,
+                                                     std::size_t currentCycle)
 {
   if (currentCycle % writeEvery != 0uz) return;
 
@@ -185,7 +185,7 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(size_t systemId, std::vecto
 
   stream_output << std::format("# number_of_molecules_histogram, number of counts: {}\n", totalNumberOfCounts);
   stream_output << "# column 1: number of molecules [-]\n";
-  for (size_t i = 0; i < size; ++i)
+  for (std::size_t i = 0; i < size; ++i)
   {
     stream_output << std::format("# column {}: number of molecules component {} [-]\n", 2 * i + 2, components[i].name);
     stream_output << std::format("# column {}: number of molecules component {} error [-]\n", 2 * i + 3,
@@ -194,11 +194,11 @@ void PropertyNumberOfMoleculesHistogram::writeOutput(size_t systemId, std::vecto
 
   auto [average, error] = averageProbabilityHistogram();
 
-  for (size_t bin = 0; bin != numberOfBins; ++bin)
+  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
     stream_output << std::format("{}", bin + range.first);
 
-    for (size_t i = 0; i < size; ++i)
+    for (std::size_t i = 0; i < size; ++i)
     {
       stream_output << std::format(" {} {}", average[bin][i], error[bin][i]);
     }
@@ -221,7 +221,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << hist.totalNumberOfCounts;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -229,7 +229,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyNumberOfMoleculesHistogram &hist)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > hist.versionNumber)
   {
@@ -249,9 +249,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyNumb
   archive >> hist.totalNumberOfCounts;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyNumberOfMoleculesHistogram: Error in binary restart\n"));
   }

@@ -145,12 +145,12 @@ void CommandLine::run(int argc, char *argv[])
   bool use_gpu{false};
   std::bitset<CommandLine::State::Last> state;
   std::string input_files;
-  size_t number_of_iterations{10000};
+  std::size_t number_of_iterations{10000};
   std::optional<ForceField> forceField;
   bool is_zeolite{false};
   bool is_mof{true};
   int3 gridSize{128, 128, 128};
-  std::vector<size_t> pseudoAtomsGrid;
+  std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
 
@@ -188,7 +188,7 @@ void CommandLine::run(int argc, char *argv[])
            [](std::string const &)
            {
              std::cout << OpenCL::printBestOpenCLDevice();
-             exit(0);
+             std::exit(0);
            })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
            [&is_zeolite](std::string const &) { is_zeolite = true; })
@@ -234,7 +234,7 @@ void CommandLine::run(int argc, char *argv[])
            {
              state.set(State::EnergyGrid);
              std::istringstream iss(arg);
-             size_t idx;
+             std::size_t idx;
              while (iss >> idx)
              {
                pseudoAtomsGrid.push_back(idx);
@@ -266,26 +266,26 @@ void CommandLine::run(int argc, char *argv[])
   // everything's fine, so exit smoothly
   catch (::argparser::help_requested_exception const &)
   {
-    exit(0);
+    std::exit(0);
   }
   // handle cases where a required argument was not given
   catch (::argparser::argument_required_exception const &e)
   {
     std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
-    exit(-1);
+    std::exit(-1);
   }
   // handle cases where an unknown switch was given
   catch (::argparser::unknown_option_exception const &e)
   {
     std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
     opt.display_help();
-    exit(-2);
+    std::exit(-2);
   }
   // handle all other exceptions
   catch (std::exception const &e)
   {
     std::cerr << "\u001b[31;1mERROR: " << e.what() << "\u001b[0m\n";
-    exit(-3);
+    std::exit(-3);
   }
 
   if (!use_cpu && !use_gpu) use_cpu = true;
@@ -439,10 +439,10 @@ void CommandLine::run(int argc, char *argv[])
           std::format("{}_{}_{}.h5", framework.name,
                       (order == ForceField::InterpolationScheme::Tricubic) ? "Tricubic" : "Triquintic",
                       (gridType == ForceField::InterpolationGridType::LennardJones) ? "LennardJones" : "Ewald"));
-      for (size_t pseudoAtomIdx : pseudoAtomsGrid)
+      for (std::size_t pseudoAtomIdx : pseudoAtomsGrid)
       {
         InterpolationEnergyGrid grid(framework.simulationBox, gridSize, order);
-        std::ostream nullStream{NULL};
+        std::ostream nullStream{nullptr};
         grid.makeInterpolationGrid(nullStream, gridType, forceField.value(), framework,
                                    (gridType == ForceField::InterpolationGridType::LennardJones)
                                        ? forceField->cutOffFrameworkVDW
@@ -451,18 +451,18 @@ void CommandLine::run(int argc, char *argv[])
 
         // unpreferable copy implementation to reorder fortran layout of grid data to c layout
         std::vector<double> reordered(grid.data.size());
-        std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> spanFortran(
+        std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> spanFortran(
             grid.data.data(), std::to_underlying(order), gridSize.x + 1, gridSize.y + 1, gridSize.z + 1);
-        std::mdspan<double, std::dextents<size_t, 4>> spanC(reordered.data(), std::to_underlying(order), gridSize.x + 1,
+        std::mdspan<double, std::dextents<std::size_t, 4>> spanC(reordered.data(), std::to_underlying(order), gridSize.x + 1,
                                                             gridSize.y + 1, gridSize.z + 1);
 
-        for (size_t v = 0; v < std::to_underlying(order); v++)
+        for (std::size_t v = 0; v < std::to_underlying(order); v++)
         {
-          for (size_t ix = 0; ix < static_cast<size_t>(gridSize.x + 1); ix++)
+          for (std::size_t ix = 0; ix < static_cast<std::size_t>(gridSize.x + 1); ix++)
           {
-            for (size_t iy = 0; iy < static_cast<size_t>(gridSize.y + 1); iy++)
+            for (std::size_t iy = 0; iy < static_cast<std::size_t>(gridSize.y + 1); iy++)
             {
-              for (size_t iz = 0; iz < static_cast<size_t>(gridSize.z + 1); iz++)
+              for (std::size_t iz = 0; iz < static_cast<std::size_t>(gridSize.z + 1); iz++)
               {
                 spanC[v, ix, iy, iz] = spanFortran[v, ix, iy, iz];
               }
@@ -471,8 +471,8 @@ void CommandLine::run(int argc, char *argv[])
         }
 
         h5File.createDataset<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name,
-                                     {std::to_underlying(order), static_cast<size_t>(gridSize.x + 1),
-                                      static_cast<size_t>(gridSize.y + 1), static_cast<size_t>(gridSize.z + 1)},
+                                     {std::to_underlying(order), static_cast<std::size_t>(gridSize.x + 1),
+                                      static_cast<std::size_t>(gridSize.y + 1), static_cast<std::size_t>(gridSize.z + 1)},
                                      {});
         h5File.writeVector<double>("/", forceField->pseudoAtoms[pseudoAtomIdx].name, reordered);
       }

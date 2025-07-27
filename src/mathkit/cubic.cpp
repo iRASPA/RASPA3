@@ -36,7 +36,7 @@ double CBRT(double Z)
   //  Was unable to use the sign command of C, so wrote my own
   //  that why a new variable needs to be introduced that keeps track of the sign of
   //  SIGN is supposed to return a 1, -1 or 0 depending on what the sign of the argument is
-  ret = std::abs(pow(std::abs(Z), THIRD)) * static_cast<double>(signR(Z));
+  ret = std::abs(std::pow(std::abs(Z), THIRD)) * static_cast<double>(signR(Z));
   return ret;
 }
 
@@ -56,16 +56,16 @@ int cubic(double A[4], double X[3], int* L)
   {
     // cubic problem
     W = A[2] / A[3] * THIRD;
-    P = pow((A[1] / A[3] * THIRD - pow(W, 2)), 3);
-    Q = -.5 * (2.0 * pow(W, 3) - (A[1] * W - A[0]) / A[3]);
-    DIS = pow(Q, 2) + P;
+    P = std::pow((A[1] / A[3] * THIRD - std::pow(W, 2)), 3);
+    Q = -.5 * (2.0 * std::pow(W, 3) - (A[1] * W - A[0]) / A[3]);
+    DIS = std::pow(Q, 2) + P;
     if (DIS < 0.0)
     {
       // three real solutions!
       // Confine the argument of ACOS to the interval [-1;1]!
       PHI = std::acos(std::min(1.0, std::max(-1.0, Q / std::sqrt(-P))));
       P = 2.0 * std::pow((-P), (5.e-1 * THIRD));
-      for (i = 0; i < 3; i++) U[i] = P * cos((PHI + 2.0 * (static_cast<double>(i)) * PI) * THIRD) - W;
+      for (i = 0; i < 3; i++) U[i] = P * std::cos((PHI + 2.0 * (static_cast<double>(i)) * PI) * THIRD) - W;
       X[0] = std::min(U[0], std::min(U[1], U[2]));
       X[1] = std::max(std::min(U[0], U[1]), std::max(std::min(U[0], U[2]), std::min(U[1], U[2])));
       X[2] = std::max(U[0], std::max(U[1], U[2]));

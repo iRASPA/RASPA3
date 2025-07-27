@@ -170,9 +170,9 @@ double3 SimulationBox::perpendicularWidths() const
 int3 SimulationBox::smallestNumberOfUnitCellsForMinimumImagesConvention(double cutOff) const
 {
   double3 widths = perpendicularWidths();
-  return int3(static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.x)),
-              static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.y)),
-              static_cast<int32_t>(std::ceil(2.0 * cutOff / widths.z)));
+  return int3(static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.x)),
+              static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.y)),
+              static_cast<std::int32_t>(std::ceil(2.0 * cutOff / widths.z)));
 }
 
 void SimulationBox::setBoxLengths(double3 lengths)
@@ -297,7 +297,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Simula
   archive << box.type;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -305,7 +305,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Simula
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBox &box)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > box.versionNumber)
   {
@@ -326,9 +326,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, SimulationBo
   archive >> box.type;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("SimulationBox: Error in binary restart\n"));
   }

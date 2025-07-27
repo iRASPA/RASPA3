@@ -3529,11 +3529,11 @@ import mdspan;
 void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,
-                                                    double cutOff, size_t pseudo_atom_index)
+                                                    double cutOff, std::size_t pseudo_atom_index)
 {
   double3 delta = double3(1.0 / static_cast<double>(numberOfCells.x), 1.0 / static_cast<double>(numberOfCells.y),
                           1.0 / static_cast<double>(numberOfCells.z));
-  std::mdspan<double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+  std::mdspan<double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
       data.data(), std::to_underlying(order), numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
   double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
@@ -3548,11 +3548,11 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
 
   double counter{};
   std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
-  for (size_t k = 0; k < static_cast<size_t>(numberOfGridPoints.z); ++k)
+  for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
   {
-    for (size_t j = 0; j < static_cast<size_t>(numberOfGridPoints.y); ++j)
+    for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
     {
-      for (size_t i = 0; i < static_cast<size_t>(numberOfGridPoints.x); ++i)
+      for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfGridPoints.x); ++i)
       {
         counter += 1.0;
         double3 s = double3(static_cast<double>(i) * delta.x, static_cast<double>(j) * delta.y,
@@ -3592,14 +3592,14 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
               data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
               data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
               data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
-              for (size_t l = 4; l < 8; ++l)
+              for (std::size_t l = 4; l < 8; ++l)
               {
                 data_cell[l, i, j, k] = 0.0;
               }
             }
             else
             {
-              for (size_t l = 0; l < 8; ++l)
+              for (std::size_t l = 0; l < 8; ++l)
               {
                 data_cell[l, i, j, k] = values[l];
               }
@@ -3673,14 +3673,14 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
               data_cell[1, i, j, k] = std::clamp(values[1], -forceField.overlapCriteria, forceField.overlapCriteria);
               data_cell[2, i, j, k] = std::clamp(values[2], -forceField.overlapCriteria, forceField.overlapCriteria);
               data_cell[3, i, j, k] = std::clamp(values[3], -forceField.overlapCriteria, forceField.overlapCriteria);
-              for (size_t l = 4; l < 27; ++l)
+              for (std::size_t l = 4; l < 27; ++l)
               {
                 data_cell[l, i, j, k] = 0.0;
               }
             }
             else
             {
-              for (size_t l = 0; l < 27; ++l)
+              for (std::size_t l = 0; l < 27; ++l)
               {
                 data_cell[l, i, j, k] = values[l];
               }
@@ -3688,9 +3688,9 @@ void InterpolationEnergyGrid::makeInterpolationGrid(std::ostream& stream,
             break;
         }
 
-        if (static_cast<size_t>(counter * percent) > static_cast<size_t>((counter - 1.0) * percent))
+        if (static_cast<std::size_t>(counter * percent) > static_cast<std::size_t>((counter - 1.0) * percent))
         {
-          std::print(stream, "Percentage finished: {}\n", static_cast<size_t>(counter * percent));
+          std::print(stream, "Percentage finished: {}\n", static_cast<std::size_t>(counter * percent));
           std::flush(stream);
         }
       }
@@ -3732,7 +3732,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
       std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;
@@ -3742,7 +3742,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       for (std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
       {
-        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+        zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
         std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
         if (lp < 0) lp += numberOfGridPoints.z;
@@ -3750,7 +3750,7 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
-          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+          yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
           std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
           if (kp < 0) kp += numberOfGridPoints.y;
@@ -3758,17 +3758,17 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
-            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+            xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
             std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
             if (jp < 0) jp += numberOfGridPoints.x;
             if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
 
-            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+            yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
-          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<std::size_t>(k0)], &dummy);
         }
-        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<std::size_t>(l0)], &dummy);
       }
       Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
 
@@ -3781,26 +3781,26 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i != 8; ++i)
+      for (std::size_t i = 0; i != 8; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -3813,10 +3813,10 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       }
 
       /*
-      for (size_t i = 0; i != 64; ++i)
+      for (std::size_t i = 0; i != 64; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j != 64; ++j)
+        for (std::size_t j = 0; j != 64; ++j)
         {
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
@@ -3832,9 +3832,9 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       // energy
       double value = 0.0;
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             value += a[i + 4 * j + 16 * k] * std::pow<double>(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
       return value;
@@ -3846,26 +3846,26 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 27; ++i)
+      for (std::size_t i = 0; i < 27; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -3878,10 +3878,10 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
       }
 
       /*
-      for (size_t i = 0; i != 216; ++i)
+      for (std::size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j != 216; ++j)
+        for (std::size_t j = 0; j != 216; ++j)
         {
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
@@ -3896,9 +3896,9 @@ double InterpolationEnergyGrid::interpolate(double3 pos) const
 
       // energy
       double value = 0.0;
-      for (size_t i = 0; i != 6; ++i)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t k = 0; k != 6; ++k)
+      for (std::size_t i = 0; i != 6; ++i)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t k = 0; k != 6; ++k)
             value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
       return value;
@@ -3938,7 +3938,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
       std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;
@@ -3948,7 +3948,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
       for (std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
       {
-        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+        zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
         std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
         if (lp < 0) lp += numberOfGridPoints.z;
@@ -3956,7 +3956,7 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
-          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+          yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
           std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
           if (kp < 0) kp += numberOfGridPoints.y;
@@ -3964,17 +3964,17 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
-            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+            xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
             std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
             if (jp < 0) jp += numberOfGridPoints.x;
             if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
 
-            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+            yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
-          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<std::size_t>(k0)], &dummy);
         }
-        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<std::size_t>(l0)], &dummy);
       }
       Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
 
@@ -3987,26 +3987,26 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 8; ++i)
+      for (std::size_t i = 0; i < 8; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -4019,10 +4019,10 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       }
 
       /*
-      for (size_t i = 0; i < 64; ++i)
+      for (std::size_t i = 0; i < 64; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j < 64; ++j)
+        for (std::size_t j = 0; j < 64; ++j)
         {
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
@@ -4039,26 +4039,26 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       double value{};
       double3 gradient{};
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 1; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 1; i != 4; ++i)
             gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 1; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 1; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
 
-      for (size_t k = 1; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 1; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
 
@@ -4072,26 +4072,26 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 27; ++i)
+      for (std::size_t i = 0; i < 27; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -4104,10 +4104,10 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       }
 
       /*
-      for (size_t i = 0; i != 216; ++i)
+      for (std::size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j != 216; ++j)
+        for (std::size_t j = 0; j != 216; ++j)
         {
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
@@ -4124,26 +4124,26 @@ std::pair<double, double3> InterpolationEnergyGrid::interpolateGradient(double3 
       double value{};
       double3 gradient{};
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 1; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 1; i != 6; ++i)
             gradient.x += static_cast<double>(i) * a[i + 6 * j + 36 * k] * std::pow(s.x, i - 1) * std::pow(s.y, j) *
                           std::pow(s.z, k);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 1; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 1; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             gradient.y += static_cast<double>(j) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j - 1) *
                           std::pow(s.z, k);
 
-      for (size_t k = 1; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 1; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             gradient.z += static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) *
                           std::pow(s.z, k - 1);
 
@@ -4189,7 +4189,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 1, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
 
       std::make_signed_t<std::size_t> mend = num_points_interpolation / 2;
@@ -4199,7 +4199,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
       for (std::make_signed_t<std::size_t> l0 = 0; l0 < num_points_interpolation; ++l0)
       {
-        zt[static_cast<size_t>(l0)] = static_cast<double>(l0 + mstart);
+        zt[static_cast<std::size_t>(l0)] = static_cast<double>(l0 + mstart);
 
         std::make_signed_t<std::size_t> lp = z0 + l0 + mstart;
         if (lp < 0) lp += numberOfGridPoints.z;
@@ -4207,7 +4207,7 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
         for (std::make_signed_t<std::size_t> k0 = 0; k0 < num_points_interpolation; ++k0)
         {
-          yt[static_cast<size_t>(k0)] = static_cast<double>(k0 + mstart);
+          yt[static_cast<std::size_t>(k0)] = static_cast<double>(k0 + mstart);
 
           std::make_signed_t<std::size_t> kp = y0 + k0 + mstart;
           if (kp < 0) kp += numberOfGridPoints.y;
@@ -4215,17 +4215,17 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
           for (std::make_signed_t<std::size_t> j0 = 0; j0 < num_points_interpolation; ++j0)
           {
-            xt[static_cast<size_t>(j0)] = static_cast<double>(j0 + mstart);
+            xt[static_cast<std::size_t>(j0)] = static_cast<double>(j0 + mstart);
 
             std::make_signed_t<std::size_t> jp = x0 + j0 + mstart;
             if (jp < 0) jp += numberOfGridPoints.x;
             if (jp >= numberOfGridPoints.x) jp -= numberOfGridPoints.x;
 
-            yjtmp[static_cast<size_t>(j0)] = data_cell[0, jp, kp, lp];
+            yjtmp[static_cast<std::size_t>(j0)] = data_cell[0, jp, kp, lp];
           }
-          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<size_t>(k0)], &dummy);
+          Interpolation::polint<num_points_interpolation>(xt, yjtmp, s.x, &yktmp[static_cast<std::size_t>(k0)], &dummy);
         }
-        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<size_t>(l0)], &dummy);
+        Interpolation::polint<num_points_interpolation>(yt, yktmp, s.y, &yltmp[static_cast<std::size_t>(l0)], &dummy);
       }
       Interpolation::polint<num_points_interpolation>(zt, yltmp, s.z, &energy, &dummy);
 
@@ -4238,26 +4238,26 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 8, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 8; ++i)
+      for (std::size_t i = 0; i < 8; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -4270,10 +4270,10 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       }
 
       /*
-      for (size_t i = 0; i < 64; ++i)
+      for (std::size_t i = 0; i < 64; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j < 64; ++j)
+        for (std::size_t j = 0; j < 64; ++j)
         {
           a[i] += tricubic_coefficients[i][j] * X[j];
         }
@@ -4290,26 +4290,26 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       double value{};
       double3 gradient{};
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             value += a[i + 4 * j + 16 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 1; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 1; i != 4; ++i)
             gradient.x += static_cast<double>(numberOfCells.x) * static_cast<double>(i) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 4; ++k)
-        for (size_t j = 1; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 0; k != 4; ++k)
+        for (std::size_t j = 1; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             gradient.y += static_cast<double>(numberOfCells.y) * static_cast<double>(j) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 1) * std::pow(s.z, k);
 
-      for (size_t k = 1; k != 4; ++k)
-        for (size_t j = 0; j != 4; ++j)
-          for (size_t i = 0; i != 4; ++i)
+      for (std::size_t k = 1; k != 4; ++k)
+        for (std::size_t j = 0; j != 4; ++j)
+          for (std::size_t i = 0; i != 4; ++i)
             gradient.z += static_cast<double>(numberOfCells.z) * static_cast<double>(k) * a[i + 4 * j + 16 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 1);
 
@@ -4323,26 +4323,26 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
 
       // Determine lower boundary
       // Note: the case s==1.0 will be handled by the last cell
-      size_t x0 = std::min(static_cast<size_t>(s.x * static_cast<double>(numberOfCells.x)),
-                           static_cast<size_t>(numberOfCells.x - 1));
-      size_t y0 = std::min(static_cast<size_t>(s.y * static_cast<double>(numberOfCells.y)),
-                           static_cast<size_t>(numberOfCells.y - 1));
-      size_t z0 = std::min(static_cast<size_t>(s.z * static_cast<double>(numberOfCells.z)),
-                           static_cast<size_t>(numberOfCells.z - 1));
+      std::size_t x0 = std::min(static_cast<std::size_t>(s.x * static_cast<double>(numberOfCells.x)),
+                           static_cast<std::size_t>(numberOfCells.x - 1));
+      std::size_t y0 = std::min(static_cast<std::size_t>(s.y * static_cast<double>(numberOfCells.y)),
+                           static_cast<std::size_t>(numberOfCells.y - 1));
+      std::size_t z0 = std::min(static_cast<std::size_t>(s.z * static_cast<double>(numberOfCells.z)),
+                           static_cast<std::size_t>(numberOfCells.z - 1));
 
       // Determine upper boundary
-      size_t x1 = x0 + 1;
-      size_t y1 = y0 + 1;
-      size_t z1 = z0 + 1;
+      std::size_t x1 = x0 + 1;
+      std::size_t y1 = y0 + 1;
+      std::size_t z1 = z0 + 1;
 
       // find the corresponding position within that cell (between 0.0 and 1.0)
       s.x = (s.x * static_cast<double>(numberOfCells.x)) - static_cast<double>(x0);
       s.y = (s.y * static_cast<double>(numberOfCells.y)) - static_cast<double>(y0);
       s.z = (s.z * static_cast<double>(numberOfCells.z)) - static_cast<double>(z0);
 
-      const std::mdspan<const double, std::dextents<size_t, 4>, std::layout_left> data_cell(
+      const std::mdspan<const double, std::dextents<std::size_t, 4>, std::layout_left> data_cell(
           data.data(), 27, numberOfGridPoints.x, numberOfGridPoints.y, numberOfGridPoints.z);
-      for (size_t i = 0; i < 27; ++i)
+      for (std::size_t i = 0; i < 27; ++i)
       {
         X[8 * i + 0] = data_cell[i, x0, y0, z0];
         X[8 * i + 1] = data_cell[i, x1, y0, z0];
@@ -4355,21 +4355,21 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       }
 
       /*
-      for (size_t i = 0; i != 216; ++i)
+      for (std::size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
-        for (size_t j = 0; j != 216; ++j)
+        for (std::size_t j = 0; j != 216; ++j)
         {
           a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
         }
       }
       */
       /*
-      for (size_t i = 0; i != 216; ++i)
+      for (std::size_t i = 0; i != 216; ++i)
       {
         a[i] = 0.0;
         std::print("a[{}] = ", i);
-        for (size_t j = 0; j != 216; ++j)
+        for (std::size_t j = 0; j != 216; ++j)
         {
           //a[i] += 0.125 * triquintic_coefficients[i][j] * X[j];
           if(std::abs( triquintic_coefficients[i][j]) > 1e-10)
@@ -4391,62 +4391,62 @@ std::tuple<double, double3, double3x3> InterpolationEnergyGrid::interpolateHessi
       double3 gradient{};
       double3x3 hessian{};
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             value += a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 1; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 1; i != 6; ++i)
             gradient.x += static_cast<double>(i) * a[i + 6 * j + 36 * k] * std::pow(s.x, i - 1) * std::pow(s.y, j) *
                           std::pow(s.z, k);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 1; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 1; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             gradient.y += static_cast<double>(j) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j - 1) *
                           std::pow(s.z, k);
 
-      for (size_t k = 1; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 1; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             gradient.z += static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) * std::pow(s.y, j) *
                           std::pow(s.z, k - 1);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 2; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 2; i != 6; ++i)
             hessian.ax += static_cast<double>(i) * static_cast<double>(i - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 2) * std::pow(s.y, j) * std::pow(s.z, k);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 1; j != 6; ++j)
-          for (size_t i = 1; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 1; j != 6; ++j)
+          for (std::size_t i = 1; i != 6; ++i)
             hessian.ay += static_cast<double>(i) * static_cast<double>(j) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j - 1) * std::pow(s.z, k);
 
-      for (size_t k = 1; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 1; i != 6; ++i)
+      for (std::size_t k = 1; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 1; i != 6; ++i)
             hessian.az += static_cast<double>(i) * static_cast<double>(k) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i - 1) * std::pow(s.y, j) * std::pow(s.z, k - 1);
 
-      for (size_t k = 0; k != 6; ++k)
-        for (size_t j = 2; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 0; k != 6; ++k)
+        for (std::size_t j = 2; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             hessian.by += static_cast<double>(j) * static_cast<double>(j - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j - 2) * std::pow(s.z, k);
 
-      for (size_t k = 1; k != 6; ++k)
-        for (size_t j = 1; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 1; k != 6; ++k)
+        for (std::size_t j = 1; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             hessian.bz += static_cast<double>(j) * static_cast<double>(k) * a[i + 6 * j + 36 * k] * std::pow(s.x, i) *
                           std::pow(s.y, j - 1) * std::pow(s.z, k - 1);
 
-      for (size_t k = 2; k != 6; ++k)
-        for (size_t j = 0; j != 6; ++j)
-          for (size_t i = 0; i != 6; ++i)
+      for (std::size_t k = 2; k != 6; ++k)
+        for (std::size_t j = 0; j != 6; ++j)
+          for (std::size_t i = 0; i != 6; ++i)
             hessian.cz += static_cast<double>(k) * static_cast<double>(k - 1) * a[i + 6 * j + 36 * k] *
                           std::pow(s.x, i) * std::pow(s.y, j) * std::pow(s.z, k - 2);
 
@@ -4479,7 +4479,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
   archive << s.versionNumber;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   archive << s.unitCellBox;
@@ -4492,7 +4492,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Interp
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, InterpolationEnergyGrid& s)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > s.versionNumber)
   {
@@ -4507,9 +4507,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Interpolatio
   archive >> s.order;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("System: Error in binary restart\n"));
   }

@@ -34,7 +34,7 @@ import interactions_framework_molecule_grid;
 
 export struct InterpolationEnergyGrid
 {
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
   SimulationBox unitCellBox;
   int3 numberOfCells;
@@ -50,7 +50,7 @@ export struct InterpolationEnergyGrid
         numberOfGridPoints(numberOfCells.x + 1, numberOfCells.y + 1, numberOfCells.z + 1),
         order(order),
         data(std::to_underlying(order) *
-             static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
+             static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z))
   {
   }
 
@@ -58,7 +58,7 @@ export struct InterpolationEnergyGrid
 
   void makeInterpolationGrid(std::ostream &stream, ForceField::InterpolationGridType interpolationGridType,
                              const ForceField &forceField, const Framework &framework, double cutOff,
-                             size_t pseudo_atom_index);
+                             std::size_t pseudo_atom_index);
 
   double interpolate(double3 pos) const;
   std::pair<double, double3> interpolateGradient(double3 pos) const;

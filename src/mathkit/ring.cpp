@@ -15,9 +15,9 @@ import std;
 
 Ring::Ring() {}
 
-int Ring::floorDivision(int a, int b) { return int(floor(double(a) / double(b))); }
+int Ring::floorDivision(int a, int b) { return int(std::floor(double(a) / double(b))); }
 
-int Ring::modulo(int a, int b) { return a - b * int(floor(double(a) / double(b))); }
+int Ring::modulo(int a, int b) { return a - b * int(std::floor(double(a) / double(b))); }
 
 int Ring::greatestCommonDivisor(int arg1, int arg2)
 {
@@ -29,7 +29,7 @@ int Ring::greatestCommonDivisor(int arg1, int arg2)
     a = b;
     b = stored_a % b;
   }
-  return abs(a);
+  return std::abs(a);
 }
 
 std::tuple<int, int, int> Ring::extendedGreatestCommonDivisor(int a, int b)
@@ -94,6 +94,6 @@ std::pair<int, int> Ring::divisionModulo(int a, int b)
   {
     return std::make_pair(0, 0);
   }
-  int temp = int(floor(double(a) / double(b)));
+  int temp = int(std::floor(double(a) / double(b)));
   return std::make_pair(temp, a - b * temp);
 }

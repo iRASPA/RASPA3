@@ -8,18 +8,23 @@ module;
 #include <vector>
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#include<stdio.h>
+#endif
+
 export module polint;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 export namespace Interpolation
 {
-template <size_t N>
+template <std::size_t N>
 void polint(const std::array<double, N> &xa, const std::array<double, N> &ya, double x, double *y, double *dy)
 {
-  size_t i, m, ns = 0;
+  std::size_t i, m, ns = 0;
   double den, dif, dift, ho, hp, w;
   std::array<double, N> c, d;
 

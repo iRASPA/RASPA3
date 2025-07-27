@@ -94,7 +94,7 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
 
 System& MolecularDynamics::randomSystem()
 {
-  return systems[size_t(random.uniform() * static_cast<double>(systems.size()))];
+  return systems[std::size_t(random.uniform() * static_cast<double>(systems.size()))];
 }
 
 void MolecularDynamics::run()
@@ -144,9 +144,9 @@ void MolecularDynamics::createInterpolationGrids()
 
 void MolecularDynamics::initialize()
 {
-  size_t totalNumberOfMolecules{0uz};
-  size_t totalNumberOfComponents{0uz};
-  size_t numberOfStepsPerCycle{0uz};
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
@@ -203,23 +203,23 @@ void MolecularDynamics::initialize()
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
   {
     totalNumberOfMolecules = std::transform_reduce(
-        systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
+        systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
         [](const System& system) { return system.numberOfMolecules(); });
     totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
     numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
-    for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+    for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
     {
       // move to 'slide' when implemented in llvm
       // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
       // std::ranges::views::slide(s, 2uz);
 
-      std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
+      std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
       System& selectedSystem = systems[selectedSystemPair.first];
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
-      size_t selectedComponent = selectedSystem.randomComponent(random);
+      std::size_t selectedComponent = selectedSystem.randomComponent(random);
       MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
                                   fractionalMoleculeSystem);
 
@@ -643,14 +643,14 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Molecu
 
   archive << mc.estimation;
 
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
 }
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDynamics& mc)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > mc.versionNumber)
   {
@@ -679,11 +679,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
 
   archive >> mc.estimation;
 
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

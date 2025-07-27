@@ -21,6 +21,7 @@ module cif_reader;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import double3;
@@ -162,7 +163,7 @@ void CIFReader::parseSymmetry(std::string& string)
     if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
         (string == std::string("_symmetry.Int_Tables_number")))
     {
-      size_t spaceGroupNumber = scanInt();
+      std::size_t spaceGroupNumber = scanInt();
       _spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(spaceGroupNumber);
     }
   }
@@ -242,7 +243,7 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           std::string value2;
           if (ss >> value2)
           {
-            std::optional<size_t> index1 = forceField.findPseudoAtom(value2);
+            std::optional<std::size_t> index1 = forceField.findPseudoAtom(value2);
 
             // find by stripping of numbers
             if (!index1.has_value())
@@ -314,7 +315,7 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           //}
         }
 
-        if (std::map<std::string, size_t>::iterator chemicalElementIndex =
+        if (std::map<std::string, std::size_t>::iterator chemicalElementIndex =
                 PredefinedElements::atomicNumberData.find(chemicalElement);
             chemicalElementIndex != PredefinedElements::atomicNumberData.end())
         {
@@ -407,7 +408,7 @@ std::optional<std::string> CIFReader::parseValue()
   }
 }
 
-size_t CIFReader::scanInt()
+std::size_t CIFReader::scanInt()
 {
   std::string tempString;
   if (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
@@ -415,7 +416,7 @@ size_t CIFReader::scanInt()
     std::replace_if(tempString.begin(), tempString.end(), [](char c) { return !std::isalnum(c); }, ' ');
 
     std::istringstream ss(tempString);
-    size_t value;
+    std::size_t value;
     if (ss >> value)
     {
       return value;

@@ -18,7 +18,7 @@ import std;
 
 SKElement::SKElement() {}
 
-SKElement::SKElement(std::string string, size_t atomicNumber, std::make_signed_t<std::size_t> group, size_t period,
+SKElement::SKElement(std::string string, std::size_t atomicNumber, std::make_signed_t<std::size_t> group, std::size_t period,
                      std::string name, double mass, double atomRadius, double covalentRadius,
                      double singleBondCovalentRadius, double doubleBondCovalentRadius, double tripleBondCovalentRadius,
                      double vDWRadius, std::vector<int> possibleOxidationStates)
@@ -271,7 +271,7 @@ std::vector<SKElement> PredefinedElements::predefinedElements = {
     SKElement(std::string("Og"), 118, 18, 7, "Oganesson", 294, 1.52, 1.57, 1.57, 0.0, 0.0, 0.0,
               std::vector<int>{-1, 0, 1, 2, 4, 6})};
 
-std::map<std::string, size_t, PredefinedElements::InsensitiveCompare> PredefinedElements::atomicNumberData = {
+std::map<std::string, std::size_t, PredefinedElements::InsensitiveCompare> PredefinedElements::atomicNumberData = {
     {std::string("H"), 1},
     {std::string("He"), 2},
     {std::string("Li"), 3},

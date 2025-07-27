@@ -14,7 +14,9 @@
 #include <vector>
 #endif
 
+
 #ifndef USE_LEGACY_HEADERS
+#include <locale.h>
 import std;
 #endif
 
@@ -146,6 +148,6 @@ int main(int argc, char* argv[])
   catch (std::exception const& e)
   {
     std::cerr << e.what();
-    exit(-1);
+    std::exit(-1);
   }
 }

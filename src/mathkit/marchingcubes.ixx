@@ -90,19 +90,19 @@ export class MarchingCubes
   // Accessors
  public:
   /** accesses the number of vertices of the generated mesh */
-  inline size_t nverts() const { return _vertices.size(); }
+  inline std::size_t nverts() const { return _vertices.size(); }
   /** accesses the number of triangles of the generated mesh */
-  inline size_t ntrigs() const { return _triangles.size(); }
+  inline std::size_t ntrigs() const { return _triangles.size(); }
   /** accesses a specific vertex of the generated mesh */
-  inline const Vertex *vert(const ptrdiff_t i) const
+  inline const Vertex *vert(const std::ptrdiff_t i) const
   {
-    if (i < 0 || i >= static_cast<ptrdiff_t>(nverts())) return static_cast<Vertex *>(nullptr);
+    if (i < 0 || i >= static_cast<std::ptrdiff_t>(nverts())) return static_cast<Vertex *>(nullptr);
     return _vertices.data() + i;
   }
   /** accesses a specific triangle of the generated mesh */
-  inline const Triangle *trig(const ptrdiff_t i) const
+  inline const Triangle *trig(const std::ptrdiff_t i) const
   {
-    if (i < 0 || i >= static_cast<ptrdiff_t>(ntrigs())) return static_cast<Triangle *>(nullptr);
+    if (i < 0 || i >= static_cast<std::ptrdiff_t>(ntrigs())) return static_cast<Triangle *>(nullptr);
     return _triangles.data() + i;
   }
 
@@ -146,7 +146,7 @@ export class MarchingCubes
    */
   inline double get_data(const int3 &coord) const
   {
-    return _data[static_cast<size_t>(coord.x + coord.y * _size_x + coord.z * _size_x * _size_y)];
+    return _data[static_cast<std::size_t>(coord.x + coord.y * _size_x + coord.z * _size_x * _size_y)];
   }
 
   /**
@@ -156,9 +156,9 @@ export class MarchingCubes
    * \param j ordinate of the cube
    * \param k height of the cube
    */
-  inline void set_data(const real val, const size_t i, const size_t j, const size_t k)
+  inline void set_data(const real val, const std::size_t i, const std::size_t j, const std::size_t k)
   {
-    _data[i + j * static_cast<size_t>(_size_x) + k * static_cast<size_t>(_size_x) * static_cast<size_t>(_size_y)] = val;
+    _data[i + j * static_cast<std::size_t>(_size_x) + k * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
   }
 
   // Data initialization
@@ -233,7 +233,7 @@ export class MarchingCubes
    */
   inline int get_x_vert(const int i, const int j, const int k) const
   {
-    return _x_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _x_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
   }
   /**
    * accesses the pre-computed vertex index on the lower longitudinal edge of a specific cube
@@ -243,7 +243,7 @@ export class MarchingCubes
    */
   inline int get_y_vert(const int i, const int j, const int k) const
   {
-    return _y_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _y_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
   }
   /**
    * accesses the pre-computed vertex index on the lower vertical edge of a specific cube
@@ -253,7 +253,7 @@ export class MarchingCubes
    */
   inline int get_z_vert(const int i, const int j, const int k) const
   {
-    return _z_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)];
+    return _z_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)];
   }
 
   /**
@@ -265,7 +265,7 @@ export class MarchingCubes
    */
   inline void set_x_vert(const int val, const int i, const int j, const int k)
   {
-    _x_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _x_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
   }
   /**
    * sets the pre-computed vertex index on the lower longitudinal edge of a specific cube
@@ -276,7 +276,7 @@ export class MarchingCubes
    */
   inline void set_y_vert(const int val, const int i, const int j, const int k)
   {
-    _y_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _y_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
   }
   /**
    * sets the pre-computed vertex index on the lower vertical edge of a specific cube
@@ -287,7 +287,7 @@ export class MarchingCubes
    */
   inline void set_z_vert(const int val, const int i, const int j, const int k)
   {
-    _z_verts[static_cast<size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
+    _z_verts[static_cast<std::size_t>(i + j * _size_x + k * _size_x * _size_y)] = val;
   }
 
   //-----------------------------------------------------------------------------

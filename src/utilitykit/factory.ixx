@@ -66,14 +66,14 @@ inline ForceField makeDefaultFF(double rc = 12.0, bool shifted = true, bool tail
                     ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
 }
 
-inline Component makeMethane(const ForceField& ff, uint8_t id = 0)
+inline Component makeMethane(const ForceField& ff, std::uint8_t id = 0)
 {
   return Component(id, ff, "methane", 190.564, 45599200, 0.01142,
 
                    {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, id, false, false)}, 5, 21);
 }
 
-inline Component makeCO2(const ForceField& ff, uint8_t id = 0, bool useCharges = false)
+inline Component makeCO2(const ForceField& ff, std::uint8_t id = 0, bool useCharges = false)
 {
   const double qC = useCharges ? 0.6512 : 0.0;
   const double qO = useCharges ? -0.3256 : 0.0;
@@ -85,7 +85,7 @@ inline Component makeCO2(const ForceField& ff, uint8_t id = 0, bool useCharges =
       5, 21);
 }
 
-inline Component makeWater(const ForceField& ff, uint8_t id = 0, bool useCharges = false)
+inline Component makeWater(const ForceField& ff, std::uint8_t id = 0, bool useCharges = false)
 {
   const double qh = useCharges ? 0.241 : 0.0;
   const double ql = useCharges ? -0.241 : 0.0;
@@ -100,7 +100,7 @@ inline Component makeWater(const ForceField& ff, uint8_t id = 0, bool useCharges
       5, 21);
 }
 
-inline Component makeIon(const ForceField& ff, uint8_t id, std::string_view name, uint16_t type, double q)
+inline Component makeIon(const ForceField& ff, std::uint8_t id, std::string_view name, std::uint16_t type, double q)
 {
   return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, 5,
                    21);

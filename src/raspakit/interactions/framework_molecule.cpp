@@ -78,7 +78,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
   {
     posB = it2->position;
-    size_t typeB = static_cast<size_t>(it2->type);
+    std::size_t typeB = static_cast<std::size_t>(it2->type);
     bool groupIdB = static_cast<bool>(it2->groupId);
     bool isFractional = static_cast<bool>(it2->isFractional);
     double scalingVDWB = it2->scalingVDW;
@@ -98,7 +98,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
       for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
       {
         posA = it1->position;
-        size_t typeA = static_cast<size_t>(it1->type);
+        std::size_t typeA = static_cast<std::size_t>(it1->type);
         bool groupIdA = static_cast<bool>(it1->groupId);
         double scalingVDWA = it1->scalingVDW;
         double scaleCoulombA = it1->scalingCoulomb;
@@ -141,13 +141,13 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
 
     for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
-      size_t typeB = static_cast<size_t>(it2->type);
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
       bool groupIdB = static_cast<bool>(it2->groupId);
       double scalingVDWB = it2->scalingVDW;
 
@@ -184,7 +184,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   for (auto &atom : newatoms)
   {
     double3 posB = atom.position;
-    size_t typeB = static_cast<size_t>(atom.type);
+    std::size_t typeB = static_cast<std::size_t>(atom.type);
     bool groupIdB = static_cast<bool>(atom.groupId);
     bool isFractional = static_cast<bool>(atom.isFractional);
     double scalingVDWB = atom.scalingVDW;
@@ -209,7 +209,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
       for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
       {
         double3 posA = it1->position;
-        size_t typeA = static_cast<size_t>(it1->type);
+        std::size_t typeA = static_cast<std::size_t>(it1->type);
         bool groupIdA = static_cast<bool>(it1->groupId);
         double scalingVDWA = it1->scalingVDW;
         double scalingCoulombA = it1->scalingCoulomb;
@@ -244,7 +244,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   for (auto &atom : oldatoms)
   {
     double3 posB = atom.position;
-    size_t typeB = static_cast<size_t>(atom.type);
+    std::size_t typeB = static_cast<std::size_t>(atom.type);
     bool groupIdB = static_cast<bool>(atom.groupId);
     bool isFractional = static_cast<bool>(atom.isFractional);
     double scalingVDWB = atom.scalingVDW;
@@ -264,7 +264,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
       for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
       {
         double3 posA = it1->position;
-        size_t typeA = static_cast<size_t>(it1->type);
+        std::size_t typeA = static_cast<std::size_t>(it1->type);
         bool groupIdA = static_cast<bool>(it1->groupId);
         double scalingVDWA = it1->scalingVDW;
         double scalingCoulombA = it1->scalingCoulomb;
@@ -318,7 +318,7 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     double3 posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
@@ -326,9 +326,9 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
 
     for (std::span<const Atom>::iterator it2 = newatoms.begin(); it2 != newatoms.end(); ++it2)
     {
-      size_t indexB = static_cast<size_t>(std::distance(newatoms.begin(), it2));
+      std::size_t indexB = static_cast<std::size_t>(std::distance(newatoms.begin(), it2));
       double3 posB = it2->position;
-      size_t typeB = static_cast<size_t>(it2->type);
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
       bool groupIdB = static_cast<bool>(it2->groupId);
       double scalingVDWB = it2->scalingVDW;
       double scalingCoulombB = it2->scalingCoulomb;
@@ -364,9 +364,9 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
 
     for (std::span<const Atom>::iterator it2 = oldatoms.begin(); it2 != oldatoms.end(); ++it2)
     {
-      size_t indexB = static_cast<size_t>(std::distance(oldatoms.begin(), it2));
+      std::size_t indexB = static_cast<std::size_t>(std::distance(oldatoms.begin(), it2));
       double3 posB = it2->position;
-      size_t typeB = static_cast<size_t>(it2->type);
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
       bool groupIdB = static_cast<bool>(it2->groupId);
       double scalingVDWB = it2->scalingVDW;
       double scalingCoulombB = it2->scalingCoulomb;
@@ -426,7 +426,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 
     for (std::span<const Atom>::iterator it2 = newatoms.begin(); it2 != newatoms.end(); ++it2)
     {
-      size_t indexB = static_cast<size_t>(std::distance(newatoms.begin(), it2));
+      std::size_t indexB = static_cast<std::size_t>(std::distance(newatoms.begin(), it2));
       double3 posB = it2->position;
       bool groupIdB = static_cast<bool>(it2->groupId);
 
@@ -446,7 +446,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 
     for (std::span<const Atom>::iterator it2 = oldatoms.begin(); it2 != oldatoms.end(); ++it2)
     {
-      size_t indexB = static_cast<size_t>(std::distance(oldatoms.begin(), it2));
+      std::size_t indexB = static_cast<std::size_t>(std::distance(oldatoms.begin(), it2));
       double3 posB = it2->position;
       bool groupIdB = static_cast<bool>(it2->groupId);
 
@@ -477,13 +477,13 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
 
     for (const Atom &atom : newatoms)
     {
-      size_t typeB = static_cast<size_t>(atom.type);
+      std::size_t typeB = static_cast<std::size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
       double scalingVDWB = atom.scalingVDW;
 
@@ -494,7 +494,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 
     for (const Atom &atom : oldatoms)
     {
-      size_t typeB = static_cast<size_t>(atom.type);
+      std::size_t typeB = static_cast<std::size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
       double scalingVDWB = atom.scalingVDW;
 
@@ -526,7 +526,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     bool isFractional = static_cast<bool>(it1->isFractional);
     double scalingVDWA = it1->scalingVDW;
@@ -550,7 +550,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       for (std::span<Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
         posB = it2->position;
-        size_t typeB = static_cast<size_t>(it2->type);
+        std::size_t typeB = static_cast<std::size_t>(it2->type);
         bool groupIdB = static_cast<bool>(it2->groupId);
         double scalingVDWB = it2->scalingVDW;
         double scalingCoulombB = it2->scalingCoulomb;
@@ -615,8 +615,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
     posA = it1->position;
-    size_t compA = static_cast<size_t>(it1->componentId);
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t compA = static_cast<std::size_t>(it1->componentId);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     bool isFractional = static_cast<bool>(it1->isFractional);
     double scalingVDWA = it1->scalingVDW;
@@ -670,7 +670,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
       for (std::span<Atom>::iterator it2 = frameworkAtoms.begin(); it2 != frameworkAtoms.end(); ++it2)
       {
         posB = it2->position;
-        size_t typeB = static_cast<size_t>(it2->type);
+        std::size_t typeB = static_cast<std::size_t>(it2->type);
         bool groupIdB = static_cast<bool>(it2->groupId);
         double scalingVDWB = it2->scalingVDW;
         double scalingCoulombB = it2->scalingCoulomb;
@@ -777,7 +777,7 @@ void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceFie
 
         double potential = Potentials::potentialElectrostatics(forceField, 1.0, r, 1.0);
 
-        size_t indexB = static_cast<size_t>(std::distance(moleculeAtoms.begin(), it2));
+        std::size_t indexB = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
         electricPotentialMolecules[indexB] += scalingCoulombA * chargeA * potential;
       }
     }
@@ -805,7 +805,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
@@ -814,7 +814,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
     for (std::span<const Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
       posB = it2->position;
-      size_t typeB = static_cast<size_t>(it2->type);
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
       bool groupIdB = static_cast<bool>(it2->groupId);
       double scalingVDWB = it2->scalingVDW;
       double scalingCoulombB = it2->scalingCoulomb;
@@ -844,7 +844,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
         Potentials::GradientFactor gradientFactor =
             scalingCoulombA * chargeA *
             Potentials::potentialCoulombGradient(forceField, groupIdA, groupIdB, 1.0, 1.0, r, 1.0, 1.0);
-        size_t index = static_cast<size_t>(std::distance(moleculeAtoms.begin(), it2));
+        std::size_t index = static_cast<std::size_t>(std::distance(moleculeAtoms.begin(), it2));
         electricFieldMolecules[index] += gradientFactor.gradientFactor * dr;
       }
     }
@@ -855,7 +855,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
 
 std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField,
                                                                                    const SimulationBox &simulationBox,
-                                                                                   double3 posA, size_t typeA,
+                                                                                   double3 posA, std::size_t typeA,
                                                                                    std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
@@ -867,7 +867,7 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionV
   for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     double3 posB = it1->position;
-    size_t typeB = static_cast<size_t>(it1->type);
+    std::size_t typeB = static_cast<std::size_t>(it1->type);
     bool groupIdB = static_cast<bool>(it1->groupId);
     double scalingB = it1->scalingVDW;
 

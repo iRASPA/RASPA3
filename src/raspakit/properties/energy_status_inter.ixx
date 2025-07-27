@@ -21,7 +21,7 @@ import energy_factor;
 
 export struct EnergyInter
 {
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
   Potentials::EnergyFactor VanDerWaals;
   Potentials::EnergyFactor VanDerWaalsTailCorrection;

@@ -17,7 +17,7 @@ import double3;
 export class SKAtomCopy
 {
  public:
-  enum class AtomCopyType : int64_t
+  enum class AtomCopyType : std::int64_t
   {
     copy = 2,
     duplicate = 3
@@ -30,13 +30,13 @@ export class SKAtomCopy
   void setPosition(double3 p) { _position = p; }
   AtomCopyType type() { return _type; }
   void setType(AtomCopyType type) { _type = type; }
-  int64_t tag() { return _tag; }
-  void setTag(int64_t tag) { _tag = tag; }
-  int64_t asymmetricIndex() { return _asymmetricIndex; }
-  void setAsymmetricIndex(int64_t value) { _asymmetricIndex = value; }
+  std::int64_t tag() { return _tag; }
+  void setTag(std::int64_t tag) { _tag = tag; }
+  std::int64_t asymmetricIndex() { return _asymmetricIndex; }
+  void setAsymmetricIndex(std::int64_t value) { _asymmetricIndex = value; }
 
  private:
-  [[maybe_unused]] int64_t _versionNumber{1};
+  [[maybe_unused]] std::int64_t _versionNumber{1};
 
   struct Hash
   {
@@ -49,15 +49,15 @@ export class SKAtomCopy
   struct Compare
   {
     template <typename T>
-    size_t operator()(T* const& a, T* const& b) const
+    std::size_t operator()(T* const& a, T* const& b) const
     {
       return *a == *b;
     }
   };
   double3 _position;
-  int64_t _tag;
+  std::int64_t _tag;
   AtomCopyType _type;
-  int64_t _asymmetricIndex;
+  std::int64_t _asymmetricIndex;
 };
 
 SKAtomCopy::SKAtomCopy(const SKAtomCopy& atomCopy)

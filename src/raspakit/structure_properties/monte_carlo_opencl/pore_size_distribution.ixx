@@ -20,8 +20,8 @@ export struct MC_OpenCL_PoreSizeDistribution
 {
   std::vector<double> data;
 
-  MC_OpenCL_PoreSizeDistribution(size_t numberOfBins) : data(numberOfBins) {};
+  MC_OpenCL_PoreSizeDistribution(std::size_t numberOfBins) : data(numberOfBins) {};
 
   void run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-           size_t number_of_iterations);
+           std::size_t number_of_iterations);
 };

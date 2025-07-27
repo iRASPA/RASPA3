@@ -64,9 +64,9 @@ int3 parseInt3(const std::string& item, auto json)
     int3 value{};
     try
     {
-      value.x = json[0].template get<int32_t>();
-      value.y = json[1].template get<int32_t>();
-      value.z = json[2].template get<int32_t>();
+      value.x = json[0].template get<std::int32_t>();
+      value.y = json[1].template get<std::int32_t>();
+      value.z = json[2].template get<std::int32_t>();
       return value;
     }
     catch (nlohmann::json::exception& ex)
@@ -99,7 +99,7 @@ ForceField::ForceField(std::vector<PseudoAtom> pseudoAtoms, std::vector<VDWParam
   VDWParameters unitVDWParameters(double4(1.0, 1.0, 0.0, 0.0), 0.0, 0.0, 0.0, VDWParameters::Type::LennardJones);
   selfInteractions.push_back(unitVDWParameters);
 
-  for (size_t i = 0; i < selfInteractions.size(); ++i)
+  for (std::size_t i = 0; i < selfInteractions.size(); ++i)
   {
     data[i + i * numberOfPseudoAtoms] = selfInteractions[i];
   }
@@ -159,7 +159,7 @@ ForceField::ForceField(std::string filePath)
   {
     std::string jsonName = item.value("name", "");
     bool jsonFrameworkType = item.value("framework", false);
-    int64_t oxidationState = item.value("oxidationState", 0);
+    std::int64_t oxidationState = item.value("oxidationState", 0);
     double jsonMass = item.value("mass", 0.0);
     std::string jsonElement = item.value("element", "C");
     double jsonCharge = item.value("charge", 0.0);
@@ -167,8 +167,8 @@ ForceField::ForceField(std::string filePath)
     bool jsonPrintToOutput = item.value("print_to_output", true);
     std::string jsonSource = item.value("source", "");
 
-    size_t atomicNumber = PredefinedElements::atomicNumberData.contains(jsonElement)
-                              ? static_cast<size_t>(PredefinedElements::atomicNumberData.at(jsonElement))
+    std::size_t atomicNumber = PredefinedElements::atomicNumberData.contains(jsonElement)
+                              ? static_cast<std::size_t>(PredefinedElements::atomicNumberData.at(jsonElement))
                               : 1;
 
     PseudoAtom pseudo_atom = PseudoAtom(jsonName, jsonFrameworkType, jsonMass, jsonCharge, jsonPolarizibility,
@@ -210,7 +210,7 @@ ForceField::ForceField(std::string filePath)
                       item["parameters"].dump(), ex.what()));
     }
 
-    std::optional<size_t> index = ForceField::findPseudoAtom(jsonName);
+    std::optional<std::size_t> index = ForceField::findPseudoAtom(jsonName);
     if (!index.has_value())
     {
       throw std::runtime_error(
@@ -267,14 +267,14 @@ ForceField::ForceField(std::string filePath)
           std::format("[ReadForceFieldBinaryInteractions]: incorrect number of strings {}\n", item["names"].dump()));
     }
 
-    std::optional<size_t> indexA = ForceField::findPseudoAtom(scannedJsonParameterNames[0]);
+    std::optional<std::size_t> indexA = ForceField::findPseudoAtom(scannedJsonParameterNames[0]);
     if (!indexA.has_value())
     {
       throw std::runtime_error(
           std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define'\n",
                       scannedJsonParameterNames[0]));
     }
-    std::optional<size_t> indexB = ForceField::findPseudoAtom(scannedJsonParameterNames[1]);
+    std::optional<std::size_t> indexB = ForceField::findPseudoAtom(scannedJsonParameterNames[1]);
     if (!indexB.has_value())
     {
       throw std::runtime_error(
@@ -358,9 +358,9 @@ ForceField::ForceField(std::string filePath)
       try
       {
         alpha = parsed_data["EwaldParameters"][0].template get<double>();
-        value.x = parsed_data["EwaldParameters"][1].template get<int32_t>();
-        value.y = parsed_data["EwaldParameters"][2].template get<int32_t>();
-        value.z = parsed_data["EwaldParameters"][3].template get<int32_t>();
+        value.x = parsed_data["EwaldParameters"][1].template get<std::int32_t>();
+        value.y = parsed_data["EwaldParameters"][2].template get<std::int32_t>();
+        value.z = parsed_data["EwaldParameters"][3].template get<std::int32_t>();
       }
       catch (nlohmann::json::exception& ex)
       {
@@ -479,13 +479,13 @@ ForceField::ForceField(std::string filePath)
                                                "ShiftedPotentialPairs", pair.dump()));
         }
 
-        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        std::optional<std::size_t> indexA = findPseudoAtom(stringA);
         if (!indexA.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
         }
 
-        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        std::optional<std::size_t> indexB = findPseudoAtom(stringB);
         if (!indexB.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
@@ -521,13 +521,13 @@ ForceField::ForceField(std::string filePath)
                                                "TruncatedPotentialPairs", pair.dump()));
         }
 
-        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        std::optional<std::size_t> indexA = findPseudoAtom(stringA);
         if (!indexA.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
         }
 
-        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        std::optional<std::size_t> indexB = findPseudoAtom(stringB);
         if (!indexB.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
@@ -563,13 +563,13 @@ ForceField::ForceField(std::string filePath)
                                                "TailCorrectionPairs", pair.dump()));
         }
 
-        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        std::optional<std::size_t> indexA = findPseudoAtom(stringA);
         if (!indexA.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
         }
 
-        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        std::optional<std::size_t> indexB = findPseudoAtom(stringB);
         if (!indexB.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
@@ -605,13 +605,13 @@ ForceField::ForceField(std::string filePath)
                                                "NoTailCorrectionPairs", pair.dump()));
         }
 
-        std::optional<size_t> indexA = findPseudoAtom(stringA);
+        std::optional<std::size_t> indexA = findPseudoAtom(stringA);
         if (!indexA.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringA, pair.dump()));
         }
 
-        std::optional<size_t> indexB = findPseudoAtom(stringB);
+        std::optional<std::size_t> indexB = findPseudoAtom(stringB);
         if (!indexB.has_value())
         {
           throw std::runtime_error(std::format("[ForceField]: unknown pseudo atom {} in {}\n", stringB, pair.dump()));
@@ -632,7 +632,7 @@ ForceField::ForceField(std::string filePath)
 
   for (const std::string& pseudo_atom_name : pseudoAtomStringGrids)
   {
-    std::optional<size_t> index = findPseudoAtom(pseudo_atom_name);
+    std::optional<std::size_t> index = findPseudoAtom(pseudo_atom_name);
 
     if (!index.has_value())
     {
@@ -672,7 +672,7 @@ ForceField::ForceField(std::string filePath)
 
   if (parsed_data.contains("InterpolationScheme"))
   {
-    size_t scheme = parsed_data.value("InterpolationScheme", parsed_data["InterpolationScheme"]);
+    std::size_t scheme = parsed_data.value("InterpolationScheme", parsed_data["InterpolationScheme"]);
     switch (scheme)
     {
       case 1:
@@ -701,9 +701,9 @@ void ForceField::applyMixingRule()
   switch (mixingRule)
   {
     case MixingRule::Lorentz_Berthelot:
-      for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
       {
-        for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
+        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
           if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
               data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
@@ -724,9 +724,9 @@ void ForceField::applyMixingRule()
       }
       break;
     case MixingRule::Jorgensen:
-      for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+      for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
       {
-        for (size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
+        for (std::size_t j = i + 1; j < numberOfPseudoAtoms; ++j)
         {
           if (data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones &&
               data[i * numberOfPseudoAtoms + i].type == VDWParameters::Type::LennardJones)
@@ -750,7 +750,7 @@ void ForceField::applyMixingRule()
   }
 }
 
-double ForceField::cutOffVDW(size_t i, size_t j) const
+double ForceField::cutOffVDW(std::size_t i, std::size_t j) const
 {
   if (pseudoAtoms[i].framework || pseudoAtoms[j].framework)
   {
@@ -762,9 +762,9 @@ double ForceField::cutOffVDW(size_t i, size_t j) const
 
 void ForceField::preComputePotentialShift()
 {
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
       if (shiftPotentials[i * numberOfPseudoAtoms + j])
       {
@@ -777,9 +777,9 @@ void ForceField::preComputePotentialShift()
 
 void ForceField::preComputeTailCorrection()
 {
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = 0; j < numberOfPseudoAtoms; ++j)
+    for (std::size_t j = 0; j < numberOfPseudoAtoms; ++j)
     {
       data[i * numberOfPseudoAtoms + j].tailCorrectionEnergy = 0.0;
       data[i * numberOfPseudoAtoms + j].tailCorrectionPressure = 0.0;
@@ -825,24 +825,24 @@ std::string ForceField::printPseudoAtomStatus() const
   std::print(stream, "Pseudo-atoms\n");
   std::print(stream, "===============================================================================\n\n");
 
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     std::print(stream, "{:3d} - {:8} framework-atom: {}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].framework);
   }
   std::print(stream, "\n");
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     std::print(stream, "{:3d} - {:8} mass: {:8.5f}, charge: {:8.5f}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].mass,
                pseudoAtoms[i].charge);
   }
   std::print(stream, "\n");
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     std::print(stream, "{:3d} - {:8} polarizability: {:8.5f}\n", i, pseudoAtoms[i].name, pseudoAtoms[i].polarizability);
   }
   std::print(stream, "\n");
 
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     if (!pseudoAtoms[i].source.empty())
     {
@@ -858,7 +858,7 @@ std::vector<nlohmann::json> ForceField::jsonPseudoAtomStatus() const
 {
   std::vector<nlohmann::json> jsonPseudoAtoms(numberOfPseudoAtoms);
 
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
     jsonPseudoAtoms[i]["name"] = pseudoAtoms[i].name;
     jsonPseudoAtoms[i]["mass"] = pseudoAtoms[i].mass;
@@ -940,9 +940,9 @@ std::string ForceField::printForceFieldStatus() const
   std::print(stream, "Overlap-criteria VDW:          {: .6e} [{}]\n\n", overlapCriteria,
              Units::displayedUnitOfEnergyString);
 
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = i; j < numberOfPseudoAtoms; ++j)
+    for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
     {
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
@@ -1020,14 +1020,14 @@ std::string ForceField::printForceFieldStatus() const
 nlohmann::json ForceField::jsonForceFieldStatus() const
 {
   nlohmann::json status;
-  size_t n_interactions = static_cast<size_t>(static_cast<double>(numberOfPseudoAtoms) *
+  std::size_t n_interactions = static_cast<std::size_t>(static_cast<double>(numberOfPseudoAtoms) *
                                               (static_cast<double>(numberOfPseudoAtoms) + 1.0) / 2.0);
   std::vector<nlohmann::json> interactions(n_interactions);
 
-  size_t count = 0;
-  for (size_t i = 0; i < numberOfPseudoAtoms; ++i)
+  std::size_t count = 0;
+  for (std::size_t i = 0; i < numberOfPseudoAtoms; ++i)
   {
-    for (size_t j = i; j < numberOfPseudoAtoms; ++j)
+    for (std::size_t j = i; j < numberOfPseudoAtoms; ++j)
     {
       switch (data[i * numberOfPseudoAtoms + j].type)
       {
@@ -1057,25 +1057,25 @@ nlohmann::json ForceField::jsonForceFieldStatus() const
   return status;
 }
 
-std::optional<size_t> ForceField::findPseudoAtom(const std::string& name) const
+std::optional<std::size_t> ForceField::findPseudoAtom(const std::string& name) const
 {
   std::vector<PseudoAtom>::const_iterator match =
       std::find_if(pseudoAtoms.begin(), pseudoAtoms.end(), [&name](const PseudoAtom& x) { return x.name == name; });
   if (match != std::end(pseudoAtoms))
   {
-    return static_cast<size_t>(std::distance(pseudoAtoms.begin(), match));
+    return static_cast<std::size_t>(std::distance(pseudoAtoms.begin(), match));
   }
 
   return std::nullopt;
 }
 
-std::optional<size_t> ForceField::findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name)
+std::optional<std::size_t> ForceField::findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name)
 {
   std::vector<PseudoAtom>::const_iterator match =
       std::find_if(pseudoAtoms.begin(), pseudoAtoms.end(), [&name](const PseudoAtom& x) { return x.name == name; });
   if (match != std::end(pseudoAtoms))
   {
-    return static_cast<size_t>(std::distance(pseudoAtoms.begin(), match));
+    return static_cast<std::size_t>(std::distance(pseudoAtoms.begin(), match));
   }
 
   return std::nullopt;
@@ -1088,7 +1088,7 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
   if (automaticEwald)
   {
     // compute the alpha-parameter and max k-vectors from the relative precision
-    double eps = std::min(fabs(EwaldPrecision), 0.5);
+    double eps = std::min(std::fabs(EwaldPrecision), 0.5);
 
     double tol = std::sqrt(std::abs(std::log(eps * cutOffCoulomb)));
 
@@ -1096,12 +1096,12 @@ void ForceField::initializeEwaldParameters(const SimulationBox& simulationBox)
     double tol1 = std::sqrt(-std::log(eps * cutOffCoulomb * (2.0 * tol * EwaldAlpha) * (2.0 * tol * EwaldAlpha)));
 
     numberOfWaveVectors =
-        int3(static_cast<int32_t>(rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<int32_t>(rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
-             static_cast<int32_t>(rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
+        int3(static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.x * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.y * EwaldAlpha * tol1 / std::numbers::pi)),
+             static_cast<std::int32_t>(std::rint(0.25 + perpendicularWidths.z * EwaldAlpha * tol1 / std::numbers::pi)));
 
-    size_t maxNumberOfWaveVector =
-        static_cast<size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
+    std::size_t maxNumberOfWaveVector =
+        static_cast<std::size_t>(std::max({numberOfWaveVectors.x, numberOfWaveVectors.y, numberOfWaveVectors.z}));
     reciprocalIntegerCutOffSquared = maxNumberOfWaveVector * maxNumberOfWaveVector;
   }
 }
@@ -1180,7 +1180,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
   archive << f.interpolationScheme;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -1188,7 +1188,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const ForceF
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& f)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > f.versionNumber)
   {
@@ -1245,9 +1245,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ForceField& 
   archive >> f.interpolationScheme;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("ForceField: Error in binary restart\n"));
   }
@@ -1271,7 +1271,7 @@ bool ForceField::operator==(const ForceField& other) const
   {
     return false;
   }
-  for (size_t idx = 0; idx < shiftPotentials.size(); idx++)
+  for (std::size_t idx = 0; idx < shiftPotentials.size(); idx++)
   {
     if (shiftPotentials[idx] != other.shiftPotentials[idx] || tailCorrections[idx] != other.tailCorrections[idx] ||
         data[idx] != other.data[idx])

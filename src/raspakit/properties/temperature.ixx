@@ -34,17 +34,17 @@ export struct PropertyTemperature
 {
   PropertyTemperature() {};
 
-  PropertyTemperature(size_t numberOfBlocks)
+  PropertyTemperature(std::size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingTemperature(numberOfBlocks, std::make_pair(0.0, 0.0))
   {
   }
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  size_t numberOfBlocks;
+  std::size_t numberOfBlocks;
   std::vector<std::pair<double, double>> bookKeepingTemperature;
 
-  inline void addSample(size_t blockIndex, const double &temperature, const double &weight)
+  inline void addSample(std::size_t blockIndex, const double &temperature, const double &weight)
   {
     bookKeepingTemperature[blockIndex].first += weight * temperature;
     bookKeepingTemperature[blockIndex].second += weight;
@@ -52,7 +52,7 @@ export struct PropertyTemperature
 
   //====================================================================================================================
 
-  double averagedTemperature(size_t blockIndex) const
+  double averagedTemperature(std::size_t blockIndex) const
   {
     return bookKeepingTemperature[blockIndex].first / bookKeepingTemperature[blockIndex].second;
   }
@@ -69,8 +69,8 @@ export struct PropertyTemperature
     double average = averagedTemperature();
 
     double sumOfSquares{};
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingTemperature[blockIndex].second / bookKeepingTemperature[0].second > 0.5)
       {
@@ -83,9 +83,9 @@ export struct PropertyTemperature
     double confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

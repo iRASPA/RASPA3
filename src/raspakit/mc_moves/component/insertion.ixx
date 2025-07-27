@@ -35,5 +35,5 @@ export namespace MC_Moves
  *         - The double3 vector contains acceptance statistics.
  */
 std::pair<std::optional<RunningEnergy>, double3> insertionMove(RandomNumber& random, System& system,
-                                                               size_t selectedComponent);
+                                                               std::size_t selectedComponent);
 }  // namespace MC_Moves

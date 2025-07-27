@@ -66,7 +66,7 @@ void MCMoveStatistics::addTrial(const MoveTypes& move)
   statsMapDouble[move].totalCounts += 1;
 }
 
-void MCMoveStatistics::addTrial(const MoveTypes& move, size_t direction)
+void MCMoveStatistics::addTrial(const MoveTypes& move, std::size_t direction)
 {
   statsMapDouble3[move].counts[direction] += 1;
   statsMapDouble3[move].totalCounts[direction] += 1;
@@ -78,7 +78,7 @@ void MCMoveStatistics::addConstructed(const MoveTypes& move)
   statsMapDouble[move].totalConstructed += 1;
 }
 
-void MCMoveStatistics::addConstructed(const MoveTypes& move, size_t direction)
+void MCMoveStatistics::addConstructed(const MoveTypes& move, std::size_t direction)
 {
   statsMapDouble3[move].constructed[direction] += 1;
   statsMapDouble3[move].totalConstructed[direction] += 1;
@@ -90,7 +90,7 @@ void MCMoveStatistics::addAccepted(const MoveTypes& move)
   statsMapDouble[move].totalAccepted += 1;
 }
 
-void MCMoveStatistics::addAccepted(const MoveTypes& move, size_t direction)
+void MCMoveStatistics::addAccepted(const MoveTypes& move, std::size_t direction)
 {
   statsMapDouble3[move].accepted[direction] += 1;
   statsMapDouble3[move].totalAccepted[direction] += 1;
@@ -100,7 +100,7 @@ double MCMoveStatistics::getMaxChange(const MoveTypes& move) { return statsMapDo
 
 void MCMoveStatistics::setMaxChange(const MoveTypes& move, double value) { statsMapDouble[move].maxChange = value; }
 
-double MCMoveStatistics::getMaxChange(const MoveTypes& move, size_t direction)
+double MCMoveStatistics::getMaxChange(const MoveTypes& move, std::size_t direction)
 {
   return statsMapDouble3[move].maxChange[direction];
 }
@@ -183,11 +183,11 @@ const std::string MCMoveStatistics::writeMCMoveStatistics() const
   return stream.str();
 }
 
-const std::string MCMoveStatistics::writeMCMoveStatistics(size_t countTotal) const
+const std::string MCMoveStatistics::writeMCMoveStatistics(std::size_t countTotal) const
 {
   std::ostringstream stream;
 
-  size_t summed = 0;
+  std::size_t summed = 0;
   for (auto& [moveType, statistics] : statsMapDouble)
   {
     double moveCount = static_cast<double>(statistics.allCounts);
@@ -244,7 +244,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
   archive << p.statsMapDouble3;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -252,7 +252,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatistics& p)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > p.versionNumber)
   {
@@ -264,9 +264,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveStatis
   archive >> p.statsMapDouble3;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("MCMoveStatistics: Error in binary restart\n"));
   }

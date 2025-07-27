@@ -47,10 +47,16 @@ module;
 #endif             // JSON_NO_IO
 #endif
 
+
+#include <cassert>  // assert
+#include <errno.h>
+#include <stdio.h>
+
 export module json;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import stringutils;
@@ -3077,8 +3083,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstddef>  // size_t
-
 // #include <nlohmann/detail/abi_macros.hpp>
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
@@ -3096,7 +3100,7 @@ struct position_t
   std::size_t lines_read = 0;
 
   /// conversion to size_t to preserve SAX interface
-  constexpr operator size_t() const { return chars_read_total; }
+  constexpr operator std::size_t() const { return chars_read_total; }
 };
 
 }  // namespace detail
@@ -3113,13 +3117,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-FileCopyrightText: 2018 The Abseil Authors
 // SPDX-License-Identifier: MIT
-
-#include <array>        // array
-#include <cstddef>      // size_t
-#include <type_traits>  // conditional, enable_if, false_type, integral_constant, is_constructible, is_integral, is_same, remove_cv, remove_reference, true_type
-#include <utility>      // index_sequence, make_index_sequence, index_sequence_for
-
-// #include <nlohmann/detail/macro_scope.hpp>
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
 namespace detail
@@ -3179,23 +3176,23 @@ struct integer_sequence
 // A helper template for an `integer_sequence` of `size_t`,
 // `absl::index_sequence` is designed to be a drop-in replacement for C++14's
 // `std::index_sequence`.
-template <size_t... Ints>
-using index_sequence = integer_sequence<size_t, Ints...>;
+template <std::size_t... Ints>
+using index_sequence = integer_sequence<std::size_t, Ints...>;
 
 namespace utility_internal
 {
 
-template <typename Seq, size_t SeqSize, size_t Rem>
+template <typename Seq, std::size_t SeqSize, std::size_t Rem>
 struct Extend;
 
 // Note that SeqSize == sizeof...(Ints). It's passed explicitly for efficiency.
-template <typename T, T... Ints, size_t SeqSize>
+template <typename T, T... Ints, std::size_t SeqSize>
 struct Extend<integer_sequence<T, Ints...>, SeqSize, 0>
 {
   using type = integer_sequence<T, Ints..., (Ints + SeqSize)...>;
 };
 
-template <typename T, T... Ints, size_t SeqSize>
+template <typename T, T... Ints, std::size_t SeqSize>
 struct Extend<integer_sequence<T, Ints...>, SeqSize, 1>
 {
   using type = integer_sequence<T, Ints..., (Ints + SeqSize)..., 2 * SeqSize>;
@@ -3203,7 +3200,7 @@ struct Extend<integer_sequence<T, Ints...>, SeqSize, 1>
 
 // Recursion helper for 'make_integer_sequence<T, N>'.
 // 'Gen<T, N>::type' is an alias for 'integer_sequence<T, 0, 1, ... N-1>'.
-template <typename T, size_t N>
+template <typename T, std::size_t N>
 struct Gen
 {
   using type = typename Extend<typename Gen<T, N / 2>::type, N / 2, N % 2>::type;
@@ -3232,8 +3229,8 @@ using make_integer_sequence = typename utility_internal::Gen<T, N>::type;
 // This template alias is equivalent to `index_sequence<0, 1, ..., N-1>`,
 // and is designed to be a drop-in replacement for C++14's
 // `std::make_index_sequence`.
-template <size_t N>
-using make_index_sequence = make_integer_sequence<size_t, N>;
+template <std::size_t N>
+using make_index_sequence = make_integer_sequence<std::size_t, N>;
 
 // index_sequence_for
 //
@@ -3287,11 +3284,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <limits>       // numeric_limits
-#include <string>       // char_traits
-#include <tuple>        // tuple
-#include <type_traits>  // false_type, is_constructible, is_integral, is_same, true_type
-#include <utility>      // declval
 
 // #include <nlohmann/detail/iterators/iterator_traits.hpp>
 //     __ _____ _____ _____
@@ -3301,8 +3293,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <iterator>  // random_access_iterator_tag
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -3347,7 +3337,7 @@ struct iterator_traits<T*, enable_if_t<std::is_object<T>::value>>
 {
   using iterator_category = std::random_access_iterator_tag;
   using value_type = T;
-  using difference_type = ptrdiff_t;
+  using difference_type = std::ptrdiff_t;
   using pointer = T*;
   using reference = T&;
 };
@@ -3407,11 +3397,6 @@ NLOHMANN_JSON_NAMESPACE_END
 #ifndef INCLUDE_NLOHMANN_JSON_FWD_HPP_
 #define INCLUDE_NLOHMANN_JSON_FWD_HPP_
 
-#include <cstdint>  // int64_t, uint64_t
-#include <map>      // map
-#include <memory>   // allocator
-#include <string>   // string
-#include <vector>   // vector
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -3656,7 +3641,7 @@ template <>
 struct char_traits<unsigned char> : std::char_traits<char>
 {
   using char_type = unsigned char;
-  using int_type = uint64_t;
+  using int_type = std::uint64_t;
 
   // Redefine to_int_type function
   static int_type to_int_type(char_type c) noexcept { return static_cast<int_type>(c); }
@@ -3671,7 +3656,7 @@ template <>
 struct char_traits<signed char> : std::char_traits<char>
 {
   using char_type = signed char;
-  using int_type = uint64_t;
+  using int_type = std::uint64_t;
 
   // Redefine to_int_type function
   static int_type to_int_type(char_type c) noexcept { return static_cast<int_type>(c); }
@@ -4678,7 +4663,6 @@ namespace std_fs = std::experimental::filesystem;
 }  // namespace detail
 NLOHMANN_JSON_NAMESPACE_END
 #elif JSON_HAS_FILESYSTEM
-#include <filesystem>
 NLOHMANN_JSON_NAMESPACE_BEGIN
 namespace detail
 {
@@ -5146,15 +5130,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <algorithm>    // copy
-#include <iterator>     // begin, end
-#include <string>       // string
-#include <tuple>        // tuple, get
-#include <type_traits>  // is_same, is_constructible, is_floating_point, is_enum, underlying_type
-#include <utility>      // move, forward, declval, pair
-#include <valarray>     // valarray
-#include <vector>       // vector
 
 // #include <nlohmann/detail/iterators/iteration_proxy.hpp>
 //     __ _____ _____ _____
@@ -5871,9 +5846,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstdint>  // uint8_t, uint64_t
-#include <tuple>    // tie
-#include <utility>  // move
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -5966,10 +5938,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <cstddef>     // size_t
-#include <cstdint>     // uint8_t
-#include <functional>  // hash
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -6559,11 +6527,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <cstddef>
-#include <string>   // string
-#include <utility>  // move
-#include <vector>   // vector
 
 // #include <nlohmann/detail/exceptions.hpp>
 
@@ -8849,9 +8812,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstdint>  // size_t
-#include <string>   // string
-#include <utility>  // declval
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -12603,8 +12563,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstddef>  // ptrdiff_t
-#include <limits>   // numeric_limits
 
 // #include <nlohmann/detail/macro_scope.hpp>
 
@@ -12743,9 +12701,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
-#include <iterator>     // iterator, random_access_iterator_tag, bidirectional_iterator_tag, advance, next
-#include <type_traits>  // conditional, is_const, remove_const
 
 // #include <nlohmann/detail/exceptions.hpp>
 
@@ -13498,9 +13453,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <cstddef>   // ptrdiff_t
-#include <iterator>  // reverse_iterator
-#include <utility>   // declval
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -13620,7 +13572,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <type_traits>  // conditional, is_same
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -14594,8 +14545,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-#include <initializer_list>
-#include <utility>
 
 // #include <nlohmann/detail/abi_macros.hpp>
 

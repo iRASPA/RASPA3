@@ -53,7 +53,7 @@ nlohmann::json Reactions::jsonStatus() const
   status["n_reactions"] = list.size();
 
   nlohmann::json reactions(list.size());
-  for (size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
+  for (std::size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
   status["reactions"] = reactions;
   return status;
 }
@@ -64,7 +64,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
   archive << r.list;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -72,7 +72,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reactions &r)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > r.versionNumber)
   {
@@ -84,9 +84,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reactions &r
   archive >> r.list;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("Reactions: Error in binary restart\n"));
   }

@@ -55,10 +55,10 @@ import threadpool;
 
   for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
   {
-    size_t molA = static_cast<size_t>(it1->moleculeId);
-    size_t compA = static_cast<size_t>(it1->componentId);
+    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+    std::size_t compA = static_cast<std::size_t>(it1->componentId);
     double3 posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
     double scalingCoulombA = it1->scalingCoulomb;
@@ -69,9 +69,9 @@ import threadpool;
       if (index != skip)
       {
         double3 posB = atom.position;
-        size_t compB = static_cast<size_t>(atom.componentId);
-        size_t molB = static_cast<size_t>(atom.moleculeId);
-        size_t typeB = static_cast<size_t>(atom.type);
+        std::size_t compB = static_cast<std::size_t>(atom.componentId);
+        std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
+        std::size_t typeB = static_cast<std::size_t>(atom.type);
         bool groupIdB = static_cast<bool>(atom.groupId);
         double scalingVDWB = atom.scalingVDW;
         double scalingCoulombB = atom.scalingCoulomb;

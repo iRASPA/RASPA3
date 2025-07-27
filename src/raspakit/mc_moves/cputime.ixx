@@ -35,7 +35,7 @@ export struct MCMoveCpuTime
    */
   MCMoveCpuTime();
 
-  uint64_t versionNumber{2};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
 
   std::map<MoveTypes, std::map<std::string, std::chrono::duration<double>>> timingMap;
 
@@ -83,7 +83,7 @@ export struct MCMoveCpuTime
    * \param componentName The name of the component.
    * \return A string containing the timing statistics for the component.
    */
-  const std::string writeMCMoveCPUTimeStatistics(size_t componentId, const std::string& componentName) const;
+  const std::string writeMCMoveCPUTimeStatistics(std::size_t componentId, const std::string& componentName) const;
 
   /**
    * \brief Writes the overall CPU time statistics.

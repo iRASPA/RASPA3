@@ -85,7 +85,7 @@ void MCMoveProbabilities::join(const MCMoveProbabilities &other)
   {
     return;
   }
-  for (size_t i = 0; i < static_cast<size_t>(MoveTypes::Count); i++)
+  for (std::size_t i = 0; i < static_cast<std::size_t>(MoveTypes::Count); i++)
   {
     if (probabilities[static_cast<MoveTypes>(i)] > 0.0 && other.getProbability(static_cast<MoveTypes>(i)) > 0.0)
     {
@@ -100,8 +100,8 @@ void MCMoveProbabilities::join(const MCMoveProbabilities &other)
 
 MoveTypes MCMoveProbabilities::sample(RandomNumber &random)
 {
-  std::vector<double> vectorProbabilities(static_cast<size_t>(MoveTypes::Count));
-  for (size_t i = 0; i < static_cast<size_t>(MoveTypes::Count); i++)
+  std::vector<double> vectorProbabilities(static_cast<std::size_t>(MoveTypes::Count));
+  for (std::size_t i = 0; i < static_cast<std::size_t>(MoveTypes::Count); i++)
   {
     vectorProbabilities[i] = probabilities[static_cast<MoveTypes>(i)];
   }
@@ -114,7 +114,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
   archive << p.probabilities;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -122,7 +122,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MCMove
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbabilities &p)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > p.versionNumber)
   {
@@ -133,9 +133,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MCMoveProbab
   archive >> p.probabilities;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("MCMoveProbabilities: Error in binary restart\n"));
   }

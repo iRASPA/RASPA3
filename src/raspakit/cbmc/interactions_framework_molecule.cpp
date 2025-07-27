@@ -70,7 +70,7 @@ template <>
     if (index != skip)
     {
       double3 posB = atom.position;
-      size_t typeB = static_cast<size_t>(atom.type);
+      std::size_t typeB = static_cast<std::size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
       bool isFractional = static_cast<bool>(atom.isFractional);
       double scalingVDWB = atom.scalingVDW;
@@ -95,7 +95,7 @@ template <>
         for (std::span<const Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
         {
           double3 posA = it1->position;
-          size_t typeA = static_cast<size_t>(it1->type);
+          std::size_t typeA = static_cast<std::size_t>(it1->type);
           bool groupIdA = static_cast<bool>(it1->groupId);
           double scalingVDWA = it1->scalingVDW;
           double scalingCoulombA = it1->scalingCoulomb;
@@ -143,12 +143,12 @@ template <>
   std::atomic_flag cancel;
 
   auto &pool = ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance();
-  const size_t numberOfHelperThreads = pool.getThreadCount();
+  const std::size_t numberOfHelperThreads = pool.getThreadCount();
 
   std::vector<std::future<RunningEnergy>> threads(numberOfHelperThreads);
 
-  // size_t const block_size = frameworkAtoms.size() / numberOfHelperThreads;
-  size_t const block_size = frameworkAtoms.size() / (numberOfHelperThreads + 1);
+  // std::size_t const block_size = frameworkAtoms.size() / numberOfHelperThreads;
+  std::size_t const block_size = frameworkAtoms.size() / (numberOfHelperThreads + 1);
 
   auto task = [skip, cutOffVDW, cutOffCoulomb, atoms, &cancel, &forceField, &simulationBox](
                   std::span<const Atom>::iterator startIterator,
@@ -165,7 +165,7 @@ template <>
     {
       if (cancel.test()) return energySum;
       double3 posA = it1->position;
-      size_t typeA = static_cast<size_t>(it1->type);
+      std::size_t typeA = static_cast<std::size_t>(it1->type);
       bool groupIdA = static_cast<bool>(it1->groupId);
       double scalingVDWA = it1->scalingVDW;
       double scalingCoulombA = it1->scalingCoulomb;
@@ -176,7 +176,7 @@ template <>
         if (index != skip)
         {
           double3 posB = atom.position;
-          size_t typeB = static_cast<size_t>(atom.type);
+          std::size_t typeB = static_cast<std::size_t>(atom.type);
           bool groupIdB = static_cast<bool>(atom.groupId);
           double scalingVDWB = atom.scalingVDW;
           double scalingCoulombB = atom.scalingCoulomb;
@@ -217,7 +217,7 @@ template <>
   };
   /*
     std::span<const Atom>::iterator block_start = frameworkAtoms.begin();
-    for(size_t i = 0 ; i != numberOfHelperThreads - 1; ++i)
+    for(std::size_t i = 0 ; i != numberOfHelperThreads - 1; ++i)
     {
       std::span<const Atom>::iterator block_end = block_start;
       std::advance(block_end,block_size);
@@ -228,7 +228,7 @@ template <>
     threads[numberOfHelperThreads - 1] = pool.enqueue(task, block_start, frameworkAtoms.end());
 
     RunningEnergy energy{};
-    for(size_t i = 0; i != numberOfHelperThreads; ++i)
+    for(std::size_t i = 0; i != numberOfHelperThreads; ++i)
     {
       energy += threads[i].get();
     }
@@ -236,7 +236,7 @@ template <>
     */
 
   std::span<const Atom>::iterator block_start = frameworkAtoms.begin();
-  for (size_t i = 0; i != numberOfHelperThreads; ++i)
+  for (std::size_t i = 0; i != numberOfHelperThreads; ++i)
   {
     std::span<const Atom>::iterator block_end = block_start;
     std::advance(block_end, block_size);
@@ -246,7 +246,7 @@ template <>
   }
   RunningEnergy energy = task(block_start, frameworkAtoms.end());
 
-  for (size_t i = 0; i != numberOfHelperThreads; ++i)
+  for (std::size_t i = 0; i != numberOfHelperThreads; ++i)
   {
     energy += threads[i].get();
   }
@@ -277,7 +277,7 @@ template <>
     if (!cancel.test())
     {
       double3 posA = it1->position;
-      size_t typeA = static_cast<size_t>(it1->type);
+      std::size_t typeA = static_cast<std::size_t>(it1->type);
       bool groupIdA = static_cast<bool>(it1->groupId);
       double scalingVDWA = it1->scalingVDW;
       double scalingCoulombA = it1->scalingCoulomb;
@@ -288,7 +288,7 @@ template <>
         if (index != skip)
         {
           double3 posB = atom.position;
-          size_t typeB = static_cast<size_t>(atom.type);
+          std::size_t typeB = static_cast<std::size_t>(atom.type);
           bool groupIdB = static_cast<bool>(atom.groupId);
           double scalingVDWB = atom.scalingVDW;
           double scalingCoulombB = atom.scalingCoulomb;

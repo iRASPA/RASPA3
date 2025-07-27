@@ -29,7 +29,7 @@ export struct EnergyStatus
 {
   EnergyStatus() : totalEnergy(0.0, 0.0), polarizationEnergy(0.0, 0.0) {};
 
-  EnergyStatus(size_t numberOfExternalFields, size_t numberOfFrameworks, size_t numberOfComponents)
+  EnergyStatus(std::size_t numberOfExternalFields, std::size_t numberOfFrameworks, std::size_t numberOfComponents)
       : numberOfExternalFields(numberOfExternalFields),
         numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
@@ -48,25 +48,25 @@ export struct EnergyStatus
   {
   }
 
-  inline EnergyInter& externalFieldComponentEnergy(size_t compA, size_t compB)
+  inline EnergyInter& externalFieldComponentEnergy(std::size_t compA, std::size_t compB)
   {
     return externalFieldComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  inline EnergyInter& frameworkComponentEnergy(size_t compA, size_t compB)
+  inline EnergyInter& frameworkComponentEnergy(std::size_t compA, std::size_t compB)
   {
     return frameworkComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  inline EnergyInter& componentEnergy(size_t compA, size_t compB)
+  inline EnergyInter& componentEnergy(std::size_t compA, std::size_t compB)
   {
     return interComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  Potentials::EnergyFactor interEnergyComponent(size_t compA)
+  Potentials::EnergyFactor interEnergyComponent(std::size_t compA)
   {
     Potentials::EnergyFactor sum(0.0, 0.0);
-    for (size_t i = 0; i < numberOfComponents; i++)
+    for (std::size_t i = 0; i < numberOfComponents; i++)
     {
       sum += interComponentEnergies[compA * numberOfComponents + i].totalInter;
     }
@@ -94,21 +94,21 @@ export struct EnergyStatus
     externalFieldMoleculeEnergy.zero();
     frameworkMoleculeEnergy.zero();
     interEnergy.zero();
-    for (size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
     {
       intraEnergy += intraComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
     {
       externalFieldComponentEnergies[i].sumTotal();
       externalFieldMoleculeEnergy += externalFieldComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
     {
       frameworkComponentEnergies[i].sumTotal();
       frameworkMoleculeEnergy += frameworkComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->interComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
     {
       interComponentEnergies[i].sumTotal();
       interEnergy += interComponentEnergies[i];
@@ -128,19 +128,19 @@ export struct EnergyStatus
     externalFieldMoleculeEnergy += b.externalFieldMoleculeEnergy;
     frameworkMoleculeEnergy += b.frameworkMoleculeEnergy;
     interEnergy += b.interEnergy;
-    for (size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
     {
       intraComponentEnergies[i] += b.intraComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
     {
       externalFieldComponentEnergies[i] += b.externalFieldComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
     {
       frameworkComponentEnergies[i] += b.frameworkComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->interComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
     {
       interComponentEnergies[i] += b.interComponentEnergies[i];
     }
@@ -157,19 +157,19 @@ export struct EnergyStatus
     externalFieldMoleculeEnergy -= b.externalFieldMoleculeEnergy;
     frameworkMoleculeEnergy -= b.frameworkMoleculeEnergy;
     interEnergy -= b.interEnergy;
-    for (size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
     {
       intraComponentEnergies[i] -= b.intraComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
     {
       externalFieldComponentEnergies[i] -= b.externalFieldComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
     {
       frameworkComponentEnergies[i] -= b.frameworkComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->interComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
     {
       interComponentEnergies[i] -= b.interComponentEnergies[i];
     }
@@ -187,19 +187,19 @@ export struct EnergyStatus
     v.externalFieldMoleculeEnergy = -externalFieldMoleculeEnergy;
     v.frameworkMoleculeEnergy = -frameworkMoleculeEnergy;
     v.interEnergy = -interEnergy;
-    for (size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
     {
       v.intraComponentEnergies[i] = -intraComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
     {
       v.externalFieldComponentEnergies[i] = -externalFieldComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
     {
       v.frameworkComponentEnergies[i] = -frameworkComponentEnergies[i];
     }
-    for (size_t i = 0; i < this->interComponentEnergies.size(); ++i)
+    for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
     {
       v.interComponentEnergies[i] = -interComponentEnergies[i];
     }
@@ -207,10 +207,10 @@ export struct EnergyStatus
     return v;
   }
 
-  uint64_t versionNumber{1};
-  size_t numberOfExternalFields;
-  size_t numberOfFrameworks;
-  size_t numberOfComponents;
+  std::uint64_t versionNumber{1};
+  std::size_t numberOfExternalFields;
+  std::size_t numberOfFrameworks;
+  std::size_t numberOfComponents;
   Potentials::EnergyFactor totalEnergy;
   EnergyIntra intraEnergy;
   EnergyInter externalFieldMoleculeEnergy;
@@ -237,19 +237,19 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy + b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy + b.frameworkMoleculeEnergy;
   m.interEnergy = a.interEnergy + b.interEnergy;
-  for (size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = a.intraComponentEnergies[i] + b.intraComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = a.externalFieldComponentEnergies[i] + b.externalFieldComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = a.frameworkComponentEnergies[i] + b.frameworkComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = a.interComponentEnergies[i] + b.interComponentEnergies[i];
   }
@@ -267,19 +267,19 @@ export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& 
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy - b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy - b.frameworkMoleculeEnergy;
   m.interEnergy = a.interEnergy - b.interEnergy;
-  for (size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = a.intraComponentEnergies[i] - b.intraComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = a.externalFieldComponentEnergies[i] - b.externalFieldComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = a.frameworkComponentEnergies[i] - b.frameworkComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = a.interComponentEnergies[i] - b.interComponentEnergies[i];
   }
@@ -297,19 +297,19 @@ export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& 
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy * b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy * b.frameworkMoleculeEnergy;
   m.interEnergy = a.interEnergy * b.interEnergy;
-  for (size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = a.intraComponentEnergies[i] * b.intraComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = a.externalFieldComponentEnergies[i] * b.externalFieldComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = a.frameworkComponentEnergies[i] * b.frameworkComponentEnergies[i];
   }
-  for (size_t i = 0; i < a.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = a.interComponentEnergies[i] * b.interComponentEnergies[i];
   }
@@ -327,19 +327,19 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
   m.externalFieldMoleculeEnergy = a * b.externalFieldMoleculeEnergy;
   m.frameworkMoleculeEnergy = a * b.frameworkMoleculeEnergy;
   m.interEnergy = a * b.interEnergy;
-  for (size_t i = 0; i < b.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < b.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = a * b.intraComponentEnergies[i];
   }
-  for (size_t i = 0; i < b.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < b.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = a * b.externalFieldComponentEnergies[i];
   }
-  for (size_t i = 0; i < b.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < b.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = a * b.frameworkComponentEnergies[i];
   }
-  for (size_t i = 0; i < b.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < b.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = a * b.interComponentEnergies[i];
   }
@@ -357,19 +357,19 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
   m.externalFieldMoleculeEnergy = a.externalFieldMoleculeEnergy / b;
   m.frameworkMoleculeEnergy = a.frameworkMoleculeEnergy / b;
   m.interEnergy = a.interEnergy / b;
-  for (size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = a.intraComponentEnergies[i] / b;
   }
-  for (size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = a.externalFieldComponentEnergies[i] / b;
   }
-  for (size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = a.frameworkComponentEnergies[i] / b;
   }
-  for (size_t i = 0; i < a.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = a.interComponentEnergies[i] / b;
   }
@@ -387,19 +387,19 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
   m.externalFieldMoleculeEnergy = sqrt(a.externalFieldMoleculeEnergy);
   m.frameworkMoleculeEnergy = sqrt(a.frameworkMoleculeEnergy);
   m.interEnergy = sqrt(a.interEnergy);
-  for (size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.intraComponentEnergies.size(); ++i)
   {
     m.intraComponentEnergies[i] = sqrt(a.intraComponentEnergies[i]);
   }
-  for (size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.externalFieldComponentEnergies.size(); ++i)
   {
     m.externalFieldComponentEnergies[i] = sqrt(a.externalFieldComponentEnergies[i]);
   }
-  for (size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.frameworkComponentEnergies.size(); ++i)
   {
     m.frameworkComponentEnergies[i] = sqrt(a.frameworkComponentEnergies[i]);
   }
-  for (size_t i = 0; i < a.interComponentEnergies.size(); ++i)
+  for (std::size_t i = 0; i < a.interComponentEnergies.size(); ++i)
   {
     m.interComponentEnergies[i] = sqrt(a.interComponentEnergies[i]);
   }

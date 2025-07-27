@@ -25,6 +25,20 @@ module;
 #endif
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+#if defined(__has_include) && __has_include(<mdspan>)
+#include <mdspan>
+#endif
+#endif
+
 module tessellation;
 
 #ifndef USE_LEGACY_HEADERS
@@ -65,7 +79,7 @@ Tessellation::Tessellation(int3 grid_size) : grid_size(grid_size)
     err = clBuildProgram(tessellationProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      size_t len;
+      std::size_t len;
       char buffer[2048];
       clGetProgramBuildInfo(tessellationProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer),
                             buffer, &len);
@@ -81,7 +95,7 @@ Tessellation::Tessellation(int3 grid_size) : grid_size(grid_size)
     }
 
     err = clGetKernelWorkGroupInfo(tessellationKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &tessellationWorkGroupSize, nullptr);
+                                   sizeof(std::size_t), &tessellationWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
@@ -119,9 +133,9 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
   cl_mem image;
   cl_image_format cl_image_format{CL_R, CL_UNSIGNED_INT32};
   cl_image_desc imageDescriptor = cl_image_desc{CL_MEM_OBJECT_IMAGE3D,
-                                                static_cast<size_t>(grid_size.x),
-                                                static_cast<size_t>(grid_size.y),
-                                                static_cast<size_t>(grid_size.z),
+                                                static_cast<std::size_t>(grid_size.x),
+                                                static_cast<std::size_t>(grid_size.y),
+                                                static_cast<std::size_t>(grid_size.z),
                                                 0,
                                                 0,
                                                 0,
@@ -135,13 +149,13 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     throw std::runtime_error(std::format("OpenCL clCreateImage failed at {} line {}\n", __FILE__, __LINE__));
   }
 
-  std::vector<int32_t> output_data(static_cast<size_t>(grid_size.x * grid_size.y * grid_size.x));
+  std::vector<int32_t> output_data(static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.x));
 
   if (positions.size() > 0)
   {
     double3 correction =
         double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
-    for (size_t i = 0; i < positions.size(); ++i)
+    for (std::size_t i = 0; i < positions.size(); ++i)
     {
       double3 position = correction * positions[i];
       double2 currentPotentialParameters = potentialParameters[i];
@@ -203,8 +217,8 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     err |= clSetKernelArg(tessellationKernel, 7, sizeof(cl_int3), &numberOfReplicas);
     err |= clSetKernelArg(tessellationKernel, 8, sizeof(cl_int3), &grid_size);
 
-    size_t global_work_size[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
-                                  static_cast<size_t>(grid_size.z)};
+    std::size_t global_work_size[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
+                                  static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), tessellationKernel, 3, nullptr, global_work_size,
                                  nullptr, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -215,9 +229,9 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
 
     clFinish(OpenCL::clCommandQueue.value());
 
-    size_t originRawData[3] = {0, 0, 0};
-    size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
-                               static_cast<size_t>(grid_size.z)};
+    std::size_t originRawData[3] = {0, 0, 0};
+    std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
+                               static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), image, CL_TRUE, originRawData, regionRawData, 0, 0,
                              output_data.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -236,18 +250,18 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
 
   std::chrono::duration<double> timing = time_end - time_begin;
 
-  std::mdspan<int32_t, std::dextents<size_t, 3>, std::layout_left> data_view(output_data.data(), grid_size.x,
+  std::mdspan<int32_t, std::dextents<std::size_t, 3>, std::layout_left> data_view(output_data.data(), grid_size.x,
                                                                              grid_size.y, grid_size.z);
 
   std::ofstream myfile;
   myfile.open(framework.name + ".tessellation.gpu.txt");
   std::print(myfile, "# Tesselation using grid-based method\n");
   std::print(myfile, "# GPU Timing: {} [s]\n", timing.count());
-  for (size_t k = 0; k < static_cast<size_t>(grid_size.z); ++k)
+  for (std::size_t k = 0; k < static_cast<std::size_t>(grid_size.z); ++k)
   {
-    for (size_t j = 0; j < static_cast<size_t>(grid_size.y); ++j)
+    for (std::size_t j = 0; j < static_cast<std::size_t>(grid_size.y); ++j)
     {
-      for (size_t i = 0; i < static_cast<size_t>(grid_size.x); ++i)
+      for (std::size_t i = 0; i < static_cast<std::size_t>(grid_size.x); ++i)
       {
         std::print(myfile, "{} {} {} {}\n", i, j, k, data_view[i, j, k]);
       }

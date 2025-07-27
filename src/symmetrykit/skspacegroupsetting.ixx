@@ -28,21 +28,21 @@ export class SKSpaceGroupSetting
 {
  public:
   // SKSpaceGroupSetting() {}
-  SKSpaceGroupSetting(size_t number, size_t spaceGroupNumber, size_t order, char ext, std::string qualifier,
+  SKSpaceGroupSetting(std::size_t number, std::size_t spaceGroupNumber, std::size_t order, char ext, std::string qualifier,
                       std::string HM, std::string Hall, bool inversionAtOrigin, int3 inversionCenter,
                       Symmorphicity symmorphicity, bool standard, Centring centring,
-                      std::vector<int3> latticeTranslations, size_t pointGroupNumber, std::string schoenflies,
+                      std::vector<int3> latticeTranslations, std::size_t pointGroupNumber, std::string schoenflies,
                       std::string generators, std::string encoding, SKAsymmetricUnit asymmetricUnit,
                       SKTransformationMatrix transformationMatrix);
 
   SKIntegerSymmetryOperationSet fullSeitzMatrices() const;
   std::vector<SKSeitzIntegerMatrix> SeitzMatricesWithoutTranslation() const;
 
-  size_t number() const { return _spaceGroupNumber; }
-  size_t HallNumber() const { return _HallNumber; }
+  std::size_t number() const { return _spaceGroupNumber; }
+  std::size_t HallNumber() const { return _HallNumber; }
   std::string HallString() const { return _HallString; }
   std::string HMString() const { return _HMString; }
-  size_t pointGroupNumber() const { return _pointGroupNumber; }
+  std::size_t pointGroupNumber() const { return _pointGroupNumber; }
   std::string qualifier() const { return _qualifier; }
   Symmorphicity symmorphicity() const { return _symmorphicity; }
   std::string symmorphicityString() const;
@@ -62,9 +62,9 @@ export class SKSpaceGroupSetting
   friend std::ostream& operator<<(std::ostream& os, const SKSpaceGroupSetting& setting);
 
  private:
-  size_t _HallNumber = 1;
-  size_t _spaceGroupNumber = 1;  // space group number (1-230)
-  size_t _order;
+  std::size_t _HallNumber = 1;
+  std::size_t _spaceGroupNumber = 1;  // space group number (1-230)
+  std::size_t _order;
   char _ext;                       // '1', '2', 'H', 'R' or '\0'
   std::string _qualifier;          // e.g. "-cba" or "b1"
   std::string _HMString;           // H-M symbol; nul-terminated string
@@ -78,7 +78,7 @@ export class SKSpaceGroupSetting
   Centring _centring = Centring::primitive;
   std::vector<int3> _latticeTranslations;
   std::string _schoenflies;
-  size_t _pointGroupNumber;
+  std::size_t _pointGroupNumber;
   SKAsymmetricUnit _asymmetricUnit;              // = {{10,0}, {20,1}, {30,2}};
   SKTransformationMatrix _transformationMatrix;  // the inverse of the transformation to "standard" setting (so:
                                                  // standard to unconventional setting)

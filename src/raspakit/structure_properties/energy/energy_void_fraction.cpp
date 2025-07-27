@@ -58,10 +58,10 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
 
   time_begin = std::chrono::system_clock::now();
 
-  size_t numberOfAtoms = positions.size();
+  std::size_t numberOfAtoms = positions.size();
   int temp = grid_size.x * grid_size.y * grid_size.z;
 
-  std::vector<double> outputData = std::vector<double>(static_cast<size_t>(temp));
+  std::vector<double> outputData = std::vector<double>(static_cast<std::size_t>(temp));
 
   double3 correction =
       double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
@@ -70,13 +70,13 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
                                     double(numberOfReplicas.z) * unitCell[2]);
 
   int totalNumberOfReplicas = numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z;
-  std::vector<double3> replicaVector(static_cast<size_t>(totalNumberOfReplicas));
-  size_t index = 0;
-  for (size_t i = 0; i < static_cast<size_t>(numberOfReplicas.x); i++)
+  std::vector<double3> replicaVector(static_cast<std::size_t>(totalNumberOfReplicas));
+  std::size_t index = 0;
+  for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfReplicas.x); i++)
   {
-    for (size_t j = 0; j < static_cast<size_t>(numberOfReplicas.y); j++)
+    for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfReplicas.y); j++)
     {
-      for (size_t k = 0; k < static_cast<size_t>(numberOfReplicas.z); k++)
+      for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfReplicas.z); k++)
       {
         replicaVector[index] =
             double3((double(i) / double(numberOfReplicas.x)), (double(j) / double(numberOfReplicas.y)),
@@ -86,29 +86,29 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
     }
   }
 
-  for (size_t z = 0; z < static_cast<size_t>(grid_size.z); z++)
+  for (std::size_t z = 0; z < static_cast<std::size_t>(grid_size.z); z++)
   {
-    for (size_t y = 0; y < static_cast<size_t>(grid_size.y); y++)
+    for (std::size_t y = 0; y < static_cast<std::size_t>(grid_size.y); y++)
     {
-      for (size_t x = 0; x < static_cast<size_t>(grid_size.x); x++)
+      for (std::size_t x = 0; x < static_cast<std::size_t>(grid_size.x); x++)
       {
         double3 gridPosition =
             correction * double3(double(x) / double(grid_size.x - 1), double(y) / double(grid_size.y - 1),
                                  double(z) / double(grid_size.z - 1));
 
         double value = 0.0;
-        for (size_t i = 0; i < numberOfAtoms; i++)
+        for (std::size_t i = 0; i < numberOfAtoms; i++)
         {
           double3 position = correction * positions[i];
           double2 currentPotentialParameters = potentialParameters[i];
 
           // use 4 x epsilon for a probe epsilon of unity
-          double epsilon = 4.0 * sqrt(currentPotentialParameters.x * probeParameter.x);
+          double epsilon = 4.0 * std::sqrt(currentPotentialParameters.x * probeParameter.x);
 
           // mixing rule for the atom and the probe
           double sigma = 0.5 * (currentPotentialParameters.y + probeParameter.y);
 
-          for (size_t j = 0; j < static_cast<size_t>(totalNumberOfReplicas); j++)
+          for (std::size_t j = 0; j < static_cast<std::size_t>(totalNumberOfReplicas); j++)
           {
             double3 ds = gridPosition - position - replicaVector[j];
             ds.x -= std::rint(ds.x);
@@ -126,7 +126,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
           }
         }
 
-        outputData[x + y * static_cast<size_t>(grid_size.x) + z * static_cast<size_t>(grid_size.x * grid_size.y)] +=
+        outputData[x + y * static_cast<std::size_t>(grid_size.x) + z * static_cast<std::size_t>(grid_size.x * grid_size.y)] +=
             std::min(value, 10000000.0);
       }
     }
@@ -135,7 +135,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
   double sumBoltzmannWeight = 0.0;
   for (const double &value : outputData)
   {
-    sumBoltzmannWeight += exp(-(1.0 / (Units::KB * 298.0) * value));
+    sumBoltzmannWeight += std::exp(-(1.0 / (Units::KB * 298.0) * value));
   }
 
   time_end = std::chrono::system_clock::now();

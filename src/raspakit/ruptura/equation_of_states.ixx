@@ -57,7 +57,7 @@ export struct EquationOfState
     VaporLiquid = 4          ///< Vapor-liquid coexistence.
   };
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   EquationOfState::FluidState fluidState{EquationOfState::FluidState::Unknown};  ///< Current fluid state.
   EquationOfState::Type equationOfState{EquationOfState::Type::PengRobinson};    ///< Type of equation of state used.

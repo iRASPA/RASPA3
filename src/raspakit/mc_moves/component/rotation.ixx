@@ -22,7 +22,7 @@ import system;
 
 export namespace MC_Moves
 {
-std::optional<RunningEnergy> rotationMove(RandomNumber &random, System &system, size_t selectedComponent,
-                                          size_t selectedMolecule, const std::vector<Component> &components,
+std::optional<RunningEnergy> rotationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
+                                          std::size_t selectedMolecule, const std::vector<Component> &components,
                                           Molecule &molecule, std::span<Atom> molecule_atoms);
 }

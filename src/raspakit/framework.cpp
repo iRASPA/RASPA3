@@ -65,7 +65,7 @@ import charge_equilibration_wilmer_snurr;
 Framework::Framework() {}
 
 // create Component in 'inputreader.cpp'
-Framework::Framework(size_t currentFramework, const ForceField& forceField, const std::string& componentName,
+Framework::Framework(std::size_t currentFramework, const ForceField& forceField, const std::string& componentName,
                      std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
                      Framework::UseChargesFrom useChargesFrom) noexcept(false)
     : frameworkId(currentFramework), name(componentName), filenameData(fileName), useChargesFrom(useChargesFrom)
@@ -84,7 +84,7 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
     unitCellMass = 0.0;
     for (const Atom& atom : unitCellAtoms)
     {
-      size_t atomType = static_cast<size_t>(atom.type);
+      std::size_t atomType = static_cast<std::size_t>(atom.type);
       unitCellMass += forceField.pseudoAtoms[atomType].mass;
     }
 
@@ -94,14 +94,14 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
     largestCharge = std::numeric_limits<double>::lowest();
     for (const Atom& atom : atoms)
     {
-      size_t atomType = static_cast<size_t>(atom.type);
+      std::size_t atomType = static_cast<std::size_t>(atom.type);
       mass += forceField.pseudoAtoms[atomType].mass;
       netCharge += atom.charge;
       if (atom.charge > largestCharge) largestCharge = atom.charge;
       if (atom.charge < smallestCharge) smallestCharge = atom.charge;
     }
 
-    for (size_t i = 0; i < unitCellAtoms.size(); ++i)
+    for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
     {
       unitCellAtoms[i].componentId = static_cast<uint8_t>(currentFramework);
       unitCellAtoms[i].moleculeId = 0;
@@ -110,8 +110,8 @@ Framework::Framework(size_t currentFramework, const ForceField& forceField, cons
 }
 
 // create programmatically an 'framework' component
-Framework::Framework(size_t frameworkId, const ForceField& forceField, std::string fileName,
-                     SimulationBox simulationBox, size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
+Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std::string fileName,
+                     SimulationBox simulationBox, std::size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
                      int3 numberOfUnitCells) noexcept(false)
     : simulationBox(simulationBox),
       spaceGroupHallNumber(spaceGroupHallNumber),
@@ -122,7 +122,7 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
       useChargesFrom(UseChargesFrom::PseudoAtoms),
       definedAtoms(definedAtoms)
 {
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
     definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
   }
@@ -142,14 +142,14 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
     ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
                                                     ChargeEquilibration::Type::PeriodicEwaldSum);
 
-    std::vector<size_t> countCharge(definedAtoms.size());
+    std::vector<std::size_t> countCharge(definedAtoms.size());
     std::vector<double> sumCharge(definedAtoms.size());
     for (const Atom& atom : unitCellAtoms)
     {
       ++countCharge[atom.moleculeId];
       sumCharge[atom.moleculeId] += atom.charge;
     }
-    for (size_t i = 0; i < definedAtoms.size(); ++i)
+    for (std::size_t i = 0; i < definedAtoms.size(); ++i)
     {
       definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
     }
@@ -164,7 +164,7 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
   unitCellMass = 0.0;
   for (const Atom& atom : unitCellAtoms)
   {
-    size_t atomType = static_cast<size_t>(atom.type);
+    std::size_t atomType = static_cast<std::size_t>(atom.type);
     unitCellMass += forceField.pseudoAtoms[atomType].mass;
   }
 
@@ -174,7 +174,7 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
   largestCharge = std::numeric_limits<double>::lowest();
   for (const Atom& atom : atoms)
   {
-    size_t atomType = static_cast<size_t>(atom.type);
+    std::size_t atomType = static_cast<std::size_t>(atom.type);
     mass += forceField.pseudoAtoms[atomType].mass;
     netCharge += atom.charge;
 
@@ -182,7 +182,7 @@ Framework::Framework(size_t frameworkId, const ForceField& forceField, std::stri
     if (atom.charge < smallestCharge) smallestCharge = atom.charge;
   }
 
-  for (size_t i = 0; i < unitCellAtoms.size(); ++i)
+  for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
     unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
@@ -209,7 +209,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
   definedAtoms = parser.fractionalAtoms;
   spaceGroupHallNumber = parser._spaceGroupHallNumber.value_or(1);
 
-  for (size_t i = 0; i < definedAtoms.size(); ++i)
+  for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
     definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
   }
@@ -230,14 +230,14 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
     ChargeEquilibration::computeChargeEquilibration(forceField, simulationBox, unitCellAtoms,
                                                     ChargeEquilibration::Type::PeriodicEwaldSum);
 
-    std::vector<size_t> countCharge(definedAtoms.size());
+    std::vector<std::size_t> countCharge(definedAtoms.size());
     std::vector<double> sumCharge(definedAtoms.size());
     for (const Atom& atom : unitCellAtoms)
     {
       ++countCharge[atom.moleculeId];
       sumCharge[atom.moleculeId] += atom.charge;
     }
-    for (size_t i = 0; i < definedAtoms.size(); ++i)
+    for (std::size_t i = 0; i < definedAtoms.size(); ++i)
     {
       definedAtoms[i].charge = sumCharge[i] / static_cast<double>(countCharge[i]);
     }
@@ -268,10 +268,10 @@ void Framework::expandDefinedAtomsToUnitCell()
 
   // eliminate duplicates
   unitCellAtoms.clear();
-  for (size_t i = 0; i < expandAtoms.size(); ++i)
+  for (std::size_t i = 0; i < expandAtoms.size(); ++i)
   {
     bool overLap = false;
-    for (size_t j = i + 1; j < expandAtoms.size(); ++j)
+    for (std::size_t j = i + 1; j < expandAtoms.size(); ++j)
     {
       double3 dr = expandAtoms[i].position - expandAtoms[j].position;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -344,7 +344,7 @@ std::optional<double> Framework::computeLargestNonOverlappingFreeRadius(const Fo
 
   for (const Atom& atom : unitCellAtoms)
   {
-    size_t atomType = static_cast<size_t>(atom.type);
+    std::size_t atomType = static_cast<std::size_t>(atom.type);
     double size_parameter = forceField[atomType].sizeParameter();
     double3 dr = probe_position - atom.position;
     dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -367,8 +367,8 @@ bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField& forceField, do
 {
   for (const Atom& atom : unitCellAtoms)
   {
-    size_t atomType = static_cast<size_t>(atom.type);
-    size_t atomicNumber = forceField.pseudoAtoms[atomType].atomicNumber;
+    std::size_t atomType = static_cast<std::size_t>(atom.type);
+    std::size_t atomicNumber = forceField.pseudoAtoms[atomType].atomicNumber;
     double radius = PredefinedElements::predefinedElements[atomicNumber]._VDWRadius;
     double3 dr = probe_position - atom.position;
     dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -383,13 +383,13 @@ bool Framework::computeVanDerWaalsRadiusOverlap(const ForceField& forceField, do
   return false;
 }
 bool Framework::computeOverlap(const ForceField& forceField, double3 probe_position, double well_depth_factor,
-                               size_t probe_type, std::make_signed_t<std::size_t> skip) const
+                               std::size_t probe_type, std::make_signed_t<std::size_t> skip) const
 {
   for (std::make_signed_t<std::size_t> atom_index = 0; const Atom& atom : unitCellAtoms)
   {
     if (atom_index != skip)
     {
-      size_t atomType = static_cast<size_t>(atom.type);
+      std::size_t atomType = static_cast<std::size_t>(atom.type);
       double size_parameter = forceField(probe_type, atomType).sizeParameter();
       double3 dr = probe_position - atom.position;
       dr = simulationBox.applyPeriodicBoundaryConditions(dr);
@@ -430,7 +430,7 @@ std::vector<double2> Framework::atomUnitCellLennardJonesPotentialParameters(cons
 
   for (const Atom& atom : unitCellAtoms)
   {
-    size_t type = atom.type;
+    std::size_t type = atom.type;
     double2 parameter = double2(forceField[type].parameters.x, forceField[type].parameters.y);
     parameters.push_back(parameter);
   }
@@ -461,9 +461,9 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::print(stream, "    number Of Atoms:          {:>12d} [-]\n", unitCellAtoms.size());
   std::print(stream, "    mass:                     {:>12.5f} [amu]\n", mass);
 
-  for (size_t i = 0; i != definedAtoms.size(); ++i)
+  for (std::size_t i = 0; i != definedAtoms.size(); ++i)
   {
-    size_t atomType = static_cast<size_t>(definedAtoms[i].type);
+    std::size_t atomType = static_cast<std::size_t>(definedAtoms[i].type);
 
     std::string atomTypeString = forceField.pseudoAtoms[atomType].name;
     std::print(stream, "    {:3d}: {:6} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", i, atomTypeString,
@@ -487,7 +487,7 @@ std::string Framework::printStatus(const ForceField& forceField) const
   std::print(stream, "    largest charge:             {:>12.5f} [e]\n", largestCharge);
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());
-  for (size_t i = 0; i < bonds.size(); ++i)
+  for (std::size_t i = 0; i < bonds.size(); ++i)
   {
     std::print(stream, "        {}", bonds[i].print());
   }
@@ -507,7 +507,7 @@ nlohmann::json Framework::jsonStatus() const
   status["n_bonds"] = bonds.size();
 
   std::vector<std::string> bondTypes(bonds.size());
-  for (size_t i = 0; i < bonds.size(); ++i)
+  for (std::size_t i = 0; i < bonds.size(); ++i)
   {
     bondTypes[i] = bonds[i].print();
   }
@@ -561,7 +561,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
   // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -569,7 +569,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framew
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > c.versionNumber)
   {
@@ -602,8 +602,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
 
   archive >> c.chiralCenters;
   archive >> c.bonds;
-  // std::vector<std::pair<size_t, size_t>> bondDipoles{};
-  // std::vector<std::tuple<size_t, size_t, size_t>> bends{};
+  // std::vector<std::pair<std::size_t, std::size_t>> bondDipoles{};
+  // std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> bends{};
   // std::vector<std::pair<size_t, size_t>>  UreyBradley{};
   // std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};
   // std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};
@@ -619,9 +619,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c
   // std::vector<std::pair<size_t, std::vector<size_t>>> configMoves{};
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("Framework: Error in binary restart\n"));
   }
@@ -640,9 +640,9 @@ std::string Framework::repr() const
   std::print(stream, "    net charge:       {:12.5f} [e]\n", netCharge);
   std::print(stream, "    mass:             {:12.5f} [amu]\n", mass);
 
-  for (size_t i = 0; i != definedAtoms.size(); ++i)
+  for (std::size_t i = 0; i != definedAtoms.size(); ++i)
   {
-    size_t atomType = static_cast<size_t>(definedAtoms[i].type);
+    std::size_t atomType = static_cast<std::size_t>(definedAtoms[i].type);
 
     std::print(stream, "    {:3d}: type {:3d} position {:8.5f} {:8.5f} {:8.5f}, charge {:8.5f}\n", i, atomType,
                definedAtoms[i].position.x, definedAtoms[i].position.y, definedAtoms[i].position.z,
@@ -650,7 +650,7 @@ std::string Framework::repr() const
   }
 
   std::print(stream, "    number of bonds: {}\n", bonds.size());
-  for (size_t i = 0; i < bonds.size(); ++i)
+  for (std::size_t i = 0; i < bonds.size(); ++i)
   {
     std::print(stream, "        {}", bonds[i].print());
   }

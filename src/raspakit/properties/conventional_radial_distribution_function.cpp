@@ -36,8 +36,8 @@ import averages;
 
 void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox &simulationBox,
                                                             std::span<Atom> frameworkAtoms,
-                                                            std::span<Atom> moleculeAtoms, size_t currentCycle,
-                                                            size_t block)
+                                                            std::span<Atom> moleculeAtoms, std::size_t currentCycle,
+                                                            std::size_t block)
 {
   double3 dr, posA, posB, f;
   double rr, r;
@@ -49,11 +49,11 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
   {
     posA = it1->position;
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
     for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
     {
       posB = it2->position;
-      size_t typeB = static_cast<size_t>(it2->type);
+      std::size_t typeB = static_cast<std::size_t>(it2->type);
 
       pairCount[typeB + typeA * numberOfPseudoAtoms]++;
       pairCount[typeA + typeB * numberOfPseudoAtoms]++;
@@ -63,10 +63,10 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
       rr = double3::dot(dr, dr);
       r = std::sqrt(rr);
 
-      size_t bin = static_cast<size_t>(r / deltaR);
+      std::size_t bin = static_cast<std::size_t>(r / deltaR);
       if (bin < numberOfBins)
       {
-        size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
+        std::size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
         sumProperty[index][bin] += 1.0;
         index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
         sumProperty[index][bin] += 1.0;
@@ -77,20 +77,20 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
   {
     posA = it1->position;
-    size_t molA = static_cast<size_t>(it1->moleculeId);
-    size_t compA = static_cast<size_t>(it1->componentId);
-    size_t typeA = static_cast<size_t>(it1->type);
+    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+    std::size_t compA = static_cast<std::size_t>(it1->componentId);
+    std::size_t typeA = static_cast<std::size_t>(it1->type);
 
     for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
     {
-      size_t molB = static_cast<size_t>(it2->moleculeId);
-      size_t compB = static_cast<size_t>(it2->componentId);
+      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
+      std::size_t compB = static_cast<std::size_t>(it2->componentId);
 
       // skip interactions within the same molecule
       if (!((compA == compB) && (molA == molB)))
       {
         posB = it2->position;
-        size_t typeB = static_cast<size_t>(it2->type);
+        std::size_t typeB = static_cast<std::size_t>(it2->type);
 
         pairCount[typeB + typeA * numberOfPseudoAtoms]++;
         pairCount[typeA + typeB * numberOfPseudoAtoms]++;
@@ -100,10 +100,10 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
         rr = double3::dot(dr, dr);
         r = std::sqrt(rr);
 
-        size_t bin = static_cast<size_t>(r / deltaR);
+        std::size_t bin = static_cast<std::size_t>(r / deltaR);
         if (bin < numberOfBins)
         {
-          size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
+          std::size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
           sumProperty[index][bin] += 1.0;
           index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
           sumProperty[index][bin] += 1.0;
@@ -116,11 +116,11 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   numberOfCounts[block] += 2;
 }
 
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t blockIndex,
-                                                                                                 size_t atomTypeA,
-                                                                                                 size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(std::size_t blockIndex,
+                                                                                                 std::size_t atomTypeA,
+                                                                                                 std::size_t atomTypeB) const
 {
-  size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
+  std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
   std::vector<double> averagedData(numberOfBins);
   std::transform(sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
@@ -130,13 +130,13 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
   return averagedData;
 }
 
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(size_t atomTypeA,
-                                                                                                 size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(std::size_t atomTypeA,
+                                                                                                 std::size_t atomTypeB) const
 {
-  size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
+  std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
   std::vector<double> summedBlocks(numberOfBins);
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::transform(summedBlocks.begin(), summedBlocks.end(),
                    sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
@@ -150,17 +150,17 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const
+PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const
 {
-  size_t degreesOfFreedom = numberOfBlocks - 1;
+  std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
   std::vector<double> average = averagedProbabilityHistogram(atomTypeA, atomTypeB);
 
   std::vector<double> sumOfSquares(numberOfBins);
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex, atomTypeA, atomTypeB);
-    for (size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+    for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
     {
       double value = blockAverage[binIndex] - average[binIndex];
       sumOfSquares[binIndex] += value * value;
@@ -182,16 +182,16 @@ PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(size
 }
 
 void PropertyConventionalRadialDistributionFunction::writeOutput(
-    const ForceField &forceField, size_t systemId, double volume,
-    [[maybe_unused]] std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle)
+    const ForceField &forceField, std::size_t systemId, double volume,
+    [[maybe_unused]] std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle)
 {
   if (currentCycle % writeEvery != 0uz) return;
 
   std::filesystem::create_directory("conventional_rdf");
 
-  for (size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
+  for (std::size_t atomTypeA = 0; atomTypeA < numberOfPseudoAtoms; ++atomTypeA)
   {
-    for (size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
+    for (std::size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
     {
       if (pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
       {
@@ -213,7 +213,7 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
                              static_cast<double>(totalNumberOfCounts);
         double normalization = volume / (2.0 * std::numbers::pi * deltaR * deltaR * deltaR * avg_n_pairs);
 
-        for (size_t bin = 0; bin != numberOfBins; ++bin)
+        for (std::size_t bin = 0; bin != numberOfBins; ++bin)
         {
           stream_rdf_output << std::format(
               "{} {} {}\n", (static_cast<double>(bin) + 0.5) * deltaR,
@@ -244,7 +244,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
   archive << rdf.pairCount;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -252,7 +252,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConventionalRadialDistributionFunction &rdf)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > rdf.versionNumber)
   {
@@ -276,9 +276,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyConv
   archive >> rdf.pairCount;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyConventionalRadialDistributionFunction: Error in binary restart\n"));
   }

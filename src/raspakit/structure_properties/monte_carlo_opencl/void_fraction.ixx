@@ -22,5 +22,5 @@ export struct MC_OpenCL_VoidFraction
 
   MC_OpenCL_VoidFraction() {};
 
-  void run(const ForceField &forceField, const Framework &framework, size_t number_of_iterations);
+  void run(const ForceField &forceField, const Framework &framework, std::size_t number_of_iterations);
 };

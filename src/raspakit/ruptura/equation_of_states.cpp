@@ -46,7 +46,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   std::vector<double> A(components.size());
   std::vector<double> B(components.size());
 
-  for (size_t i = 0; i < components.size(); ++i)
+  for (std::size_t i = 0; i < components.size(); ++i)
   {
     if (components[i].swappable)
     {
@@ -71,7 +71,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
           break;
         case EquationOfState::Type::PengRobinsonGasem:
           kappa = 0.134 + 0.508 * w - 0.0467 * w * w;
-          alpha = exp((2.0 + 0.836 * Tr) * (1.0 - std::pow(Tr, kappa)));
+          alpha = std::exp((2.0 + 0.836 * Tr) * (1.0 - std::pow(Tr, kappa)));
           temp = Units::MolarGasConstant * Tc;
           a[i] = 0.45724 * alpha * temp * temp / Pc;
           b[i] = 0.07780 * temp / Pc;
@@ -104,8 +104,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   {
     default:
     case MultiComponentMixingRules::VanDerWaals:
-      for (size_t i = 0; i < components.size(); i++)
-        for (size_t j = 0; j < components.size(); j++)
+      for (std::size_t i = 0; i < components.size(); i++)
+        for (std::size_t j = 0; j < components.size(); j++)
         {
           if (components[i].swappable && components[j].swappable)
           {
@@ -115,12 +115,12 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
         }
       Amix = 0.0;
       Bmix = 0.0;
-      for (size_t i = 0; i < components.size(); ++i)
+      for (std::size_t i = 0; i < components.size(); ++i)
       {
         if (components[i].swappable)
         {
           Bmix += components[i].molFraction * b[i];
-          for (size_t j = 0; j < components.size(); ++j)
+          for (std::size_t j = 0; j < components.size(); ++j)
           {
             if (components[j].swappable)
             {
@@ -190,18 +190,18 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   // depending on the relative magnitudes of P and Pc, and T and Tc.
 
   std::vector<std::vector<double>> fugacityCoefficients(components.size(),
-                                                        std::vector<double>(static_cast<size_t>(numberOfSolutions)));
+                                                        std::vector<double>(static_cast<std::size_t>(numberOfSolutions)));
   switch (equationOfState)
   {
     case EquationOfState::Type::SoaveRedlichKwong:
-      for (size_t i = 0; i < components.size(); i++)
+      for (std::size_t i = 0; i < components.size(); i++)
       {
         if (components[i].swappable)
         {
-          for (size_t j = 0; j < static_cast<size_t>(numberOfSolutions); ++j)
+          for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfSolutions); ++j)
           {
             double temp = 0.0;
-            for (size_t k = 0; k < components.size(); k++) temp += 2.0 * components[k].molFraction * Aij[i][k];
+            for (std::size_t k = 0; k < components.size(); k++) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
             fugacityCoefficients[i][j] =
                 std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
@@ -213,19 +213,19 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
     case EquationOfState::Type::PengRobinsonGasem:
     case EquationOfState::Type::PengRobinson:
     default:
-      for (size_t i = 0; i < components.size(); ++i)
+      for (std::size_t i = 0; i < components.size(); ++i)
       {
         if (components[i].swappable)
         {
-          for (size_t j = 0; j < static_cast<size_t>(numberOfSolutions); ++j)
+          for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfSolutions); ++j)
           {
             double temp = 0.0;
-            for (size_t k = 0; k < components.size(); ++k) temp += 2.0 * components[k].molFraction * Aij[i][k];
+            for (std::size_t k = 0; k < components.size(); ++k) temp += 2.0 * components[k].molFraction * Aij[i][k];
 
             fugacityCoefficients[i][j] =
                 std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
                          (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
-                             log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
+                             std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
                                  (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
@@ -242,7 +242,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   double excess_volume = simulationBox.volume * heliumVoidFraction;
 
   // get the gas-phase fugacity coefficient
-  for (size_t i = 0; i < components.size(); ++i)
+  for (std::size_t i = 0; i < components.size(); ++i)
   {
     if (components[i].swappable)
     {
@@ -396,7 +396,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Equati
   archive << s.multiComponentMixingRules;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -404,7 +404,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Equati
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EquationOfState &s)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > s.versionNumber)
   {
@@ -418,9 +418,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EquationOfSt
   archive >> s.multiComponentMixingRules;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("EquationOfState: Error in binary restart\n"));
   }

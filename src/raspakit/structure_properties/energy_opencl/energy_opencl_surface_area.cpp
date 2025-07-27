@@ -34,6 +34,17 @@ module;
 #endif
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+#endif
+
 module energy_opencl_surface_area;
 
 #ifndef USE_LEGACY_HEADERS
@@ -67,7 +78,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
     err = clBuildProgram(energyGridProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      size_t len;
+      std::size_t len;
       char buffer[2048];
       clGetProgramBuildInfo(energyGridProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer,
                             &len);
@@ -84,7 +95,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
     }
 
     err = clGetKernelWorkGroupInfo(energyGridKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &energyGridWorkGroupSize, nullptr);
+                                   sizeof(std::size_t), &energyGridWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(std::format("OpenCL clGetKernelWorkGroupInfo failed at {} : {}\n", __FILE__, __LINE__));
@@ -104,7 +115,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
     err = clBuildProgram(energyEnergyOpenCLSurfaceAreaProgram, 0, nullptr, nullptr, nullptr, nullptr);
     if (err != CL_SUCCESS)
     {
-      size_t len;
+      std::size_t len;
       char buffer[2048];
       clGetProgramBuildInfo(energyEnergyOpenCLSurfaceAreaProgram, OpenCL::clDeviceId.value(), CL_PROGRAM_BUILD_LOG,
                             sizeof(buffer), buffer, &len);
@@ -119,7 +130,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
           std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &constructHPLevelKernelWorkGroupSize, nullptr);
+                                   sizeof(std::size_t), &constructHPLevelKernelWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -133,7 +144,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
           std::format("OpenCL clCreateProgramWithSource failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(constructHPLevelKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &classifyCubesKernelWorkGroupSize, nullptr);
+                                   sizeof(std::size_t), &classifyCubesKernelWorkGroupSize, nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -146,7 +157,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[4], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[4], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[4], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -158,7 +169,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[5], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[5], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[5], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -170,7 +181,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[6], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[6], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[6], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -182,7 +193,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[7], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[7], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[7], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -194,7 +205,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[8], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[8], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[8], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -206,7 +217,7 @@ EnergyOpenCLSurfaceArea::EnergyOpenCLSurfaceArea()
       throw std::runtime_error(std::format("OpenCL clCreateKernel failed at {} line {}\n", __FILE__, __LINE__));
     }
     err = clGetKernelWorkGroupInfo(traverseHPKernel[9], OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(size_t), &traverseHPKernelWorkGroupSize[9], nullptr);
+                                   sizeof(std::size_t), &traverseHPKernelWorkGroupSize[9], nullptr);
     if (err != CL_SUCCESS)
     {
       throw std::runtime_error(
@@ -248,13 +259,13 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
 
   time_begin = std::chrono::system_clock::now();
 
-  size_t largestSize = static_cast<size_t>(std::max({grid_size.x, grid_size.y, grid_size.z}));
-  size_t powerOfTwo = 1uz;
-  while (largestSize > static_cast<size_t>(pow(2, powerOfTwo)))
+  std::size_t largestSize = static_cast<std::size_t>(std::max({grid_size.x, grid_size.y, grid_size.z}));
+  std::size_t powerOfTwo = 1uz;
+  while (largestSize > static_cast<std::size_t>(std::pow(2, powerOfTwo)))
   {
     powerOfTwo += 1;
   }
-  size_t size = static_cast<size_t>(std::pow(
+  std::size_t size = static_cast<std::size_t>(std::pow(
       2uz, powerOfTwo));  // the encompassing size to use as textures (size 16,32,64,128,256, and 512 are supported).
 
   // std::vector<float> voxels = EnergyGrid().computeEnergyGrid(grid_size, probeParameter, positions,
@@ -263,14 +274,14 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   // Energy-grid computation step
   // ==================================================================================================================================================================
 
-  size_t numberOfAtoms = positions.size();
-  size_t temp = static_cast<size_t>(grid_size.x * grid_size.y * grid_size.z);
+  std::size_t numberOfAtoms = positions.size();
+  std::size_t temp = static_cast<std::size_t>(grid_size.x * grid_size.y * grid_size.z);
   cl_int err = 0;
 
   // make sure the the global work size is an multiple of the work group size
   // (detected on NVIDIA)
-  size_t numberOfGridPoints = (temp + energyGridWorkGroupSize - 1) & ~(energyGridWorkGroupSize - 1);
-  size_t energy_global_work_size = numberOfGridPoints;
+  std::size_t numberOfGridPoints = (temp + energyGridWorkGroupSize - 1) & ~(energyGridWorkGroupSize - 1);
+  std::size_t energy_global_work_size = numberOfGridPoints;
 
   std::vector<cl_float4> pos(numberOfAtoms);
   std::vector<cl_float> epsilon(numberOfAtoms);
@@ -287,7 +298,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
     return;
   }
 
-  for (size_t i = 0; i < numberOfAtoms; i++)
+  for (std::size_t i = 0; i < numberOfAtoms; i++)
   {
     double3 position = correction * positions[i];
     double2 currentPotentialParameters = potentialParameters[i];
@@ -296,13 +307,13 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
     pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
 
     // use 4 x epsilon for a probe epsilon of unity
-    epsilon[i] = cl_float(4.0 * sqrt(currentPotentialParameters.x * probeParameter.x));
+    epsilon[i] = cl_float(4.0 * std::sqrt(currentPotentialParameters.x * probeParameter.x));
 
     // mixing rule for the atom and the probe
     sigma[i] = cl_float(0.5 * (currentPotentialParameters.y + probeParameter.y));
   }
 
-  size_t index = 0;
+  std::size_t index = 0;
   for (int k = 0; k < grid_size.z; ++k)
   {
     for (int j = 0; j < grid_size.y; ++j)
@@ -375,7 +386,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  size_t totalNumberOfReplicas = static_cast<size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
+  std::size_t totalNumberOfReplicas = static_cast<std::size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
   cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
   std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
   index = 0;
@@ -430,11 +441,11 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   cl_float4 clCellc = {
       {cl_float(replicaCell[0][2]), cl_float(replicaCell[1][2]), cl_float(replicaCell[2][2]), cl_float(0.0)}};
 
-  size_t unitsOfWorkDone = 0;
-  size_t sizeOfWorkBatch = 4096;
+  std::size_t unitsOfWorkDone = 0;
+  std::size_t sizeOfWorkBatch = 4096;
   while (unitsOfWorkDone < positions.size())
   {
-    size_t numberOfAtomsPerThreadgroup = std::min(sizeOfWorkBatch, positions.size()) - unitsOfWorkDone;
+    std::size_t numberOfAtomsPerThreadgroup = std::min(sizeOfWorkBatch, positions.size()) - unitsOfWorkDone;
 
     cl_int startIndex = cl_int(unitsOfWorkDone);
     cl_int endIndex = cl_int(unitsOfWorkDone + numberOfAtomsPerThreadgroup);
@@ -471,11 +482,11 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   // Matching Cubes step
   // ==================================================================================================================================================================
 
-  size_t bufferSize = size;
+  std::size_t bufferSize = size;
   std::vector<cl_mem> images;
   std::vector<cl_mem> buffers;
 
-  for (size_t i = 1; i < powerOfTwo; i++)
+  for (std::size_t i = 1; i < powerOfTwo; i++)
   {
     cl_image_format imageFormat{};
     switch (i)
@@ -530,9 +541,9 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   }
 
   // Copy the energy-grid to the input for the Marching Cubes
-  size_t originRawData[3] = {0, 0, 0};
-  size_t regionRawData[3] = {static_cast<size_t>(grid_size.x), static_cast<size_t>(grid_size.y),
-                             static_cast<size_t>(grid_size.z)};
+  std::size_t originRawData[3] = {0, 0, 0};
+  std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
+                             static_cast<std::size_t>(grid_size.z)};
   err = clEnqueueCopyBufferToImage(OpenCL::clCommandQueue.value(), outputMemory, rawData, 0, originRawData,
                                    regionRawData, 0, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -552,11 +563,11 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   clSetKernelArg(classifyCubesKernel, 2, sizeof(cl_int4), &clDimensions);
   clSetKernelArg(classifyCubesKernel, 3, sizeof(cl_float), &clIsoValue);
 
-  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(size_t),
+  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(std::size_t),
                            &classifyCubesKernelWorkGroupSize, nullptr);
 
   // set work-item dimensions
-  size_t global_work_size[3] = {size, size, size};
+  std::size_t global_work_size[3] = {size, size, size};
 
   err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), classifyCubesKernel, 3, nullptr, global_work_size,
                                nullptr, 0, nullptr, nullptr);
@@ -573,7 +584,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   clSetKernelArg(constructHPLevelKernel, 0, sizeof(cl_mem), &images[0]);
   clSetKernelArg(constructHPLevelKernel, 1, sizeof(cl_mem), &images[1]);
 
-  size_t global_work_size2[3] = {size / 2, size / 2, size / 2};
+  std::size_t global_work_size2[3] = {size / 2, size / 2, size / 2};
 
   err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size2,
                                nullptr, 0, nullptr, nullptr);
@@ -583,15 +594,15 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
         std::format("OpenCL clEnqueueNDRangeKernel constructHPLevelKernel failed at {} line {}\n", __FILE__, __LINE__));
   }
 
-  size_t previous = size / 2;
+  std::size_t previous = size / 2;
   // Run level 2 to top level
-  for (size_t i = 1; i < static_cast<size_t>(ceil(log2(double(size))) - 1); i++)
+  for (std::size_t i = 1; i < static_cast<std::size_t>(std::ceil(std::log2(double(size))) - 1); i++)
   {
     clSetKernelArg(constructHPLevelKernel, 0, sizeof(cl_mem), &images[i]);
     clSetKernelArg(constructHPLevelKernel, 1, sizeof(cl_mem), &images[i + 1]);
 
     previous /= 2;
-    size_t global_work_size3[3] = {previous, previous, previous};
+    std::size_t global_work_size3[3] = {previous, previous, previous};
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), constructHPLevelKernel, 3, nullptr, global_work_size3,
                                  nullptr, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -605,8 +616,8 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   //===================================================================================================================================
 
   cl_int sum[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-  size_t origin[3] = {0, 0, 0};
-  size_t region[3] = {2, 2, 2};
+  std::size_t origin[3] = {0, 0, 0};
+  std::size_t region[3] = {2, 2, 2};
 
   err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), images[images.size() - 1], CL_FALSE, origin, region, 0, 0,
                            &sum, 0, nullptr, nullptr);
@@ -620,7 +631,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   clReleaseMemObject(outputMemory);
 
   cl_int sum2 = sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5] + sum[6] + sum[7];
-  size_t numberOfTriangles = size_t(sum2);
+  std::size_t numberOfTriangles = std::size_t(sum2);
 
   // get the results and convert them to an OpenGL Vertex buffer object
   //===================================================================================================================================
@@ -637,19 +648,19 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
     cl_int clSum = cl_int(numberOfTriangles);
 
     // Increase the global_work_size so that it is divideable by the workgroup-size
-    size_t workGroupSize = traverseHPKernelWorkGroupSize[powerOfTwo];
-    size_t local_work_size[1] = {size_t(workGroupSize)};
-    size_t globalWorkSize =
+    std::size_t workGroupSize = traverseHPKernelWorkGroupSize[powerOfTwo];
+    std::size_t local_work_size[1] = {std::size_t(workGroupSize)};
+    std::size_t globalWorkSize =
         numberOfTriangles + workGroupSize - (numberOfTriangles - workGroupSize * (numberOfTriangles / workGroupSize));
-    size_t global_work_size4[1] = {size_t(globalWorkSize)};
+    std::size_t global_work_size4[1] = {std::size_t(globalWorkSize)};
 
-    for (size_t j = 0; j < images.size(); j++)
+    for (std::size_t j = 0; j < images.size(); j++)
     {
       clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(j), sizeof(cl_mem), &images[j]);
     }
     clSetKernelArg(traverseHPKernel[powerOfTwo], static_cast<cl_uint>(images.size()), sizeof(cl_mem), &rawData);
 
-    size_t i = images.size() + 1;
+    std::size_t i = images.size() + 1;
     cl_mem VBOBuffer = clCreateBuffer(OpenCL::clContext.value(), CL_MEM_READ_WRITE,
                                       triangleData.size() * sizeof(cl_float4), nullptr, &err);
     if (err != CL_SUCCESS)
@@ -697,7 +708,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   }
 
   double accumulated_surface_area = 0.0;
-  for (size_t i = 0; i < triangleData.size(); i += 9)
+  for (std::size_t i = 0; i < triangleData.size(); i += 9)
   {
     double3 p1 = unitCell * double3(static_cast<double>(triangleData[i].x), static_cast<double>(triangleData[i].y),
                                     static_cast<double>(triangleData[i].z));

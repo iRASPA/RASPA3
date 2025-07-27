@@ -40,7 +40,7 @@ extern "C"
 }
 
 static double getJ(const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms, const std::vector<double>& J,
-                   size_t i, size_t j, ChargeEquilibration::Type type)
+                   std::size_t i, std::size_t j, ChargeEquilibration::Type type)
 {
   double k = 14.4;      // [Angstroms * electron volts]
   double lambda = 1.2;  // Global hardness scaling parameter
@@ -253,14 +253,14 @@ static double getJ(const SimulationBox& simulationBox, std::span<Atom> framework
                 h = std::sqrt(kv.x * kv.x + kv.y * kv.y + kv.z * kv.z);
                 b = 0.5 * h * eta;
 
-                betaStar += 1.0 / (h * h) * exp(-b * b);
+                betaStar += 1.0 / (h * h) * std::exp(-b * b);
               }
             }
           }
         }
         betaStar *= 4.0 * std::numbers::pi / volume;
 
-        return J[i] + lambda * (k / 2.0) * (alphaStar + betaStar + orbital - 2.0 / (eta * sqrt(std::numbers::pi)));
+        return J[i] + lambda * (k / 2.0) * (alphaStar + betaStar + orbital - 2.0 / (eta * std::sqrt(std::numbers::pi)));
       }
       else
       {
@@ -360,19 +360,19 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
 {
   const double k = 14.4;      // [Angstroms * electron volts]
   const double gamma2 = 0.5;  // Global atomic radii scaling parameter
-  std::vector<size_t> hydrogen_list{};
+  std::vector<std::size_t> hydrogen_list{};
 
-  size_t size = frameworkAtoms.size();
+  std::size_t size = frameworkAtoms.size();
   std::vector<double> J(size);
   std::vector<double> X(size);
   std::vector<double> Xc(size);
   std::vector<double> R(size);
   std::vector<double> Q(size);
 
-  for (size_t index = 0; const Atom& atom : frameworkAtoms)
+  for (std::size_t index = 0; const Atom& atom : frameworkAtoms)
   {
-    size_t pseudo_atom_type = static_cast<size_t>(atom.type);
-    size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
+    std::size_t pseudo_atom_type = static_cast<std::size_t>(atom.type);
+    std::size_t element_index = forceField.pseudoAtoms[pseudo_atom_type].atomicNumber;
 
     if (element_index == 1)
     {
@@ -388,19 +388,19 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     ++index;
   }
 
-  for (size_t i : hydrogen_list)
+  for (std::size_t i : hydrogen_list)
   {
     X[i] = 0.5 * (13.598 - 2.0);
     J[i] = 13.598 + 2.0;
   }
 
   std::vector<double> A(size * size);
-  std::mdspan<double, std::dextents<size_t, 2>, std::layout_left> As(A.data(), size, size);
+  std::mdspan<double, std::dextents<std::size_t, 2>, std::layout_left> As(A.data(), size, size);
   std::vector<double> b(size);
   std::vector<double> x0(size);
 
   // First row of A is all ones
-  for (size_t i = 0; i < size; ++i)
+  for (std::size_t i = 0; i < size; ++i)
   {
     As[0, i] = 1.0;
   }
@@ -411,15 +411,15 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
 
   // Rest of elements in b are the differences in electronegativity
   // Use lattice potential. If it hasn't been calculated yet, it will just default to zero.
-  for (size_t i = 1; i != size; ++i)
+  for (std::size_t i = 1; i != size; ++i)
   {
     b[i] = (X[i] - Xc[i]) - (X[i - 1] - Xc[i - 1]);
   }
 
   // Fill in 2nd to Nth rows of A
-  for (size_t i = 1; i != size; ++i)
+  for (std::size_t i = 1; i != size; ++i)
   {
-    for (size_t j = 0; j != size; ++j)
+    for (std::size_t j = 0; j != size; ++j)
     {
       As[i, j] =
           getJ(simulationBox, frameworkAtoms, J, i - 1, j, type) - getJ(simulationBox, frameworkAtoms, J, i, j, type);
@@ -440,7 +440,7 @@ void ChargeEquilibration::computeChargeEquilibration(const ForceField& forceFiel
     throw std::runtime_error(std::format("[charge equilibration]: no solution found'\n"));
   }
 
-  for (size_t i = 0; i < size; ++i)
+  for (std::size_t i = 0; i < size; ++i)
   {
     frameworkAtoms[i].charge = b[i];
   }

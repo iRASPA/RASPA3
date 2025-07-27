@@ -25,11 +25,11 @@ import skintegersymmetryoperationset;
 import skseitzintegermatrix;
 import skpointgroup;
 
-SKSpaceGroupSetting::SKSpaceGroupSetting(size_t number, size_t spaceGroupNumber, size_t order, char ext,
+SKSpaceGroupSetting::SKSpaceGroupSetting(std::size_t number, std::size_t spaceGroupNumber, std::size_t order, char ext,
                                          std::string qualifier, std::string HM, std::string Hall,
                                          bool inversionAtOrigin, int3 inversionCenter, Symmorphicity symmorphicity,
                                          bool standard, Centring centring, std::vector<int3> latticeTranslations,
-                                         size_t pointGroupNumber, std::string schoenflies, std::string generators,
+                                         std::size_t pointGroupNumber, std::string schoenflies, std::string generators,
                                          std::string encoding, SKAsymmetricUnit asymmetricUnit,
                                          SKTransformationMatrix transformationMatrix)
 {
@@ -110,15 +110,15 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
   // assert(_encodedSeitz.size() % 3 == 0);
   // assert(_encodedSeitz.size() > 0);
 
-  bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<size_t>(_pointGroupNumber)].centrosymmetric();
-  size_t m = _encodedSeitz.size() / 3;
+  bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<std::size_t>(_pointGroupNumber)].centrosymmetric();
+  std::size_t m = _encodedSeitz.size() / 3;
 
-  size_t size = centrosymmetric ? 2 * m : m;
+  std::size_t size = centrosymmetric ? 2 * m : m;
   std::vector<int3> translationVectors = _latticeTranslations;
   std::vector<SKSeitzIntegerMatrix> matrices = std::vector<SKSeitzIntegerMatrix>();
   matrices.resize(size * translationVectors.size());
 
-  for (size_t i = 0; i < m; i++)
+  for (std::size_t i = 0; i < m; i++)
   {
     char x = _encodedSeitz[3 * i];
     char y = _encodedSeitz[3 * i + 1];
@@ -129,7 +129,7 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
 
   if (centrosymmetric)
   {
-    for (size_t i = 0; i < m; i++)
+    for (std::size_t i = 0; i < m; i++)
     {
       char x = _encodedSeitz[3 * i];
       char y = _encodedSeitz[3 * i + 1];
@@ -143,9 +143,9 @@ SKIntegerSymmetryOperationSet SKSpaceGroupSetting::fullSeitzMatrices() const
   }
 
   // use the translation vectors on all Seitz matrices
-  for (size_t k = 1; k < translationVectors.size(); k++)
+  for (std::size_t k = 1; k < translationVectors.size(); k++)
   {
-    for (size_t i = 0; i < size; i++)
+    for (std::size_t i = 0; i < size; i++)
     {
       matrices[size * k + i] = matrices[i];
       matrices[size * k + i].translation = matrices[size * k + i].translation + translationVectors[k];
@@ -160,15 +160,15 @@ std::vector<SKSeitzIntegerMatrix> SKSpaceGroupSetting::SeitzMatricesWithoutTrans
   // assert(_encodedSeitz.size() % 3 == 0);
   // assert(_encodedSeitz.size() > 0);
 
-  bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<size_t>(_pointGroupNumber)].centrosymmetric();
-  size_t m = _encodedSeitz.size() / 3;
+  bool centrosymmetric = SKPointGroup::pointGroupData[static_cast<std::size_t>(_pointGroupNumber)].centrosymmetric();
+  std::size_t m = _encodedSeitz.size() / 3;
 
-  size_t size = centrosymmetric ? 2 * m : m;
+  std::size_t size = centrosymmetric ? 2 * m : m;
   std::vector<int3> translationVectors = _latticeTranslations;
   std::vector<SKSeitzIntegerMatrix> matrices = std::vector<SKSeitzIntegerMatrix>();
   matrices.resize(size);
 
-  for (size_t i = 0; i < m; i++)
+  for (std::size_t i = 0; i < m; i++)
   {
     char x = _encodedSeitz[3 * i];
     char y = _encodedSeitz[3 * i + 1];
@@ -179,7 +179,7 @@ std::vector<SKSeitzIntegerMatrix> SKSpaceGroupSetting::SeitzMatricesWithoutTrans
 
   if (centrosymmetric)
   {
-    for (size_t i = 0; i < m; i++)
+    for (std::size_t i = 0; i < m; i++)
     {
       char x = _encodedSeitz[3 * i];
       char y = _encodedSeitz[3 * i + 1];

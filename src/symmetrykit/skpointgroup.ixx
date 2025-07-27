@@ -26,7 +26,7 @@ import int3x3;
 import double3;
 import double3x3;
 
-export enum class Laue : size_t {
+export enum class Laue : std::size_t {
   none = 0,
   laue_1 = 1,
   laue_2m = 2,
@@ -44,12 +44,12 @@ export enum class Laue : size_t {
 export class SKPointGroup
 {
  public:
-  SKPointGroup(SKRotationalOccuranceTable table, size_t number, std::string symbol, std::string schoenflies,
+  SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol, std::string schoenflies,
                Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic);
   SKPointGroup(SKPointSymmetrySet set);
   static std::vector<SKPointGroup> pointGroupData;
 
-  size_t number() { return _number; }
+  std::size_t number() { return _number; }
   Holohedry holohedry() const { return _holohedry; }
   std::string holohedryString() const;
   std::string LaueString() const;
@@ -59,7 +59,7 @@ export class SKPointGroup
   bool enantiomorphic() { return _enantiomorphic; }
 
   Laue laue() const { return _laue; }
-  size_t number() const { return _number; }
+  std::size_t number() const { return _number; }
   Centring computeCentering(SKTransformationMatrix basis);
 
   SKTransformationMatrix computeBasisCorrection(SKTransformationMatrix basis, Centring& centering);
@@ -68,7 +68,7 @@ export class SKPointGroup
 
  private:
   SKRotationalOccuranceTable _table;
-  size_t _number = 0;
+  std::size_t _number = 0;
   std::string _symbol = "";
   std::string _schoenflies = "";
   Holohedry _holohedry = Holohedry::none;
@@ -76,5 +76,5 @@ export class SKPointGroup
   bool _centrosymmetric = false;
   bool _enantiomorphic = false;
 
-  static std::map<Laue, size_t> rotationTypeForBasis;
+  static std::map<Laue, std::size_t> rotationTypeForBasis;
 };

@@ -41,7 +41,7 @@ export namespace Potentials
 [[clang::always_inline]] inline GradientFactor potentialVDWGradient(const ForceField& forcefield, const bool& groupIdA,
                                                                     const bool& groupIdB, const double& scalingA,
                                                                     const double& scalingB, const double& rr,
-                                                                    const size_t& typeA, const size_t& typeB)
+                                                                    const std::size_t& typeA, const std::size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 

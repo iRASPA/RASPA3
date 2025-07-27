@@ -29,8 +29,8 @@ std::string Reaction::printStatus() const
   std::ostringstream stream;
 
   std::string r, p;
-  for (const size_t &i : reactantStoichiometry) r += (r.empty() ? "" : ",") + std::to_string(i);
-  for (const size_t &i : productStoichiometry) p += (p.empty() ? "" : ",") + std::to_string(i);
+  for (const std::size_t &i : reactantStoichiometry) r += (r.empty() ? "" : ",") + std::to_string(i);
+  for (const std::size_t &i : productStoichiometry) p += (p.empty() ? "" : ",") + std::to_string(i);
   std::print(stream, "    reaction [{}]: Stoichiometry reactants {} -> products {}\n", id, r, p);
 
   return stream.str();
@@ -42,8 +42,8 @@ nlohmann::json Reaction::jsonStatus() const
   status["id"] = id;
 
   std::string r, p;
-  for (const size_t &i : reactantStoichiometry) r += (r.empty() ? "" : ",") + std::to_string(i);
-  for (const size_t &i : productStoichiometry) p += (p.empty() ? "" : ",") + std::to_string(i);
+  for (const std::size_t &i : reactantStoichiometry) r += (r.empty() ? "" : ",") + std::to_string(i);
+  for (const std::size_t &i : productStoichiometry) p += (p.empty() ? "" : ",") + std::to_string(i);
   status["reactants"] = r;
   status["products"] = p;
 
@@ -60,7 +60,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
   archive << r.lambda;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -68,7 +68,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > r.versionNumber)
   {
@@ -83,9 +83,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
   archive >> r.lambda;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("Reaction: Error in binary restart\n"));
   }

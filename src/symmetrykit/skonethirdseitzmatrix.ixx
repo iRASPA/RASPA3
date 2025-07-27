@@ -10,6 +10,7 @@ export module skonethirdseitzmatrix;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 export class SKOneThirdSeitzMatrix

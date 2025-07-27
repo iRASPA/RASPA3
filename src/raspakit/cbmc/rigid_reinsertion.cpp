@@ -48,11 +48,11 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule, Molecule &molecule,
+    std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> atoms = components[selectedComponent].copiedAtoms(molecule_atoms);
-  size_t startingBead = components[selectedComponent].startingBead;
+  std::size_t startingBead = components[selectedComponent].startingBead;
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growRigidMultipleFirstBeadReinsertion(
       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
@@ -88,19 +88,19 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t startingBead, [[maybe_unused]] Molecule &molecule, std::vector<Atom> molecule_atoms,
-    const std::vector<Component> &components, size_t selectedComponent, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] Molecule &molecule, std::vector<Atom> molecule_atoms,
+    const std::vector<Component> &components, std::size_t selectedComponent, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
 
   // randomly rotated configurations around the starting bead
-  for (size_t i = 0; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 0; i < numberOfTrialDirections; ++i)
   {
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = components[selectedComponent].rotatePositions(orientation);
     double3 shift = molecule_atoms[startingBead].position - randomlyRotatedAtoms[startingBead].position;
 
-    for (size_t j = 0; j < randomlyRotatedAtoms.size(); ++j)
+    for (std::size_t j = 0; j < randomlyRotatedAtoms.size(); ++j)
     {
       randomlyRotatedAtoms[j].position += shift;
       randomlyRotatedAtoms[j].charge = molecule_atoms[j].charge;
@@ -130,7 +130,7 @@ import interpolation_energy_grid;
                  [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * std::get<2>(v).potentialEnergy(); });
 
-  size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
+  std::size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
   double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                             [](const double &acc, const double &logBoltmannFactor)
@@ -148,10 +148,10 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule,
-    Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, size_t numberOfTrialDirections)
+    double cutOffCoulomb, [[maybe_unused]] std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule,
+    Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections)
 {
-  size_t startingBead = components[selectedComponent].startingBead;
+  std::size_t startingBead = components[selectedComponent].startingBead;
 
   const FirstBeadData firstBeadData = CBMC::retraceRigidMultipleFirstBeadReinsertion(
       random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
@@ -179,13 +179,13 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t startingBead, Molecule &molecule, std::span<Atom> molecule_atoms,
-    size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t startingBead, Molecule &molecule, std::span<Atom> molecule_atoms,
+    std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<std::vector<Atom>> trialPositions = {trialPosition};
 
-  for (size_t i = 1; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 1; i < numberOfTrialDirections; ++i)
   {
     trialPositions.push_back(CBMC::rotateRandomlyAround(random, trialPosition, startingBead));
   };

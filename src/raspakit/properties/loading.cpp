@@ -49,13 +49,13 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     std::print(stream, "Loadings\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (size_t i = 0; i < components.size(); ++i)
+    for (std::size_t i = 0; i < components.size(); ++i)
     {
       const double toMgPerG = 1000.0 * components[i].totalMass / frameworkMass.value();
 
       std::print(stream, "Component {} ({})\n", components[i].componentId, components[i].name);
 
-      for (size_t j = 0; j < bookKeepingLoadings.size(); ++j)
+      for (std::size_t j = 0; j < bookKeepingLoadings.size(); ++j)
       {
         Loadings blockAverage = averagedLoading(j);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", j, blockAverage.numberOfMolecules[i]);
@@ -85,7 +85,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
 
       std::print(stream, "\n");
 
-      for (size_t j = 0; j < bookKeepingLoadings.size(); ++j)
+      for (std::size_t j = 0; j < bookKeepingLoadings.size(); ++j)
       {
         Loadings blockAverage = averagedLoading(j);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", j,
@@ -129,11 +129,11 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
     std::print(stream, "Densities\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (size_t i = 0; i < components.size(); ++i)
+    for (std::size_t i = 0; i < components.size(); ++i)
     {
       std::print(stream, "Component {} ({})\n", components[i].componentId, components[i].name);
 
-      for (size_t j = 0; j < bookKeepingLoadings.size(); ++j)
+      for (std::size_t j = 0; j < bookKeepingLoadings.size(); ++j)
       {
         Loadings blockAverage = averagedLoading(j);
         std::print(stream, "    Block[ {:2d}] {}\n", j, blockAverage.numberOfMolecules[i]);
@@ -167,7 +167,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
   return stream.str();
 }
 
-std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(size_t comp) const
+std::pair<double, double> PropertyLoading::averageLoadingNumberOfMolecules(std::size_t comp) const
 {
   std::pair<Loadings, Loadings> loadingAverage = averageLoading();
   return {loadingAverage.first.numberOfMolecules[comp], loadingAverage.second.numberOfMolecules[comp]};
@@ -184,7 +184,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << l.bookKeepingLoadings;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -192,7 +192,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoading &l)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > l.versionNumber)
   {
@@ -206,9 +206,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLoad
   archive >> l.bookKeepingLoadings;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyLoading: Error in binary restart\n"));
   }

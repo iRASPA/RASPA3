@@ -27,7 +27,7 @@ import forcefield;
 import atom;
 
 void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-                                  size_t number_of_iterations)
+                                  std::size_t number_of_iterations)
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
@@ -36,7 +36,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
 
   double delta_r = 10.0 / static_cast<double>(data.size());
 
-  for (size_t i = 0; i < number_of_iterations; ++i)
+  for (std::size_t i = 0; i < number_of_iterations; ++i)
   {
     double3 sA = double3(random.uniform(), random.uniform(), random.uniform());
     double3 posA = framework.simulationBox.cell * sA;
@@ -44,7 +44,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
     if (!framework.computeLargestNonOverlappingFreeRadius(forceField, posA, well_depth_factor).has_value()) continue;
 
     double largest_radius = std::numeric_limits<double>::lowest();
-    for (size_t j = 0; j < number_of_iterations; ++j)
+    for (std::size_t j = 0; j < number_of_iterations; ++j)
     {
       double3 sB = double3(random.uniform(), random.uniform(), random.uniform());
       double3 posB = framework.simulationBox.cell * sB;
@@ -63,10 +63,10 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
       largest_radius = std::max(largest_radius, radius.value());
     }
 
-    size_t index = static_cast<size_t>(largest_radius / delta_r);
+    std::size_t index = static_cast<std::size_t>(largest_radius / delta_r);
     if (index < data.size())
     {
-      for (size_t k = 0; k <= index; ++k)
+      for (std::size_t k = 0; k <= index; ++k)
       {
         data[k] += 1.0;
       }
@@ -87,7 +87,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
   myfile << "# column 3: PSD\n";
   myfile << "# value at d=0 is related to the void-fraction\n";
 
-  for (size_t i = 0; i < data.size(); ++i)
+  for (std::size_t i = 0; i < data.size(); ++i)
   {
     if (data[i] > 0)
     {

@@ -48,11 +48,11 @@ import mc_moves_probabilities;
 
 std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC_CBMC(
     [[maybe_unused]] RandomNumber& random, System& system,
-    [[maybe_unused]] const std::vector<size_t> reactantStoichiometry,
-    [[maybe_unused]] const std::vector<size_t> productStoichiometry)
+    [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
+    [[maybe_unused]] const std::vector<std::size_t> productStoichiometry)
 {
-  size_t selectedComponent = 0;
-  size_t selectedMolecule = 0;
+  std::size_t selectedComponent = 0;
+  std::size_t selectedMolecule = 0;
 
   double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;

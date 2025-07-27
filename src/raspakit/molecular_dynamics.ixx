@@ -37,7 +37,7 @@ export struct MolecularDynamics
   /**
    * \brief Enumeration for the weighting methods used in the simulation.
    */
-  enum class WeightingMethod : size_t
+  enum class WeightingMethod : std::size_t
   {
     LambdaZero = 0,  ///< Use weighting at lambda = 0.
     AllLambdas = 1   ///< Use weighting across all lambda values.
@@ -46,7 +46,7 @@ export struct MolecularDynamics
   /**
    * \brief Enumeration representing the stages of the simulation.
    */
-  enum class SimulationStage : size_t
+  enum class SimulationStage : std::size_t
   {
     Uninitialized = 0,   ///< The simulation has not been initialized.
     Initialization = 1,  ///< The simulation is in the initialization stage.
@@ -70,23 +70,23 @@ export struct MolecularDynamics
    */
   MolecularDynamics(InputReader &reader) noexcept;
 
-  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
-  size_t numberOfCycles;                ///< Total number of production cycles.
-  size_t numberOfSteps;                 ///< Total number of steps performed.
-  size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
-  size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
-  size_t printEvery;                    ///< Frequency of printing output.
-  size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
-  size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
-  size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.
+  std::size_t numberOfCycles;                ///< Total number of production cycles.
+  std::size_t numberOfSteps;                 ///< Total number of steps performed.
+  std::size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
+  std::size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  std::size_t printEvery;                    ///< Frequency of printing output.
+  std::size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
+  std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
+  std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing Monte Carlo moves.
 
-  size_t currentCycle{0};                                           ///< Current simulation cycle.
+  std::size_t currentCycle{0};                                           ///< Current simulation cycle.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current stage of the simulation.
 
   std::vector<System> systems;         ///< Vector of systems in the simulation.
   RandomNumber random;                 ///< Random number generator.
-  size_t fractionalMoleculeSystem{0};  ///< Index of the system where the fractional molecule is located.
+  std::size_t fractionalMoleculeSystem{0};  ///< Index of the system where the fractional molecule is located.
 
   std::vector<std::ofstream> streams;  ///< Output file streams for each system.
 

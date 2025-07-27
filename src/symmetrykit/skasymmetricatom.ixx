@@ -29,16 +29,16 @@ export class SKAsymmetricAtom
  public:
   SKAsymmetricAtom() : _displayName("C"), _elementIdentifier(6) {}
   SKAsymmetricAtom(const SKAsymmetricAtom& assymetricAtom);
-  SKAsymmetricAtom(std::string displayName, size_t elementIdentifier);
-  SKAsymmetricAtom(std::string displayName, size_t elementIdentifier, double occupancy);
+  SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier);
+  SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier, double occupancy);
 
-  enum class SKAsymmetricAtomType : size_t
+  enum class SKAsymmetricAtomType : std::size_t
   {
     container = 0,
     asymmetric = 1
   };
 
-  enum class Hybridization : size_t
+  enum class Hybridization : std::size_t
   {
     untyped = 0,
     sp_linear = 1,
@@ -50,8 +50,8 @@ export class SKAsymmetricAtom
     octahedral = 7
   };
 
-  size_t asymmetricIndex() { return _asymmetricIndex; }
-  void setAsymmetricIndex(size_t value) { _asymmetricIndex = value; }
+  std::size_t asymmetricIndex() { return _asymmetricIndex; }
+  void setAsymmetricIndex(std::size_t value) { _asymmetricIndex = value; }
 
   std::string displayName() const { return _displayName; }
   void setDisplayName(std::string newValue) { _displayName = newValue; }
@@ -63,8 +63,8 @@ export class SKAsymmetricAtom
   double charge() const { return _charge; }
   void setCharge(double newValue) { _charge = newValue; }
 
-  size_t tag() { return _tag; }
-  void setTag(size_t tag) { _tag = tag; }
+  std::size_t tag() { return _tag; }
+  void setTag(std::size_t tag) { _tag = tag; }
   bool isVisible() { return _isVisible; }
   void toggleVisibility();
   void setVisibility(bool visibility) { _isVisible = visibility; }
@@ -79,16 +79,16 @@ export class SKAsymmetricAtom
 
   std::string uniqueForceFieldName() const { return _uniqueForceFieldName; }
   void setUniqueForceFieldName(std::string newValue) { _uniqueForceFieldName = newValue; }
-  size_t elementIdentifier() const { return _elementIdentifier; }
-  void setElementIdentifier(size_t newValue) { _elementIdentifier = newValue; }
+  std::size_t elementIdentifier() const { return _elementIdentifier; }
+  void setElementIdentifier(std::size_t newValue) { _elementIdentifier = newValue; }
 
   double bondDistanceCriteria() const { return _bondDistanceCriteria; }
   void setBondDistanceCriteria(double bondDistanceCriteria) { _bondDistanceCriteria = bondDistanceCriteria; }
 
   bool3 isFixed() const { return _isFixed; }
   void setIsFixed(bool3 newValue) { _isFixed = newValue; }
-  size_t serialNumber() const { return _serialNumber; }
-  void setSerialNumber(size_t newValue) { _serialNumber = newValue; }
+  std::size_t serialNumber() const { return _serialNumber; }
+  void setSerialNumber(std::size_t newValue) { _serialNumber = newValue; }
   char remotenessIndicator() const { return _remotenessIndicator; }
   void setRemotenessIndicator(char newValue) { _remotenessIndicator = newValue; }
   char branchDesignator() const { return _branchDesignator; }
@@ -99,8 +99,8 @@ export class SKAsymmetricAtom
   void setResidueName(std::string newValue) { _residueName = newValue; }
   char chainIdentifier() const { return _chainIdentifier; }
   void setChainIdentifier(char newValue) { _chainIdentifier = newValue; }
-  size_t residueSequenceNumber() const { return _residueSequenceNumber; }
-  void setResidueSequenceNumber(size_t newValue) { _residueSequenceNumber = newValue; }
+  std::size_t residueSequenceNumber() const { return _residueSequenceNumber; }
+  void setResidueSequenceNumber(std::size_t newValue) { _residueSequenceNumber = newValue; }
   char codeForInsertionOfResidues() const { return _codeForInsertionOfResidues; }
   void setCodeForInsertionOfResidues(char newValue) { _codeForInsertionOfResidues = newValue; }
   double occupancy() const { return _occupancy; }
@@ -109,7 +109,7 @@ export class SKAsymmetricAtom
   void setTemperaturefactor(double newValue) { _temperaturefactor = newValue; }
   std::string segmentIdentifier() const { return _segmentIdentifier; }
   void setSegmentIdentifier(std::string newValue) { _segmentIdentifier = newValue; }
-  size_t asymetricID() const { return _asymetricID; }
+  std::size_t asymetricID() const { return _asymetricID; }
   // void setAsymetricID(int newValue)  {_asymetricID = newValue;}
 
   bool ligandAtom() const { return _ligandAtom; }
@@ -125,20 +125,20 @@ export class SKAsymmetricAtom
   void setCopies(std::vector<std::shared_ptr<SKAtomCopy>> copies) { _copies = copies; }
 
  private:
-  size_t _versionNumber{2};
-  size_t _asymmetricIndex;
+  std::size_t _versionNumber{2};
+  std::size_t _asymmetricIndex;
   std::string _displayName = std::string("Default");
   double3 _position = double3(0, 0, 0);
   double _charge = 0;
 
   std::string _uniqueForceFieldName;
-  size_t _elementIdentifier = 0;
+  std::size_t _elementIdentifier = 0;
   double4 _color = double4(0, 1.0, 0, 1.0);
   double _drawRadius = 1.0;
   double _bondDistanceCriteria = 1.0;
   double2 _potentialParameters = double2(0.0, 0.0);
 
-  size_t _tag = 0;
+  std::size_t _tag = 0;
   [[maybe_unused]] SKAsymmetricAtomType _symmetryType = SKAsymmetricAtomType::asymmetric;
   Hybridization _hybridization = Hybridization::untyped;
 
@@ -147,14 +147,14 @@ export class SKAsymmetricAtom
   bool _isVisible = true;
   bool _isVisibleEnabled = true;
 
-  size_t _serialNumber = 0;
+  std::size_t _serialNumber = 0;
   char _remotenessIndicator = ' ';             // character 'A','B','C','D',...
   char _branchDesignator = ' ';                // character '1','2','3',...
-  size_t _asymetricID = 0;                     // positive integer
+  std::size_t _asymetricID = 0;                     // positive integer
   char _alternateLocationIndicator = ' ';      // character ' ' or 'A','B',...
   std::string _residueName = std::string("");  // empty or 3 characters
   char _chainIdentifier = ' ';                 // empty or 'A','B','C',...
-  size_t _residueSequenceNumber = 0;           // positive integer
+  std::size_t _residueSequenceNumber = 0;           // positive integer
   char _codeForInsertionOfResidues = ' ';      // empty or 'A','B','C',...
   double _occupancy = 1.0;
   double _temperaturefactor = 0.0;
@@ -171,13 +171,13 @@ export class SKAsymmetricAtom
   std::vector<std::shared_ptr<SKAtomCopy>> _copies;
 };
 
-SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier)
+SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier)
     : _displayName(displayName), _elementIdentifier(elementIdentifier)
 {
   _uniqueForceFieldName = PredefinedElements::predefinedElements[elementIdentifier]._chemicalSymbol;
 }
 
-SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, size_t elementIdentifier, double occupancy)
+SKAsymmetricAtom::SKAsymmetricAtom(std::string displayName, std::size_t elementIdentifier, double occupancy)
     : _displayName(displayName), _elementIdentifier(elementIdentifier), _occupancy(occupancy)
 {
   _uniqueForceFieldName = PredefinedElements::predefinedElements[elementIdentifier]._chemicalSymbol;

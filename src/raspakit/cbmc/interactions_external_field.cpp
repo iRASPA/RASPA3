@@ -53,9 +53,9 @@ import threadpool;
 
     for (std::span<Atom>::iterator it1 = atoms.begin(); it1 != atoms.end(); ++it1)
     {
-      [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
-      [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
-      [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
+      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
+      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
       [[maybe_unused]] bool isFractional = static_cast<bool>(it1->isFractional);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;

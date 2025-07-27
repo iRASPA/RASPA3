@@ -41,7 +41,7 @@ inline std::pair<double3, double> pair_sum_double3(const std::pair<double3, doub
 
 export struct PropertyLambdaProbabilityHistogram
 {
-  enum class WangLandauPhase : size_t
+  enum class WangLandauPhase : std::size_t
   {
     Initialize = 0,
     Sample = 1,
@@ -51,7 +51,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   PropertyLambdaProbabilityHistogram() {};
 
-  PropertyLambdaProbabilityHistogram(size_t numberOfBlocks, size_t numberOfSamplePoints)
+  PropertyLambdaProbabilityHistogram(std::size_t numberOfBlocks, std::size_t numberOfSamplePoints)
       : numberOfBlocks(numberOfBlocks),
         numberOfSamplePoints(numberOfSamplePoints),
         jump_bins(numberOfSamplePoints / 2),
@@ -69,12 +69,12 @@ export struct PropertyLambdaProbabilityHistogram
 
   bool operator==(PropertyLambdaProbabilityHistogram const &) const = default;
 
-  uint64_t versionNumber{1};
-  size_t numberOfBlocks;
+  std::uint64_t versionNumber{1};
+  std::size_t numberOfBlocks;
 
-  size_t numberOfSamplePoints;
-  size_t jump_bins;
-  size_t currentBin;
+  std::size_t numberOfSamplePoints;
+  std::size_t jump_bins;
+  std::size_t currentBin;
   double delta;
 
   double WangLandauScalingFactor{1.0};
@@ -93,14 +93,14 @@ export struct PropertyLambdaProbabilityHistogram
   std::vector<std::vector<std::pair<double3, double>>> bookKeepingDUdlambda;
 
   // fractional molecule occupancy
-  size_t occupancyCount{0};
-  size_t occupancyTotal{0};
+  std::size_t occupancyCount{0};
+  std::size_t occupancyTotal{0};
 
   void clear()
   {
     std::fill(histogram.begin(), histogram.end(), 0.0);
 
-    for (size_t i = 0; i < numberOfBlocks; ++i)
+    for (std::size_t i = 0; i < numberOfBlocks; ++i)
     {
       bookKeepingDensity[i] = std::make_pair<double, double>(0.0, 0.0);
       std::fill(bookKeepingLambda[i].begin(), bookKeepingLambda[i].end(), 0.0);
@@ -126,7 +126,7 @@ export struct PropertyLambdaProbabilityHistogram
            static_cast<int>(scale * static_cast<double>(numberOfSamplePoints) * 2.0 * (random.uniform() - 0.5));
   }
 
-  inline void setCurrentBin(size_t index) { currentBin = index; }
+  inline void setCurrentBin(std::size_t index) { currentBin = index; }
 
   inline void updateHistogram() { histogram[currentBin] += 1.0; }
 
@@ -141,7 +141,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   double occupancy() const
   {
-    return static_cast<double>(occupancyCount) / static_cast<double>(std::max(size_t{1}, occupancyTotal));
+    return static_cast<double>(occupancyCount) / static_cast<double>(std::max(std::size_t{1}, occupancyTotal));
   }
 
   void normalize(double normalizationFactor)
@@ -152,7 +152,7 @@ export struct PropertyLambdaProbabilityHistogram
     }
   }
 
-  void sampleHistogram(size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule,
+  void sampleHistogram(std::size_t blockIndex, double density, double dUdlambda, bool containsTheFractionalMolecule,
                        double w)
   {
     if (containsTheFractionalMolecule)
@@ -188,7 +188,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedDensity(size_t blockIndex) const
+  double averagedDensity(std::size_t blockIndex) const
   {
     return bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second;
   }
@@ -196,7 +196,7 @@ export struct PropertyLambdaProbabilityHistogram
   double averagedDensity() const
   {
     std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       summedBlocks.first += bookKeepingDensity[blockIndex].first;
       summedBlocks.second += bookKeepingDensity[blockIndex].second;
@@ -207,18 +207,18 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageDensity() const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedDensity();
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = averagedDensity(blockIndex) - average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -227,7 +227,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedIdealGasChemicalPotential(size_t blockIndex, double beta) const
+  double averagedIdealGasChemicalPotential(std::size_t blockIndex, double beta) const
   {
     return -std::log(1.0 / (bookKeepingDensity[blockIndex].first / bookKeepingDensity[blockIndex].second)) / beta;
   }
@@ -235,7 +235,7 @@ export struct PropertyLambdaProbabilityHistogram
   double averagedIdealGasChemicalPotential(double beta) const
   {
     std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       summedBlocks.first += bookKeepingDensity[blockIndex].first;
       summedBlocks.second += bookKeepingDensity[blockIndex].second;
@@ -246,18 +246,18 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageIdealGasChemicalPotential(double beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = averagedIdealGasChemicalPotential(blockIndex, beta) - average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -266,7 +266,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  std::vector<double> averagedProbabilityHistogram(size_t blockIndex) const
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex) const
   {
     std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingLambda[blockIndex].begin(), bookKeepingLambda[blockIndex].end(), averagedData.begin(),
@@ -277,7 +277,7 @@ export struct PropertyLambdaProbabilityHistogram
   std::vector<double> averagedProbabilityHistogram() const
   {
     std::vector<double> summedBlocks(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
                      summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
@@ -292,15 +292,15 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram() const
   {
-    size_t degreesOfFreedom = numberOfBlocks - 1;
+    std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double> average = averagedProbabilityHistogram();
 
     std::vector<double> sumOfSquares(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex);
-      for (size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
+      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
       {
         double value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] += value * value;
@@ -313,7 +313,7 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double> standardError(numberOfSamplePoints);
     std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double &sigma) { return sigma / sqrt(static_cast<double>(numberOfBlocks)); });
+                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
 
     std::vector<double> confidenceIntervalError(numberOfSamplePoints);
     std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
@@ -324,7 +324,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  std::vector<double> averagedLandauFreeEnergyHistogram(size_t blockIndex, double beta) const
+  std::vector<double> averagedLandauFreeEnergyHistogram(std::size_t blockIndex, double beta) const
   {
     std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingLambda[blockIndex].cbegin(), bookKeepingLambda[blockIndex].cend(), averagedData.begin(),
@@ -336,7 +336,7 @@ export struct PropertyLambdaProbabilityHistogram
   {
     // sum all blocks into one
     std::vector<double> summedBlocks(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
                      summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
@@ -350,15 +350,15 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<std::vector<double>, std::vector<double>> averageLandauFreeEnergyHistogram(double beta) const
   {
-    size_t degreesOfFreedom = numberOfBlocks - 1;
+    std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double> average = averagedLandauFreeEnergyHistogram(beta);
 
     std::vector<double> sumOfSquares(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::vector<double> blockAverage = averagedLandauFreeEnergyHistogram(blockIndex, beta);
-      for (size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
+      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
       {
         double value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] += value * value;
@@ -371,7 +371,7 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double> standardError(numberOfSamplePoints);
     std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double &sigma) { return sigma / sqrt(static_cast<double>(numberOfBlocks)); });
+                   [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
 
     std::vector<double> confidenceIntervalError(numberOfSamplePoints);
     std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
@@ -382,9 +382,9 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedExcessChemicalPotential(size_t blockIndex, double beta) const
+  double averagedExcessChemicalPotential(std::size_t blockIndex, double beta) const
   {
-    size_t lastBin = numberOfSamplePoints - 1;
+    std::size_t lastBin = numberOfSamplePoints - 1;
     double averagedProbabilityFirstValue = bookKeepingLambda[blockIndex][0];
     double averagedProbabilityLastValue = bookKeepingLambda[blockIndex][lastBin];
     return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
@@ -393,13 +393,13 @@ export struct PropertyLambdaProbabilityHistogram
   double averagedExcessChemicalPotential(double beta) const
   {
     std::vector<double> summedBlocks(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingLambda[blockIndex].begin(),
                      summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
     }
 
-    size_t lastBin = numberOfSamplePoints - 1;
+    std::size_t lastBin = numberOfSamplePoints - 1;
     double averagedProbabilityFirstValue = summedBlocks[0];
     double averagedProbabilityLastValue = summedBlocks[lastBin];
     return -std::log(averagedProbabilityLastValue / averagedProbabilityFirstValue) / beta;
@@ -407,18 +407,18 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageExcessChemicalPotential(double beta) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = averagedExcessChemicalPotential(blockIndex, beta) - average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -429,20 +429,20 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageTotalChemicalPotential(double beta, double bias) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias;
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = (averagedExcessChemicalPotential(blockIndex, beta) +
                       averagedIdealGasChemicalPotential(blockIndex, beta) + bias) -
                      average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -451,14 +451,14 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageFugacity(double beta, double bias) const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average =
         std::exp(beta * (averagedExcessChemicalPotential(beta) + averagedIdealGasChemicalPotential(beta) + bias)) /
         beta;
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = std::exp(beta * (averagedExcessChemicalPotential(blockIndex, beta) +
                                       averagedIdealGasChemicalPotential(blockIndex, beta) + bias)) /
@@ -466,8 +466,8 @@ export struct PropertyLambdaProbabilityHistogram
                      average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -476,7 +476,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  std::vector<double3> averagedDUdlambda(size_t blockIndex) const
+  std::vector<double3> averagedDUdlambda(std::size_t blockIndex) const
   {
     std::vector<double3> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingDUdlambda[blockIndex].cbegin(), bookKeepingDUdlambda[blockIndex].cend(),
@@ -488,7 +488,7 @@ export struct PropertyLambdaProbabilityHistogram
   std::vector<double3> averagedDUdlambda() const
   {
     std::vector<std::pair<double3, double>> summedBlocks(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
                      summedBlocks.begin(), pair_sum_double3);
@@ -502,15 +502,15 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<std::vector<double3>, std::vector<double3>> averageDuDlambda() const
   {
-    size_t degreesOfFreedom = numberOfBlocks - 1;
+    std::size_t degreesOfFreedom = numberOfBlocks - 1;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     std::vector<double3> average = averagedDUdlambda();
 
     std::vector<double3> sumOfSquares(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::vector<double3> blockAverage = averagedDUdlambda(blockIndex);
-      for (size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
+      for (std::size_t binIndex = 0; binIndex != numberOfSamplePoints; ++binIndex)
       {
         double3 value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] += value * value;
@@ -523,7 +523,7 @@ export struct PropertyLambdaProbabilityHistogram
 
     std::vector<double3> standardError(numberOfSamplePoints);
     std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                   [&](const double3 &sigma) { return sigma / sqrt(static_cast<double>(numberOfBlocks)); });
+                   [&](const double3 &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
 
     std::vector<double3> confidenceIntervalError(numberOfSamplePoints);
     std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
@@ -534,7 +534,7 @@ export struct PropertyLambdaProbabilityHistogram
 
   //====================================================================================================================
 
-  double averagedExcessChemicalPotentialDUdlambda(size_t blockIndex) const
+  double averagedExcessChemicalPotentialDUdlambda(std::size_t blockIndex) const
   {
     std::vector<double> averagedData(numberOfSamplePoints);
     std::transform(bookKeepingDUdlambda[blockIndex].begin(), bookKeepingDUdlambda[blockIndex].end(),
@@ -544,7 +544,7 @@ export struct PropertyLambdaProbabilityHistogram
     // trapezoidal rule: https://en.wikipedia.org/wiki/Trapezoidal_rule
     // Calculating result
     double res = 0;
-    for (size_t i = 0; i < averagedData.size(); i++)
+    for (std::size_t i = 0; i < averagedData.size(); i++)
     {
       if (i == 0 || i == averagedData.size() - 1)
         res += averagedData[i];
@@ -557,7 +557,7 @@ export struct PropertyLambdaProbabilityHistogram
     return res;
 
     // double sum = 0.0;
-    // for(size_t i = 1; i != averagedData.size(); ++i)
+    // for(std::size_t i = 1; i != averagedData.size(); ++i)
     //{
     //     sum += 0.5 * (averagedData[i] + averagedData[i-1]);
     // }
@@ -567,7 +567,7 @@ export struct PropertyLambdaProbabilityHistogram
   double averagedExcessChemicalPotentialDUdlambda() const
   {
     std::vector<std::pair<double3, double>> summedBlocks(numberOfSamplePoints);
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingDUdlambda[blockIndex].begin(),
                      summedBlocks.begin(), pair_sum_double3);
@@ -579,7 +579,7 @@ export struct PropertyLambdaProbabilityHistogram
                    { return (sample.first.x + sample.first.y + sample.first.z) / std::max(1.0, sample.second); });
 
     double res = 0;
-    for (size_t i = 0; i < averagedData.size(); i++)
+    for (std::size_t i = 0; i < averagedData.size(); i++)
     {
       if (i == 0 || i == averagedData.size() - 1)
         res += averagedData[i];
@@ -591,7 +591,7 @@ export struct PropertyLambdaProbabilityHistogram
     res = res * (delta / 3.0);
     return res;
     // double sum = 0.0;
-    // for(size_t i = 1; i != averagedData.size(); ++i)
+    // for(std::size_t i = 1; i != averagedData.size(); ++i)
     //{
     //     sum += 0.5 * (averagedData[i] + averagedData[i-1]);
     // }
@@ -600,18 +600,18 @@ export struct PropertyLambdaProbabilityHistogram
 
   std::pair<double, double> averageExcessChemicalPotentialDUdlambda() const
   {
-    size_t numberOfSamples = numberOfBlocks;
-    size_t degreesOfFreedom = numberOfSamples - 1;
+    std::size_t numberOfSamples = numberOfBlocks;
+    std::size_t degreesOfFreedom = numberOfSamples - 1;
     double average = averagedExcessChemicalPotentialDUdlambda();
 
     double sumOfSquares = 0.0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       double value = averagedExcessChemicalPotentialDUdlambda(blockIndex) - average;
       sumOfSquares += value * value;
     }
-    double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-    double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+    double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+    double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
     double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
     double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
 
@@ -625,8 +625,8 @@ export struct PropertyLambdaProbabilityHistogram
     double average = averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta);
 
     double sumOfSquares = 0.0;
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
       {
@@ -641,9 +641,9 @@ export struct PropertyLambdaProbabilityHistogram
 
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
@@ -657,8 +657,8 @@ export struct PropertyLambdaProbabilityHistogram
         std::exp(beta * (averagedExcessChemicalPotentialDUdlambda() + averagedIdealGasChemicalPotential(beta))) / beta;
 
     double sumOfSquares = 0.0;
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingDensity[blockIndex].second / bookKeepingDensity[0].second > 0.5)
       {
@@ -673,9 +673,9 @@ export struct PropertyLambdaProbabilityHistogram
     double confidenceIntervalError = 0.0;
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

@@ -75,7 +75,7 @@ export struct Component
   /**
    * \brief Enumeration of component types.
    */
-  enum class Type : size_t
+  enum class Type : std::size_t
   {
     Adsorbate = 0,  ///< Represents an adsorbate component.
     Cation = 1      ///< Represents a cation component.
@@ -84,7 +84,7 @@ export struct Component
   /**
    * \brief Enumeration of growth types for the component.
    */
-  enum class GrowType : size_t
+  enum class GrowType : std::size_t
   {
     Rigid = 0,     ///< Rigid growth type.
     Flexible = 1,  ///< Flexible growth type.
@@ -93,14 +93,14 @@ export struct Component
   /**
    * \brief Enumeration of molecular shapes.
    */
-  enum class Shape : size_t
+  enum class Shape : std::size_t
   {
     NonLinear = 0,  ///< Non-linear molecular shape.
     Linear = 1,     ///< Linear molecular shape.
     Point = 2       ///< Point-particle molecular shape.
   };
 
-  enum class Chirality : size_t
+  enum class Chirality : std::size_t
   {
     NoCharility = 0,  
     S_Chiral = 1,     
@@ -133,9 +133,9 @@ export struct Component
    *
    * \throws std::runtime_error If the component file cannot be read or parsed.
    */
-  Component(Component::Type type, size_t currentComponent, const ForceField &forceField,
-            const std::string &componentName, std::optional<const std::string> fileName, size_t numberOfBlocks,
-            size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
+  Component(Component::Type type, std::size_t currentComponent, const ForceField &forceField,
+            const std::string &componentName, std::optional<const std::string> fileName, std::size_t numberOfBlocks,
+            std::size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
@@ -159,18 +159,18 @@ export struct Component
    *
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
-  Component(size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
-            double w, std::vector<Atom> definedAtoms, size_t numberOfBlocks, size_t numberOfLambdaBins,
+  Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
+            double w, std::vector<Atom> definedAtoms, std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
             const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
 
-  size_t componentId{0};                      ///< Unique identifier for the component.
+  std::size_t componentId{0};                      ///< Unique identifier for the component.
   std::string name{};                         ///< Name of the component.
   std::optional<std::string> filenameData{};  ///< Optional filename containing component data.
   std::string filename{};                     ///< Filename associated with the component.
@@ -178,8 +178,8 @@ export struct Component
   std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
 
   bool rigid{true};                        ///< Flag indicating if the component is rigid.
-  size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
-  size_t rotationalDegreesOfFreedom{};     ///< Number of rotational degrees of freedom.
+  std::size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
+  std::size_t rotationalDegreesOfFreedom{};     ///< Number of rotational degrees of freedom.
 
   double criticalTemperature{0.0};  ///< Critical temperature of the component [K].
   double criticalPressure{0.0};     ///< Critical pressure of the component [Pa].
@@ -198,7 +198,7 @@ export struct Component
   std::optional<double> idealGasEnergy{};            ///< Optional ideal gas energy [J].
 
   double netCharge{0.0};                                ///< Net charge of the component [e].
-  size_t startingBead{0};                               ///< Starting bead index for simulations.
+  std::size_t startingBead{0};                               ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
@@ -206,7 +206,7 @@ export struct Component
   Shape shapeType;                 ///< Shape type of the molecule.
   std::vector<Atom> atoms{};       ///< List of atoms in the component.
 
-  size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
+  std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 
   PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Gibbs-Chebyshev integration.
   PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs integration.
@@ -223,9 +223,9 @@ export struct Component
   double axialDispersionCoefficient{0.0};  ///< Axial dispersion coefficient [m²/s].
   bool isCarrierGas{false};                ///< Flag indicating if the component is a carrier gas.
 
-  size_t columnPressure{0};  ///< Column index for pressure data.
-  size_t columnLoading{1};   ///< Column index for loading data.
-  size_t columnError{2};     ///< Column index for error data.
+  std::size_t columnPressure{0};  ///< Column index for pressure data.
+  std::size_t columnLoading{1};   ///< Column index for loading data.
+  std::size_t columnError{2};     ///< Column index for error data.
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 
@@ -388,7 +388,7 @@ export struct Component
  * \throws std::runtime_error If no valid values are found before encountering a comment or invalid entry.
  */
 template <typename T>
-std::vector<T> parseListOfParameters(const std::string &arguments, size_t lineNumber)
+std::vector<T> parseListOfParameters(const std::string &arguments, std::size_t lineNumber)
 {
   std::vector<T> list{};
 

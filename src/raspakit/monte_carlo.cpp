@@ -90,10 +90,10 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 {
 }
 
-MonteCarlo::MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
-                       size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
-                       size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
-                       size_t numberOfBlocks, bool outputToFiles)
+MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles, std::size_t numberOfEquilibrationCycles,
+                       std::size_t printEvery, std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
+                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
+                       std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(randomSeed),
       numberOfCycles(numberOfCycles),
@@ -110,7 +110,7 @@ MonteCarlo::MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycle
 {
 }
 
-System& MonteCarlo::randomSystem() { return systems[size_t(random.uniform() * static_cast<double>(systems.size()))]; }
+System& MonteCarlo::randomSystem() { return systems[std::size_t(random.uniform() * static_cast<double>(systems.size()))]; }
 
 void MonteCarlo::run()
 {
@@ -241,28 +241,28 @@ void MonteCarlo::createInterpolationGrids()
 
 void MonteCarlo::performCycle()
 {
-  size_t totalNumberOfMolecules{0uz};
-  size_t totalNumberOfComponents{0uz};
-  size_t numberOfStepsPerCycle{0uz};
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
 
   totalNumberOfMolecules = std::transform_reduce(
-      systems.begin(), systems.end(), 0uz, [](const size_t& acc, const size_t& b) { return acc + b; },
+      systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
       [](const System& system) { return system.numberOfMolecules(); });
   totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
 
   numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
-  for (size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
   {
     // move to 'slide' when implemented in llvm
     // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
     // std::ranges::views::slide(s, 2uz);
 
-    std::pair<size_t, size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
+    std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
     System& selectedSystem = systems[selectedSystemPair.first];
     System& selectedSecondSystem = systems[selectedSystemPair.second];
 
-    size_t selectedComponent = selectedSystem.randomComponent(random);
+    std::size_t selectedComponent = selectedSystem.randomComponent(random);
 
     switch (simulationStage)
     {
@@ -821,14 +821,14 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.totalProductionSimulationTime;
   archive << mc.totalSimulationTime;
 
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
 }
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& mc)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > mc.versionNumber)
   {
@@ -863,11 +863,11 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.totalProductionSimulationTime;
   archive >> mc.totalSimulationTime;
 
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

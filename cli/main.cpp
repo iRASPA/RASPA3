@@ -18,6 +18,20 @@
 #endif
 
 #ifndef USE_LEGACY_HEADERS
+#include <locale.h>
+#endif
+
+#ifndef USE_LEGACY_HEADERS
+import std;
+#endif
+
+import archive;
+import threadpool;
+import input_reader;
+import monte_carlo;
+import monte_carlo_transition_matrix;
+
+#ifndef USE_LEGACY_HEADERS
 import std;
 #endif
 
@@ -54,6 +68,6 @@ int main(int argc, char* argv[])
   catch (const std::exception& e)
   {
     std::cerr << e.what();
-    exit(-1);
+    std::exit(-1);
   }
 }

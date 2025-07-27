@@ -39,8 +39,8 @@ static std::string& tolower(std::string& s)
 
 static std::vector<std::string> split(const std::string txt, char ch)
 {
-  size_t pos = txt.find(ch);
-  size_t initialPos = 0;
+  std::size_t pos = txt.find(ch);
+  std::size_t initialPos = 0;
   std::vector<std::string> strs{};
 
   // Decompose statement
@@ -199,7 +199,7 @@ void SKPOSCARParser::startParsing() noexcept(false)
     cartesian = true;
   }
 
-  for (size_t k = 0; k < amountList.size(); k++)
+  for (std::size_t k = 0; k < amountList.size(); k++)
   {
     int numberOfAtoms = std::stoi(amountList[k]);
     std::string chemicalElementString = trim2(elementList[k]);
@@ -219,7 +219,7 @@ void SKPOSCARParser::startParsing() noexcept(false)
       }
 
       atom->setDisplayName(chemicalElementString);
-      if (std::map<std::string, size_t>::iterator index =
+      if (std::map<std::string, std::size_t>::iterator index =
               PredefinedElements::atomicNumberData.find(chemicalElementString);
           index != PredefinedElements::atomicNumberData.end())
       {

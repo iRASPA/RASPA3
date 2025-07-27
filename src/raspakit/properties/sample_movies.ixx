@@ -22,12 +22,12 @@ import forcefield;
 
 export struct SampleMovie
 {
-  SampleMovie(size_t systemId, size_t sampleEvery);
+  SampleMovie(std::size_t systemId, std::size_t sampleEvery);
 
-  void update(const ForceField &forceField, size_t systemId, const SimulationBox simulationBox,
-              const std::span<Atom> atomPositions, size_t currentCycle);
+  void update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
+              const std::span<Atom> atomPositions, std::size_t currentCycle);
 
-  size_t sampleEvery{10};
+  std::size_t sampleEvery{10};
 
   int modelNumber{1};
 };

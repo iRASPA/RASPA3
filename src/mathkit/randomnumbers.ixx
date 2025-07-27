@@ -24,7 +24,7 @@ import simd_quatd;
 
 export struct RandomNumber
 {
-  RandomNumber(std::optional<size_t> s)
+  RandomNumber(std::optional<std::size_t> s)
   {
     std::random_device rd;
     seed = s.has_value() ? s.value() : rd();
@@ -39,8 +39,8 @@ export struct RandomNumber
   }
 
   std::mt19937_64 mt;
-  size_t seed{1400};
-  size_t count{0};
+  std::size_t seed{1400};
+  std::size_t count{0};
   std::uniform_real_distribution<double> uniformDistribution;
   std::normal_distribution<double> normalDistribution;
 
@@ -56,13 +56,13 @@ export struct RandomNumber
     return normalDistribution(mt);
   }
 
-  size_t integer(size_t i, size_t j) { return i + static_cast<size_t>(static_cast<double>(j + 1 - i) * uniform()); }
+  std::size_t integer(std::size_t i, std::size_t j) { return i + static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform()); }
 
-  std::pair<size_t, size_t> randomPairAdjacentIntegers(size_t size)
+  std::pair<std::size_t, std::size_t> randomPairAdjacentIntegers(std::size_t size)
   {
     if (size <= 1) return std::make_pair(0, 0);
-    size_t first = static_cast<size_t>(static_cast<double>(size - 1) * uniform());
-    size_t second = first + 1;
+    std::size_t first = static_cast<std::size_t>(static_cast<double>(size - 1) * uniform());
+    std::size_t second = first + 1;
     if (uniform() < 0.5) std::swap(first, second);
     return std::make_pair(first, second);
   }
@@ -91,9 +91,9 @@ export struct RandomNumber
   simd_quatd randomSimdQuatd();
   simd_quatd smallRandomQuaternion(double angleRange);
 
-  size_t categoricalDistribution(const std::vector<double> &probabilities)
+  std::size_t categoricalDistribution(const std::vector<double> &probabilities)
   {
-    std::discrete_distribution<size_t> d(probabilities.begin(), probabilities.end());
+    std::discrete_distribution<std::size_t> d(probabilities.begin(), probabilities.end());
     return d(mt);
   }
 

@@ -43,7 +43,7 @@ export namespace MC_Moves
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
 void performRandomMove(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                       size_t selectedComponent, size_t& fractionalMoleculeSystem);
+                       std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move during production runs, with statistics tracking.
@@ -60,5 +60,5 @@ void performRandomMove(RandomNumber& random, System& selectedSystem, System& sel
  * \param currentBlock The current block number, used for statistics aggregation.
  */
 void performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                 size_t selectedComponent, size_t& fractionalMoleculeSystem, size_t currentBlock);
+                                 std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem, std::size_t currentBlock);
 };  // namespace MC_Moves

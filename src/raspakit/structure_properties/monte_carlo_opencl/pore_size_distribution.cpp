@@ -36,7 +36,7 @@ import atom;
 void MC_OpenCL_PoreSizeDistribution::run([[maybe_unused]] const ForceField &forceField,
                                          [[maybe_unused]] const Framework &framework,
                                          [[maybe_unused]] double well_depth_factor,
-                                         [[maybe_unused]] size_t number_of_iterations)
+                                         [[maybe_unused]] std::size_t number_of_iterations)
 {
   RandomNumber random{std::nullopt};
 }

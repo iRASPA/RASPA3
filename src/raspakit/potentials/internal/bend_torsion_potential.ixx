@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a bend_torsion potential.
  */
-export const size_t maximumNumberOfBendTorsionParameters{4};
+export const std::size_t maximumNumberOfBendTorsionParameters{4};
 
 /**
  * \brief Enumeration of different bend_torsion types.
  *
  * Specifies the type of bend_torsion potential to be used in simulations.
  */
-export enum class BendTorsionType : size_t { Smoothed = 0, SmoothedThreeCosine = 1, Nicholas = 2,
+export enum class BendTorsionType : std::size_t { Smoothed = 0, SmoothedThreeCosine = 1, Nicholas = 2,
                                              CFF = 3, SmoothedCFF = 4, SmoothedCFF2 = 5, 
                                              SmoothedCFF3 = 6, CVFF = 7 };
 
@@ -50,9 +50,9 @@ export enum class BendTorsionType : size_t { Smoothed = 0, SmoothedThreeCosine =
  */
 export struct BendTorsionPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bend_torsion.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bend_torsion.
   BendTorsionType type;                                   ///< The type of bend_torsion potential.
   std::array<double, maximumNumberOfBendTorsionParameters> parameters;  ///< Parameters associated with the bend_torsion potential.
 
@@ -63,7 +63,7 @@ export struct BendTorsionPotential
    */
   BendTorsionPotential() : identifiers({0, 0, 0, 0}), type(BendTorsionType::Smoothed) {}
 
-  BendTorsionPotential(std::array<size_t, 4> identifiers, BendTorsionType type, std::vector<double> vector_parameters);
+  BendTorsionPotential(std::array<std::size_t, 4> identifiers, BendTorsionType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BendTorsionPotential with specified type and bend_torsion IDs.
@@ -71,7 +71,7 @@ export struct BendTorsionPotential
    * \param type The type of bend_torsion potential.
    * \param identifiers A pair of particle identifiers forming the bend_torsion.
    */
-  BendTorsionPotential(std::array<size_t, 4> identifiers, const BendTorsionType type) : identifiers(identifiers), type(type) {}
+  BendTorsionPotential(std::array<std::size_t, 4> identifiers, const BendTorsionType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(BendTorsionPotential const &) const = default;
 
@@ -89,7 +89,7 @@ export struct BendTorsionPotential
    *
    * A static vector indicating the number of parameters needed for each bend_torsion type.
    */
-  static inline std::array<size_t, 8> numberOfBendTorsionParameters{ 3, 3, 3, 3, 3, 3, 3, 3 };
+  static inline std::array<std::size_t, 8> numberOfBendTorsionParameters{ 3, 3, 3, 3, 3, 3, 3, 3 };
 
 
   /**

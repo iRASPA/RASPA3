@@ -20,8 +20,8 @@ import archive;
 import units;
 import randomnumbers;
 
-Thermostat::Thermostat(double temperature, size_t thermostatChainLength, size_t numberOfYoshidaSuzukiSteps,
-                       double deltaT, size_t translationalDegreesOfFreedom, size_t rotationalDgreesOfFreedom)
+Thermostat::Thermostat(double temperature, std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
+                       double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationalDgreesOfFreedom)
     : temperature(temperature),
       thermostatChainLength(thermostatChainLength),
       numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps),
@@ -88,12 +88,12 @@ void Thermostat::initialize(RandomNumber &random)
   thermostatDegreesOfFreedomTranslation[0] =
       static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB *
       temperature;
-  for (size_t i = 1; i != thermostatChainLength; ++i)
+  for (std::size_t i = 1; i != thermostatChainLength; ++i)
   {
     thermostatDegreesOfFreedomTranslation[i] = Units::KB * temperature;
   }
 
-  for (size_t i = 0; i != thermostatChainLength; ++i)
+  for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
     thermostatMassTranslation[i] =
         static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) *
@@ -101,18 +101,18 @@ void Thermostat::initialize(RandomNumber &random)
   }
 
   thermostatDegreesOfFreedomRotation[0] = static_cast<double>(rotationalDgreesOfFreedom) * Units::KB * temperature;
-  for (size_t i = 1; i != thermostatChainLength; ++i)
+  for (std::size_t i = 1; i != thermostatChainLength; ++i)
   {
     thermostatDegreesOfFreedomRotation[i] = Units::KB * temperature;
   }
 
-  for (size_t i = 0; i != thermostatChainLength; ++i)
+  for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
     thermostatMassRotation[i] =
         static_cast<double>(rotationalDgreesOfFreedom) * timeScaleParameterThermostat * timeScaleParameterThermostat;
   }
 
-  for (size_t i = 0; i != thermostatChainLength; ++i)
+  for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
     thermostatVelocityTranslation[i] =
         random.Gaussian() *
@@ -128,9 +128,9 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
 {
   double AA;
 
-  size_t M = thermostatChainLength;
-  size_t nc = numberOfRespaSteps;
-  size_t nyosh = numberOfYoshidaSuzukiSteps;
+  std::size_t M = thermostatChainLength;
+  std::size_t nc = numberOfRespaSteps;
+  std::size_t nyosh = numberOfYoshidaSuzukiSteps;
 
   double scale_translation = 1.0;
 
@@ -139,36 +139,36 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
     thermostatForceTranslation[0] =
         (2.0 * UKineticTranslation - thermostatDegreesOfFreedomTranslation[0]) / thermostatMassTranslation[0];
 
-    for (size_t i = 0; i < nc; i++)
+    for (std::size_t i = 0; i < nc; i++)
     {
-      for (size_t j = 0; j < nyosh; j++)
+      for (std::size_t j = 0; j < nyosh; j++)
       {
         thermostatVelocityTranslation[M - 1] +=
             thermostatForceTranslation[M - 1] * w[j] * deltaT / (4.0 * static_cast<double>(nc));
 
-        for (size_t k = 0; k < M - 1; k++)
+        for (std::size_t k = 0; k < M - 1; k++)
         {
-          AA = exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[M - k - 1]);
+          AA = std::exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[M - k - 1]);
           thermostatVelocityTranslation[M - k - 2] =
               thermostatVelocityTranslation[M - k - 2] * AA * AA +
               thermostatForceTranslation[M - k - 2] * AA * w[j] * deltaT / (4.0 * static_cast<double>(nc));
         }
 
-        AA = exp(-(w[j] * deltaT / (2.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[0]);
+        AA = std::exp(-(w[j] * deltaT / (2.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[0]);
         scale_translation *= AA;
         thermostatForceTranslation[0] = (scale_translation * scale_translation * 2.0 * UKineticTranslation -
                                          thermostatDegreesOfFreedomTranslation[0]) /
                                         thermostatMassTranslation[0];
 
-        for (size_t k = 0; k < M; k++)
+        for (std::size_t k = 0; k < M; k++)
         {
           thermostatPositionTranslation[k] +=
               thermostatVelocityTranslation[k] * w[j] * deltaT / (2.0 * static_cast<double>(nc));
         }
 
-        for (size_t k = 0; k < M - 1; k++)
+        for (std::size_t k = 0; k < M - 1; k++)
         {
-          AA = exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[k + 1]);
+          AA = std::exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityTranslation[k + 1]);
           thermostatVelocityTranslation[k] =
               thermostatVelocityTranslation[k] * AA * AA +
               thermostatForceTranslation[k] * AA * (w[j] * deltaT / (4.0 * static_cast<double>(nc)));
@@ -191,36 +191,36 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
     thermostatForceRotation[0] =
         (2.0 * UKineticRotation - thermostatDegreesOfFreedomRotation[0]) / thermostatMassRotation[0];
 
-    for (size_t i = 0; i < nc; i++)
+    for (std::size_t i = 0; i < nc; i++)
     {
-      for (size_t j = 0; j < nyosh; j++)
+      for (std::size_t j = 0; j < nyosh; j++)
       {
         thermostatVelocityRotation[M - 1] +=
             thermostatForceRotation[M - 1] * w[j] * deltaT / (4.0 * static_cast<double>(nc));
 
-        for (size_t k = 0; k < M - 1; k++)
+        for (std::size_t k = 0; k < M - 1; k++)
         {
-          AA = exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityRotation[M - k - 1]);
+          AA = std::exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityRotation[M - k - 1]);
           thermostatVelocityRotation[M - k - 2] =
               thermostatVelocityRotation[M - k - 2] * AA * AA +
               thermostatForceRotation[M - k - 2] * AA * w[j] * deltaT / (4.0 * static_cast<double>(nc));
         }
 
-        AA = exp(-(w[j] * deltaT / (2.0 * static_cast<double>(nc))) * thermostatVelocityRotation[0]);
+        AA = std::exp(-(w[j] * deltaT / (2.0 * static_cast<double>(nc))) * thermostatVelocityRotation[0]);
         scale_rotation *= AA;
         thermostatForceRotation[0] =
             (scale_rotation * scale_rotation * 2.0 * UKineticRotation - thermostatDegreesOfFreedomRotation[0]) /
             thermostatMassRotation[0];
 
-        for (size_t k = 0; k < M; k++)
+        for (std::size_t k = 0; k < M; k++)
         {
           thermostatPositionRotation[k] +=
               thermostatVelocityRotation[k] * w[j] * deltaT / (2.0 * static_cast<double>(nc));
         }
 
-        for (size_t k = 0; k < M - 1; k++)
+        for (std::size_t k = 0; k < M - 1; k++)
         {
-          AA = exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityRotation[k + 1]);
+          AA = std::exp(-(w[j] * deltaT / (8.0 * static_cast<double>(nc))) * thermostatVelocityRotation[k + 1]);
           thermostatVelocityRotation[k] =
               thermostatVelocityRotation[k] * AA * AA +
               thermostatForceRotation[k] * AA * (w[j] * deltaT / (4.0 * static_cast<double>(nc)));
@@ -249,7 +249,7 @@ double Thermostat::getEnergy()
               static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB *
                   temperature * thermostatPositionTranslation[0];
 
-    for (size_t i = 1; i < thermostatChainLength; i++)
+    for (std::size_t i = 1; i < thermostatChainLength; i++)
     {
       energy +=
           0.5 * thermostatMassTranslation[i] * thermostatVelocityTranslation[i] * thermostatVelocityTranslation[i] +
@@ -262,7 +262,7 @@ double Thermostat::getEnergy()
     energy += 0.5 * thermostatMassRotation[0] * thermostatVelocityRotation[0] * thermostatVelocityRotation[0] +
               static_cast<double>(rotationalDgreesOfFreedom) * Units::KB * temperature * thermostatPositionRotation[0];
 
-    for (size_t i = 1; i < thermostatChainLength; i++)
+    for (std::size_t i = 1; i < thermostatChainLength; i++)
     {
       energy += 0.5 * thermostatMassRotation[i] * thermostatVelocityRotation[i] * thermostatVelocityRotation[i] +
                 Units::KB * temperature * thermostatPositionRotation[i];
@@ -297,7 +297,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
   archive << t.w;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -305,7 +305,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Thermo
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &t)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > t.versionNumber)
   {
@@ -335,9 +335,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Thermostat &
   archive >> t.w;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("Thermostat: Error in binary restart\n"));
   }

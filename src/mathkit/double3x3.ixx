@@ -147,8 +147,8 @@ export union double3x3
            (cx == rhs.cx) && (cy == rhs.cy) && (cz == rhs.cz);
   }
 
-  inline double3& operator[](size_t i) { return v[i]; }
-  inline const double3& operator[](size_t i) const { return v[i]; }
+  inline double3& operator[](std::size_t i) { return v[i]; }
+  inline const double3& operator[](std::size_t i) const { return v[i]; }
 
   static double3x3 identity();
 
@@ -179,15 +179,15 @@ export union double3x3
   {
     int3x3 w;
 
-    w.m11 = int(rint(this->m11));
-    w.m21 = int(rint(this->m21));
-    w.m31 = int(rint(this->m31));
-    w.m12 = int(rint(this->m12));
-    w.m22 = int(rint(this->m22));
-    w.m32 = int(rint(this->m32));
-    w.m13 = int(rint(this->m13));
-    w.m23 = int(rint(this->m23));
-    w.m33 = int(rint(this->m33));
+    w.m11 = int(std::rint(this->m11));
+    w.m21 = int(std::rint(this->m21));
+    w.m31 = int(std::rint(this->m31));
+    w.m12 = int(std::rint(this->m12));
+    w.m22 = int(std::rint(this->m22));
+    w.m32 = int(std::rint(this->m32));
+    w.m13 = int(std::rint(this->m13));
+    w.m23 = int(std::rint(this->m23));
+    w.m33 = int(std::rint(this->m33));
     return w;
   }
 

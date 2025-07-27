@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a bend potential.
  */
-export const size_t maximumNumberOfBendParameters{4};
+export const std::size_t maximumNumberOfBendParameters{4};
 
 /**
  * \brief Enumeration of different bend types.
  *
  * Specifies the type of bend potential to be used in simulations.
  */
-export enum class BendType : size_t { Rigid = 0, Fixed = 1, Harmonic = 2,
+export enum class BendType : std::size_t { Rigid = 0, Fixed = 1, Harmonic = 2,
                                       CoreShell = 3, Quartic = 4, CFF_Quartic = 5,
                                       HarmonicCosine = 6, Cosine = 7, Tafipolsky = 8, 
                                       MM3 = 9, MM3_inplane = 10};
@@ -51,9 +51,9 @@ export enum class BendType : size_t { Rigid = 0, Fixed = 1, Harmonic = 2,
  */
 export struct BendPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 3> identifiers;                    ///< Identifiers of the two particles forming the bend.
+  std::array<std::size_t, 3> identifiers;                    ///< Identifiers of the two particles forming the bend.
   BendType type;                                             ///< The type of bend potential.
   std::array<double, maximumNumberOfBendParameters> parameters;  ///< Parameters associated with the bend potential.
 
@@ -64,7 +64,7 @@ export struct BendPotential
    */
   BendPotential() : identifiers({0, 0, 0}), type(BendType::Harmonic) {}
 
-  BendPotential(std::array<size_t, 3> identifiers, BendType type, std::vector<double> vector_parameters);
+  BendPotential(std::array<std::size_t, 3> identifiers, BendType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BendPotential with specified type and bend IDs.
@@ -72,7 +72,7 @@ export struct BendPotential
    * \param type The type of bend potential.
    * \param identifiers A pair of particle identifiers forming the bend.
    */
-  BendPotential(std::array<size_t, 3> identifiers, const BendType type) : identifiers(identifiers), type(type) {}
+  BendPotential(std::array<std::size_t, 3> identifiers, const BendType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(BendPotential const &) const = default;
 
@@ -90,7 +90,7 @@ export struct BendPotential
    *
    * A static vector indicating the number of parameters needed for each bend type.
    */
-  static inline std::array<size_t, 11> numberOfBendParameters{1, 2, 2, 4, 4, 2, 3, 3, 1, 2, 2};
+  static inline std::array<std::size_t, 11> numberOfBendParameters{1, 2, 2, 4, 4, 2, 3, 3, 1, 2, 2};
 
 
   /**

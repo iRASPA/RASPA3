@@ -33,6 +33,17 @@ module;
 #endif
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+#endif
+
 module energy_opencl_void_fraction;
 
 #ifndef USE_LEGACY_HEADERS
@@ -178,7 +189,7 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
       pos[i] = {{cl_float(position.x), cl_float(position.y), cl_float(position.z), 0.0f}};
 
       // use 4 x epsilon for a probe epsilon of unity
-      epsilon[i] = cl_float(4.0 * sqrt(currentPotentialParameters.x * probeParameter.x));
+      epsilon[i] = cl_float(4.0 * std::sqrt(currentPotentialParameters.x * probeParameter.x));
 
       // mixing rule for the atom and the probe
       sigma[i] = cl_float(0.5 * (currentPotentialParameters.y + probeParameter.y));

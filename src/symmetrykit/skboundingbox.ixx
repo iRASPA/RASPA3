@@ -37,7 +37,7 @@ export struct SKBoundingBox
   double3 minimum() const { return _minimum; }
   SKBoundingBox adjustForTransformation(double4x4 transformation);
 
-  int64_t _versionNumber{1};
+  std::int64_t _versionNumber{1};
   double3 _minimum = double3(0.0, 0.0, 0.0);
   double3 _maximum = double3(0.0, 0.0, 0.0);
 };

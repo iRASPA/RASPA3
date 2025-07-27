@@ -32,8 +32,8 @@ export struct PropertyRadialDistributionFunction
 {
   PropertyRadialDistributionFunction() {};
 
-  PropertyRadialDistributionFunction(size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins,
-                                     double range, size_t sampleEvery, size_t writeEvery)
+  PropertyRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms, std::size_t numberOfBins,
+                                     double range, std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfPseudoAtoms(numberOfPseudoAtoms),
         numberOfBins(numberOfBins),
@@ -49,30 +49,30 @@ export struct PropertyRadialDistributionFunction
   {
   }
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  std::vector<double> averagedProbabilityHistogram(size_t blockIndex, size_t atomTypeA, size_t atomTypeB) const;
-  std::vector<double> averagedProbabilityHistogram(size_t atomTypeA, size_t atomTypeB) const;
-  std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(size_t atomTypeA,
-                                                                                  size_t atomTypeB) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA, std::size_t atomTypeB) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
+  std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
+                                                                                  std::size_t atomTypeB) const;
 
-  size_t numberOfBlocks;
-  size_t numberOfPseudoAtoms;
-  size_t numberOfPseudoAtomsSymmetricMatrix;
-  size_t numberOfBins;
+  std::size_t numberOfBlocks;
+  std::size_t numberOfPseudoAtoms;
+  std::size_t numberOfPseudoAtomsSymmetricMatrix;
+  std::size_t numberOfBins;
   double range;
   double deltaR;
-  size_t sampleEvery;
-  size_t writeEvery;
+  std::size_t sampleEvery;
+  std::size_t writeEvery;
   std::vector<std::vector<double>> sumProperty;
-  size_t totalNumberOfCounts;
-  std::vector<size_t> numberOfCounts;
-  std::vector<size_t> pairCount;
+  std::size_t totalNumberOfCounts;
+  std::vector<std::size_t> numberOfCounts;
+  std::vector<std::size_t> pairCount;
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-              const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, size_t currentCycle, size_t block);
-  void writeOutput(const ForceField &forceField, size_t systemId, double volume,
-                   std::vector<size_t> &numberOfPseudoAtomsType, size_t currentCycle);
+              const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block);
+  void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
+                   std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyRadialDistributionFunction &temp);

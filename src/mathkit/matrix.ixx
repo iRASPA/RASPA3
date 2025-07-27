@@ -18,22 +18,22 @@ import ringmatrix;
 extern "C"
 {
   // LU decomoposition of a general matrix
-  void dgetrf_(size_t* M, size_t* N, double* A, size_t* lda, int* IPIV, int* INFO);
+  void dgetrf_(std::size_t* M, std::size_t* N, double* A, std::size_t* lda, int* IPIV, int* INFO);
 
   // generate inverse of a matrix given its LU decomposition
-  void dgetri_(size_t* N, double* A, size_t* lda, int* IPIV, double* WORK, size_t* lwork, int* INFO);
+  void dgetri_(std::size_t* N, double* A, std::size_t* lda, int* IPIV, double* WORK, std::size_t* lwork, int* INFO);
 }
 
 export class Matrix
 {
  public:
-  Matrix(size_t rows, size_t columns, double initialValue);
+  Matrix(std::size_t rows, std::size_t columns, double initialValue);
 
-  size_t rows() const { return _rows; }
-  size_t columns() const { return _columns; }
+  std::size_t rows() const { return _rows; }
+  std::size_t columns() const { return _columns; }
 
-  double& operator()(size_t row, size_t col) { return _grid[row * _columns + col]; }
-  double operator()(size_t row, size_t col) const { return _grid[row * _columns + col]; }
+  double& operator()(std::size_t row, std::size_t col) { return _grid[row * _columns + col]; }
+  double operator()(std::size_t row, std::size_t col) const { return _grid[row * _columns + col]; }
 
   friend Matrix operator*(const Matrix& v1, const Matrix& v2);
 
@@ -46,11 +46,11 @@ export class Matrix
   //     arrays.
   inline void inverse()
   {
-    size_t N = _rows;
+    std::size_t N = _rows;
     if (N > 0)
     {
       int* IPIV = new int[N];
-      size_t LWORK = N * N;
+      std::size_t LWORK = N * N;
       double* WORK = new double[LWORK];
       int INFO;
 
@@ -63,20 +63,20 @@ export class Matrix
   }
 
  private:
-  size_t _rows;
-  size_t _columns;
+  std::size_t _rows;
+  std::size_t _columns;
   std::vector<double> _grid;
 };
 
 export inline Matrix operator*(const RingMatrix& a, const Matrix& b)
 {
   Matrix results = Matrix(a.rows(), b.columns(), 0);
-  for (size_t i = 0; i < a.rows(); i++)
+  for (std::size_t i = 0; i < a.rows(); i++)
   {
-    for (size_t j = 0; j < b.columns(); j++)
+    for (std::size_t j = 0; j < b.columns(); j++)
     {
       double v = 0;
-      for (size_t k = 0; k < a.columns(); k++)
+      for (std::size_t k = 0; k < a.columns(); k++)
       {
         v += a(i, k) * b(k, j);
       }
@@ -89,12 +89,12 @@ export inline Matrix operator*(const RingMatrix& a, const Matrix& b)
 export inline Matrix operator*(const Matrix& a, const RingMatrix& b)
 {
   Matrix results = Matrix(a.rows(), b.columns(), 0);
-  for (size_t i = 0; i < a.rows(); i++)
+  for (std::size_t i = 0; i < a.rows(); i++)
   {
-    for (size_t j = 0; j < b.columns(); j++)
+    for (std::size_t j = 0; j < b.columns(); j++)
     {
       double v = 0;
-      for (size_t k = 0; k < a.columns(); k++)
+      for (std::size_t k = 0; k < a.columns(); k++)
       {
         v += a(i, k) * b(k, j);
       }

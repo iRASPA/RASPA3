@@ -35,7 +35,7 @@ RunningEnergy Integrators::velocityVerlet(
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<size_t> numberOfMoleculesPerComponent)
+    const std::vector<std::size_t> numberOfMoleculesPerComponent)
 {
   // Start timing the integration step
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();

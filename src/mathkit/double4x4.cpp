@@ -79,7 +79,7 @@ double4x4 const double4x4::inverse(const double4x4& a)
   const double cell12 = -(a.m12 * d12 - a.m22 * d02 + a.m32 * d01);
 
   const double determinant = a.m11 * cell0 + a.m21 * cell4 + a.m31 * cell8 + a.m41 * cell12;
-  if (fabs(determinant) < 1e-8)
+  if (std::fabs(determinant) < 1e-8)
   {
     std::cout << "Error";
   }
@@ -148,7 +148,7 @@ void double4x4::inverse()
   const double cell12 = -(m12 * d12 - m22 * d02 + m32 * d01);
 
   const double determinant = m11 * cell0 + m21 * cell4 + m31 * cell8 + m41 * cell12;
-  if (fabs(determinant) < 1e-8)
+  if (std::fabs(determinant) < 1e-8)
   {
     std::cout << "Error";
   }

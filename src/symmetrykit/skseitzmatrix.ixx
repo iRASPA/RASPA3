@@ -31,9 +31,9 @@ export struct SKSeitzMatrix
   inline bool operator==(const SKSeitzMatrix& b)
   {
     double3 dr = (this->translation - b.translation);
-    dr.x -= rint(dr.x);
-    dr.y -= rint(dr.y);
-    dr.z -= rint(dr.z);
+    dr.x -= std::rint(dr.x);
+    dr.y -= std::rint(dr.y);
+    dr.z -= std::rint(dr.z);
 
     return (this->rotation == b.rotation) && (dr.length_squared() < 1e-5);
   }

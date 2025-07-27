@@ -44,8 +44,8 @@ export union double3
 
   bool operator==(double3 const& rhs) const { return (x == rhs.x) && (y == rhs.y) && (z == rhs.z); }
 
-  inline double& operator[](size_t i) { return v[i]; }
-  inline const double& operator[](size_t i) const { return v[i]; }
+  inline double& operator[](std::size_t i) { return v[i]; }
+  inline const double& operator[](std::size_t i) const { return v[i]; }
 
   double3 normalized();
   double3 fract() const;
@@ -57,7 +57,7 @@ export union double3
   inline static double3 rint(double3 const& v) { return double3(std::rint(v.x), std::rint(v.y), std::rint(v.z)); }
   inline static double3 fract(double3 const& v)
   {
-    return double3(v.x - floor(v.x), v.y - floor(v.y), v.z - floor(v.z));
+    return double3(v.x - std::floor(v.x), v.y - std::floor(v.y), v.z - std::floor(v.z));
   }
   inline static double dot(const double3& v1, const double3& v2)
   {
@@ -133,11 +133,11 @@ export union double3
 
   struct KeyHash
   {
-    size_t operator()(const double3& k) const
+    std::size_t operator()(const double3& k) const
     {
-      size_t h1 = std::hash<double>()(k.x);
-      size_t h2 = std::hash<double>()(k.y);
-      size_t h3 = std::hash<double>()(k.z);
+      std::size_t h1 = std::hash<double>()(k.x);
+      std::size_t h2 = std::hash<double>()(k.y);
+      std::size_t h3 = std::hash<double>()(k.z);
       return (h1 ^ (h2 << 1)) ^ h3;
     }
   };

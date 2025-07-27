@@ -47,12 +47,12 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling, bool groupId,
-    bool isFractional, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, double scaling, bool groupId,
+    bool isFractional, std::size_t numberOfTrialDirections) noexcept
 {
-  size_t startingBead = components[selectedComponent].startingBead;
+  std::size_t startingBead = components[selectedComponent].startingBead;
   Atom firstBead = components[selectedComponent].atoms[startingBead];
-  firstBead.moleculeId = static_cast<uint32_t>(selectedMolecule);
+  firstBead.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
   firstBead.groupId = groupId;
   firstBead.isFractional = isFractional;
   firstBead.setScaling(scaling);
@@ -77,7 +77,7 @@ import interpolation_energy_grid;
                 {
                   atom.position +=
                       firstBeadData->atom.position - components[selectedComponent].atoms[startingBead].position;
-                  atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
+                  atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
                   atom.groupId = groupId;
                   atom.isFractional = isFractional;
                   atom.setScaling(scaling);
@@ -100,14 +100,14 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t startingBead, std::vector<Atom> molecule, size_t numberOfTrialDirections,
-    size_t selectedMolecule, double scaling, bool groupId, bool isFractional, const std::vector<Component> &components,
-    size_t selectedComponent) noexcept
+    double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule, std::size_t numberOfTrialDirections,
+    std::size_t selectedMolecule, double scaling, bool groupId, bool isFractional, const std::vector<Component> &components,
+    std::size_t selectedComponent) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
 
   // randomly rotated configurations around the starting bead
-  for (size_t i = 0; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 0; i < numberOfTrialDirections; ++i)
   {
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = components[selectedComponent].rotatePositions(orientation);
@@ -116,7 +116,7 @@ import interpolation_energy_grid;
                   [shift, selectedMolecule, scaling, groupId, isFractional](Atom &atom)
                   {
                     atom.position += shift;
-                    atom.moleculeId = static_cast<uint32_t>(selectedMolecule);
+                    atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
                     atom.groupId = groupId;
                     atom.isFractional = isFractional;
                     atom.setScaling(scaling);
@@ -139,7 +139,7 @@ import interpolation_energy_grid;
                  [&](const std::tuple<Molecule, std::vector<Atom>, RunningEnergy> &v)
                  { return -beta * std::get<2>(v).potentialEnergy(); });
 
-  size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
+  std::size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
   double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                             [](const double &acc, const double &logBoltmannFactor)

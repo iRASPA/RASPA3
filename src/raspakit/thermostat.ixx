@@ -50,21 +50,21 @@ export struct Thermostat
    * \param translationalDegreesOfFreedom The number of translational degrees of freedom.
    * \param rotationalDgreesOfFreedom The number of rotational degrees of freedom.
    */
-  Thermostat(double temperature, size_t thermostatChainLength, size_t numberOfYoshidaSuzukiSteps, double deltaT,
-             size_t translationalDegreesOfFreedom, size_t rotationalDgreesOfFreedom);
+  Thermostat(double temperature, std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps, double deltaT,
+             std::size_t translationalDegreesOfFreedom, std::size_t rotationalDgreesOfFreedom);
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double temperature;                         ///< The target temperature for the thermostat.
-  size_t thermostatChainLength;               ///< The length of the thermostat chain.
+  std::size_t thermostatChainLength;               ///< The length of the thermostat chain.
   double timeScaleParameterThermostat{0.15};  ///< Time scale parameter for the thermostat.
-  size_t numberOfRespaSteps{5};               ///< Number of RESPA steps.
-  size_t numberOfYoshidaSuzukiSteps{5};       ///< Number of Yoshida-Suzuki steps for integration.
+  std::size_t numberOfRespaSteps{5};               ///< Number of RESPA steps.
+  std::size_t numberOfYoshidaSuzukiSteps{5};       ///< Number of Yoshida-Suzuki steps for integration.
   double deltaT{};                            ///< The simulation time step.
 
-  size_t translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
-  size_t translationalDegreesOfFreedom;          ///< Number of translational degrees of freedom.
-  size_t rotationalDgreesOfFreedom;              ///< Number of rotational degrees of freedom.
+  std::size_t translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
+  std::size_t translationalDegreesOfFreedom;          ///< Number of translational degrees of freedom.
+  std::size_t rotationalDgreesOfFreedom;              ///< Number of rotational degrees of freedom.
 
   std::vector<double>
       thermostatDegreesOfFreedomTranslation;          ///< Degrees of freedom for the translational thermostat chain.

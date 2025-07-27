@@ -21,7 +21,7 @@ import skstructure;
 export class SKParser
 {
  public:
-  enum class ImportType : int64_t
+  enum class ImportType : std::int64_t
   {
     asSeperateProjects = 0,
     asSingleProject = 1,
@@ -32,7 +32,7 @@ export class SKParser
   virtual void startParsing() noexcept(false) = 0;
   std::vector<std::vector<std::shared_ptr<SKStructure>>> movies();
 
-  std::vector<std::tuple<double3, size_t, double>> firstTestFrame();
+  std::vector<std::tuple<double3, std::size_t, double>> firstTestFrame();
 
  protected:
   double _a, _b, _c;

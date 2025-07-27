@@ -62,7 +62,7 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
       // double maximumValue = *maxValueIterator;
       //
       // bool allBinsAtLeast90PercentOfThisValue = true;
-      // for(size_t i = 0; i < histogram.size(); ++i)
+      // for(std::std::size_t i = 0; i < histogram.size(); ++i)
       //{
       //   if (histogram[i] < 0.9 * maximumValue)
       //   {
@@ -113,7 +113,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   std::ostringstream stream;
 
   double conv = Units::EnergyToKelvin;
-  size_t lastBin = numberOfSamplePoints - 1;
+  std::size_t lastBin = numberOfSamplePoints - 1;
 
   std::print(stream, "    Lambda histogram and bias:\n");
   std::print(stream, "    ---------------------------------------------------------------------------\n");
@@ -121,7 +121,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
 
   double totalHistogram = std::accumulate(histogram_avg.first.begin(), histogram_avg.first.end(), 0.0);
   double normalize = static_cast<double>(numberOfSamplePoints) / totalHistogram;
-  for (size_t i = 0; i < numberOfSamplePoints; ++i)
+  for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
   {
     std::print(stream, "{}{:2d}-{:4f} (lambda) P: {: .5e} +/- {:.5e} bias: {: .5e} [-]\n", "    ", i,
                static_cast<double>(i) * delta, normalize * histogram_avg.first[i], normalize * histogram_avg.second[i],
@@ -152,7 +152,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
   {
     case Units::System::RASPA:
     {
-      for (size_t i = 0; i < numberOfSamplePoints; ++i)
+      for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
       {
         std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,
                    static_cast<double>(i) * delta, conv * freeEnergy.first[i] - minimum_free_energy,
@@ -160,7 +160,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))/Beta\n");
-      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
@@ -209,7 +209,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
     }
     case Units::System::ReducedUnits:
     {
-      for (size_t i = 0; i < numberOfSamplePoints; ++i)
+      for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
       {
         std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [-]\n", "    ", i,
                    static_cast<double>(i) * delta, beta * (freeEnergy.first[i] - minimum_free_energy),
@@ -217,7 +217,7 @@ std::string PropertyLambdaProbabilityHistogram::writeAveragesStatistics(double b
       }
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Excess chemical potential: (ln(P(lambda=1))-ln(P(lambda=0)))\n");
-      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex,
@@ -266,7 +266,7 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
 
     double conv = Units::EnergyToKelvin;
     std::pair<std::vector<double3>, std::vector<double3>> dudlambda = averageDuDlambda();
-    for (size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)
+    for (std::size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)
     {
       std::print(stream, "{}{:2d}-{:5f} (lambda) <dU/dlambda>: {: .6e} +/- {:.6e} [K/-]\n", "    ", binIndex,
                  static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex].x,
@@ -274,7 +274,7 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
     }
     std::print(stream, "    ---------------------------------------------------------------------------\n");
     std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (Simpson's rule)\n");
-    for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = averagedExcessChemicalPotentialDUdlambda(blockIndex);
       std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, Units::EnergyToKelvin * blockAverage);
@@ -336,7 +336,7 @@ void PropertyLambdaProbabilityHistogram::writeBiasingFile(std::filesystem::path 
 
   nlohmann::json json;
   std::vector<double> shifted{biasFactor};
-  for (size_t i = 0; i < shifted.size(); ++i)
+  for (std::size_t i = 0; i < shifted.size(); ++i)
   {
     shifted[i] -= shifted.back();
   }
@@ -365,11 +365,11 @@ void PropertyLambdaProbabilityHistogram::readBiasingFile(std::filesystem::path p
     std::vector<double> lambda_bias_data = parsed_lambda_bias_data["bias"].get<std::vector<double>>();
 
     // resample bias-factor to take different vector size into account
-    for (size_t i = 0; i < biasFactor.size(); ++i)
+    for (std::size_t i = 0; i < biasFactor.size(); ++i)
     {
       double lambda = static_cast<double>(i) * delta;
 
-      size_t index = static_cast<size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1));
+      std::size_t index = static_cast<std::size_t>(lambda * static_cast<double>(lambda_bias_data.size() - 1));
       biasFactor[i] = lambda_bias_data[index];
     }
   }
@@ -380,11 +380,11 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
 {
   nlohmann::json status;
 
-  size_t lastBin = numberOfSamplePoints - 1;
+  std::size_t lastBin = numberOfSamplePoints - 1;
 
   /*
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
-  for (size_t i = 0; i < numberOfSamplePoints; ++i)
+  for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
   {
     std::print(stream, "{}{:2d}-{:4f} (lambda) P: {: .5e} +/- {:.5e} bias: {: .5e} [-]\n", "    ", i,
                static_cast<double>(i) * delta, histogram_avg.first[i], histogram_avg.second[i], biasFactor[i]);
@@ -404,14 +404,14 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonAveragesStatistics(
   /*
   std::print(stream, "    Lambda statistics:\n");
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  for (size_t i = 0; i < numberOfSamplePoints; ++i)
+  for (std::size_t i = 0; i < numberOfSamplePoints; ++i)
   {
     std::print(stream, "{}{:2d}-{:4f} (lambda) Free energy: {:.6e} +/- {:.6e} [K]\n", "    ", i,
                static_cast<double>(i) * delta, conv * freeEnergy.first[i], conv * freeEnergy.second[i]);
   }
   */
   std::vector<double> excessChemicalPotentialBlocks(numberOfBlocks);
-  for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     excessChemicalPotentialBlocks[blockIndex] =
         Units::EnergyToKelvin * averagedExcessChemicalPotential(blockIndex, beta);
@@ -462,7 +462,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonDUdLambdaStatistics(
     std::pair<std::vector<double3>, std::vector<double3>> dudlambda = averageDuDlambda();
 
     /*
-    for (size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)
+    for (std::size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)
     {
       std::print(stream, "{}{:2d}-{:5f} (lambda) <dU/dlambda>: {: .6e} +/- {:.6e} [-]\n", "    ", binIndex,
                  static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex].x,
@@ -470,7 +470,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonDUdLambdaStatistics(
     }
     */
     std::vector<double> excessChemicalPotentialBlocks;
-    for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = averagedExcessChemicalPotentialDUdlambda(blockIndex);
       excessChemicalPotentialBlocks[blockIndex] = Units::EnergyToKelvin * blockAverage;
@@ -550,7 +550,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << p.occupancyTotal;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -582,9 +582,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyLamb
   archive >> p.occupancyTotal;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyLambdaProbabilityHistogram: Error in binary restart\n"));
   }

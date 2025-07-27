@@ -36,7 +36,7 @@ import mdspan;
 
 export struct PropertyDensityGrid
 {
-  enum class Normalization : size_t
+  enum class Normalization : std::size_t
   {
     Max = 0,
     NumberDensity = 1
@@ -44,15 +44,15 @@ export struct PropertyDensityGrid
 
   PropertyDensityGrid() {}
 
-  PropertyDensityGrid(size_t numberOfFrameworks, size_t numberOfComponents, int3 numberOfGridPoints, size_t sampleEvery,
-                      size_t writeEvery, std::vector<size_t> densityGridPseudoAtomsList, Normalization normType)
+  PropertyDensityGrid(std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints, std::size_t sampleEvery,
+                      std::size_t writeEvery, std::vector<std::size_t> densityGridPseudoAtomsList, Normalization normType)
       : numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
         grid_cell(numberOfComponents *
-                  static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
+                  static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         grid_unitcell(numberOfComponents *
-                      static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
-        totalGridSize(static_cast<size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
+                      static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
+        totalGridSize(static_cast<std::size_t>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z)),
         numberOfGridPoints(numberOfGridPoints),
         gridSize(static_cast<double>(numberOfGridPoints.x), static_cast<double>(numberOfGridPoints.y),
                  static_cast<double>(numberOfGridPoints.z)),
@@ -63,26 +63,26 @@ export struct PropertyDensityGrid
   {
   }
 
-  uint64_t versionNumber{2};
+  std::uint64_t versionNumber{2};
 
-  size_t numberOfFrameworks;
-  size_t numberOfComponents;
+  std::size_t numberOfFrameworks;
+  std::size_t numberOfComponents;
   std::vector<double> grid_cell;
   std::vector<double> grid_unitcell;
-  size_t totalGridSize;
+  std::size_t totalGridSize;
   int3 numberOfGridPoints;
   double3 gridSize;
-  size_t sampleEvery;
-  size_t writeEvery;
-  std::vector<size_t> densityGridPseudoAtomsList;
+  std::size_t sampleEvery;
+  std::size_t writeEvery;
+  std::vector<std::size_t> densityGridPseudoAtomsList;
   Normalization normType{Normalization::Max};
-  size_t numberOfSamples{0};
+  std::size_t numberOfSamples{0};
 
   void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,
-              std::span<const Atom> moleculeAtoms, size_t currrentCycle);
-  void writeOutput(size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
+              std::span<const Atom> moleculeAtoms, std::size_t currrentCycle);
+  void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
                    const std::optional<Framework> &frameworkComponents, const std::vector<Component> &components,
-                   size_t currentCycle);
+                   std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyDensityGrid &temp);

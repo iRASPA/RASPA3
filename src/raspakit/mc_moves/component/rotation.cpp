@@ -44,8 +44,8 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, size_t selectedComponent,
-                                                    size_t selectedMolecule, const std::vector<Component> &components,
+std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
+                                                    std::size_t selectedMolecule, const std::vector<Component> &components,
                                                     Molecule &molecule, std::span<Atom> molecule_atoms)
 {
   double3 angle{};
@@ -54,7 +54,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   Component &component = system.components[selectedComponent];
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
-  size_t selectedDirection = size_t(3.0 * random.uniform());
+  std::size_t selectedDirection = std::size_t(3.0 * random.uniform());
 
   double maxAngle = component.mc_moves_statistics.getMaxChange(move, selectedDirection);
 

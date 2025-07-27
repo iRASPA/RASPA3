@@ -30,14 +30,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a Coulomb potential.
  */
-export const size_t maximumNumberOfCoulombParameters{4};
+export const std::size_t maximumNumberOfCoulombParameters{4};
 
 /**
  * \brief Enumeration of different Coulomb types.
  *
  * Specifies the type of Coulomb potential to be used in simulations.
  */
-export enum class CoulombType : size_t { Coulomb = 0 };
+export enum class CoulombType : std::size_t { Coulomb = 0 };
 
 /**
  * \brief Represents a Coulomb potential between two particles.
@@ -47,9 +47,9 @@ export enum class CoulombType : size_t { Coulomb = 0 };
  */
 export struct CoulombPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the Coulomb.
+  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the Coulomb.
   CoulombType type;                                             ///< The type of Coulomb potential.
   std::array<double, maximumNumberOfCoulombParameters> parameters;  ///< Parameters associated with the Coulomb potential.
 
@@ -60,7 +60,7 @@ export struct CoulombPotential
    */
   CoulombPotential() : identifiers({0, 0}), type(CoulombType::Coulomb) {}
 
-  CoulombPotential(std::array<size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters);
+  CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a CoulombPotential with specified type and Coulomb IDs.
@@ -68,7 +68,7 @@ export struct CoulombPotential
    * \param CoulombType The type of Coulomb potential.
    * \param CoulombIds A pair of particle identifiers forming the Coulomb.
    */
-  CoulombPotential(std::array<size_t, 2> identifiers, const CoulombType type) : identifiers(identifiers), type(type) {}
+  CoulombPotential(std::array<std::size_t, 2> identifiers, const CoulombType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(CoulombPotential const &) const = default;
 
@@ -86,7 +86,7 @@ export struct CoulombPotential
    *
    * A static vector indicating the number of parameters needed for each Coulomb type.
    */
-  static inline std::array<size_t, 1> numberOfCoulombParameters{ 1 };
+  static inline std::array<std::size_t, 1> numberOfCoulombParameters{ 1 };
 
 
   /**

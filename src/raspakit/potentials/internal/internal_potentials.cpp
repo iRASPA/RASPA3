@@ -37,19 +37,19 @@ import van_der_waals_potential;
 import coulomb_potential;
 
 // compute the internal interactions that affect laying out the 'beadsToBePlaced'.
-Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteractions(size_t numberOfBeads, 
-    const std::vector<size_t> &beadsAlreadyPlaced, const std::vector<size_t> &beadsToBePlaced)
+Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteractions(std::size_t numberOfBeads, 
+    const std::vector<std::size_t> &beadsAlreadyPlaced, const std::vector<std::size_t> &beadsToBePlaced)
 {
   Potentials::InternalPotentials filteredPotentials{};
   std::vector<bool> boolToBePlaced(numberOfBeads);
   std::vector<bool> boolAlreadyPlacedToBePlaced(numberOfBeads);
 
-  for(size_t const bead : beadsAlreadyPlaced)
+  for(std::size_t const bead : beadsAlreadyPlaced)
   {
     boolAlreadyPlacedToBePlaced[bead] = true;
   }
 
-  for(size_t const bead : beadsToBePlaced)
+  for(std::size_t const bead : beadsToBePlaced)
   {
     boolToBePlaced[bead] = true;
     boolAlreadyPlacedToBePlaced[bead] = true;
@@ -58,8 +58,8 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bonds.reserve(bonds.size());
   for(const BondPotential &bond : bonds)
   {
-    size_t A = bond.identifiers[0];
-    size_t B = bond.identifiers[1];
+    std::size_t A = bond.identifiers[0];
+    std::size_t B = bond.identifiers[1];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
       (boolToBePlaced[A] ||
@@ -72,8 +72,8 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.ureyBradleys.reserve(ureyBradleys.size());
   for(const UreyBradleyPotential &ureyBradley : ureyBradleys)
   {
-    size_t A = ureyBradley.identifiers[0];
-    size_t B = ureyBradley.identifiers[1];
+    std::size_t A = ureyBradley.identifiers[0];
+    std::size_t B = ureyBradley.identifiers[1];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
       (boolToBePlaced[A] ||
@@ -86,9 +86,9 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bends.reserve(bends.size());
   for(const BendPotential &bend : bends)
   {
-    size_t A = bend.identifiers[0];
-    size_t B = bend.identifiers[1];
-    size_t C = bend.identifiers[2];
+    std::size_t A = bend.identifiers[0];
+    std::size_t B = bend.identifiers[1];
+    std::size_t C = bend.identifiers[2];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -103,10 +103,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.inversionBends.reserve(inversionBends.size());
   for(const InversionBendPotential &inversionBend : inversionBends)
   {
-    size_t A = inversionBend.identifiers[0];
-    size_t B = inversionBend.identifiers[1];
-    size_t C = inversionBend.identifiers[2];
-    size_t D = inversionBend.identifiers[3];
+    std::size_t A = inversionBend.identifiers[0];
+    std::size_t B = inversionBend.identifiers[1];
+    std::size_t C = inversionBend.identifiers[2];
+    std::size_t D = inversionBend.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -123,10 +123,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.outOfPlaneBends.reserve(outOfPlaneBends.size());
   for(const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
   {
-    size_t A = outOfPlaneBend.identifiers[0];
-    size_t B = outOfPlaneBend.identifiers[1];
-    size_t C = outOfPlaneBend.identifiers[2];
-    size_t D = outOfPlaneBend.identifiers[3];
+    std::size_t A = outOfPlaneBend.identifiers[0];
+    std::size_t B = outOfPlaneBend.identifiers[1];
+    std::size_t C = outOfPlaneBend.identifiers[2];
+    std::size_t D = outOfPlaneBend.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -143,10 +143,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.torsions.reserve(torsions.size());
   for(const TorsionPotential &torsion : torsions)
   {
-    size_t A = torsion.identifiers[0];
-    size_t B = torsion.identifiers[1];
-    size_t C = torsion.identifiers[2];
-    size_t D = torsion.identifiers[3];
+    std::size_t A = torsion.identifiers[0];
+    std::size_t B = torsion.identifiers[1];
+    std::size_t C = torsion.identifiers[2];
+    std::size_t D = torsion.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -163,10 +163,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.improperTorsions.reserve(improperTorsions.size());
   for(const TorsionPotential &improperTorsion : improperTorsions)
   {
-    size_t A = improperTorsion.identifiers[0];
-    size_t B = improperTorsion.identifiers[1];
-    size_t C = improperTorsion.identifiers[2];
-    size_t D = improperTorsion.identifiers[3];
+    std::size_t A = improperTorsion.identifiers[0];
+    std::size_t B = improperTorsion.identifiers[1];
+    std::size_t C = improperTorsion.identifiers[2];
+    std::size_t D = improperTorsion.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -183,9 +183,9 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bondBonds.reserve(bondBonds.size());
   for(const BondBondPotential &bondBond : bondBonds)
   {
-    size_t A = bondBond.identifiers[0];
-    size_t B = bondBond.identifiers[1];
-    size_t C = bondBond.identifiers[2];
+    std::size_t A = bondBond.identifiers[0];
+    std::size_t B = bondBond.identifiers[1];
+    std::size_t C = bondBond.identifiers[2];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -200,9 +200,9 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bondBends.reserve(bondBends.size());
   for(const BondBendPotential &bondBend : bondBends)
   {
-    size_t A = bondBend.identifiers[0];
-    size_t B = bondBend.identifiers[1];
-    size_t C = bondBend.identifiers[2];
+    std::size_t A = bondBend.identifiers[0];
+    std::size_t B = bondBend.identifiers[1];
+    std::size_t C = bondBend.identifiers[2];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -217,10 +217,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bondTorsions.reserve(bondTorsions.size());
   for(const BondTorsionPotential &bondTorsion : bondTorsions)
   {
-    size_t A = bondTorsion.identifiers[0];
-    size_t B = bondTorsion.identifiers[1];
-    size_t C = bondTorsion.identifiers[2];
-    size_t D = bondTorsion.identifiers[3];
+    std::size_t A = bondTorsion.identifiers[0];
+    std::size_t B = bondTorsion.identifiers[1];
+    std::size_t C = bondTorsion.identifiers[2];
+    std::size_t D = bondTorsion.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -237,10 +237,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bendBends.reserve(bendBends.size());
   for(const BendBendPotential &bendBend : bendBends)
   {
-    size_t A = bendBend.identifiers[0];
-    size_t B = bendBend.identifiers[1];
-    size_t C = bendBend.identifiers[2];
-    size_t D = bendBend.identifiers[3];
+    std::size_t A = bendBend.identifiers[0];
+    std::size_t B = bendBend.identifiers[1];
+    std::size_t C = bendBend.identifiers[2];
+    std::size_t D = bendBend.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -257,10 +257,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.bendTorsions.reserve(bendTorsions.size());
   for(const BendTorsionPotential &bendTorsion : bendTorsions)
   {
-    size_t A = bendTorsion.identifiers[0];
-    size_t B = bendTorsion.identifiers[1];
-    size_t C = bendTorsion.identifiers[2];
-    size_t D = bendTorsion.identifiers[3];
+    std::size_t A = bendTorsion.identifiers[0];
+    std::size_t B = bendTorsion.identifiers[1];
+    std::size_t C = bendTorsion.identifiers[2];
+    std::size_t D = bendTorsion.identifiers[3];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
        boolAlreadyPlacedToBePlaced[C] &&
@@ -277,8 +277,8 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   filteredPotentials.vanDerWaals.reserve(vanDerWaals.size());
   for(const VanDerWaalsPotential &vanDerWaal : vanDerWaals)
   {
-    size_t A = vanDerWaal.identifiers[0];
-    size_t B = vanDerWaal.identifiers[1];
+    std::size_t A = vanDerWaal.identifiers[0];
+    std::size_t B = vanDerWaal.identifiers[1];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
       (boolToBePlaced[A] ||
@@ -289,11 +289,10 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
   }
 
   filteredPotentials.coulombs.reserve(coulombs.size());
-  for(size_t i = 0; i != coulombs.size(); ++i)
   for(const CoulombPotential &coulomb : coulombs)
   {
-    size_t A = coulomb.identifiers[0];
-    size_t B = coulomb.identifiers[1];
+    std::size_t A = coulomb.identifiers[0];
+    std::size_t B = coulomb.identifiers[1];
     if(boolAlreadyPlacedToBePlaced[A] &&
        boolAlreadyPlacedToBePlaced[B] &&
       (boolToBePlaced[A] ||
@@ -326,7 +325,7 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive, 
   archive << p.coulombs;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -334,7 +333,7 @@ Archive<std::ofstream> &Potentials::operator<<(Archive<std::ofstream> &archive, 
 
 Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, Potentials::InternalPotentials &p)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
 
   if (versionNumber > p.versionNumber)
@@ -360,9 +359,9 @@ Archive<std::ifstream> &Potentials::operator>>(Archive<std::ifstream> &archive, 
   archive >> p.coulombs;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("Potentials::InternalPotentials: Error in binary restart\n"));
   }

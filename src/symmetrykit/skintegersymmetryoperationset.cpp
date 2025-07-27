@@ -44,13 +44,13 @@ SKIntegerSymmetryOperationSet SKIntegerSymmetryOperationSet::fullSeitzMatrices()
   return SKIntegerSymmetryOperationSet();
 }
 
-std::vector<std::tuple<double3, size_t, double>> SKIntegerSymmetryOperationSet::symmetrize(
-    double3x3 lattice, std::vector<std::tuple<double3, size_t, double>> atoms, double symmetryPrecision = 1e-2)
+std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::symmetrize(
+    double3x3 lattice, std::vector<std::tuple<double3, std::size_t, double>> atoms, double symmetryPrecision = 1e-2)
 {
-  std::vector<std::tuple<double3, size_t, double>> symmetrizedAtoms{};
+  std::vector<std::tuple<double3, std::size_t, double>> symmetrizedAtoms{};
   symmetrizedAtoms.reserve(atoms.size());
 
-  for (size_t i = 0; i < atoms.size(); i++)
+  for (std::size_t i = 0; i < atoms.size(); i++)
   {
     SKRotationMatrix averageRotation = SKRotationMatrix::zero;
     double3 averageTranslation = double3(0.0, 0.0, 0.0);
@@ -75,7 +75,7 @@ std::vector<std::tuple<double3, size_t, double>> SKIntegerSymmetryOperationSet::
         double3(double(averageTranslation.x), double(averageTranslation.y), double(averageTranslation.z)) /
         double(count);
 
-    std::tuple<double3, size_t, double> symmetrizedAtom = std::make_tuple(
+    std::tuple<double3, std::size_t, double> symmetrizedAtom = std::make_tuple(
         averagedRotation * std::get<0>(atoms[i]) + averagedTranslation, std::get<1>(atoms[i]), std::get<2>(atoms[i]));
     symmetrizedAtoms.push_back(symmetrizedAtom);
   }
@@ -83,30 +83,30 @@ std::vector<std::tuple<double3, size_t, double>> SKIntegerSymmetryOperationSet::
   return symmetrizedAtoms;
 }
 
-std::vector<std::tuple<double3, size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
-    [[maybe_unused]] size_t HallNumber, std::vector<std::tuple<double3, size_t, double>>& atoms, double3x3 lattice,
+std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
+    [[maybe_unused]] std::size_t HallNumber, std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 lattice,
     [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
-  std::vector<std::tuple<double3, size_t, double, std::make_signed_t<std::size_t>>> atomData{};
+  std::vector<std::tuple<double3, std::size_t, double, std::make_signed_t<std::size_t>>> atomData{};
   std::transform(atoms.begin(), atoms.end(), std::back_inserter(atomData),
-                 [](const std::tuple<double3, size_t, double>& atom)
+                 [](const std::tuple<double3, std::size_t, double>& atom)
                  { return std::make_tuple(std::get<0>(atom), std::get<1>(atom), std::get<2>(atom), -1); });
 
   if (atoms.empty()) return {};
 
-  std::vector<std::tuple<double3, size_t, double>> asymmetricAtoms = {};
+  std::vector<std::tuple<double3, std::size_t, double>> asymmetricAtoms = {};
 // std::get<3>(atomData[0]) = 0;
 
 // loop over all atoms
 loop:
-  for (size_t i = 0; i < atoms.size(); i++)
+  for (std::size_t i = 0; i < atoms.size(); i++)
   {
     // skip if already tagged
     if (std::get<3>(atomData[i]) == -1)
     {
       // loop over all current asymmetric atoms, and see if one of the symmetry-copies matches with an asymmetric
       // atom
-      for (size_t j = 0; j < asymmetricAtoms.size(); j++)
+      for (std::size_t j = 0; j < asymmetricAtoms.size(); j++)
       {
         if (std::get<1>(atomData[i]) == std::get<1>(asymmetricAtoms[j]))
         {
@@ -136,7 +136,7 @@ loop:
     }
   }
 
-  for (size_t i = 0; i < asymmetricAtoms.size(); i++)
+  for (std::size_t i = 0; i < asymmetricAtoms.size(); i++)
   {
     bool found = false;
     for (const SKSeitzIntegerMatrix& operation : operations)

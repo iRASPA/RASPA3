@@ -24,7 +24,7 @@ std::string MultiSiteIsotherm::print() const
 {
   std::ostringstream stream;
   std::print(stream, "    number of isotherm sites:  {}\n", numberOfSites);
-  for (size_t i = 0; i < numberOfSites; ++i)
+  for (std::size_t i = 0; i < numberOfSites; ++i)
   {
     std::print(stream, "{}", sites[i].print());
   }
@@ -34,7 +34,7 @@ std::string MultiSiteIsotherm::print() const
 std::string MultiSiteIsotherm::printAsInputFormat() const
 {
   std::ostringstream stream;
-  for (size_t i = 0; i < numberOfSites; ++i)
+  for (std::size_t i = 0; i < numberOfSites; ++i)
   {
     std::print(stream, "{}", sites[i].printAsInputFormat());
   }
@@ -47,7 +47,7 @@ void MultiSiteIsotherm::add(const Isotherm &isotherm)
   sites.push_back(isotherm);
 
   numberOfParameters += isotherm.numberOfParameters;
-  for (size_t i = 0; i < isotherm.numberOfParameters; ++i)
+  for (std::size_t i = 0; i < isotherm.numberOfParameters; ++i)
   {
     parameterIndices.emplace_back(sites.size() - 1, i);
   }
@@ -83,7 +83,7 @@ double MultiSiteIsotherm::inversePressureForPsi(double reduced_grand_potential, 
   // use bisection algorithm
   double s = psiForPressure(p_start);
 
-  size_t nr_steps = 0;
+  std::size_t nr_steps = 0;
   left_bracket = p_start;
   right_bracket = p_start;
 
@@ -158,7 +158,7 @@ double MultiSiteIsotherm::inversePressureForPsi(double reduced_grand_potential, 
 double MultiSiteIsotherm::fitness() const
 {
   const double penaltyCost = 50.0;
-  for (size_t i = 0; i < numberOfSites; ++i)
+  for (std::size_t i = 0; i < numberOfSites; ++i)
   {
     if (sites[i].isUnphysical()) return penaltyCost;
   }
@@ -168,7 +168,7 @@ double MultiSiteIsotherm::fitness() const
 std::string MultiSiteIsotherm::gnuplotFunctionString([[maybe_unused]] char s) const
 {
   std::ostringstream stream;
-  for (size_t i = 0; i < numberOfSites; ++i)
+  for (std::size_t i = 0; i < numberOfSites; ++i)
   {
     // +1 because gnuplot start counting from 1
     stream << sites[i].gnuplotFunctionString(s, siteParameterIndex[i] + 1);

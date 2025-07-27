@@ -41,7 +41,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.intraChargeCharge;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -49,7 +49,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra &e)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > e.versionNumber)
   {
@@ -73,9 +73,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra 
   archive >> e.intraChargeCharge;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("EnergyIntra: Error in binary restart\n"));
   }

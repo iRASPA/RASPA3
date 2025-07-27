@@ -21,31 +21,31 @@ export struct GrowingStatus
   GrowingStatus(const Component& component, const std::vector<bool>& placedBeads)
       : size(component.atoms.size()), placement(size, false), connectivity(size * size, false)
   {
-    // for (size_t index = 0; const bool& bead : placedBeads)
+    // for (std::size_t index = 0; const bool& bead : placedBeads)
     //{
     //     placement[index] = true;
     //     ++index;
     // }
 
-    for (size_t i = 0; i != component.internalPotentials.bonds.size(); ++i)
+    for (std::size_t i = 0; i != component.internalPotentials.bonds.size(); ++i)
     {
       // connectivity[component.bonds[i].first + size * component.bonds[i].second] = true;
       // connectivity[component.bonds[i].second + size * component.bonds[i].first] = true;
     }
 
-    for (size_t i = 0; i != placedBeads.size(); ++i)
+    for (std::size_t i = 0; i != placedBeads.size(); ++i)
     {
-      for (size_t j = 0; j != component.atoms.size(); ++j)
+      for (std::size_t j = 0; j != component.atoms.size(); ++j)
       {
         connectivity[i + size * j] = false;
         connectivity[j + size * i] = false;
       }
     }
 
-    for (size_t i = 0; i != placedBeads.size(); ++i)
+    for (std::size_t i = 0; i != placedBeads.size(); ++i)
     {
-      size_t k = placedBeads[i];
-      for (size_t j = 0; j != component.atoms.size(); ++j)
+      std::size_t k = placedBeads[i];
+      for (std::size_t j = 0; j != component.atoms.size(); ++j)
       {
         if (connectivity[k + size * j])
         {
@@ -55,8 +55,8 @@ export struct GrowingStatus
     }
   }
 
-  size_t size;
+  std::size_t size;
   std::vector<bool> placement;
   std::vector<bool> connectivity;
-  std::vector<std::pair<size_t, size_t>> currentNextBeadPairs{};
+  std::vector<std::pair<std::size_t, std::size_t>> currentNextBeadPairs{};
 };

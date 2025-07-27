@@ -13,10 +13,16 @@ module;
 #include <vector>
 #endif
 
+
+#ifndef USE_LEGACY_HEADERS
+#include <cstdlib>
+#endif
+
 module randomnumbers;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import double3;
@@ -29,12 +35,12 @@ double3x3 RandomNumber::randomRotationMatrix()
   double X0 = uniform();
   double Y1 = 2.0 * std::numbers::pi * uniform();
   double Y2 = 2.0 * std::numbers::pi * uniform();
-  double R1 = sqrt(1.0 - X0);
-  double R2 = sqrt(X0);
-  double U0 = cos(Y2) * R2;
-  double U1 = sin(Y1) * R1;
-  double U2 = cos(Y1) * R1;
-  double U3 = sin(Y2) * R2;
+  double R1 = std::sqrt(1.0 - X0);
+  double R2 = std::sqrt(X0);
+  double U0 = std::cos(Y2) * R2;
+  double U1 = std::sin(Y1) * R1;
+  double U2 = std::cos(Y1) * R1;
+  double U3 = std::sin(Y2) * R2;
   double COEFI = 2.0 * U0 * U0 - 1.0;
   double COEFUU = 2.0;
   double COEFE = 2.0 * U0;
@@ -84,7 +90,7 @@ double3 RandomNumber::randomVectorOnUnitSphere()
     ransq = ran1 * ran1 + ran2 * ran2;
   } while (ransq >= 1.0);
 
-  ranh = 2.0 * sqrt(1.0 - ransq);
+  ranh = 2.0 * std::sqrt(1.0 - ransq);
   return double3(ran1 * ranh, ran2 * ranh, 1.0 - 2.0 * ransq);
 }
 

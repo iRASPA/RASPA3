@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a out_of_plane_bend potential.
  */
-export const size_t maximumNumberOfOutOfPlaneBendParameters{4};
+export const std::size_t maximumNumberOfOutOfPlaneBendParameters{4};
 
 /**
  * \brief Enumeration of different out_of_plane_bend types.
  *
  * Specifies the type of out_of_plane_bend potential to be used in simulations.
  */
-export enum class OutOfPlaneBendType : size_t { Harmonic = 0 };
+export enum class OutOfPlaneBendType : std::size_t { Harmonic = 0 };
 
 /**
  * \brief Represents a out_of_plane_bend potential between two particles.
@@ -48,9 +48,9 @@ export enum class OutOfPlaneBendType : size_t { Harmonic = 0 };
  */
 export struct OutOfPlaneBendPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the out_of_plane_bend.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the out_of_plane_bend.
   OutOfPlaneBendType type;                                   ///< The type of out_of_plane_bend potential.
   std::array<double, maximumNumberOfOutOfPlaneBendParameters> parameters;  ///< Parameters associated with the out_of_plane_bend potential.
 
@@ -61,7 +61,7 @@ export struct OutOfPlaneBendPotential
    */
   OutOfPlaneBendPotential() : identifiers({0, 0, 0, 0}), type(OutOfPlaneBendType::Harmonic) {}
 
-  OutOfPlaneBendPotential(std::array<size_t, 4> identifiers, OutOfPlaneBendType type, std::vector<double> vector_parameters);
+  OutOfPlaneBendPotential(std::array<std::size_t, 4> identifiers, OutOfPlaneBendType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a OutOfPlaneBendPotential with specified type and out_of_plane_bend IDs.
@@ -69,7 +69,7 @@ export struct OutOfPlaneBendPotential
    * \param type The type of out_of_plane_bend potential.
    * \param identifiers A pair of particle identifiers forming the out_of_plane_bend.
    */
-  OutOfPlaneBendPotential(std::array<size_t, 4> identifiers, const OutOfPlaneBendType type) : identifiers(identifiers), type(type) {}
+  OutOfPlaneBendPotential(std::array<std::size_t, 4> identifiers, const OutOfPlaneBendType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(OutOfPlaneBendPotential const &) const = default;
 
@@ -87,7 +87,7 @@ export struct OutOfPlaneBendPotential
    *
    * A static vector indicating the number of parameters needed for each out_of_plane_bend type.
    */
-  static inline std::array<size_t, 1> numberOfOutOfPlaneBendParameters{2};
+  static inline std::array<std::size_t, 1> numberOfOutOfPlaneBendParameters{2};
 
 
   /**

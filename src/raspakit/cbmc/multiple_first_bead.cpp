@@ -37,7 +37,7 @@ import interpolation_energy_grid;
     const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, const Atom& atom, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
 
@@ -56,7 +56,7 @@ import interpolation_energy_grid;
   std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
                  [&](const std::pair<Atom, RunningEnergy>& v) { return -beta * v.second.potentialEnergy(); });
 
-  size_t selected = selectTrialPosition(random, logBoltmannFactors);
+  std::size_t selected = selectTrialPosition(random, logBoltmannFactors);
 
   double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                             [&](const double& acc, const double& logBoltmannFactor)
@@ -73,7 +73,7 @@ import interpolation_energy_grid;
     const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom atom, double scaling, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, const Atom atom, double scaling, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   for (Atom& trialPosition : trialPositions)
@@ -106,7 +106,7 @@ import interpolation_energy_grid;
     const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, const Atom& atom, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPositions(numberOfTrialDirections, atom);
   std::for_each(trialPositions.begin(), trialPositions.end(),
@@ -131,7 +131,7 @@ import interpolation_energy_grid;
   std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
                  [&](const std::pair<Atom, RunningEnergy>& v) { return -beta * v.second.potentialEnergy(); });
 
-  size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
+  std::size_t selected = CBMC::selectTrialPosition(random, logBoltmannFactors);
 
   double RosenbluthWeight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
                                             [&](const double& acc, const double& logBoltmannFactor)
@@ -152,7 +152,7 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, const Atom& atom, double storedR, size_t numberOfTrialDirections)
+    double cutOffCoulomb, const Atom& atom, double storedR, std::size_t numberOfTrialDirections)
 {
   std::vector<Atom> trialPositions({atom});
 

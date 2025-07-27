@@ -35,7 +35,7 @@ export namespace MC_Moves
  *
  * \return An optional RunningEnergy containing the energy difference if the move is accepted; std::nullopt otherwise.
  */
-std::optional<RunningEnergy> reinsertionMove(RandomNumber &random, System &system, size_t selectedComponent,
-                                             size_t selectedMolecule, Molecule &molecule,
+std::optional<RunningEnergy> reinsertionMove(RandomNumber &random, System &system, std::size_t selectedComponent,
+                                             std::size_t selectedMolecule, Molecule &molecule,
                                              std::span<Atom> molecule_atoms);
 }  // namespace MC_Moves

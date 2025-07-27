@@ -13,7 +13,7 @@ module matrix;
 import std;
 #endif
 
-Matrix::Matrix(size_t rows, size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows * columns)
+Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows * columns)
 {
   std::fill(_grid.begin(), _grid.end(), initialValue);
 }
@@ -21,12 +21,12 @@ Matrix::Matrix(size_t rows, size_t columns, double initialValue) : _rows(rows), 
 Matrix operator*(const Matrix& lhs, const Matrix& rhs)
 {
   Matrix results = Matrix(lhs._rows, rhs._columns, 0);
-  for (size_t i = 0; i < lhs._rows; i++)
+  for (std::size_t i = 0; i < lhs._rows; i++)
   {
-    for (size_t j = 0; j < rhs._columns; j++)
+    for (std::size_t j = 0; j < rhs._columns; j++)
     {
       double v = 0;
-      for (size_t k = 0; k < lhs.columns(); k++)
+      for (std::size_t k = 0; k < lhs.columns(); k++)
       {
         v += lhs(i, k) * rhs(k, j);
       }

@@ -29,7 +29,7 @@ import skrotationmatrix;
 import skrotationaloccurancetable;
 import skpointsymmetryset;
 
-SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, size_t number, std::string symbol, std::string schoenflies,
+SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol, std::string schoenflies,
                            Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic)
     : _table(table),
       _number(number),
@@ -313,7 +313,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
     case Laue::laue_m3:
     case Laue::laue_m3m:
     {
-      size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
+      std::size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
 
       // look for all proper rotation matrices of the wanted rotation type
       std::vector<SKRotationMatrix> filteredProperRotations{};
@@ -351,7 +351,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
     case Laue::laue_6m:
     case Laue::laue_6mmm:
     {
-      size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
+      std::size_t rotationalTypeForBasis = rotationTypeForBasis[this->_laue];
 
       // look for all proper rotation matrices of the wanted rotation type
       std::vector<SKRotationMatrix> properRotationMatrices{};
@@ -425,7 +425,7 @@ const std::optional<SKTransformationMatrix> SKPointGroup::constructAxes(
 ///     m-3m                  2                3, 4
 /// Ref: R.W. Grosse-Kunstleve, "Algorithms for deriving crystallographic space-group information", Acta Cryst. A55,
 /// 383-395, 1999
-std::map<Laue, size_t> SKPointGroup::rotationTypeForBasis = {
+std::map<Laue, std::size_t> SKPointGroup::rotationTypeForBasis = {
     std::pair(Laue::laue_1, 0),  std::pair(Laue::laue_2m, 2),   std::pair(Laue::laue_mmm, 2),
     std::pair(Laue::laue_4m, 4), std::pair(Laue::laue_4mmm, 4), std::pair(Laue::laue_3, 3),
     std::pair(Laue::laue_3m, 3), std::pair(Laue::laue_6m, 3),   std::pair(Laue::laue_6mmm, 3),

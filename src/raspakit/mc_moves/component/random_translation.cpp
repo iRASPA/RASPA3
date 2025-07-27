@@ -45,7 +45,7 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &random, System &system,
-                                                             size_t selectedComponent, size_t selectedMolecule,
+                                                             std::size_t selectedComponent, std::size_t selectedMolecule,
                                                              const std::vector<Component> &components,
                                                              Molecule &molecule, std::span<Atom> molecule_atoms)
 {
@@ -55,7 +55,7 @@ std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &rando
   Component &component = system.components[selectedComponent];
 
   // Select a random direction (0: x, 1: y, 2: z)
-  size_t selectedDirection = size_t(3.0 * random.uniform());
+  std::size_t selectedDirection = std::size_t(3.0 * random.uniform());
   // Generate a random displacement along the selected direction
   s[selectedDirection] = random.uniform();
   displacement = system.simulationBox.cell * s;

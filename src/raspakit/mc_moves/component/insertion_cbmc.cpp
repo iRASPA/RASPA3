@@ -49,14 +49,14 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(RandomNumber& random, System& system,
-                                                                             size_t selectedComponent)
+                                                                             std::size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
   MoveTypes move = MoveTypes::SwapCBMC;
   Component& component = system.components[selectedComponent];
 
   // Update move counts statistics for swap insertion move
-  size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   component.mc_moves_statistics.addTrial(move, 0);
 
   // Extract cutoff distances and growth type for the selected component
@@ -147,13 +147,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Calculate the acceptance probability Pacc
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 
-  size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
   double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
   // Check if TMMC is enabled and macrostate limit is not exceeded
   if (system.tmmc.doTMMC)
   {
-    size_t newN = oldN + 1;
+    std::size_t newN = oldN + 1;
     if (newN > system.tmmc.maxMacrostate)
     {
       return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};

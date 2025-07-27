@@ -23,5 +23,5 @@ export struct MC_SurfaceArea
   MC_SurfaceArea() {};
 
   void run(const ForceField &forceField, const Framework &framework, double probe_distance,
-           std::string probe_pseudo_atom, size_t number_of_iterations) const;
+           std::string probe_pseudo_atom, std::size_t number_of_iterations) const;
 };

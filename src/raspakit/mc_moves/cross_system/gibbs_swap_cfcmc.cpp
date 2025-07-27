@@ -46,8 +46,8 @@ import mc_moves_move_types;
 
 // systemA contains the fractional molecule
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CFCMC(
-    RandomNumber& random, System& systemA, System& systemB, size_t selectedComponent,
-    [[maybe_unused]] size_t& fractionalMoleculeSystem)
+    RandomNumber& random, System& systemA, System& systemB, std::size_t selectedComponent,
+    [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
   MoveTypes move = MoveTypes::GibbsSwapCFCMC;
@@ -56,7 +56,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
   PropertyLambdaProbabilityHistogram& lambdaA = componentA.lambdaGC;
   PropertyLambdaProbabilityHistogram& lambdaB = componentB.lambdaGC;
-  size_t oldBin = lambdaA.currentBin;
+  std::size_t oldBin = lambdaA.currentBin;
   double deltaLambda = lambdaA.delta;
   double oldLambda = componentA.lambdaGC.lambdaValue();
 
@@ -76,13 +76,13 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
-    size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
-    size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
     std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalMoleculeB);
 
-    // assert(fractionalMoleculeA.front().groupId == uint8_t{ 1 });
-    // assert(fractionalMoleculeB.front().groupId == uint8_t{ 1 });
+    // assert(fractionalMoleculeA.front().groupId == std::uint8_t{ 1 });
+    // assert(fractionalMoleculeB.front().groupId == std::uint8_t{ 1 });
 
     // make copy of old fractional molecule for reference and restoring
     const std::vector<Atom> oldFractionalMoleculeA(fractionalMoleculeA.begin(), fractionalMoleculeA.end());
@@ -95,7 +95,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
     for (Atom& atom : fractionalMoleculeA)
     {
-      atom.moleculeId = static_cast<uint32_t>(indexFractionalMoleculeA);
+      atom.moleculeId = static_cast<std::uint32_t>(indexFractionalMoleculeA);
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -153,7 +153,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     for (Atom& atom : newMolecule)
     {
       atom.setScalingToInteger();
-      atom.moleculeId = static_cast<uint32_t>(systemA.numberOfMoleculesPerComponent[selectedComponent]);
+      atom.moleculeId = static_cast<std::uint32_t>(systemA.numberOfMoleculesPerComponent[selectedComponent]);
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -211,7 +211,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // (at the same lambda)
     //================================================================================================================
 
-    size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
+    std::size_t indexSelectedIntegerMoleculeB = systemB.randomIntegerMoleculeOfComponent(random, selectedComponent);
     std::span<Atom> selectedIntegerMoleculeB = systemB.spanOfMolecule(selectedComponent, indexSelectedIntegerMoleculeB);
 
     // make copy of selected molecule for reference and restoring
@@ -221,7 +221,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     for (Atom& atom : selectedIntegerMoleculeB)
     {
       atom.setScalingFullyOff();
-      atom.groupId = uint8_t{0};
+      atom.groupId = std::uint8_t{0};
     }
 
     time_begin = std::chrono::system_clock::now();
@@ -280,15 +280,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
     for (Atom& atom : fractionalMoleculeB)
     {
-      atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
+      atom.moleculeId = static_cast<std::uint16_t>(indexFractionalMoleculeB);
       atom.setScaling(oldLambda);
-      atom.groupId = uint8_t{1};
+      atom.groupId = std::uint8_t{1};
     }
 
     for (Atom& atom : selectedIntegerMoleculeB)
     {
       atom.setScalingFullyOff();
-      atom.groupId = uint8_t{0};
+      atom.groupId = std::uint8_t{0};
       atom.position = systemA.simulationBox.randomPosition(random);
     }
 
@@ -377,7 +377,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldFractionalMoleculeB.begin(), oldFractionalMoleculeB.end(), fractionalMoleculeA.begin());
       for (Atom& atom : fractionalMoleculeA)
       {
-        atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeA);
+        atom.moleculeId = static_cast<std::uint16_t>(indexFractionalMoleculeA);
       }
 
       // make old fractional molecule integer
@@ -404,9 +404,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::copy(oldSelectedIntegerMoleculeB.begin(), oldSelectedIntegerMoleculeB.end(), fractionalMoleculeB.begin());
       for (Atom& atom : fractionalMoleculeB)
       {
-        atom.moleculeId = static_cast<uint16_t>(indexFractionalMoleculeB);
+        atom.moleculeId = static_cast<std::uint16_t>(indexFractionalMoleculeB);
         atom.setScaling(oldLambda);
-        atom.groupId = uint8_t{1};
+        atom.groupId = std::uint8_t{1};
       }
 
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
@@ -427,8 +427,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
     componentA.mc_moves_statistics.addTrial(move, 1);
 
-    size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
-    size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::size_t indexFractionalMoleculeB = systemB.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
     std::span<Atom> fractionalMoleculeB = systemB.spanOfMolecule(selectedComponent, indexFractionalMoleculeB);
 
@@ -568,7 +568,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     // apply acceptance/rejection rule
     if (random.uniform() <
         preFactor *
-            exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
+            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 
@@ -600,10 +600,10 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     if (selectedNewBin < 0) return std::nullopt;
     if (selectedNewBin >= std::make_signed_t<std::size_t>(lambdaA.numberOfSamplePoints)) return std::nullopt;
 
-    size_t newBin = static_cast<size_t>(selectedNewBin);
+    std::size_t newBin = static_cast<std::size_t>(selectedNewBin);
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
-    size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+    std::size_t indexFractionalMoleculeA = systemA.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
     std::span<Atom> fractionalMoleculeA = systemA.spanOfMolecule(selectedComponent, indexFractionalMoleculeA);
 
     std::vector<Atom> trialPositions(fractionalMoleculeA.begin(), fractionalMoleculeA.end());

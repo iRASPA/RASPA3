@@ -45,8 +45,8 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, size_t selectedComponent,
-                                                       size_t selectedMolecule,
+std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
+                                                       std::size_t selectedMolecule,
                                                        const std::vector<Component> &components, Molecule &molecule,
                                                        std::span<Atom> molecule_atoms)
 {
@@ -56,7 +56,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   Component &component = system.components[selectedComponent];
 
   // Randomly select a direction (0 for x, 1 for y, 2 for z)
-  size_t selectedDirection = size_t(3.0 * random.uniform());
+  std::size_t selectedDirection = std::size_t(3.0 * random.uniform());
 
   // Get the maximum displacement allowed for the selected component
   double maxDisplacement = component.mc_moves_statistics.getMaxChange(move, selectedDirection);

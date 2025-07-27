@@ -30,14 +30,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a vanDerWaals potential.
  */
-export const size_t maximumNumberOfVanDerWaalsParameters{4};
+export const std::size_t maximumNumberOfVanDerWaalsParameters{4};
 
 /**
  * \brief Enumeration of different vanDerWaals types.
  *
  * Specifies the type of vanDerWaals potential to be used in simulations.
  */
-export enum class VanDerWaalsType : size_t { LennardJones = 0 };
+export enum class VanDerWaalsType : std::size_t { LennardJones = 0 };
 
 /**
  * \brief Represents a vanDerWaals potential between two particles.
@@ -47,9 +47,9 @@ export enum class VanDerWaalsType : size_t { LennardJones = 0 };
  */
 export struct VanDerWaalsPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the vanDerWaals.
+  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the vanDerWaals.
   VanDerWaalsType type;                                             ///< The type of vanDerWaals potential.
   std::array<double, maximumNumberOfVanDerWaalsParameters> parameters;  ///< Parameters associated with the vanDerWaals potential.
 
@@ -60,7 +60,7 @@ export struct VanDerWaalsPotential
    */
   VanDerWaalsPotential() : identifiers({0, 0}), type(VanDerWaalsType::LennardJones) {}
 
-  VanDerWaalsPotential(std::array<size_t, 2> identifiers, VanDerWaalsType type, std::vector<double> vector_parameters);
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a vanDerWaalsPotential with specified type and vanDerWaals IDs.
@@ -68,7 +68,7 @@ export struct VanDerWaalsPotential
    * \param type The type of vanDerWaals potential.
    * \param identifiers A pair of particle identifiers forming the vanDerWaals.
    */
-  VanDerWaalsPotential(std::array<size_t, 2> identifiers, const VanDerWaalsType type) : identifiers(identifiers), type(type) {}
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, const VanDerWaalsType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(VanDerWaalsPotential const &) const = default;
 
@@ -86,7 +86,7 @@ export struct VanDerWaalsPotential
    *
    * A static vector indicating the number of parameters needed for each vanDerWaals type.
    */
-  static inline std::array<size_t, 2> numberOfVanDerWaalsParameters{ 2 };
+  static inline std::array<std::size_t, 2> numberOfVanDerWaalsParameters{ 2 };
 
 
   /**

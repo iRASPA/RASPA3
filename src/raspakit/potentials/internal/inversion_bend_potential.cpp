@@ -27,10 +27,10 @@ import archive;
 import randomnumbers;
 import double3;
 
-InversionBendPotential::InversionBendPotential(std::array<size_t, 4> identifiers, InversionBendType type, std::vector<double> vector_parameters) :
+InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identifiers, InversionBendType type, std::vector<double> vector_parameters) :
       identifiers(identifiers), type(type)
 {
-  for(size_t i = 0; i < std::min(parameters.size(), maximumNumberOfInversionBendParameters); ++i)
+  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfInversionBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -229,7 +229,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Invers
   archive << b.parameters;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -237,7 +237,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Invers
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InversionBendPotential &b)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > b.versionNumber)
   {
@@ -251,9 +251,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InversionBen
   archive >> b.parameters;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("InversionBendPotential: Error in binary restart\n"));
   }

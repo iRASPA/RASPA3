@@ -33,7 +33,7 @@ export namespace Potentials
 {
   struct InternalPotentials
   {
-    uint64_t versionNumber{1};  ///< Version number for serialization.
+    std::uint64_t versionNumber{1};  ///< Version number for serialization.
  
     std::vector<ChiralCenter> chiralCenters{};                ///< List of chiral centers in the component.
     std::vector<BondPotential> bonds{};                       ///< List of bond potentials.
@@ -51,8 +51,8 @@ export namespace Potentials
     std::vector<VanDerWaalsPotential> vanDerWaals{};          ///< List of vanDerWaals potentials.
     std::vector<CoulombPotential> coulombs{};                 ///< List of Coulomb potentials.
 
-    Potentials::InternalPotentials filteredInteractions(size_t numberOfBeads, 
-        const std::vector<size_t> &beadsAlreadyPlaced, const std::vector<size_t> &beadsToBePlaced);
+    Potentials::InternalPotentials filteredInteractions(std::size_t numberOfBeads, 
+        const std::vector<std::size_t> &beadsAlreadyPlaced, const std::vector<std::size_t> &beadsToBePlaced);
   
     friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::InternalPotentials& p);
     friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::InternalPotentials& p);

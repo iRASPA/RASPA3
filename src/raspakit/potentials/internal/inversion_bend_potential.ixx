@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a inversion_bend potential.
  */
-export const size_t maximumNumberOfInversionBendParameters{4};
+export const std::size_t maximumNumberOfInversionBendParameters{4};
 
 /**
  * \brief Enumeration of different inversion_bend types.
  *
  * Specifies the type of inversion_bend potential to be used in simulations.
  */
-export enum class InversionBendType : size_t { Harmonic = 0, HarmonicCosine = 1, Planar = 2,
+export enum class InversionBendType : std::size_t { Harmonic = 0, HarmonicCosine = 1, Planar = 2,
                                                Harmonic2 = 3, HarmonicCosine2 = 4, Planar2 = 5,
                                                MM3 = 6 };
 
@@ -50,9 +50,9 @@ export enum class InversionBendType : size_t { Harmonic = 0, HarmonicCosine = 1,
  */
 export struct InversionBendPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the inversion_bend.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the inversion_bend.
   InversionBendType type;                                   ///< The type of inversion_bend potential.
   std::array<double, maximumNumberOfInversionBendParameters> parameters;  ///< Parameters associated with the inversion_bend potential.
 
@@ -63,7 +63,7 @@ export struct InversionBendPotential
    */
   InversionBendPotential() : identifiers({0, 0, 0, 0}), type(InversionBendType::Harmonic) {}
 
-  InversionBendPotential(std::array<size_t, 4> identifiers, InversionBendType type, std::vector<double> vector_parameters);
+  InversionBendPotential(std::array<std::size_t, 4> identifiers, InversionBendType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a InversionBendPotential with specified type and inversion_bend IDs.
@@ -71,7 +71,7 @@ export struct InversionBendPotential
    * \param type The type of inversion_bend potential.
    * \param identifiers A pair of particle identifiers forming the inversion_bend.
    */
-  InversionBendPotential(std::array<size_t, 4> identifiers, const InversionBendType type) : identifiers(identifiers), type(type) {}
+  InversionBendPotential(std::array<std::size_t, 4> identifiers, const InversionBendType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(InversionBendPotential const &) const = default;
 
@@ -89,7 +89,7 @@ export struct InversionBendPotential
    *
    * A static vector indicating the number of parameters needed for each inversion_bend type.
    */
-  static inline std::array<size_t, 7> numberOfInversionBendParameters{ 2, 2, 1, 2, 2, 1, 2};
+  static inline std::array<std::size_t, 7> numberOfInversionBendParameters{ 2, 2, 1, 2, 2, 1, 2};
 
 
   /**

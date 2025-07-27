@@ -40,8 +40,8 @@ export struct PropertyEnergy
 {
   PropertyEnergy() {};
 
-  PropertyEnergy(size_t numberOfBlocks, size_t numberOfExternalFields, size_t numberOfFrameworks,
-                 size_t numberOfComponents)
+  PropertyEnergy(std::size_t numberOfBlocks, std::size_t numberOfExternalFields, std::size_t numberOfFrameworks,
+                 std::size_t numberOfComponents)
       : numberOfBlocks(numberOfBlocks),
         numberOfComponents(numberOfComponents),
         bookKeepingEnergyStatus(std::vector<std::pair<EnergyStatus, double>>(
@@ -50,14 +50,14 @@ export struct PropertyEnergy
   {
   }
 
-  uint64_t versionNumber{1};
-  size_t numberOfBlocks{5};
-  size_t numberOfExternalFields{1};
-  size_t numberOfFrameworks{1};
-  size_t numberOfComponents{1};
+  std::uint64_t versionNumber{1};
+  std::size_t numberOfBlocks{5};
+  std::size_t numberOfExternalFields{1};
+  std::size_t numberOfFrameworks{1};
+  std::size_t numberOfComponents{1};
   std::vector<std::pair<EnergyStatus, double>> bookKeepingEnergyStatus;
 
-  void resize(size_t newNumberOfFrameworks, size_t newNumberOfComponents)
+  void resize(std::size_t newNumberOfFrameworks, std::size_t newNumberOfComponents)
   {
     numberOfComponents = newNumberOfComponents;
     numberOfFrameworks = newNumberOfFrameworks;
@@ -66,7 +66,7 @@ export struct PropertyEnergy
         std::make_pair(EnergyStatus(numberOfExternalFields, numberOfFrameworks, numberOfComponents), 0.0));
   }
 
-  inline void addSample(size_t blockIndex, const EnergyStatus &energyStatus, const double &weight)
+  inline void addSample(std::size_t blockIndex, const EnergyStatus &energyStatus, const double &weight)
   {
     bookKeepingEnergyStatus[blockIndex].first += weight * energyStatus;
     bookKeepingEnergyStatus[blockIndex].second += weight;
@@ -74,7 +74,7 @@ export struct PropertyEnergy
 
   //====================================================================================================================
 
-  EnergyStatus averagedEnergy(size_t blockIndex) const
+  EnergyStatus averagedEnergy(std::size_t blockIndex) const
   {
     return bookKeepingEnergyStatus[blockIndex].first / bookKeepingEnergyStatus[blockIndex].second;
   }
@@ -93,8 +93,8 @@ export struct PropertyEnergy
 
     // Use bins that are at least 90% filled for the computation of the error
     EnergyStatus sumOfSquares(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingEnergyStatus[blockIndex].second / bookKeepingEnergyStatus[0].second > 0.5)
       {
@@ -106,9 +106,9 @@ export struct PropertyEnergy
     EnergyStatus confidenceIntervalError(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
       EnergyStatus standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      EnergyStatus standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      EnergyStatus standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

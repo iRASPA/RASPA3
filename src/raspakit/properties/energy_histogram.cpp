@@ -28,31 +28,31 @@ import double4;
 import archive;
 import units;
 
-void PropertyEnergyHistogram::addSample(size_t blockIndex, size_t currentCycle, double4 energy, const double &weight)
+void PropertyEnergyHistogram::addSample(std::size_t blockIndex, std::size_t currentCycle, double4 energy, const double &weight)
 {
-  size_t bin;
+  std::size_t bin;
 
   if (currentCycle % sampleEvery != 0uz) return;
 
-  bin = static_cast<size_t>((energy.x * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.x * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                             std::fabs(range.second - range.first));
   if (bin >= 0 && bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].x += weight;
   }
-  bin = static_cast<size_t>((energy.y * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.y * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                             std::fabs(range.second - range.first));
   if (bin >= 0 && bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].y += weight;
   }
-  bin = static_cast<size_t>((energy.z * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.z * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                             std::fabs(range.second - range.first));
   if (bin >= 0 && bin < numberOfBins)
   {
     bookKeepingEnergyHistogram[blockIndex][bin].z += weight;
   }
-  bin = static_cast<size_t>((energy.w * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
+  bin = static_cast<std::size_t>((energy.w * Units::EnergyToKelvin - range.first) * static_cast<double>(numberOfBins) /
                             std::fabs(range.second - range.first));
   if (bin >= 0 && bin < numberOfBins)
   {
@@ -63,7 +63,7 @@ void PropertyEnergyHistogram::addSample(size_t blockIndex, size_t currentCycle, 
   totalNumberOfCounts += weight;
 }
 
-std::vector<double4> PropertyEnergyHistogram::averagedProbabilityHistogram(size_t blockIndex) const
+std::vector<double4> PropertyEnergyHistogram::averagedProbabilityHistogram(std::size_t blockIndex) const
 {
   std::vector<double4> averagedData(numberOfBins);
   std::transform(bookKeepingEnergyHistogram[blockIndex].begin(), bookKeepingEnergyHistogram[blockIndex].end(),
@@ -74,7 +74,7 @@ std::vector<double4> PropertyEnergyHistogram::averagedProbabilityHistogram(size_
 std::vector<double4> PropertyEnergyHistogram::averagedProbabilityHistogram() const
 {
   std::vector<double4> summedBlocks(numberOfBins);
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::transform(summedBlocks.begin(), summedBlocks.end(), bookKeepingEnergyHistogram[blockIndex].begin(),
                    summedBlocks.begin(), [](const double4 &a, const double4 &b) { return a + b; });
@@ -88,19 +88,19 @@ std::vector<double4> PropertyEnergyHistogram::averagedProbabilityHistogram() con
 
 std::pair<std::vector<double4>, std::vector<double4>> PropertyEnergyHistogram::averageProbabilityHistogram() const
 {
-  size_t degreesOfFreedom = numberOfBlocks - 1;
+  std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
   std::vector<double4> average = averagedProbabilityHistogram();
 
   std::vector<double4> sumOfSquares(numberOfBins);
-  size_t numberOfSamples = 0;
-  for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+  std::size_t numberOfSamples = 0;
+  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
   {
     std::vector<double4> blockAverage = averagedProbabilityHistogram(blockIndex);
 
     if (numberOfCounts[blockIndex] > 0.0)
     {
-      for (size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
+      for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
       {
         double4 value = blockAverage[binIndex] - average[binIndex];
         sumOfSquares[binIndex] += value * value;
@@ -127,7 +127,7 @@ std::pair<std::vector<double4>, std::vector<double4>> PropertyEnergyHistogram::a
   return std::make_pair(average, confidenceIntervalError);
 }
 
-void PropertyEnergyHistogram::writeOutput(size_t systemId, size_t currentCycle)
+void PropertyEnergyHistogram::writeOutput(std::size_t systemId, std::size_t currentCycle)
 {
   if (currentCycle % writeEvery != 0uz) return;
 
@@ -148,7 +148,7 @@ void PropertyEnergyHistogram::writeOutput(size_t systemId, size_t currentCycle)
 
   auto [average, error] = averageProbabilityHistogram();
 
-  for (size_t bin = 0; bin != numberOfBins; ++bin)
+  for (std::size_t bin = 0; bin != numberOfBins; ++bin)
   {
     double energy =
         static_cast<double>(bin) * std::fabs(range.second - range.first) / static_cast<double>(numberOfBins) +
@@ -189,7 +189,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << hist.totalNumberOfCounts;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -197,7 +197,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergyHistogram &hist)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > hist.versionNumber)
   {
@@ -216,9 +216,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEner
   archive >> hist.totalNumberOfCounts;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyEnergyHistogram: Error in binary restart\n"));
   }

@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a bond_bond potential.
  */
-export const size_t maximumNumberOfBondBondParameters{3};
+export const std::size_t maximumNumberOfBondBondParameters{3};
 
 /**
  * \brief Enumeration of different bond_bond types.
  *
  * Specifies the type of bond_bond potential to be used in simulations.
  */
-export enum class BondBondType : size_t { CVFF = 0, CFF = 1 };
+export enum class BondBondType : std::size_t { CVFF = 0, CFF = 1 };
 
 /**
  * \brief Represents a bond_bond potential between two particles.
@@ -48,9 +48,9 @@ export enum class BondBondType : size_t { CVFF = 0, CFF = 1 };
  */
 export struct BondBondPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 3> identifiers;                                ///< Identifiers of the two particles forming the bond_bond.
+  std::array<std::size_t, 3> identifiers;                                ///< Identifiers of the two particles forming the bond_bond.
   BondBondType type;                                   ///< The type of bond_bond potential.
   std::array<double, maximumNumberOfBondBondParameters> parameters;  ///< Parameters associated with the bond_bond potential.
 
@@ -61,7 +61,7 @@ export struct BondBondPotential
    */
   BondBondPotential() : identifiers({0, 0, 0}), type(BondBondType::CVFF) {}
 
-  BondBondPotential(std::array<size_t, 3> identifiers, BondBondType type, std::vector<double> vector_parameters);
+  BondBondPotential(std::array<std::size_t, 3> identifiers, BondBondType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BondBondPotential with specified type and bond_bond IDs.
@@ -69,7 +69,7 @@ export struct BondBondPotential
    * \param type The type of bond_bond potential.
    * \param identifiers A pair of particle identifiers forming the bond_bond.
    */
-  BondBondPotential(std::array<size_t, 3> identifiers, const BondBondType type) : identifiers(identifiers), type(type) {}
+  BondBondPotential(std::array<std::size_t, 3> identifiers, const BondBondType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(BondBondPotential const &) const = default;
 
@@ -87,7 +87,7 @@ export struct BondBondPotential
    *
    * A static vector indicating the number of parameters needed for each bond_bond type.
    */
-  static inline std::array<size_t, 2> numberOfBondBondParameters{3, 3};
+  static inline std::array<std::size_t, 2> numberOfBondBondParameters{3, 3};
 
 
   /**

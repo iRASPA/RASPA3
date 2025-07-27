@@ -45,7 +45,7 @@ import libtorch_test;
 
 export namespace CommandLine
 {
-  enum State : uint8_t
+  enum State : std::uint8_t
   {
     None = 0,
     Help = 1,

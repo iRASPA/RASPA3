@@ -28,18 +28,18 @@ import units;
 
 export struct EnthalpyOfAdsorption
 {
-  EnthalpyOfAdsorption(size_t size) : size(size), values(size) {}
+  EnthalpyOfAdsorption(std::size_t size) : size(size), values(size) {}
 
   EnthalpyOfAdsorption(std::vector<double> values) : size(values.size()), values(values) {}
 
   bool operator==(EnthalpyOfAdsorption const&) const = default;
 
-  size_t size;
+  std::size_t size;
   std::vector<double> values;
 
   inline EnthalpyOfAdsorption& operator+=(const EnthalpyOfAdsorption& b)
   {
-    for (size_t i = 0; i < size; ++i)
+    for (std::size_t i = 0; i < size; ++i)
     {
       values[i] += b.values[i];
     }
@@ -54,7 +54,7 @@ export inline EnthalpyOfAdsorption operator+(const EnthalpyOfAdsorption& a, cons
 {
   EnthalpyOfAdsorption m(a.size);
 
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.values[i] = a.values[i] + b.values[i];
   }
@@ -66,7 +66,7 @@ export inline EnthalpyOfAdsorption operator-(const EnthalpyOfAdsorption& a, cons
 {
   EnthalpyOfAdsorption m(a.size);
 
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.values[i] = a.values[i] - b.values[i];
   }
@@ -78,7 +78,7 @@ export inline EnthalpyOfAdsorption operator*(const EnthalpyOfAdsorption& a, cons
 {
   EnthalpyOfAdsorption m(a.size);
 
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.values[i] = a.values[i] * b.values[i];
   }
@@ -90,7 +90,7 @@ export inline EnthalpyOfAdsorption operator*(const double& a, const EnthalpyOfAd
 {
   EnthalpyOfAdsorption m(b.size);
 
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.values[i] = a * b.values[i];
   }
@@ -102,7 +102,7 @@ export inline EnthalpyOfAdsorption sqrt(const EnthalpyOfAdsorption& a)
 {
   EnthalpyOfAdsorption m(a.size);
 
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.values[i] = std::sqrt(a.values[i]);
   }
@@ -112,7 +112,7 @@ export inline EnthalpyOfAdsorption sqrt(const EnthalpyOfAdsorption& a)
 
 export struct EnthalpyOfAdsorptionTerms
 {
-  EnthalpyOfAdsorptionTerms(size_t size)
+  EnthalpyOfAdsorptionTerms(std::size_t size)
       : size(size),
         swappableComponents(size),
         totalEnergyTimesNumberOfMolecules(size),
@@ -126,8 +126,8 @@ export struct EnthalpyOfAdsorptionTerms
   EnthalpyOfAdsorptionTerms(const EnthalpyOfAdsorptionTerms& a) noexcept = default;
   EnthalpyOfAdsorptionTerms& operator=(const EnthalpyOfAdsorptionTerms& a) noexcept = default;
 
-  EnthalpyOfAdsorptionTerms(const std::vector<size_t> swappableComponents,
-                            const std::vector<size_t> numberOfIntegerMolecules, double totalEnergy, double temperature)
+  EnthalpyOfAdsorptionTerms(const std::vector<std::size_t> swappableComponents,
+                            const std::vector<std::size_t> numberOfIntegerMolecules, double totalEnergy, double temperature)
       : size(swappableComponents.size()),
         swappableComponents(swappableComponents),
         totalEnergyTimesNumberOfMolecules(swappableComponents.size()),
@@ -136,15 +136,15 @@ export struct EnthalpyOfAdsorptionTerms
         temperature(temperature * Units::KelvinToEnergy),
         totalEnergy(totalEnergy)
   {
-    for (size_t i = 0; i < swappableComponents.size(); ++i)
+    for (std::size_t i = 0; i < swappableComponents.size(); ++i)
     {
-      size_t index_i = swappableComponents[i];
+      std::size_t index_i = swappableComponents[i];
       numberOfMolecules[i] = static_cast<double>(numberOfIntegerMolecules[index_i]);
 
       totalEnergyTimesNumberOfMolecules[i] = totalEnergy * static_cast<double>(numberOfIntegerMolecules[index_i]);
-      for (size_t j = 0; j < swappableComponents.size(); ++j)
+      for (std::size_t j = 0; j < swappableComponents.size(); ++j)
       {
-        size_t index_j = swappableComponents[j];
+        std::size_t index_j = swappableComponents[j];
         numberOfMoleculesSquared[i][j] = static_cast<double>(numberOfIntegerMolecules[index_i]) *
                                          static_cast<double>(numberOfIntegerMolecules[index_j]);
       }
@@ -155,8 +155,8 @@ export struct EnthalpyOfAdsorptionTerms
 
   bool operator==(EnthalpyOfAdsorptionTerms const&) const = default;
 
-  size_t size;
-  std::vector<size_t> swappableComponents;
+  std::size_t size;
+  std::vector<std::size_t> swappableComponents;
   std::vector<double> totalEnergyTimesNumberOfMolecules;
   std::vector<std::vector<double>> numberOfMoleculesSquared;
   std::vector<double> numberOfMolecules;
@@ -167,11 +167,11 @@ export struct EnthalpyOfAdsorptionTerms
   {
     totalEnergy += b.totalEnergy;
     temperature += b.temperature;
-    for (size_t i = 0; i < size; ++i)
+    for (std::size_t i = 0; i < size; ++i)
     {
       numberOfMolecules[i] += b.numberOfMolecules[i];
       totalEnergyTimesNumberOfMolecules[i] += b.totalEnergyTimesNumberOfMolecules[i];
-      for (size_t j = 0; j < size; ++j)
+      for (std::size_t j = 0; j < size; ++j)
       {
         numberOfMoleculesSquared[i][j] += b.numberOfMoleculesSquared[i][j];
       }
@@ -186,9 +186,9 @@ export struct EnthalpyOfAdsorptionTerms
     {
       // Symmetric matrix
       Matrix m(size, size, 0.0);
-      for (size_t i = 0; i < size; ++i)
+      for (std::size_t i = 0; i < size; ++i)
       {
-        for (size_t j = 0; j < size; ++j)
+        for (std::size_t j = 0; j < size; ++j)
         {
           m(i, j) = numberOfMoleculesSquared[i][j] - numberOfMolecules[i] * numberOfMolecules[j];
         }
@@ -196,10 +196,10 @@ export struct EnthalpyOfAdsorptionTerms
 
       m.inverse();
 
-      for (size_t i = 0; i < size; ++i)
+      for (std::size_t i = 0; i < size; ++i)
       {
         v.values[i] = 0.0;
-        for (size_t j = 0; j < size; ++j)
+        for (std::size_t j = 0; j < size; ++j)
         {
           v.values[i] += (totalEnergyTimesNumberOfMolecules[j] - totalEnergy * numberOfMolecules[j]) * m(j, i);
         }
@@ -219,12 +219,12 @@ export inline EnthalpyOfAdsorptionTerms operator+(const EnthalpyOfAdsorptionTerm
 
   m.totalEnergy = a.totalEnergy + b.totalEnergy;
   m.temperature = a.temperature + b.temperature;
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] + b.numberOfMolecules[i];
     m.totalEnergyTimesNumberOfMolecules[i] =
         a.totalEnergyTimesNumberOfMolecules[i] + b.totalEnergyTimesNumberOfMolecules[i];
-    for (size_t j = 0; j < m.size; ++j)
+    for (std::size_t j = 0; j < m.size; ++j)
     {
       m.numberOfMoleculesSquared[i][j] = a.numberOfMoleculesSquared[i][j] + b.numberOfMoleculesSquared[i][j];
     }
@@ -239,11 +239,11 @@ export inline EnthalpyOfAdsorptionTerms operator*(const double& a, const Enthalp
 
   m.totalEnergy = a * b.totalEnergy;
   m.temperature = a * b.temperature;
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.numberOfMolecules[i] = a * b.numberOfMolecules[i];
     m.totalEnergyTimesNumberOfMolecules[i] = a * b.totalEnergyTimesNumberOfMolecules[i];
-    for (size_t j = 0; j < m.size; ++j)
+    for (std::size_t j = 0; j < m.size; ++j)
     {
       m.numberOfMoleculesSquared[i][j] = a * b.numberOfMoleculesSquared[i][j];
     }
@@ -258,11 +258,11 @@ export inline EnthalpyOfAdsorptionTerms operator/(const EnthalpyOfAdsorptionTerm
 
   m.totalEnergy = a.totalEnergy / b;
   m.temperature = a.temperature / b;
-  for (size_t i = 0; i < m.size; ++i)
+  for (std::size_t i = 0; i < m.size; ++i)
   {
     m.numberOfMolecules[i] = a.numberOfMolecules[i] / b;
     m.totalEnergyTimesNumberOfMolecules[i] = a.totalEnergyTimesNumberOfMolecules[i] / b;
-    for (size_t j = 0; j < m.size; ++j)
+    for (std::size_t j = 0; j < m.size; ++j)
     {
       m.numberOfMoleculesSquared[i][j] = a.numberOfMoleculesSquared[i][j] / b;
     }

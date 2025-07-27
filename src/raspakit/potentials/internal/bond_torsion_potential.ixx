@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a bond_torsion potential.
  */
-export const size_t maximumNumberOfBondTorsionParameters{4};
+export const std::size_t maximumNumberOfBondTorsionParameters{4};
 
 /**
  * \brief Enumeration of different bond_torsion types.
  *
  * Specifies the type of bond_torsion potential to be used in simulations.
  */
-export enum class BondTorsionType : size_t { MM3 = 0 };
+export enum class BondTorsionType : std::size_t { MM3 = 0 };
 
 /**
  * \brief Represents a bond_torsion potential between two particles.
@@ -48,9 +48,9 @@ export enum class BondTorsionType : size_t { MM3 = 0 };
  */
 export struct BondTorsionPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bond_torsion.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bond_torsion.
   BondTorsionType type;                                   ///< The type of bond_torsion potential.
   std::array<double, maximumNumberOfBondTorsionParameters> parameters;  ///< Parameters associated with the bond_torsion potential.
 
@@ -61,7 +61,7 @@ export struct BondTorsionPotential
    */
   BondTorsionPotential() : identifiers({0, 0, 0, 0}), type(BondTorsionType::MM3) {}
 
-  BondTorsionPotential(std::array<size_t, 4> identifiers, BondTorsionType type, std::vector<double> vector_parameters);
+  BondTorsionPotential(std::array<std::size_t, 4> identifiers, BondTorsionType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BondTorsionPotential with specified type and bond_torsion IDs.
@@ -69,7 +69,7 @@ export struct BondTorsionPotential
    * \param type The type of bond_torsion potential.
    * \param identifiers A pair of particle identifiers forming the bond_torsion.
    */
-  BondTorsionPotential(std::array<size_t, 4> identifiers, const BondTorsionType type) : identifiers(identifiers), type(type) {}
+  BondTorsionPotential(std::array<std::size_t, 4> identifiers, const BondTorsionType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(BondTorsionPotential const &) const = default;
 
@@ -87,7 +87,7 @@ export struct BondTorsionPotential
    *
    * A static vector indicating the number of parameters needed for each bond_torsion type.
    */
-  static inline std::array<size_t, 1> numberOfBondTorsionParameters{4};
+  static inline std::array<std::size_t, 1> numberOfBondTorsionParameters{4};
 
 
   /**

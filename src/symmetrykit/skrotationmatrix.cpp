@@ -97,7 +97,7 @@ SKRotationMatrix::RotationType SKRotationMatrix::type() const
 int3 SKRotationMatrix::rotationAxis() const
 {
   // rotation axis is the eigenvector with eigenvalue lambda==1
-  for (size_t i = 0; i < SKRotationMatrix::allPossibleRotationAxes.size(); i++)
+  for (std::size_t i = 0; i < SKRotationMatrix::allPossibleRotationAxes.size(); i++)
   {
     int3 axis = SKRotationMatrix::allPossibleRotationAxes[i];
     if ((this->int3x3_m * axis) == axis)
@@ -121,7 +121,7 @@ int3 SKRotationMatrix::rotationAxis() const
 /// Cryst. A55, 383-395, 1999
 ///
 /// The algorithm of Atsushi Togo is used: a search over all possible rotation axes.
-std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(size_t rotationOrder)
+std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(std::size_t rotationOrder)
 {
   std::vector<int3> orthoAxes{};
 
@@ -129,7 +129,7 @@ std::vector<int3> SKRotationMatrix::orthogonalToAxisDirection(size_t rotationOrd
   SKRotationMatrix sumRot = SKRotationMatrix::identity;
   SKRotationMatrix rot = SKRotationMatrix::identity;
 
-  for (size_t i = 0; i < rotationOrder - 1; i++)
+  for (std::size_t i = 0; i < rotationOrder - 1; i++)
   {
     rot = rot * properRotation;
     sumRot = sumRot + rot;

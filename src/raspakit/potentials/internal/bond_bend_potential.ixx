@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a bond_bend potential.
  */
-export const size_t maximumNumberOfBondBendParameters{5};
+export const std::size_t maximumNumberOfBondBendParameters{5};
 
 /**
  * \brief Enumeration of different bond_bend types.
  *
  * Specifies the type of bond_bend potential to be used in simulations.
  */
-export enum class BondBendType : size_t { CVFF = 0, CFF = 1, MM3 = 2,
+export enum class BondBendType : std::size_t { CVFF = 0, CFF = 1, MM3 = 2,
                                           TruncatedHarmonic = 3, ScreenedHarmonic = 4,
                                           ScreenedVessal = 5, TruncatedVessal = 7 };
 
@@ -50,9 +50,9 @@ export enum class BondBendType : size_t { CVFF = 0, CFF = 1, MM3 = 2,
  */
 export struct BondBendPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bond_bend.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bond_bend.
   BondBendType type;                                   ///< The type of bond_bend potential.
   std::array<double, maximumNumberOfBondBendParameters> parameters;  ///< Parameters associated with the bond_bend potential.
 
@@ -63,7 +63,7 @@ export struct BondBendPotential
    */
   BondBendPotential() : identifiers({0, 0, 0, 0}), type(BondBendType::CVFF) {}
 
-  BondBendPotential(std::array<size_t, 4> identifiers, BondBendType type, std::vector<double> vector_parameters);
+  BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a BondBendPotential with specified type and bond_bend IDs.
@@ -71,7 +71,7 @@ export struct BondBendPotential
    * \param type The type of bond_bend potential.
    * \param identifiers A pair of particle identifiers forming the bond_bend.
    */
-  BondBendPotential(std::array<size_t, 4> identifiers, const BondBendType type) : identifiers(identifiers), type(type) {}
+  BondBendPotential(std::array<std::size_t, 4> identifiers, const BondBendType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(BondBendPotential const &) const = default;
 
@@ -89,7 +89,7 @@ export struct BondBendPotential
    *
    * A static vector indicating the number of parameters needed for each bond_bend type.
    */
-  static inline std::array<size_t, 7> numberOfBondBendParameters{5, 5, 4, 3, 4, 4, 4};
+  static inline std::array<std::size_t, 7> numberOfBondBendParameters{5, 5, 4, 3, 4, 4, 4};
 
 
   /**

@@ -58,7 +58,7 @@ export struct Framework
    * Options include using charges from pseudo-atoms, the CIF file, or by performing
    * charge equilibration calculations.
    */
-  enum class UseChargesFrom : size_t
+  enum class UseChargesFrom : std::size_t
   {
     PseudoAtoms = 0,     ///< Use charges from pseudo-atoms defined in the force field.
     CIF_File = 1,        ///< Use charges specified in the CIF file.
@@ -86,7 +86,7 @@ export struct Framework
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
    */
-  Framework(size_t currentComponent, const ForceField &forceField, const std::string &componentName,
+  Framework(std::size_t currentComponent, const ForceField &forceField, const std::string &componentName,
             std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
             Framework::UseChargesFrom useChargesFrom) noexcept(false);
 
@@ -104,20 +104,20 @@ export struct Framework
    * \param definedAtoms Vector of atoms defining the positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(size_t componentId, const ForceField &forceField, std::string componentName, SimulationBox simulationBox,
-            size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false);
+  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName, SimulationBox simulationBox,
+            std::size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
-  uint64_t versionNumber{1};  ///< Version number for serialization purposes.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
   SimulationBox simulationBox;      ///< Simulation box defining the unit cell dimensions.
-  size_t spaceGroupHallNumber{1};   ///< Space group number according to the Hall notation.
+  std::size_t spaceGroupHallNumber{1};   ///< Space group number according to the Hall notation.
   int3 numberOfUnitCells{1, 1, 1};  ///< Number of unit cells in each dimension for the supercell.
 
-  size_t frameworkId{0};                      ///< Identifier for the framework.
+  std::size_t frameworkId{0};                      ///< Identifier for the framework.
   std::string name{};                         ///< Name of the framework component.
   std::optional<std::string> filenameData{};  ///< Optional file name containing framework data.
   std::string filename{};                     ///< File name of the framework.
-  size_t numberOfComponents{1};
+  std::size_t numberOfComponents{1};
 
   bool rigid{true};  ///< Flag indicating if the framework is rigid.
 
@@ -133,26 +133,26 @@ export struct Framework
   std::vector<Atom> unitCellAtoms;   ///< Fractional atoms in the unit cell after applying symmetry operations.
   std::vector<Atom> atoms{};         ///< All Cartesian atoms in the framework after constructing the supercell.
 
-  std::vector<size_t> chiralCenters{};                      ///< Indices of chiral centers in the framework.
+  std::vector<std::size_t> chiralCenters{};                      ///< Indices of chiral centers in the framework.
   std::vector<BondPotential> bonds{};                       ///< Bonds within the framework.
-  std::vector<std::pair<size_t, size_t>> bondDipoles{};     ///< Pairs of atoms forming bond dipoles.
-  std::vector<std::tuple<size_t, size_t, size_t>> bends{};  ///< Triplets of atoms forming angle bends.
-  std::vector<std::pair<size_t, size_t>> UreyBradley{};     ///< Pairs of atoms for Urey-Bradley interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> inversionBends{};  ///< Quartets of atoms for inversion bends.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>> Torsion{};         ///< Quartets of atoms forming torsions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>>
+  std::vector<std::pair<std::size_t, std::size_t>> bondDipoles{};     ///< Pairs of atoms forming bond dipoles.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> bends{};  ///< Triplets of atoms forming angle bends.
+  std::vector<std::pair<std::size_t, std::size_t>> UreyBradley{};     ///< Pairs of atoms for Urey-Bradley interactions.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>> inversionBends{};  ///< Quartets of atoms for inversion bends.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>> Torsion{};         ///< Quartets of atoms forming torsions.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
       ImproperTorsions{};                                          ///< Quartets of atoms forming improper torsions.
-  std::vector<std::tuple<size_t, size_t, size_t>> bondBonds{};     ///< Triplets of atoms for bond-bond interactions.
-  std::vector<std::tuple<size_t, size_t, size_t>> stretchBends{};  ///< Triplets of atoms for stretch-bend interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>>
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> bondBonds{};     ///< Triplets of atoms for bond-bond interactions.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> stretchBends{};  ///< Triplets of atoms for stretch-bend interactions.
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
       bendBends{};  ///< Quartets of atoms for bend-bend interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>>
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
       stretchTorsions{};  ///< Quartets of atoms for stretch-torsion interactions.
-  std::vector<std::tuple<size_t, size_t, size_t, size_t>>
+  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
       bendTorsions{};                                 ///< Quartets of atoms for bend-torsion interactions.
-  std::vector<std::pair<size_t, size_t>> intraVDW{};  ///< Pairs of atoms for intramolecular van der Waals interactions.
-  std::vector<std::pair<size_t, size_t>> intraCoulomb{};  ///< Pairs of atoms for intramolecular Coulomb interactions.
-  std::vector<std::pair<size_t, size_t>>
+  std::vector<std::pair<std::size_t, std::size_t>> intraVDW{};  ///< Pairs of atoms for intramolecular van der Waals interactions.
+  std::vector<std::pair<std::size_t, std::size_t>> intraCoulomb{};  ///< Pairs of atoms for intramolecular Coulomb interactions.
+  std::vector<std::pair<std::size_t, std::size_t>>
       excludedIntraCoulomb{};  ///< Pairs of atoms excluded from intramolecular Coulomb interactions.
 
   /**
@@ -190,7 +190,7 @@ export struct Framework
   std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position,
                                                                double well_depth_factor) const;
   bool computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const;
-  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, size_t probe_type,
+  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor, std::size_t probe_type,
                       std::make_signed_t<std::size_t> skip) const;
 
   /**
@@ -249,7 +249,7 @@ export struct Framework
  * \throws std::runtime_error If no values could be read.
  */
 template <typename T>
-std::vector<T> parseListOfParameters(const std::string &arguments, size_t lineNumber)
+std::vector<T> parseListOfParameters(const std::string &arguments, std::size_t lineNumber)
 {
   std::vector<T> list{};
 

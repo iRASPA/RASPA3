@@ -31,9 +31,9 @@ SKSeitzIntegerMatrix::SKSeitzIntegerMatrix(char xvalue, char yvalue, char zvalue
 {
   char referenceValue = '0';
 
-  size_t x = size_t(xvalue - referenceValue);
-  size_t y = size_t(yvalue - referenceValue);
-  size_t z = size_t(zvalue - referenceValue);
+  std::size_t x = std::size_t(xvalue - referenceValue);
+  std::size_t y = std::size_t(yvalue - referenceValue);
+  std::size_t z = std::size_t(zvalue - referenceValue);
 
   // qDebug() << "xyz: " << x <<", " << y <<"," << z;
 
@@ -54,14 +54,14 @@ SKSeitzIntegerMatrix::SKSeitzIntegerMatrix(char xvalue, char yvalue, char zvalue
 
 std::vector<SKSeitzIntegerMatrix> SKSeitzIntegerMatrix::SeitzMatrices(std::string encoding)
 {
-  size_t m = encoding.size() / 3;
+  std::size_t m = encoding.size() / 3;
 
   // qDebug() << QString::fromStdString(encoding) << ", " << m;
 
   std::vector<SKSeitzIntegerMatrix> matrices = std::vector<SKSeitzIntegerMatrix>();
   matrices.resize(m);
 
-  for (size_t i = 0; i < m; i++)
+  for (std::size_t i = 0; i < m; i++)
   {
     char x = encoding[3 * i];
     char y = encoding[3 * i + 1];

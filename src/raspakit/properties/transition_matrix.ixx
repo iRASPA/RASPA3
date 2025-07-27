@@ -28,7 +28,7 @@ import double3;
  */
 export struct TransitionMatrix
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
 
   bool operator==(TransitionMatrix const &) const = default;
 
@@ -37,13 +37,13 @@ export struct TransitionMatrix
   std::vector<double> lnpi;          ///< Natural logarithm of the probability distribution.
   std::vector<double> forward_lnpi;  ///< Forward ln(pi) for debugging purposes.
   std::vector<double> reverse_lnpi;  ///< Reverse ln(pi) for debugging purposes.
-  std::vector<size_t> histogram;     ///< Histogram of macrostate visits.
+  std::vector<std::size_t> histogram;     ///< Histogram of macrostate visits.
 
-  size_t numberOfSteps = {0};        ///< Number of steps performed in the TMMC simulation.
-  size_t minMacrostate = {0};        ///< Minimum macrostate value.
-  size_t maxMacrostate = {100};      ///< Maximum macrostate value.
-  size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
-  size_t numberOfUpdates = {0};      ///< Number of times the bias has been updated.
+  std::size_t numberOfSteps = {0};        ///< Number of steps performed in the TMMC simulation.
+  std::size_t minMacrostate = {0};        ///< Minimum macrostate value.
+  std::size_t maxMacrostate = {100};      ///< Maximum macrostate value.
+  std::size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
+  std::size_t numberOfUpdates = {0};      ///< Number of times the bias has been updated.
 
   bool doTMMC = {false};                     ///< Flag indicating whether to perform TMMC simulation.
   bool useBias = {false};                    ///< Flag indicating whether to use bias for changing macrostates.
@@ -71,7 +71,7 @@ export struct TransitionMatrix
    *             no change (y), and insertion (z) moves.
    * \param oldN The macrostate value before the move.
    */
-  void updateMatrix(double3 Pacc, size_t oldN);
+  void updateMatrix(double3 Pacc, std::size_t oldN);
 
   /**
    * \brief Updates the histogram of macrostate visits.
@@ -81,7 +81,7 @@ export struct TransitionMatrix
    *
    * \param N The current macrostate value.
    */
-  void updateHistogram(size_t N);
+  void updateHistogram(std::size_t N);
 
   /**
    * \brief Calculates the bias factor between two macrostates.
@@ -94,7 +94,7 @@ export struct TransitionMatrix
    * \param oldN The macrostate value before the move.
    * \return The bias factor for the transition from oldN to newN.
    */
-  double biasFactor(size_t newN, size_t oldN);
+  double biasFactor(std::size_t newN, std::size_t oldN);
 
   /**
    * \brief Adjusts the bias factors based on collected statistics.

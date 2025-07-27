@@ -13,7 +13,7 @@ export module mc_moves_move_types;
 import std;
 #endif
 
-export enum class MoveTypes : size_t {
+export enum class MoveTypes : std::size_t {
   Translation = 0,
   RandomTranslation = 1,
   Rotation = 2,

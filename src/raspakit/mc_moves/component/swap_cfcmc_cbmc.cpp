@@ -49,8 +49,8 @@ import mc_moves_move_types;
 import scaling;
 
 std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(RandomNumber& random, System& system,
-                                                                               size_t selectedComponent,
-                                                                               size_t selectedMolecule,
+                                                                               std::size_t selectedComponent,
+                                                                               std::size_t selectedMolecule,
                                                                                bool insertionDisabled,
                                                                                bool deletionDisabled)
 {
@@ -63,7 +63,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   PropertyLambdaProbabilityHistogram& lambda = component.lambdaGC;
 
   // Store old lambda values and bin index
-  size_t oldBin = lambda.currentBin;
+  std::size_t oldBin = lambda.currentBin;
   double deltaLambda = lambda.delta;
   double oldLambda = component.lambdaGC.lambdaValue();
 
@@ -74,10 +74,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   std::make_signed_t<std::size_t> selectedNewBin = lambda.selectNewBin(random, maxChange);
 
   // Store the current number of integer molecules
-  size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
   // Get index of the fractional molecule for the component
-  size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
+  std::size_t indexFractionalMolecule = system.indexOfGCFractionalMoleculesPerComponent_CFCMC(selectedComponent);
 
   if (selectedNewBin >= std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints))  // Insertion move
   {
@@ -100,7 +100,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     Component::GrowType growType = component.growType;
 
     // Calculate the new bin index and lambda value
-    size_t newBin = static_cast<size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
+    std::size_t newBin = static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     // Update move statistics for insertion move
@@ -200,7 +200,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                                      moleculeDifference.value() + EwaldEnergyDifference + tailEnergyDifference;
 
     // Grow molecule with newLambda
-    size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+    std::size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
@@ -265,14 +265,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                  exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
+                  std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
     // Retrieve bias from transition matrix
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
     if (system.tmmc.doTMMC)
     {
-      size_t newN = oldN + 1;
+      std::size_t newN = oldN + 1;
       if (newN > system.tmmc.maxMacrostate)
       {
         return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
@@ -291,7 +291,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       system.insertMolecule(selectedComponent, growData->molecule, growData->atom);
 
       // Swap molecules to keep the fractional molecule at a fixed index
-      size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
+      std::size_t lastMoleculeId = system.numberOfMoleculesPerComponent[selectedComponent] - 1;
       std::span<Atom> lastMolecule = system.spanOfMolecule(selectedComponent, lastMoleculeId);
       fractionalMolecule = system.spanOfMolecule(selectedComponent, indexFractionalMolecule);
       std::swap_ranges(fractionalMolecule.begin(), fractionalMolecule.end(), lastMolecule.begin());
@@ -390,8 +390,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       std::vector<Atom> savedFractionalMolecule(newFractionalMolecule.begin(), newFractionalMolecule.end());
 
       // Calculate new bin and lambda value
-      size_t newBin =
-          static_cast<size_t>(selectedNewBin + std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
+      std::size_t newBin =
+          static_cast<std::size_t>(selectedNewBin + std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
       double newLambda = deltaLambda * static_cast<double>(newBin);
 
       // Update the new fractional molecule with the new lambda
@@ -500,14 +500,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       double Pacc = preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
-                    exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
+                    std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
       // Retrieve bias from transition matrix
       double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
       if (system.tmmc.doTMMC)
       {
-        size_t newN = oldN - 1;
+        std::size_t newN = oldN - 1;
         if (newN < system.tmmc.minMacrostate)
         {
           return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
@@ -547,7 +547,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
   else  // Lambda-move
   {
     // Calculate new bin and lambda value
-    size_t newBin = static_cast<size_t>(selectedNewBin);
+    std::size_t newBin = static_cast<std::size_t>(selectedNewBin);
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     component.mc_moves_statistics.addTrial(move, 2);

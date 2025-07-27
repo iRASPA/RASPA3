@@ -20,7 +20,7 @@ import double3;
 import simd_quatd;
 import stringutils;
 
-std::pair<simd_quatd, simd_quatd> Rigid::NoSquishRotate(size_t k, double dt, std::pair<simd_quatd, simd_quatd> quat,
+std::pair<simd_quatd, simd_quatd> Rigid::NoSquishRotate(std::size_t k, double dt, std::pair<simd_quatd, simd_quatd> quat,
                                                         double3 inverseInertiaVector)
 {
   simd_quatd pn, qn;
@@ -85,7 +85,7 @@ std::pair<simd_quatd, simd_quatd> Rigid::NoSquishFreeRotorOrderTwo(double dt, st
                                                                    double3 inverseInertiaVector)
 {
   // second order
-  for (size_t i = 0; i != 5; ++i)
+  for (std::size_t i = 0; i != 5; ++i)
   {
     q = NoSquishRotate(3, 0.5 * dt / 5.0, q, inverseInertiaVector);
     q = NoSquishRotate(2, 0.5 * dt / 5.0, q, inverseInertiaVector);

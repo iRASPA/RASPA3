@@ -86,10 +86,10 @@ void MarchingCubes::run(real iso)
 void MarchingCubes::init_temps()
 //-----------------------------------------------------------------------------
 {
-  _data.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
-  _x_verts.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
-  _y_verts.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
-  _z_verts.resize(static_cast<size_t>(_size_x * _size_y * _size_z));
+  _data.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
+  _x_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
+  _y_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
+  _z_verts.resize(static_cast<std::size_t>(_size_x * _size_y * _size_z));
 
   std::memset(_x_verts.data(), -1, _x_verts.size() * sizeof(int));
   std::memset(_y_verts.data(), -1, _y_verts.size() * sizeof(int));
@@ -963,7 +963,7 @@ int MarchingCubes::add_c_vertex()
       if (vid != -1)
       {
         ++u;
-        const Vertex &v = _vertices[static_cast<size_t>(vid)];
+        const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
         n += double3{v.nx, v.ny, v.nz};
       }
@@ -979,7 +979,7 @@ int MarchingCubes::add_c_vertex()
       if (vid != -1)
       {
         ++u;
-        const Vertex &v = _vertices[static_cast<size_t>(vid)];
+        const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
         n += double3{v.nx, v.ny, v.nz};
       }
@@ -995,7 +995,7 @@ int MarchingCubes::add_c_vertex()
       if (vid != -1)
       {
         ++u;
-        const Vertex &v = _vertices[static_cast<size_t>(vid)];
+        const Vertex &v = _vertices[static_cast<std::size_t>(vid)];
         pos += double3{v.x, v.y, v.z};
         n += double3{v.nx, v.ny, v.nz};
       }

@@ -10,10 +10,14 @@ module;
 #include <string>
 #include <type_traits>
 #endif
+
+#include <strings.h>
+
 export module stringutils;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
@@ -29,7 +33,7 @@ export struct caseInsensitiveComparator
 #if defined(_WIN32)
     return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
 #else
-    return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+    return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
 #endif
   }
 };

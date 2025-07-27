@@ -19,6 +19,7 @@ export module property_widom;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import archive;
@@ -59,16 +60,16 @@ export struct PropertyWidom
 
   PropertyWidom();
 
-  PropertyWidom(size_t numberOfBlocks)
+  PropertyWidom(std::size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks), bookKeepingWidom(numberOfBlocks), bookKeepingDensity(numberOfBlocks)
   {
   }
 
   bool operator==(PropertyWidom const &) const = default;
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  size_t numberOfBlocks;
+  std::size_t numberOfBlocks;
   std::vector<BookKeeping> bookKeepingWidom;
   std::vector<std::pair<double, double>> bookKeepingDensity;
 

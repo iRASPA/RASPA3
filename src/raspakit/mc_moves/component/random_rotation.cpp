@@ -47,7 +47,7 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, System &system,
-                                                          size_t selectedComponent, size_t selectedMolecule,
+                                                          std::size_t selectedComponent, std::size_t selectedMolecule,
                                                           const std::vector<Component> &components, Molecule &molecule,
                                                           std::span<Atom> molecule_atoms)
 {
@@ -57,7 +57,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
   Component &component = system.components[selectedComponent];
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};
-  size_t selectedDirection = size_t(3.0 * random.uniform());
+  std::size_t selectedDirection = std::size_t(3.0 * random.uniform());
   angle[selectedDirection] = std::numbers::pi * 2.0 * (random.uniform() - 0.5);
 
   // Update move statistics for the selected direction

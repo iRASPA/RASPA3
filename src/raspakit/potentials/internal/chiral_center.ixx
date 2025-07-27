@@ -27,16 +27,16 @@ import units;
 
 export struct ChiralCenter
 {
-  enum class Chirality : size_t
+  enum class Chirality : std::size_t
   {
     S_Chiral = 0,
     R_Chiral = 1
   };
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Chirality type;
-  std::array<size_t, 4> ids;
+  std::array<std::size_t, 4> ids;
 
   ChiralCenter() : type(Chirality::S_Chiral), ids({0, 0, 0, 0}) {}
 

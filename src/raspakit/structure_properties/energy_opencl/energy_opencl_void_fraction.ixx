@@ -15,6 +15,17 @@ module;
 #endif
 #endif
 
+#ifndef USE_LEGACY_HEADERS
+#define CL_TARGET_OPENCL_VERSION 120
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#elif _WIN32
+#include <CL/cl.h>
+#else
+#include <CL/opencl.h>
+#endif
+#endif
+
 export module energy_opencl_void_fraction;
 
 #ifndef USE_LEGACY_HEADERS

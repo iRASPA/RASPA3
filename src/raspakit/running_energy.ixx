@@ -332,7 +332,7 @@ export struct RunningEnergy
     return v;
   }
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double externalFieldVDW;            ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;        ///< Energy from van der Waals interactions between framework and molecules.

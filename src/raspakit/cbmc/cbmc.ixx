@@ -38,8 +38,8 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, double scaling,
-    bool groupId, bool isFractional, size_t numberOfTrialDirections) noexcept;
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, double scaling,
+    bool groupId, bool isFractional, std::size_t numberOfTrialDirections) noexcept;
 
 // deletion
 [[nodiscard]] ChainData retraceMoleculeSwapDeletion(
@@ -48,8 +48,8 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, std::span<Atom> molecule, double scaling,
-    size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, std::span<Atom> molecule, double scaling,
+    std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion grow
 [[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(
@@ -58,8 +58,8 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
+    std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion retrace
 [[nodiscard]] ChainData retraceMoleculeReinsertion(
@@ -68,6 +68,6 @@ export namespace CBMC
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, size_t selectedComponent, size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, double storedR, size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
+    std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections) noexcept;
 }  // namespace CBMC

@@ -200,7 +200,7 @@ double3x3 double3x3::inversetranpose()
   return inverse;
 }
 
-double trunc_sqrt(double x) { return (x <= 0.0 ? 0.0 : sqrt(x)); }
+double trunc_sqrt(double x) { return (x <= 0.0 ? 0.0 : std::sqrt(x)); }
 
 double trunc_acos(double x)
 {
@@ -298,7 +298,7 @@ simd_quatd double3x3::quaternion()
 
   double trace = this->ax + this->by + this->cz;
 
-  size_t Switch{};
+  std::size_t Switch{};
   double max = trace;
   if (this->ax > max)
   {

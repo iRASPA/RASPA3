@@ -37,8 +37,8 @@ export struct PropertyNumberOfMoleculesHistogram
 {
   PropertyNumberOfMoleculesHistogram() {};
 
-  PropertyNumberOfMoleculesHistogram(size_t numberOfBlocks, std::pair<size_t, size_t> range, size_t size,
-                                     size_t sampleEvery, size_t writeEvery)
+  PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range, std::size_t size,
+                                     std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(range.second - range.first),
         range(range),
@@ -51,26 +51,26 @@ export struct PropertyNumberOfMoleculesHistogram
   {
   }
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  size_t numberOfBlocks;
-  size_t numberOfBins;
-  std::pair<size_t, size_t> range;
-  size_t size;
-  size_t sampleEvery;
-  size_t writeEvery;
+  std::size_t numberOfBlocks;
+  std::size_t numberOfBins;
+  std::pair<std::size_t, std::size_t> range;
+  std::size_t size;
+  std::size_t sampleEvery;
+  std::size_t writeEvery;
   std::vector<std::vector<std::vector<double>>> bookKeepingEnergyHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
 
-  void addSample(size_t blockIndex, size_t currentCycle, std::vector<size_t> numberOfIntegerMoleculesPerComponent,
+  void addSample(std::size_t blockIndex, std::size_t currentCycle, std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                  const double &weight);
 
-  std::vector<std::vector<double>> averagedProbabilityHistogram(size_t blockIndex) const;
+  std::vector<std::vector<double>> averagedProbabilityHistogram(std::size_t blockIndex) const;
   std::vector<std::vector<double>> averagedProbabilityHistogram() const;
   std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>> averageProbabilityHistogram() const;
 
-  void writeOutput(size_t systemId, std::vector<Component> &components, size_t currentCycle);
+  void writeOutput(std::size_t systemId, std::vector<Component> &components, std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyNumberOfMoleculesHistogram &hist);

@@ -19,7 +19,7 @@ import mc_moves_move_types;
 
 export struct MCMoveProbabilities
 {
-  uint64_t versionNumber{2};
+  std::uint64_t versionNumber{2};
 
   bool operator==(MCMoveProbabilities const &) const = default;
 

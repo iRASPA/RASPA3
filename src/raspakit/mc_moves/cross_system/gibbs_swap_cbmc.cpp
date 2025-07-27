@@ -40,7 +40,7 @@ import mc_moves_move_types;
 
 std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_CBMC(RandomNumber& random,
                                                                                     System& systemA, System& systemB,
-                                                                                    size_t selectedComponent)
+                                                                                    std::size_t selectedComponent)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
   MoveTypes move = MoveTypes::GibbsSwapCBMC;
@@ -51,7 +51,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   if (systemB.numberOfIntegerMoleculesPerComponent[selectedComponent] == 0) return std::nullopt;
 
   // Index for the new molecule in system A
-  size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
+  std::size_t newMoleculeIndex = systemA.numberOfMoleculesPerComponent[selectedComponent];
 
   // Update move counts statistics for both systems
   componentA.mc_moves_statistics.addTrial(move);
@@ -116,7 +116,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
       std::exp(-systemA.beta * (energyFourierDifferenceA.potentialEnergy() + tailEnergyDifferenceA.potentialEnergy()));
 
   // Select a random molecule of the selected component from system B
-  size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
+  std::size_t selectedMolecule = systemB.randomMoleculeOfComponent(random, selectedComponent);
   std::span<Atom> molecule = systemB.spanOfMolecule(selectedComponent, selectedMolecule);
 
   // Retrace the selected molecule in system B for deletion using CBMC

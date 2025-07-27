@@ -38,7 +38,7 @@ export struct MonteCarlo
   /**
    * \brief Enumeration of weighting methods for sampling.
    */
-  enum class WeightingMethod : size_t
+  enum class WeightingMethod : std::size_t
   {
     LambdaZero = 0,  ///< Use only lambda = 0 in sampling.
     AllLambdas = 1   ///< Use all lambda values in sampling.
@@ -47,7 +47,7 @@ export struct MonteCarlo
   /**
    * \brief Enumeration of simulation stages.
    */
-  enum class SimulationStage : size_t
+  enum class SimulationStage : std::size_t
   {
     Uninitialized = 0,   ///< Simulation not initialized.
     Initialization = 1,  ///< Initialization stage.
@@ -83,31 +83,31 @@ export struct MonteCarlo
    * \param randomSeed Random number generator seed.
    * \param numberOfBlocks Number of blocks for error estimation.
    */
-  MonteCarlo(size_t numberOfCycles, size_t numberOfInitializationCycles, size_t numberOfEquilibrationCycles,
-             size_t printEvery, size_t writeBinaryRestartEvery, size_t rescaleWangLandauEvery,
-             size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed, size_t numberOfBlocks,
+  MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles, std::size_t numberOfEquilibrationCycles,
+             std::size_t printEvery, std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
+             std::size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed, std::size_t numberOfBlocks,
              bool outputToFiles = false);
 
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.
 
-  size_t numberOfCycles;                ///< Number of production cycles.
-  size_t numberOfSteps;                 ///< Total number of steps performed.
-  size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
-  size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
-  size_t printEvery;                    ///< Frequency of printing status reports.
-  size_t writeRestartEvery;             ///< Frequency of writing restart files.
-  size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
-  size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
-  size_t optimizeMCMovesEvery;          ///< Frequency of optimizing MC moves.
+  std::size_t numberOfCycles;                ///< Number of production cycles.
+  std::size_t numberOfSteps;                 ///< Total number of steps performed.
+  std::size_t numberOfInitializationCycles;  ///< Number of initialization cycles.
+  std::size_t numberOfEquilibrationCycles;   ///< Number of equilibration cycles.
+  std::size_t printEvery;                    ///< Frequency of printing status reports.
+  std::size_t writeRestartEvery;             ///< Frequency of writing restart files.
+  std::size_t writeBinaryRestartEvery;       ///< Frequency of writing binary restart files.
+  std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
+  std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing MC moves.
 
-  size_t currentCycle{0};                                           ///< Current cycle number.
+  std::size_t currentCycle{0};                                           ///< Current cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
   std::vector<System> systems;         ///< Vector of systems to simulate.
-  size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
+  std::size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;            ///< Output streams for writing data.
   std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.

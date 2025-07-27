@@ -42,7 +42,7 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
 
   std::print(stream, "    Widom insertion Rosenbluth weight statistics:\n");
   std::print(stream, "    ---------------------------------------------------------------------------\n");
-  for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
   {
     double blockAverage = averagedRosenbluthWeight(blockIndex);
     std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
@@ -60,7 +60,7 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
 
     std::print(stream, "    Henry coefficient based on Rosenbluth weight:\n");
     std::print(stream, "    ---------------------------------------------------------------------------\n");
-    for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
     {
       double blockAverage = conversion_factor_mol_per_kg * averagedRosenbluthWeight(blockIndex);
       std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
@@ -97,7 +97,7 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
     {
       std::print(stream, "    Widom insertion chemical potential  statistics:\n");
       std::print(stream, "    ---------------------------------------------------------------------------\n");
-      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, conv * blockAverage);
@@ -160,7 +160,7 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
     {
       std::print(stream, "    Widom insertion chemical potential  statistics:\n");
       std::print(stream, "    ---------------------------------------------------------------------------\n");
-      for (size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+      for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
       {
         double blockAverage = averagedExcessChemicalPotential(blockIndex, beta);
         std::print(stream, "        Block[ {:2d}] {}\n", blockIndex, beta * blockAverage);
@@ -217,7 +217,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << w.bookKeepingDensity;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -225,7 +225,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWidom &w)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > w.versionNumber)
   {
@@ -239,9 +239,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWido
   archive >> w.bookKeepingDensity;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyWidom: Error in binary restart\n"));
   }

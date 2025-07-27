@@ -22,7 +22,7 @@ import energy_factor;
 
 export struct EnergyIntra
 {
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
   double bond;
   double bend;

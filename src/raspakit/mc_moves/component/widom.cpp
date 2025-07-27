@@ -45,9 +45,9 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 
-std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, size_t selectedComponent)
+std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
 {
-  size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
+  std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
   MoveTypes move = MoveTypes::Widom;
   Component& component = system.components[selectedComponent];
   std::chrono::system_clock::time_point t1, t2;

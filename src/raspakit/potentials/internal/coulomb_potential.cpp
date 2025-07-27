@@ -25,10 +25,10 @@ import archive;
 import randomnumbers;
 import double3;
 
-CoulombPotential::CoulombPotential(std::array<size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters) :
+CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters) :
       identifiers(identifiers), type(type)
 {
-  for(size_t i = 0; i < std::min(parameters.size(), maximumNumberOfCoulombParameters); ++i)
+  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfCoulombParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -78,7 +78,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Coulom
   archive << b.parameters;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -86,7 +86,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Coulom
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, CoulombPotential &b)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > b.versionNumber)
   {
@@ -100,9 +100,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, CoulombPoten
   archive >> b.parameters;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("CoulombPotential: Error in binary restart\n"));
   }

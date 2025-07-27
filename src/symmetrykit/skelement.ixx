@@ -14,14 +14,15 @@ export module skelement;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 export struct SKElement
 {
   std::string _chemicalSymbol = std::string("Undefined");
-  size_t _atomicNumber = 0;
+  std::size_t _atomicNumber = 0;
   std::make_signed_t<std::size_t> _group = 0;
-  size_t _period = 0;
+  std::size_t _period = 0;
   std::string _name = std::string("Undefined");
   double _mass = 1.0;
   double _atomRadius = 0.0;
@@ -31,10 +32,10 @@ export struct SKElement
   double _tripleBondCovalentRadius = 0.0;
   double _VDWRadius = 1.0;
   std::vector<int> _possibleOxidationStates;
-  size_t _oxidationState = 0;
+  std::size_t _oxidationState = 0;
   double _atomicPolarizability = 0.0;
   SKElement();
-  SKElement(std::string string, size_t atomicNumber, std::make_signed_t<std::size_t> group, size_t period,
+  SKElement(std::string string, std::size_t atomicNumber, std::make_signed_t<std::size_t> group, std::size_t period,
             std::string name, double mass, double atomRadius, double covalentRadius, double singleBondCovalentRadius,
             double doubleBondCovalentRadius, double tripleBondCovalentRadius, double vDWRadius,
             std::vector<int> possibleOxidationStates);
@@ -59,7 +60,7 @@ export struct PredefinedElements
   };
 
   static std::vector<SKElement> predefinedElements;
-  static std::map<std::string, size_t, PredefinedElements::InsensitiveCompare> atomicNumberData;
+  static std::map<std::string, std::size_t, PredefinedElements::InsensitiveCompare> atomicNumberData;
 
   static std::set<std::string> residueDefinitions;
   static std::map<std::string, std::string> residueDefinitionsElement;

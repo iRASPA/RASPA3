@@ -62,7 +62,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  pressureTensorError.cz);
 
       std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
-      for (size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)
       {
         double blockAverage = averagedIdealGasPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -74,7 +74,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  1e-5 * conv * pressureIdealGasAverage.first, 1e-5 * conv * pressureIdealGasAverage.second);
       std::print(stream, "\n\n");
 
-      for (size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
       {
         double blockAverage = averagedExcessPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -87,7 +87,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       std::print(stream, "\n\n");
 
       std::pair<double, double> pressureTotalAverage = averagePressure();
-      for (size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
       {
         double blockAverage = averagedPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -117,7 +117,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  pressureTensorError.cz, Units::unitOfPressureString);
 
       std::pair<double, double> pressureIdealGasAverage = averageIdealGasPressure();
-      for (size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingIdealGasPressure.size(); ++i)
       {
         double blockAverage = averagedIdealGasPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -127,7 +127,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
                  pressureIdealGasAverage.second, Units::unitOfPressureString);
       std::print(stream, "\n\n");
 
-      for (size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
       {
         double blockAverage = averagedExcessPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -138,7 +138,7 @@ std::string PropertyPressure::writeAveragesStatistics() const
       std::print(stream, "\n\n");
 
       std::pair<double, double> pressureTotalAverage = averagePressure();
-      for (size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
+      for (std::size_t i = 0; i < bookKeepingExcessPressure.size(); ++i)
       {
         double blockAverage = averagedPressure(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i, conv * blockAverage);
@@ -203,7 +203,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << e.bookKeepingIdealGasPressure;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -211,7 +211,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > e.versionNumber)
   {
@@ -225,9 +225,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPres
   archive >> e.bookKeepingIdealGasPressure;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyPressure: Error in binary restart\n"));
   }

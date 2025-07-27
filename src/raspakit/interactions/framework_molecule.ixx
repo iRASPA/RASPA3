@@ -231,7 +231,7 @@ RunningEnergy computeFrameworkMoleculeElectricField(const ForceField &forceField
 
 std::tuple<double, double3, double3x3> calculateHessianAtPositionVDW(const ForceField &forceField,
                                                                      const SimulationBox &simulationBox, double3 posA,
-                                                                     size_t typeA,
+                                                                     std::size_t typeA,
                                                                      std::span<const Atom> frameworkAtoms);
 
 std::tuple<double, double3, double3x3> calculateHessianAtPositionCoulomb(const ForceField &forceField,

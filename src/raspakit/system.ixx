@@ -114,18 +114,18 @@ export struct System
    * \param systemProbabilities The move probabilities for the Monte Carlo simulation.
    * \param sampleMoviesEvery Interval in which movies are written to PDB.
    */
-  System(size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
+  System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
          double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
-         std::vector<size_t> initialNumberOfMolecules, size_t numberOfBlocks,
+         std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
-         std::optional<size_t> sampleMoviesEvery = std::nullopt);
+         std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
 
-  System(size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> framework,
+  System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> framework,
          std::vector<Component> components);
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  size_t systemId{};
+  std::size_t systemId{};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -134,9 +134,9 @@ export struct System
 
   double heliumVoidFraction{0.29};
 
-  size_t numberOfFrameworks{0};
-  size_t numberOfFrameworkAtoms{0};
-  size_t numberOfRigidFrameworkAtoms{0};
+  std::size_t numberOfFrameworks{0};
+  std::size_t numberOfFrameworkAtoms{0};
+  std::size_t numberOfRigidFrameworkAtoms{0};
 
   std::optional<Framework> framework;
   std::vector<Component> components;
@@ -146,45 +146,45 @@ export struct System
 
   Loadings loadings;
 
-  std::vector<size_t> swappableComponents{};
-  std::vector<size_t> initialNumberOfMolecules{};
+  std::vector<std::size_t> swappableComponents{};
+  std::vector<std::size_t> initialNumberOfMolecules{};
 
   // total # of molecules per component (include fractional molecules)
-  std::vector<size_t> numberOfMoleculesPerComponent{};
+  std::vector<std::size_t> numberOfMoleculesPerComponent{};
 
   // # integer molecules
-  std::vector<size_t> numberOfIntegerMoleculesPerComponent{};
+  std::vector<std::size_t> numberOfIntegerMoleculesPerComponent{};
 
   // # fractional molecules
-  std::vector<size_t> numberOfFractionalMoleculesPerComponent{};
+  std::vector<std::size_t> numberOfFractionalMoleculesPerComponent{};
 
   // # fractional molecules for CFCMC grand-canonical or CFCMC Widom
-  std::vector<size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};
+  std::vector<std::size_t> numberOfGCFractionalMoleculesPerComponent_CFCMC{};
 
   // # fractional molecules for pair-CFCMC grand-canonical
-  std::vector<size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
+  std::vector<std::size_t> numberOfPairGCFractionalMoleculesPerComponent_CFCMC{};
 
   // # fractional molecules for CFCMC-Gibbs
-  std::vector<size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};
+  std::vector<std::size_t> numberOfGibbsFractionalMoleculesPerComponent_CFCMC{};
 
   // # reactant fractional molecules for all reactions using CFCMC
-  std::vector<std::vector<size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};
+  std::vector<std::vector<std::size_t>> numberOfReactionFractionalMoleculesPerComponent_CFCMC{};
 
   std::vector<double> idealGasEnergiesPerComponent{};
 
   ForceField forceField;
   bool hasExternalField;
 
-  std::vector<std::vector<size_t>> numberOfPseudoAtoms;
-  std::vector<size_t> totalNumberOfPseudoAtoms;
+  std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
+  std::vector<std::size_t> totalNumberOfPseudoAtoms;
 
   // vector of pair of lamba and pseudoatom-type
-  std::vector<std::pair<double, size_t>> numberOfIntegerPseudoAtoms;
-  std::vector<std::pair<double, size_t>> numberOfFractionalPseudoAtoms;
+  std::vector<std::pair<double, std::size_t>> numberOfIntegerPseudoAtoms;
+  std::vector<std::pair<double, std::size_t>> numberOfFractionalPseudoAtoms;
 
-  size_t translationalCenterOfMassConstraint{};
-  size_t translationalDegreesOfFreedom{};
-  size_t rotationalDegreesOfFreedom{};
+  std::size_t translationalCenterOfMassConstraint{};
+  std::size_t translationalDegreesOfFreedom{};
+  std::size_t rotationalDegreesOfFreedom{};
 
   std::optional<double> frameworkMass() const;
 
@@ -210,8 +210,8 @@ export struct System
   double3x3 currentExcessPressureTensor;
   EnergyStatus currentEnergyStatus;
 
-  size_t numberOfTrialDirections{10};
-  size_t numberOfHybridMCSteps{10};
+  std::size_t numberOfTrialDirections{10};
+  std::size_t numberOfHybridMCSteps{10};
 
   std::vector<std::complex<double>> eik_xy{};
   std::vector<std::complex<double>> eik_x{};
@@ -234,7 +234,7 @@ export struct System
   TransitionMatrix tmmc;
 
   // Breakthrough settings
-  size_t columnNumberOfGridPoints{100};
+  std::size_t columnNumberOfGridPoints{100};
   double columnTotalPressure{1e5};
   double columnPressureGradient{0.0};
   double columnVoidFraction{0.4};
@@ -242,13 +242,13 @@ export struct System
   double columnEntranceVelocity{0.1};
   double columnLength{0.3};
   double columnTimeStep{0.0005};
-  size_t columnNumberOfTimeSteps{0};
+  std::size_t columnNumberOfTimeSteps{0};
   bool columnAutoNumberOfTimeSteps{true};
   MultiSiteIsotherm::PredictionMethod mixturePredictionMethod{MultiSiteIsotherm::PredictionMethod::IAST};
   PressureRange pressure_range;
-  size_t numberOfCarrierGases{0};
-  size_t carrierGasComponent{0};
-  size_t maxIsothermTerms{0};
+  std::size_t numberOfCarrierGases{0};
+  std::size_t carrierGasComponent{0};
+  std::size_t maxIsothermTerms{0};
 
   bool containsTheFractionalMolecule{true};
 
@@ -273,16 +273,16 @@ export struct System
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
 
   /// The fractional molecule for grand-canonical is stored first
-  inline size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] size_t selectedComponent) { return 0; }
+  inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent) { return 0; }
 
   /// The fractional molecule for grand-canonical pair-insertion is stored second
-  inline size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent)
+  inline std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent)
   {
     return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
   }
 
   /// The fractional molecule for Gibbs is stored third
-  inline size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(size_t selectedComponent)
+  inline std::size_t indexOfGibbsFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent)
   {
     return numberOfGCFractionalMoleculesPerComponent_CFCMC[selectedComponent] +
            numberOfPairGCFractionalMoleculesPerComponent_CFCMC[selectedComponent];
@@ -303,25 +303,25 @@ export struct System
   void computeTotalElectrostaticPotential() noexcept;
   void computeTotalElectricField() noexcept;
 
-  size_t randomFramework(RandomNumber &random)
+  std::size_t randomFramework(RandomNumber &random)
   {
-    return size_t(random.uniform() * static_cast<double>(numberOfFrameworks));
+    return std::size_t(random.uniform() * static_cast<double>(numberOfFrameworks));
   }
-  size_t randomComponent(RandomNumber &random)
+  std::size_t randomComponent(RandomNumber &random)
   {
-    return size_t(random.uniform() * static_cast<double>(components.size()));
+    return std::size_t(random.uniform() * static_cast<double>(components.size()));
   }
-  size_t numerOfAdsorbateComponents() { return components.size(); }
-  size_t randomMoleculeOfComponent(RandomNumber &random, size_t selectedComponent);
-  size_t randomIntegerMoleculeOfComponent(RandomNumber &random, size_t selectedComponent);
+  std::size_t numerOfAdsorbateComponents() { return components.size(); }
+  std::size_t randomMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
+  std::size_t randomIntegerMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
 
-  size_t indexOfFirstMolecule(size_t selectedComponent);
-  std::vector<Atom>::iterator iteratorForMolecule(size_t selectedComponent, size_t selectedMolecule);
-  std::vector<double3>::iterator iteratorForElectricField(size_t selectedComponent, size_t selectedMolecule);
-  std::vector<Molecule>::iterator indexForMolecule(size_t selectedComponent, size_t selectedMolecule);
-  size_t moleculeIndexOfComponent(size_t selectedComponent, size_t selectedMolecule);
-  std::span<Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule);
-  const std::span<const Atom> spanOfMolecule(size_t selectedComponent, size_t selectedMolecule) const;
+  std::size_t indexOfFirstMolecule(std::size_t selectedComponent);
+  std::vector<Atom>::iterator iteratorForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
+  std::vector<double3>::iterator iteratorForElectricField(std::size_t selectedComponent, std::size_t selectedMolecule);
+  std::vector<Molecule>::iterator indexForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
+  std::size_t moleculeIndexOfComponent(std::size_t selectedComponent, std::size_t selectedMolecule);
+  std::span<Atom> spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
+  const std::span<const Atom> spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule) const;
   std::span<const Atom> spanOfFrameworkAtoms() const;
   std::span<Atom> spanOfFrameworkAtoms();
   std::span<const Atom> spanOfRigidFrameworkAtoms() const;
@@ -331,21 +331,21 @@ export struct System
   std::span<double> spanOfMoleculeElectrostaticPotential();
   std::span<double3> spanOfMoleculeElectricField();
   std::span<double3> spanOfMoleculeElectricFieldNew();
-  std::span<double3> spanElectricFieldNew(size_t selectedComponent, size_t selectedMolecule);
-  const std::span<const double3> spanElectricFieldNew(size_t selectedComponent, size_t selectedMolecule) const;
-  std::span<double3> spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule);
-  const std::span<const double3> spanElectricFieldOld(size_t selectedComponent, size_t selectedMolecule) const;
+  std::span<double3> spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule);
+  const std::span<const double3> spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+  std::span<double3> spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule);
+  const std::span<const double3> spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule) const;
 
-  size_t numberOfMolecules() const
+  std::size_t numberOfMolecules() const
   {
-    return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), size_t(0),
-                           [](const size_t &acc, const size_t &b) { return acc + b; });
+    return std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), std::size_t(0),
+                           [](const std::size_t &acc, const std::size_t &b) { return acc + b; });
   }
 
-  size_t numberOfIntegerMolecules() const
+  std::size_t numberOfIntegerMolecules() const
   {
     return std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(),
-                           size_t(0), [](const size_t &acc, const size_t &b) { return acc + b; });
+                           std::size_t(0), [](const std::size_t &acc, const std::size_t &b) { return acc + b; });
   }
 
   // The system weight is the sum of the weights of all the components
@@ -370,11 +370,11 @@ export struct System
 
   std::string writeOutputHeader() const;
   std::string writeNumberOfPseudoAtoms() const;
-  std::string writeInitializationStatusReport(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeEquilibrationStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeProductionStatusReportMC(size_t currentCycle, size_t numberOfCycles) const;
-  std::string writeProductionStatusReportMD(size_t currentCycle, size_t numberOfCycles) const;
+  std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const;
+  std::string writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const;
   std::string writeSystemStatus() const;
   std::string writeComponentStatus() const;
   std::string writeMCMoveStatistics() const;
@@ -383,20 +383,20 @@ export struct System
   nlohmann::json jsonComponentStatus() const;
   nlohmann::json jsonMCMoveStatistics() const;
 
-  void insertMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
-  void insertMoleculePolarization(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
+  void insertMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms);
+  void insertMoleculePolarization(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
                                   std::span<double3> electricField);
-  void insertFractionalMolecule(size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
-                                size_t moleculeId);
-  void deleteMolecule(size_t selectedComponent, size_t selectedMolecule, const std::span<Atom> atoms);
+  void insertFractionalMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
+                                std::size_t moleculeId);
+  void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
   void checkMoleculeIds();
 
-  std::vector<Atom> randomConfiguration(RandomNumber &random, size_t selectedComponent,
+  std::vector<Atom> randomConfiguration(RandomNumber &random, std::size_t selectedComponent,
                                         const std::span<const Atom> atoms);
 
   bool insideBlockedPockets(const Component &component, std::span<const Atom> molecule_atoms) const;
 
-  void sampleProperties(size_t currentBlock, size_t currentCycle);
+  void sampleProperties(std::size_t currentBlock, std::size_t currentCycle);
 
   void writeCPUTimeStatistics(std::ostream &stream) const;
 

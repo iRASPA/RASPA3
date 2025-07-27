@@ -14,12 +14,13 @@ module isotherm;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
+import std.compat;
 #endif
 
 import randomnumbers;
 import stringutils;
 
-Isotherm::Isotherm(Isotherm::Type t, const std::vector<double> &values, size_t numberOfValues)
+Isotherm::Isotherm(Isotherm::Type t, const std::vector<double> &values, std::size_t numberOfValues)
     : type(t), parameters(values), numberOfParameters(numberOfValues)
 {
 }
@@ -394,7 +395,7 @@ void Isotherm::randomize(RandomNumber &random, double maximumLoading)
   }
 }
 
-std::string Isotherm::gnuplotFunctionString(char c, size_t i) const
+std::string Isotherm::gnuplotFunctionString(char c, std::size_t i) const
 {
   char stringBuffer[1024];
 

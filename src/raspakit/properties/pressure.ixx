@@ -43,7 +43,7 @@ export struct PropertyPressure
 {
   PropertyPressure() {};
 
-  PropertyPressure(size_t numberOfBlocks)
+  PropertyPressure(std::size_t numberOfBlocks)
       : numberOfBlocks(numberOfBlocks),
         bookKeepingExcessPressure(numberOfBlocks),
         bookKeepingIdealGasPressure(numberOfBlocks)
@@ -52,12 +52,12 @@ export struct PropertyPressure
 
   bool operator==(PropertyPressure const &) const = default;
 
-  uint64_t versionNumber{1};
-  size_t numberOfBlocks;
+  std::uint64_t versionNumber{1};
+  std::size_t numberOfBlocks;
   std::vector<std::pair<double3x3, double>> bookKeepingExcessPressure;
   std::vector<std::pair<double, double>> bookKeepingIdealGasPressure;
 
-  inline void addSample(size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue, double weight)
+  inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue, double weight)
   {
     bookKeepingIdealGasPressure[blockIndex].first += weight * idealGasPressureValue;
     bookKeepingIdealGasPressure[blockIndex].second += weight;
@@ -68,7 +68,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double3x3 averagedExcessPressureTensor(size_t blockIndex) const
+  double3x3 averagedExcessPressureTensor(std::size_t blockIndex) const
   {
     return bookKeepingExcessPressure[blockIndex].first / bookKeepingExcessPressure[blockIndex].second;
   }
@@ -86,8 +86,8 @@ export struct PropertyPressure
     double3x3 average = averagedExcessPressureTensor();
 
     double3x3 sumOfSquares{};
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
       {
@@ -100,7 +100,7 @@ export struct PropertyPressure
     double3x3 confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
       double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
       double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
@@ -112,7 +112,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double3x3 averagedIdealGasPressureTensor(size_t blockIndex) const
+  double3x3 averagedIdealGasPressureTensor(std::size_t blockIndex) const
   {
     return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) *
            double3x3::identity();
@@ -121,7 +121,7 @@ export struct PropertyPressure
   double3x3 averagedIdealGasPressureTensor() const
   {
     std::pair<double3x3, double> summedBlocks{};
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first * double3x3::identity();
       summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
@@ -135,8 +135,8 @@ export struct PropertyPressure
     double3x3 average = averagedIdealGasPressureTensor();
 
     double3x3 sumOfSquares{};
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingIdealGasPressure[blockIndex].second / bookKeepingIdealGasPressure[0].second > 0.5)
       {
@@ -149,9 +149,9 @@ export struct PropertyPressure
     double3x3 confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
       double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double3x3 standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
@@ -161,7 +161,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double3x3 averagedPressureTensor(size_t blockIndex) const
+  double3x3 averagedPressureTensor(std::size_t blockIndex) const
   {
     return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) *
                double3x3::identity() +
@@ -173,8 +173,8 @@ export struct PropertyPressure
     double3x3 average = averagedExcessPressureTensor() + averagedIdealGasPressureTensor();
 
     double3x3 sumOfSquares{};
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
       {
@@ -188,9 +188,9 @@ export struct PropertyPressure
     double3x3 confidenceIntervalError{};
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
       double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double3x3 standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
@@ -200,7 +200,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double averagedExcessPressure(size_t blockIndex) const
+  double averagedExcessPressure(std::size_t blockIndex) const
   {
     return bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * bookKeepingExcessPressure[blockIndex].second);
   }
@@ -218,8 +218,8 @@ export struct PropertyPressure
     double average = averagedExcessPressure();
 
     double sumOfSquares{0.0};
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
       {
@@ -232,8 +232,8 @@ export struct PropertyPressure
     double confidenceIntervalError{0.0};
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
       double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
@@ -244,7 +244,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double averagedIdealGasPressure(size_t blockIndex) const
+  double averagedIdealGasPressure(std::size_t blockIndex) const
   {
     return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second);
   }
@@ -252,7 +252,7 @@ export struct PropertyPressure
   double averagedIdealGasPressure() const
   {
     std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first;
       summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
@@ -266,8 +266,8 @@ export struct PropertyPressure
     double average = averagedIdealGasPressure();
 
     double sumOfSquares = 0.0;
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingIdealGasPressure[blockIndex].second / bookKeepingIdealGasPressure[0].second > 0.5)
       {
@@ -280,9 +280,9 @@ export struct PropertyPressure
     double confidenceIntervalError = 0.0;
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
@@ -292,7 +292,7 @@ export struct PropertyPressure
 
   //====================================================================================================================
 
-  double averagedPressure(size_t blockIndex) const
+  double averagedPressure(std::size_t blockIndex) const
   {
     return (bookKeepingIdealGasPressure[blockIndex].first / bookKeepingIdealGasPressure[blockIndex].second) +
            (bookKeepingExcessPressure[blockIndex].first.trace() / (3.0 * bookKeepingExcessPressure[blockIndex].second));
@@ -303,8 +303,8 @@ export struct PropertyPressure
     double average = averagedExcessPressure() + averagedIdealGasPressure();
 
     double sumOfSquares = 0.0;
-    size_t numberOfSamples = 0;
-    for (size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
+    std::size_t numberOfSamples = 0;
+    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
     {
       if (bookKeepingExcessPressure[blockIndex].second / bookKeepingExcessPressure[0].second > 0.5)
       {
@@ -317,9 +317,9 @@ export struct PropertyPressure
     double confidenceIntervalError = 0.0;
     if (numberOfSamples >= 3)
     {
-      size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
+      std::size_t degreesOfFreedom = numberOfSamples - 1;
+      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
+      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }

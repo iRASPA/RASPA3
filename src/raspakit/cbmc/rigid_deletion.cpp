@@ -47,8 +47,8 @@ import interpolation_energy_grid;
                                           const std::optional<Framework> &framework,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                           double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, size_t startingBead, [[maybe_unused]] double scaling,
-                                          std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept;
+                                          double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] double scaling,
+                                          std::span<Atom> molecule, std::size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] ChainData CBMC::retraceRigidMoleculeSwapDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
@@ -56,10 +56,10 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, [[maybe_unused]] size_t selectedComponent, [[maybe_unused]] size_t selectedMolecule,
-    std::span<Atom> molecule, double scaling, size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, [[maybe_unused]] std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule,
+    std::span<Atom> molecule, double scaling, std::size_t numberOfTrialDirections) noexcept
 {
-  size_t startingBead = components[selectedComponent].startingBead;
+  std::size_t startingBead = components[selectedComponent].startingBead;
 
   const FirstBeadData firstBeadData = CBMC::retraceRigidMultipleFirstBeadSwapDeletion(
       random, component, hasExternalField, forcefield, simulationBox, interpolationGrids, framework, frameworkAtoms,
@@ -91,14 +91,14 @@ import interpolation_energy_grid;
                                           const std::optional<Framework> &framework,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                           double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, size_t startingBead, [[maybe_unused]] double scaling,
-                                          std::span<Atom> molecule, size_t numberOfTrialDirections) noexcept
+                                          double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] double scaling,
+                                          std::span<Atom> molecule, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
   std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom &a) { a.setScaling(scaling); });
   std::vector<std::vector<Atom>> trialPositions = {trialPosition};
 
-  for (size_t i = 1; i < numberOfTrialDirections; ++i)
+  for (std::size_t i = 1; i < numberOfTrialDirections; ++i)
   {
     trialPositions.push_back(CBMC::rotateRandomlyAround(random, trialPosition, startingBead));
   };

@@ -127,7 +127,7 @@ export struct CIFReader
    *
    * \return The scanned integer value.
    */
-  size_t scanInt();
+  std::size_t scanInt();
 
   /**
    * \brief Scans and retrieves a double value from the CIF content.
@@ -162,7 +162,7 @@ export struct CIFReader
 
   std::vector<Atom> fractionalAtoms;            ///< List of atoms with fractional coordinates.
   SimulationBox simulationBox;                  ///< The simulation box defined by cell parameters.
-  std::optional<size_t> _spaceGroupHallNumber;  ///< Optional space group Hall number.
+  std::optional<std::size_t> _spaceGroupHallNumber;  ///< Optional space group Hall number.
   double _a;                                    ///< Cell length a.
   double _b;                                    ///< Cell length b.
   double _c;                                    ///< Cell length c.

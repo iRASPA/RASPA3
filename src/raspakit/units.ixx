@@ -26,7 +26,7 @@ import json;
  */
 export namespace Units
 {
-enum class System : size_t
+enum class System : std::size_t
 {
   RASPA = 0,
   ReducedUnits = 1

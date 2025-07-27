@@ -31,9 +31,9 @@ std::string ConnectivityTable::print(const std::string &prestring) const
 {
   std::ostringstream stream;
 
-  for(size_t i = 0; i != numberOfBeads - 1; ++i)
+  for(std::size_t i = 0; i != numberOfBeads - 1; ++i)
   {
-    for(size_t j = i + 1; j != numberOfBeads; ++j)
+    for(std::size_t j = i + 1; j != numberOfBeads; ++j)
     {
       if(table[j * (j + 1) / 2 + i])
       {
@@ -45,27 +45,27 @@ std::string ConnectivityTable::print(const std::string &prestring) const
   return stream.str();
 }
 
-std::tuple<std::optional<size_t>, size_t, std::vector<size_t>> ConnectivityTable::nextBeads(const std::vector<size_t> &placedBeads)
+std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> ConnectivityTable::nextBeads(const std::vector<std::size_t> &placedBeads)
 {
   // copy the connectvity from the molecule
   ConnectivityTable grown_connectivity = *this;
 
   // remove the already grown beads
-  for (size_t i = 0; i != placedBeads.size(); ++i)
+  for (std::size_t i = 0; i != placedBeads.size(); ++i)
   {
-    for (size_t j = 0; j != numberOfBeads; ++j)
+    for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
       grown_connectivity[i, j] = false;
     }
   }
 
   // search for next-bonds, i.e. everything connected to 'placedBeads'
-  std::vector<std::pair<size_t, size_t>> nextBonds{};
+  std::vector<std::pair<std::size_t, std::size_t>> nextBonds{};
   nextBonds.reserve(16);
-  for (size_t i = 0; i != placedBeads.size(); ++i)
+  for (std::size_t i = 0; i != placedBeads.size(); ++i)
   {
-    size_t k = placedBeads[i];
-    for (size_t j = 0; j != numberOfBeads; ++j)
+    std::size_t k = placedBeads[i];
+    for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
       if (grown_connectivity[k, j])
       {
@@ -80,16 +80,16 @@ std::tuple<std::optional<size_t>, size_t, std::vector<size_t>> ConnectivityTable
   }
 
   // always select the first
-  std::optional<size_t> previous_bead{};
-  size_t current_bead = nextBonds[0].first;
-  size_t next_bead = nextBonds[0].second;
+  std::optional<std::size_t> previous_bead{};
+  std::size_t current_bead = nextBonds[0].first;
+  std::size_t next_bead = nextBonds[0].second;
 
   // there can be more bonds connected to 'current_bead', so search for these
-  std::vector<size_t> nextBeads{};
+  std::vector<std::size_t> nextBeads{};
   nextBeads.reserve(nextBonds.size());
-  size_t number_of_previous_beads{};
+  std::size_t number_of_previous_beads{};
 
-  for (size_t i = 0; i != numberOfBeads; ++i)
+  for (std::size_t i = 0; i != numberOfBeads; ++i)
   {
     if((*this)[i, current_bead])
     {
@@ -133,7 +133,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Connec
   archive << b.table;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -141,7 +141,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Connec
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ConnectivityTable &b)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > b.versionNumber)
   {
@@ -154,9 +154,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Connectivity
   archive >> b.table;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("ConnectivityTable: Error in binary restart\n"));
   }

@@ -47,9 +47,9 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
 
     for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end(); ++it1)
     {
-      [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
-      [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
-      [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
+      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
+      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
@@ -73,7 +73,7 @@ void Interactions::computeExternalFieldEnergy(bool hasExternalField, [[maybe_unu
           double4 b{0.0, 0.0, 11.0, 0.6};
           double4 y0{0.0, 0.5, 1.5, 1.0};
           double4 c{-10.0, -10.0, -6.5, 0.7};
-          for (size_t i = 0; i < 4; ++i)
+          for (std::size_t i = 0; i < 4; ++i)
           {
             energyFactor.energy += A[i] * std::exp(a[i] * (posA.x - x0[i]) * (posA.x - x0[i]) +
                                                    b[i] * (posA.x - x0[i]) * (posA.y - y0[i]) +
@@ -145,12 +145,12 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExterna
         Interactions::calculateThirdDerivativeAtPositionExternalField(forceField, simulationBox, posA);
 
     energy_fractional = energy;
-    for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
+    for (const std::size_t &p : std::array<std::size_t, 3>{0, 1, 2})
     {
       first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
       first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
       first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
-      for (const size_t &q : std::array<size_t, 3>{0, 1, 2})
+      for (const std::size_t &q : std::array<std::size_t, 3>{0, 1, 2})
       {
         second_derivative_fractional[0][1] +=
             simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
@@ -158,7 +158,7 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExterna
             simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
         second_derivative_fractional[1][2] +=
             simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-        for (const size_t &r : std::array<size_t, 3>{0, 1, 2})
+        for (const std::size_t &r : std::array<std::size_t, 3>{0, 1, 2})
         {
           third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] *
                                                   simulationBox.cell[2][r] * third_derivative[p][q][r];
@@ -233,13 +233,13 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
           sixth_derivative] = Interactions::calculateSixthOrderDerivativeAtPositionExternalField(forceField, posA);
 
     energy_fractional = energy;
-    for (const size_t &p : std::array<size_t, 3>{0, 1, 2})
+    for (const std::size_t &p : std::array<std::size_t, 3>{0, 1, 2})
     {
       first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
       first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
       first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
 
-      for (const size_t &q : std::array<size_t, 3>{0, 1, 2})
+      for (const std::size_t &q : std::array<std::size_t, 3>{0, 1, 2})
       {
         second_derivative_fractional[0][0] +=
             simulationBox.cell[0][p] * simulationBox.cell[0][q] * second_derivative[p][q];
@@ -254,7 +254,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
         second_derivative_fractional[2][2] +=
             simulationBox.cell[2][p] * simulationBox.cell[2][q] * second_derivative[p][q];
 
-        for (const size_t &r : std::array<size_t, 3>{0, 1, 2})
+        for (const std::size_t &r : std::array<std::size_t, 3>{0, 1, 2})
         {
           third_derivative_fractional[0][0][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                   simulationBox.cell[1][r] * third_derivative[p][q][r];
@@ -271,7 +271,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
           third_derivative_fractional[1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] *
                                                   simulationBox.cell[2][r] * third_derivative[p][q][r];
 
-          for (const size_t &s : std::array<size_t, 3>{0, 1, 2})
+          for (const std::size_t &s : std::array<std::size_t, 3>{0, 1, 2})
           {
             fourth_derivative_fractional[0][0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                         simulationBox.cell[1][r] * simulationBox.cell[1][s] *
@@ -292,7 +292,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
                                                         simulationBox.cell[2][r] * simulationBox.cell[2][s] *
                                                         fourth_derivative[p][q][r][s];
 
-            for (const size_t &t : std::array<size_t, 3>{0, 1, 2})
+            for (const std::size_t &t : std::array<std::size_t, 3>{0, 1, 2})
             {
               fifth_derivative_fractional[0][0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                             simulationBox.cell[1][r] * simulationBox.cell[1][s] *
@@ -304,7 +304,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
                                                             simulationBox.cell[1][r] * simulationBox.cell[2][s] *
                                                             simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
 
-              for (const size_t &u : std::array<size_t, 3>{0, 1, 2})
+              for (const std::size_t &u : std::array<std::size_t, 3>{0, 1, 2})
               {
                 sixth_derivative_fractional[0][0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                                  simulationBox.cell[1][r] * simulationBox.cell[1][s] *
@@ -379,9 +379,9 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
     for (std::span<const Atom>::iterator it1 = newatoms.begin(); it1 != newatoms.end(); ++it1)
     {
       [[maybe_unused]] double3 posA = it1->position;
-      [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
-      [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
-      [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
+      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
+      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;
@@ -397,9 +397,9 @@ void Interactions::computeExternalFieldTailEnergy(bool hasExternalField, [[maybe
 
     for (std::span<const Atom>::iterator it1 = oldatoms.begin(); it1 != oldatoms.end(); ++it1)
     {
-      [[maybe_unused]] size_t molA = static_cast<size_t>(it1->moleculeId);
-      [[maybe_unused]] size_t compA = static_cast<size_t>(it1->componentId);
-      [[maybe_unused]] size_t typeA = static_cast<size_t>(it1->type);
+      [[maybe_unused]] std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
+      [[maybe_unused]] std::size_t compA = static_cast<std::size_t>(it1->componentId);
+      [[maybe_unused]] std::size_t typeA = static_cast<std::size_t>(it1->type);
       [[maybe_unused]] bool groupIdA = static_cast<bool>(it1->groupId);
       [[maybe_unused]] double scalingVDWA = it1->scalingVDW;
       [[maybe_unused]] double scaleCoulombA = it1->scalingCoulomb;

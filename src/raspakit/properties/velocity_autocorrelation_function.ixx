@@ -34,9 +34,9 @@ export struct PropertyVelocityAutoCorrelationFunction
 {
   PropertyVelocityAutoCorrelationFunction() {};
 
-  PropertyVelocityAutoCorrelationFunction(size_t numberOfComponents, size_t numberOfParticles,
-                                          size_t numberOfBuffersVACF, size_t bufferLengthVACF, size_t sampleEvery,
-                                          size_t writeEvery)
+  PropertyVelocityAutoCorrelationFunction(std::size_t numberOfComponents, std::size_t numberOfParticles,
+                                          std::size_t numberOfBuffersVACF, std::size_t bufferLengthVACF, std::size_t sampleEvery,
+                                          std::size_t writeEvery)
       : numberOfComponents(numberOfComponents),
         numberOfParticles(numberOfParticles),
         numberOfBuffersVACF(numberOfBuffersVACF),
@@ -64,22 +64,22 @@ export struct PropertyVelocityAutoCorrelationFunction
         sumVel(numberOfComponents)
   {
     // trick to space the origins evenly (see for example Rapaport 2004)
-    for (size_t currentBuffer = 0; currentBuffer < numberOfBuffersVACF; ++currentBuffer)
+    for (std::size_t currentBuffer = 0; currentBuffer < numberOfBuffersVACF; ++currentBuffer)
     {
-      countVACF[currentBuffer] = -static_cast<int64_t>(currentBuffer * bufferLengthVACF / numberOfBuffersVACF);
+      countVACF[currentBuffer] = -static_cast<std::int64_t>(currentBuffer * bufferLengthVACF / numberOfBuffersVACF);
     }
   }
 
-  uint64_t versionNumber{1};
+  std::uint64_t versionNumber{1};
 
-  size_t numberOfComponents;
-  size_t numberOfParticles;
+  std::size_t numberOfComponents;
+  std::size_t numberOfParticles;
 
-  size_t numberOfBuffersVACF;
-  size_t bufferLengthVACF;
+  std::size_t numberOfBuffersVACF;
+  std::size_t bufferLengthVACF;
 
-  size_t sampleEvery;
-  size_t writeEvery;
+  std::size_t sampleEvery;
+  std::size_t writeEvery;
 
   std::vector<std::vector<double3>> originVACF;
   std::vector<std::vector<double3>> originOnsagerVACF;
@@ -89,14 +89,14 @@ export struct PropertyVelocityAutoCorrelationFunction
   std::vector<std::vector<double4>> accumulatedAcfVACF;
   std::vector<std::vector<std::vector<double4>>> accumulatedAcfOnsagerVACF;
 
-  std::vector<int64_t> countVACF;
-  size_t countAccumulatedVACF;
+  std::vector<std::int64_t> countVACF;
+  std::size_t countAccumulatedVACF;
   std::vector<double3> sumVel;
 
-  void addSample(size_t currentCycle, const std::vector<Component> &components,
-                 const std::vector<size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
-  void writeOutput(size_t systemId, const std::vector<Component> &components,
-                   const std::vector<size_t> &numberOfMoleculesPerComponent, double deltaT, size_t currentCycle);
+  void addSample(std::size_t currentCycle, const std::vector<Component> &components,
+                 const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
+  void writeOutput(std::size_t systemId, const std::vector<Component> &components,
+                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT, std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyVelocityAutoCorrelationFunction &msd);

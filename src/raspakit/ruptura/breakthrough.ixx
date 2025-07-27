@@ -43,12 +43,12 @@ export struct Breakthrough
   const System &system;
   const std::string displayName;
   const std::vector<Component> components;
-  // size_t carrierGasComponent{ 0 };
-  size_t Ncomp;  // number of components
-  size_t Ngrid;  // number of grid points
+  // std::size_t carrierGasComponent{ 0 };
+  std::size_t Ncomp;  // number of components
+  std::size_t Ngrid;  // number of grid points
 
-  size_t printEvery;  // print time step to the screen every printEvery steps
-  size_t writeEvery;  // write data to files every writeEvery steps
+  std::size_t printEvery;  // print time step to the screen every printEvery steps
+  std::size_t writeEvery;  // write data to files every writeEvery steps
 
   double T;        // absolute temperature [K]
   double p_total;  // total pressure column [Pa]
@@ -60,12 +60,12 @@ export struct Breakthrough
   double L;        // length of the column
   double dx;       // spacing in spatial direction
   double dt;       // timestep integration
-  size_t Nsteps;   // total number of steps
+  std::size_t Nsteps;   // total number of steps
   bool autoSteps;  // use automatic number of steps
   bool pulse;      // pulsed inlet condition for breakthrough
   double tpulse;   // pulse time
   MixturePrediction mixture;
-  std::pair<size_t, size_t> iastPerformance{0, 0};
+  std::pair<std::size_t, std::size_t> iastPerformance{0, 0};
 
   // vector of size 'Ncomp'
   std::vector<double> prefactor;
@@ -80,25 +80,25 @@ export struct Breakthrough
 
   // vector of size '(Ngrid + 1) * Ncomp', for each grid point, data per component (contiguous)
   std::vector<double> P_vector;  // partial pressure at every grid point for each component
-  std::mdspan<double, std::dextents<size_t, 2>> P;
+  std::mdspan<double, std::dextents<std::size_t, 2>> P;
   std::vector<double> Pnew_vector;
-  std::mdspan<double, std::dextents<size_t, 2>> Pnew;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Pnew;
   std::vector<double> Q_vector;  // volume-averaged adsorption amount at every grid point for each component
-  std::mdspan<double, std::dextents<size_t, 2>> Q;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Q;
   std::vector<double> Qnew_vector;
-  std::mdspan<double, std::dextents<size_t, 2>> Qnew;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Qnew;
   std::vector<double> Qeq_vector;  // equilibrium adsorption amount at every grid point for each component
-  std::mdspan<double, std::dextents<size_t, 2>> Qeq;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Qeq;
   std::vector<double> Qeqnew_vector;
-  std::mdspan<double, std::dextents<size_t, 2>> Qeqnew;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Qeqnew;
   std::vector<double> Dpdt_vector;  // derivative of P with respect to time
-  std::mdspan<double, std::dextents<size_t, 2>> Dpdt;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Dpdt;
   std::vector<double> Dpdtnew_vector;
-  std::mdspan<double, std::dextents<size_t, 2>> Dpdtnew;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Dpdtnew;
   std::vector<double> Dqdt_vector;  // derivative of Q with respect to time
-  std::mdspan<double, std::dextents<size_t, 2>> Dqdt;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Dqdt;
   std::vector<double> Dqdtnew_vector;
-  std::mdspan<double, std::dextents<size_t, 2>> Dqdtnew;
+  std::mdspan<double, std::dextents<std::size_t, 2>> Dqdtnew;
   std::vector<double> cachedP0;   // cached hypothetical pressure
   std::vector<double> cachedPsi;  // cached reduced grand potential over the column
 
@@ -108,11 +108,11 @@ export struct Breakthrough
     Iterative = 1
   };
 
-  void computeFirstDerivatives(std::mdspan<double, std::dextents<size_t, 2>> &dqdt,
-                               std::mdspan<double, std::dextents<size_t, 2>> &dpdt,
-                               const std::mdspan<double, std::dextents<size_t, 2>> &q_eq,
-                               const std::mdspan<double, std::dextents<size_t, 2>> &q, const std::vector<double> &v,
-                               const std::mdspan<double, std::dextents<size_t, 2>> &p);
+  void computeFirstDerivatives(std::mdspan<double, std::dextents<std::size_t, 2>> &dqdt,
+                               std::mdspan<double, std::dextents<std::size_t, 2>> &dpdt,
+                               const std::mdspan<double, std::dextents<std::size_t, 2>> &q_eq,
+                               const std::mdspan<double, std::dextents<std::size_t, 2>> &q, const std::vector<double> &v,
+                               const std::mdspan<double, std::dextents<std::size_t, 2>> &p);
 
   void computeEquilibriumLoadings();
 

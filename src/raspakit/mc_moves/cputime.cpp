@@ -260,7 +260,7 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
   return stream.str();
 }
 
-const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(size_t componentId,
+const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::size_t componentId,
                                                               const std::string& componentName) const
 {
   std::ostringstream stream;
@@ -432,7 +432,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
   archive << t.timingMap;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -440,7 +440,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MCMove
 
 Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTime& t)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > t.versionNumber)
   {
@@ -454,9 +454,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTim
   archive >> t.timingMap;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("MCMoveCpuTime: Error in binary restart\n"));
   }

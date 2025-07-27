@@ -38,7 +38,7 @@ import units;
 void MC_OpenCL_SurfaceArea::run([[maybe_unused]] const ForceField &forceField,
                                 [[maybe_unused]] const Framework &framework, [[maybe_unused]] double well_depth_factor,
                                 [[maybe_unused]] std::string probe_pseudo_atom,
-                                [[maybe_unused]] size_t number_of_iterations) const
+                                [[maybe_unused]] std::size_t number_of_iterations) const
 {
   RandomNumber random{std::nullopt};
 }

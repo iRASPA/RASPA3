@@ -31,14 +31,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a torsion potential.
  */
-export const size_t maximumNumberOfTorsionParameters{6};
+export const std::size_t maximumNumberOfTorsionParameters{6};
 
 /**
  * \brief Enumeration of different torsion types.
  *
  * Specifies the type of torsion potential to be used in simulations.
  */
-export enum class TorsionType : size_t { Fixed = 0, Harmonic = 1, HarmonicCosine = 2, 
+export enum class TorsionType : std::size_t { Fixed = 0, Harmonic = 1, HarmonicCosine = 2, 
                                          ThreeCosine = 3, RyckaertBellemans = 4, 
                                          TraPPE = 5,  TraPPE_Extended = 6, ModifiedTraPPE = 7,
                                          CVFF = 8, CFF = 9, CFF2 = 10, OPLS = 11, MM3 = 12, 
@@ -54,9 +54,9 @@ export enum class TorsionType : size_t { Fixed = 0, Harmonic = 1, HarmonicCosine
  */
 export struct TorsionPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the torsion.
+  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the torsion.
   TorsionType type;                                   ///< The type of torsion potential.
   std::array<double, maximumNumberOfTorsionParameters> parameters;  ///< Parameters associated with the torsion potential.
 
@@ -67,7 +67,7 @@ export struct TorsionPotential
    */
   TorsionPotential() : identifiers({0, 0, 0, 0}), type(TorsionType::Harmonic) {}
 
-  TorsionPotential(std::array<size_t, 4> identifiers, TorsionType type, std::vector<double> vector_parameters);
+  TorsionPotential(std::array<std::size_t, 4> identifiers, TorsionType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a TorsionPotential with specified type and torsion IDs.
@@ -75,7 +75,7 @@ export struct TorsionPotential
    * \param type The type of torsion potential.
    * \param identifiers A pair of particle identifiers forming the torsion.
    */
-  TorsionPotential(std::array<size_t, 4> identifiers, const TorsionType type) : identifiers(identifiers), type(type) {}
+  TorsionPotential(std::array<std::size_t, 4> identifiers, const TorsionType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(TorsionPotential const &) const = default;
 
@@ -93,7 +93,7 @@ export struct TorsionPotential
    *
    * A static vector indicating the number of parameters needed for each torsion type.
    */
-  static inline std::array<size_t, 8> numberOfTorsionParameters{0, 2, 2, 1, 2, 2, 2, 1};
+  static inline std::array<std::size_t, 8> numberOfTorsionParameters{0, 2, 2, 1, 2, 2, 2, 1};
 
 
   /**

@@ -34,8 +34,8 @@ static std::string& tolower(std::string& s)
 
 static std::vector<std::string> split(const std::string txt, char ch)
 {
-  size_t pos = txt.find(ch);
-  size_t initialPos = 0;
+  std::size_t pos = txt.find(ch);
+  std::size_t initialPos = 0;
   std::vector<std::string> strs{};
 
   // Decompose statement
@@ -161,11 +161,11 @@ void SKPOSCARLegacyParser::startParsing() noexcept(false)
     cartesian = true;
   }
 
-  for (size_t k = 0; k < amountList.size(); k++)
+  for (std::size_t k = 0; k < amountList.size(); k++)
   {
     int numberOfAtoms = std::stoi(amountList[k]);
 
-    for (size_t i = 0; i < static_cast<size_t>(numberOfAtoms); i++)
+    for (std::size_t i = 0; i < static_cast<std::size_t>(numberOfAtoms); i++)
     {
       std::shared_ptr<SKAsymmetricAtom> atom = std::make_shared<SKAsymmetricAtom>();
 

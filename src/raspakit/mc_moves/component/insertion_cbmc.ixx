@@ -34,5 +34,5 @@ export namespace MC_Moves
  *         The RunningEnergy is present if the move is accepted.
  */
 std::pair<std::optional<RunningEnergy>, double3> insertionMoveCBMC(RandomNumber& random, System& system,
-                                                                   size_t selectedComponent);
+                                                                   std::size_t selectedComponent);
 }  // namespace MC_Moves

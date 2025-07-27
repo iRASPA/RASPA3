@@ -30,14 +30,14 @@ import units;
  *
  * Defines the maximum number of parameters that can be associated with a ureyBradley potential.
  */
-export const size_t maximumNumberOfUreyBradleyParameters{4};
+export const std::size_t maximumNumberOfUreyBradleyParameters{4};
 
 /**
  * \brief Enumeration of different ureyBradley types.
  *
  * Specifies the type of ureyBradley potential to be used in simulations.
  */
-export enum class UreyBradleyType : size_t { Fixed = 0, Harmonic = 1,
+export enum class UreyBradleyType : std::size_t { Fixed = 0, Harmonic = 1,
                                              CoreShellSpring = 2, Morse = 3, LJ_12_6 = 4, LennardJones = 5,
                                              Buckingham = 6, RestrainedHarmonic = 7, Quartic = 8,
                                              CFF_Quartic = 9, MM3 = 10};
@@ -50,9 +50,9 @@ export enum class UreyBradleyType : size_t { Fixed = 0, Harmonic = 1,
  */
 export struct UreyBradleyPotential
 {
-  uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the ureyBradley.
+  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the ureyBradley.
   UreyBradleyType type;                                             ///< The type of ureyBradley potential.
   std::array<double, maximumNumberOfUreyBradleyParameters> parameters;  ///< Parameters associated with the ureyBradley potential.
 
@@ -63,7 +63,7 @@ export struct UreyBradleyPotential
    */
   UreyBradleyPotential() : identifiers({0, 0}), type(UreyBradleyType::Harmonic) {}
 
-  UreyBradleyPotential(std::array<size_t, 2> identifiers, UreyBradleyType type, std::vector<double> vector_parameters);
+  UreyBradleyPotential(std::array<std::size_t, 2> identifiers, UreyBradleyType type, std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a UreyBradleyPotential with specified type and ureyBradley IDs.
@@ -71,7 +71,7 @@ export struct UreyBradleyPotential
    * \param type The type of ureyBradley potential.
    * \param identifiers A pair of particle identifiers forming the ureyBradley.
    */
-  UreyBradleyPotential(std::array<size_t, 2> identifiers, const UreyBradleyType type) : identifiers(identifiers), type(type) {}
+  UreyBradleyPotential(std::array<std::size_t, 2> identifiers, const UreyBradleyType type) : identifiers(identifiers), type(type) {}
 
   bool operator==(UreyBradleyPotential const &) const = default;
 
@@ -89,7 +89,7 @@ export struct UreyBradleyPotential
    *
    * A static vector indicating the number of parameters needed for each ureyBradley type.
    */
-  static inline std::array<size_t, 11> numberOfUreyBradleyParameters{1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
+  static inline std::array<std::size_t, 11> numberOfUreyBradleyParameters{1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
 
 
   /**

@@ -29,14 +29,14 @@ import forcefield;
 import units;
 
 void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framework, double well_depth_factor,
-                         std::string probe_pseudo_atom, size_t number_of_iterations) const
+                         std::string probe_pseudo_atom, std::size_t number_of_iterations) const
 {
   RandomNumber random{std::nullopt};
   std::chrono::system_clock::time_point time_begin, time_end;
 
   time_begin = std::chrono::system_clock::now();
 
-  std::optional<size_t> probeType = forceField.findPseudoAtom(probe_pseudo_atom);
+  std::optional<std::size_t> probeType = forceField.findPseudoAtom(probe_pseudo_atom);
 
   if (!probeType.has_value())
   {
@@ -46,13 +46,13 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
   double accumulated_surface_area{};
   for (std::make_signed_t<std::size_t> atom_index = 0; const Atom &atom : framework.unitCellAtoms)
   {
-    size_t atomType = static_cast<size_t>(atom.type);
+    std::size_t atomType = static_cast<std::size_t>(atom.type);
     double size_parameter = forceField(probeType.value(), atomType).sizeParameter();
     double equilibrium_distance = well_depth_factor * size_parameter;
 
     double total_trials{};
     double counted{};
-    for (size_t i = 0; i < number_of_iterations; ++i)
+    for (std::size_t i = 0; i < number_of_iterations; ++i)
     {
       double3 vec = random.randomVectorOnUnitSphere();
 

@@ -30,7 +30,7 @@ export namespace Potentials
  *
  * \return The calculated VDW potential correction.
  */
-inline double potentialCorrectionVDW(const ForceField& forcefield, const size_t& typeA, const size_t& typeB)
+inline double potentialCorrectionVDW(const ForceField& forcefield, const std::size_t& typeA, const std::size_t& typeB)
 {
   VDWParameters::Type potentialType = forcefield(typeA, typeB).type;
 

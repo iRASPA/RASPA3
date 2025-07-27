@@ -50,7 +50,7 @@ void TransitionMatrix::initialize()
 // insertion overlap-detected: double3(0.0, 1.0, 0.0)
 // deletion: double3(0.0, 1.0 - Pacc, Pacc)
 // deletion overlap-detected: double3(0.0, 1.0, 0.0)
-void TransitionMatrix::updateMatrix(double3 Pacc, size_t oldN)
+void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN)
 {
   if (!doTMMC) return;
 
@@ -59,7 +59,7 @@ void TransitionMatrix::updateMatrix(double3 Pacc, size_t oldN)
   cmatrix[oldN - minMacrostate] += Pacc;
 };
 
-void TransitionMatrix::updateHistogram(size_t N)
+void TransitionMatrix::updateHistogram(std::size_t N)
 {
   if (!doTMMC) return;
 
@@ -68,7 +68,7 @@ void TransitionMatrix::updateHistogram(size_t N)
 }
 
 // return the biasing Factor
-double TransitionMatrix::biasFactor(size_t newN, size_t oldN)
+double TransitionMatrix::biasFactor(std::size_t newN, std::size_t oldN)
 {
   if (!doTMMC || !useBias || !useTMBias) return 1.0;
 
@@ -86,19 +86,19 @@ void TransitionMatrix::adjustBias()
   numberOfUpdates++;
 
   // get the lowest and highest visited states in terms of loading
-  size_t minVisitedN = static_cast<size_t>(std::distance(
-      histogram.begin(), std::find_if(histogram.begin(), histogram.end(), [](const size_t &i) { return i; })));
-  size_t maxVisitedN = static_cast<size_t>(
+  std::size_t minVisitedN = static_cast<std::size_t>(std::distance(
+      histogram.begin(), std::find_if(histogram.begin(), histogram.end(), [](const std::size_t &i) { return i; })));
+  std::size_t maxVisitedN = static_cast<std::size_t>(
       std::distance(histogram.begin(),
-                    std::find_if(histogram.rbegin(), histogram.rend(), [](const size_t &i) { return i; }).base()) -
+                    std::find_if(histogram.rbegin(), histogram.rend(), [](const std::size_t &i) { return i; }).base()) -
       1);
-  [[maybe_unused]] size_t nonzeroCount = maxVisitedN - minVisitedN + 1;
+  [[maybe_unused]] std::size_t nonzeroCount = maxVisitedN - minVisitedN + 1;
 
   lnpi[minVisitedN] = 0.0;
   double maxlnpi = lnpi[minVisitedN];
   // Update the lnpi for the sampled region//
   // x: -1; y: 0; z: +1//
-  for (size_t i = minVisitedN; i < maxVisitedN; i++)
+  for (std::size_t i = minVisitedN; i < maxVisitedN; i++)
   {
     // Zhao's note: add protection to avoid numerical issues
     if (cmatrix[i].z != 0)
@@ -120,17 +120,17 @@ void TransitionMatrix::adjustBias()
   }
 
   // For the unsampled states, fill them with the minVisitedN/maxVisitedN stats
-  for (size_t i = 0; i < minVisitedN; ++i)
+  for (std::size_t i = 0; i < minVisitedN; ++i)
   {
     lnpi[i] = lnpi[minVisitedN];
   }
-  for (size_t i = maxVisitedN; i < maxMacrostate - minMacrostate + 1; ++i)
+  for (std::size_t i = maxVisitedN; i < maxMacrostate - minMacrostate + 1; ++i)
   {
     lnpi[i] = lnpi[maxVisitedN];
   }
 
   // Normalize
-  for (size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i)
+  for (std::size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i)
   {
     lnpi[i] -= maxlnpi;
   }
@@ -138,7 +138,7 @@ void TransitionMatrix::adjustBias()
       std::accumulate(lnpi.begin(), lnpi.end(), 0.0, [](double sum, double item) { return sum + std::exp(item); });
   double normalFactor = -std::log(sumExps);
 
-  for (size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i)
+  for (std::size_t i = 0; i < maxMacrostate - minMacrostate + 1; ++i)
   {
     lnpi[i] += normalFactor;  // Zhao's note: mind the sign
     bias[i] = -lnpi[i];
@@ -189,9 +189,9 @@ void TransitionMatrix::writeStatistics()
     std::print(textTMMCFile, "# column 8: reverse lnpi\n");
     std::print(textTMMCFile, "# column 9: histogram\n");
     std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
-    for (size_t j = minMacrostate; j < maxMacrostate + 1; j++)
+    for (std::size_t j = minMacrostate; j < maxMacrostate + 1; j++)
     {
-      size_t newj = j - minMacrostate;
+      std::size_t newj = j - minMacrostate;
       std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z,
                  bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
     }
@@ -222,7 +222,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.rezeroAfterInitialization;
 
 #if DEBUG_ARCHIVE
-  archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 #endif
 
   return archive;
@@ -230,7 +230,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
 
 Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m)
 {
-  uint64_t versionNumber;
+  std::uint64_t versionNumber;
   archive >> versionNumber;
   if (versionNumber > m.versionNumber)
   {
@@ -259,9 +259,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.rezeroAfterInitialization;
 
 #if DEBUG_ARCHIVE
-  uint64_t magicNumber;
+  std::uint64_t magicNumber;
   archive >> magicNumber;
-  if (magicNumber != static_cast<uint64_t>(0x6f6b6179))
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("TransitionMatrix: Error in binary restart\n"));
   }

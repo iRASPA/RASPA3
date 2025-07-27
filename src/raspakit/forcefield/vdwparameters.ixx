@@ -34,7 +34,7 @@ export struct VDWParameters
   /**
    * \brief Enumeration of van der Waals potential types.
    */
-  enum class Type : size_t
+  enum class Type : std::size_t
   {
     None = 0,
     LennardJones = 1,
