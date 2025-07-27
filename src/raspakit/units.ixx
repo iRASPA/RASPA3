@@ -106,6 +106,9 @@ constexpr double AtmTokPa = 101.325;
 /// Conversion factor from atmospheres to pascals.
 constexpr double AtmToPa = 101325.0;
 
+constexpr double DegreesToRadians = std::numbers::pi / 180.0;
+constexpr double RadiansToDegrees = 180.0 / std::numbers::pi;
+
 // Set of base units
 /// The simulation's base unit of length in meters.
 double LengthUnit = Angstrom;
@@ -193,6 +196,7 @@ double EnergyToEV = EnergyToKelvin / 11604.23;
 double EnergyToKCalPerMol = EnergyConversionFactor * AvogadroConstant / 4184.0;
 /// Conversion factor from kilocalories per mole to simulation energy units.
 double KCalPerMolToEnergy = 4184.0 / (EnergyConversionFactor * AvogadroConstant);
+
 
 std::string unitOfLengthString{"m"};
 std::string unitOfEnergyString{"J"};
