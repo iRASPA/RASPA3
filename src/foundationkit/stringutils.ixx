@@ -8,10 +8,13 @@ module;
 #include <locale>
 #include <print>
 #include <string>
+#include <cstring>
 #include <type_traits>
 #endif
 
+#ifndef USE_LEGACY_HEADERS
 #include <strings.h>
+#endif
 
 export module stringutils;
 
@@ -33,7 +36,7 @@ export struct caseInsensitiveComparator
 #if defined(_WIN32)
     return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
 #else
-    return ::strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
+    return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
 #endif
   }
 };

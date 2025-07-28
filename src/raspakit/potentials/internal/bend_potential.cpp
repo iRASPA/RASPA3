@@ -14,7 +14,7 @@ module;
 #include <source_location>
 #include <tuple>
 #include <utility>
-#include <vector>
+#include <optional>
 #endif
 
 module bend_potential;

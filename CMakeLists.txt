@@ -7,7 +7,11 @@ cmake_minimum_required(VERSION 3.29)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
-set(CMAKE_CXX_STANDARD 26)
+if(WIN32)
+  set(CMAKE_CXX_STANDARD 23)
+else()
+  set(CMAKE_CXX_STANDARD 26)
+endif()
 
 # Turning off extensions avoids an issue with the clang 16 compiler
 # clang 17 and greater can avoid this setting

@@ -16,6 +16,7 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <optional>
 #endif
 
 module connectivity_table;

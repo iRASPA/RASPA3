@@ -12,6 +12,7 @@ module;
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <optional>
 #endif
 
 export module connectivity_table;

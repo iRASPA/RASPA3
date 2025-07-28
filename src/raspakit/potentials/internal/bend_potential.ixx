@@ -12,6 +12,7 @@ module;
 #include <tuple>
 #include <type_traits>
 #include <vector>
+#include <optional>
 #endif
 
 export module bend_potential;
