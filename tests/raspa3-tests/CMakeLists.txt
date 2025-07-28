@@ -84,7 +84,7 @@ gtest_add_tests(TARGET unit_tests_raspa3 TEST_SUFFIX .noArgs TEST_LIST noArgsTes
 if(BUILD_MAC_PACKAGE)
   install(CODE "execute_process(COMMAND
       codesign --force --options runtime --timestamp --sign \"Developer ID Application: David Dubbeldam (24U2ZRZ6SC)\"  
-      \"tests/raspakit-tests/unit_tests_raspa3\")" COMPONENT unit_tests)
+      \"tests/raspa3-tests/unit_tests_raspa3\")" COMPONENT unit_tests)
 endif()
 
 install(TARGETS unit_tests_raspa3 DESTINATION share/raspa3/tests COMPONENT unit_tests)
