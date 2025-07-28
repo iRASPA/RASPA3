@@ -614,8 +614,10 @@ void MolecularDynamics::output()
     std::print(
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
-    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass(),
-          system.framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               system.averageLoadings.writeAveragesStatistics(
+                   system.components, system.frameworkMass(),
+                   system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
 }
 
@@ -684,6 +686,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MolecularDyn
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<std::uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
+                           static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

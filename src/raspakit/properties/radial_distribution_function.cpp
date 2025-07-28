@@ -36,7 +36,8 @@ import averages;
 
 void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
                                                 [[maybe_unused]] const std::vector<Molecule> &molecules,
-                                                std::span<Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block)
+                                                std::span<Atom> moleculeAtoms, std::size_t currentCycle,
+                                                std::size_t block)
 {
   double3 dr, posA, posB, f;
   double3 gradientA, gradientB;
@@ -114,7 +115,8 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
           {
             if ((static_cast<double>(i) + 0.5) * deltaR < r)
             {
-              std::size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
+              std::size_t index =
+                  typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
               sumProperty[index][i] += value;
               index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
               sumProperty[index][i] += value;

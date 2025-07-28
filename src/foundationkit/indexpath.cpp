@@ -25,7 +25,8 @@ std::size_t& IndexPath::operator[](const std::size_t index)  // for non-const ob
   return _path[index];
 }
 
-const std::size_t& IndexPath::operator[](const std::size_t index) const  // for const objects: can only be used for access
+const std::size_t& IndexPath::operator[](
+    const std::size_t index) const  // for const objects: can only be used for access
 {
   return _path[index];
 }

@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bond_bend_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, BondBendType type,
+                                     std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -102,7 +103,6 @@ BondBendPotential::BondBendPotential(std::array<std::size_t, 4> identifiers, Bon
   }
 }
 
-
 std::string BondBendPotential::print() const
 {
   switch (type)
@@ -115,10 +115,11 @@ std::string BondBendPotential::print() const
       // p_2     [A]
       // p_3/k_B [K/A/rad]
       // p_4     [A]
-      return std::format("{} - {} - {} : CVFF p_0={:g} [degrees], p_1/k_B={:g} [K/A/rad], p_2={:g} [A], p_3/k_B={:g} [K/A/rad], p_4={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::RadiansToDegrees, parameters[1] * Units::EnergyToKelvin, parameters[2],
-                         parameters[3] * Units::EnergyToKelvin, parameters[4]);
+      return std::format(
+          "{} - {} - {} : CVFF p_0={:g} [degrees], p_1/k_B={:g} [K/A/rad], p_2={:g} [A], p_3/k_B={:g} [K/A/rad], "
+          "p_4={:g} [A]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::RadiansToDegrees,
+          parameters[1] * Units::EnergyToKelvin, parameters[2], parameters[3] * Units::EnergyToKelvin, parameters[4]);
     case BondBendType::CFF:
       // (Theta-p_0)*(p_1*(rab-p_2)+p_3*(rbc-p_4))
       // =========================================
@@ -127,10 +128,11 @@ std::string BondBendPotential::print() const
       // p_2     [A]
       // p_3/k_B [K/A/rad]
       // p_4     [A]
-      return std::format("{} - {} - {} : CVFF p_0={:g} [degrees], p_1/k_B={:g} [K/A/rad], p_2={:g} [A], p_3/k_B={:g} [K/A/rad], p_4={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::RadiansToDegrees, parameters[1] * Units::EnergyToKelvin, parameters[2],
-                         parameters[3] * Units::EnergyToKelvin, parameters[4]);
+      return std::format(
+          "{} - {} - {} : CVFF p_0={:g} [degrees], p_1/k_B={:g} [K/A/rad], p_2={:g} [A], p_3/k_B={:g} [K/A/rad], "
+          "p_4={:g} [A]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::RadiansToDegrees,
+          parameters[1] * Units::EnergyToKelvin, parameters[2], parameters[3] * Units::EnergyToKelvin, parameters[4]);
     case BondBendType::MM3:
       // p_0*[(rab-p_1)+(rbc-p_2)]*(Theta-p_3)
       // =====================================
@@ -149,8 +151,8 @@ std::string BondBendPotential::print() const
       // p_1     [degrees]
       // p_2     [A]
       return std::format("{} - {} - {} : TRUNCATED_HARMONIC p_0/k_B={:g} [K/A/rad], p_2={:g} [degrees], p_3={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees, parameters[2]);
+                         identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees, parameters[2]);
     case BondBendType::ScreenedHarmonic:
       // (1/2)*p_0*(Theta-p_1)^2*exp(-(rab/p_2+rbc/p_3))
       // ===============================================
@@ -158,9 +160,10 @@ std::string BondBendPotential::print() const
       // p_1     [degrees]
       // p_2     [A]
       // p_3     [A]
-      return std::format("{} - {} - {} : SCREENED_HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [A], p_3={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
+      return std::format(
+          "{} - {} - {} : SCREENED_HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [A], p_3={:g} [A]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
       break;
     case BondBendType::ScreenedVessal:
       // (p_0/(8.0*(Theta-PI)^2))*((p_1-PI)^2-(Theta-PI)^2)^2*exp(-(rab/p_2+rbc/p_3))
@@ -169,9 +172,10 @@ std::string BondBendPotential::print() const
       // p_1     [degrees]
       // p_2     [A]
       // p_3     [A]
-      return std::format("{} - {} - {} : SCREENED_VESSAL p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [A], p_3={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
+      return std::format(
+          "{} - {} - {} : SCREENED_VESSAL p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2={:g} [A], p_3={:g} [A]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
     case BondBendType::TruncatedVessal:
       // p_0*[pow(theta,p_2)*(theta-p_1)^2*(theta+p_1-2.0*PI)^2-0.5*p_2*pow(PI,p_2-1.0)*(theta-p_1)^2*pow(PI-p_1,3)]
       //    *exp(-(pow(rab,8)+pow(rbc,8))/pow(p_3,8))
@@ -180,16 +184,19 @@ std::string BondBendPotential::print() const
       // p_1     [degrees]
       // p_2     [-]
       // p_3     [A]
-      return std::format("{} - {} - {} : TRUNCATED_VESSAL p_0/k_B={:g} [K/rad^(4+p_2)], p_1={:g} [degrees], p_2={:g} [-], p_3={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
+      return std::format(
+          "{} - {} - {} : TRUNCATED_VESSAL p_0/k_B={:g} [K/rad^(4+p_2)], p_1={:g} [degrees], p_2={:g} [-], p_3={:g} "
+          "[A]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::RadiansToDegrees, parameters[2], parameters[3]);
   }
 }
 
-double BondBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB, 
-                                          [[maybe_unused]] const double3 &posC, [[maybe_unused]] const double3 &posD) const
+double BondBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
+                                          [[maybe_unused]] const double3 &posC,
+                                          [[maybe_unused]] const double3 &posD) const
 {
-  switch(type)
+  switch (type)
   {
     case BondBendType::CVFF:
       return 0.0;

@@ -624,59 +624,59 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 
   if (!omitInterInteractions)
   {
-  // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for (std::size_t i = 0; i != numberOfAtoms; ++i)
-  {
-    double charge = atomPositions[i].charge;
-    double scaling = atomPositions[i].scalingCoulomb;
-    bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
-    energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
-    energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
-  }
-
-  // Subtract exclusion-energy
-  std::size_t index{0};
-  for (std::size_t l = 0; l != components.size(); ++l)
-  {
-    std::size_t size = components[l].atoms.size();
-    for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    // Subtract self-energy
+    double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
+    for (std::size_t i = 0; i != numberOfAtoms; ++i)
     {
-      std::span<Atom> span = std::span(&atomPositions[index], size);
-      for (std::size_t i = 0; i != span.size() - 1; i++)
-      {
-        double chargeA = span[i].charge;
-        double scalingA = span[i].scalingCoulomb;
-        bool groupIdA = static_cast<bool>(span[i].groupId);
-        double3 posA = span[i].position;
-        for (std::size_t j = i + 1; j != span.size(); j++)
-        {
-          double chargeB = span[j].charge;
-          double scalingB = span[j].scalingCoulomb;
-          bool groupIdB = static_cast<bool>(span[j].groupId);
-          double3 posB = span[j].position;
-
-          double3 dr = posA - posB;
-          dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-          double rr = double3::dot(dr, dr);
-          double r = std::sqrt(rr);
-
-          double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-          energySum.ewald_exclusion -= scalingA * scalingB * temp;
-          energySum.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
-
-          temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
-                 std::exp(-(alpha * alpha * r * r)) / rr;
-          double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
-          double Bt1 = temp + Bt0 / rr;
-          temp = chargeA * chargeB * Bt1;
-          span[i].gradient -= temp * dr;
-          span[j].gradient += temp * dr;
-        }
-      }
-      index += size;
+      double charge = atomPositions[i].charge;
+      double scaling = atomPositions[i].scalingCoulomb;
+      bool groupIdA = static_cast<bool>(atomPositions[i].groupId);
+      energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
+      energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
     }
-  }
+
+    // Subtract exclusion-energy
+    std::size_t index{0};
+    for (std::size_t l = 0; l != components.size(); ++l)
+    {
+      std::size_t size = components[l].atoms.size();
+      for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+      {
+        std::span<Atom> span = std::span(&atomPositions[index], size);
+        for (std::size_t i = 0; i != span.size() - 1; i++)
+        {
+          double chargeA = span[i].charge;
+          double scalingA = span[i].scalingCoulomb;
+          bool groupIdA = static_cast<bool>(span[i].groupId);
+          double3 posA = span[i].position;
+          for (std::size_t j = i + 1; j != span.size(); j++)
+          {
+            double chargeB = span[j].charge;
+            double scalingB = span[j].scalingCoulomb;
+            bool groupIdB = static_cast<bool>(span[j].groupId);
+            double3 posB = span[j].position;
+
+            double3 dr = posA - posB;
+            dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+            double rr = double3::dot(dr, dr);
+            double r = std::sqrt(rr);
+
+            double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+            energySum.ewald_exclusion -= scalingA * scalingB * temp;
+            energySum.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
+
+            temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
+                   std::exp(-(alpha * alpha * r * r)) / rr;
+            double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
+            double Bt1 = temp + Bt0 / rr;
+            temp = chargeA * chargeB * Bt1;
+            span[i].gradient -= temp * dr;
+            span[j].gradient += temp * dr;
+          }
+        }
+        index += size;
+      }
+    }
   }
 
   // Handle net-charges
@@ -940,7 +940,7 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
   double alpha_squared = alpha * alpha;
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
-  //bool omitInterInteractions = forceField.omitInterInteractions;
+  // bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -1187,7 +1187,7 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
   double alpha_squared = alpha * alpha;
   std::size_t recip_integer_cutoff_squared = forceField.reciprocalIntegerCutOffSquared;
   double recip_cutoff_squared = forceField.reciprocalCutOffSquared;
-  //bool omitInterInteractions = forceField.omitInterInteractions;
+  // bool omitInterInteractions = forceField.omitInterInteractions;
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
   double3 ay = double3(inv_box.ay, inv_box.by, inv_box.cy);
@@ -1726,7 +1726,8 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
             std::complex<double> eikz_temp = eik_z[i + numberOfAtoms * static_cast<std::size_t>(std::abs(kz))];
             eikz_temp.imag(kz >= 0 ? eikz_temp.imag() : -eikz_temp.imag());
             std::complex<double> cki = eik_xy[i] * eikz_temp;
-            electricPotentialMolecules[i] += 2.0 * temp * (cki.real() * total.first.real() + cki.imag() * total.first.imag());
+            electricPotentialMolecules[i] +=
+                2.0 * temp * (cki.real() * total.first.real() + cki.imag() * total.first.imag());
           }
 
           ++nvec;
@@ -1906,10 +1907,10 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
           std::pair<std::complex<double>, std::complex<double>> rigid = fixedFrameworkStoredEik[nvec];
 
           std::pair<std::complex<double>, std::complex<double>> total = rigid;
-          //if (!omitInterInteractions || !omitInterPolarization)
+          // if (!omitInterInteractions || !omitInterPolarization)
           //{
-            total.first += cksum.first;
-            total.second += cksum.second;
+          total.first += cksum.first;
+          total.second += cksum.second;
           //}
 
           energySum.ewald_fourier +=
@@ -1948,68 +1949,68 @@ RunningEnergy Interactions::computeEwaldFourierElectricField(
 
   if (!omitInterInteractions)
   {
-  // Subtract self-energy
-  double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
-  for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
-  {
-    double charge = moleculeAtomPositions[i].charge;
-    double scaling = moleculeAtomPositions[i].scalingCoulomb;
-    bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
-    energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
-    energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
-  }
-
-  // Subtract exclusion-energy
-  std::size_t index{0};
-  for (std::size_t l = 0; l != components.size(); ++l)
-  {
-    std::size_t size = components[l].atoms.size();
-    for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
+    // Subtract self-energy
+    double prefactor_self = Units::CoulombicConversionFactor * forceField.EwaldAlpha / std::sqrt(std::numbers::pi);
+    for (std::size_t i = 0; i != moleculeAtomPositions.size(); ++i)
     {
-      std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
-      std::span<double3> electricField = std::span(&electricFieldMolecules[index], size);
-      for (std::size_t i = 0; i != span.size(); i++)
+      double charge = moleculeAtomPositions[i].charge;
+      double scaling = moleculeAtomPositions[i].scalingCoulomb;
+      bool groupIdA = static_cast<bool>(moleculeAtomPositions[i].groupId);
+      energySum.ewald_self -= prefactor_self * scaling * charge * scaling * charge;
+      energySum.dudlambdaEwald -= groupIdA ? 2.0 * prefactor_self * scaling * charge * charge : 0.0;
+    }
+
+    // Subtract exclusion-energy
+    std::size_t index{0};
+    for (std::size_t l = 0; l != components.size(); ++l)
+    {
+      std::size_t size = components[l].atoms.size();
+      for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
-        double chargeA = span[i].charge;
-        double scalingA = span[i].scalingCoulomb;
-        bool groupIdA = static_cast<bool>(span[i].groupId);
-        double3 posA = span[i].position;
-        for (std::size_t j = i + 1; j != span.size(); j++)
+        std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+        std::span<double3> electricField = std::span(&electricFieldMolecules[index], size);
+        for (std::size_t i = 0; i != span.size(); i++)
         {
-          if (i != j)
+          double chargeA = span[i].charge;
+          double scalingA = span[i].scalingCoulomb;
+          bool groupIdA = static_cast<bool>(span[i].groupId);
+          double3 posA = span[i].position;
+          for (std::size_t j = i + 1; j != span.size(); j++)
           {
-            double chargeB = span[j].charge;
-            double scalingB = span[j].scalingCoulomb;
-            bool groupIdB = static_cast<bool>(span[j].groupId);
-            double3 posB = span[j].position;
-
-            double3 dr = posA - posB;
-            dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-            double rr = double3::dot(dr, dr);
-            double r = std::sqrt(rr);
-
-            if (!omitInterInteractions)
+            if (i != j)
             {
-              double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
-              energySum.ewald_exclusion -= scalingA * scalingB * temp;
-              energySum.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
-            }
+              double chargeB = span[j].charge;
+              double scalingB = span[j].scalingCoulomb;
+              bool groupIdB = static_cast<bool>(span[j].groupId);
+              double3 posB = span[j].position;
 
-            double temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
-                          std::exp(-(alpha * alpha * r * r)) / rr;
-            double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
-            double Bt1 = temp + Bt0 / rr;
-            if (!omitInterPolarization)
-            {
-              electricField[i] += scalingB * chargeB * Bt1 * dr;
-              electricField[j] -= scalingA * chargeA * Bt1 * dr;
+              double3 dr = posA - posB;
+              dr = simulationBox.applyPeriodicBoundaryConditions(dr);
+              double rr = double3::dot(dr, dr);
+              double r = std::sqrt(rr);
+
+              if (!omitInterInteractions)
+              {
+                double temp = Units::CoulombicConversionFactor * chargeA * chargeB * std::erf(alpha * r) / r;
+                energySum.ewald_exclusion -= scalingA * scalingB * temp;
+                energySum.dudlambdaEwald -= (groupIdA ? scalingB * temp : 0.0) + (groupIdB ? scalingA * temp : 0.0);
+              }
+
+              double temp = Units::CoulombicConversionFactor * (2.0 * std::numbers::inv_sqrtpi) * alpha *
+                            std::exp(-(alpha * alpha * r * r)) / rr;
+              double Bt0 = -Units::CoulombicConversionFactor * std::erf(alpha * r) / r;
+              double Bt1 = temp + Bt0 / rr;
+              if (!omitInterPolarization)
+              {
+                electricField[i] += scalingB * chargeB * Bt1 * dr;
+                electricField[j] -= scalingA * chargeA * Bt1 * dr;
+              }
             }
           }
         }
+        index += size;
       }
-      index += size;
     }
-  }
   }
 
   return energySum;

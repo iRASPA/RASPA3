@@ -7,15 +7,15 @@ module;
 #include <cstddef>
 #include <exception>
 #include <fstream>
-#include <sstream>
+#include <iostream>
 #include <map>
 #include <print>
 #include <source_location>
-#include <utility>
-#include <vector>
-#include <iostream>
+#include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 #endif
 
 module connectivity_table;
@@ -31,11 +31,11 @@ std::string ConnectivityTable::print(const std::string &prestring) const
 {
   std::ostringstream stream;
 
-  for(std::size_t i = 0; i != numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i != numberOfBeads - 1; ++i)
   {
-    for(std::size_t j = i + 1; j != numberOfBeads; ++j)
+    for (std::size_t j = i + 1; j != numberOfBeads; ++j)
     {
-      if(table[j * (j + 1) / 2 + i])
+      if (table[j * (j + 1) / 2 + i])
       {
         std::print(stream, "{}{} - {}\n", prestring, i, j);
       }
@@ -45,7 +45,8 @@ std::string ConnectivityTable::print(const std::string &prestring) const
   return stream.str();
 }
 
-std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> ConnectivityTable::nextBeads(const std::vector<std::size_t> &placedBeads)
+std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> ConnectivityTable::nextBeads(
+    const std::vector<std::size_t> &placedBeads)
 {
   // copy the connectvity from the molecule
   ConnectivityTable grown_connectivity = *this;
@@ -74,7 +75,7 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
     }
   }
 
-  if(nextBonds.empty())
+  if (nextBonds.empty())
   {
     throw std::runtime_error(std::format("Error in CBMMC: No bead can be grown\n"));
   }
@@ -91,9 +92,9 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
 
   for (std::size_t i = 0; i != numberOfBeads; ++i)
   {
-    if((*this)[i, current_bead])
+    if ((*this)[i, current_bead])
     {
-      if(grown_connectivity[i, current_bead])
+      if (grown_connectivity[i, current_bead])
       {
         nextBeads.push_back(i);
       }
@@ -106,13 +107,13 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   }
 
   // if there are no previous beads, than grow the chosen, single bond
-  if(number_of_previous_beads == 0)
+  if (number_of_previous_beads == 0)
   {
     return {std::nullopt, current_bead, {next_bead}};
   }
   else
   {
-    if(!previous_bead)
+    if (!previous_bead)
     {
       throw std::runtime_error(std::format("Error in CBMC: No previous bead\n"));
     }

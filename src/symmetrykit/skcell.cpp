@@ -37,7 +37,8 @@ SKCell::SKCell()
 
   double3 v1 = double3(a, 0.0, 0.0);
   double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
-  double3 v3 = double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
+  double3 v3 =
+      double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
   _unitCell = double3x3(v1, v2, v3);
 
   _inverseUnitCell = _unitCell.inverse();
@@ -90,7 +91,8 @@ SKCell::SKCell(double a, double b, double c, double alpha, double beta, double g
 
   double3 v1 = double3(a, 0.0, 0.0);
   double3 v2 = double3(b * std::cos(gamma), b * std::sin(gamma), 0.0);
-  double3 v3 = double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
+  double3 v3 =
+      double3(c * std::cos(beta), c * temp, c * std::sqrt(1.0 - std::cos(beta) * std::cos(beta) - temp * temp));
   _unitCell = double3x3(v1, v2, v3);
 
   _inverseUnitCell = _unitCell.inverse();
@@ -521,7 +523,8 @@ void SKCell::alpha(const double& newValue)
   double temp = (std::cos(newValue) - std::cos(gammaAngle) * std::cos(betaAngle)) / std::sin(gammaAngle);
   double lengthC = c();
 
-  double3 v3 = lengthC * double3(std::cos(betaAngle), temp, std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
+  double3 v3 = lengthC * double3(std::cos(betaAngle), temp,
+                                 std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
 }
 
@@ -532,7 +535,8 @@ void SKCell::setAlphaAngle(double value)
   double temp = (std::cos(value) - std::cos(gammaAngle) * std::cos(betaAngle)) / std::sin(gammaAngle);
   double lengthC = c();
 
-  double3 v3 = lengthC * double3(std::cos(betaAngle), temp, std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
+  double3 v3 = lengthC * double3(std::cos(betaAngle), temp,
+                                 std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
 
   _fullCell = _unitCell;
@@ -571,7 +575,8 @@ void SKCell::setBetaAngle(double value)
   double temp = (std::cos(alphaAngle) - std::cos(gammaAngle) * std::cos(value)) / std::sin(gammaAngle);
   double lengthC = c();
 
-  double3 v3 = lengthC * double3(std::cos(value), temp, std::sqrt(1.0 - std::cos(value) * std::cos(value) - temp * temp));
+  double3 v3 =
+      lengthC * double3(std::cos(value), temp, std::sqrt(1.0 - std::cos(value) * std::cos(value) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
 
   _fullCell = _unitCell;
@@ -600,7 +605,8 @@ void SKCell::beta(const double& newValue)
   double temp = (std::cos(alphaAngle) - std::cos(gammaAngle) * std::cos(newValue)) / std::sin(gammaAngle);
   double lengthC = c();
 
-  double3 v3 = lengthC * double3(std::cos(newValue), temp, std::sqrt(1.0 - std::cos(newValue) * std::cos(newValue) - temp * temp));
+  double3 v3 = lengthC * double3(std::cos(newValue), temp,
+                                 std::sqrt(1.0 - std::cos(newValue) * std::cos(newValue) - temp * temp));
   _unitCell = double3x3(_unitCell[0], _unitCell[1], v3);
 }
 double SKCell::gamma() const
@@ -622,7 +628,8 @@ void SKCell::setGammaAngle(double value)
   double temp = (std::cos(alphaAngle) - std::cos(value) * std::cos(betaAngle)) / std::sin(value);
 
   double3 v2 = lengthB * double3(std::cos(value), std::sin(value), 0.0);
-  double3 v3 = lengthC * double3(std::cos(betaAngle), temp, std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
+  double3 v3 = lengthC * double3(std::cos(betaAngle), temp,
+                                 std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], v2, v3);
 
   _fullCell = _unitCell;
@@ -653,7 +660,8 @@ void SKCell::gamma(const double& newValue)
   double temp = (std::cos(alphaAngle) - std::cos(newValue) * std::cos(betaAngle)) / std::sin(newValue);
 
   double3 v2 = lengthB * double3(std::cos(newValue), std::sin(newValue), 0.0);
-  double3 v3 = lengthC * double3(std::cos(betaAngle), temp, std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
+  double3 v3 = lengthC * double3(std::cos(betaAngle), temp,
+                                 std::sqrt(1.0 - std::cos(betaAngle) * std::cos(betaAngle) - temp * temp));
   _unitCell = double3x3(_unitCell[0], v2, v3);
 }
 

@@ -100,7 +100,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     Component::GrowType growType = component.growType;
 
     // Calculate the new bin index and lambda value
-    std::size_t newBin = static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
+    std::size_t newBin =
+        static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     // Update move statistics for insertion move

@@ -218,7 +218,7 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
     err |= clSetKernelArg(tessellationKernel, 8, sizeof(cl_int3), &grid_size);
 
     std::size_t global_work_size[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
-                                  static_cast<std::size_t>(grid_size.z)};
+                                       static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueNDRangeKernel(OpenCL::clCommandQueue.value(), tessellationKernel, 3, nullptr, global_work_size,
                                  nullptr, 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -231,7 +231,7 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
 
     std::size_t originRawData[3] = {0, 0, 0};
     std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
-                               static_cast<std::size_t>(grid_size.z)};
+                                    static_cast<std::size_t>(grid_size.z)};
     err = clEnqueueReadImage(OpenCL::clCommandQueue.value(), image, CL_TRUE, originRawData, regionRawData, 0, 0,
                              output_data.data(), 0, nullptr, nullptr);
     if (err != CL_SUCCESS)
@@ -251,7 +251,7 @@ void Tessellation::run(const ForceField& forceField, const Framework& framework)
   std::chrono::duration<double> timing = time_end - time_begin;
 
   std::mdspan<int32_t, std::dextents<std::size_t, 3>, std::layout_left> data_view(output_data.data(), grid_size.x,
-                                                                             grid_size.y, grid_size.z);
+                                                                                  grid_size.y, grid_size.z);
 
   std::ofstream myfile;
   myfile.open(framework.name + ".tessellation.gpu.txt");

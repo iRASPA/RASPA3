@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bend_torsion_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifiers, BendTorsionType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifiers, BendTorsionType type,
+                                           std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendTorsionParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -57,7 +58,6 @@ BendTorsionPotential::BendTorsionPotential(std::array<std::size_t, 4> identifier
   }
 }
 
-
 std::string BendTorsionPotential::print() const
 {
   switch (type)
@@ -83,11 +83,11 @@ std::string BendTorsionPotential::print() const
   }
 }
 
-
-double BendTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB, 
-                                             [[maybe_unused]] const double3 &posC, [[maybe_unused]] const double3 &posD) const
+double BendTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
+                                             [[maybe_unused]] const double3 &posC,
+                                             [[maybe_unused]] const double3 &posD) const
 {
-  switch(type)
+  switch (type)
   {
     case BendTorsionType::Smoothed:
       return 0.0;

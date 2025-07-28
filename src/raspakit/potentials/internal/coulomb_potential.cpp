@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
@@ -25,10 +25,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type,
+                                   std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfCoulombParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfCoulombParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -39,7 +40,6 @@ CoulombPotential::CoulombPotential(std::array<std::size_t, 2> identifiers, Coulo
       break;
   }
 }
-
 
 std::string CoulombPotential::print() const
 {
@@ -57,17 +57,16 @@ double CoulombPotential::calculateEnergy(const double3 &posA, const double3 &pos
   double rr = double3::dot(dr, dr);
   double r = std::sqrt(rr);
 
-  switch(type)
+  switch (type)
   {
     case CoulombType::Coulomb:
       // 4*p_0*((p_1/r)^12-(p_1/r)^6)
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      return 1.0/r;
+      return 1.0 / r;
   }
 }
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const CoulombPotential &b)
 {

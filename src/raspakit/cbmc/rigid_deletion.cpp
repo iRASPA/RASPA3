@@ -47,8 +47,9 @@ import interpolation_energy_grid;
                                           const std::optional<Framework> &framework,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                           double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] double scaling,
-                                          std::span<Atom> molecule, std::size_t numberOfTrialDirections) noexcept;
+                                          double cutOffCoulomb, std::size_t startingBead,
+                                          [[maybe_unused]] double scaling, std::span<Atom> molecule,
+                                          std::size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] ChainData CBMC::retraceRigidMoleculeSwapDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
@@ -91,8 +92,9 @@ import interpolation_energy_grid;
                                           const std::optional<Framework> &framework,
                                           std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
                                           double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] double scaling,
-                                          std::span<Atom> molecule, std::size_t numberOfTrialDirections) noexcept
+                                          double cutOffCoulomb, std::size_t startingBead,
+                                          [[maybe_unused]] double scaling, std::span<Atom> molecule,
+                                          std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
   std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom &a) { a.setScaling(scaling); });

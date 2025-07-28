@@ -110,8 +110,8 @@ import mdspan;
  *
  *  Detailed description starts here.
  */
-System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
-               double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
+System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T,
+               std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
                const MCMoveProbabilities& systemProbabilities, std::optional<std::size_t> sampleMoviesEvery)
     : systemId(id),
@@ -607,7 +607,8 @@ std::vector<Atom>::iterator System::iteratorForMolecule(std::size_t selectedComp
   return atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
-std::vector<double3>::iterator System::iteratorForElectricField(std::size_t selectedComponent, std::size_t selectedMolecule)
+std::vector<double3>::iterator System::iteratorForElectricField(std::size_t selectedComponent,
+                                                                std::size_t selectedMolecule)
 {
   std::size_t index{0};
   for (std::size_t i = 0; i < selectedComponent; ++i)
@@ -731,7 +732,8 @@ std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, s
   return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
 }
 
-const std::span<const double3> System::spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule) const
+const std::span<const double3> System::spanElectricFieldNew(std::size_t selectedComponent,
+                                                            std::size_t selectedMolecule) const
 {
   std::size_t index{0};
   for (std::size_t i = 0; i < selectedComponent; ++i)
@@ -757,7 +759,8 @@ std::span<double3> System::spanElectricFieldOld(std::size_t selectedComponent, s
   return std::span(&electricField[index + numberOfFrameworkAtoms], size);
 }
 
-const std::span<const double3> System::spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule) const
+const std::span<const double3> System::spanElectricFieldOld(std::size_t selectedComponent,
+                                                            std::size_t selectedMolecule) const
 {
   std::size_t index{0};
   for (std::size_t i = 0; i < selectedComponent; ++i)
@@ -1057,8 +1060,9 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
-          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               loadings.printStatus(c, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1106,8 +1110,9 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
-          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               loadings.printStatus(c, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1199,8 +1204,9 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "-------------------------------------------------------------------------------\n");
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, frameworkMass(),
-            framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               loadings.printStatus(c, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1246,8 +1252,9 @@ std::string System::writeProductionStatusReportMC(std::size_t currentCycle, std:
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
-          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
   double conv = Units::EnergyToKelvin;
@@ -1522,8 +1529,9 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
   for (const Component& c : components)
   {
-    std::print(stream, "{}", loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
-          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
+                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
   }
   std::print(stream, "\n");
 
@@ -1908,14 +1916,14 @@ void System::computeTotalElectrostaticPotential() noexcept
   std::fill(moleculeElectrostaticPotential.begin(), moleculeElectrostaticPotential.end(), 0.0);
 
   Interactions::computeInterMolecularElectrostaticPotential(forceField, simulationBox, moleculeElectrostaticPotential,
-                                                             moleculeAtomPositions);
+                                                            moleculeAtomPositions);
 
-  Interactions::computeFrameworkMoleculeElectrostaticPotential(forceField, simulationBox, moleculeElectrostaticPotential,
-                                                               frameworkAtomPositions, moleculeAtomPositions);
+  Interactions::computeFrameworkMoleculeElectrostaticPotential(
+      forceField, simulationBox, moleculeElectrostaticPotential, frameworkAtomPositions, moleculeAtomPositions);
 
-  Interactions::computeEwaldFourierElectrostaticPotential(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik,
-                                                          moleculeElectrostaticPotential, forceField, simulationBox, components,
-                                                          numberOfMoleculesPerComponent, moleculeAtomPositions);
+  Interactions::computeEwaldFourierElectrostaticPotential(
+      eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, moleculeElectrostaticPotential, forceField,
+      simulationBox, components, numberOfMoleculesPerComponent, moleculeAtomPositions);
 }
 
 void System::computeTotalElectricField() noexcept
@@ -2101,13 +2109,13 @@ std::string System::writeMCMoveStatistics() const
     {
       double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
       double imposedFugacity = component.molFraction * pressure;
-      std::print(
-          stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(temperature, simulationBox.volume, frameworkMass(), 
-                                                          framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
-      std::print(
-          stream, "{}",
-          component.averageRosenbluthWeights.writeAveragesChemicalPotentialStatistics(beta, imposedChemicalPotential, imposedFugacity));
+      std::print(stream, "{}",
+                 component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(
+                     temperature, simulationBox.volume, frameworkMass(),
+                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+      std::print(stream, "{}",
+                 component.averageRosenbluthWeights.writeAveragesChemicalPotentialStatistics(
+                     beta, imposedChemicalPotential, imposedFugacity));
     }
 
     ++componentId;
@@ -2133,9 +2141,12 @@ void System::createInterpolationGrids(std::ostream& stream)
     else
     {
       const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
-      numberOfCoulombGridPoints.x = static_cast<std::int32_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
-      numberOfCoulombGridPoints.y = static_cast<std::int32_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
-      numberOfCoulombGridPoints.z = static_cast<std::int32_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
+      numberOfCoulombGridPoints.x =
+          static_cast<std::int32_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
+      numberOfCoulombGridPoints.y =
+          static_cast<std::int32_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
+      numberOfCoulombGridPoints.z =
+          static_cast<std::int32_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
     }
 
     // also create a Charge grid when needed

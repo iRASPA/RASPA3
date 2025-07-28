@@ -46,9 +46,10 @@ import mc_moves_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
 
-std::optional<RunningEnergy> MC_Moves::reactionMove([[maybe_unused]] RandomNumber& random, System& system,
-                                                    [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
-                                                    [[maybe_unused]] const std::vector<std::size_t> productStoichiometry)
+std::optional<RunningEnergy> MC_Moves::reactionMove(
+    [[maybe_unused]] RandomNumber& random, System& system,
+    [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
+    [[maybe_unused]] const std::vector<std::size_t> productStoichiometry)
 {
   std::size_t selectedComponent = 0;
   std::size_t selectedMolecule = 0;

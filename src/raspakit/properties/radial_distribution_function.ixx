@@ -32,8 +32,9 @@ export struct PropertyRadialDistributionFunction
 {
   PropertyRadialDistributionFunction() {};
 
-  PropertyRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms, std::size_t numberOfBins,
-                                     double range, std::size_t sampleEvery, std::size_t writeEvery)
+  PropertyRadialDistributionFunction(std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms,
+                                     std::size_t numberOfBins, double range, std::size_t sampleEvery,
+                                     std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfPseudoAtoms(numberOfPseudoAtoms),
         numberOfBins(numberOfBins),
@@ -51,7 +52,8 @@ export struct PropertyRadialDistributionFunction
 
   std::uint64_t versionNumber{1};
 
-  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA, std::size_t atomTypeB) const;
+  std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
+                                                   std::size_t atomTypeB) const;
   std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
   std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
                                                                                   std::size_t atomTypeB) const;
@@ -70,7 +72,8 @@ export struct PropertyRadialDistributionFunction
   std::vector<std::size_t> pairCount;
 
   void sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
-              const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, std::size_t currentCycle, std::size_t block);
+              const std::vector<Molecule> &molecules, std::span<Atom> moleculeAtoms, std::size_t currentCycle,
+              std::size_t block);
   void writeOutput(const ForceField &forceField, std::size_t systemId, double volume,
                    std::vector<std::size_t> &numberOfPseudoAtomsType, std::size_t currentCycle);
 

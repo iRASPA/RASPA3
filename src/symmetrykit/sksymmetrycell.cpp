@@ -99,8 +99,8 @@ SKSymmetryCell SKSymmetryCell::idealized(std::size_t pointGroupNumber, std::stri
                                                           double3(_c * cb, _c * (ca - cb * cg) / sg, temp)));
     }
     case Holohedry::monoclinic:
-      return SKSymmetryCell::createFromUnitCell(
-          double3x3(double3(_a, 0.0, 0.0), double3(0.0, _b, 0.0), double3(_c * std::cos(_beta), 0.0, _c * std::sin(_beta))));
+      return SKSymmetryCell::createFromUnitCell(double3x3(double3(_a, 0.0, 0.0), double3(0.0, _b, 0.0),
+                                                          double3(_c * std::cos(_beta), 0.0, _c * std::sin(_beta))));
     case Holohedry::orthorhombic:
       return SKSymmetryCell::createFromUnitCell(
           double3x3(double3(_a, 0.0, 0.0), double3(0.0, _b, 0.0), double3(0.0, 0.0, _c)));
@@ -116,17 +116,18 @@ SKSymmetryCell SKSymmetryCell::idealized(std::size_t pointGroupNumber, std::stri
         // Reference, https://homepage.univie.ac.at/michael.leitner/lattice/struk/rgr.html
         double ahex = 2.0 * avg * std::sin(0.5 * angle);
         double chex = (_a + _b + _c) / 3.0 * std::sqrt(3.0 * (1.0 + 2.0 * std::cos(angle)));
-        return SKSymmetryCell::createFromUnitCell(double3x3(
-            double3(ahex / 2.0, -ahex / (2.0 * std::sqrt(3.0)), chex / 3.0), double3(0.0, ahex / std::sqrt(3.0), chex / 3.0),
-            double3(-ahex / 2.0, -ahex / (2.0 * std::sqrt(3.0)), chex / 3.0)));
+        return SKSymmetryCell::createFromUnitCell(
+            double3x3(double3(ahex / 2.0, -ahex / (2.0 * std::sqrt(3.0)), chex / 3.0),
+                      double3(0.0, ahex / std::sqrt(3.0), chex / 3.0),
+                      double3(-ahex / 2.0, -ahex / (2.0 * std::sqrt(3.0)), chex / 3.0)));
       }
-      return SKSymmetryCell::createFromUnitCell(double3x3(double3(0.5 * (_a + _b), 0.0, 0.0),
-                                                          double3(-(_a + _b) / 4.0, (_a + _b) / 4.0 * std::sqrt(3.0), 0.0),
-                                                          double3(0.0, 0.0, _c)));
+      return SKSymmetryCell::createFromUnitCell(
+          double3x3(double3(0.5 * (_a + _b), 0.0, 0.0),
+                    double3(-(_a + _b) / 4.0, (_a + _b) / 4.0 * std::sqrt(3.0), 0.0), double3(0.0, 0.0, _c)));
     case Holohedry::hexagonal:
-      return SKSymmetryCell::createFromUnitCell(double3x3(double3(0.5 * (_a + _b), 0.0, 0.0),
-                                                          double3(-(_a + _b) / 4.0, (_a + _b) / 4.0 * std::sqrt(3.0), 0.0),
-                                                          double3(0.0, 0.0, _c)));
+      return SKSymmetryCell::createFromUnitCell(
+          double3x3(double3(0.5 * (_a + _b), 0.0, 0.0),
+                    double3(-(_a + _b) / 4.0, (_a + _b) / 4.0 * std::sqrt(3.0), 0.0), double3(0.0, 0.0, _c)));
     case Holohedry::cubic:
     {
       double edge = (_a + _b + _c) / 3.0;
@@ -144,7 +145,8 @@ double3x3 SKSymmetryCell::unitCell() const
 
   double3 v1 = double3(_a, 0.0, 0.0);
   double3 v2 = double3(_b * std::cos(_gamma), _b * std::sin(_gamma), 0.0);
-  double3 v3 = double3(_c * std::cos(_beta), _c * temp, _c * std::sqrt(1.0 - std::cos(_beta) * std::cos(_beta) - temp * temp));
+  double3 v3 =
+      double3(_c * std::cos(_beta), _c * temp, _c * std::sqrt(1.0 - std::cos(_beta) * std::cos(_beta) - temp * temp));
   return double3x3(v1, v2, v3);
 }
 
@@ -456,8 +458,8 @@ std::optional<double3x3> SKSymmetryCell::computeDelaunayReducedCell2D(double3x3 
   {
     somePositive = false;
     // (i,j) in (0,1), (0,2), (1,2); k denote the other two vectors
-    std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> basisIndices = {std::make_tuple(0, 1, 2), std::make_tuple(0, 2, 1),
-                                                                    std::make_tuple(1, 2, 0)};
+    std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> basisIndices = {
+        std::make_tuple(0, 1, 2), std::make_tuple(0, 2, 1), std::make_tuple(1, 2, 0)};
     for (auto& [i, j, k] : basisIndices)
     {
       if (double3::dot(extendedBasis[i], extendedBasis[j]) > symmetryPrecision)
@@ -604,12 +606,12 @@ std::vector<std::tuple<double3, std::size_t, double>> SKSymmetryCell::trim(
   double3x3 changeOfBasis = to.inverse() * from;
 
   std::vector<std::tuple<double3, std::size_t, double>> trimmedAtoms{};
-  std::transform(atoms.begin(), atoms.end(), std::back_inserter(trimmedAtoms),
-                 [changeOfBasis](const std::tuple<double3, std::size_t, double>& atom) -> std::tuple<double3, std::size_t, double>
-                 {
-                   return std::make_tuple(double3::fract(changeOfBasis * std::get<0>(atom)), std::get<1>(atom),
-                                          std::get<2>(atom));
-                 });
+  std::transform(
+      atoms.begin(), atoms.end(), std::back_inserter(trimmedAtoms),
+      [changeOfBasis](const std::tuple<double3, std::size_t, double>& atom) -> std::tuple<double3, std::size_t, double>
+      {
+        return std::make_tuple(double3::fract(changeOfBasis * std::get<0>(atom)), std::get<1>(atom), std::get<2>(atom));
+      });
 
   std::vector<std::size_t> overlapTable = std::vector<std::size_t>(trimmedAtoms.size());
   std::fill(overlapTable.begin(), overlapTable.end(), -1);
@@ -889,7 +891,8 @@ algorithmStart:
 }
 
   SKSymmetryCell cell =
-      SKSymmetryCell(std::sqrt(A), std::sqrt(B), std::sqrt(C), std::acos(xi / (2.0 * std::sqrt(B) * std::sqrt(C))) * 180.0 / std::numbers::pi,
+      SKSymmetryCell(std::sqrt(A), std::sqrt(B), std::sqrt(C),
+                     std::acos(xi / (2.0 * std::sqrt(B) * std::sqrt(C))) * 180.0 / std::numbers::pi,
                      std::acos(eta / (2.0 * std::sqrt(A) * std::sqrt(C))) * 180.0 / std::numbers::pi,
                      std::acos(zeta / (2.0 * std::sqrt(A) * std::sqrt(B))) * 180.0 / std::numbers::pi);
 

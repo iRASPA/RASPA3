@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module inversion_bend_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identifiers, InversionBendType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identifiers, InversionBendType type,
+                                               std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfInversionBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfInversionBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -74,7 +75,6 @@ InversionBendPotential::InversionBendPotential(std::array<std::size_t, 4> identi
   }
 }
 
-
 std::string InversionBendPotential::print() const
 {
   switch (type)
@@ -84,9 +84,9 @@ std::string InversionBendPotential::print() const
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      return std::format("{} - {} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     case InversionBendType::HarmonicCosine:
       // (1/2)*p_0*(cos(phi)-cos(p_1))^2
       // ===============================================
@@ -99,17 +99,16 @@ std::string InversionBendPotential::print() const
       // (1/2)*p_0*(1-cos(phi))
       // ===============================================
       // p_0/k_B [K]
-      return std::format("{} - {} - {} - {} : PLANAR p_0/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin);
+      return std::format("{} - {} - {} - {} : PLANAR p_0/k_B={:g} [K]\n", identifiers[0], identifiers[1],
+                         identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin);
     case InversionBendType::Harmonic2:
       // (1/2)*p_0*(chi-p_1)^2
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      return std::format("{} - {} - {} - {} : HARMONIC2 p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} - {} : HARMONIC2 p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     case InversionBendType::HarmonicCosine2:
       // (1/2)*p_0*(cos(phi)-cos(p_1))^2
       // ===============================================
@@ -122,24 +121,23 @@ std::string InversionBendPotential::print() const
       // (1/2)*p_0*(1-cos(phi))
       // ===============================================
       // p_0/k_B [K]
-      return std::format("{} - {} - {} - {} : PLANAR2 p_0/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin);
+      return std::format("{} - {} - {} - {} : PLANAR2 p_0/k_B={:g} [K]\n", identifiers[0], identifiers[1],
+                         identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin);
     case InversionBendType::MM3:
       // p_0*(chi-p_1)^2(1-0.014*(chi-p_1)+5.6e-5*(chi-p_1)^2-7e-7*(chi-p_1)^3+2.2e-8(chi-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     default:
       std::unreachable();
   }
 }
 
-
-double InversionBendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
+double InversionBendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
+                                               const double3 &posD) const
 {
   double c, chi;
   double temp, temp2;
@@ -153,7 +151,7 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
   double3 Rcd = posD - posC;
   double3 Rad = posD - posA;
 
-  switch(type)
+  switch (type)
   {
     case InversionBendType::Harmonic:
     case InversionBendType::HarmonicCosine:
@@ -161,7 +159,7 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
       // w is a vector perpendicular to the B-C-D plane
       // c=w.w=(Rbc x Rbd).(Rbc x Rbd)= r_bc^2 r_bd^2 - (r_cb . r_bd)^2
       temp = double3::dot(Rbc, Rbd);
-      c = double3::dot(Rbc, Rbc) *  double3::dot(Rbd, Rbd) - temp * temp;
+      c = double3::dot(Rbc, Rbc) * double3::dot(Rbd, Rbd) - temp * temp;
       break;
     case InversionBendType::Harmonic2:
     case InversionBendType::HarmonicCosine2:
@@ -180,7 +178,7 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
   double cos_chi = std::sqrt(double3::dot(Rab, Rab) - e * e / c) / rrab;
   cos_chi = std::clamp(cos_chi, -1.0, 1.0);
 
-  switch(type)
+  switch (type)
   {
     case InversionBendType::Harmonic:
     case InversionBendType::Harmonic2:
@@ -190,14 +188,14 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
       // p_1     [degrees]
       chi = std::acos(cos_chi);
       temp = chi - parameters[1];
-      return 0.5 * parameters[0]* temp * temp;
+      return 0.5 * parameters[0] * temp * temp;
     case InversionBendType::HarmonicCosine:
     case InversionBendType::HarmonicCosine2:
       // (1/2)*p_0*(cos(phi)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      temp = cos_chi -  parameters[1];
+      temp = cos_chi - parameters[1];
       return 0.5 * parameters[0] * temp * temp;
       break;
     case InversionBendType::Planar:
@@ -214,7 +212,8 @@ double InversionBendPotential::calculateEnergy(const double3 &posA, const double
       chi = std::acos(cos_chi);
       temp = (chi - parameters[1]) * Units::RadiansToDegrees;
       temp2 = temp * temp;
-      return parameters[0] * temp2 * (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+      return parameters[0] * temp2 *
+             (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
     default:
       std::unreachable();
   }

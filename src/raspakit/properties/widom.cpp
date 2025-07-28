@@ -35,8 +35,9 @@ import stringutils;
 
 PropertyWidom::PropertyWidom() {}
 
-std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temperature, double volume, 
-                     std::optional<double> frameworkMass, std::optional<int3> number_of_unit_cells) const
+std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temperature, double volume,
+                                                                   std::optional<double> frameworkMass,
+                                                                   std::optional<int3> number_of_unit_cells) const
 {
   std::ostringstream stream;
 
@@ -53,9 +54,11 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
              averageRosenbluthWeightValue.second);
   std::print(stream, "\n\n");
 
-  if(frameworkMass.has_value())
+  if (frameworkMass.has_value())
   {
-    double frameworkDensity = 1e-3 * frameworkMass.value() / (volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit * Units::AvogadroConstant);
+    double frameworkDensity =
+        1e-3 * frameworkMass.value() /
+        (volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit * Units::AvogadroConstant);
     double conversion_factor_mol_per_kg = 1.0 / (Units::MolarGasConstant * temperature * frameworkDensity);
 
     std::print(stream, "    Henry coefficient based on Rosenbluth weight:\n");
@@ -66,15 +69,17 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
       std::print(stream, "        Block[ {:2d}] {: .6e}\n", blockIndex, blockAverage);
     }
     std::print(stream, "    ---------------------------------------------------------------------------\n");
-    std::print(stream, "    Average Henry coefficient:   {: .6e} +/- {: .6e} [mol/kg/Pa]\n", 
+    std::print(stream, "    Average Henry coefficient:   {: .6e} +/- {: .6e} [mol/kg/Pa]\n",
                averageRosenbluthWeightValue.first * conversion_factor_mol_per_kg,
                averageRosenbluthWeightValue.second * conversion_factor_mol_per_kg);
-    if(number_of_unit_cells.has_value())
+    if (number_of_unit_cells.has_value())
     {
-      double conversion_factor_molecules_per_uc = Units::AvogadroConstant * volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit /
-             (Units::MolarGasConstant * temperature  * static_cast<double>(number_of_unit_cells->x * number_of_unit_cells->y * number_of_unit_cells->z));
+      double conversion_factor_molecules_per_uc =
+          Units::AvogadroConstant * volume * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit /
+          (Units::MolarGasConstant * temperature *
+           static_cast<double>(number_of_unit_cells->x * number_of_unit_cells->y * number_of_unit_cells->z));
 
-      std::print(stream, "    Average Henry coefficient:   {: .6e} +/- {: .6e} [molec./uc/Pa]\n", 
+      std::print(stream, "    Average Henry coefficient:   {: .6e} +/- {: .6e} [molec./uc/Pa]\n",
                  averageRosenbluthWeightValue.first * conversion_factor_molecules_per_uc,
                  averageRosenbluthWeightValue.second * conversion_factor_molecules_per_uc);
     }
@@ -84,8 +89,9 @@ std::string PropertyWidom::writeAveragesRosenbluthWeightStatistics(double temper
   return stream.str();
 }
 
-std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
-                                                   std::optional<double> imposedFugacity) const
+std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
+                                                                    std::optional<double> imposedChemicalPotential,
+                                                                    std::optional<double> imposedFugacity) const
 {
   std::ostringstream stream;
 

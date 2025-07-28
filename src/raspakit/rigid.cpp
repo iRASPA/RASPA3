@@ -20,7 +20,8 @@ import double3;
 import simd_quatd;
 import stringutils;
 
-std::pair<simd_quatd, simd_quatd> Rigid::NoSquishRotate(std::size_t k, double dt, std::pair<simd_quatd, simd_quatd> quat,
+std::pair<simd_quatd, simd_quatd> Rigid::NoSquishRotate(std::size_t k, double dt,
+                                                        std::pair<simd_quatd, simd_quatd> quat,
                                                         double3 inverseInertiaVector)
 {
   simd_quatd pn, qn;

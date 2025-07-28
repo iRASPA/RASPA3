@@ -153,7 +153,8 @@ inline double referenceTableX(const ForceField &forceField, std::size_t pseudo_a
 {
   double electron_affinity, ionization_potential;
 
-  std::size_t oxidationState = static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
+  std::size_t oxidationState =
+      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if (oxidationState == 0)
   {
     ionization_potential = chargeEquilbrationElementData[index].ionizationEnergy[0];
@@ -175,7 +176,8 @@ inline double referenceTableJ(const ForceField &forceField, std::size_t pseudo_a
 {
   double electron_affinity, ionization_potential;
 
-  std::size_t oxidationState = static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
+  std::size_t oxidationState =
+      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if (oxidationState == 0)
   {
     ionization_potential = chargeEquilbrationElementData[index].ionizationEnergy[0];
@@ -196,7 +198,8 @@ inline double referenceTableXc(const ForceField &forceField, std::size_t pseudo_
 {
   double electron_affinity, ionization_potential;
 
-  std::size_t oxidationState = static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
+  std::size_t oxidationState =
+      static_cast<std::size_t>(std::abs(forceField.pseudoAtoms[pseudo_atom_type].oxidationState));
   if (oxidationState == 0)
   {
     electron_affinity = chargeEquilbrationElementData[index].electronAffinity;

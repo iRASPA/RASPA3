@@ -45,7 +45,8 @@ import interactions_polarization;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::randomTranslationMove(RandomNumber &random, System &system,
-                                                             std::size_t selectedComponent, std::size_t selectedMolecule,
+                                                             std::size_t selectedComponent,
+                                                             std::size_t selectedMolecule,
                                                              const std::vector<Component> &components,
                                                              Molecule &molecule, std::span<Atom> molecule_atoms)
 {

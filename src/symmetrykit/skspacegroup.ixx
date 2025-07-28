@@ -68,9 +68,9 @@ export class SKSpaceGroup
   static std::optional<std::size_t> HallNumberFromHMString(std::string inputString);
   static std::optional<std::size_t> HallNumberFromSpaceGroupNumber(std::size_t);
   static std::optional<std::size_t> HallNumber(std::string inputString);
-  static std::optional<FoundPrimitiveCellInfo> SKFindPrimitive(double3x3 unitCell,
-                                                               std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                               bool allowPartialOccupancies, double symmetryPrecision);
+  static std::optional<FoundPrimitiveCellInfo> SKFindPrimitive(
+      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
+      double symmetryPrecision);
   static std::optional<FoundNiggliCellInfo> findNiggliCell(double3x3 unitCell,
                                                            std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                            bool allowPartialOccupancies, double symmetryPrecision);
@@ -81,11 +81,10 @@ export class SKSpaceGroup
                                                            std::vector<std::tuple<double3, std::size_t, double>> atoms,
                                                            bool allowPartialOccupancies, double symmetryPrecision);
 
-  static SKSymmetryOperationSet findSpaceGroupSymmetry(double3x3 unitCell,
-                                                       std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
-                                                       std::vector<std::tuple<double3, std::size_t, double>> atoms,
-                                                       SKPointSymmetrySet latticeSymmetries,
-                                                       bool allowPartialOccupancies, double symmetryPrecision);
+  static SKSymmetryOperationSet findSpaceGroupSymmetry(
+      double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms,
+      std::vector<std::tuple<double3, std::size_t, double>> atoms, SKPointSymmetrySet latticeSymmetries,
+      bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<std::pair<double3, SKRotationalChangeOfBasis>> matchSpaceGroup(
       std::size_t HallNumber, double3x3 lattice, Centring entering, std::vector<SKSeitzMatrix> seitzMatrices,
       double symmetryPrecision);

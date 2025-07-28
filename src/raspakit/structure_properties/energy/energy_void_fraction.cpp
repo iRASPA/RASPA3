@@ -126,8 +126,8 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
           }
         }
 
-        outputData[x + y * static_cast<std::size_t>(grid_size.x) + z * static_cast<std::size_t>(grid_size.x * grid_size.y)] +=
-            std::min(value, 10000000.0);
+        outputData[x + y * static_cast<std::size_t>(grid_size.x) +
+                   z * static_cast<std::size_t>(grid_size.x * grid_size.y)] += std::min(value, 10000000.0);
       }
     }
   }

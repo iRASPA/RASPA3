@@ -13,7 +13,6 @@ module;
 #include <vector>
 #endif
 
-
 #ifndef USE_LEGACY_HEADERS
 #include <cstdlib>
 #endif

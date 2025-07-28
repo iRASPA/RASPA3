@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
 #include <print>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <vector>
-#include <tuple>
 #endif
 
 export module bend_potential;
@@ -38,10 +38,19 @@ export const std::size_t maximumNumberOfBendParameters{4};
  *
  * Specifies the type of bend potential to be used in simulations.
  */
-export enum class BendType : std::size_t { Rigid = 0, Fixed = 1, Harmonic = 2,
-                                      CoreShell = 3, Quartic = 4, CFF_Quartic = 5,
-                                      HarmonicCosine = 6, Cosine = 7, Tafipolsky = 8, 
-                                      MM3 = 9, MM3_inplane = 10};
+export enum class BendType : std::size_t {
+  Rigid = 0,
+  Fixed = 1,
+  Harmonic = 2,
+  CoreShell = 3,
+  Quartic = 4,
+  CFF_Quartic = 5,
+  HarmonicCosine = 6,
+  Cosine = 7,
+  Tafipolsky = 8,
+  MM3 = 9,
+  MM3_inplane = 10
+};
 
 /**
  * \brief Represents a bend potential between two particles.
@@ -53,8 +62,8 @@ export struct BendPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 3> identifiers;                    ///< Identifiers of the two particles forming the bend.
-  BendType type;                                             ///< The type of bend potential.
+  std::array<std::size_t, 3> identifiers;                        ///< Identifiers of the two particles forming the bend.
+  BendType type;                                                 ///< The type of bend potential.
   std::array<double, maximumNumberOfBendParameters> parameters;  ///< Parameters associated with the bend potential.
 
   /**
@@ -92,21 +101,28 @@ export struct BendPotential
    */
   static inline std::array<std::size_t, 11> numberOfBendParameters{1, 2, 2, 4, 4, 2, 3, 3, 1, 2, 2};
 
-
   /**
    * \brief Mapping of bend type strings to BendType enums.
    *
    * A static map that associates bend type names with their corresponding BendType enumeration values.
    */
   static inline std::map<std::string, BendType, caseInsensitiveComparator> definitionForString{
-      {"RIGID", BendType::Rigid}, {"FIXED", BendType::Fixed}, {"HARMONIC", BendType::Harmonic},
-      {"CORE_SHELL", BendType::CoreShell}, {"QUARTIC", BendType::Quartic}, {"CFF_QUARTIC", BendType::CFF_Quartic},
-      {"HARMONIC_COSINE", BendType::HarmonicCosine}, {"COSINE", BendType::Cosine},
-      {"TAFIPOLSKY", BendType::Tafipolsky}, {"MM3", BendType::MM3}, {"MM3_INPLANE", BendType::MM3_inplane}};
+      {"RIGID", BendType::Rigid},
+      {"FIXED", BendType::Fixed},
+      {"HARMONIC", BendType::Harmonic},
+      {"CORE_SHELL", BendType::CoreShell},
+      {"QUARTIC", BendType::Quartic},
+      {"CFF_QUARTIC", BendType::CFF_Quartic},
+      {"HARMONIC_COSINE", BendType::HarmonicCosine},
+      {"COSINE", BendType::Cosine},
+      {"TAFIPOLSKY", BendType::Tafipolsky},
+      {"MM3", BendType::MM3},
+      {"MM3_INPLANE", BendType::MM3_inplane}};
 
   double generateBendAngle(RandomNumber &random, double beta) const;
 
-  double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, std::optional<const double3> &posD) const;
+  double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc,
+                         std::optional<const double3> &posD) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BendPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BendPotential &b);

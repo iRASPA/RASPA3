@@ -34,8 +34,8 @@ export struct PropertyMeanSquaredDisplacement
 {
   PropertyMeanSquaredDisplacement() {};
 
-  PropertyMeanSquaredDisplacement(std::size_t numberOfComponents, std::size_t numberOfParticles, std::size_t sampleEvery,
-                                  std::size_t writeEvery, std::size_t numberOfBlockElementsMSD)
+  PropertyMeanSquaredDisplacement(std::size_t numberOfComponents, std::size_t numberOfParticles,
+                                  std::size_t sampleEvery, std::size_t writeEvery, std::size_t numberOfBlockElementsMSD)
       : sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         numberOfComponents(numberOfComponents),
@@ -43,17 +43,18 @@ export struct PropertyMeanSquaredDisplacement
         numberOfBlockElementsMSD(numberOfBlockElementsMSD),
         maxNumberOfBlocksMSD(1),
         blockLengthMSD(maxNumberOfBlocksMSD),
-        msdSelfCount(maxNumberOfBlocksMSD, std::vector<std::vector<std::size_t>>(
-                                               numberOfComponents, std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz))),
+        msdSelfCount(maxNumberOfBlocksMSD,
+                     std::vector<std::vector<std::size_t>>(numberOfComponents,
+                                                           std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz))),
         blockDataMSDSelf(maxNumberOfBlocksMSD,
                          std::vector<std::vector<double3>>(numberOfParticles,
                                                            std::vector<double3>(numberOfBlockElementsMSD, double3()))),
         msdSelf(maxNumberOfBlocksMSD,
                 std::vector<std::vector<double4>>(numberOfComponents,
                                                   std::vector<double4>(numberOfBlockElementsMSD, double4()))),
-        msdOnsagerCount(
-            maxNumberOfBlocksMSD,
-            std::vector<std::vector<std::size_t>>(numberOfComponents, std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz))),
+        msdOnsagerCount(maxNumberOfBlocksMSD,
+                        std::vector<std::vector<std::size_t>>(numberOfComponents,
+                                                              std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz))),
         blockDataMSDOnsager(maxNumberOfBlocksMSD,
                             std::vector<std::vector<double3>>(
                                 numberOfComponents, std::vector<double3>(numberOfBlockElementsMSD, double3()))),
@@ -89,7 +90,8 @@ export struct PropertyMeanSquaredDisplacement
   void addSample(std::size_t currentCycle, const std::vector<Component> &components,
                  const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
   void writeOutput(std::size_t systemId, const std::vector<Component> &components,
-                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT, std::size_t currentCycle);
+                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
+                   std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyMeanSquaredDisplacement &msd);

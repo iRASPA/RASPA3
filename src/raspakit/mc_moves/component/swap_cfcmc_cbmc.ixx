@@ -40,7 +40,8 @@ export namespace MC_Moves
  * accepted. The double3 vector contains acceptance probabilities for different move types.
  */
 std::pair<std::optional<RunningEnergy>, double3> swapMove_CFCMC_CBMC(RandomNumber& random, System& system,
-                                                                     std::size_t selectedComponent, std::size_t selectedMolecule,
+                                                                     std::size_t selectedComponent,
+                                                                     std::size_t selectedMolecule,
                                                                      bool insertionDisabled = false,
                                                                      bool deletionDisabled = false);
 }  // namespace MC_Moves

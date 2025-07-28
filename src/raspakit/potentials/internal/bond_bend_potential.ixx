@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
 #include <print>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <vector>
-#include <tuple>
 #endif
 
 export module bond_bend_potential;
@@ -38,23 +38,31 @@ export const std::size_t maximumNumberOfBondBendParameters{5};
  *
  * Specifies the type of bond_bend potential to be used in simulations.
  */
-export enum class BondBendType : std::size_t { CVFF = 0, CFF = 1, MM3 = 2,
-                                          TruncatedHarmonic = 3, ScreenedHarmonic = 4,
-                                          ScreenedVessal = 5, TruncatedVessal = 7 };
+export enum class BondBendType : std::size_t {
+  CVFF = 0,
+  CFF = 1,
+  MM3 = 2,
+  TruncatedHarmonic = 3,
+  ScreenedHarmonic = 4,
+  ScreenedVessal = 5,
+  TruncatedVessal = 7
+};
 
 /**
  * \brief Represents a bond_bend potential between two particles.
  *
  * The BondBendPotential struct encapsulates the type of bond_bend and associated parameters between two particles.
- * It includes versioning for serialization, bond_bend type, identifiers of bond_bended particles, and bond_bend parameters.
+ * It includes versioning for serialization, bond_bend type, identifiers of bond_bended particles, and bond_bend
+ * parameters.
  */
 export struct BondBendPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 4> identifiers;                                ///< Identifiers of the two particles forming the bond_bend.
-  BondBendType type;                                   ///< The type of bond_bend potential.
-  std::array<double, maximumNumberOfBondBendParameters> parameters;  ///< Parameters associated with the bond_bend potential.
+  std::array<std::size_t, 4> identifiers;  ///< Identifiers of the two particles forming the bond_bend.
+  BondBendType type;                       ///< The type of bond_bend potential.
+  std::array<double, maximumNumberOfBondBendParameters>
+      parameters;  ///< Parameters associated with the bond_bend potential.
 
   /**
    * \brief Default constructor for BondBendPotential.
@@ -71,7 +79,10 @@ export struct BondBendPotential
    * \param type The type of bond_bend potential.
    * \param identifiers A pair of particle identifiers forming the bond_bend.
    */
-  BondBendPotential(std::array<std::size_t, 4> identifiers, const BondBendType type) : identifiers(identifiers), type(type) {}
+  BondBendPotential(std::array<std::size_t, 4> identifiers, const BondBendType type)
+      : identifiers(identifiers), type(type)
+  {
+  }
 
   bool operator==(BondBendPotential const &) const = default;
 
@@ -91,16 +102,19 @@ export struct BondBendPotential
    */
   static inline std::array<std::size_t, 7> numberOfBondBendParameters{5, 5, 4, 3, 4, 4, 4};
 
-
   /**
    * \brief Mapping of bond_bend type strings to BondBendType enums.
    *
    * A static map that associates bond_bend type names with their corresponding BondBendType enumeration values.
    */
   static inline std::map<std::string, BondBendType, caseInsensitiveComparator> definitionForString{
-      {"CVFF", BondBendType::CVFF}, {"CFF", BondBendType::CFF}, {"MM3", BondBendType::MM3},
-      {"TRUNCATED_HARMONIC", BondBendType::TruncatedHarmonic}, {"SCREENED_HARMONIC", BondBendType::ScreenedHarmonic},
-      {"SCREENED_VESSAL", BondBendType::ScreenedVessal}, {"TRUNCATED_VESSAL", BondBendType::TruncatedVessal} };
+      {"CVFF", BondBendType::CVFF},
+      {"CFF", BondBendType::CFF},
+      {"MM3", BondBendType::MM3},
+      {"TRUNCATED_HARMONIC", BondBendType::TruncatedHarmonic},
+      {"SCREENED_HARMONIC", BondBendType::ScreenedHarmonic},
+      {"SCREENED_VESSAL", BondBendType::ScreenedVessal},
+      {"TRUNCATED_VESSAL", BondBendType::TruncatedVessal}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
 

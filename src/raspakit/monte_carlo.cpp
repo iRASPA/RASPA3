@@ -90,8 +90,9 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 {
 }
 
-MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles, std::size_t numberOfEquilibrationCycles,
-                       std::size_t printEvery, std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
+MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
+                       std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
+                       std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
                        std::size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
                        std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
@@ -110,7 +111,10 @@ MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializ
 {
 }
 
-System& MonteCarlo::randomSystem() { return systems[std::size_t(random.uniform() * static_cast<double>(systems.size()))]; }
+System& MonteCarlo::randomSystem()
+{
+  return systems[std::size_t(random.uniform() * static_cast<double>(systems.size()))];
+}
 
 void MonteCarlo::run()
 {
@@ -749,8 +753,10 @@ void MonteCarlo::output()
     std::print(
         stream, "{}",
         system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
-    std::print(stream, "{}", system.averageLoadings.writeAveragesStatistics(system.components, system.frameworkMass(),
-          system.framework.transform([](const Framework &f) { return f.numberOfUnitCells; })));
+    std::print(stream, "{}",
+               system.averageLoadings.writeAveragesStatistics(
+                   system.components, system.frameworkMass(),
+                   system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
 
     // json statistics
     outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
@@ -868,6 +874,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<std::uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
+                           static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

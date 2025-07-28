@@ -44,7 +44,8 @@ export struct Reaction
    * \param reactantStoichiometry A vector containing the stoichiometry of reactants.
    * \param productStoichiometry A vector containing the stoichiometry of products.
    */
-  Reaction(std::size_t id, std::vector<std::size_t> reactantStoichiometry, std::vector<std::size_t> productStoichiometry)
+  Reaction(std::size_t id, std::vector<std::size_t> reactantStoichiometry,
+           std::vector<std::size_t> productStoichiometry)
       : id(id), reactantStoichiometry(reactantStoichiometry), productStoichiometry(productStoichiometry), lambda(5, 21)
   {
   }

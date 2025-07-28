@@ -59,7 +59,8 @@ export namespace Potentials
 };
 
 [[clang::always_inline]] inline TriquinticDerivativeFactor potentialLennardJonesRepulsionTriquinticDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA, const std::size_t& typeB)
+    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA,
+    const std::size_t& typeB)
 {
   double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
   double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;
@@ -78,7 +79,8 @@ export namespace Potentials
 };
 
 [[clang::always_inline]] inline TriquinticDerivativeFactor potentialLennardJonesAttractionTriquinticDerivative(
-    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA, const std::size_t& typeB)
+    const ForceField& forcefield, const double& r2, const double& cutoff2, const std::size_t& typeA,
+    const std::size_t& typeB)
 {
   double arg1 = 4.0 * forcefield(typeA, typeB).parameters.x;
   double arg2 = forcefield(typeA, typeB).parameters.y * forcefield(typeA, typeB).parameters.y;

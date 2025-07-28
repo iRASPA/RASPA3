@@ -168,8 +168,8 @@ ForceField::ForceField(std::string filePath)
     std::string jsonSource = item.value("source", "");
 
     std::size_t atomicNumber = PredefinedElements::atomicNumberData.contains(jsonElement)
-                              ? static_cast<std::size_t>(PredefinedElements::atomicNumberData.at(jsonElement))
-                              : 1;
+                                   ? static_cast<std::size_t>(PredefinedElements::atomicNumberData.at(jsonElement))
+                                   : 1;
 
     PseudoAtom pseudo_atom = PseudoAtom(jsonName, jsonFrameworkType, jsonMass, jsonCharge, jsonPolarizibility,
                                         atomicNumber, jsonPrintToOutput, jsonSource);
@@ -1021,7 +1021,7 @@ nlohmann::json ForceField::jsonForceFieldStatus() const
 {
   nlohmann::json status;
   std::size_t n_interactions = static_cast<std::size_t>(static_cast<double>(numberOfPseudoAtoms) *
-                                              (static_cast<double>(numberOfPseudoAtoms) + 1.0) / 2.0);
+                                                        (static_cast<double>(numberOfPseudoAtoms) + 1.0) / 2.0);
   std::vector<nlohmann::json> interactions(n_interactions);
 
   std::size_t count = 0;
@@ -1069,7 +1069,8 @@ std::optional<std::size_t> ForceField::findPseudoAtom(const std::string& name) c
   return std::nullopt;
 }
 
-std::optional<std::size_t> ForceField::findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms, const std::string& name)
+std::optional<std::size_t> ForceField::findPseudoAtom(const std::vector<PseudoAtom> pseudoAtoms,
+                                                      const std::string& name)
 {
   std::vector<PseudoAtom>::const_iterator match =
       std::find_if(pseudoAtoms.begin(), pseudoAtoms.end(), [&name](const PseudoAtom& x) { return x.name == name; });

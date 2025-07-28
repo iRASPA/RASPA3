@@ -48,9 +48,9 @@ import interactions_external_field;
 import interactions_polarization;
 import mc_moves_move_types;
 
-std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                                       std::size_t selectedMolecule, Molecule &molecule,
-                                                       std::span<Atom> molecule_atoms)
+std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system,
+                                                       std::size_t selectedComponent, std::size_t selectedMolecule,
+                                                       Molecule &molecule, std::span<Atom> molecule_atoms)
 {
   // Variables to record timing for performance measurement.
   std::chrono::system_clock::time_point time_begin, time_end;

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -39,7 +39,6 @@ export struct ChiralCenter
   std::array<std::size_t, 4> ids;
 
   ChiralCenter() : type(Chirality::S_Chiral), ids({0, 0, 0, 0}) {}
-
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ChiralCenter &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ChiralCenter &b);

@@ -84,9 +84,10 @@ Component::Component() {}
 
 // create Component in 'inputreader.cpp'
 Component::Component(Component::Type type, std::size_t currentComponent, const ForceField &forceField,
-                     const std::string &componentName, std::optional<const std::string> fileName, std::size_t numberOfBlocks,
-                     std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
-                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
+                     const std::string &componentName, std::optional<const std::string> fileName,
+                     std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
+                     const MCMoveProbabilities &particleProbabilities, std::optional<double> fugacityCoefficient,
+                     bool thermodynamicIntegration) noexcept(false)
     : type(type),
       componentId(currentComponent),
       name(componentName),
@@ -105,7 +106,7 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
 
   connectivityTable = ConnectivityTable(definedAtoms.size());
 
-  for(const BondPotential &bond_potential : internalPotentials.bonds)
+  for (const BondPotential &bond_potential : internalPotentials.bonds)
   {
     std::size_t A = bond_potential.identifiers[0];
     std::size_t B = bond_potential.identifiers[1];
@@ -115,9 +116,9 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
 
 // create programmatically an 'adsorbate' component
 Component::Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
-                     double P_c, double w, std::vector<Atom> atomList, std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
-                     const MCMoveProbabilities &particleProbabilities, std::optional<double> fugacityCoefficient,
-                     bool thermodynamicIntegration) noexcept(false)
+                     double P_c, double w, std::vector<Atom> atomList, std::size_t numberOfBlocks,
+                     std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
+                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
     : type(Type::Adsorbate),
       componentId(componentId),
       name(componentName),
@@ -145,7 +146,7 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
 
-  for(const BondPotential &bond_potential : internalPotentials.bonds)
+  for (const BondPotential &bond_potential : internalPotentials.bonds)
   {
     std::size_t A = bond_potential.identifiers[0];
     std::size_t B = bond_potential.identifiers[1];
@@ -328,7 +329,6 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
                             mass});
   }
 
-
   // Read bonds
   if (parsed_data.contains("Bonds"))
   {
@@ -352,19 +352,19 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
 
       try
       {
-        std::vector<std::size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
+        std::vector<std::size_t> identifiers =
+            item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
         std::string potential_name = item[1].get<std::string>();
-        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+        std::vector<double> potential_parameters =
+            item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
         BondPotential bond = BondPotential({identifiers[0], identifiers[1]},
-                                           BondPotential::definitionForString.at(potential_name), 
-                                           potential_parameters);
+                                           BondPotential::definitionForString.at(potential_name), potential_parameters);
 
         internalPotentials.bonds.push_back(bond);
       }
-      catch(std::exception const& e)
+      catch (std::exception const &e)
       {
-        throw std::runtime_error(std::format("Error in Bond-potential ({}): {}\n",
-                      item.dump(), e.what()));
+        throw std::runtime_error(std::format("Error in Bond-potential ({}): {}\n", item.dump(), e.what()));
       }
     }
   }
@@ -392,20 +392,20 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
 
       try
       {
-        std::vector<std::size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
+        std::vector<std::size_t> identifiers =
+            item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
         std::string potential_name = item[1].get<std::string>();
-        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+        std::vector<double> potential_parameters =
+            item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
 
         BendPotential bend = BendPotential({identifiers[0], identifiers[1], identifiers[2]},
-                                           BendPotential::definitionForString.at(potential_name), 
-                                           potential_parameters);
+                                           BendPotential::definitionForString.at(potential_name), potential_parameters);
 
         internalPotentials.bends.push_back(bend);
       }
-      catch(std::exception const& e)
+      catch (std::exception const &e)
       {
-        throw std::runtime_error(std::format("Error in Bend-potential ({}): {}\n",
-                      item.dump(), e.what()));
+        throw std::runtime_error(std::format("Error in Bend-potential ({}): {}\n", item.dump(), e.what()));
       }
     }
   }
@@ -433,24 +433,24 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
 
       try
       {
-        std::vector<std::size_t> identifiers = item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
+        std::vector<std::size_t> identifiers =
+            item[0].is_array() ? item[0].get<std::vector<std::size_t>>() : std::vector<std::size_t>{};
         std::string potential_name = item[1].get<std::string>();
-        std::vector<double> potential_parameters = item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
+        std::vector<double> potential_parameters =
+            item[2].is_array() ? item[2].get<std::vector<double>>() : std::vector<double>{};
 
-        TorsionPotential torsion = TorsionPotential({identifiers[0], identifiers[1], identifiers[2], identifiers[3]},
-                                                     TorsionPotential::definitionForString.at(potential_name), 
-                                                     potential_parameters);
+        TorsionPotential torsion =
+            TorsionPotential({identifiers[0], identifiers[1], identifiers[2], identifiers[3]},
+                             TorsionPotential::definitionForString.at(potential_name), potential_parameters);
 
         internalPotentials.torsions.push_back(torsion);
       }
-      catch(std::exception const& e)
+      catch (std::exception const &e)
       {
-        throw std::runtime_error(std::format("Error in Torsion-potential ({}): {}\n",
-                      item.dump(), e.what()));
+        throw std::runtime_error(std::format("Error in Torsion-potential ({}): {}\n", item.dump(), e.what()));
       }
     }
   }
-
 
   totalMass = 0.0;
   netCharge = 0.0;

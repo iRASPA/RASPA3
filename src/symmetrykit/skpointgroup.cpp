@@ -29,8 +29,9 @@ import skrotationmatrix;
 import skrotationaloccurancetable;
 import skpointsymmetryset;
 
-SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol, std::string schoenflies,
-                           Holohedry holohedry, Laue laue, bool centrosymmetric, bool enantiomorphic)
+SKPointGroup::SKPointGroup(SKRotationalOccuranceTable table, std::size_t number, std::string symbol,
+                           std::string schoenflies, Holohedry holohedry, Laue laue, bool centrosymmetric,
+                           bool enantiomorphic)
     : _table(table),
       _number(number),
       _symbol(symbol),

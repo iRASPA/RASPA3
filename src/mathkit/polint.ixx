@@ -9,7 +9,7 @@ module;
 #endif
 
 #ifndef USE_LEGACY_HEADERS
-#include<stdio.h>
+#include <stdio.h>
 #endif
 
 export module polint;

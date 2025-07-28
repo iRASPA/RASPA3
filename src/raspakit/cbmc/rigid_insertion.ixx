@@ -45,6 +45,6 @@ namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule, std::size_t numberOfTrialDirections,
-    std::size_t selectedMolecule, double scaling, bool groupId, bool isFractional, const std::vector<Component> &components,
-    std::size_t selectedComponent) noexcept;
+    std::size_t selectedMolecule, double scaling, bool groupId, bool isFractional,
+    const std::vector<Component> &components, std::size_t selectedComponent) noexcept;
 }

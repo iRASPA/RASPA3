@@ -44,7 +44,10 @@ std::string simplified(std::string a) { return a; };
 
 std::string toLower(std::string a) { return a; }
 
-SKSpaceGroup::SKSpaceGroup(std::size_t HallNumber) { _spaceGroupSetting = SKSpaceGroupDataBase::spaceGroupData[HallNumber]; }
+SKSpaceGroup::SKSpaceGroup(std::size_t HallNumber)
+{
+  _spaceGroupSetting = SKSpaceGroupDataBase::spaceGroupData[HallNumber];
+}
 
 bool SKSpaceGroup::matchSpacegroup(std::string spaceSearchGroupString, std::string storedSpaceGroupString)
 {

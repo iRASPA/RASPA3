@@ -57,7 +57,8 @@ export struct PropertyPressure
   std::vector<std::pair<double3x3, double>> bookKeepingExcessPressure;
   std::vector<std::pair<double, double>> bookKeepingIdealGasPressure;
 
-  inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue, double weight)
+  inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue,
+                        double weight)
   {
     bookKeepingIdealGasPressure[blockIndex].first += weight * idealGasPressureValue;
     bookKeepingIdealGasPressure[blockIndex].second += weight;

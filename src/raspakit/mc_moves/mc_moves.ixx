@@ -60,5 +60,6 @@ void performRandomMove(RandomNumber& random, System& selectedSystem, System& sel
  * \param currentBlock The current block number, used for statistics aggregation.
  */
 void performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                 std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem, std::size_t currentBlock);
+                                 std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
+                                 std::size_t currentBlock);
 };  // namespace MC_Moves

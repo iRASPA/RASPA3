@@ -112,7 +112,8 @@ void RingMatrix::swapColumns(std::size_t a, std::size_t b)
 
 // MARK: - HermiteNormalForm
 
-RingMatrix RingMatrix::submatrix(std::size_t startRow, std::size_t startColumn, std::size_t numberOfRows, std::size_t numberOfColumns)
+RingMatrix RingMatrix::submatrix(std::size_t startRow, std::size_t startColumn, std::size_t numberOfRows,
+                                 std::size_t numberOfColumns)
 {
   RingMatrix matrix = RingMatrix(numberOfRows, numberOfColumns, 0);
   for (std::size_t i = 0; i < numberOfRows; i++)
@@ -262,8 +263,9 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
   RingMatrix AA = RingMatrix(Apad.submatrix(1, 1, _rows, _columns));
 
   // Extract rank profile  FIX
-  rp = std::vector<std::size_t>(rp.begin() + 1,
-                           rp.begin() + static_cast<std::vector<std::size_t>::difference_type>(r));  // rp = Array(rp[1..<r])
+  rp = std::vector<std::size_t>(
+      rp.begin() + 1,
+      rp.begin() + static_cast<std::vector<std::size_t>::difference_type>(r));  // rp = Array(rp[1..<r])
 
   for (std::size_t i = 0; i < rp.size(); i++)
   {
@@ -272,8 +274,8 @@ std::tuple<RingMatrix, RingMatrix, std::vector<std::size_t>> RingMatrix::Hermite
   return std::make_tuple(TT, AA, rp);
 }
 
-std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingMatrix A1, std::size_t col_1, std::size_t col_2,
-                                                                           std::size_t row_start)
+std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingMatrix A1, std::size_t col_1,
+                                                                           std::size_t col_2, std::size_t row_start)
 {
   RingMatrix A = A1;
   std::size_t n = A._rows;
@@ -375,8 +377,8 @@ std::tuple<RingMatrix, RingMatrix, RingMatrix> RingMatrix::ColumnReduction(RingM
   return std::make_tuple(Q, C, A);
 }
 
-std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatrix A, std::size_t col_1, std::size_t col_2,
-                                                                       std::size_t row_start)
+std::pair<std::vector<int>, std::vector<int>> RingMatrix::Conditioning(RingMatrix A, std::size_t col_1,
+                                                                       std::size_t col_2, std::size_t row_start)
 {
   std::size_t k = A._rows - row_start - 2;
   int d11 = A(row_start, col_1);

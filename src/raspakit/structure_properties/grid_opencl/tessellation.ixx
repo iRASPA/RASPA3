@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <stdint.h>
+
 #include <cstddef>
 #include <print>
 #include <string>

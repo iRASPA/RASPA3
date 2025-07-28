@@ -36,7 +36,8 @@ import forcefield;
 import component;
 import averages;
 
-void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle, const std::vector<Component> &components,
+void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle,
+                                                        const std::vector<Component> &components,
                                                         const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                                         std::vector<Molecule> &moleculePositions)
 {
@@ -138,7 +139,8 @@ void PropertyVelocityAutoCorrelationFunction::addSample(std::size_t currentCycle
   }
 }
 
-void PropertyVelocityAutoCorrelationFunction::writeOutput(std::size_t systemId, const std::vector<Component> &components,
+void PropertyVelocityAutoCorrelationFunction::writeOutput(std::size_t systemId,
+                                                          const std::vector<Component> &components,
                                                           const std::vector<std::size_t> &numberOfMoleculesPerComponent,
                                                           double deltaT, std::size_t currentCycle)
 {

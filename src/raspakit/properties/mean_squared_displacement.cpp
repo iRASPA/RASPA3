@@ -56,8 +56,9 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
     blockLengthMSD.resize(numberOfBlocksMSD);
     maxNumberOfBlocksMSD = numberOfBlocksMSD;
 
-    msdSelfCount.resize(numberOfBlocksMSD, std::vector<std::vector<std::size_t>>(
-                                               numberOfComponents, std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz)));
+    msdSelfCount.resize(numberOfBlocksMSD,
+                        std::vector<std::vector<std::size_t>>(numberOfComponents,
+                                                              std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz)));
     blockDataMSDSelf.resize(numberOfBlocksMSD,
                             std::vector<std::vector<double3>>(
                                 numberOfParticles, std::vector<double3>(numberOfBlockElementsMSD, double3())));
@@ -65,9 +66,9 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
                    std::vector<std::vector<double4>>(numberOfComponents,
                                                      std::vector<double4>(numberOfBlockElementsMSD, double4())));
 
-    msdOnsagerCount.resize(
-        numberOfBlocksMSD,
-        std::vector<std::vector<std::size_t>>(numberOfComponents, std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz)));
+    msdOnsagerCount.resize(numberOfBlocksMSD,
+                           std::vector<std::vector<std::size_t>>(
+                               numberOfComponents, std::vector<std::size_t>(numberOfBlockElementsMSD, 0uz)));
     blockDataMSDOnsager.resize(numberOfBlocksMSD,
                                std::vector<std::vector<double3>>(
                                    numberOfComponents, std::vector<double3>(numberOfBlockElementsMSD, double3())));

@@ -39,6 +39,7 @@ export namespace MC_Moves
  *         `std::nullopt` if the move is rejected.
  */
 std::optional<RunningEnergy> randomTranslationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
-                                                   std::size_t selectedMolecule, const std::vector<Component> &components,
-                                                   Molecule &molecule, std::span<Atom> molecule_atoms);
+                                                   std::size_t selectedMolecule,
+                                                   const std::vector<Component> &components, Molecule &molecule,
+                                                   std::span<Atom> molecule_atoms);
 }  // namespace MC_Moves

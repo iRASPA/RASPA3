@@ -58,7 +58,7 @@ struct InputDataSystem
 {
   // Sampling the conventional radial distribution function (RDF)
 
-  bool computeConventionalRadialDistributionFunction{false};      ///< Flag to enable computation of conventional RDF.
+  bool computeConventionalRadialDistributionFunction{false};  ///< Flag to enable computation of conventional RDF.
   std::size_t sampleConventionalRadialDistributionFunctionEvery{10};   ///< Interval for sampling conventional RDF.
   std::size_t writeConventionalRadialDistributionFunctionEvery{5000};  ///< Interval for writing conventional RDF data.
   std::size_t conventionalRadialDistributionFunctionHistogramSize{
@@ -67,18 +67,18 @@ struct InputDataSystem
 
   // Sampling the radial distribution function (RDF)
 
-  bool computeRadialDistributionFunction{false};        ///< Flag to enable computation of RDF.
+  bool computeRadialDistributionFunction{false};             ///< Flag to enable computation of RDF.
   std::size_t sampleRadialDistributionFunctionEvery{10};     ///< Interval for sampling RDF.
   std::size_t writeRadialDistributionFunctionEvery{5000};    ///< Interval for writing RDF data.
   std::size_t radialDistributionFunctionHistogramSize{128};  ///< Number of bins in the RDF histogram.
-  double radialDistributionFunctionRange{15.0};         ///< Range (in appropriate units) for the RDF.
+  double radialDistributionFunctionRange{15.0};              ///< Range (in appropriate units) for the RDF.
 
   // Sampling the 3D density grid
 
-  bool computeDensityGrid{false};       ///< Flag to enable computation of the density grid.
-  std::size_t sampleDensityGridEvery{1};     ///< Interval for sampling the density grid.
-  std::size_t writeDensityGridEvery{5000};   ///< Interval for writing density grid data.
-  int3 densityGridSize{128, 128, 128};  ///< Dimensions of the density grid (x, y, z).
+  bool computeDensityGrid{false};           ///< Flag to enable computation of the density grid.
+  std::size_t sampleDensityGridEvery{1};    ///< Interval for sampling the density grid.
+  std::size_t writeDensityGridEvery{5000};  ///< Interval for writing density grid data.
+  int3 densityGridSize{128, 128, 128};      ///< Dimensions of the density grid (x, y, z).
 };
 
 /**
@@ -133,12 +133,12 @@ export struct InputReader
   std::size_t numberOfCycles{0};                ///< Total number of simulation cycles.
   std::size_t numberOfInitializationCycles{0};  ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles{0};   ///< Number of equilibration cycles.
-  std::size_t printEvery{5000};            ///< Interval for printing simulation progress.
+  std::size_t printEvery{5000};                 ///< Interval for printing simulation progress.
   std::size_t writeBinaryRestartEvery{5000};    ///< Interval for writing binary restart files.
   std::size_t rescaleWangLandauEvery{5000};     ///< Interval for rescaling in Wang-Landau sampling.
   std::size_t optimizeMCMovesEvery{5000};       ///< Interval for optimizing Monte Carlo moves.
   std::size_t writeEvery{100};                  ///< Interval for writing simulation data.
-  bool restartFromBinary{false};           ///< Flag to indicate if the simulation should restart from a binary file.
+  bool restartFromBinary{false};  ///< Flag to indicate if the simulation should restart from a binary file.
 
   std::optional<unsigned long long> randomSeed{std::nullopt};  ///< Optional random seed for reproducibility.
 

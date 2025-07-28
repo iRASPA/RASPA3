@@ -106,7 +106,7 @@ export struct ForceField
   double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
   double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
 
-  std::size_t numberOfPseudoAtoms{0};          ///< Number of pseudo-atoms defined in the force field.
+  std::size_t numberOfPseudoAtoms{0};     ///< Number of pseudo-atoms defined in the force field.
   std::vector<PseudoAtom> pseudoAtoms{};  ///< List of pseudo-atoms in the force field.
 
   ChargeMethod chargeMethod{ChargeMethod::Ewald};  ///< Method used for calculating electrostatic interactions.
@@ -183,7 +183,10 @@ export struct ForceField
 
   VDWParameters &operator()(std::size_t row, std::size_t col) { return data[row * numberOfPseudoAtoms + col]; }
   const VDWParameters &operator[](std::size_t row) const { return data[row * numberOfPseudoAtoms + row]; }
-  const VDWParameters &operator()(std::size_t row, std::size_t col) const { return data[row * numberOfPseudoAtoms + col]; }
+  const VDWParameters &operator()(std::size_t row, std::size_t col) const
+  {
+    return data[row * numberOfPseudoAtoms + col];
+  }
   bool operator==(const ForceField &other) const;
 
   /**

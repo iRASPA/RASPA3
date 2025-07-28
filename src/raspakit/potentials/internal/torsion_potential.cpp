@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module torsion_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, TorsionType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, TorsionType type,
+                                   std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfTorsionParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -211,7 +212,6 @@ TorsionPotential::TorsionPotential(std::array<std::size_t, 4> identifiers, Torsi
   }
 }
 
-
 std::string TorsionPotential::print() const
 {
   switch (type)
@@ -223,9 +223,9 @@ std::string TorsionPotential::print() const
       // ===============================================
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);  
+      return std::format("{} - {} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     case TorsionType::HarmonicCosine:
       // (1/2)*p_0*(cos(phi)-cos(p_1))^2
       // ===============================================
@@ -233,7 +233,7 @@ std::string TorsionPotential::print() const
       // p_1     [degrees]
       return std::format("{} - {} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n",
                          identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);  
+                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
     case TorsionType::ThreeCosine:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================
@@ -253,11 +253,13 @@ std::string TorsionPotential::print() const
       // p_3/k_B [K]
       // p_4/k_B [K]
       // p_5/k_B [K]
-      return std::format("{} - {} - {} - {} : RYCKAERT_BELLEMANS p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin,
-                         parameters[4] * Units::EnergyToKelvin, parameters[5] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : RYCKAERT_BELLEMANS p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} "
+          "[K], p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin,
+          parameters[5] * Units::EnergyToKelvin);
     case TorsionType::TraPPE:
       // p_0[0]+p_1*(1+cos(phi))+p_2*(1-cos(2*phi))+p_3*(1+cos(3*phi))
       // =============================================================
@@ -265,10 +267,11 @@ std::string TorsionPotential::print() const
       // p_1/k_B [K]
       // p_2/k_B [K]
       // p_3/k_B [K]
-      return std::format("{} - {} - {} - {} : THREE_COSINE p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : THREE_COSINE p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin);
     case TorsionType::TraPPE_Extended:
       // p_0[0]+p_1*cos(phi)+p_2*cos(2*phi)+p_3*cos(3*phi)+p_4*cos(4*phi)
       // ================================================================
@@ -277,11 +280,12 @@ std::string TorsionPotential::print() const
       // p_2/k_B [K]
       // p_3/k_B [K]
       // p_4/k_B [K]
-      return std::format("{} - {} - {} - {} : TRAPPE_EXTENDED p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], p_4/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin,
-                         parameters[4] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : TRAPPE_EXTENDED p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], "
+          "p_4/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin);
     case TorsionType::ModifiedTraPPE:
       // p_0[0]+p_1*(1+cos(phi))+p_2*(1-cos(2*phi))+p_3*(1+cos(3*phi))
       // =============================================================
@@ -290,11 +294,12 @@ std::string TorsionPotential::print() const
       // p_2/k_B [K]
       // p_3/k_B [K]
       // p_4     [degrees]
-      return std::format("{} - {} - {} - {} : TRAPPE_MODIFIED p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], p_4={:g} [degrees]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin,
-                         parameters[4] * Units::RadiansToDegrees);
+      return std::format(
+          "{} - {} - {} - {} : TRAPPE_MODIFIED p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], "
+          "p_4={:g} [degrees]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::RadiansToDegrees);
     case TorsionType::CVFF:
       // p_0*(1+cos(p_1*phi-p_2))
       // ========================
@@ -303,28 +308,25 @@ std::string TorsionPotential::print() const
       // p_2     [degrees]
       return std::format("{} - {} - {} - {} : CVFF p_0/k_B={:g} [K], p_1={:g} [-], p_2={:g} [degrees]\n",
                          identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1],
-                         parameters[2] * Units::RadiansToDegrees);
+                         parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2] * Units::RadiansToDegrees);
     case TorsionType::CFF:
       // p_0*(1-cos(phi))+p_1*(1-cos(2*phi))+p_2*(1-cos(3*phi))
       // ======================================================
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return std::format("{} - {} - {} - {} : CFF p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin);
+      return std::format("{} - {} - {} - {} : CFF p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin);
     case TorsionType::CFF2:
       // p_0*(1+cos(phi))+p_1*(1+cos(2*phi))+p_2*(1+cos(3*phi))
       // ======================================================
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return std::format("{} - {} - {} - {} : CFF2 p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin);
+      return std::format("{} - {} - {} - {} : CFF2 p_0/k_B={:g} [K], p_1={:g} [-], p_2/k_B={:g} [K]\n", identifiers[0],
+                         identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin);
     case TorsionType::OPLS:
       // (1/2)p_0[0]+(1/2)p_1*(1+cos(phi))+(1/2)p_2*(1-cos(2*phi))+(1/2)p_3*(1+cos(3*phi))
       // =================================================================================
@@ -332,20 +334,21 @@ std::string TorsionPotential::print() const
       // p_1/k_B [K]
       // p_2/k_B [K]
       // p_3/k_B [K]
-      return std::format("{} - {} - {} - {} : OPLS p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : OPLS p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin);
     case TorsionType::MM3:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================
       // p_0     [kcal/mol]
       // p_1     [kcal/mol]
       // p_2     [kcal/mol]
-      return std::format("{} - {} - {} - {} : MM3 p_0/k_B={:g} [Kcal/mol], p_1/k_B={:g} [Kcal/mol], p_2/k_B={:g} [Kcal/mol]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKCalPerMol, parameters[1] * Units::EnergyToKCalPerMol,
-                         parameters[2] * Units::EnergyToKCalPerMol);
+      return std::format(
+          "{} - {} - {} - {} : MM3 p_0/k_B={:g} [Kcal/mol], p_1/k_B={:g} [Kcal/mol], p_2/k_B={:g} [Kcal/mol]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKCalPerMol,
+          parameters[1] * Units::EnergyToKCalPerMol, parameters[2] * Units::EnergyToKCalPerMol);
     case TorsionType::FourierSeries:
       // (1/2)p_0*(1+cos(phi))+(1/2)p_1(1-cos(2*phi))+(1/2)*p2_2*(1+cos(3*phi))+
       // (1/2)p_3*(1-cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1+cos(6*phi))
@@ -356,11 +359,13 @@ std::string TorsionPotential::print() const
       // p_3/k_B [K]
       // p_4/k_B [K]
       // p_5/k_B [K]
-      return std::format("{} - {} - {} - {} : FOURIER_SERIES p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin,
-                         parameters[4] * Units::EnergyToKelvin, parameters[5] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : FOURIER_SERIES p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], "
+          "p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin,
+          parameters[5] * Units::EnergyToKelvin);
     case TorsionType::FourierSeries2:
       // (1/2)p_0*(1+cos(phi))+(1/2)p_1(1-cos(2*phi))+(1/2)*p2_2*(1+cos(3*phi))+
       // (1/2)p_3*(1+cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1+cos(6*phi))
@@ -371,16 +376,18 @@ std::string TorsionPotential::print() const
       // p_3/k_B [K]
       // p_4/k_B [K]
       // p_5/k_B [K]
-      return std::format("{} - {} - {} - {} : FOURIER_SERIES2 p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::EnergyToKelvin,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin,
-                         parameters[4] * Units::EnergyToKelvin, parameters[5] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} - {} : FOURIER_SERIES2 p_0/k_B={:g} [K], p_1/k_B={:g} [K], p_2/k_B={:g} [K], p_3/k_B={:g} [K], "
+          "p_4/k_B={:g} [K], p_5/k_B={:g} [K]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::EnergyToKelvin, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin, parameters[4] * Units::EnergyToKelvin,
+          parameters[5] * Units::EnergyToKelvin);
   }
 }
 
-
-double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
+double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
+                                         const double3 &posD) const
 {
   double cos_phi, cos_phi2, phi;
   double temp, temp2, sign;
@@ -406,7 +413,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
   cos_phi = std::clamp(cos_phi, -1.0, 1.0);
   cos_phi2 = cos_phi * cos_phi;
 
-  switch(type)
+  switch (type)
   {
     case TorsionType::Fixed:
       return 0.0;
@@ -435,7 +442,8 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return 0.5 * parameters[0] * (1.0 + cos_phi) + parameters[1] * (1.0 - cos_phi2) + 0.5 * parameters[2] * (1.0 - 3.0 * cos_phi + 4.0 * cos_phi * cos_phi2);
+      return 0.5 * parameters[0] * (1.0 + cos_phi) + parameters[1] * (1.0 - cos_phi2) +
+             0.5 * parameters[2] * (1.0 - 3.0 * cos_phi + 4.0 * cos_phi * cos_phi2);
     case TorsionType::RyckaertBellemans:
       // Prod_i=0^5 p_i*cos(phi)^i
       // =========================
@@ -449,7 +457,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // between the first and last atoms of the dihedral, and Phi'=Phi-Pi is defined accoording to the
       // polymer convention Phi'(trans)=0.
       return parameters[0] - parameters[1] * cos_phi + parameters[2] * cos_phi2 - parameters[3] * cos_phi * cos_phi2 +
-                parameters[4] * cos_phi2 * cos_phi2 - parameters[5]* cos_phi2 * cos_phi2 * cos_phi;
+             parameters[4] * cos_phi2 * cos_phi2 - parameters[5] * cos_phi2 * cos_phi2 * cos_phi;
     case TorsionType::TraPPE:
       // p_0+p_1*(1+cos(phi))+p_2*(1-cos(2*phi))+p_3*(1+cos(3*phi))
       // ==========================================================
@@ -457,7 +465,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_1/k_B [K]
       // p_2/k_B [K]
       // p_3/k_B [K]
-      return parameters[0] + (1.0 + cos_phi) * (parameters[1] + parameters[3] - 2.0 * (cos_phi - 1.0) * (parameters[2] - 2.0 * parameters[3] * cos_phi));
+      return parameters[0] +
+             (1.0 + cos_phi) * (parameters[1] + parameters[3] -
+                                2.0 * (cos_phi - 1.0) * (parameters[2] - 2.0 * parameters[3] * cos_phi));
     case TorsionType::TraPPE_Extended:
       // p_0+p_1*cos(phi)+p_2*cos(2*phi)+p_3*cos(3*phi)+p_4*cos(4*phi)
       // =============================================================
@@ -466,8 +476,9 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_2/k_B [K]
       // p_3/k_B [K]
       // p_4/k_B [K]
-      return parameters[0] - parameters[2] + parameters[4] + (parameters[1] - 3.0 * parameters[3]) * cos_phi + 
-             (2.0 * parameters[2] - 8.0 * parameters[4]) * cos_phi2 + 4.0 * parameters[3] * cos_phi2 * cos_phi + 8.0 * parameters[4] * cos_phi2 * cos_phi2;
+      return parameters[0] - parameters[2] + parameters[4] + (parameters[1] - 3.0 * parameters[3]) * cos_phi +
+             (2.0 * parameters[2] - 8.0 * parameters[4]) * cos_phi2 + 4.0 * parameters[3] * cos_phi2 * cos_phi +
+             8.0 * parameters[4] * cos_phi2 * cos_phi2;
     case TorsionType::ModifiedTraPPE:
       /* Salvador modification: 16/08/2016
       add phase in cos function:
@@ -475,7 +486,7 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
      */
       sign = double3::dot(Dbc, double3::cross(double3::cross(Dab, Dbc), double3::cross(Dbc, Dcd)));
       phi = std::copysign(std::acos(cos_phi), sign);
-      phi -= parameters[4];           // shift Phi as Phi+parameters[4]
+      phi -= parameters[4];  // shift Phi as Phi+parameters[4]
       phi -= std::rint(phi / (2.0 * std::numbers::pi)) * 2.0 * std::numbers::pi;
       shifted_cos_phi = std::cos(phi);
       shifted_cos_phi2 = shifted_cos_phi;
@@ -494,19 +505,21 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       phi = std::copysign(std::acos(cos_phi), sign);
       return parameters[0] * (1.0 + std::cos(parameters[1] * phi - parameters[2]));
     case TorsionType::CFF:
-       // p_0*(1-cos(phi))+p_1*(1-cos(2*phi))+p_2*(1-cos(3*phi))
+      // p_0*(1-cos(phi))+p_1*(1-cos(2*phi))+p_2*(1-cos(3*phi))
       // ======================================================
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return parameters[0] * (1.0 - cos_phi) + 2.0 * parameters[1] * (1.0 - cos_phi2) + parameters[2] * (1.0 + 3.0 * cos_phi - 4.0 * cos_phi * cos_phi2);
+      return parameters[0] * (1.0 - cos_phi) + 2.0 * parameters[1] * (1.0 - cos_phi2) +
+             parameters[2] * (1.0 + 3.0 * cos_phi - 4.0 * cos_phi * cos_phi2);
     case TorsionType::CFF2:
       // p_0*(1+cos(phi))+p_1*(1+cos(2*phi))+p_2*(1+cos(3*phi))
       // ======================================================
       // p_0/k_B [K]
       // p_1/k_B [K]
       // p_2/k_B [K]
-      return parameters[0] * (1.0 + cos_phi) + parameters[2] + cos_phi * (-3.0 * parameters[2] + 2.0 * cos_phi * (parameters[1] + 2.0 * parameters[2] * cos_phi));
+      return parameters[0] * (1.0 + cos_phi) + parameters[2] +
+             cos_phi * (-3.0 * parameters[2] + 2.0 * cos_phi * (parameters[1] + 2.0 * parameters[2] * cos_phi));
     case TorsionType::OPLS:
       // (1/2)p_0[0]+(1/2)p_1*(1+cos(phi))+(1/2)p_2*(1-cos(2*phi))+(1/2)p_3*(1+cos(3*phi))
       // =================================================================================
@@ -514,14 +527,17 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_1/k_B [K]
       // p_2/k_B [K]
       // p_3/k_B [K]
-      return 0.5 * (parameters[0] + (1.0 + cos_phi) * (parameters[1] + parameters[3] - 2.0 * (cos_phi - 1.0) * (parameters[2] - 2.0 * parameters[3] * cos_phi)));
+      return 0.5 * (parameters[0] +
+                    (1.0 + cos_phi) * (parameters[1] + parameters[3] -
+                                       2.0 * (cos_phi - 1.0) * (parameters[2] - 2.0 * parameters[3] * cos_phi)));
     case TorsionType::MM3:
       // (1/2)*p_0*(1+cos(phi))+(1/2)*p_1*(1-cos(2*phi))+(1/2)*p_2*(1+cos(3*phi))
       // ========================================================================
       // p_0     [kcal/mol]
       // p_1     [kcal/mol]
       // p_2     [kcal/mol]
-      return 0.5 * parameters[0] * (1.0 + cos_phi) + parameters[1] * (1.0 - cos_phi2) + 0.5 * parameters[2] * (1.0 - 3.0 * cos_phi + 4.0 * cos_phi * cos_phi2);
+      return 0.5 * parameters[0] * (1.0 + cos_phi) + parameters[1] * (1.0 - cos_phi2) +
+             0.5 * parameters[2] * (1.0 - 3.0 * cos_phi + 4.0 * cos_phi * cos_phi2);
     case TorsionType::FourierSeries:
       // (1/2)p_0*(1+cos(phi))+(1/2)p_1(1-cos(2*phi))+(1/2)*p2_2*(1+cos(3*phi))+
       // (1/2)p_3*(1-cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1+cos(6*phi))
@@ -532,13 +548,13 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_3/k_B [K]
       // p_4/k_B [K]
       // p_5/k_B [K]
-      return 0.5 * (parameters[0] + 2.0 * parameters[1] + parameters[2] + parameters[4] + 
-             2.0 * parameters[5] + (parameters[0] - 3.0 * parameters[2] + 5.0 * parameters[4]) * cos_phi -
-             2.0 * (parameters[1] - 4.0 * parameters[3] + 9.0*parameters[5]) * cos_phi2 +
-             4.0 * (parameters[2] - 5.0 * parameters[4]) * cos_phi2 * cos_phi -
-             8.0 * (parameters[3] - 6.0 * parameters[5]) * cos_phi2 * cos_phi2 + 
-             16.0 * parameters[4] * cos_phi2 * cos_phi2 * cos_phi -
-             32.0 * parameters[5] * cos_phi2 * cos_phi2 * cos_phi2);
+      return 0.5 * (parameters[0] + 2.0 * parameters[1] + parameters[2] + parameters[4] + 2.0 * parameters[5] +
+                    (parameters[0] - 3.0 * parameters[2] + 5.0 * parameters[4]) * cos_phi -
+                    2.0 * (parameters[1] - 4.0 * parameters[3] + 9.0 * parameters[5]) * cos_phi2 +
+                    4.0 * (parameters[2] - 5.0 * parameters[4]) * cos_phi2 * cos_phi -
+                    8.0 * (parameters[3] - 6.0 * parameters[5]) * cos_phi2 * cos_phi2 +
+                    16.0 * parameters[4] * cos_phi2 * cos_phi2 * cos_phi -
+                    32.0 * parameters[5] * cos_phi2 * cos_phi2 * cos_phi2);
     case TorsionType::FourierSeries2:
       // (1/2)p_0*(1+cos(phi))+(1/2)p_1(1-cos(2*phi))+(1/2)*p2_2*(1+cos(3*phi))+
       // (1/2)p_3*(1+cos(4*phi))+(1/2)p_4*(1+cos(5*phi))+(1/2)p_5*(1+cos(6*phi))
@@ -550,11 +566,11 @@ double TorsionPotential::calculateEnergy(const double3 &posA, const double3 &pos
       // p_4/k_B [K]
       // p_5/k_B [K]
       return 0.5 * (parameters[2] + 2.0 * parameters[3] + parameters[4] - 3.0 * parameters[2] * cos_phi +
-             5.0 * parameters[4] * cos_phi + parameters[0] * (1.0 + cos_phi)+
-             2.0 * (parameters[1] - parameters[1] * cos_phi2 + 
-             cos_phi2 * (parameters[5] * (3.0 - 4.0 * cos_phi2) * (3.0 - 4.0 * cos_phi2) + 
-             4.0 * parameters[3] * (cos_phi2 - 1.0)+
-             2.0 * cos_phi * (parameters[2] + parameters[4] * (4.0 * cos_phi2 - 5.0)))));
+                    5.0 * parameters[4] * cos_phi + parameters[0] * (1.0 + cos_phi) +
+                    2.0 * (parameters[1] - parameters[1] * cos_phi2 +
+                           cos_phi2 * (parameters[5] * (3.0 - 4.0 * cos_phi2) * (3.0 - 4.0 * cos_phi2) +
+                                       4.0 * parameters[3] * (cos_phi2 - 1.0) +
+                                       2.0 * cos_phi * (parameters[2] + parameters[4] * (4.0 * cos_phi2 - 5.0)))));
   }
 }
 

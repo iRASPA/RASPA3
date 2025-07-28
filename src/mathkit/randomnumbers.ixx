@@ -56,7 +56,10 @@ export struct RandomNumber
     return normalDistribution(mt);
   }
 
-  std::size_t integer(std::size_t i, std::size_t j) { return i + static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform()); }
+  std::size_t integer(std::size_t i, std::size_t j)
+  {
+    return i + static_cast<std::size_t>(static_cast<double>(j + 1 - i) * uniform());
+  }
 
   std::pair<std::size_t, std::size_t> randomPairAdjacentIntegers(std::size_t size)
   {

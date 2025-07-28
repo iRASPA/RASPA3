@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bend_bend_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, BendBendType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, BendBendType type,
+                                     std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -61,7 +62,6 @@ BendBendPotential::BendBendPotential(std::array<std::size_t, 4> identifiers, Ben
       std::unreachable();
   }
 }
-
 
 std::string BendBendPotential::print() const
 {
@@ -95,18 +95,18 @@ std::string BendBendPotential::print() const
       // p_2     [degrees]
       return std::format("{} - {} - {} - {} : MM3 p_0={:g} [mdyne A/rad^2], p_1={:g} [degrees], p_2={:g} [degrees]\n",
                          identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKCalPerMol / 0.02191418, parameters[1] * Units::RadiansToDegrees,
-                         parameters[2] * Units::RadiansToDegrees);
+                         parameters[0] * Units::EnergyToKCalPerMol / 0.02191418,
+                         parameters[1] * Units::RadiansToDegrees, parameters[2] * Units::RadiansToDegrees);
     default:
       std::unreachable();
   }
 }
 
-
-double BendBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB, 
-                                          [[maybe_unused]] const double3 &posC, [[maybe_unused]] const double3 &posD) const
+double BendBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
+                                          [[maybe_unused]] const double3 &posC,
+                                          [[maybe_unused]] const double3 &posD) const
 {
-  switch(type)
+  switch (type)
   {
     case BendBendType::CVFF:
       return 0.0;

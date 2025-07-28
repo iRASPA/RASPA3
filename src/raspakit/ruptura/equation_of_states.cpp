@@ -189,8 +189,8 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
   // In other cases, only a single root is obtained. This may correspond to liquid, vapour or supercritical fluid,
   // depending on the relative magnitudes of P and Pc, and T and Tc.
 
-  std::vector<std::vector<double>> fugacityCoefficients(components.size(),
-                                                        std::vector<double>(static_cast<std::size_t>(numberOfSolutions)));
+  std::vector<std::vector<double>> fugacityCoefficients(
+      components.size(), std::vector<double>(static_cast<std::size_t>(numberOfSolutions)));
   switch (equationOfState)
   {
     case EquationOfState::Type::SoaveRedlichKwong:
@@ -226,7 +226,7 @@ void EquationOfState::computeComponentFluidProperties(EquationOfState::Type type
                 std::exp((B[i] / Bmix) * (compressibility[j] - 1.0) - std::log(compressibility[j] - Bmix) -
                          (Amix / (2.0 * std::sqrt(2.0) * Bmix)) * (temp / Amix - B[i] / Bmix) *
                              std::log((compressibility[j] + (1.0 + std::sqrt(2.0)) * Bmix) /
-                                 (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
+                                      (compressibility[j] + (1.0 - std::sqrt(2)) * Bmix)));
           }
         }
       }

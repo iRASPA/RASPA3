@@ -28,7 +28,7 @@ export inline bool caseInSensStringCompare(const std::string& str1, const std::s
 
 export struct caseInsensitiveComparator
 {
-  bool operator()(const std::string &lhs, const std::string &rhs) const
+  bool operator()(const std::string& lhs, const std::string& rhs) const
   {
 #if defined(_WIN32)
     return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
@@ -37,7 +37,6 @@ export struct caseInsensitiveComparator
 #endif
   }
 };
-
 
 export inline bool startsWith(const std::string& str, const std::string& prefix)
 {

@@ -120,8 +120,8 @@ export struct System
          const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
 
-  System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> framework,
-         std::vector<Component> components);
+  System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
+         std::optional<Framework> framework, std::vector<Component> components);
 
   std::uint64_t versionNumber{1};
 
@@ -273,7 +273,10 @@ export struct System
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
 
   /// The fractional molecule for grand-canonical is stored first
-  inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent) { return 0; }
+  inline std::size_t indexOfGCFractionalMoleculesPerComponent_CFCMC([[maybe_unused]] std::size_t selectedComponent)
+  {
+    return 0;
+  }
 
   /// The fractional molecule for grand-canonical pair-insertion is stored second
   inline std::size_t indexOfPairGCFractionalMoleculesPerComponent_CFCMC(std::size_t selectedComponent)
@@ -332,9 +335,11 @@ export struct System
   std::span<double3> spanOfMoleculeElectricField();
   std::span<double3> spanOfMoleculeElectricFieldNew();
   std::span<double3> spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule);
-  const std::span<const double3> spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+  const std::span<const double3> spanElectricFieldNew(std::size_t selectedComponent,
+                                                      std::size_t selectedMolecule) const;
   std::span<double3> spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule);
-  const std::span<const double3> spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+  const std::span<const double3> spanElectricFieldOld(std::size_t selectedComponent,
+                                                      std::size_t selectedMolecule) const;
 
   std::size_t numberOfMolecules() const
   {

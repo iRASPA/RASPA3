@@ -84,8 +84,8 @@ std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperation
 }
 
 std::vector<std::tuple<double3, std::size_t, double>> SKIntegerSymmetryOperationSet::asymmetricAtoms(
-    [[maybe_unused]] std::size_t HallNumber, std::vector<std::tuple<double3, std::size_t, double>>& atoms, double3x3 lattice,
-    [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
+    [[maybe_unused]] std::size_t HallNumber, std::vector<std::tuple<double3, std::size_t, double>>& atoms,
+    double3x3 lattice, [[maybe_unused]] bool allowPartialOccupancies, double symmetryPrecision = 1e-2)
 {
   std::vector<std::tuple<double3, std::size_t, double, std::make_signed_t<std::size_t>>> atomData{};
   std::transform(atoms.begin(), atoms.end(), std::back_inserter(atomData),

@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -43,15 +43,17 @@ export enum class VanDerWaalsType : std::size_t { LennardJones = 0 };
  * \brief Represents a vanDerWaals potential between two particles.
  *
  * The vanDerWaalsPotential struct encapsulates the type of vanDerWaals and associated parameters between two particles.
- * It includes versioning for serialization, vanDerWaals type, identifiers of vanDerWaalsed particles, and vanDerWaals parameters.
+ * It includes versioning for serialization, vanDerWaals type, identifiers of vanDerWaalsed particles, and vanDerWaals
+ * parameters.
  */
 export struct VanDerWaalsPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the vanDerWaals.
-  VanDerWaalsType type;                                             ///< The type of vanDerWaals potential.
-  std::array<double, maximumNumberOfVanDerWaalsParameters> parameters;  ///< Parameters associated with the vanDerWaals potential.
+  std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the vanDerWaals.
+  VanDerWaalsType type;                    ///< The type of vanDerWaals potential.
+  std::array<double, maximumNumberOfVanDerWaalsParameters>
+      parameters;  ///< Parameters associated with the vanDerWaals potential.
 
   /**
    * \brief Default constructor for vanDerWaalsPotential.
@@ -60,7 +62,8 @@ export struct VanDerWaalsPotential
    */
   VanDerWaalsPotential() : identifiers({0, 0}), type(VanDerWaalsType::LennardJones) {}
 
-  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type, std::vector<double> vector_parameters);
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
+                       std::vector<double> vector_parameters);
 
   /**
    * \brief Constructs a vanDerWaalsPotential with specified type and vanDerWaals IDs.
@@ -68,7 +71,10 @@ export struct VanDerWaalsPotential
    * \param type The type of vanDerWaals potential.
    * \param identifiers A pair of particle identifiers forming the vanDerWaals.
    */
-  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, const VanDerWaalsType type) : identifiers(identifiers), type(type) {}
+  VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, const VanDerWaalsType type)
+      : identifiers(identifiers), type(type)
+  {
+  }
 
   bool operator==(VanDerWaalsPotential const &) const = default;
 
@@ -86,8 +92,7 @@ export struct VanDerWaalsPotential
    *
    * A static vector indicating the number of parameters needed for each vanDerWaals type.
    */
-  static inline std::array<std::size_t, 2> numberOfVanDerWaalsParameters{ 2 };
-
+  static inline std::array<std::size_t, 2> numberOfVanDerWaalsParameters{2};
 
   /**
    * \brief Mapping of vanDerWaals type strings to type enums.
@@ -95,7 +100,7 @@ export struct VanDerWaalsPotential
    * A static map that associates vanDerWaals type names with their corresponding type enumeration values.
    */
   static inline std::map<std::string, VanDerWaalsType, caseInsensitiveComparator> definitionForString{
-      {"LENNARD_JONES", VanDerWaalsType::LennardJones} };
+      {"LENNARD_JONES", VanDerWaalsType::LennardJones}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
 

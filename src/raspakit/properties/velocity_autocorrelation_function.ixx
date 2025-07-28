@@ -35,8 +35,8 @@ export struct PropertyVelocityAutoCorrelationFunction
   PropertyVelocityAutoCorrelationFunction() {};
 
   PropertyVelocityAutoCorrelationFunction(std::size_t numberOfComponents, std::size_t numberOfParticles,
-                                          std::size_t numberOfBuffersVACF, std::size_t bufferLengthVACF, std::size_t sampleEvery,
-                                          std::size_t writeEvery)
+                                          std::size_t numberOfBuffersVACF, std::size_t bufferLengthVACF,
+                                          std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfComponents(numberOfComponents),
         numberOfParticles(numberOfParticles),
         numberOfBuffersVACF(numberOfBuffersVACF),
@@ -96,7 +96,8 @@ export struct PropertyVelocityAutoCorrelationFunction
   void addSample(std::size_t currentCycle, const std::vector<Component> &components,
                  const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
   void writeOutput(std::size_t systemId, const std::vector<Component> &components,
-                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT, std::size_t currentCycle);
+                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
+                   std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,
                                             const PropertyVelocityAutoCorrelationFunction &msd);

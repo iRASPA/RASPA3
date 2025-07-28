@@ -344,7 +344,8 @@ void IsothermFitting::mutate(DNA &mutant, [[maybe_unused]] std::size_t Id)
 //    *          *                      *
 //  00|000000  11|111111        ->    00|111111
 //----------------------------------------------
-void IsothermFitting::crossover(std::size_t Id, std::size_t s1, std::size_t s2, std::size_t i1, std::size_t i2, std::size_t j1, std::size_t j2)
+void IsothermFitting::crossover(std::size_t Id, std::size_t s1, std::size_t s2, std::size_t i1, std::size_t i2,
+                                std::size_t j1, std::size_t j2)
 {
   std::size_t k1, k2;
   double tmp1;
@@ -450,7 +451,8 @@ void IsothermFitting::crossover(std::size_t Id, std::size_t s1, std::size_t s2, 
   }
 }
 
-void IsothermFitting::chooseRandomly(std::size_t kk1, std::size_t kk2, std::size_t jj1, std::size_t jj2, std::size_t &ii1, std::size_t &ii2)
+void IsothermFitting::chooseRandomly(std::size_t kk1, std::size_t kk2, std::size_t jj1, std::size_t jj2,
+                                     std::size_t &ii1, std::size_t &ii2)
 {
   ii1 = random.integer(kk1, kk2);
   ii2 = random.integer(jj1, jj2);
@@ -466,10 +468,10 @@ void IsothermFitting::mate(std::size_t Id, const std::vector<std::pair<double, d
   elitism();
 
   // mates from GA_Elitists to (GA_Size - GA_Elitists)
-  crossover(Id, GA_Elitists, GA_Elitists + static_cast<std::size_t>(static_cast<double>(GA_Motleists) * 0.5), 0, GA_Elitists,
-            0, GA_Elitists);
-  crossover(Id, GA_Elitists + static_cast<std::size_t>(static_cast<double>(GA_Motleists) * 0.5) + 1, GA_Size - GA_Elitists,
-            0, GA_Elitists, GA_Elitists, GA_Size - 1);
+  crossover(Id, GA_Elitists, GA_Elitists + static_cast<std::size_t>(static_cast<double>(GA_Motleists) * 0.5), 0,
+            GA_Elitists, 0, GA_Elitists);
+  crossover(Id, GA_Elitists + static_cast<std::size_t>(static_cast<double>(GA_Motleists) * 0.5) + 1,
+            GA_Size - GA_Elitists, 0, GA_Elitists, GA_Elitists, GA_Size - 1);
 
   // mutation from GA_Elitists to (GA_Size - GA_Elitists) with "GA_MutationRate" probability
   for (std::size_t i = GA_Elitists; i < GA_Size - GA_Elitists; ++i)
@@ -648,9 +650,9 @@ const IsothermFitting::DNA IsothermFitting::simplex(std::ostream &stream, DNA ci
   std::vector<double> vc(n);                                          // contraction - coordinates
   std::vector<double> vm(n);                                          // centroid - coordinates
   std::vector<double> vtmp(n);                                        // temporary array passed to FUNC
-  std::size_t vs;                                                          // vertex with the smallest value
-  std::size_t vh;                                                          // vertex with next smallest value
-  std::size_t vg;                                                          // vertex with largest value
+  std::size_t vs;                                                     // vertex with the smallest value
+  std::size_t vh;                                                     // vertex with next smallest value
+  std::size_t vg;                                                     // vertex with largest value
   double fr;                                                          // value of function at reflection point
   double fe;                                                          // value of function at expansion point
   double fc;                                                          // value of function at contraction point

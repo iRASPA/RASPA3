@@ -99,7 +99,7 @@ export struct BlockErrorEstimation
   std::size_t currentSample{0};      ///< Current sample index.
   std::size_t numberOfSamples;       ///< Total number of samples.
   std::size_t currentBin{0};         ///< Current bin index.
-  double binSize{};             ///< Size of each bin.
+  double binSize{};                  ///< Size of each bin.
   std::vector<std::size_t> nextBin;  ///< Indices of the next bin boundaries.
 
   /**

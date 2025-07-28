@@ -127,7 +127,8 @@ export struct EnthalpyOfAdsorptionTerms
   EnthalpyOfAdsorptionTerms& operator=(const EnthalpyOfAdsorptionTerms& a) noexcept = default;
 
   EnthalpyOfAdsorptionTerms(const std::vector<std::size_t> swappableComponents,
-                            const std::vector<std::size_t> numberOfIntegerMolecules, double totalEnergy, double temperature)
+                            const std::vector<std::size_t> numberOfIntegerMolecules, double totalEnergy,
+                            double temperature)
       : size(swappableComponents.size()),
         swappableComponents(swappableComponents),
         totalEnergyTimesNumberOfMolecules(swappableComponents.size()),

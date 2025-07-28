@@ -36,5 +36,6 @@ export namespace MC_Moves
  * containing acceptance probabilities.
  */
 std::pair<std::optional<RunningEnergy>, double3> deletionMoveCBMC(RandomNumber& random, System& system,
-                                                                  std::size_t selectedComponent, std::size_t selectedMolecule);
+                                                                  std::size_t selectedComponent,
+                                                                  std::size_t selectedMolecule);
 }  // namespace MC_Moves

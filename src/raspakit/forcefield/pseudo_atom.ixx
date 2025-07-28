@@ -52,8 +52,8 @@ export struct PseudoAtom
    * \param printToPDB Flag indicating whether to include the atom in PDB output.
    * \param source The source of the pseudo-atom data.
    */
-  PseudoAtom(std::string name, bool framework, double mass, double charge, double polarizability, std::size_t atomicNumber,
-             bool printToPDB, std::string source = "")
+  PseudoAtom(std::string name, bool framework, double mass, double charge, double polarizability,
+             std::size_t atomicNumber, bool printToPDB, std::string source = "")
       : name(name),
         framework(framework),
         mass(mass),
@@ -65,15 +65,15 @@ export struct PseudoAtom
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
 
-  std::string name{"C"};       ///< The name of the pseudo-atom.
-  bool framework{false};       ///< Indicates if the atom is part of the framework.
-  double mass{1.0};            ///< The mass of the pseudo-atom.
-  double charge{0.0};          ///< The electric charge of the pseudo-atom.
-  double polarizability{0.0};  ///< The polarizability of the pseudo-atom.
-  std::size_t atomicNumber{8};      ///< The atomic number of the pseudo-atom.
-  std::int64_t oxidationState{0};   ///< The oxidation state of the pseudo-atom.
-  bool printToPDB{true};       ///< Flag indicating whether to include the atom in PDB output.
-  std::string source{};        ///< The source of the pseudo-atom data.
+  std::string name{"C"};           ///< The name of the pseudo-atom.
+  bool framework{false};           ///< Indicates if the atom is part of the framework.
+  double mass{1.0};                ///< The mass of the pseudo-atom.
+  double charge{0.0};              ///< The electric charge of the pseudo-atom.
+  double polarizability{0.0};      ///< The polarizability of the pseudo-atom.
+  std::size_t atomicNumber{8};     ///< The atomic number of the pseudo-atom.
+  std::int64_t oxidationState{0};  ///< The oxidation state of the pseudo-atom.
+  bool printToPDB{true};           ///< Flag indicating whether to include the atom in PDB output.
+  std::string source{};            ///< The source of the pseudo-atom data.
 
   bool operator==(const PseudoAtom &other) const;
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PseudoAtom &a);

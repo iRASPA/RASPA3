@@ -47,10 +47,10 @@ module;
 #endif             // JSON_NO_IO
 #endif
 
-
-#include <cassert>  // assert
 #include <errno.h>
 #include <stdio.h>
+
+#include <cassert>  // assert
 
 export module json;
 
@@ -3284,7 +3284,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/iterators/iterator_traits.hpp>
 //     __ _____ _____ _____
 //  __|  |   __|     |   | |  JSON for Modern C++
@@ -3396,7 +3395,6 @@ NLOHMANN_JSON_NAMESPACE_END
 
 #ifndef INCLUDE_NLOHMANN_JSON_FWD_HPP_
 #define INCLUDE_NLOHMANN_JSON_FWD_HPP_
-
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -5845,7 +5843,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -8811,7 +8808,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -12563,7 +12559,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/macro_scope.hpp>
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
@@ -13453,7 +13448,6 @@ NLOHMANN_JSON_NAMESPACE_END
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
 
-
 // #include <nlohmann/detail/abi_macros.hpp>
 
 NLOHMANN_JSON_NAMESPACE_BEGIN
@@ -13571,7 +13565,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/abi_macros.hpp>
 
@@ -14544,7 +14537,6 @@ NLOHMANN_JSON_NAMESPACE_END
 //
 // SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
 // SPDX-License-Identifier: MIT
-
 
 // #include <nlohmann/detail/abi_macros.hpp>
 

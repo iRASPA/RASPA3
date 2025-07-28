@@ -116,9 +116,8 @@ void PropertyConventionalRadialDistributionFunction::sample(const SimulationBox 
   numberOfCounts[block] += 2;
 }
 
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(std::size_t blockIndex,
-                                                                                                 std::size_t atomTypeA,
-                                                                                                 std::size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(
+    std::size_t blockIndex, std::size_t atomTypeA, std::size_t atomTypeB) const
 {
   std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
@@ -130,8 +129,8 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
   return averagedData;
 }
 
-std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(std::size_t atomTypeA,
-                                                                                                 std::size_t atomTypeB) const
+std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProbabilityHistogram(
+    std::size_t atomTypeA, std::size_t atomTypeB) const
 {
   std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
 
@@ -150,7 +149,8 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const
+PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std::size_t atomTypeA,
+                                                                            std::size_t atomTypeB) const
 {
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];

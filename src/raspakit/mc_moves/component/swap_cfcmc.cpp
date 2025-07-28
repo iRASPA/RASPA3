@@ -78,7 +78,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // (1) Unbiased: the fractional molecule with lambda=lambda_old is made integer (lambda=1) and deltaU is computed
     // (2) Unbiased: a new fractional molecule is inserted with lambda_new = epsilon
 
-    std::size_t newBin = static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
+    std::size_t newBin =
+        static_cast<std::size_t>(selectedNewBin - std::make_signed_t<std::size_t>(lambda.numberOfSamplePoints));
     double newLambda = deltaLambda * static_cast<double>(newBin);
 
     // Update counts for insertion move
@@ -282,7 +283,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     double Pacc =
         preFactor *
         std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) +
-            biasTerm);
+                 biasTerm);
 
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
 
@@ -535,7 +536,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
       double Pacc =
           preFactor *
           std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) +
-              biasTerm);
+                   biasTerm);
 
       double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 

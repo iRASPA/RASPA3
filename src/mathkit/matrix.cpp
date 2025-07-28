@@ -13,7 +13,8 @@ module matrix;
 import std;
 #endif
 
-Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue) : _rows(rows), _columns(columns), _grid(rows * columns)
+Matrix::Matrix(std::size_t rows, std::size_t columns, double initialValue)
+    : _rows(rows), _columns(columns), _grid(rows * columns)
 {
   std::fill(_grid.begin(), _grid.end(), initialValue);
 }

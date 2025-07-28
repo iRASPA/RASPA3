@@ -84,9 +84,11 @@ MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(InputReader& reader) noex
 {
 }
 
-MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
+MonteCarloTransitionMatrix::MonteCarloTransitionMatrix(std::size_t numberOfCycles,
+                                                       std::size_t numberOfInitializationCycles,
                                                        std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
-                                                       std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
+                                                       std::size_t writeBinaryRestartEvery,
+                                                       std::size_t rescaleWangLandauEvery,
                                                        std::size_t optimizeMCMovesEvery, std::vector<System>& systems,
                                                        RandomNumber& randomSeed, std::size_t numberOfBlocks)
     : numberOfCycles(numberOfCycles),
@@ -702,6 +704,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
   }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber, static_cast<std::uint64_t>(0x6f6b6179));
+  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
+                           static_cast<std::uint64_t>(0x6f6b6179));
   return archive;
 }

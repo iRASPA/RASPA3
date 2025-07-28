@@ -403,7 +403,6 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 
           it1->gradient += f;
           it2->gradient -= f;
-
         }
         if (useCharge && rr < cutOffChargeSquared)
         {

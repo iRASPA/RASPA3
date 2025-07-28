@@ -566,9 +566,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     double preFactor = systemB.simulationBox.volume / systemA.simulationBox.volume;
 
     // apply acceptance/rejection rule
-    if (random.uniform() <
-        preFactor *
-            std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() + energyDifferenceB.potentialEnergy()) + biasTerm))
+    if (random.uniform() < preFactor * std::exp(-systemA.beta * (energyDifferenceA.potentialEnergy() +
+                                                                 energyDifferenceB.potentialEnergy()) +
+                                                biasTerm))
     {
       componentA.mc_moves_statistics.addAccepted(move, 1);
 

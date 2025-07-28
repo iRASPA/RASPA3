@@ -83,10 +83,10 @@ export struct MonteCarlo
    * \param randomSeed Random number generator seed.
    * \param numberOfBlocks Number of blocks for error estimation.
    */
-  MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles, std::size_t numberOfEquilibrationCycles,
-             std::size_t printEvery, std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
-             std::size_t optimizeMCMovesEvery, std::vector<System> &systems, RandomNumber &randomSeed, std::size_t numberOfBlocks,
-             bool outputToFiles = false);
+  MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
+             std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
+             std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, std::vector<System> &systems,
+             RandomNumber &randomSeed, std::size_t numberOfBlocks, bool outputToFiles = false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -103,10 +103,10 @@ export struct MonteCarlo
   std::size_t rescaleWangLandauEvery;        ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;          ///< Frequency of optimizing MC moves.
 
-  std::size_t currentCycle{0};                                           ///< Current cycle number.
+  std::size_t currentCycle{0};                                      ///< Current cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
-  std::vector<System> systems;         ///< Vector of systems to simulate.
+  std::vector<System> systems;              ///< Vector of systems to simulate.
   std::size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
 
   std::vector<std::ofstream> streams;            ///< Output streams for writing data.

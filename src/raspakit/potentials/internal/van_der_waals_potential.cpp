@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
@@ -25,10 +25,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
+                                           std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfVanDerWaalsParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfVanDerWaalsParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -39,7 +40,6 @@ VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifier
       break;
   }
 }
-
 
 std::string VanDerWaalsPotential::print() const
 {
@@ -59,19 +59,18 @@ double VanDerWaalsPotential::calculateEnergy(const double3 &posA, const double3 
   double3 dr = posA - posB;
   double rr = double3::dot(dr, dr);
 
-  switch(type)
+  switch (type)
   {
     case VanDerWaalsType::LennardJones:
       // 4*p_0*((p_1/r)^12-(p_1/r)^6)
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1]  / rr);
+      rri = (parameters[1] / rr);
       temp = rri * rri * rri;
       return 4.0 * parameters[0] * (temp * (temp - 1.0));
   }
 }
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDerWaalsPotential &b)
 {

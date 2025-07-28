@@ -1,17 +1,17 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
 #include <print>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <vector>
-#include <tuple>
 #endif
 
 export module bond_bond_potential;
@@ -44,15 +44,17 @@ export enum class BondBondType : std::size_t { CVFF = 0, CFF = 1 };
  * \brief Represents a bond_bond potential between two particles.
  *
  * The BondBondPotential struct encapsulates the type of bond_bond and associated parameters between two particles.
- * It includes versioning for serialization, bond_bond type, identifiers of bond_bonded particles, and bond_bond parameters.
+ * It includes versioning for serialization, bond_bond type, identifiers of bond_bonded particles, and bond_bond
+ * parameters.
  */
 export struct BondBondPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 3> identifiers;                                ///< Identifiers of the two particles forming the bond_bond.
-  BondBondType type;                                   ///< The type of bond_bond potential.
-  std::array<double, maximumNumberOfBondBondParameters> parameters;  ///< Parameters associated with the bond_bond potential.
+  std::array<std::size_t, 3> identifiers;  ///< Identifiers of the two particles forming the bond_bond.
+  BondBondType type;                       ///< The type of bond_bond potential.
+  std::array<double, maximumNumberOfBondBondParameters>
+      parameters;  ///< Parameters associated with the bond_bond potential.
 
   /**
    * \brief Default constructor for BondBondPotential.
@@ -69,7 +71,10 @@ export struct BondBondPotential
    * \param type The type of bond_bond potential.
    * \param identifiers A pair of particle identifiers forming the bond_bond.
    */
-  BondBondPotential(std::array<std::size_t, 3> identifiers, const BondBondType type) : identifiers(identifiers), type(type) {}
+  BondBondPotential(std::array<std::size_t, 3> identifiers, const BondBondType type)
+      : identifiers(identifiers), type(type)
+  {
+  }
 
   bool operator==(BondBondPotential const &) const = default;
 
@@ -89,14 +94,13 @@ export struct BondBondPotential
    */
   static inline std::array<std::size_t, 2> numberOfBondBondParameters{3, 3};
 
-
   /**
    * \brief Mapping of bond_bond type strings to BondBondType enums.
    *
    * A static map that associates bond_bond type names with their corresponding BondBondType enumeration values.
    */
   static inline std::map<std::string, BondBondType, caseInsensitiveComparator> definitionForString{
-                                          {"CVFF", BondBondType::CVFF}, {"CFF", BondBondType::CFF} };
+      {"CVFF", BondBondType::CVFF}, {"CFF", BondBondType::CFF}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc) const;
 

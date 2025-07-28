@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bond_torsion_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BondTorsionPotential::BondTorsionPotential(std::array<std::size_t, 4> identifiers, BondTorsionType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BondTorsionPotential::BondTorsionPotential(std::array<std::size_t, 4> identifiers, BondTorsionType type,
+                                           std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondTorsionParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondTorsionParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -52,7 +53,6 @@ BondTorsionPotential::BondTorsionPotential(std::array<std::size_t, 4> identifier
   }
 }
 
-
 std::string BondTorsionPotential::print() const
 {
   switch (type)
@@ -64,21 +64,22 @@ std::string BondTorsionPotential::print() const
       // p_1     [kcal/A mole]
       // p_2     [kcal/A mole]
       // p_3     [A]
-      return std::format("{} - {} - {} - {} : MM3 p_0={:g} [kcal/A mole], p_1={:g} [kcal/A mole], p_2={:g} [kcal/A mole], p_3/k_B={:g} [A]\n",
-                         identifiers[0], identifiers[1], identifiers[2], identifiers[3],
-                         parameters[0] * Units::EnergyToKCalPerMol, parameters[1] * Units::EnergyToKCalPerMol,
-                         parameters[2] * Units::EnergyToKCalPerMol, parameters[3]);
+      return std::format(
+          "{} - {} - {} - {} : MM3 p_0={:g} [kcal/A mole], p_1={:g} [kcal/A mole], p_2={:g} [kcal/A mole], "
+          "p_3/k_B={:g} [A]\n",
+          identifiers[0], identifiers[1], identifiers[2], identifiers[3], parameters[0] * Units::EnergyToKCalPerMol,
+          parameters[1] * Units::EnergyToKCalPerMol, parameters[2] * Units::EnergyToKCalPerMol, parameters[3]);
       break;
     default:
       std::unreachable();
   }
 }
 
-
-double BondTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB, 
-                                             [[maybe_unused]] const double3 &posC, [[maybe_unused]] const double3 &posD) const
+double BondTorsionPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB,
+                                             [[maybe_unused]] const double3 &posC,
+                                             [[maybe_unused]] const double3 &posD) const
 {
-  switch(type)
+  switch (type)
   {
     case BondTorsionType::MM3:
       // (1/2)p_0(r-p_3)(1+cos(phi))+(1/2)p_1(r-p_3)(1+cos(2phi))+(1/2)p_2(r-p_3)(1+cos(3phi))

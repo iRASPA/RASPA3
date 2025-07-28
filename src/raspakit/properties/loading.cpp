@@ -43,8 +43,9 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
 
     std::pair<Loadings, Loadings> loadingAverage = averageLoading();
 
-    int3 number_of_unit_cells = numberOfUnitCells.value_or(int3{1,1,1});
-    double to_molecules_per_unit_cell = 1.0 / (static_cast<double>(number_of_unit_cells.x * number_of_unit_cells.y * number_of_unit_cells.z));
+    int3 number_of_unit_cells = numberOfUnitCells.value_or(int3{1, 1, 1});
+    double to_molecules_per_unit_cell =
+        1.0 / (static_cast<double>(number_of_unit_cells.x * number_of_unit_cells.y * number_of_unit_cells.z));
 
     std::print(stream, "Loadings\n");
     std::print(stream, "===============================================================================\n\n");
@@ -68,7 +69,7 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
           std::print(stream, "    Abs. loading average  {: .6e} +/- {: .6e} [molecules/cell]\n",
                      loadingAverage.first.numberOfMolecules[i], loadingAverage.second.numberOfMolecules[i]);
           std::print(stream, "    Abs. loading average  {: .6e} +/- {: .6e} [molecules/uc]\n",
-                     to_molecules_per_unit_cell * loadingAverage.first.numberOfMolecules[i], 
+                     to_molecules_per_unit_cell * loadingAverage.first.numberOfMolecules[i],
                      to_molecules_per_unit_cell * loadingAverage.second.numberOfMolecules[i]);
           std::print(stream, "    Abs. loading average  {: .6e} +/- {: .6e} [mol/kg-framework]\n",
                      toMolePerKg * loadingAverage.first.numberOfMolecules[i],
@@ -100,7 +101,8 @@ std::string PropertyLoading::writeAveragesStatistics(std::vector<Component> comp
                      loadingAverage.first.numberOfMolecules[i] - components[i].amountOfExcessMolecules,
                      loadingAverage.second.numberOfMolecules[i]);
           std::print(stream, "    Excess loading average  {: .6e} +/- {: .6e} [molecules/uc]\n",
-                     to_molecules_per_unit_cell * (loadingAverage.first.numberOfMolecules[i] - components[i].amountOfExcessMolecules),
+                     to_molecules_per_unit_cell *
+                         (loadingAverage.first.numberOfMolecules[i] - components[i].amountOfExcessMolecules),
                      to_molecules_per_unit_cell * loadingAverage.second.numberOfMolecules[i]);
           std::print(stream, "    Excess loading average  {: .6e} +/- {: .6e} [mol/kg-framework]\n",
                      toMolePerKg * (loadingAverage.first.numberOfMolecules[i] - components[i].amountOfExcessMolecules),

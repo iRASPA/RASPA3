@@ -57,13 +57,13 @@ export struct Breakthrough
   double rho_p;    // particle density [kg/m3]
   double v_in;     // interstitial velocity at the begin of the column [m/s]
 
-  double L;        // length of the column
-  double dx;       // spacing in spatial direction
-  double dt;       // timestep integration
-  std::size_t Nsteps;   // total number of steps
-  bool autoSteps;  // use automatic number of steps
-  bool pulse;      // pulsed inlet condition for breakthrough
-  double tpulse;   // pulse time
+  double L;            // length of the column
+  double dx;           // spacing in spatial direction
+  double dt;           // timestep integration
+  std::size_t Nsteps;  // total number of steps
+  bool autoSteps;      // use automatic number of steps
+  bool pulse;          // pulsed inlet condition for breakthrough
+  double tpulse;       // pulse time
   MixturePrediction mixture;
   std::pair<std::size_t, std::size_t> iastPerformance{0, 0};
 
@@ -111,7 +111,8 @@ export struct Breakthrough
   void computeFirstDerivatives(std::mdspan<double, std::dextents<std::size_t, 2>> &dqdt,
                                std::mdspan<double, std::dextents<std::size_t, 2>> &dpdt,
                                const std::mdspan<double, std::dextents<std::size_t, 2>> &q_eq,
-                               const std::mdspan<double, std::dextents<std::size_t, 2>> &q, const std::vector<double> &v,
+                               const std::mdspan<double, std::dextents<std::size_t, 2>> &q,
+                               const std::vector<double> &v,
                                const std::mdspan<double, std::dextents<std::size_t, 2>> &p);
 
   void computeEquilibriumLoadings();

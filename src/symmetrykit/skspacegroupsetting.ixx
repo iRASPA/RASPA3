@@ -28,9 +28,9 @@ export class SKSpaceGroupSetting
 {
  public:
   // SKSpaceGroupSetting() {}
-  SKSpaceGroupSetting(std::size_t number, std::size_t spaceGroupNumber, std::size_t order, char ext, std::string qualifier,
-                      std::string HM, std::string Hall, bool inversionAtOrigin, int3 inversionCenter,
-                      Symmorphicity symmorphicity, bool standard, Centring centring,
+  SKSpaceGroupSetting(std::size_t number, std::size_t spaceGroupNumber, std::size_t order, char ext,
+                      std::string qualifier, std::string HM, std::string Hall, bool inversionAtOrigin,
+                      int3 inversionCenter, Symmorphicity symmorphicity, bool standard, Centring centring,
                       std::vector<int3> latticeTranslations, std::size_t pointGroupNumber, std::string schoenflies,
                       std::string generators, std::string encoding, SKAsymmetricUnit asymmetricUnit,
                       SKTransformationMatrix transformationMatrix);

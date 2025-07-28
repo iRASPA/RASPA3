@@ -64,7 +64,8 @@ export class RingMatrix
 
   void swapColumns(std::size_t a, std::size_t b);
 
-  RingMatrix submatrix(std::size_t startRow, std::size_t startColumn, std::size_t numberOfRows, std::size_t numberOfColumns);
+  RingMatrix submatrix(std::size_t startRow, std::size_t startColumn, std::size_t numberOfRows,
+                       std::size_t numberOfColumns);
   void assignSubmatrix(std::size_t startRow, std::size_t startColumn, RingMatrix replacement);
   std::tuple<RingMatrix, RingMatrix, RingMatrix> ColumnReduction(RingMatrix A1, std::size_t col_1, std::size_t col_2,
                                                                  std::size_t row_start);

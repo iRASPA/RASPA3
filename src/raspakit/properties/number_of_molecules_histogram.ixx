@@ -37,8 +37,8 @@ export struct PropertyNumberOfMoleculesHistogram
 {
   PropertyNumberOfMoleculesHistogram() {};
 
-  PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range, std::size_t size,
-                                     std::size_t sampleEvery, std::size_t writeEvery)
+  PropertyNumberOfMoleculesHistogram(std::size_t numberOfBlocks, std::pair<std::size_t, std::size_t> range,
+                                     std::size_t size, std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(range.second - range.first),
         range(range),
@@ -63,8 +63,8 @@ export struct PropertyNumberOfMoleculesHistogram
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
 
-  void addSample(std::size_t blockIndex, std::size_t currentCycle, std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
-                 const double &weight);
+  void addSample(std::size_t blockIndex, std::size_t currentCycle,
+                 std::vector<std::size_t> numberOfIntegerMoleculesPerComponent, const double &weight);
 
   std::vector<std::vector<double>> averagedProbabilityHistogram(std::size_t blockIndex) const;
   std::vector<std::vector<double>> averagedProbabilityHistogram() const;

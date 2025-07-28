@@ -452,7 +452,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
   // for each system, a list of how many molecules to create for each component
   std::vector<std::vector<std::size_t>> jsonCreateNumberOfMolecules(jsonNumberOfSystems,
-                                                               std::vector<std::size_t>(jsonNumberOfComponents));
+                                                                    std::vector<std::size_t>(jsonNumberOfComponents));
 
   // Parse component options
   if (parsed_data.contains("Components"))

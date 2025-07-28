@@ -44,8 +44,9 @@ export struct PropertyDensityGrid
 
   PropertyDensityGrid() {}
 
-  PropertyDensityGrid(std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints, std::size_t sampleEvery,
-                      std::size_t writeEvery, std::vector<std::size_t> densityGridPseudoAtomsList, Normalization normType)
+  PropertyDensityGrid(std::size_t numberOfFrameworks, std::size_t numberOfComponents, int3 numberOfGridPoints,
+                      std::size_t sampleEvery, std::size_t writeEvery,
+                      std::vector<std::size_t> densityGridPseudoAtomsList, Normalization normType)
       : numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
         grid_cell(numberOfComponents *

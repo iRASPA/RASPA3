@@ -386,7 +386,8 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
     throw std::runtime_error(std::format("OpenCL clCommandQueue failed {} : {}\n", __FILE__, __LINE__));
   }
 
-  std::size_t totalNumberOfReplicas = static_cast<std::size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
+  std::size_t totalNumberOfReplicas =
+      static_cast<std::size_t>(numberOfReplicas.x * numberOfReplicas.y * numberOfReplicas.z);
   cl_int clNumberOfReplicas = cl_int(totalNumberOfReplicas);
   std::vector<cl_float4> replicaVector(totalNumberOfReplicas);
   index = 0;
@@ -543,7 +544,7 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   // Copy the energy-grid to the input for the Marching Cubes
   std::size_t originRawData[3] = {0, 0, 0};
   std::size_t regionRawData[3] = {static_cast<std::size_t>(grid_size.x), static_cast<std::size_t>(grid_size.y),
-                             static_cast<std::size_t>(grid_size.z)};
+                                  static_cast<std::size_t>(grid_size.z)};
   err = clEnqueueCopyBufferToImage(OpenCL::clCommandQueue.value(), outputMemory, rawData, 0, originRawData,
                                    regionRawData, 0, nullptr, nullptr);
   if (err != CL_SUCCESS)
@@ -563,8 +564,8 @@ void EnergyOpenCLSurfaceArea::run(const ForceField &forceField, const Framework 
   clSetKernelArg(classifyCubesKernel, 2, sizeof(cl_int4), &clDimensions);
   clSetKernelArg(classifyCubesKernel, 3, sizeof(cl_float), &clIsoValue);
 
-  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE, sizeof(std::size_t),
-                           &classifyCubesKernelWorkGroupSize, nullptr);
+  clGetKernelWorkGroupInfo(classifyCubesKernel, OpenCL::clDeviceId.value(), CL_KERNEL_WORK_GROUP_SIZE,
+                           sizeof(std::size_t), &classifyCubesKernelWorkGroupSize, nullptr);
 
   // set work-item dimensions
   std::size_t global_work_size[3] = {size, size, size};

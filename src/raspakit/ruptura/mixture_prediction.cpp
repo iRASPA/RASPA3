@@ -162,8 +162,8 @@ std::string MixturePrediction::writeHeader() const
 }
 
 std::pair<std::size_t, std::size_t> MixturePrediction::predictMixture(const std::vector<double> &Yi, const double &P,
-                                                            std::vector<double> &Xi, std::vector<double> &Ni,
-                                                            double *cachedP0, double *cachedPsi)
+                                                                      std::vector<double> &Xi, std::vector<double> &Ni,
+                                                                      double *cachedP0, double *cachedPsi)
 {
   const double tiny = 1.0e-10;
 
@@ -231,8 +231,8 @@ std::pair<std::size_t, std::size_t> MixturePrediction::predictMixture(const std:
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
 std::pair<std::size_t, std::size_t> MixturePrediction::computeFastIAST(const std::vector<double> &Yi, const double &P,
-                                                             std::vector<double> &Xi, std::vector<double> &Ni,
-                                                             double *cachedP0, double *cachedPsi)
+                                                                       std::vector<double> &Xi, std::vector<double> &Ni,
+                                                                       double *cachedP0, double *cachedPsi)
 {
   const double tiny = 1.0e-13;
 
@@ -399,8 +399,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeFastIAST(const std
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
 std::pair<std::size_t, std::size_t> MixturePrediction::computeFastSIAST(const std::vector<double> &Yi, const double &P,
-                                                              std::vector<double> &Xi, std::vector<double> &Ni,
-                                                              double *cachedP0, double *cachedPsi)
+                                                                        std::vector<double> &Xi,
+                                                                        std::vector<double> &Ni, double *cachedP0,
+                                                                        double *cachedPsi)
 {
   std::fill(Xi.begin(), Xi.end(), 0.0);
   std::fill(Ni.begin(), Ni.end(), 0.0);
@@ -430,9 +431,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeFastSIAST(const st
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
 std::pair<std::size_t, std::size_t> MixturePrediction::computeFastSIAST(std::size_t site, const std::vector<double> &Yi,
-                                                              const double &P, std::vector<double> &Xi,
-                                                              std::vector<double> &Ni, double *cachedP0,
-                                                              double *cachedPsi)
+                                                                        const double &P, std::vector<double> &Xi,
+                                                                        std::vector<double> &Ni, double *cachedP0,
+                                                                        double *cachedPsi)
 {
   const double tiny = 1.0e-13;
 
@@ -599,10 +600,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeFastSIAST(std::siz
 // P   = total pressure
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
-std::pair<std::size_t, std::size_t> MixturePrediction::computeIASTNestedLoopBisection(const std::vector<double> &Yi,
-                                                                            const double &P, std::vector<double> &Xi,
-                                                                            std::vector<double> &Ni, double *cachedP0,
-                                                                            double *cachedPsi)
+std::pair<std::size_t, std::size_t> MixturePrediction::computeIASTNestedLoopBisection(
+    const std::vector<double> &Yi, const double &P, std::vector<double> &Xi, std::vector<double> &Ni, double *cachedP0,
+    double *cachedPsi)
 {
   const double tiny = 1.0e-15;
 
@@ -768,10 +768,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeIASTNestedLoopBise
 // P   = total pressure
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
-std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBisection(const std::vector<double> &Yi,
-                                                                             const double &P, std::vector<double> &Xi,
-                                                                             std::vector<double> &Ni, double *cachedP0,
-                                                                             double *cachedPsi)
+std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBisection(
+    const std::vector<double> &Yi, const double &P, std::vector<double> &Xi, std::vector<double> &Ni, double *cachedP0,
+    double *cachedPsi)
 {
   std::fill(Xi.begin(), Xi.end(), 0.0);
   std::fill(Ni.begin(), Ni.end(), 0.0);
@@ -800,10 +799,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBis
 // P   = total pressure
 // Xi  = adsorbed phase molefraction
 // Ni  = number of adsorbed molecules of component i
-std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBisection(std::size_t site, const std::vector<double> &Yi,
-                                                                             const double &P, std::vector<double> &Xi,
-                                                                             std::vector<double> &Ni, double *cachedP0,
-                                                                             double *cachedPsi)
+std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBisection(
+    std::size_t site, const std::vector<double> &Yi, const double &P, std::vector<double> &Xi, std::vector<double> &Ni,
+    double *cachedP0, double *cachedPsi)
 {
   const double tiny = 1.0e-15;
 
@@ -960,8 +958,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeSIASTNestedLoopBis
 
 // At present, only single site isotherms are considered for pure components
 
-std::pair<std::size_t, std::size_t> MixturePrediction::computeExplicitIsotherm(const std::vector<double> &Yi, const double &P,
-                                                                     std::vector<double> &Xi, std::vector<double> &Ni)
+std::pair<std::size_t, std::size_t> MixturePrediction::computeExplicitIsotherm(const std::vector<double> &Yi,
+                                                                               const double &P, std::vector<double> &Xi,
+                                                                               std::vector<double> &Ni)
 {
   x[0] = 1.0;
   for (std::size_t i = 1; i < Ncomp; ++i)
@@ -1016,8 +1015,9 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeExplicitIsotherm(c
 }
 
 std::pair<std::size_t, std::size_t> MixturePrediction::computeSegratedExplicitIsotherm(const std::vector<double> &Yi,
-                                                                             const double &P, std::vector<double> &Xi,
-                                                                             std::vector<double> &Ni)
+                                                                                       const double &P,
+                                                                                       std::vector<double> &Xi,
+                                                                                       std::vector<double> &Ni)
 {
   std::fill(Xi.begin(), Xi.end(), 0.0);
   std::fill(Ni.begin(), Ni.end(), 0.0);
@@ -1041,9 +1041,8 @@ std::pair<std::size_t, std::size_t> MixturePrediction::computeSegratedExplicitIs
   return acc;
 }
 
-std::pair<std::size_t, std::size_t> MixturePrediction::computeSegratedExplicitIsotherm(std::size_t site, const std::vector<double> &Yi,
-                                                                             const double &P, std::vector<double> &Xi,
-                                                                             std::vector<double> &Ni)
+std::pair<std::size_t, std::size_t> MixturePrediction::computeSegratedExplicitIsotherm(
+    std::size_t site, const std::vector<double> &Yi, const double &P, std::vector<double> &Xi, std::vector<double> &Ni)
 {
   x[0] = 1.0;
   for (std::size_t i = 1; i < Ncomp; ++i)

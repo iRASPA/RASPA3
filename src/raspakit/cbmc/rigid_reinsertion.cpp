@@ -48,8 +48,8 @@ import interpolation_energy_grid;
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule,
+    Molecule &molecule, std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> atoms = components[selectedComponent].copiedAtoms(molecule_atoms);
   std::size_t startingBead = components[selectedComponent].startingBead;
@@ -88,8 +88,9 @@ import interpolation_energy_grid;
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] Molecule &molecule, std::vector<Atom> molecule_atoms,
-    const std::vector<Component> &components, std::size_t selectedComponent, std::size_t numberOfTrialDirections) noexcept
+    double cutOffCoulomb, std::size_t startingBead, [[maybe_unused]] Molecule &molecule,
+    std::vector<Atom> molecule_atoms, const std::vector<Component> &components, std::size_t selectedComponent,
+    std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<std::pair<Molecule, std::vector<Atom>>> trialPositions{};
 

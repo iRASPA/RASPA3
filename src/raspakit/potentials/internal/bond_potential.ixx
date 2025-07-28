@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -37,10 +37,19 @@ export const std::size_t maximumNumberOfBondParameters{4};
  *
  * Specifies the type of bond potential to be used in simulations.
  */
-export enum class BondType : std::size_t { Fixed = 0, Harmonic = 1,
-                                      CoreShellSpring = 2, Morse = 3, LJ_12_6 = 4, LennardJones = 5,
-                                      Buckingham = 6, RestrainedHarmonic = 7, Quartic = 8,
-                                      CFF_Quartic = 9, MM3 = 10};
+export enum class BondType : std::size_t {
+  Fixed = 0,
+  Harmonic = 1,
+  CoreShellSpring = 2,
+  Morse = 3,
+  LJ_12_6 = 4,
+  LennardJones = 5,
+  Buckingham = 6,
+  RestrainedHarmonic = 7,
+  Quartic = 8,
+  CFF_Quartic = 9,
+  MM3 = 10
+};
 
 /**
  * \brief Represents a bond potential between two particles.
@@ -52,8 +61,8 @@ export struct BondPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the bond.
-  BondType type;                                             ///< The type of bond potential.
+  std::array<std::size_t, 2> identifiers;                        ///< Identifiers of the two particles forming the bond.
+  BondType type;                                                 ///< The type of bond potential.
   std::array<double, maximumNumberOfBondParameters> parameters;  ///< Parameters associated with the bond potential.
 
   /**
@@ -91,18 +100,23 @@ export struct BondPotential
    */
   static inline std::array<std::size_t, 11> numberOfBondParameters{1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
 
-
   /**
    * \brief Mapping of bond type strings to BondType enums.
    *
    * A static map that associates bond type names with their corresponding BondType enumeration values.
    */
   static inline std::map<std::string, BondType, caseInsensitiveComparator> definitionForString{
-      {"FIXED", BondType::Fixed}, {"HARMONIC", BondType::Harmonic},
-      {"CORE_SHELL_SPRING", BondType::CoreShellSpring}, {"MORSE", BondType::Morse}, 
-      {"LJ_12_6", BondType::LJ_12_6}, {"LENNARD_JONES", BondType::LennardJones},
-      {"BUCKINGHAM", BondType::Buckingham}, {"RESTRAINED_HARMONIC", BondType::RestrainedHarmonic},
-      {"QUARTIC", BondType::Quartic}, {"CFF_QUARTIC", BondType::CFF_Quartic}, {"MM3", BondType::MM3}};
+      {"FIXED", BondType::Fixed},
+      {"HARMONIC", BondType::Harmonic},
+      {"CORE_SHELL_SPRING", BondType::CoreShellSpring},
+      {"MORSE", BondType::Morse},
+      {"LJ_12_6", BondType::LJ_12_6},
+      {"LENNARD_JONES", BondType::LennardJones},
+      {"BUCKINGHAM", BondType::Buckingham},
+      {"RESTRAINED_HARMONIC", BondType::RestrainedHarmonic},
+      {"QUARTIC", BondType::Quartic},
+      {"CFF_QUARTIC", BondType::CFF_Quartic},
+      {"MM3", BondType::MM3}};
 
   double generateBondLength(RandomNumber &random, double beta) const;
 

@@ -102,9 +102,9 @@ export struct Component
 
   enum class Chirality : std::size_t
   {
-    NoCharility = 0,  
-    S_Chiral = 1,     
-    R_Chiral = 2       
+    NoCharility = 0,
+    S_Chiral = 1,
+    R_Chiral = 2
   };
 
   /**
@@ -170,14 +170,14 @@ export struct Component
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
 
-  std::size_t componentId{0};                      ///< Unique identifier for the component.
+  std::size_t componentId{0};                 ///< Unique identifier for the component.
   std::string name{};                         ///< Name of the component.
   std::optional<std::string> filenameData{};  ///< Optional filename containing component data.
   std::string filename{};                     ///< Filename associated with the component.
 
   std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
 
-  bool rigid{true};                        ///< Flag indicating if the component is rigid.
+  bool rigid{true};                             ///< Flag indicating if the component is rigid.
   std::size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
   std::size_t rotationalDegreesOfFreedom{};     ///< Number of rotational degrees of freedom.
 
@@ -198,7 +198,7 @@ export struct Component
   std::optional<double> idealGasEnergy{};            ///< Optional ideal gas energy [J].
 
   double netCharge{0.0};                                ///< Net charge of the component [e].
-  std::size_t startingBead{0};                               ///< Starting bead index for simulations.
+  std::size_t startingBead{0};                          ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
   double3 inertiaVector{};         ///< Inertia vector of the component.
@@ -211,7 +211,7 @@ export struct Component
   PropertyLambdaProbabilityHistogram lambdaGC;     ///< Lambda probability histogram for Gibbs-Chebyshev integration.
   PropertyLambdaProbabilityHistogram lambdaGibbs;  ///< Lambda probability histogram for Gibbs integration.
   bool hasFractionalMolecule{false};               ///< Flag indicating if the component has fractional molecules.
- 
+
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
@@ -240,10 +240,9 @@ export struct Component
 
   PressureScale pressureScale{PressureScale::Log};  ///< Pressure scaling type.
 
-  Potentials::InternalPotentials internalPotentials{};      ///< List of internal potentials.
+  Potentials::InternalPotentials internalPotentials{};  ///< List of internal potentials.
 
-  ConnectivityTable connectivityTable{};                    ///< Connectivity table for the component.
-
+  ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
 
   /**
    * \brief Reads component data from a file.

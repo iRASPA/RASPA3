@@ -2,11 +2,11 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <cstddef>
+#include <numbers>
 #include <ostream>
 #include <print>
 #include <sstream>
 #include <string>
-#include <numbers>
 #endif
 
 module units;
@@ -31,14 +31,16 @@ double Units::MassUnit = AtomicMassUnit;
 double Units::ChargeUnit = ElectronicChargeUnit;
 
 /// Conversion factor for energy from simulation units to J.
-double Units::EnergyUnit = Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);
+double Units::EnergyUnit =
+    Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);
 
 /// Derived units and their conversion factors
 ///
 /// Conversion factor for length from simulation units to meter.
 double Units::LengthConversionFactor = Units::LengthUnit;  // m
 /// Conversion factor for energy from simulation units to joules.
-double Units::EnergyConversionFactor = Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // J
+double Units::EnergyConversionFactor =
+    Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // J
 /// Conversion factor for mass from simulation units to kilograms.
 double Units::MassConversionFactor = Units::AtomicMassUnit;  // kg
 /// Conversion factor for charge from simulation units to Coulomb per particle.
@@ -54,29 +56,36 @@ double Units::DiffusionConversionFactor = Units::LengthUnit * Units::LengthUnit 
 /// Conversion factor for acceleration from simulation units to meters per square second.
 double Units::AccelerationConversionFactor = Units::LengthUnit * Units::LengthUnit / Units::TimeUnit;  // m^2/s
 /// Conversion factor for torque from simulation units to Newton meters.
-double Units::TorqueConversionFactor = Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // kg.m^2.s^-2
+double Units::TorqueConversionFactor =
+    Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // kg.m^2.s^-2
 /// Conversion factor for temperature from simulation units to K
 double Units::TemperatureConversionFactor = 1.0;
 
 double Units::KB = Units::BoltzmannConstant / Units::EnergyConversionFactor;
 /// Conversion factor for pressure from simulation units to pascals.
-double Units::PressureConversionFactor = Units::MassUnit / (Units::LengthUnit * Units::TimeUnit * Units::TimeUnit);  // Pa(=N/m^2)
+double Units::PressureConversionFactor =
+    Units::MassUnit / (Units::LengthUnit * Units::TimeUnit * Units::TimeUnit);  // Pa(=N/m^2)
 /// Conversion factor for volume from simulation units to cubic meters.
 double Units::VolumeConversionFactor = Units::LengthUnit * Units::LengthUnit * Units::LengthUnit;  // m^-3
 /// Conversion factor for density from simulation units to kilograms per cubic meter.
 double Units::DensityConversionFactor = Units::MassConversionFactor / Units::VolumeConversionFactor;  // kg/m^3
 /// Conversion factor for dynamic viscosity from simulation units to Pascal second.
-double Units::DynamicViscosityConversionFactor = Units::MassConversionFactor / Units::LengthUnit / Units::TimeUnit;  // kg.m^-1.s^-1
+double Units::DynamicViscosityConversionFactor =
+    Units::MassConversionFactor / Units::LengthUnit / Units::TimeUnit;  // kg.m^-1.s^-1
 /// Conversion factor for enthalpy from simulation units to J
-double Units::EnthalpyConversionFactor = Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // J
+double Units::EnthalpyConversionFactor =
+    Units::MassUnit * Units::LengthUnit * Units::LengthUnit / (Units::TimeUnit * Units::TimeUnit);  // J
 /// Conversion factor for polarizability from simulation units to SI units.
-double Units::PolarizilibityConversionFactor = Units::ChargeUnit * Units::ChargeUnit * Units::LengthUnit * Units::LengthUnit / Units::EnergyConversionFactor;
+double Units::PolarizilibityConversionFactor =
+    Units::ChargeUnit * Units::ChargeUnit * Units::LengthUnit * Units::LengthUnit / Units::EnergyConversionFactor;
 /// Conversion factor for dielectric constant from simulation units to SI units.
 double Units::DielectricConstantConversionFactor =
-    Units::TimeUnit * Units::TimeUnit * Units::ChargeUnit * Units::ChargeUnit / (Units::AtomicMassUnit * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit);
+    Units::TimeUnit * Units::TimeUnit * Units::ChargeUnit * Units::ChargeUnit /
+    (Units::AtomicMassUnit * Units::LengthUnit * Units::LengthUnit * Units::LengthUnit);
 /// Conversion factor for Coulomb potential from simulation units to SI units.
 double Units::CoulombicConversionFactor =
-    Units::ChargeUnit * Units::ChargeUnit / (4.0 * std::numbers::pi * Units::DielectricConstantVacuum * Units::LengthUnit * Units::EnergyConversionFactor);
+    Units::ChargeUnit * Units::ChargeUnit /
+    (4.0 * std::numbers::pi * Units::DielectricConstantVacuum * Units::LengthUnit * Units::EnergyConversionFactor);
 /// Conversion factor for position from simulation units to meters.
 double Units::DipoleMomentConversionFactor = Units::ChargeUnit * Units::LengthUnit;  // C.m
 /// Conversion factor from simulation units to Debye units.
@@ -92,8 +101,9 @@ double Units::HeatCapacityConversionFactor = (Units::EnergyConversionFactor * Un
 /// Conversion factor for volumetric expansion coefficient from simulation units to SI units.
 double Units::VolumetricExpansionCoefficientConversionFactor = 1.0;  // 1/K
 /// Conversion factor for Feynman-Hibbs correction from simulation units to SI units.
-double Units::FeymannHibbsConversionFactor = (Units::PlanckConstant * Units::PlanckConstant / (2.0 * std::numbers::pi)) /
-                                      (24.0 * Units::AtomicMassUnit * Units::BoltzmannConstant * Units::LengthUnit * Units::LengthUnit);
+double Units::FeymannHibbsConversionFactor =
+    (Units::PlanckConstant * Units::PlanckConstant / (2.0 * std::numbers::pi)) /
+    (24.0 * Units::AtomicMassUnit * Units::BoltzmannConstant * Units::LengthUnit * Units::LengthUnit);
 
 /// Conversion factor from simulation energy units to kelvin.
 double Units::EnergyToKelvin = Units::EnergyConversionFactor * Units::AvogadroConstant / Units::MolarGasConstant;
@@ -107,7 +117,6 @@ double Units::EnergyToEV = Units::EnergyToKelvin / 11604.23;
 double Units::EnergyToKCalPerMol = Units::EnergyConversionFactor * Units::AvogadroConstant / 4184.0;
 /// Conversion factor from kilocalories per mole to simulation energy units.
 double Units::KCalPerMolToEnergy = 4184.0 / (Units::EnergyConversionFactor * Units::AvogadroConstant);
-
 
 std::string Units::unitOfLengthString{"m"};
 std::string Units::unitOfEnergyString{"J"};
@@ -313,7 +322,6 @@ void Units::setUnits(Units::System unit_system)
       break;
   }
 }
-
 
 std::string Units::printStatus()
 {

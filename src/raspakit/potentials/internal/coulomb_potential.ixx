@@ -1,9 +1,9 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <map>
@@ -49,9 +49,10 @@ export struct CoulombPotential
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
-  std::array<std::size_t, 2> identifiers;                             ///< Identifiers of the two particles forming the Coulomb.
-  CoulombType type;                                             ///< The type of Coulomb potential.
-  std::array<double, maximumNumberOfCoulombParameters> parameters;  ///< Parameters associated with the Coulomb potential.
+  std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the Coulomb.
+  CoulombType type;                        ///< The type of Coulomb potential.
+  std::array<double, maximumNumberOfCoulombParameters>
+      parameters;  ///< Parameters associated with the Coulomb potential.
 
   /**
    * \brief Default constructor for CoulombPotential.
@@ -68,7 +69,10 @@ export struct CoulombPotential
    * \param CoulombType The type of Coulomb potential.
    * \param CoulombIds A pair of particle identifiers forming the Coulomb.
    */
-  CoulombPotential(std::array<std::size_t, 2> identifiers, const CoulombType type) : identifiers(identifiers), type(type) {}
+  CoulombPotential(std::array<std::size_t, 2> identifiers, const CoulombType type)
+      : identifiers(identifiers), type(type)
+  {
+  }
 
   bool operator==(CoulombPotential const &) const = default;
 
@@ -86,8 +90,7 @@ export struct CoulombPotential
    *
    * A static vector indicating the number of parameters needed for each Coulomb type.
    */
-  static inline std::array<std::size_t, 1> numberOfCoulombParameters{ 1 };
-
+  static inline std::array<std::size_t, 1> numberOfCoulombParameters{1};
 
   /**
    * \brief Mapping of Coulomb type strings to CoulombType enums.
@@ -95,7 +98,7 @@ export struct CoulombPotential
    * A static map that associates Coulomb type names with their corresponding CoulombType enumeration values.
    */
   static inline std::map<std::string, CoulombType, caseInsensitiveComparator> definitionForString{
-      {"COULOMB", CoulombType::Coulomb} };
+      {"COULOMB", CoulombType::Coulomb}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
 

@@ -47,8 +47,9 @@ export class MixturePrediction
   // P   = total pressure
   // Xi  = adsorbed phase mol-fraction
   // Ni  = number of adsorbed molecules of component i
-  std::pair<std::size_t, std::size_t> predictMixture(const std::vector<double> &Yi, const double &P, std::vector<double> &Xi,
-                                           std::vector<double> &Ni, double *cachedP0, double *cachedPsi);
+  std::pair<std::size_t, std::size_t> predictMixture(const std::vector<double> &Yi, const double &P,
+                                                     std::vector<double> &Xi, std::vector<double> &Ni, double *cachedP0,
+                                                     double *cachedPsi);
 
  private:
   const System &system;
@@ -78,29 +79,33 @@ export class MixturePrediction
 
   double temperature{300.0};
 
-  std::pair<std::size_t, std::size_t> computeFastIAST(const std::vector<double> &Yi, const double &P, std::vector<double> &Xi,
-                                            std::vector<double> &Ni, double *cachedP0, double *cachedPsi);
-  std::pair<std::size_t, std::size_t> computeFastSIAST(const std::vector<double> &Yi, const double &P, std::vector<double> &Xi,
-                                             std::vector<double> &Ni, double *cachedP0, double *cachedPsi);
+  std::pair<std::size_t, std::size_t> computeFastIAST(const std::vector<double> &Yi, const double &P,
+                                                      std::vector<double> &Xi, std::vector<double> &Ni,
+                                                      double *cachedP0, double *cachedPsi);
+  std::pair<std::size_t, std::size_t> computeFastSIAST(const std::vector<double> &Yi, const double &P,
+                                                       std::vector<double> &Xi, std::vector<double> &Ni,
+                                                       double *cachedP0, double *cachedPsi);
   std::pair<std::size_t, std::size_t> computeFastSIAST(std::size_t term, const std::vector<double> &Yi, const double &P,
-                                             std::vector<double> &Xi, std::vector<double> &Ni, double *cachedP0,
-                                             double *cachedPsi);
+                                                       std::vector<double> &Xi, std::vector<double> &Ni,
+                                                       double *cachedP0, double *cachedPsi);
 
   std::pair<std::size_t, std::size_t> computeIASTNestedLoopBisection(const std::vector<double> &Yi, const double &P,
-                                                           std::vector<double> &Xi, std::vector<double> &Ni,
-                                                           double *cachedP0, double *cachedPsi);
+                                                                     std::vector<double> &Xi, std::vector<double> &Ni,
+                                                                     double *cachedP0, double *cachedPsi);
   std::pair<std::size_t, std::size_t> computeSIASTNestedLoopBisection(const std::vector<double> &Yi, const double &P,
-                                                            std::vector<double> &Xi, std::vector<double> &Ni,
-                                                            double *cachedP0, double *cachedPsi);
-  std::pair<std::size_t, std::size_t> computeSIASTNestedLoopBisection(std::size_t term, const std::vector<double> &Yi, const double &P,
-                                                            std::vector<double> &Xi, std::vector<double> &Ni,
-                                                            double *cachedP0, double *cachedPsi);
+                                                                      std::vector<double> &Xi, std::vector<double> &Ni,
+                                                                      double *cachedP0, double *cachedPsi);
+  std::pair<std::size_t, std::size_t> computeSIASTNestedLoopBisection(std::size_t term, const std::vector<double> &Yi,
+                                                                      const double &P, std::vector<double> &Xi,
+                                                                      std::vector<double> &Ni, double *cachedP0,
+                                                                      double *cachedPsi);
   std::pair<std::size_t, std::size_t> computeExplicitIsotherm(const std::vector<double> &Yi, const double &P,
-                                                    std::vector<double> &Xi, std::vector<double> &Ni);
+                                                              std::vector<double> &Xi, std::vector<double> &Ni);
   std::pair<std::size_t, std::size_t> computeSegratedExplicitIsotherm(const std::vector<double> &Yi, const double &P,
-                                                            std::vector<double> &Xi, std::vector<double> &Ni);
-  std::pair<std::size_t, std::size_t> computeSegratedExplicitIsotherm(std::size_t site, const std::vector<double> &Yi, const double &P,
-                                                            std::vector<double> &Xi, std::vector<double> &Ni);
+                                                                      std::vector<double> &Xi, std::vector<double> &Ni);
+  std::pair<std::size_t, std::size_t> computeSegratedExplicitIsotherm(std::size_t site, const std::vector<double> &Yi,
+                                                                      const double &P, std::vector<double> &Xi,
+                                                                      std::vector<double> &Ni);
 
   void printErrorStatus(double psi, double sum, double P, const std::vector<double> Yi, double cachedP0[]);
 };

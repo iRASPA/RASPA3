@@ -108,7 +108,8 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
 Interactions::calculateTricubicDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField &forceField, const SimulationBox &simulationBox,
-                                                    double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
+                                                    double3 posA, std::size_t typeA,
+                                                    std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 
@@ -316,7 +317,8 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
 Interactions::calculateTriquinticDerivativeAtPosition(ForceField::InterpolationGridType interpolationGridType,
                                                       const ForceField &forceField, const SimulationBox &simulationBox,
-                                                      double3 posA, std::size_t typeA, std::span<const Atom> frameworkAtoms)
+                                                      double3 posA, std::size_t typeA,
+                                                      std::span<const Atom> frameworkAtoms)
 {
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
 

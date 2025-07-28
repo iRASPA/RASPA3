@@ -18,8 +18,8 @@ import std;
 
 SKElement::SKElement() {}
 
-SKElement::SKElement(std::string string, std::size_t atomicNumber, std::make_signed_t<std::size_t> group, std::size_t period,
-                     std::string name, double mass, double atomRadius, double covalentRadius,
+SKElement::SKElement(std::string string, std::size_t atomicNumber, std::make_signed_t<std::size_t> group,
+                     std::size_t period, std::string name, double mass, double atomRadius, double covalentRadius,
                      double singleBondCovalentRadius, double doubleBondCovalentRadius, double tripleBondCovalentRadius,
                      double vDWRadius, std::vector<int> possibleOxidationStates)
     : _chemicalSymbol(string),

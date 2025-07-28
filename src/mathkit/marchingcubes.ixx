@@ -158,7 +158,8 @@ export class MarchingCubes
    */
   inline void set_data(const real val, const std::size_t i, const std::size_t j, const std::size_t k)
   {
-    _data[i + j * static_cast<std::size_t>(_size_x) + k * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
+    _data[i + j * static_cast<std::size_t>(_size_x) +
+          k * static_cast<std::size_t>(_size_x) * static_cast<std::size_t>(_size_y)] = val;
   }
 
   // Data initialization

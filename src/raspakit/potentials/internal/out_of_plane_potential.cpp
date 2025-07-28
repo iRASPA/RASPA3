@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module out_of_plane_bend_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> identifiers, OutOfPlaneBendType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> identifiers, OutOfPlaneBendType type,
+                                                 std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < parameters.size(); ++i)
+  for (std::size_t i = 0; i < parameters.size(); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -45,7 +46,6 @@ OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> iden
   }
 }
 
-
 std::string OutOfPlaneBendPotential::print() const
 {
   switch (type)
@@ -58,11 +58,12 @@ std::string OutOfPlaneBendPotential::print() const
   }
 }
 
-
-double OutOfPlaneBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA, [[maybe_unused]] const double3 &posB, 
-                                                [[maybe_unused]] const double3 &posC, [[maybe_unused]] const double3 &posD) const
+double OutOfPlaneBendPotential::calculateEnergy([[maybe_unused]] const double3 &posA,
+                                                [[maybe_unused]] const double3 &posB,
+                                                [[maybe_unused]] const double3 &posC,
+                                                [[maybe_unused]] const double3 &posD) const
 {
-  switch(type)
+  switch (type)
   {
     case OutOfPlaneBendType::Harmonic:
       return 0.0;

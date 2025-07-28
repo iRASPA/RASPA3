@@ -55,7 +55,8 @@ namespace CBMC
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, Molecule &molecule, std::vector<Atom> molecule_atoms,
-    const std::vector<Component> &components, std::size_t selectedComponent, std::size_t numberOfTrialDirections) noexcept;
+    const std::vector<Component> &components, std::size_t selectedComponent,
+    std::size_t numberOfTrialDirections) noexcept;
 
 [[nodiscard]] ChainData retraceRigidChainReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,

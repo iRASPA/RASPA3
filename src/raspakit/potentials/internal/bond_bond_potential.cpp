@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bond_bond_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BondBondPotential::BondBondPotential(std::array<std::size_t, 3> identifiers, BondBondType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BondBondPotential::BondBondPotential(std::array<std::size_t, 3> identifiers, BondBondType type,
+                                     std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondBondParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondBondParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -50,7 +51,6 @@ BondBondPotential::BondBondPotential(std::array<std::size_t, 3> identifiers, Bon
   }
 }
 
-
 std::string BondBondPotential::print() const
 {
   switch (type)
@@ -61,18 +61,18 @@ std::string BondBondPotential::print() const
       // p_0/k_B [K/A^2]
       // p_1     [A]
       // p_2     [A]
-      return std::format("{} - {} - {} : CVFF p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
+      return std::format("{} - {} - {} : CVFF p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1],
+                         parameters[2]);
     case BondBondType::CFF:
       // p_0*(rab-p_1)*(rbc-p_2)
       // =======================
       // p_0/k_B [K/A^2]
       // p_1     [A]
       // p_2     [A]
-      return std::format("{} - {} - {} : CFF p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
+      return std::format("{} - {} - {} : CFF p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1],
+                         parameters[2]);
     default:
       std::unreachable();
   }
@@ -88,7 +88,7 @@ double BondBondPotential::calculateEnergy(const double3 &posA, const double3 &po
   double rr_cb = double3::dot(dr_cb, dr_cb);
   double r_cb = std::sqrt(rr_cb);
 
-  switch(type)
+  switch (type)
   {
     case BondBondType::CVFF:
     case BondBondType::CFF:

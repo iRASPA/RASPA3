@@ -1,20 +1,20 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
+#include <numbers>
 #include <print>
 #include <source_location>
+#include <tuple>
 #include <utility>
 #include <vector>
-#include <tuple>
-#include <numbers>
 #endif
 
 module bend_potential;
@@ -27,10 +27,11 @@ import archive;
 import randomnumbers;
 import double3;
 
-BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType type, std::vector<double> vector_parameters) :
-      identifiers(identifiers), type(type)
+BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType type,
+                             std::vector<double> vector_parameters)
+    : identifiers(identifiers), type(type)
 {
-  for(std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendParameters); ++i)
+  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBendParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
@@ -119,7 +120,6 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
   }
 }
 
-
 std::string BendPotential::print() const
 {
   switch (type)
@@ -133,17 +133,17 @@ std::string BendPotential::print() const
       // ===============================================
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} : HARMONIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     case BendType::CoreShell:
       // (1/2)p_0*(theta-p_1)^2
       // ===============================================
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : CORE_SHELL p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} : CORE_SHELL p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+                         parameters[1] * Units::RadiansToDegrees);
     case BendType::Quartic:
       // (1/2)p_0*(theta-p_1)^2+(1/3)*p_2*(theta-p_1)^3+(1/4)*p_2*(theta-p_1)^4
       // ======================================================================
@@ -151,10 +151,11 @@ std::string BendPotential::print() const
       // p_1     [degrees]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      return std::format("{} - {} - {} : QUARTIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2/k_B={:g} [K/rad^3], p_3/k_B={:g} [K/rad^4]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1],
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} : QUARTIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2/k_B={:g} [K/rad^3], p_3/k_B={:g} "
+          "[K/rad^4]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1],
+          parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
       // =====================================================
@@ -162,50 +163,50 @@ std::string BendPotential::print() const
       // p_1     [degrees]
       // p_2/k_B [K/rad^3]
       // p_3/k_B [K/rad^4]
-      return std::format("{} - {} - {} : CFF_QUARTIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2/k_B={:g} [K/rad^3], p_3/k_B={:g} [K/rad^4]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1] * Units::RadiansToDegrees,
-                         parameters[2] * Units::EnergyToKelvin, parameters[3] * Units::EnergyToKelvin);
+      return std::format(
+          "{} - {} - {} : CFF_QUARTIC p_0/k_B={:g} [K/rad^2], p_1={:g} [degrees], p_2/k_B={:g} [K/rad^3], p_3/k_B={:g} "
+          "[K/rad^4]\n",
+          identifiers[0], identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+          parameters[1] * Units::RadiansToDegrees, parameters[2] * Units::EnergyToKelvin,
+          parameters[3] * Units::EnergyToKelvin);
     case BendType::HarmonicCosine:
       // (1/2)*p_0*(cos(theta)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K], p_1={:g} [degrees]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1]);
+      return std::format("{} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K], p_1={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1]);
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
       // ===============================================
       // p_0/k_B [K]
       // p_1     [-]
       // p_2     [degrees]
-      return std::format("{} - {} - {} : COSINE p_0/k_B={:g} [K], p_1={:g} [-], p_2={:g} [degrees]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} : COSINE p_0/k_B={:g} [K], p_1={:g} [-], p_2={:g} [degrees]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1],
+                         parameters[2] * Units::RadiansToDegrees);
     case BendType::Tafipolsky:
       // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
       // ===============================================
       // p_0/k_B [K]
-      return std::format("{} - {} - {} : TAFIPOLSKY p_0/k_B={:g} [K]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
+      return std::format("{} - {} - {} : TAFIPOLSKY p_0/k_B={:g} [K]\n", identifiers[0], identifiers[1], identifiers[2],
                          parameters[0] * Units::EnergyToKelvin);
     case BendType::MM3:
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKCalPerMol, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKCalPerMol,
+                         parameters[1] * Units::RadiansToDegrees);
     case BendType::MM3_inplane:
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
       // p_1     [degrees]
-      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", 
-                         identifiers[0], identifiers[1], identifiers[2],
-                         parameters[0] * Units::EnergyToKCalPerMol, parameters[1] * Units::RadiansToDegrees);
+      return std::format("{} - {} - {} : MM3 p_0/k_B={:g} [mdyne A/rad^2], p_1={:g} [degrees]]\n", identifiers[0],
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKCalPerMol,
+                         parameters[1] * Units::RadiansToDegrees);
     default:
       std::unreachable();
   }
@@ -216,7 +217,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
   double theta, sin_theta, energy;
   double temp, temp2;
 
-  switch(type)
+  switch (type)
   {
     case BendType::Fixed:
       return parameters[0];
@@ -232,7 +233,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
         energy = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::CoreShell:
       // (1/2)p_0*(theta-p_1)^2
@@ -244,7 +245,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
         energy = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::Quartic:
       // (1/2)p_0*(theta-p_1)^2+(1/3)*p_2*(theta-p_1)^3+(1/4)*p_2*(theta-p_1)^4
@@ -257,10 +258,10 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       {
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(theta - parameters[1], 2)+
-                 (1.0/3.0) * parameters[2] * std::pow(theta - parameters[1], 3)+
+        energy = 0.5 * parameters[0] * std::pow(theta - parameters[1], 2) +
+                 (1.0 / 3.0) * parameters[2] * std::pow(theta - parameters[1], 3) +
                  0.25 * parameters[3] * std::pow(theta - parameters[1], 4);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
@@ -273,9 +274,10 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       {
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
-        energy = parameters[0] * std::pow(theta - parameters[1], 2) + parameters[2] * std::pow(theta - parameters[1], 3)+
+        energy = parameters[0] * std::pow(theta - parameters[1], 2) +
+                 parameters[2] * std::pow(theta - parameters[1], 3) +
                  parameters[3] * std::pow(theta - parameters[1], 4);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::HarmonicCosine:
       // (1/2)*p_0*(cos(theta)-cos(p_1))^2
@@ -286,8 +288,8 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       {
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(std::cos(theta)- std::cos(parameters[1]), 2);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - std::cos(parameters[1]), 2);
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
@@ -300,7 +302,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
         energy = parameters[0] * (1.0 + std::cos(parameters[1] * theta - parameters[2]));
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::Tafipolsky:
       // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
@@ -311,7 +313,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
         energy = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+      } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::MM3:
     case BendType::MM3_inplane:
@@ -324,21 +326,24 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
         sin_theta = std::sin(theta);
         temp = (theta - parameters[1]) * Units::RadiansToDegrees;
         temp2 = temp * temp;
-        energy = parameters[0] * temp2 * (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 *temp2);
-      }while(random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
+        energy = parameters[0] * temp2 *
+                 (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+      }
+      while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     default:
       std::unreachable();
   }
 }
 
-double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC, std::optional<const double3> &posD) const
+double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
+                                      std::optional<const double3> &posD) const
 {
   double cos_theta, theta;
   double temp, temp2;
 
   // For four atoms, compute the in-plane angles
-  if(posD.has_value())
+  if (posD.has_value())
   {
     double3 dr_ad = posA - posD.value();
     double r_ad = std::sqrt(double3::dot(dr_ad, dr_ad));
@@ -385,7 +390,7 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
     theta = std::acos(cos_theta);
   }
 
-  switch(type)
+  switch (type)
   {
     case BendType::Fixed:
       return 0.0;
@@ -412,7 +417,8 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
       // p_3/k_B [K/rad^4]
       temp = theta - parameters[1];
       temp2 = temp * temp;
-      return 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 + 0.25 * parameters[3] * temp2 * temp2;
+      return 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
+             0.25 * parameters[3] * temp2 * temp2;
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
       // =====================================================
@@ -430,7 +436,7 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
       // p_1     [degrees]
       temp = cos_theta - parameters[1];
       temp2 = temp * temp;
-      return 0.5 * parameters[0]* temp2;
+      return 0.5 * parameters[0] * temp2;
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
       // ===============================================
@@ -452,7 +458,8 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
       // p_1     [degrees]
       temp = (theta - parameters[1]) * Units::RadiansToDegrees;
       temp2 = temp * temp;
-      return parameters[0] * temp2 * (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
+      return parameters[0] * temp2 *
+             (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
     default:
       std::unreachable();
   }

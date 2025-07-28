@@ -1,11 +1,11 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cmath>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <complex>
+#include <cstddef>
 #include <exception>
 #include <fstream>
 #include <map>
@@ -24,8 +24,6 @@ import std;
 import archive;
 import randomnumbers;
 import double3;
-
-
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ChiralCenter &b)
 {
