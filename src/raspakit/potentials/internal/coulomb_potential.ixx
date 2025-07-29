@@ -51,6 +51,7 @@ export struct CoulombPotential
 
   std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the Coulomb.
   CoulombType type;                        ///< The type of Coulomb potential.
+  double scaling;
   std::array<double, maximumNumberOfCoulombParameters>
       parameters;  ///< Parameters associated with the Coulomb potential.
 
@@ -59,9 +60,9 @@ export struct CoulombPotential
    *
    * Initializes a CoulombPotential object with Undefined Coulomb type and zeroed Coulomb IDs.
    */
-  CoulombPotential() : identifiers({0, 0}), type(CoulombType::Coulomb) {}
+  CoulombPotential() : identifiers({0, 0}), type(CoulombType::Coulomb), scaling(1.0) {}
 
-  CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters);
+  CoulombPotential(std::array<std::size_t, 2> identifiers, CoulombType type, std::vector<double> vector_parameters, double scaling);
 
   /**
    * \brief Constructs a CoulombPotential with specified type and Coulomb IDs.

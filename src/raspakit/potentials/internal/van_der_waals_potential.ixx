@@ -52,6 +52,7 @@ export struct VanDerWaalsPotential
 
   std::array<std::size_t, 2> identifiers;  ///< Identifiers of the two particles forming the vanDerWaals.
   VanDerWaalsType type;                    ///< The type of vanDerWaals potential.
+  double scaling;
   std::array<double, maximumNumberOfVanDerWaalsParameters>
       parameters;  ///< Parameters associated with the vanDerWaals potential.
 
@@ -60,10 +61,10 @@ export struct VanDerWaalsPotential
    *
    * Initializes a vanDerWaalsPotential object with Undefined vanDerWaals type and zeroed vanDerWaals IDs.
    */
-  VanDerWaalsPotential() : identifiers({0, 0}), type(VanDerWaalsType::LennardJones) {}
+  VanDerWaalsPotential() : identifiers({0, 0}), type(VanDerWaalsType::LennardJones), scaling(1.0) {}
 
   VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
-                       std::vector<double> vector_parameters);
+                       std::vector<double> vector_parameters, double scaling);
 
   /**
    * \brief Constructs a vanDerWaalsPotential with specified type and vanDerWaals IDs.

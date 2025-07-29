@@ -105,7 +105,7 @@ export struct BondPotential
    *
    * A static map that associates bond type names with their corresponding BondType enumeration values.
    */
-  static inline std::map<std::string, BondType, caseInsensitiveComparator> definitionForString{
+  static inline std::map<std::string, BondType> definitionForString{
       {"FIXED", BondType::Fixed},
       {"HARMONIC", BondType::Harmonic},
       {"CORE_SHELL_SPRING", BondType::CoreShellSpring},

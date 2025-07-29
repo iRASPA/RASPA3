@@ -26,8 +26,8 @@ import randomnumbers;
 import double3;
 
 VanDerWaalsPotential::VanDerWaalsPotential(std::array<std::size_t, 2> identifiers, VanDerWaalsType type,
-                                           std::vector<double> vector_parameters)
-    : identifiers(identifiers), type(type)
+                                           std::vector<double> vector_parameters, double scaling)
+    : identifiers(identifiers), type(type), scaling(scaling)
 {
   for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfVanDerWaalsParameters); ++i)
   {
