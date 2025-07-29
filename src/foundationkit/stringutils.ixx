@@ -27,10 +27,15 @@ export inline bool caseInSensStringCompare(const std::string& lhs, const std::st
 
 export struct caseInsensitiveComparator
 {
-  bool operator()(const std::string& lhs, const std::string& rhs) const
+  struct nocase_compare
   {
-    return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),
-                                                  [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
+    bool operator() (const unsigned char& c1, const unsigned char& c2) const {
+        return tolower (c1) < tolower (c2);
+    }
+  };
+  bool operator() (const std::string & lhs, const std::string & rhs) const 
+  {
+    return std::lexicographical_compare(lhs.begin (), lhs.end (), rhs.begin (), rhs.end (), nocase_compare ());
   }
 };
 
