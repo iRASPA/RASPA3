@@ -686,10 +686,15 @@
       "name": "carbon",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
         "BUILD_RPM_PACKAGE": true,
         "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "HDF5_ROOT": "$env{HOME}/software/",
+        "HDF5_USE_STATIC_LIBRARIES": true,
         "OpenCL_INCLUDE_DIRS": "/opt/intel/oneapi/2024.0/include/sycl",
         "OpenCL_LIBRARY": "/opt/intel/oneapi/2024.0/lib/libOpenCL.so",
         "OpenMP_C_FLAGS": "-fopenmp",
