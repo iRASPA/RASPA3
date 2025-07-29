@@ -42,6 +42,7 @@ module;
 #include <valarray>       // valarray
 #include <vector>         // vector
 #include <version>
+#include <compare>  // partial_ordering
 #ifndef JSON_NO_IO
 #include <iosfwd>  // ostream
 #endif             // JSON_NO_IO
@@ -2902,7 +2903,6 @@ JSON_HEDLEY_DIAGNOSTIC_POP
 #endif
 
 #if JSON_HAS_THREE_WAY_COMPARISON
-#include <compare>  // partial_ordering
 #endif
 
 NLOHMANN_JSON_NAMESPACE_BEGIN

@@ -152,7 +152,7 @@ using default_function_type = std::function<void()>;
 #endif
 }  // namespace details
 
-enum class ThreadingType : size_t
+enum class ThreadingType : std::size_t
 {
   Serial = 0,
   ThreadPool = 1,
@@ -174,12 +174,12 @@ class ThreadPool
 
   inline ThreadingType getThreadingType() { return threadingType; }
 
-  inline size_t getThreadCount() { return number_of_threads; }
+  inline std::size_t getThreadCount() { return number_of_threads; }
 
   template <typename InitializationFunction = std::function<void(std::size_t)>>
     requires std::invocable<InitializationFunction, std::size_t> &&
              std::is_same_v<void, std::invoke_result_t<InitializationFunction, std::size_t>>
-  void init(const size_t nthreads, ThreadingType threading_type)
+  void init(const std::size_t nthreads, ThreadingType threading_type)
   {
     if (threading_type == ThreadingType::ThreadPool)
     {
@@ -191,7 +191,7 @@ class ThreadPool
       std::size_t current_id = 0;
       for (std::size_t i = 0; i < number_of_threads; ++i)
       {
-        priority_queue_.push_back(size_t(current_id));
+        priority_queue_.push_back(std::size_t(current_id));
         try
         {
           threads_.emplace_back(
@@ -403,7 +403,7 @@ class ThreadPool
  private:
   ThreadPool() : tasks_() {};
 
-  size_t number_of_threads;
+  std::size_t number_of_threads;
   ThreadingType threadingType;
 
   template <typename Function>

@@ -8,13 +8,9 @@ module;
 #include <locale>
 #include <print>
 #include <string>
-#include <cstring>
 #include <type_traits>
 #endif
 
-#ifndef USE_LEGACY_HEADERS
-#include <strings.h>
-#endif
 
 export module stringutils;
 
@@ -23,9 +19,9 @@ import std;
 import std.compat;
 #endif
 
-export inline bool caseInSensStringCompare(const std::string& str1, const std::string& str2)
+export inline bool caseInSensStringCompare(const std::string& lhs, const std::string& rhs)
 {
-  return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(),
+  return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),
                                                   [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
 }
 
@@ -33,11 +29,8 @@ export struct caseInsensitiveComparator
 {
   bool operator()(const std::string& lhs, const std::string& rhs) const
   {
-#if defined(_WIN32)
-    return _stricmp(lhs.c_str(), rhs.c_str()) < 0;
-#else
-    return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;
-#endif
+    return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin(),
+                                                  [](auto a, auto b) { return std::tolower(a) == std::tolower(b); });
   }
 };
 
