@@ -24,6 +24,7 @@ module;
 
 #if defined(__linux__) || defined(__linux)
 #include <sys/utsname.h>
+#include <string.h>
 #endif
 
 #if defined(__APPLE__)

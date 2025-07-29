@@ -326,7 +326,7 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     double scaling = 1.0;
 
     definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]), charge, scaling, 0,
-                                 static_cast<uint16_t>(pseudoAtomType), static_cast<uint8_t>(componentId), 0, 0),
+                                 static_cast<std::uint16_t>(pseudoAtomType), static_cast<std::uint8_t>(componentId), 0, 0),
                             mass});
   }
 
@@ -468,10 +468,10 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
       if (item.size() == 2)
       {
         // parse 'identifier, identifier'
-        size_t A = item[0].get<std::size_t>();
-        size_t typeA = atoms[A].type;
-        size_t B = item[1].get<std::size_t>();
-        size_t typeB = atoms[B].type;
+        std::size_t A = item[0].get<std::size_t>();
+        std::size_t typeA = atoms[A].type;
+        std::size_t B = item[1].get<std::size_t>();
+        std::size_t typeB = atoms[B].type;
         VDWParameters parameters = forceField(A, B);
       }
       else if (item.size() == 3)

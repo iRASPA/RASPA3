@@ -103,7 +103,7 @@ Framework::Framework(std::size_t currentFramework, const ForceField& forceField,
 
     for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
     {
-      unitCellAtoms[i].componentId = static_cast<uint8_t>(currentFramework);
+      unitCellAtoms[i].componentId = static_cast<std::uint8_t>(currentFramework);
       unitCellAtoms[i].moleculeId = 0;
     }
   }
@@ -124,7 +124,7 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
 {
   for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
-    definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
+    definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
   }
 
   if (useChargesFrom == UseChargesFrom::PseudoAtoms)
@@ -184,7 +184,7 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
 
   for (std::size_t i = 0; i < unitCellAtoms.size(); ++i)
   {
-    unitCellAtoms[i].componentId = static_cast<uint8_t>(frameworkId);
+    unitCellAtoms[i].componentId = static_cast<std::uint8_t>(frameworkId);
     unitCellAtoms[i].moleculeId = 0;
   }
 }
@@ -211,7 +211,7 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
 
   for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
-    definedAtoms[i].moleculeId = static_cast<uint32_t>(i);
+    definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
   }
 
   if (useChargesFrom == UseChargesFrom::PseudoAtoms)
@@ -291,11 +291,11 @@ void Framework::expandDefinedAtomsToUnitCell()
 
 void Framework::makeSuperCell()
 {
-  for (int32_t i = 0; i < numberOfUnitCells.x; ++i)
+  for (std::int32_t i = 0; i < numberOfUnitCells.x; ++i)
   {
-    for (int32_t j = 0; j < numberOfUnitCells.y; ++j)
+    for (std::int32_t j = 0; j < numberOfUnitCells.y; ++j)
     {
-      for (int32_t k = 0; k < numberOfUnitCells.z; ++k)
+      for (std::int32_t k = 0; k < numberOfUnitCells.z; ++k)
       {
         for (const Atom& atom : unitCellAtoms)
         {
@@ -313,11 +313,11 @@ std::vector<Atom> Framework::makeSuperCell(int3 numberOfCells) const
 {
   std::vector<Atom> superCellAtoms{};
 
-  for (int32_t i = 0; i < numberOfCells.x; ++i)
+  for (std::int32_t i = 0; i < numberOfCells.x; ++i)
   {
-    for (int32_t j = 0; j < numberOfCells.y; ++j)
+    for (std::int32_t j = 0; j < numberOfCells.y; ++j)
     {
-      for (int32_t k = 0; k < numberOfCells.z; ++k)
+      for (std::int32_t k = 0; k < numberOfCells.z; ++k)
       {
         for (const Atom& atom : unitCellAtoms)
         {

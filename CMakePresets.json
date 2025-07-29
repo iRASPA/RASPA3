@@ -683,6 +683,26 @@
       }
     },
     {
+      "name": "carbon",
+      "description": "Sets compilers, build type",
+      "inherits": "linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-DNDEBUG -stdlib=libc++ -fvisibility=hidden -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma  -fomit-frame-pointer -ffast-math",
+        "BUILD_RPM_PACKAGE": true,
+        "CPACK_RPM_PACKAGE_DEPENDS": "blas64, lapack64, libgfortran, libquadmath, libomp, glibc, libgcc, zlib, ocl-icd, fftw3",
+        "OpenCL_INCLUDE_DIRS": "/opt/intel/oneapi/2024.0/include/sycl",
+        "OpenCL_LIBRARY": "/opt/intel/oneapi/2024.0/lib/libOpenCL.so",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "libomp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_CXX_LIB_NAMES": "libomp",
+        "OpenMP_libomp_LIBRARY": "$env{HOME}/software/lib/x86_64-unknown-linux-gnu/libomp.so",
+        "BUILD_LIBTORCH": false,
+        "BUILD_PYTHON": false,
+        "BLA_SIZEOF_INTEGER": "4"
+      }
+    },
+    {
       "name": "linux-x86_64-carbon",
       "description": "Sets compilers, build type",
       "inherits": "linux-x86_64",
