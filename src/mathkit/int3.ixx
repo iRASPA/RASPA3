@@ -14,7 +14,6 @@ export module int3;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
-import std.compat;
 #endif
 
 import hashcombine;
@@ -22,10 +21,10 @@ import archive;
 
 export union int3
 {
-  int32_t v[3];
+  std::int32_t v[3];
   struct
   {
-    int32_t x, y, z;
+    std::int32_t x, y, z;
   };
 
   int3() : x(0), y(0), z(0) {}

@@ -21,7 +21,6 @@ module randomnumbers;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
-import std.compat;
 #endif
 
 import double3;

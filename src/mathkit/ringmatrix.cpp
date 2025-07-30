@@ -13,7 +13,6 @@ module ringmatrix;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
-import std.compat;
 #endif
 
 import ring;
@@ -39,7 +38,7 @@ RingMatrix RingMatrix::createRandomRingMatrix(std::size_t rows, std::size_t colu
   {
     for (std::size_t j = 0; j < columns; j++)
     {
-      m(i, j) = (rand() % limit) - limit;
+      m(i, j) = (std::rand() % limit) - limit;
     }
   }
   return m;

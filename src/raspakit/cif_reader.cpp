@@ -21,7 +21,6 @@ module cif_reader;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
-import std.compat;
 #endif
 
 import double3;
@@ -228,7 +227,7 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
           std::replace_if(chemicalElement.begin(), chemicalElement.end(), [](char c) { return std::isdigit(c); }, ' ');
 
           // First character to uppercase
-          chemicalElement[0] = static_cast<char>(toupper(chemicalElement[0]));
+          chemicalElement[0] = static_cast<char>(std::toupper(chemicalElement[0]));
         }
 
         Atom atom = Atom();
@@ -262,7 +261,7 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
 
             if (index1.has_value())
             {
-              atom.type = static_cast<uint16_t>(index1.value());
+              atom.type = static_cast<std::uint16_t>(index1.value());
             }
           }
 

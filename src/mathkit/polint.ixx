@@ -16,7 +16,6 @@ export module polint;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
-import std.compat;
 #endif
 
 export namespace Interpolation
@@ -51,7 +50,7 @@ void polint(const std::array<double, N> &xa, const std::array<double, N> &ya, do
       if ((den = ho - hp) == 0.0)
       {
         fprintf(stderr, "Error in routine polint\n");
-        exit(0);
+        std::exit(0);
       }
       den = w / den;
       d[i] = hp * den;
