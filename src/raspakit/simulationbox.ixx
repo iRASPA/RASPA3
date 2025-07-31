@@ -209,7 +209,7 @@ export struct SimulationBox
    *
    * \return A double3 containing the lengths (lengthA, lengthB, lengthC).
    */
-  double3 lengths();
+  double3 lengths() const;
   /**
    * \brief Retrieves the angles of the simulation box.
    *
@@ -217,7 +217,7 @@ export struct SimulationBox
    *
    * \return A double3 containing the angles (angleAlpha, angleBeta, angleGamma) in radians.
    */
-  double3 angles();
+  double3 angles() const;
   /**
    * \brief Generates a random position within the simulation box.
    *

@@ -121,10 +121,24 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
 
     std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
     double normalization{1.0};
-    if (maximum != it_end)
-    {
-      normalization = static_cast<double>(1.0 / *maximum);
-    }
+      switch (normType)
+      {
+        case Normalization::Max:
+        {
+          std::vector<double>::iterator maximum = std::max_element(it_begin, it_end);
+          if (maximum != it_end)
+          {
+            normalization = static_cast<double>(1.0 / *maximum);
+          }
+          break;
+        }
+        case Normalization::NumberDensity:
+        {
+          normalization =
+              (gridSize.x * gridSize.y * gridSize.z) / (cell.determinant() * static_cast<double>(numberOfSamples));
+          break;
+        }
+      }
 
     for (std::vector<double>::iterator it = it_begin; it != it_end; ++it)
     {
@@ -181,8 +195,9 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
         }
         case Normalization::NumberDensity:
         {
+          double3 numberOfUnitCells = simulationBox.lengths() / framework->simulationBox.lengths();
           normalization =
-              (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples));
+              (gridSize.x * gridSize.y * gridSize.z) / (unitCell.determinant() * static_cast<double>(numberOfSamples) * numberOfUnitCells.x * numberOfUnitCells.y * numberOfUnitCells.z);
           break;
         }
       }
@@ -197,7 +212,7 @@ void PropertyDensityGrid::writeOutput(std::size_t systemId, [[maybe_unused]] con
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyDensityGrid &temp)
 {
-  archive << temp.versionNumber;
+  archive << temp.versionNumber; 
 
   archive << temp.numberOfFrameworks;
   archive << temp.numberOfComponents;

@@ -209,9 +209,9 @@ void SimulationBox::setBoxAngles(double3 angles)
   volume = cell.determinant();
 }
 
-double3 SimulationBox::lengths() { return double3(cell[0].length(), cell[1].length(), cell[2].length()); }
+double3 SimulationBox::lengths() const { return double3(cell[0].length(), cell[1].length(), cell[2].length()); }
 
-double3 SimulationBox::angles()
+double3 SimulationBox::angles() const
 {
   double3 column1 = cell[0];
   double3 column2 = cell[1];
