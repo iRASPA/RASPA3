@@ -112,6 +112,7 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
     std::size_t A = bond_potential.identifiers[0];
     std::size_t B = bond_potential.identifiers[1];
     connectivityTable[A, B] = true;
+    connectivityTable[B, A] = true;
   }
 }
 
@@ -328,6 +329,22 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     definedAtoms.push_back({Atom(double3(position[0], position[1], position[2]), charge, scaling, 0,
                                  static_cast<std::uint16_t>(pseudoAtomType), static_cast<std::uint8_t>(componentId), 0, 0),
                             mass});
+  }
+
+  if (parsed_data.contains("StartingBead"))
+  {
+    if (!parsed_data["StartingBead"].is_number_integer())
+    {
+      throw std::runtime_error(
+          std::format("[Component reader]: item {} must be an integer\n", parsed_data["StartingBead"].dump()));
+    }
+
+    std::int64_t starting_bead = parsed_data["StartingBead"].get<std::int64_t>();
+    if(starting_bead >= 0)
+    {
+      startingBead = static_cast<std::size_t>(starting_bead);
+    }
+
   }
 
   if (parsed_data.contains("Type"))

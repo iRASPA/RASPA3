@@ -14,6 +14,7 @@ import std;
 #endif
 
 import archive;
+import atom;
 import chiral_center;
 import bond_potential;
 import urey_bradley_potential;
@@ -28,6 +29,7 @@ import bend_bend_potential;
 import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
+import running_energy;
 
 export namespace Potentials
 {
@@ -50,10 +52,13 @@ struct InternalPotentials
   std::vector<BendTorsionPotential> bendTorsions{};        ///< List of bend-torsion potentials.
   std::vector<VanDerWaalsPotential> vanDerWaals{};         ///< List of vanDerWaals potentials.
   std::vector<CoulombPotential> coulombs{};                ///< List of Coulomb potentials.
+  
+  RunningEnergy computeInternalEnergies(const std::vector<Atom> &atoms) const;
 
   Potentials::InternalPotentials filteredInteractions(std::size_t numberOfBeads,
                                                       const std::vector<std::size_t>& beadsAlreadyPlaced,
-                                                      const std::vector<std::size_t>& beadsToBePlaced);
+                                                      const std::vector<std::size_t>& beadsToBePlaced) const;
+
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::InternalPotentials& p);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::InternalPotentials& p);

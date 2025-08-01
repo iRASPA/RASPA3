@@ -50,6 +50,18 @@ export struct RunningEnergy
         ewald_fourier(0.0),
         ewald_self(0.0),
         ewald_exclusion(0.0),
+        bond(0.0),
+        ureyBradley(0.0),
+        bend(0.0),
+        inversionBend(0.0),
+        outOfPlaneBend(0.0),
+        torsion(0.0),
+        improperTorsion(0.0),
+        bondBond(0.0),
+        bondBend(0.0),
+        bondTorsion(0.0),
+        bendBend(0.0),
+        bendTorsion(0.0),
         intraVDW(0.0),
         intraCoul(0.0),
         tail(0.0),
@@ -162,8 +174,10 @@ export struct RunningEnergy
   inline double potentialEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
-           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + intraVDW +
-           intraCoul + tail + polarization;
+           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + 
+           bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion +
+           bondBond + bondBend + bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul +
+           tail + polarization;
   }
 
   /**
@@ -209,8 +223,10 @@ export struct RunningEnergy
   inline double conservedEnergy() const
   {
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
-           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + intraVDW +
-           intraCoul + tail + polarization + translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
+           frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion +
+           bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion +
+           bondBond + bondBend + bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul +
+           tail + polarization + translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
   }
 
   /**
@@ -244,6 +260,18 @@ export struct RunningEnergy
     ewald_fourier = 0.0;
     ewald_self = 0.0;
     ewald_exclusion = 0.0;
+    bond = 0.0,
+    ureyBradley = 0.0,
+    bend = 0.0,
+    inversionBend = 0.0,
+    outOfPlaneBend = 0.0,
+    torsion = 0.0,
+    improperTorsion = 0.0,
+    bondBond = 0.0,
+    bondBend = 0.0,
+    bondTorsion = 0.0,
+    bendBend = 0.0,
+    bendTorsion = 0.0,
     intraVDW = 0.0;
     intraCoul = 0.0;
     tail = 0.0;
@@ -267,6 +295,18 @@ export struct RunningEnergy
     ewald_fourier += b.ewald_fourier;
     ewald_self += b.ewald_self;
     ewald_exclusion += b.ewald_exclusion;
+    bond += b.bond;
+    ureyBradley += b.ureyBradley;
+    bend += b.bend;
+    inversionBend += b.inversionBend;
+    outOfPlaneBend += b.outOfPlaneBend;
+    torsion += b.torsion;
+    improperTorsion += b.improperTorsion;
+    bondBond += b.bondBond;
+    bondBend += b.bondBend;
+    bondTorsion += b.bondTorsion;
+    bendBend += b.bendBend;
+    bendTorsion += b.bendTorsion;
     intraVDW += b.intraVDW;
     intraCoul += b.intraCoul;
     tail += b.tail;
@@ -292,6 +332,18 @@ export struct RunningEnergy
     ewald_fourier -= b.ewald_fourier;
     ewald_self -= b.ewald_self;
     ewald_exclusion -= b.ewald_exclusion;
+    bond -= b.bond;
+    ureyBradley -= b.ureyBradley;
+    bend -= b.bend;
+    inversionBend -= b.inversionBend;
+    outOfPlaneBend -= b.outOfPlaneBend;
+    torsion -= b.torsion;
+    improperTorsion -= b.improperTorsion;
+    bondBond -= b.bondBond;
+    bondBend -= b.bondBend;
+    bondTorsion -= b.bondTorsion;
+    bendBend -= b.bendBend;
+    bendTorsion -= b.bendTorsion;
     intraVDW -= b.intraVDW;
     intraCoul -= b.intraCoul;
     tail -= b.tail;
@@ -318,6 +370,18 @@ export struct RunningEnergy
     v.ewald_fourier = -ewald_fourier;
     v.ewald_self = -ewald_self;
     v.ewald_exclusion = -ewald_exclusion;
+    v.bond = -bond;
+    v.ureyBradley = -ureyBradley;
+    v.bend = -bend;
+    v.inversionBend = -inversionBend;
+    v.outOfPlaneBend = -outOfPlaneBend;
+    v.torsion = -torsion;
+    v.improperTorsion = -improperTorsion;
+    v.bondBond = -bondBond;
+    v.bondBend = -bondBend;
+    v.bondTorsion = -bondTorsion;
+    v.bendBend = -bendBend;
+    v.bendTorsion = -bendTorsion;
     v.intraVDW = -intraVDW;
     v.intraCoul = -intraCoul;
     v.tail = -tail;
@@ -343,6 +407,18 @@ export struct RunningEnergy
   double ewald_fourier;               ///< Fourier component of Ewald sum for Coulomb interactions.
   double ewald_self;                  ///< Self-interaction correction in Ewald sum.
   double ewald_exclusion;             ///< Exclusion term in Ewald sum for Coulomb interactions.
+  double bond;
+  double ureyBradley;
+  double bend;
+  double inversionBend;
+  double outOfPlaneBend;
+  double torsion;
+  double improperTorsion;
+  double bondBond;
+  double bondBend;
+  double bondTorsion;
+  double bendBend;
+  double bendTorsion;
   double intraVDW;                    ///< Intramolecular van der Waals energy.
   double intraCoul;                   ///< Intramolecular Coulomb energy.
   double tail;                        ///< Tail correction energy for van der Waals interactions.
@@ -370,6 +446,18 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.ewald_fourier = a.ewald_fourier + b.ewald_fourier;
   m.ewald_self = a.ewald_self + b.ewald_self;
   m.ewald_exclusion = a.ewald_exclusion + b.ewald_exclusion;
+  m.bond = a.bond + b.bond;
+  m.ureyBradley = a.ureyBradley + b.ureyBradley;
+  m.bend = a.bend + b.bend;
+  m.inversionBend = a.inversionBend + b.inversionBend;
+  m.outOfPlaneBend = a.outOfPlaneBend + b.outOfPlaneBend;
+  m.torsion = a.torsion + b.torsion;
+  m.improperTorsion = a.improperTorsion + b.improperTorsion;
+  m.bondBond = a.bondBond + b.bondBond;
+  m.bondBend = a.bondBend + b.bondBend;
+  m.bondTorsion = a.bondTorsion + b.bondTorsion;
+  m.bendBend = a.bendBend + b.bendBend;
+  m.bendTorsion = a.bendTorsion + b.bendTorsion;
   m.intraVDW = a.intraVDW + b.intraVDW;
   m.intraCoul = a.intraCoul + b.intraCoul;
   m.tail = a.tail + b.tail;
@@ -396,6 +484,18 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.ewald_fourier = a.ewald_fourier - b.ewald_fourier;
   m.ewald_self = a.ewald_self - b.ewald_self;
   m.ewald_exclusion = a.ewald_exclusion - b.ewald_exclusion;
+  m.bond = a.bond - b.bond;
+  m.ureyBradley = a.ureyBradley - b.ureyBradley;
+  m.bend = a.bend - b.bend;
+  m.inversionBend = a.inversionBend - b.inversionBend;
+  m.outOfPlaneBend = a.outOfPlaneBend - b.outOfPlaneBend;
+  m.torsion = a.torsion - b.torsion;
+  m.improperTorsion = a.improperTorsion - b.improperTorsion;
+  m.bondBond = a.bondBond - b.bondBond;
+  m.bondBend = a.bondBend - b.bondBend;
+  m.bondTorsion = a.bondTorsion - b.bondTorsion;
+  m.bendBend = a.bendBend - b.bendBend;
+  m.bendTorsion = a.bendTorsion - b.bendTorsion;
   m.intraVDW = a.intraVDW - b.intraVDW;
   m.intraCoul = a.intraCoul - b.intraCoul;
   m.tail = a.tail - b.tail;
@@ -421,6 +521,18 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.ewald_fourier = a * b.ewald_fourier;
   m.ewald_self = a * b.ewald_self;
   m.ewald_exclusion = a * b.ewald_exclusion;
+  m.bond = a * b.bond;
+  m.ureyBradley = a * b.ureyBradley;
+  m.bend = a * b.bend;
+  m.inversionBend = a * b.inversionBend;
+  m.outOfPlaneBend = a * b.outOfPlaneBend;
+  m.torsion = a * b.torsion;
+  m.improperTorsion = a * b.improperTorsion;
+  m.bondBond = a * b.bondBond;
+  m.bondBend = a * b.bondBend;
+  m.bondTorsion = a * b.bondTorsion;
+  m.bendBend = a * b.bendBend;
+  m.bendTorsion = a * b.bendTorsion;
   m.intraVDW = a * b.intraVDW;
   m.intraCoul = a * b.intraCoul;
   m.tail = a * b.tail;
@@ -447,6 +559,18 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.ewald_fourier = b * a.ewald_fourier;
   m.ewald_self = b * a.ewald_self;
   m.ewald_exclusion = b * a.ewald_exclusion;
+  m.bond = b * a.bond;
+  m.ureyBradley = b * a.ureyBradley;
+  m.bend = b * a.bend;
+  m.inversionBend = b * a.inversionBend;
+  m.outOfPlaneBend = b * a.outOfPlaneBend;
+  m.torsion = b * a.torsion;
+  m.improperTorsion = b * a.improperTorsion;
+  m.bondBond = b * a.bondBond;
+  m.bondBend = b * a.bondBend;
+  m.bondTorsion = b * a.bondTorsion;
+  m.bendBend = b * a.bendBend;
+  m.bendTorsion = b * a.bendTorsion;
   m.intraVDW = b * a.intraVDW;
   m.intraCoul = b * a.intraCoul;
   m.tail = b * a.tail;

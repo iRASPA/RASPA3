@@ -25,10 +25,10 @@ import double3;
 import double3x3;
 import simulationbox;
 import energy_status;
-import cbmc_growing_status;
 import forcefield;
 import energy_factor;
 import cbmc_rigid_insertion;
+import cbmc_flexible_insertion;
 import cbmc_rigid_deletion;
 import cbmc_rigid_reinsertion;
 // import cbmc_flexible_insertion;
@@ -48,11 +48,18 @@ import interpolation_energy_grid;
 {
   switch (growType)
   {
-    default:
+    case Component::GrowType::Rigid:
       return CBMC::growRigidMoleculeSwapInsertion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
           frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, scaling, groupId, isFractional, numberOfTrialDirections);
+    case Component::GrowType::Flexible:
+      return CBMC::growFlexibleMoleculeSwapInsertion(
+          random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
+          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          selectedMolecule, scaling, groupId, isFractional, numberOfTrialDirections);
+    default:
+      std::unreachable();
   }
 }
 

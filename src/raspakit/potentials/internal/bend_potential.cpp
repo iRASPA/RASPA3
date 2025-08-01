@@ -337,7 +337,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
 }
 
 double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posC,
-                                      std::optional<const double3> &posD) const
+                                      const std::optional<const double3> &posD) const
 {
   double cos_theta, theta;
   double temp, temp2;

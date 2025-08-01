@@ -123,7 +123,7 @@ export struct BendPotential
   double generateBendAngle(RandomNumber &random, double beta) const;
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc,
-                         std::optional<const double3> &posD) const;
+                         const std::optional<const double3> &posD) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BendPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BendPotential &b);

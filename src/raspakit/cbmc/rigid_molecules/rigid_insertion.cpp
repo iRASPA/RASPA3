@@ -27,7 +27,6 @@ import simd_quatd;
 import double3x3;
 import simulationbox;
 import energy_status;
-import cbmc_growing_status;
 import cbmc_first_bead_data;
 import cbmc_chain_data;
 import cbmc_util;

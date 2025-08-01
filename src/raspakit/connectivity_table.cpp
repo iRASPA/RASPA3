@@ -36,7 +36,7 @@ std::string ConnectivityTable::print(const std::string &prestring) const
   {
     for (std::size_t j = i + 1; j != numberOfBeads; ++j)
     {
-      if (table[j * (j + 1) / 2 + i])
+      if (table[i * numberOfBeads + j])
       {
         std::print(stream, "{}{} - {}\n", prestring, i, j);
       }
@@ -47,29 +47,29 @@ std::string ConnectivityTable::print(const std::string &prestring) const
 }
 
 std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> ConnectivityTable::nextBeads(
-    const std::vector<std::size_t> &placedBeads)
+    const std::vector<std::size_t> &placedBeads) const
 {
   // copy the connectvity from the molecule
-  ConnectivityTable grown_connectivity = *this;
+  ConnectivityTable to_do_connectivity = *this;
 
   // remove the already grown beads
-  for (std::size_t i = 0; i != placedBeads.size(); ++i)
+  for (const std::size_t placed_bead : placedBeads)
   {
     for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
-      grown_connectivity[i, j] = false;
+      // note: update is asymmetric (only [placed_bead, j], not [j, placed_bead])
+      to_do_connectivity[placed_bead, j] = false;
     }
   }
 
   // search for next-bonds, i.e. everything connected to 'placedBeads'
   std::vector<std::pair<std::size_t, std::size_t>> nextBonds{};
   nextBonds.reserve(16);
-  for (std::size_t i = 0; i != placedBeads.size(); ++i)
+  for (const std::size_t k : placedBeads)
   {
-    std::size_t k = placedBeads[i];
     for (std::size_t j = 0; j != numberOfBeads; ++j)
     {
-      if (grown_connectivity[k, j])
+      if(to_do_connectivity[j, k])
       {
         nextBonds.push_back(std::make_pair(k, j));
       }
@@ -78,10 +78,10 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
 
   if (nextBonds.empty())
   {
-    throw std::runtime_error(std::format("Error in CBMMC: No bead can be grown\n"));
+    throw std::runtime_error(std::format("Error in CBMC: No bead can be grown\n"));
   }
 
-  // always select the first
+  // always select the first for reversibility in coupled/decoupled
   std::optional<std::size_t> previous_bead{};
   std::size_t current_bead = nextBonds[0].first;
   std::size_t next_bead = nextBonds[0].second;
@@ -95,7 +95,7 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   {
     if ((*this)[i, current_bead])
     {
-      if (grown_connectivity[i, current_bead])
+      if (to_do_connectivity[i, current_bead])
       {
         nextBeads.push_back(i);
       }

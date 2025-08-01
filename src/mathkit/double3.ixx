@@ -83,7 +83,9 @@ export union double3
   }
   inline static double3 cross(const double3& v1, const double3& v2)
   {
-    return double3(v1.y * v2.z - v2.y * v1.z, v1.z * v2.x - v2.z * v1.x, v1.x * v2.y - v2.x * v1.y);
+    return double3(v1.y * v2.z - v1.z * v2.y, 
+                   v1.z * v2.x - v1.x * v2.z, 
+                   v1.x * v2.y - v1.y * v2.x);
   }
   inline static double3 normalize(const double3& v)
   {
@@ -105,6 +107,55 @@ export union double3
     x = std::clamp(x, low, high);
     y = std::clamp(y, low, high);
     z = std::clamp(z, low, high);
+  }
+
+  inline static double3 perpendicular(double3 u, double3 v)
+  {
+    double3 w;
+ 
+    std::array<double, 3> denominator = { std::fabs(u.z * v.y - u.y * v.z),
+                                          std::fabs(u.z * v.x - u.x * v.z),
+                                          std::fabs(u.y * v.x - u.x * v.y) };
+
+    std::array<double, 3>::iterator maximum = std::max_element(denominator.begin(), denominator.end());
+
+    if(*maximum < 1e-10)
+    {
+      // u and v are parallel
+      // https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector
+      w = double3(std::copysign(u[2], u[0]),
+                  std::copysign(u[2], u[1]),
+                 -std::copysign(u[0], u[2]) - std::copysign(u[1], u[2]));
+      return w.normalized();
+    }
+
+    std::size_t choise = std::distance(denominator.begin(), maximum);
+  
+    switch(choise)
+    {
+      case 0:
+        // u * z == 0 && v * z == 0, solving for y and z (and x can be chosen freely)
+        w.x = 1.0;
+        w.y = (u.x * v.z - u.z * v.x) / denominator[0];
+        w.z = (u.x * v.y - u.y * v.x) / denominator[0];
+        break;
+      case 1:
+        // u * z == 0 && v * z == 0, solving for x and z (and y can be chosen freely)
+        w.x = (u.y * v.z - u.z * v.y) / denominator[1];
+        w.y = 1.0;
+        w.z = (u.x * v.y - u.y * v.x) / denominator[1];
+        break;
+      case 2:
+        // u * z == 0 && v * z == 0, solving for x and y (and z can be chosen freely)
+        w.x = (u.z * v.y - u.y * v.z) / denominator[2];
+        w.y = (u.x * v.z - u.z * v.x) / denominator[2];
+        w.z = 1.0;
+        break;
+      default:
+        std::unreachable();
+    }
+  
+    return w.normalized();
   }
 
   double3 operator-() const { return double3(-this->x, -this->y, -this->z); }

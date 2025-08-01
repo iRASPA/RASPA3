@@ -33,7 +33,6 @@ import energy_factor;
 import running_energy;
 import framework;
 import component;
-import cbmc_growing_status;
 import cbmc_first_bead_data;
 import cbmc_chain_data;
 import cbmc_util;
