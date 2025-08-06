@@ -56,6 +56,8 @@ import bond_bend_potential;
 import bond_torsion_potential;
 import bend_bend_potential;
 import bend_torsion_potential;
+import van_der_waals_potential;
+import coulomb_potential;
 import internal_potentials;
 import connectivity_table;
 import json;
@@ -362,6 +364,18 @@ export struct Component
    */
   std::pair<Molecule, std::vector<Atom>> rotate(const Molecule &molecule, std::span<Atom> molecule_atoms,
                                                 simd_quatd rotation) const;
+
+  ConnectivityTable readConnectivityTable(std::size_t size,
+            const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  std::vector<BondPotential> readBondPotentials(const ForceField &forceField,
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<BendPotential> readBendPotentials(const ForceField &forceField,
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<TorsionPotential> readTorsionPotentials(const ForceField &forceField,
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(const ForceField &forceField,
+                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Component &c);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c);

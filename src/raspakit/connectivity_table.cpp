@@ -127,6 +127,124 @@ std::tuple<std::optional<std::size_t>, std::size_t, std::vector<std::size_t>> Co
   return {previous_bead, current_bead, nextBeads};
 }
 
+std::vector<std::size_t> ConnectivityTable::findAllNeighbors(std::size_t currentBead) const
+{
+  std::vector<std::size_t> neighbors{};
+  neighbors.reserve(numberOfBeads);
+
+  for(std::size_t i = 0; i < numberOfBeads; ++i)
+  {
+    if(((*this)[currentBead, i]) && (i != currentBead))
+    {
+      neighbors.push_back(i);
+    }
+  }
+  return neighbors;
+}
+
+std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllBonds() const
+{
+  std::vector<std::array<std::size_t, 2>> result{};
+
+  for(std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  {
+    for(std::size_t j = i + 1; j < numberOfBeads; ++j)
+    {
+      if((*this)[i, j])
+      {
+        result.push_back({i, j});
+      }
+    }
+  }
+
+  return result;
+}
+
+std::vector<std::array<std::size_t, 3>> ConnectivityTable::findAllBends() const
+{
+  std::vector<std::array<std::size_t, 3>> result{};
+
+  std::vector<std::array<std::size_t, 2>> found_bonds = findAllBonds();
+
+  for(const std::array<std::size_t, 2> found_bond : found_bonds)
+  {
+     // extend to the left
+     for(std::size_t left_bead : findAllNeighbors(found_bond[0]))
+     {
+       if( left_bead != found_bond[1])
+       {
+         std::array<std::size_t, 3> bend = {std::min(left_bead, found_bond[1]),
+                                            found_bond[0], 
+                                            std::max(left_bead, found_bond[1])};
+         if(std::find(result.begin(), result.end(), bend) == result.end())
+         {
+           result.push_back(bend);
+         }
+       }
+     }
+
+     // extend to the right
+     for(std::size_t right_bead : findAllNeighbors(found_bond[1]))
+     {
+       if( right_bead != found_bond[0])
+       {
+         std::array<std::size_t, 3> bend = {std::min(found_bond[0], right_bead),
+                                            found_bond[1], 
+                                            std::max(found_bond[0], right_bead)};
+         if(std::find(result.begin(), result.end(), bend) == result.end())
+         {
+           result.push_back(bend);
+         }
+       }
+     }
+  }
+
+  return result;
+}
+
+std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() const
+{
+  std::vector<std::array<std::size_t, 4>> result{};
+
+  std::vector<std::array<std::size_t, 3>> found_bends = findAllBends();
+
+  for(const std::array<std::size_t, 3> found_bend : found_bends)
+  {
+     // extend to the left
+     for(std::size_t left_bead : findAllNeighbors(found_bend[0]))
+     {
+       if( left_bead != found_bend[1])
+       {
+         std::array<std::size_t, 4> torsion = {left_bead, found_bend[0], found_bend[1], found_bend[2]};
+         std::array<std::size_t, 4> torsion_mirrored = {found_bend[2], found_bend[1], found_bend[0], left_bead};
+         if(std::find(result.begin(), result.end(), torsion) == result.end() &&
+            std::find(result.begin(), result.end(), torsion_mirrored) == result.end())
+         {
+           result.push_back(torsion);
+         }
+       }
+     }
+
+     // extend to the right
+     for(std::size_t right_bead : findAllNeighbors(found_bend[2]))
+     {
+       if( right_bead != found_bend[1])
+       {
+         std::array<std::size_t, 4> torsion = {found_bend[0], found_bend[1], found_bend[2], right_bead};
+         std::array<std::size_t, 4> torsion_mirrored = {right_bead, found_bend[2], found_bend[1], found_bend[0]};
+
+         if(std::find(result.begin(), result.end(), torsion) == result.end() &&
+            std::find(result.begin(), result.end(), torsion_mirrored) == result.end())
+         {
+           result.push_back(torsion);
+         }
+       }
+     }
+  }
+
+  return result;
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ConnectivityTable &b)
 {
   archive << b.versionNumber;
