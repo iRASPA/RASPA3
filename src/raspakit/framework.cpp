@@ -124,7 +124,8 @@ Framework::Framework(std::size_t frameworkId, const ForceField& forceField, std:
 {
   for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
-    definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+    // definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+    definedAtoms[i].moleculeId = 0;
   }
 
   if (useChargesFrom == UseChargesFrom::PseudoAtoms)
@@ -211,7 +212,8 @@ void Framework::readFramework(const ForceField& forceField, const std::string& f
 
   for (std::size_t i = 0; i < definedAtoms.size(); ++i)
   {
-    definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+    // definedAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+    definedAtoms[i].moleculeId = 0;
   }
 
   if (useChargesFrom == UseChargesFrom::PseudoAtoms)

@@ -59,6 +59,7 @@ import property_energy_histogram;
 import property_number_of_molecules_histogram;
 import property_msd;
 import property_vacf;
+import write_lammps_data;
 import thermostat;
 
 int3 parseInt3(const std::string& item, auto json)
@@ -1338,6 +1339,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (value.contains("WriteLammpsData") && value["WriteLammpsData"].is_boolean())
+      {
+        if (value["WriteLammpsData"].get<bool>())
+        {
+          std::size_t writeLammpsDataEvery = 10;
+          if (value.contains("WriteLammpsDataEvery") && value["WriteLammpsDataEvery"].is_number_unsigned())
+          {
+            writeLammpsDataEvery = value["WriteLammpsDataEvery"].get<std::size_t>();
+          }
+          systems[systemId].writeLammpsData = WriteLammpsData(systemId, writeLammpsDataEvery);
+        }
+      }
+
       if (value.contains("Ensemble") && value["Ensemble"].is_string())
       {
         std::size_t thermostatChainLength{5};
@@ -1599,6 +1613,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "DensityGridNormalization",
     "OutputPDBMovie",
     "SampleMovieEvery",
+    "WriteLammpsData",
+    "WriteLammpsDataEvery",
     "Ensemble",
     "TimeStep",
     "MacroStateUseBias",

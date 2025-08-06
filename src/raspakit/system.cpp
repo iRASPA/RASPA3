@@ -500,6 +500,7 @@ void System::checkMoleculeIds()
       }
     }
   }
+  std::print("check complete\n");
 }
 
 void System::createInitialMolecules()
@@ -1704,6 +1705,12 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
   if (samplePDBMovie.has_value())
   {
     samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), currentCycle);
+  }
+
+  if (writeLammpsData.has_value())
+  {
+    writeLammpsData->update(currentCycle, components, atomPositions, simulationBox, forceField,
+                            numberOfIntegerMoleculesPerComponent, framework);
   }
 
   if (propertyConventionalRadialDistributionFunction.has_value())

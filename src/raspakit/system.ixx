@@ -77,6 +77,7 @@ import equation_of_states;
 import thermostat;
 import json;
 import interpolation_energy_grid;
+import write_lammps_data;
 
 /**
  * \brief Represents the central system for simulations.
@@ -269,6 +270,7 @@ export struct System
   std::optional<PropertyNumberOfMoleculesHistogram> averageNumberOfMoleculesHistogram;
   std::optional<PropertyMeanSquaredDisplacement> propertyMSD;
   std::optional<PropertyVelocityAutoCorrelationFunction> propertyVACF;
+  std::optional<WriteLammpsData> writeLammpsData;
 
   std::vector<std::optional<InterpolationEnergyGrid>> interpolationGrids;
 

@@ -67,7 +67,7 @@
       "inherits": ["base"],
       "cacheVariables": {
         "CONDA": true,
-	"CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
+        "CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/clang",
         "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/clang++",
@@ -134,7 +134,7 @@
       "inherits": ["base"],
       "cacheVariables": {
         "CONDA": true,
-	"CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
+        "CMAKE_PREFIX_PATH": "$env{CONDA_PREFIX}",
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_COMPILER": "$env{CONDA_PREFIX}/bin/clang",
         "CMAKE_CXX_COMPILER": "$env{CONDA_PREFIX}/bin/clang++",
@@ -160,7 +160,6 @@
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
       },
-
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": ["Linux"]
@@ -199,7 +198,6 @@
         "BUILD_PYTHON": false,
         "BLA_SIZEOF_INTEGER": "4"
       },
-
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": ["Linux"]
@@ -303,7 +301,6 @@
         "BUILD_PYTHON": true,
         "BLA_SIZEOF_INTEGER": "4"
       },
-
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
           "hostOS": ["Linux"]
@@ -335,8 +332,8 @@
         "HDF5_ROOT": "C:/vcpkg/installed/ARM64-windows-static",
         "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/ARM64-windows-static/include",
         "ZLIB_LIBRARY": "C:/vcpkg/installed/ARM64-windows-static/lib/zlib.lib",
-        "OpenCL_INCLUDE_DIR" : "C:/vcpkg/installed/ARM64-windows/include",
-        "OpenCL_LIBRARY" : "C:/vcpkg/installed/ARM64-windows/lib/OpenCL.lib",
+        "OpenCL_INCLUDE_DIR": "C:/vcpkg/installed/ARM64-windows/include",
+        "OpenCL_LIBRARY": "C:/vcpkg/installed/ARM64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
         "BUILD_TESTING": true,
@@ -375,8 +372,8 @@
         "HDF5_ROOT": "C:/vcpkg/installed/x64-windows-static",
         "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/x64-windows-static/include",
         "ZLIB_LIBRARY": "C:/vcpkg/installed/x64-windows-static/lib/zlib.lib",
-        "OpenCL_INCLUDE_DIR" : "C:/vcpkg/installed/x64-windows/include",
-        "OpenCL_LIBRARY" : "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
+        "OpenCL_INCLUDE_DIR": "C:/vcpkg/installed/x64-windows/include",
+        "OpenCL_LIBRARY": "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
         "BUILD_TESTING": true,
@@ -415,8 +412,8 @@
         "HDF5_ROOT": "C:/vcpkg/installed/x64-windows-static",
         "ZLIB_INCLUDE_DIR": "C:/vcpkg/installed/x64-windows-static/include",
         "ZLIB_LIBRARY": "C:/vcpkg/installed/x64-windows-static/lib/zlib.lib",
-        "OpenCL_INCLUDE_DIR" : "C:/vcpkg/installed/x64-windows/include",
-        "OpenCL_LIBRARY" : "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
+        "OpenCL_INCLUDE_DIR": "C:/vcpkg/installed/x64-windows/include",
+        "OpenCL_LIBRARY": "C:/vcpkg/installed/x64-windows/lib/OpenCL.lib",
         "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
         "BUILD_WINDOWS_PACKAGE": true,
         "BUILD_TESTING": true,
@@ -568,6 +565,9 @@
       "name": "macos-apple-silicon",
       "description": "Sets compilers, build type",
       "inherits": ["base"],
+      "environment": {
+        "CXXFLAGS": "-stdlib=libc++"
+      },
       "cacheVariables": {
         "CMAKE_OSX_ARCHITECTURES": "arm64",
         "CMAKE_BUILD_TYPE": "Release",
