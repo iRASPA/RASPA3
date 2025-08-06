@@ -52,12 +52,17 @@ struct InternalPotentials
   std::vector<BendTorsionPotential> bendTorsions{};        ///< List of bend-torsion potentials.
   std::vector<VanDerWaalsPotential> vanDerWaals{};         ///< List of vanDerWaals potentials.
   std::vector<CoulombPotential> coulombs{};                ///< List of Coulomb potentials.
-  
+
+  std::optional<BondPotential> findBondPotential(std::size_t A, std::size_t B) const;
+
+  RunningEnergy calculateBondSmallMCEnergies(const std::vector<Atom> &atoms) const;
+  RunningEnergy calculateBendSmallMCEnergies(const std::vector<Atom> &atoms) const;
+
   RunningEnergy computeInternalEnergies(const std::vector<Atom> &atoms) const;
 
-  Potentials::InternalPotentials filteredInteractions(std::size_t numberOfBeads,
-                                                      const std::vector<std::size_t>& beadsAlreadyPlaced,
-                                                      const std::vector<std::size_t>& beadsToBePlaced) const;
+  Potentials::InternalPotentials 
+    filteredInteractions(std::size_t numberOfBeads, const std::vector<std::size_t>& beadsAlreadyPlaced,
+                         const std::vector<std::size_t>& beadsToBePlaced) const;
 
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::InternalPotentials& p);

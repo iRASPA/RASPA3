@@ -107,6 +107,8 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
 
   connectivityTable = ConnectivityTable(definedAtoms.size());
 
+  cbmc_moves_statistics = std::vector<CBMCMoveStatistics>(definedAtoms.size());
+
   for (const BondPotential &bond_potential : internalPotentials.bonds)
   {
     std::size_t A = bond_potential.identifiers[0];
@@ -131,6 +133,7 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
+      cbmc_moves_statistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
       connectivityTable(atomList.size())
 {
@@ -1145,6 +1148,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.mc_moves_statistics;
   archive << c.mc_moves_cputime;
 
+  archive << c.cbmc_moves_statistics;
+
   archive << c.averageRosenbluthWeights;
 
   // MultiSiteIsotherm isotherm{};      // isotherm information
@@ -1224,6 +1229,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.mc_moves_probabilities;
   archive >> c.mc_moves_statistics;
   archive >> c.mc_moves_cputime;
+
+  archive >> c.cbmc_moves_statistics;
 
   archive >> c.averageRosenbluthWeights;
 

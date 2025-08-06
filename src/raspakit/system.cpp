@@ -2125,6 +2125,11 @@ std::string System::writeMCMoveStatistics() const
                      beta, imposedChemicalPotential, imposedFugacity));
     }
 
+    for(std::size_t i = 0; i != component.atoms.size(); ++i)
+    {
+      std::print(stream, "{}", component.cbmc_moves_statistics[i].writeMCMoveStatistics());
+    }
+
     ++componentId;
   }
 

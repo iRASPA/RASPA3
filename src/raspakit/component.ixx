@@ -59,6 +59,7 @@ import bend_torsion_potential;
 import internal_potentials;
 import connectivity_table;
 import json;
+import cbmc_move_statistics;
 
 /**
  * \brief Represents a component within the simulation system.
@@ -215,6 +216,8 @@ export struct Component
   MCMoveProbabilities mc_moves_probabilities;  ///< Move probabilities for Monte Carlo simulations.
   MCMoveStatistics mc_moves_statistics;
   MCMoveCpuTime mc_moves_cputime;  ///< CPU time statistics for Monte Carlo moves.
+
+  std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
   PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
 

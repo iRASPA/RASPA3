@@ -16,6 +16,7 @@ module;
 #include <thread>
 #include <type_traits>
 #include <vector>
+#include <print>
 #endif
 
 module cbmc_interactions_framework_molecule;

@@ -28,7 +28,7 @@ import interpolation_energy_grid;
 export namespace CBMC
 {
 [[nodiscard]] std::optional<ChainData> growFlexibleMoleculeSwapInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
@@ -40,7 +40,7 @@ export namespace CBMC
 namespace CBMC
 {
 [[nodiscard]] std::optional<ChainData> growFlexibleMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,

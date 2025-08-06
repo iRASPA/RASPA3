@@ -39,6 +39,69 @@ import van_der_waals_potential;
 import coulomb_potential;
 import running_energy;
 
+std::optional<BondPotential> Potentials::InternalPotentials::findBondPotential(std::size_t A, std::size_t B) const
+{
+  auto iterator = std::find_if(bonds.begin(), bonds.end(), 
+      [A, B](const BondPotential &bond) { return ((bond.identifiers[0] == A && bond.identifiers[1] == B) ||
+                                                  (bond.identifiers[0] == B && bond.identifiers[1] == A));});
+  if (iterator  != bonds.end()) return *iterator;
+  return std::nullopt;
+}
+
+RunningEnergy Potentials::InternalPotentials::calculateBondSmallMCEnergies(const std::vector<Atom> &atoms) const
+{
+  RunningEnergy energies;
+
+  for(const BondPotential &bond : bonds)
+  {
+    std::size_t A = bond.identifiers[0];
+    std::size_t B = bond.identifiers[1];
+    energies.bond += bond.calculateEnergy(atoms[A].position, atoms[B].position);
+  }
+
+  return energies;
+}
+
+RunningEnergy Potentials::InternalPotentials::calculateBendSmallMCEnergies(const std::vector<Atom> &atoms) const
+{
+  RunningEnergy energies;
+
+  for(const UreyBradleyPotential &ureyBradley : ureyBradleys)
+  {
+    std::size_t A = ureyBradley.identifiers[0];
+    std::size_t B = ureyBradley.identifiers[1];
+    energies.ureyBradley += ureyBradley.calculateEnergy(atoms[A].position, atoms[B].position);
+  }
+
+  for(const BendPotential &bend : bends)
+  {
+    std::size_t A = bend.identifiers[0];
+    std::size_t B = bend.identifiers[1];
+    std::size_t C = bend.identifiers[2];
+    energies.bend += bend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, std::nullopt);
+  }
+
+  for(const InversionBendPotential &inversionBend : inversionBends)
+  {
+    std::size_t A = inversionBend.identifiers[0];
+    std::size_t B = inversionBend.identifiers[1];
+    std::size_t C = inversionBend.identifiers[2];
+    std::size_t D = inversionBend.identifiers[3];
+    energies.inversionBend += inversionBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+  }
+
+  for(const OutOfPlaneBendPotential &outOfPlaneBend : outOfPlaneBends)
+  {
+    std::size_t A = outOfPlaneBend.identifiers[0];
+    std::size_t B = outOfPlaneBend.identifiers[1];
+    std::size_t C = outOfPlaneBend.identifiers[2];
+    std::size_t D = outOfPlaneBend.identifiers[3];
+    energies.outOfPlaneBend += outOfPlaneBend.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+  }
+
+  return energies;
+}
+
 RunningEnergy Potentials::InternalPotentials::computeInternalEnergies(const std::vector<Atom> &atoms) const
 {
   RunningEnergy energies;
@@ -162,6 +225,7 @@ RunningEnergy Potentials::InternalPotentials::computeInternalEnergies(const std:
   return energies;
 }
 
+
 // compute the internal interactions that affect laying out the 'beadsToBePlaced'.
 Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteractions(
     std::size_t numberOfBeads, const std::vector<std::size_t> &beadsAlreadyPlaced,
@@ -181,6 +245,22 @@ Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteracti
     boolToBePlaced[bead] = true;
     boolAlreadyPlacedToBePlaced[bead] = true;
   }
+
+  filteredPotentials.bonds.reserve(bonds.size());
+
+  /*
+  // guarantee that bond[i] corresponds to beadsToBePlaced[i]
+  for (std::size_t i = 0; i != beadsToBePlaced.size(); ++i)
+  {
+    std::size_t A = currentBead;
+    std::size_t B = beadsToBePlaced[i];
+    const BondPotential & bond = bonds[i];
+    if ((A == bond.identifiers[0] && B == bond.identifiers[1]) || (B == bond.identifiers[0] && A == bond.identifiers[1]))
+    {
+      filteredPotentials.bonds.push_back(bond);
+    }
+  }
+  */
 
   filteredPotentials.bonds.reserve(bonds.size());
   for (const BondPotential &bond : bonds)

@@ -165,6 +165,7 @@ export union double3x3
   static double3x3 buildRotationMatrixInverse(const simd_quatd& q);
   simd_quatd quaternion();
 
+
   inline double3x3 operator-() const { return double3x3(-this->v[0], -this->v[1], -this->v[2]); }
   inline bool operator==(const double3x3& b) const
   {
@@ -220,6 +221,28 @@ export union double3x3
 
     return *this;
   }
+
+  /*
+  void rotateAroundAxis(double3 v, std::vector<double3> &coordinates, double angle)
+  {
+    double c = std::cos(angle);
+    double w = 1.0 - c;
+    double s = std::sin(angle);
+
+    if( angle < 0.0) angle = -angle;
+
+    double3x3 rotation_matrix = double3x3{
+          double3{ v.x * v.x * w + c, v.x * v.y * w + v.z * s, v.x * v.z * w - v.y * s },
+          double3{ v.x * v.y * w - v.z * s, v.y * v.y * w + c, v.y * v.z * w + v.x * s },
+          double3{ v.x * v.z * w + v.y * s, v.y * v.z * w - v.x * s, v.z * v.z * w + c } 
+      };
+
+    for(double3 &coordinate : coordinates)
+    {
+      coordinate = rotation_matrix * coordinate;
+    }
+  }
+  */
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3x3& vec);

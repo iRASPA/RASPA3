@@ -44,17 +44,32 @@ export struct RandomNumber
   std::uniform_real_distribution<double> uniformDistribution;
   std::normal_distribution<double> normalDistribution;
 
-  double uniform()
+  inline double uniform()
   {
     ++count;
     return uniformDistribution(mt);
   }
 
-  double Gaussian()
+  inline std::size_t uniform_integer(std::size_t first, std::size_t last)
+  {
+    ++count;
+    std::uniform_int_distribution<std::size_t> distribution(first, last);
+    return distribution(mt);
+  }
+
+  inline double Gaussian()
   {
     ++count;
     return normalDistribution(mt);
   }
+
+  inline double Gaussian(double mean, double sigma)
+  {
+    ++count;
+    std::normal_distribution<double> normal_distribution{mean, sigma};
+    return normal_distribution(mt);
+  }
+
 
   std::size_t integer(std::size_t i, std::size_t j)
   {
@@ -87,6 +102,7 @@ export struct RandomNumber
   }
 
   double3 randomVectorOnUnitSphere();
+  double3 randomVectorOnCone(double3 v, double angle);
   double3x3 randomRotationMatrix();
   double3x3 randomRotationAroundX(double angle);
   double3x3 randomRotationAroundY(double angle);

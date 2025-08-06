@@ -19,6 +19,7 @@ import std;
 #endif
 
 import randomnumbers;
+import units;
 import component;
 import molecule;
 import atom;
@@ -46,7 +47,7 @@ import bond_potential;
 
 // atoms is a recentered copy of the molecule (recentered around the starting bead)
 [[nodiscard]] std::optional<ChainData> CBMC::growFlexibleMoleculeSwapInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
@@ -76,6 +77,7 @@ import bond_potential;
 
   // place the molecule centered around the first bead at 'firstBeadData->atom.position'
   std::vector<Atom> atoms = components[selectedComponent].atoms;
+  atoms[0] = firstBead;
   std::for_each(atoms.begin(), atoms.end(),
                 [&](Atom &atom)
                 {
@@ -100,7 +102,7 @@ import bond_potential;
 }
 
 [[nodiscard]] std::optional<ChainData> CBMC::growFlexibleMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
@@ -110,7 +112,8 @@ import bond_potential;
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions{};
-  std::vector<Atom> chain_atoms(numberOfBeads);
+  trialPositions.reserve(numberOfTrialDirections);
+  std::vector<Atom> chain_atoms(molecule.begin(), molecule.end());
 
   std::vector<std::size_t> beads_already_placed{ component.startingBead };
   const Atom first_bead = molecule[component.startingBead];
@@ -118,6 +121,15 @@ import bond_potential;
 
   double chain_rosen_bluth_weight = 1.0;
   RunningEnergy chain_external_energies{};
+
+  //for(std::size_t i = 0; i != molecule.size(); ++i)
+  //{
+  //  std::print("atoms: {}: {}\n", i, molecule[i]);
+  //}
+  //for(std::size_t i = 0; i != chain_atoms.size(); ++i)
+  //{
+  //  std::print("chain_atoms: {}: {}\n", i, chain_atoms[i]);
+  //}
 
   do
   {
@@ -138,10 +150,47 @@ import bond_potential;
 
       const BondPotential bond = internalPotentials.bonds.front();
 
-      trialPositions = generateTrialOrientationsSimpleSphere(random, beta,  first_bead, numberOfTrialDirections, bond);
+      Atom argument = chain_atoms[nextBeads[0]];
+      argument.position = first_bead.position;
+
+      trialPositions = generateTrialOrientationsSimpleSphere(random, beta,  argument, numberOfTrialDirections, bond);
+      //for(const std::vector<Atom> &t : trialPositions)
+      //{
+      //  for(const Atom &s : t)
+      //  {
+      //    std::print("trial_orientations sphere: {}\n", s);
+      //  }
+      //}
     }
     else
     {
+
+      std::vector<Atom> trial_orientations = generateTrialOrientationsMonteCarloScheme(random, beta, 
+                                                    component, chain_atoms, 
+                                                    previous_bead.value(), current_bead, nextBeads,
+                                                    numberOfTrialDirections, internalPotentials);
+
+      //for(const Atom &s : trial_orientations)
+      //{
+      //  std::print("trial_orientations: {}\n",s);
+      //}
+
+      // Rotate around to obtain the other trial-orientations
+      trialPositions = {};
+      double3 last_bond_vector = (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
+
+      for(std::size_t i = 0; i != numberOfTrialDirections; ++i)
+      {
+        double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+
+        // bond_vector.rotateAroundAxis(last_bond_vector, random_angle)
+        std::vector<Atom> rotated_atoms = trial_orientations;
+        std::for_each(rotated_atoms.begin(), rotated_atoms.end(), [&](Atom &atom)
+          {
+            atom.position = chain_atoms[current_bead].position + last_bond_vector.rotateAroundAxis(atom.position - chain_atoms[current_bead].position, random_angle);
+          });
+        trialPositions.push_back(rotated_atoms);
+      }
     }    
 
     // compute the external-energies for the next-beads
@@ -149,6 +198,7 @@ import bond_potential;
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
                           interpolationGrids, framework, frameworkAtoms, moleculeAtoms,
                           cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, -1);
+
 
     if (externalEnergies.empty()) return std::nullopt;
 
@@ -166,7 +216,7 @@ import bond_potential;
 
     if (rosen_bluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-    chain_rosen_bluth_weight *= rosen_bluth_weight;
+    chain_rosen_bluth_weight *= rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
 
     const std::vector<Atom> &selected_trial_atoms = externalEnergies[selected].first;
     chain_external_energies += externalEnergies[selected].second;
@@ -186,6 +236,21 @@ import bond_potential;
   // recompute all the internal interactions
   RunningEnergy internal_energies = component.internalPotentials.computeInternalEnergies(chain_atoms);
 
+  //for(std::size_t i = 0; i != chain_atoms.size(); ++i)
+  //{
+  //  std::print("chain_atoms: {}: {}\n", i, chain_atoms[i]);
+  //}
+  // std::print("\n");
+
+  //std::print("lengths: {} {}\n", (chain_atoms[1].position - chain_atoms[0].position).length(),
+  //                               (chain_atoms[2].position - chain_atoms[1].position).length());
+
+  //double check_angle = double3::angle(chain_atoms[0].position, chain_atoms[1].position, chain_atoms[2].position);
+  //std::print("Angle CHECK: {}\n", check_angle * Units::RadiansToDegrees);
+
+
+  //std::exit(0);
+
   return ChainData({}, chain_atoms,  chain_external_energies + internal_energies, 
-                   chain_rosen_bluth_weight / static_cast<double>(numberOfTrialDirections), 0.0);
+                   chain_rosen_bluth_weight, 0.0);
 }

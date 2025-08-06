@@ -33,7 +33,7 @@ export namespace CBMC
 {
 // insertion
 [[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,

@@ -138,10 +138,10 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       // ===============================================
       // p_0/k_B [K/Å^2]   force constant
       // p_1     [Å]       reference bond distance
-      ran1 = 1.0 / std::sqrt(beta * parameters[0]);
-      ran2 = 1.0 / (parameters[1] + 3.0 * ran1) * (parameters[1] + 3.0 * ran1);
-      do bond_length = parameters[1] + ran1 * random.Gaussian();
-      while ((random.uniform() > bond_length * bond_length * ran2) || (bond_length <= 0.0));
+      ran1 = std::sqrt(1.0 / (beta * parameters[0]));
+      ran2 = (parameters[1] + 3.0 * ran1) * (parameters[1] + 3.0 * ran1);
+      do bond_length = random.Gaussian(parameters[1], ran1);
+      while ((random.uniform() > bond_length * bond_length / ran2) || (bond_length <= 0.0));
       return bond_length;
     case BondType::CoreShellSpring:
       // 0.5 * p0 * SQR(r);

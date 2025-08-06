@@ -92,6 +92,18 @@ double3 RandomNumber::randomVectorOnUnitSphere()
   return double3(ran1 * ranh, ran2 * ranh, 1.0 - 2.0 * ransq);
 }
 
+// angle between 0..pi
+double3 RandomNumber::randomVectorOnCone(double3 v, double angle)
+{
+  double3 normalized_v = v.normalized();
+
+  double3 w = randomVectorOnUnitSphere();
+
+  w -= double3::dot(normalized_v, w) * normalized_v;
+
+  return (std::sin(angle) * w.normalized() + std::cos(angle) * normalized_v).normalized();
+}
+
 simd_quatd RandomNumber::randomSimdQuatd()
 {
   double s = 0.0;

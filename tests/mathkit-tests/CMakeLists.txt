@@ -1,5 +1,7 @@
 add_executable(unit_tests_mathkit
                double3x3.cpp
+               double3.cpp
+               random.cpp
                main.cpp)
 
 if (CONDA)
