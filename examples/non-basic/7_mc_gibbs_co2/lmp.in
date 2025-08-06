@@ -1,0 +1,22 @@
+units real
+atom_style full
+boundary p p p
+
+pair_style lj/cut/coul/cut 12.0
+
+read_data lammps/s1.data
+
+neighbor 2.0 bin
+neigh_modify delay 5 every 1
+
+velocity all create 300.0 12 dist gaussian
+group all type 1 2
+thermo 100
+thermo_style custom step temp etotal press
+
+dump xyz all xyz 100 out.xyz
+
+fix 1 all nvt temp 300.0 300.0 100.0
+
+timestep 0.1
+run 10000
