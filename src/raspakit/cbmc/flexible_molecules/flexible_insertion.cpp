@@ -123,15 +123,6 @@ import bond_potential;
   double chain_rosen_bluth_weight = 1.0;
   RunningEnergy chain_external_energies{};
 
-  // for(std::size_t i = 0; i != molecule.size(); ++i)
-  //{
-  //   std::print("atoms: {}: {}\n", i, molecule[i]);
-  // }
-  // for(std::size_t i = 0; i != chain_atoms.size(); ++i)
-  //{
-  //   std::print("chain_atoms: {}: {}\n", i, chain_atoms[i]);
-  // }
-
   do
   {
     auto [previous_bead, current_bead, nextBeads] = component.connectivityTable.nextBeads(beads_already_placed);
@@ -156,24 +147,12 @@ import bond_potential;
       argument.position = first_bead.position;
 
       trialPositions = generateTrialOrientationsSimpleSphere(random, beta, argument, numberOfTrialDirections, bond);
-      // for(const std::vector<Atom> &t : trialPositions)
-      //{
-      //   for(const Atom &s : t)
-      //   {
-      //     std::print("trial_orientations sphere: {}\n", s);
-      //   }
-      // }
     }
     else
     {
       std::vector<Atom> trial_orientations = generateTrialOrientationsMonteCarloScheme(
           random, beta, component, chain_atoms, previous_bead.value(), current_bead, nextBeads, numberOfTrialDirections,
           internalPotentials);
-
-      // for(const Atom &s : trial_orientations)
-      //{
-      //   std::print("trial_orientations: {}\n",s);
-      // }
 
       // Rotate around to obtain the other trial-orientations
       trialPositions = {};
@@ -184,7 +163,6 @@ import bond_potential;
       {
         double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
 
-        // bond_vector.rotateAroundAxis(last_bond_vector, random_angle)
         std::vector<Atom> rotated_atoms = trial_orientations;
         std::for_each(rotated_atoms.begin(), rotated_atoms.end(),
                       [&](Atom &atom)
@@ -237,20 +215,6 @@ import bond_potential;
 
   // recompute all the internal interactions
   RunningEnergy internal_energies = component.internalPotentials.computeInternalEnergies(chain_atoms);
-
-  // for(std::size_t i = 0; i != chain_atoms.size(); ++i)
-  //{
-  //   std::print("chain_atoms: {}: {}\n", i, chain_atoms[i]);
-  // }
-  //  std::print("\n");
-
-  // std::print("lengths: {} {}\n", (chain_atoms[1].position - chain_atoms[0].position).length(),
-  //                                (chain_atoms[2].position - chain_atoms[1].position).length());
-
-  // double check_angle = double3::angle(chain_atoms[0].position, chain_atoms[1].position, chain_atoms[2].position);
-  // std::print("Angle CHECK: {}\n", check_angle * Units::RadiansToDegrees);
-
-  // std::exit(0);
 
   return ChainData({}, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
 }

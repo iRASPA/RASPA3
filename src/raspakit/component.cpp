@@ -363,10 +363,12 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
     std::string typeString = parsed_data["Type"].get<std::string>();
     if (caseInSensStringCompare(typeString, "Flexible"))
     {
+      rigid = false;
       growType = GrowType::Flexible;
     }
     else if (caseInSensStringCompare(typeString, "Rigid"))
     {
+      rigid = true;
       growType = GrowType::Rigid;
     }
   }
@@ -860,12 +862,11 @@ std::pair<Molecule, std::vector<Atom>> Component::translate(const Molecule &mole
   }
   else
   {
-    std::transform(molecule_atoms.begin(), molecule_atoms.end(), trialAtoms.begin(),
-                   [&](Atom a)
-                   {
-                     a.position += displacement;
-                     return a;
-                   });
+    trialMolecule.centerOfMassPosition += displacement;
+    for(Atom &atom : trialAtoms)
+    {
+      atom.position += displacement;
+    }
   }
 
   return {trialMolecule, trialAtoms};
@@ -1020,7 +1021,6 @@ std::vector<BondPotential> Component::readBondPotentials(const ForceField &force
           // look for all the bonds
           for(const std::array<std::size_t, 2> found_bond : found_bonds)
           {
-            std::print("size: {}\n", atoms.size());
             if((atoms[found_bond[0]].type == type_A.value() && atoms[found_bond[1]].type == type_B.value()) ||
                (atoms[found_bond[0]].type == type_B.value() && atoms[found_bond[1]].type == type_A.value()))
             {
@@ -1061,7 +1061,6 @@ std::vector<BendPotential> Component::readBendPotentials(const ForceField &force
   std::vector<BendPotential> bend_potentials{};
 
   std::vector<std::array<std::size_t, 3>> found_bends = connectivityTable.findAllBends();
-  std::print("found_bends: {} {}\n", found_bends.size(), found_bends);
 
   if (parsed_data.contains("Bends"))
   {
@@ -1115,7 +1114,6 @@ std::vector<BendPotential> Component::readBendPotentials(const ForceField &force
           // look for all the bends
           for(const std::array<std::size_t, 3> found_bend : found_bends)
           {
-            std::print("size: {}\n", atoms.size());
             if((atoms[found_bend[0]].type == type_A.value() && atoms[found_bend[1]].type == type_B.value() && atoms[found_bend[2]].type == type_C.value()) ||
                (atoms[found_bend[0]].type == type_C.value() && atoms[found_bend[1]].type == type_B.value() && atoms[found_bend[2]].type == type_A.value()))
             {
@@ -1155,7 +1153,6 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(const ForceField 
   std::vector<TorsionPotential> torsion_potentials{};
 
   std::vector<std::array<std::size_t, 4>> found_torsions = connectivityTable.findAllTorsions();
-  std::print("found_torsions: {} {}\n", found_torsions.size(), found_torsions);
 
   if (parsed_data.contains("Torsions"))
   {
