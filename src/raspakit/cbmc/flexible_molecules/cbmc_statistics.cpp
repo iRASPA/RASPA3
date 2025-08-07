@@ -5,6 +5,7 @@ module;
 #include <numbers>
 #include <ostream>
 #include <print>
+#include <source_location>
 #include <sstream>
 #include <string>
 #endif
@@ -50,7 +51,6 @@ const std::string CBMCMoveStatistics::writeMCMoveStatistics() const
   return stream.str();
 }
 
-
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const CBMCMoveStatistics& p)
 {
   archive << p.versionNumber;
@@ -73,8 +73,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
   if (versionNumber > p.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'CBMCMoveProbabilitiesSystem' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(
+        std::format("Invalid version reading 'CBMCMoveProbabilitiesSystem' at line {} in file {}\n", location.line(),
+                    location.file_name()));
   }
 
   archive >> p.bondLengthChange;
@@ -92,5 +93,3 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, CBMCMoveStat
 
   return archive;
 }
-
-

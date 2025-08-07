@@ -2,6 +2,7 @@ module;
 
 #ifdef USE_LEGACY_HEADERS
 #include <string>
+#include <optional>
 #endif
 
 export module lammps_io;

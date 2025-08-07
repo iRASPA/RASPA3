@@ -1,7 +1,8 @@
 module;
 
 #ifdef USE_LEGACY_HEADERS
-#include <math>
+#include <iostream>
+#include <ostream>
 #include <print>
 #include <string>
 #include <vector>

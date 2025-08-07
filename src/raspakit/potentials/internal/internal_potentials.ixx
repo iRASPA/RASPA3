@@ -5,6 +5,7 @@ module;
 #include <cstddef>
 #include <fstream>
 #include <vector>
+#include <optional>
 #endif
 
 export module internal_potentials;
