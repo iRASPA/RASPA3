@@ -6,6 +6,7 @@ module;
 #include <fstream>
 #include <vector>
 #include <optional>
+#include <span>
 #endif
 
 export module internal_potentials;
@@ -56,14 +57,14 @@ struct InternalPotentials
 
   std::optional<BondPotential> findBondPotential(std::size_t A, std::size_t B) const;
 
-  RunningEnergy calculateBondSmallMCEnergies(const std::vector<Atom> &atoms) const;
-  RunningEnergy calculateBendSmallMCEnergies(const std::vector<Atom> &atoms) const;
+  RunningEnergy calculateBondSmallMCEnergies(const std::span<Atom> atoms) const;
+  RunningEnergy calculateBendSmallMCEnergies(const std::span<Atom> atoms) const;
 
-  RunningEnergy computeInternalEnergies(const std::vector<Atom> &atoms) const;
+  RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
   Potentials::InternalPotentials 
-    filteredInteractions(std::size_t numberOfBeads, const std::vector<std::size_t>& beadsAlreadyPlaced,
-                         const std::vector<std::size_t>& beadsToBePlaced) const;
+    filteredInteractions(std::size_t numberOfBeads, const std::span<std::size_t> beadsAlreadyPlaced,
+                         const std::span<std::size_t> beadsToBePlaced) const;
 
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::InternalPotentials& p);

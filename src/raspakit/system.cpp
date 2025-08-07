@@ -94,6 +94,7 @@ import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
 import interactions_ewald;
+import interactions_internal;
 import equation_of_states;
 import thermostat;
 import json;
@@ -277,21 +278,9 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
   translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
 
-  // set moleculesIds
-  std::size_t index = numberOfFrameworkAtoms;  // indexOfFirstMolecule(selectedComponent);
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
-    {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
-      {
-        atomPositions[index].moleculeId = static_cast<std::uint16_t>(i);
-        atomPositions[index].componentId = static_cast<std::uint8_t>(componentId);
-        ++index;
-      }
-    }
-  }
+  updateMoleculeAtomInformation();
 }
+
 
 /// Inserts a molecule into the vector of atoms.
 ///
@@ -334,19 +323,7 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
   }
 
-  std::size_t index = numberOfFrameworkAtoms;
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
-    {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
-      {
-        atomPositions[index].moleculeId = static_cast<std::uint16_t>(i);
-        atomPositions[index].componentId = static_cast<std::uint8_t>(componentId);
-        ++index;
-      }
-    }
-  }
+  updateMoleculeAtomInformation();
 }
 
 void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
@@ -385,19 +362,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
     totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
   }
 
-  std::size_t index = numberOfFrameworkAtoms;
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
-    {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
-      {
-        atomPositions[index].moleculeId = static_cast<std::uint16_t>(i);
-        atomPositions[index].componentId = static_cast<std::uint8_t>(componentId);
-        ++index;
-      }
-    }
-  }
+  updateMoleculeAtomInformation();
 }
 
 void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
@@ -433,17 +398,30 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
   rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;
 
-  std::size_t index = numberOfFrameworkAtoms;
+  updateMoleculeAtomInformation();
+}
+
+void System::updateMoleculeAtomInformation()
+{
+  std::size_t atom_index = numberOfFrameworkAtoms;
+  std::size_t molecule_index{};
+
   for (std::size_t componentId = 0; componentId < components.size(); componentId++)
   {
+    std::size_t numberOfAtoms = components[componentId].atoms.size();
+
     for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
     {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
+      moleculePositions[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
+      moleculePositions[molecule_index].numberOfAtoms = numberOfAtoms;
+
+      for (std::size_t j = 0; j < numberOfAtoms; ++j)
       {
-        atomPositions[index].moleculeId = static_cast<std::uint16_t>(i);
-        atomPositions[index].componentId = static_cast<std::uint8_t>(componentId);
-        ++index;
+        atomPositions[atom_index].moleculeId = static_cast<std::uint16_t>(i);
+        atomPositions[atom_index].componentId = static_cast<std::uint8_t>(componentId);
+        ++atom_index;
       }
+      ++molecule_index;
     }
   }
 }
@@ -1833,8 +1811,6 @@ void System::precomputeTotalGradients() noexcept
 
 RunningEnergy System::computeTotalEnergies() noexcept
 {
-  RunningEnergy runningEnergy{};
-
   if (fixedFrameworkStoredEik.empty())
   {
     precomputeTotalRigidEnergy();
@@ -1843,6 +1819,13 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
+  RunningEnergy runningIntraEnergy{};
+  for(const Component &component : components)
+  {
+    runningIntraEnergy += Interactions::computeIntraMolecularEnergy(component.internalPotentials,
+                                                               moleculePositions, moleculeAtomPositions);
+  }
+       
   if (forceField.computePolarization)
   {
     std::span<double3> moleculeElectricField = spanOfMoleculeElectricField();
@@ -1869,7 +1852,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy polarizationEnergy = computePolarizationEnergy();
 
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy + polarizationEnergy;
+           ewaldEnergy + polarizationEnergy + runningIntraEnergy;
   }
   else
   {
@@ -1888,7 +1871,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
         numberOfMoleculesPerComponent, moleculeAtomPositions);
 
     return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-           ewaldEnergy;
+           ewaldEnergy + runningIntraEnergy;
   }
 }
 

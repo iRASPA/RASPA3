@@ -396,6 +396,7 @@ export struct System
   void insertFractionalMolecule(std::size_t selectedComponent, const Molecule &molecule, std::vector<Atom> atoms,
                                 std::size_t moleculeId);
   void deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> atoms);
+  void updateMoleculeAtomInformation();
   void checkMoleculeIds();
 
   std::vector<Atom> randomConfiguration(RandomNumber &random, std::size_t selectedComponent,

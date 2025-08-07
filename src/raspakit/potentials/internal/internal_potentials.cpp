@@ -12,6 +12,7 @@ module;
 #include <print>
 #include <source_location>
 #include <vector>
+#include <span>
 #include <optional>
 #endif
 
@@ -48,7 +49,7 @@ std::optional<BondPotential> Potentials::InternalPotentials::findBondPotential(s
   return std::nullopt;
 }
 
-RunningEnergy Potentials::InternalPotentials::calculateBondSmallMCEnergies(const std::vector<Atom> &atoms) const
+RunningEnergy Potentials::InternalPotentials::calculateBondSmallMCEnergies(const std::span<Atom> atoms) const
 {
   RunningEnergy energies;
 
@@ -62,7 +63,7 @@ RunningEnergy Potentials::InternalPotentials::calculateBondSmallMCEnergies(const
   return energies;
 }
 
-RunningEnergy Potentials::InternalPotentials::calculateBendSmallMCEnergies(const std::vector<Atom> &atoms) const
+RunningEnergy Potentials::InternalPotentials::calculateBendSmallMCEnergies(const std::span<Atom> atoms) const
 {
   RunningEnergy energies;
 
@@ -102,7 +103,7 @@ RunningEnergy Potentials::InternalPotentials::calculateBendSmallMCEnergies(const
   return energies;
 }
 
-RunningEnergy Potentials::InternalPotentials::computeInternalEnergies(const std::vector<Atom> &atoms) const
+RunningEnergy Potentials::InternalPotentials::computeInternalEnergies(const std::span<const Atom> atoms) const
 {
   RunningEnergy energies;
 
@@ -228,8 +229,8 @@ RunningEnergy Potentials::InternalPotentials::computeInternalEnergies(const std:
 
 // compute the internal interactions that affect laying out the 'beadsToBePlaced'.
 Potentials::InternalPotentials Potentials::InternalPotentials::filteredInteractions(
-    std::size_t numberOfBeads, const std::vector<std::size_t> &beadsAlreadyPlaced,
-    const std::vector<std::size_t> &beadsToBePlaced) const
+    std::size_t numberOfBeads, const std::span<std::size_t> beadsAlreadyPlaced,
+    const std::span<std::size_t> beadsToBePlaced) const
 {
   Potentials::InternalPotentials filteredPotentials{};
   std::vector<bool> boolToBePlaced(numberOfBeads);

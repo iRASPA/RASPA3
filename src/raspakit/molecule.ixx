@@ -33,9 +33,13 @@ export struct Molecule
   simd_quatd orientationMomentum;  ///< The angular momentum of the molecule's orientation.
   simd_quatd orientationGradient;  ///< The gradient (torque) acting on the molecule's orientation.
   double mass;                     ///< Molecular mass
-  std::size_t componentId;         ///< Pointing to the index in the components list
-  std::size_t numberOfAtoms;       ///< Number of subatoms in this molecule
   double invMass;                  ///< 1/mass to save on computing (and set correct size)
+  double padding1;
+  double padding2;
+  std::size_t atomIndex;         ///< Pointing to the index in the list of atoms
+  std::size_t numberOfAtoms;     ///< Number of subatoms in this molecule
+  std::size_t componentId;       ///< Pointing to the index in the components list
+  std::size_t padding3;
 
   /**
    * \brief Default constructor for the Molecule struct.
@@ -70,9 +74,9 @@ export struct Molecule
         orientationMomentum(0.0, 0.0, 0.0, 0.0),
         orientationGradient(0.0, 0.0, 0.0, 0.0),
         mass(mass),
-        componentId(componentId),
+        invMass(1.0 / mass),
         numberOfAtoms(numberOfAtoms),
-        invMass(1 / mass) {};
+        componentId(componentId) {};
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &molecule);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &molecule);
@@ -88,8 +92,8 @@ export struct Molecule
   }
 };
 
-// should be 6 times double4 = 6x(8x4) = 6x32 = 192 bytes
-// static_assert(sizeof(Molecule) == 192, "struct Molecule size is not 192");
+// should be 8 times double4 = 8x(8x4) = 8x32 = 256 bytes
+ static_assert(sizeof(Molecule) == 256, "struct Molecule size is not 256");
 
 export void to_json(nlohmann::json &j, const Molecule &a)
 {
@@ -100,8 +104,9 @@ export void to_json(nlohmann::json &j, const Molecule &a)
                      {"orientationMomentum", a.orientationMomentum},
                      {"orientationGradient", a.orientationGradient},
                      {"mass", a.mass},
-                     {"componentId", a.componentId},
-                     {"numberOfAtoms", a.numberOfAtoms}};
+                     {"atomIndex", a.atomIndex},
+                     {"numberOfAtoms", a.numberOfAtoms},
+                     {"componentId", a.componentId}};
 }
 
 export void from_json(const nlohmann::json &j, Molecule &a)
@@ -113,6 +118,7 @@ export void from_json(const nlohmann::json &j, Molecule &a)
   j.at("orientationMomentum").get_to(a.orientationMomentum);
   j.at("orientationGradient").get_to(a.orientationGradient);
   j.at("mass").get_to(a.mass);
-  j.at("componentId").get_to(a.componentId);
+  j.at("atomIndex").get_to(a.atomIndex);
   j.at("numberOfAtoms").get_to(a.numberOfAtoms);
+  j.at("componentId").get_to(a.componentId);
 }

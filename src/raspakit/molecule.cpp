@@ -38,9 +38,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecu
   archive << atom.orientationMomentum;
   archive << atom.orientationGradient;
   archive << atom.mass;
-  archive << atom.componentId;
-  archive << atom.numberOfAtoms;
   archive << atom.invMass;
+  archive << atom.atomIndex;
+  archive << atom.numberOfAtoms;
+  archive << atom.componentId;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -58,9 +59,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Molecule &at
   archive >> atom.orientationMomentum;
   archive >> atom.orientationGradient;
   archive >> atom.mass;
-  archive >> atom.componentId;
-  archive >> atom.numberOfAtoms;
   archive >> atom.invMass;
+  archive >> atom.atomIndex;
+  archive >> atom.numberOfAtoms;
+  archive >> atom.componentId;
 
 #if DEBUG_ARCHIVE
   uint64_t magicNumber;

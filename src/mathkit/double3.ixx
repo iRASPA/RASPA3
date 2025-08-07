@@ -137,7 +137,7 @@ export union double3
       return w.normalized();
     }
 
-    std::size_t choise = std::distance(denominator.begin(), maximum);
+    auto choise = std::distance(denominator.begin(), maximum);
 
   
     switch(choise)
