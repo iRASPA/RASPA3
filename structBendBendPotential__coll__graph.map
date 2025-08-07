@@ -1,0 +1,15 @@
+<map id="BendBendPotential" name="BendBendPotential">
+<area shape="rect" id="Node000001" title="Represents a bend_bend potential between two particles." alt="" coords="935,109,1081,134"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="443,5,597,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="610,30,753,48,833,62,911,80,981,106,979,111,910,85,832,67,752,53,610,35"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="363,69,677,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="692,98,934,114,934,119,691,103"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="443,133,597,173"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="611,149,752,143,910,132,934,129,935,135,911,137,752,148,611,154"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="405,198,635,253"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="649,214,776,197,844,183,910,165,950,150,984,132,987,136,952,154,912,171,845,188,777,202,649,219"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="193,213,280,238"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="293,223,404,223,404,228,293,228"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="5,205,144,245"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="157,223,193,223,193,228,157,228"/>
+</map>

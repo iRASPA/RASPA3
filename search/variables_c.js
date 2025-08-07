@@ -1,23 +1,11 @@
 var searchData=
 [
-  ['name_0',['name',['../structPseudoAtom.html#ad0a8f413b0c7a7a7ac188952671b9dda',1,'PseudoAtom::name'],['../structComponent.html#a46343549452bda5ee9752f7a9bc15efb',1,'Component::name'],['../structFramework.html#adcfb284e8bd9884396ab0f5c5b6fe961',1,'Framework::name']]],
-  ['netcharge_1',['netcharge',['../structComponent.html#a7efedb423298f60a893d875fb348de9d',1,'Component::netCharge'],['../structFramework.html#a97d7b7ec295dc91e85237f233d5960e8',1,'Framework::netCharge']]],
-  ['nextbin_2',['nextBin',['../structBlockErrorEstimation.html#a47f25c1235ea4b619869b44f27d210ae',1,'BlockErrorEstimation']]],
-  ['nosehooverenergy_3',['NoseHooverEnergy',['../structRunningEnergy.html#acee34d61a746c2f818d668f815244bbb',1,'RunningEnergy']]],
-  ['numberofatoms_4',['numberOfAtoms',['../structMolecule.html#ae8b3a67381f67906f9212c6545ca8848',1,'Molecule']]],
-  ['numberofbins_5',['numberOfBins',['../structBlockErrorEstimation.html#a63d2f524ae4f6156cb8a0d877217331a',1,'BlockErrorEstimation']]],
-  ['numberofblocks_6',['numberOfBlocks',['../structInputReader.html#afddc2d0f51debd3f715d416b1794907f',1,'InputReader']]],
-  ['numberofbondparameters_7',['numberOfBondParameters',['../structBondPotential.html#a7d7e7d5e44195189dd382463bc697a12',1,'BondPotential']]],
-  ['numberofcycles_8',['numberofcycles',['../structInputReader.html#a975b0daa6ecdb6923d1be47cc4518756',1,'InputReader::numberOfCycles'],['../structMolecularDynamics.html#ab02ca7771c3e0215644c31726540934b',1,'MolecularDynamics::numberOfCycles'],['../structMonteCarlo.html#a178b590fae507edeabe60af509bb156b',1,'MonteCarlo::numberOfCycles'],['../structMonteCarloTransitionMatrix.html#a6b7e4c75c95adcf21d306e877f045c2e',1,'MonteCarloTransitionMatrix::numberOfCycles']]],
-  ['numberofequilibrationcycles_9',['numberofequilibrationcycles',['../structMonteCarloTransitionMatrix.html#aa56c53f50c7bffd1d1a79fcbc4a44671',1,'MonteCarloTransitionMatrix::numberOfEquilibrationCycles'],['../structMonteCarlo.html#adc491cffb0ab4417a521f7f0777bb9d5',1,'MonteCarlo::numberOfEquilibrationCycles'],['../structInputReader.html#a48ee9c566413b9f4e7498679334acad3',1,'InputReader::numberOfEquilibrationCycles'],['../structMolecularDynamics.html#afe01474a2c4b072d7a4f6c13a1f959e3',1,'MolecularDynamics::numberOfEquilibrationCycles']]],
-  ['numberofinitializationcycles_10',['numberofinitializationcycles',['../structInputReader.html#a1ac269a7c1357a3adc9704054bf5f5ac',1,'InputReader::numberOfInitializationCycles'],['../structMolecularDynamics.html#a3ffaebbdcf371d103cf06fa9dd320594',1,'MolecularDynamics::numberOfInitializationCycles'],['../structMonteCarlo.html#a10cc1512737750edcef67257fa70a101',1,'MonteCarlo::numberOfInitializationCycles'],['../structMonteCarloTransitionMatrix.html#a13679c0e43c93745eec97a7e5b348b09',1,'MonteCarloTransitionMatrix::numberOfInitializationCycles']]],
-  ['numberofpseudoatoms_11',['numberOfPseudoAtoms',['../structForceField.html#ad6ee41cd15c3b6475fc065775777a97c',1,'ForceField']]],
-  ['numberofrespasteps_12',['numberOfRespaSteps',['../structThermostat.html#a2263f489c13902dd7c65cd0400c46d81',1,'Thermostat']]],
-  ['numberofsamples_13',['numberOfSamples',['../structBlockErrorEstimation.html#a5f61f16120a929c5609326aa4bd4f8c6',1,'BlockErrorEstimation']]],
-  ['numberofsteps_14',['numberofsteps',['../structMolecularDynamics.html#a11e28f5a0cb473275eb0a2b616e3cba1',1,'MolecularDynamics::numberOfSteps'],['../structTransitionMatrix.html#a05911234737520f785c23585e3dd3e96',1,'TransitionMatrix::numberOfSteps'],['../structMonteCarloTransitionMatrix.html#a27c8a95992fb31656f7ca3b84cf9931e',1,'MonteCarloTransitionMatrix::numberOfSteps'],['../structMonteCarlo.html#ae4efdabf2af7c9324898dc2dafd75dd9',1,'MonteCarlo::numberOfSteps']]],
-  ['numberofthreads_15',['numberOfThreads',['../structInputReader.html#ad44d9babc90dfef405b369006de39b20',1,'InputReader']]],
-  ['numberofunitcells_16',['numberOfUnitCells',['../structFramework.html#a53e8c1d1aa3ddd74dedced41b1a0cba9',1,'Framework']]],
-  ['numberofupdates_17',['numberOfUpdates',['../structTransitionMatrix.html#a41d6324e322702831cf5ec0315008b56',1,'TransitionMatrix']]],
-  ['numberofwavevectors_18',['numberOfWaveVectors',['../structForceField.html#a66a7125303a6c5153c93622b3c6bbe90',1,'ForceField']]],
-  ['numberofyoshidasuzukisteps_19',['numberOfYoshidaSuzukiSteps',['../structThermostat.html#a6ac3558389551feb7adcad4baa5d572f',1,'Thermostat']]]
+  ['lambda_0',['lambda',['../structReaction.html#a727b053fd8f9e6674d3125ad9b4c3c1c',1,'Reaction']]],
+  ['lambdagc_1',['lambdaGC',['../structComponent.html#a87d07f60122d516125088573d89ec511',1,'Component']]],
+  ['lambdagibbs_2',['lambdaGibbs',['../structComponent.html#a66b253ffc96d0e71f8bbf7af1c120722',1,'Component']]],
+  ['largestcharge_3',['largestCharge',['../structFramework.html#ab463f616cd4c3b81e29dd3b826de2c94',1,'Framework']]],
+  ['lengthconversionfactor_4',['LengthConversionFactor',['../structUnits.html#a170b0afd1a21b1c6a8c852e58d584a4b',1,'Units']]],
+  ['lengthunit_5',['LengthUnit',['../structUnits.html#ab45137ed8e70d17a235c28e54b9fae8a',1,'Units']]],
+  ['lnpartitionfunction_6',['lnPartitionFunction',['../structComponent.html#a7fe47bf4a440c2c8bd04bd20c04ba686',1,'Component']]],
+  ['lnpi_7',['lnpi',['../structTransitionMatrix.html#a9d052c97d0963b37ffdc3a0f4605405e',1,'TransitionMatrix']]]
 ];

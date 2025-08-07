@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -136,8 +136,8 @@ Collaboration diagram for ForceField:</div>
 <area shape="poly" title=" " alt="" coords="294,164,304,165,417,174,524,177,524,183,417,179,304,171,293,169"/>
 <area shape="rect" title=" " alt="" coords="5,137,144,177"/>
 <area shape="poly" title=" " alt="" coords="157,155,193,155,193,160,157,160"/>
-<area shape="rect" title=" " alt="" coords="827,230,986,255"/>
-<area shape="poly" title=" " alt="" coords="1000,249,1048,249,1100,244,1152,232,1200,212,1220,197,1237,178,1260,141,1264,144,1241,181,1224,201,1203,217,1153,237,1101,249,1048,254,1000,255"/>
+<area shape="rect" title=" " alt="" coords="813,230,1000,255"/>
+<area shape="poly" title=" " alt="" coords="1013,250,1059,248,1108,243,1155,231,1200,212,1220,197,1237,178,1260,141,1264,144,1241,181,1224,201,1203,217,1157,236,1109,248,1060,254,1014,255"/>
 <area shape="poly" title=" " alt="" coords="783,178,899,174,1020,165,1131,151,1225,135,1226,140,1132,156,1020,171,899,179,783,183"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
@@ -162,7 +162,7 @@ Public Types</h2></td></tr>
  }</td></tr>
 <tr class="memdesc:a3414738e7f6343c7b8993b7af19fe878"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enumeration of mixing rules for cross interactions.  <a href="structForceField.html#a3414738e7f6343c7b8993b7af19fe878">More...</a><br /></td></tr>
 <tr class="separator:a3414738e7f6343c7b8993b7af19fe878"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a09dc70f7a26e4c747eaaf56931432586" id="r_a09dc70f7a26e4c747eaaf56931432586"><td class="memItemLeft" align="right" valign="top"><a id="a09dc70f7a26e4c747eaaf56931432586" name="a09dc70f7a26e4c747eaaf56931432586"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>PotentialEnergySurfaceType</b> : size_t { <br />
+<tr class="memitem:a5769c5da4bd71f318edc7a1cbb9d10d3" id="r_a5769c5da4bd71f318edc7a1cbb9d10d3"><td class="memItemLeft" align="right" valign="top"><a id="a5769c5da4bd71f318edc7a1cbb9d10d3" name="a5769c5da4bd71f318edc7a1cbb9d10d3"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>PotentialEnergySurfaceType</b> : std::size_t { <br />
 &#160;&#160;<b>None</b> = 0
 , <b>SecondOrderPolynomialTestFunction</b> = 1
 , <b>ThirdOrderPolynomialTestFunction</b> = 2
@@ -177,17 +177,18 @@ Public Types</h2></td></tr>
 , <b>GonzalezSchlegel</b> = 9
 <br />
  }</td></tr>
-<tr class="separator:a09dc70f7a26e4c747eaaf56931432586"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a91943bbc83e47fae4a4b0ab6b3f96f53" id="r_a91943bbc83e47fae4a4b0ab6b3f96f53"><td class="memItemLeft" align="right" valign="top"><a id="a91943bbc83e47fae4a4b0ab6b3f96f53" name="a91943bbc83e47fae4a4b0ab6b3f96f53"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationGridType</b> : size_t { <b>LennardJones</b> = 0
+<tr class="separator:a5769c5da4bd71f318edc7a1cbb9d10d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3cb180245ed90eb0e62518225fd8e1a" id="r_ae3cb180245ed90eb0e62518225fd8e1a"><td class="memItemLeft" align="right" valign="top"><a id="ae3cb180245ed90eb0e62518225fd8e1a" name="ae3cb180245ed90eb0e62518225fd8e1a"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationGridType</b> : std::size_t { <b>LennardJones</b> = 0
 , <b>LennardJonesRepulsion</b> = 1
 , <b>LennardJonesAttraction</b> = 2
 , <b>EwaldReal</b> = 3
  }</td></tr>
-<tr class="separator:a91943bbc83e47fae4a4b0ab6b3f96f53"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab8646bef6e1054792a53251540317f98" id="r_ab8646bef6e1054792a53251540317f98"><td class="memItemLeft" align="right" valign="top"><a id="ab8646bef6e1054792a53251540317f98" name="ab8646bef6e1054792a53251540317f98"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationScheme</b> : size_t { <b>Tricubic</b> = 8
+<tr class="separator:ae3cb180245ed90eb0e62518225fd8e1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abbeb11a6c81b154f1937a88a88dd2d57" id="r_abbeb11a6c81b154f1937a88a88dd2d57"><td class="memItemLeft" align="right" valign="top"><a id="abbeb11a6c81b154f1937a88a88dd2d57" name="abbeb11a6c81b154f1937a88a88dd2d57"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationScheme</b> : std::size_t { <b>Polynomial</b> = 1
+, <b>Tricubic</b> = 8
 , <b>Triquintic</b> = 27
  }</td></tr>
-<tr class="separator:ab8646bef6e1054792a53251540317f98"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:abbeb11a6c81b154f1937a88a88dd2d57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -201,24 +202,24 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ac1e0dcbec80868fc31381a251e0b66bd" id="r_ac1e0dcbec80868fc31381a251e0b66bd"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#ac1e0dcbec80868fc31381a251e0b66bd">ForceField</a> (std::string filePath) noexcept(false)</td></tr>
 <tr class="memdesc:ac1e0dcbec80868fc31381a251e0b66bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structForceField.html" title="Represents the force field used in simulations.">ForceField</a> by reading parameters from a file.  <br /></td></tr>
 <tr class="separator:ac1e0dcbec80868fc31381a251e0b66bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ec1ffa6e33eb25d50a8ef25b108157b" id="r_a8ec1ffa6e33eb25d50a8ef25b108157b"><td class="memItemLeft" align="right" valign="top"><a id="a8ec1ffa6e33eb25d50a8ef25b108157b" name="a8ec1ffa6e33eb25d50a8ef25b108157b"></a>
-<a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator()</b> (size_t row, size_t col)</td></tr>
-<tr class="separator:a8ec1ffa6e33eb25d50a8ef25b108157b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad3ddfd59ffdf7f1b2990ecbf53187583" id="r_ad3ddfd59ffdf7f1b2990ecbf53187583"><td class="memItemLeft" align="right" valign="top"><a id="ad3ddfd59ffdf7f1b2990ecbf53187583" name="ad3ddfd59ffdf7f1b2990ecbf53187583"></a>
-const <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator[]</b> (size_t row) const</td></tr>
-<tr class="separator:ad3ddfd59ffdf7f1b2990ecbf53187583"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84c05df52dc89b5536fd86e36b9394e7" id="r_a84c05df52dc89b5536fd86e36b9394e7"><td class="memItemLeft" align="right" valign="top"><a id="a84c05df52dc89b5536fd86e36b9394e7" name="a84c05df52dc89b5536fd86e36b9394e7"></a>
-const <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator()</b> (size_t row, size_t col) const</td></tr>
-<tr class="separator:a84c05df52dc89b5536fd86e36b9394e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99fe4e040c0e915124f4dc3a78fa1fa4" id="r_a99fe4e040c0e915124f4dc3a78fa1fa4"><td class="memItemLeft" align="right" valign="top"><a id="a99fe4e040c0e915124f4dc3a78fa1fa4" name="a99fe4e040c0e915124f4dc3a78fa1fa4"></a>
+<a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator()</b> (std::size_t row, std::size_t col)</td></tr>
+<tr class="separator:a99fe4e040c0e915124f4dc3a78fa1fa4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a434466af6d937c1bf73a0c3247a3db5b" id="r_a434466af6d937c1bf73a0c3247a3db5b"><td class="memItemLeft" align="right" valign="top"><a id="a434466af6d937c1bf73a0c3247a3db5b" name="a434466af6d937c1bf73a0c3247a3db5b"></a>
+const <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator[]</b> (std::size_t row) const</td></tr>
+<tr class="separator:a434466af6d937c1bf73a0c3247a3db5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab621642fa423b77652b31eac4e979455" id="r_ab621642fa423b77652b31eac4e979455"><td class="memItemLeft" align="right" valign="top"><a id="ab621642fa423b77652b31eac4e979455" name="ab621642fa423b77652b31eac4e979455"></a>
+const <a class="el" href="structVDWParameters.html">VDWParameters</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><b>operator()</b> (std::size_t row, std::size_t col) const</td></tr>
+<tr class="separator:ab621642fa423b77652b31eac4e979455"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9f39da61c9ce2d9540ecb1fce446919e" id="r_a9f39da61c9ce2d9540ecb1fce446919e"><td class="memItemLeft" align="right" valign="top"><a id="a9f39da61c9ce2d9540ecb1fce446919e" name="a9f39da61c9ce2d9540ecb1fce446919e"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;other) const</td></tr>
 <tr class="separator:a9f39da61c9ce2d9540ecb1fce446919e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa0af00d9d8d608f71348e014c15d6f05" id="r_aa0af00d9d8d608f71348e014c15d6f05"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#aa0af00d9d8d608f71348e014c15d6f05">applyMixingRule</a> ()</td></tr>
 <tr class="memdesc:aa0af00d9d8d608f71348e014c15d6f05"><td class="mdescLeft">&#160;</td><td class="mdescRight">Applies the mixing rule to compute cross-interaction parameters.  <br /></td></tr>
 <tr class="separator:aa0af00d9d8d608f71348e014c15d6f05"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a22d790e785d4310f5346b1373b3374b8" id="r_a22d790e785d4310f5346b1373b3374b8"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a22d790e785d4310f5346b1373b3374b8">cutOffVDW</a> (size_t i, size_t j) const</td></tr>
-<tr class="memdesc:a22d790e785d4310f5346b1373b3374b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the cut-off distance for van der Waals interactions between two pseudo-atoms.  <br /></td></tr>
-<tr class="separator:a22d790e785d4310f5346b1373b3374b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a64aabc979995aee1d904cc9d98e59c8f" id="r_a64aabc979995aee1d904cc9d98e59c8f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a64aabc979995aee1d904cc9d98e59c8f">cutOffVDW</a> (std::size_t i, std::size_t j) const</td></tr>
+<tr class="memdesc:a64aabc979995aee1d904cc9d98e59c8f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the cut-off distance for van der Waals interactions between two pseudo-atoms.  <br /></td></tr>
+<tr class="separator:a64aabc979995aee1d904cc9d98e59c8f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a025b3e42cf2c696c438b4d04aa302614" id="r_a025b3e42cf2c696c438b4d04aa302614"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a025b3e42cf2c696c438b4d04aa302614">preComputePotentialShift</a> ()</td></tr>
 <tr class="memdesc:a025b3e42cf2c696c438b4d04aa302614"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pre-computes the potential shift for interactions.  <br /></td></tr>
 <tr class="separator:a025b3e42cf2c696c438b4d04aa302614"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -240,9 +241,9 @@ std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printCutOffAut
 <tr class="memitem:adb501d2e5648589aca8d3ff046479552" id="r_adb501d2e5648589aca8d3ff046479552"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#adb501d2e5648589aca8d3ff046479552">jsonForceFieldStatus</a> () const</td></tr>
 <tr class="memdesc:adb501d2e5648589aca8d3ff046479552"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a JSON representation of the force field status.  <br /></td></tr>
 <tr class="separator:adb501d2e5648589aca8d3ff046479552"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab2359c2a131107e08535ad86c3e121ff" id="r_ab2359c2a131107e08535ad86c3e121ff"><td class="memItemLeft" align="right" valign="top">std::optional&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#ab2359c2a131107e08535ad86c3e121ff">findPseudoAtom</a> (const std::string &amp;name) const</td></tr>
-<tr class="memdesc:ab2359c2a131107e08535ad86c3e121ff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the index of a pseudo-atom by name.  <br /></td></tr>
-<tr class="separator:ab2359c2a131107e08535ad86c3e121ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a324aa1dee7ffd45d7a6188ee32eaab67" id="r_a324aa1dee7ffd45d7a6188ee32eaab67"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a324aa1dee7ffd45d7a6188ee32eaab67">findPseudoAtom</a> (const std::string &amp;name) const</td></tr>
+<tr class="memdesc:a324aa1dee7ffd45d7a6188ee32eaab67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the index of a pseudo-atom by name.  <br /></td></tr>
+<tr class="separator:a324aa1dee7ffd45d7a6188ee32eaab67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af431507e3f22b5e17a16fef89425e1af" id="r_af431507e3f22b5e17a16fef89425e1af"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#af431507e3f22b5e17a16fef89425e1af">initializeEwaldParameters</a> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox)</td></tr>
 <tr class="memdesc:af431507e3f22b5e17a16fef89425e1af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the Ewald parameters based on the simulation box.  <br /></td></tr>
 <tr class="separator:af431507e3f22b5e17a16fef89425e1af"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -261,16 +262,16 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:adfc39841ad37316c4665023d44180ce6" id="r_adfc39841ad37316c4665023d44180ce6"><td class="memItemLeft" align="right" valign="top">static std::optional&lt; <a class="el" href="structForceField.html">ForceField</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#adfc39841ad37316c4665023d44180ce6">readForceField</a> (std::optional&lt; std::string &gt; directoryName, std::string forceFieldFileName) noexcept(false)</td></tr>
 <tr class="memdesc:adfc39841ad37316c4665023d44180ce6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads a <a class="el" href="structForceField.html" title="Represents the force field used in simulations.">ForceField</a> from a file.  <br /></td></tr>
 <tr class="separator:adfc39841ad37316c4665023d44180ce6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a051b6516d810689b94db059b0bde094e" id="r_a051b6516d810689b94db059b0bde094e"><td class="memItemLeft" align="right" valign="top">static std::optional&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a051b6516d810689b94db059b0bde094e">findPseudoAtom</a> (const std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt; <a class="el" href="structForceField.html#aba31b1a2878451120cd0812ae8e8642f">pseudoAtoms</a>, const std::string &amp;name)</td></tr>
-<tr class="memdesc:a051b6516d810689b94db059b0bde094e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the index of a pseudo-atom by name in a given list.  <br /></td></tr>
-<tr class="separator:a051b6516d810689b94db059b0bde094e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac21ee3abedbcf19043b71662487aee64" id="r_ac21ee3abedbcf19043b71662487aee64"><td class="memItemLeft" align="right" valign="top">static std::optional&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#ac21ee3abedbcf19043b71662487aee64">findPseudoAtom</a> (const std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt; <a class="el" href="structForceField.html#aba31b1a2878451120cd0812ae8e8642f">pseudoAtoms</a>, const std::string &amp;name)</td></tr>
+<tr class="memdesc:ac21ee3abedbcf19043b71662487aee64"><td class="mdescLeft">&#160;</td><td class="mdescRight">Finds the index of a pseudo-atom by name in a given list.  <br /></td></tr>
+<tr class="separator:ac21ee3abedbcf19043b71662487aee64"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a9561bb928d20748c99dc08705ae67bd8" id="r_a9561bb928d20748c99dc08705ae67bd8"><td class="memItemLeft" align="right" valign="top"><a id="a9561bb928d20748c99dc08705ae67bd8" name="a9561bb928d20748c99dc08705ae67bd8"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="memdesc:a9561bb928d20748c99dc08705ae67bd8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number of the force field format. <br /></td></tr>
-<tr class="separator:a9561bb928d20748c99dc08705ae67bd8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0d40c7190dcc5a5fe363e243e835d7cb" id="r_a0d40c7190dcc5a5fe363e243e835d7cb"><td class="memItemLeft" align="right" valign="top"><a id="a0d40c7190dcc5a5fe363e243e835d7cb" name="a0d40c7190dcc5a5fe363e243e835d7cb"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:a0d40c7190dcc5a5fe363e243e835d7cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number of the force field format. <br /></td></tr>
+<tr class="separator:a0d40c7190dcc5a5fe363e243e835d7cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b0fa756c561c38d8f5e4cf978117893" id="r_a1b0fa756c561c38d8f5e4cf978117893"><td class="memItemLeft" align="right" valign="top"><a id="a1b0fa756c561c38d8f5e4cf978117893" name="a1b0fa756c561c38d8f5e4cf978117893"></a>
 std::vector&lt; <a class="el" href="structVDWParameters.html">VDWParameters</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b> {}</td></tr>
 <tr class="memdesc:a1b0fa756c561c38d8f5e4cf978117893"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interaction parameters between pseudo-atoms; size is numberOfPseudoAtoms squared. <br /></td></tr>
@@ -312,10 +313,10 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>cutOffCoulomb</b> {
 double&#160;</td><td class="memItemRight" valign="bottom"><b>dualCutOff</b> {6.0}</td></tr>
 <tr class="memdesc:a4ffd894dc7449212b86e896da7420e5e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inner cut-off distance when using dual cut-off scheme. <br /></td></tr>
 <tr class="separator:a4ffd894dc7449212b86e896da7420e5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6ee41cd15c3b6475fc065775777a97c" id="r_ad6ee41cd15c3b6475fc065775777a97c"><td class="memItemLeft" align="right" valign="top"><a id="ad6ee41cd15c3b6475fc065775777a97c" name="ad6ee41cd15c3b6475fc065775777a97c"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtoms</b> {0}</td></tr>
-<tr class="memdesc:ad6ee41cd15c3b6475fc065775777a97c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of pseudo-atoms defined in the force field. <br /></td></tr>
-<tr class="separator:ad6ee41cd15c3b6475fc065775777a97c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8317673d0c48fe9250792b7a46d3f0b7" id="r_a8317673d0c48fe9250792b7a46d3f0b7"><td class="memItemLeft" align="right" valign="top"><a id="a8317673d0c48fe9250792b7a46d3f0b7" name="a8317673d0c48fe9250792b7a46d3f0b7"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtoms</b> {0}</td></tr>
+<tr class="memdesc:a8317673d0c48fe9250792b7a46d3f0b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of pseudo-atoms defined in the force field. <br /></td></tr>
+<tr class="separator:a8317673d0c48fe9250792b7a46d3f0b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba31b1a2878451120cd0812ae8e8642f" id="r_aba31b1a2878451120cd0812ae8e8642f"><td class="memItemLeft" align="right" valign="top"><a id="aba31b1a2878451120cd0812ae8e8642f" name="aba31b1a2878451120cd0812ae8e8642f"></a>
 std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pseudoAtoms</b> {}</td></tr>
 <tr class="memdesc:aba31b1a2878451120cd0812ae8e8642f"><td class="mdescLeft">&#160;</td><td class="mdescRight">List of pseudo-atoms in the force field. <br /></td></tr>
@@ -340,9 +341,9 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>EwaldAlpha</b> {0.2
 int3&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfWaveVectors</b> {8, 8, 8}</td></tr>
 <tr class="memdesc:a66a7125303a6c5153c93622b3c6bbe90"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of wave vectors in each direction for Ewald summation. <br /></td></tr>
 <tr class="separator:a66a7125303a6c5153c93622b3c6bbe90"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acec606be6cdfa734ad026ba9a23ec2ba" id="r_acec606be6cdfa734ad026ba9a23ec2ba"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#acec606be6cdfa734ad026ba9a23ec2ba">reciprocalIntegerCutOffSquared</a></td></tr>
-<tr class="memdesc:acec606be6cdfa734ad026ba9a23ec2ba"><td class="mdescLeft">&#160;</td><td class="mdescRight">Squared integer cut-off in reciprocal space.  <br /></td></tr>
-<tr class="separator:acec606be6cdfa734ad026ba9a23ec2ba"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40d3d045bc2d53dc0a54b3e15fd45906" id="r_a40d3d045bc2d53dc0a54b3e15fd45906"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#a40d3d045bc2d53dc0a54b3e15fd45906">reciprocalIntegerCutOffSquared</a></td></tr>
+<tr class="memdesc:a40d3d045bc2d53dc0a54b3e15fd45906"><td class="mdescLeft">&#160;</td><td class="mdescRight">Squared integer cut-off in reciprocal space.  <br /></td></tr>
+<tr class="separator:a40d3d045bc2d53dc0a54b3e15fd45906"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae3fbad7d30fb83e67871d2289b152aa1" id="r_ae3fbad7d30fb83e67871d2289b152aa1"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structForceField.html#ae3fbad7d30fb83e67871d2289b152aa1">reciprocalCutOffSquared</a></td></tr>
 <tr class="memdesc:ae3fbad7d30fb83e67871d2289b152aa1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Squared cut-off distance in reciprocal space.  <br /></td></tr>
 <tr class="separator:ae3fbad7d30fb83e67871d2289b152aa1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -391,9 +392,9 @@ PotentialEnergySurfaceType&#160;</td><td class="memItemRight" valign="bottom"><b
 <tr class="memitem:a586c87a00e9ca7b2adc26ceb27c5c0e4" id="r_a586c87a00e9ca7b2adc26ceb27c5c0e4"><td class="memItemLeft" align="right" valign="top"><a id="a586c87a00e9ca7b2adc26ceb27c5c0e4" name="a586c87a00e9ca7b2adc26ceb27c5c0e4"></a>
 double3&#160;</td><td class="memItemRight" valign="bottom"><b>potentialEnergySurfaceOrigin</b> {0.0, 0.0, 0.0}</td></tr>
 <tr class="separator:a586c87a00e9ca7b2adc26ceb27c5c0e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:add6b0ad2c09ec8490a527c869ab50076" id="r_add6b0ad2c09ec8490a527c869ab50076"><td class="memItemLeft" align="right" valign="top"><a id="add6b0ad2c09ec8490a527c869ab50076" name="add6b0ad2c09ec8490a527c869ab50076"></a>
-std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>gridPseudoAtomIndices</b></td></tr>
-<tr class="separator:add6b0ad2c09ec8490a527c869ab50076"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad810e87869d725c3e6296c096d69cea5" id="r_ad810e87869d725c3e6296c096d69cea5"><td class="memItemLeft" align="right" valign="top"><a id="ad810e87869d725c3e6296c096d69cea5" name="ad810e87869d725c3e6296c096d69cea5"></a>
+std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>gridPseudoAtomIndices</b></td></tr>
+<tr class="separator:ad810e87869d725c3e6296c096d69cea5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aafe4d924405f6b367c854afc9b73313d" id="r_aafe4d924405f6b367c854afc9b73313d"><td class="memItemLeft" align="right" valign="top"><a id="aafe4d924405f6b367c854afc9b73313d" name="aafe4d924405f6b367c854afc9b73313d"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>spacingVDWGrid</b> {0.15}</td></tr>
 <tr class="separator:aafe4d924405f6b367c854afc9b73313d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -406,11 +407,14 @@ std::optional&lt; int3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><
 <tr class="memitem:ab05e244b92747828144979a804450f70" id="r_ab05e244b92747828144979a804450f70"><td class="memItemLeft" align="right" valign="top"><a id="ab05e244b92747828144979a804450f70" name="ab05e244b92747828144979a804450f70"></a>
 std::optional&lt; int3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCoulombGridPoints</b> {}</td></tr>
 <tr class="separator:ab05e244b92747828144979a804450f70"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a347541dbafe441b4ccb289b661cf10fc" id="r_a347541dbafe441b4ccb289b661cf10fc"><td class="memItemLeft" align="right" valign="top"><a id="a347541dbafe441b4ccb289b661cf10fc" name="a347541dbafe441b4ccb289b661cf10fc"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfGridTestPoints</b> {100000}</td></tr>
-<tr class="separator:a347541dbafe441b4ccb289b661cf10fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1dfea6541ec30d4e8eb2648af91d20e7" id="r_a1dfea6541ec30d4e8eb2648af91d20e7"><td class="memItemLeft" align="right" valign="top"><a id="a1dfea6541ec30d4e8eb2648af91d20e7" name="a1dfea6541ec30d4e8eb2648af91d20e7"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfGridTestPoints</b> {100000}</td></tr>
+<tr class="separator:a1dfea6541ec30d4e8eb2648af91d20e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3d7a85b363965a509fb5f1a0a96b4f28" id="r_a3d7a85b363965a509fb5f1a0a96b4f28"><td class="memItemLeft" align="right" valign="top"><a id="a3d7a85b363965a509fb5f1a0a96b4f28" name="a3d7a85b363965a509fb5f1a0a96b4f28"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>interpolationSchemeAuto</b> {true}</td></tr>
+<tr class="separator:a3d7a85b363965a509fb5f1a0a96b4f28"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab88a485e5a48c4d6c0a8f615017e8cc3" id="r_ab88a485e5a48c4d6c0a8f615017e8cc3"><td class="memItemLeft" align="right" valign="top"><a id="ab88a485e5a48c4d6c0a8f615017e8cc3" name="ab88a485e5a48c4d6c0a8f615017e8cc3"></a>
-InterpolationScheme&#160;</td><td class="memItemRight" valign="bottom"><b>interpolationScheme</b> {InterpolationScheme::Tricubic}</td></tr>
+InterpolationScheme&#160;</td><td class="memItemRight" valign="bottom"><b>interpolationScheme</b> {InterpolationScheme::Polynomial}</td></tr>
 <tr class="separator:ab88a485e5a48c4d6c0a8f615017e8cc3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
@@ -630,8 +634,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 
 </div>
 </div>
-<a id="a22d790e785d4310f5346b1373b3374b8" name="a22d790e785d4310f5346b1373b3374b8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a22d790e785d4310f5346b1373b3374b8">&#9670;&#160;</a></span>cutOffVDW()</h2>
+<a id="a64aabc979995aee1d904cc9d98e59c8f" name="a64aabc979995aee1d904cc9d98e59c8f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a64aabc979995aee1d904cc9d98e59c8f">&#9670;&#160;</a></span>cutOffVDW()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -639,13 +643,13 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
         <tr>
           <td class="memname">double ForceField::cutOffVDW </td>
           <td>(</td>
-          <td class="paramtype">size_t&#160;</td>
+          <td class="paramtype">std::size_t&#160;</td>
           <td class="paramname"><em>i</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">size_t&#160;</td>
+          <td class="paramtype">std::size_t&#160;</td>
           <td class="paramname"><em>j</em>&#160;</td>
         </tr>
         <tr>
@@ -668,14 +672,14 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 
 </div>
 </div>
-<a id="ab2359c2a131107e08535ad86c3e121ff" name="ab2359c2a131107e08535ad86c3e121ff"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab2359c2a131107e08535ad86c3e121ff">&#9670;&#160;</a></span>findPseudoAtom() <span class="overload">[1/2]</span></h2>
+<a id="a324aa1dee7ffd45d7a6188ee32eaab67" name="a324aa1dee7ffd45d7a6188ee32eaab67"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a324aa1dee7ffd45d7a6188ee32eaab67">&#9670;&#160;</a></span>findPseudoAtom() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::optional&lt; size_t &gt; ForceField::findPseudoAtom </td>
+          <td class="memname">std::optional&lt; std::size_t &gt; ForceField::findPseudoAtom </td>
           <td>(</td>
           <td class="paramtype">const std::string &amp;&#160;</td>
           <td class="paramname"><em>name</em></td><td>)</td>
@@ -696,8 +700,8 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
 
 </div>
 </div>
-<a id="a051b6516d810689b94db059b0bde094e" name="a051b6516d810689b94db059b0bde094e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a051b6516d810689b94db059b0bde094e">&#9670;&#160;</a></span>findPseudoAtom() <span class="overload">[2/2]</span></h2>
+<a id="ac21ee3abedbcf19043b71662487aee64" name="ac21ee3abedbcf19043b71662487aee64"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac21ee3abedbcf19043b71662487aee64">&#9670;&#160;</a></span>findPseudoAtom() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -706,7 +710,7 @@ Archive&lt; std::ifstream &gt; &amp;&#160;</td><td class="memItemRight" valign="
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">static std::optional&lt; size_t &gt; ForceField::findPseudoAtom </td>
+          <td class="memname">static std::optional&lt; std::size_t &gt; ForceField::findPseudoAtom </td>
           <td>(</td>
           <td class="paramtype">const std::vector&lt; <a class="el" href="structPseudoAtom.html">PseudoAtom</a> &gt;&#160;</td>
           <td class="paramname"><em>pseudoAtoms</em>, </td>
@@ -1046,19 +1050,19 @@ Here is the call graph for this function:</div>
 
 </div>
 </div>
-<a id="acec606be6cdfa734ad026ba9a23ec2ba" name="acec606be6cdfa734ad026ba9a23ec2ba"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acec606be6cdfa734ad026ba9a23ec2ba">&#9670;&#160;</a></span>reciprocalIntegerCutOffSquared</h2>
+<a id="a40d3d045bc2d53dc0a54b3e15fd45906" name="a40d3d045bc2d53dc0a54b3e15fd45906"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a40d3d045bc2d53dc0a54b3e15fd45906">&#9670;&#160;</a></span>reciprocalIntegerCutOffSquared</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">size_t ForceField::reciprocalIntegerCutOffSquared</td>
+          <td class="memname">std::size_t ForceField::reciprocalIntegerCutOffSquared</td>
         </tr>
       </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{</div>
-<div class="line">      std::numeric_limits&lt;size_t&gt;::max()}</div>
+<div class="line">      std::numeric_limits&lt;std::size_t&gt;::max()}</div>
 </div><!-- fragment -->
 <p>Squared integer cut-off in reciprocal space. </p>
 

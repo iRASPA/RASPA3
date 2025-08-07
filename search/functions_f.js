@@ -2,7 +2,7 @@ var searchData=
 [
   ['randomposition_0',['randomPosition',['../structSimulationBox.html#a74e8020fcf96b3caaeee7e1ff4c8cfd3',1,'SimulationBox']]],
   ['randomsystem_1',['randomsystem',['../structMolecularDynamics.html#a280e303db75aa4e154e9e80ecb7c37a1',1,'MolecularDynamics::randomSystem()'],['../structMonteCarlo.html#ab75cd19b07050a3bd2ed5f70962614c6',1,'MonteCarlo::randomSystem()'],['../structMonteCarloTransitionMatrix.html#a1d7781ca6e4c13d578dacb938b26b214',1,'MonteCarloTransitionMatrix::randomSystem()']]],
-  ['reaction_2',['reaction',['../structReaction.html#a4ab37bd87bb5c9672de9120ada0f833f',1,'Reaction::Reaction()'],['../structReaction.html#ac51791b2e6b4fe63c4a760920eb89f9d',1,'Reaction::Reaction(size_t id, std::vector&lt; size_t &gt; reactantStoichiometry, std::vector&lt; size_t &gt; productStoichiometry)']]],
+  ['reaction_2',['reaction',['../structReaction.html#a4ab37bd87bb5c9672de9120ada0f833f',1,'Reaction::Reaction()'],['../structReaction.html#a20be6287ddb75026e072856b4f1c6766',1,'Reaction::Reaction(std::size_t id, std::vector&lt; std::size_t &gt; reactantStoichiometry, std::vector&lt; std::size_t &gt; productStoichiometry)']]],
   ['readcomponent_3',['readComponent',['../structComponent.html#a7001a8d5f258f478a5edb7529fb0400f',1,'Component']]],
   ['readforcefield_4',['readForceField',['../structForceField.html#adfc39841ad37316c4665023d44180ce6',1,'ForceField']]],
   ['readframework_5',['readFramework',['../structFramework.html#ad1c7cabc83fe53d359c45e66f94b4800',1,'Framework']]],

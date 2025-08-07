@@ -1,0 +1,13 @@
+<map id="VanDerWaalsPotential" name="VanDerWaalsPotential">
+<area shape="rect" id="Node000001" title="Represents a vanDerWaals potential between two particles." alt="" coords="887,85,1053,110"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="411,5,565,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="579,34,863,75,904,82,903,87,862,80,578,39"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="365,70,611,125"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="625,95,887,95,887,100,625,100"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="363,149,613,203"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="627,153,862,115,903,107,904,113,863,120,627,158"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="193,163,280,189"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="294,173,362,173,362,179,294,179"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="5,156,144,196"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="157,173,193,173,193,179,157,179"/>
+</map>

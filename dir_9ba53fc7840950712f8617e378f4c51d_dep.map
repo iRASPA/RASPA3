@@ -1,8 +1,9 @@
 <map id="src/raspakit/structure_properties" name="src/raspakit/structure_properties">
-<area shape="rect" id="node2" href="dir_01378b60c8590e62baf618640d0e391f.html" title="energy" alt="" coords="484,63,551,88"/>
-<area shape="rect" id="node3" href="dir_d5e8a23bd9615ddedf3efa0e2b074f47.html" title="energy_opencl" alt="" coords="343,63,460,88"/>
-<area shape="rect" id="node4" href="dir_e207bf1f7d9f50bc64bf25514f2c4efa.html" title="monte_carlo" alt="" coords="215,63,318,88"/>
-<area shape="rect" id="node5" href="dir_32e4695c4b36d92ed4ff1a4fde68d22a.html" title="monte_carlo_opencl" alt="" coords="38,63,191,88"/>
-<area shape="rect" id="clust2" href="dir_9ba53fc7840950712f8617e378f4c51d.html" alt="" coords="27,52,740,99"/>
-<area shape="rect" id="clust1" href="dir_d1be7ed14afe084fb053e3b09b9dd147.html" title="raspakit" alt="" coords="16,16,751,109"/>
+<area shape="rect" id="node2" href="dir_01378b60c8590e62baf618640d0e391f.html" title="energy" alt="" coords="605,63,672,88"/>
+<area shape="rect" id="node3" href="dir_d5e8a23bd9615ddedf3efa0e2b074f47.html" title="energy_opencl" alt="" coords="464,63,581,88"/>
+<area shape="rect" id="node4" href="dir_1f003e3f79cc02d4f1681c5c6f28dda4.html" title="grid_opencl" alt="" coords="342,63,439,88"/>
+<area shape="rect" id="node5" href="dir_e207bf1f7d9f50bc64bf25514f2c4efa.html" title="monte_carlo" alt="" coords="215,63,318,88"/>
+<area shape="rect" id="node6" href="dir_32e4695c4b36d92ed4ff1a4fde68d22a.html" title="monte_carlo_opencl" alt="" coords="38,63,191,88"/>
+<area shape="rect" id="clust2" href="dir_9ba53fc7840950712f8617e378f4c51d.html" alt="" coords="27,52,861,99"/>
+<area shape="rect" id="clust1" href="dir_d1be7ed14afe084fb053e3b09b9dd147.html" title="raspakit" alt="" coords="16,16,872,109"/>
 </map>

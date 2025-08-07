@@ -1,7 +1,7 @@
 <map id="Reaction" name="Reaction">
 <area shape="rect" id="Node000001" title="Represents a chemical reaction within the simulation." alt="" coords="1144,67,1223,93"/>
-<area shape="rect" id="Node000002" title=" " alt="" coords="772,39,931,65"/>
-<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="944,57,1144,74,1144,79,944,62"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="758,39,945,65"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="958,58,1144,74,1143,79,958,64"/>
 <area shape="rect" id="Node000003" href="$structPropertyLambdaProbabilityHistogram.html" title=" " alt="" coords="752,89,951,129"/>
 <area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="964,104,1120,91,1143,87,1144,92,1120,96,964,109"/>
 <area shape="rect" id="Node000004" title=" " alt="" coords="5,30,171,55"/>

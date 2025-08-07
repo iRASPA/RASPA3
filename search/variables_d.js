@@ -1,15 +1,20 @@
 var searchData=
 [
-  ['omitewaldfourier_0',['omitEwaldFourier',['../structForceField.html#a769468a3667a1d4b214cb026cdea9b69',1,'ForceField']]],
-  ['omitinterinteractions_1',['omitInterInteractions',['../structForceField.html#af63e6ecb8544061747929b9388bd0258',1,'ForceField']]],
-  ['omitinterpolarization_2',['omitInterPolarization',['../structForceField.html#a1c4b5e8c34a59973511e75f31e5964fa',1,'ForceField']]],
-  ['optimizemcmovesevery_3',['optimizemcmovesevery',['../structInputReader.html#a2bcc5a3dbf439596f40e97f7f0c11914',1,'InputReader::optimizeMCMovesEvery'],['../structMolecularDynamics.html#a6e55cf48869cf8ddca595f1fd5e30f52',1,'MolecularDynamics::optimizeMCMovesEvery'],['../structMonteCarlo.html#ad4119c66c7e0ce764a17951dce1279e7',1,'MonteCarlo::optimizeMCMovesEvery'],['../structMonteCarloTransitionMatrix.html#aca62e79dba6410452b32c64a77aa1a45',1,'MonteCarloTransitionMatrix::optimizeMCMovesEvery']]],
-  ['options_4',['options',['../structForceField.html#a6561a601c79b0ca30d6085de530b4767',1,'ForceField']]],
-  ['orientation_5',['orientation',['../structMolecule.html#a25047005ac17f124901439c934802a58',1,'Molecule']]],
-  ['orientationgradient_6',['orientationGradient',['../structMolecule.html#a6cd35d0b8b331cde3ad46d7784b949b4',1,'Molecule']]],
-  ['orientationmomentum_7',['orientationMomentum',['../structMolecule.html#a8ec3acbe8159b3a8ffc1fb80d2ac5258',1,'Molecule']]],
-  ['outputjsonfilenames_8',['outputjsonfilenames',['../structMonteCarlo.html#a1601036a196c622afe9aa215648458df',1,'MonteCarlo::outputJsonFileNames'],['../structMonteCarloTransitionMatrix.html#a6bd930d8925dda7ad46c4061b80b339b',1,'MonteCarloTransitionMatrix::outputJsonFileNames']]],
-  ['outputjsons_9',['outputjsons',['../structMonteCarlo.html#a31d4e8e878b9a10f08bfa7a29f345d56',1,'MonteCarlo::outputJsons'],['../structMonteCarloTransitionMatrix.html#a512985cac962f3ca04dea04953c1c360',1,'MonteCarloTransitionMatrix::outputJsons']]],
-  ['overlapcriteria_10',['overlapCriteria',['../structForceField.html#a655260d265c700febd59d2f61e89fe8a',1,'ForceField']]],
-  ['oxidationstate_11',['oxidationState',['../structPseudoAtom.html#acd6e3a3c8dd4ebb6d5fbaffcc6a09591',1,'PseudoAtom']]]
+  ['mass_0',['mass',['../structFramework.html#aaa6b32d906db03b0b3484f9f3f4231dd',1,'Framework::mass'],['../structMolecule.html#acf57087a8d3f90845883df2264893c59',1,'Molecule::mass'],['../structPseudoAtom.html#a5218c7fe6e842840fb782fb3916ddffd',1,'PseudoAtom::mass']]],
+  ['massconversionfactor_1',['MassConversionFactor',['../structUnits.html#a2b3500a9b716a5831bccab82d7d00f84',1,'Units']]],
+  ['masstransfercoefficient_2',['massTransferCoefficient',['../structComponent.html#a9f296b3ab1acc3881961630022f8c142',1,'Component']]],
+  ['massunit_3',['MassUnit',['../structUnits.html#a8142175418b13a684b80cdbed51ae728',1,'Units']]],
+  ['maxchange_4',['maxChange',['../structMoveStatistics.html#acfce90f91e679b874d4c063c14420b76',1,'MoveStatistics']]],
+  ['maxmacrostate_5',['maxMacrostate',['../structTransitionMatrix.html#a609ef72ea24471a65fc207ac4b6679d7',1,'TransitionMatrix']]],
+  ['mc_5fmoves_5fcputime_6',['mc_moves_cputime',['../structComponent.html#a8b86c3beac1d3485c38693658410a242',1,'Component']]],
+  ['mc_5fmoves_5fprobabilities_7',['mc_moves_probabilities',['../structComponent.html#a41c3c30590de3f35015177b0779be1d2',1,'Component']]],
+  ['minimumrosenbluthfactor_8',['minimumRosenbluthFactor',['../structForceField.html#a05c395fa1f6618853754c8034fc49ecf',1,'ForceField']]],
+  ['minmacrostate_9',['minMacrostate',['../structTransitionMatrix.html#aa950ef099b739c00afc62c361f137c0f',1,'TransitionMatrix']]],
+  ['mixingrule_10',['mixingRule',['../structForceField.html#a6ad05ae1213de8165bb3fd7872be9e24',1,'ForceField']]],
+  ['molargasconstant_11',['MolarGasConstant',['../structUnits.html#abc175255273c68e70ebe84262a835161',1,'Units']]],
+  ['moleculeid_12',['moleculeId',['../structAtom.html#abe579e9b9d79ce538dce9996148ae83e',1,'Atom']]],
+  ['moleculemoleculecharge_13',['moleculeMoleculeCharge',['../structRunningEnergy.html#a3b56a12d949e2b5266e5e1178a33ebcf',1,'RunningEnergy']]],
+  ['moleculemoleculevdw_14',['moleculeMoleculeVDW',['../structRunningEnergy.html#ad8e9dfaee91f6bce83a72a5f107f5ba1',1,'RunningEnergy']]],
+  ['molfraction_15',['molFraction',['../structComponent.html#a4502814e5726eeb4fe02e933ef9fc559',1,'Component']]],
+  ['multicomponentmixingrules_16',['multiComponentMixingRules',['../structEquationOfState.html#af4fc1f8766551af9e3716592f4edd242',1,'EquationOfState']]]
 ];

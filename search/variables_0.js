@@ -8,5 +8,5 @@ var searchData=
   ['_5fgamma_5',['_gamma',['../structCIFReader.html#a4a6a7c98b7496c883dfc9a1b63cb7faa',1,'CIFReader']]],
   ['_5fpreviousscanlocation_6',['_previousScanLocation',['../structCIFReader.html#a029f5f1d39d0d3ac34f1cf6534e1675b',1,'CIFReader']]],
   ['_5fscanner_7',['_scanner',['../structCIFReader.html#a9bf6d6cb3720731d74028be292c47ee0',1,'CIFReader']]],
-  ['_5fspacegrouphallnumber_8',['_spaceGroupHallNumber',['../structCIFReader.html#a555944489f6618cd2a0ad6ee4555f8c0',1,'CIFReader']]]
+  ['_5fspacegrouphallnumber_8',['_spaceGroupHallNumber',['../structCIFReader.html#a279a73f3c92144e43f29ce937ea63f66',1,'CIFReader']]]
 ];

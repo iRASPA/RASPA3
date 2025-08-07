@@ -15,8 +15,8 @@ var structForceField =
     [ "ForceField", "structForceField.html#a190e70239e80a9ef945518a4a226d3de", null ],
     [ "ForceField", "structForceField.html#ac1e0dcbec80868fc31381a251e0b66bd", null ],
     [ "applyMixingRule", "structForceField.html#aa0af00d9d8d608f71348e014c15d6f05", null ],
-    [ "cutOffVDW", "structForceField.html#a22d790e785d4310f5346b1373b3374b8", null ],
-    [ "findPseudoAtom", "structForceField.html#ab2359c2a131107e08535ad86c3e121ff", null ],
+    [ "cutOffVDW", "structForceField.html#a64aabc979995aee1d904cc9d98e59c8f", null ],
+    [ "findPseudoAtom", "structForceField.html#a324aa1dee7ffd45d7a6188ee32eaab67", null ],
     [ "initializeEwaldParameters", "structForceField.html#af431507e3f22b5e17a16fef89425e1af", null ],
     [ "jsonForceFieldStatus", "structForceField.html#adb501d2e5648589aca8d3ff046479552", null ],
     [ "jsonPseudoAtomStatus", "structForceField.html#a0651c97f845e566888c8df277a183336", null ],
@@ -38,7 +38,7 @@ var structForceField =
     [ "EwaldPrecision", "structForceField.html#a299fec43ce18f393c247d16d34e956fa", null ],
     [ "minimumRosenbluthFactor", "structForceField.html#a05c395fa1f6618853754c8034fc49ecf", null ],
     [ "mixingRule", "structForceField.html#a6ad05ae1213de8165bb3fd7872be9e24", null ],
-    [ "numberOfPseudoAtoms", "structForceField.html#ad6ee41cd15c3b6475fc065775777a97c", null ],
+    [ "numberOfPseudoAtoms", "structForceField.html#a8317673d0c48fe9250792b7a46d3f0b7", null ],
     [ "numberOfWaveVectors", "structForceField.html#a66a7125303a6c5153c93622b3c6bbe90", null ],
     [ "omitEwaldFourier", "structForceField.html#a769468a3667a1d4b214cb026cdea9b69", null ],
     [ "omitInterInteractions", "structForceField.html#af63e6ecb8544061747929b9388bd0258", null ],
@@ -46,10 +46,10 @@ var structForceField =
     [ "overlapCriteria", "structForceField.html#a655260d265c700febd59d2f61e89fe8a", null ],
     [ "pseudoAtoms", "structForceField.html#aba31b1a2878451120cd0812ae8e8642f", null ],
     [ "reciprocalCutOffSquared", "structForceField.html#ae3fbad7d30fb83e67871d2289b152aa1", null ],
-    [ "reciprocalIntegerCutOffSquared", "structForceField.html#acec606be6cdfa734ad026ba9a23ec2ba", null ],
+    [ "reciprocalIntegerCutOffSquared", "structForceField.html#a40d3d045bc2d53dc0a54b3e15fd45906", null ],
     [ "shiftPotentials", "structForceField.html#a4c94875f31812ab53c4173530da4d626", null ],
     [ "tailCorrections", "structForceField.html#a2ffc7f07b5a3ec9130049ed5eb978129", null ],
     [ "useCharge", "structForceField.html#a63b2c41cefb46290c44876bb2f86c886", null ],
     [ "useDualCutOff", "structForceField.html#ae229fc635a810876e07dd1910911dbf1", null ],
-    [ "versionNumber", "structForceField.html#a9561bb928d20748c99dc08705ae67bd8", null ]
+    [ "versionNumber", "structForceField.html#a0d40c7190dcc5a5fe363e243e835d7cb", null ]
 ];

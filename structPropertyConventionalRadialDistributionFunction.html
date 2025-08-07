@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -112,78 +112,78 @@ Collaboration diagram for PropertyConventionalRadialDistributionFunction:</div>
 <div class="dyncontent">
 <div class="center"><img src="structPropertyConventionalRadialDistributionFunction__coll__graph.png" border="0" usemap="#aPropertyConventionalRadialDistributionFunction_coll__map" alt="Collaboration graph"/></div>
 <map name="aPropertyConventionalRadialDistributionFunction_coll__map" id="aPropertyConventionalRadialDistributionFunction_coll__map">
-<area shape="rect" title=" " alt="" coords="121,211,325,251"/>
+<area shape="rect" title=" " alt="" coords="93,211,297,251"/>
 <area shape="rect" title=" " alt="" coords="5,93,180,133"/>
-<area shape="poly" title=" " alt="" coords="116,143,154,185,188,208,185,213,151,189,112,147"/>
+<area shape="poly" title=" " alt="" coords="121,142,180,209,176,212,117,146"/>
 <area shape="rect" title=" " alt="" coords="10,5,175,31"/>
 <area shape="poly" title=" " alt="" coords="95,44,95,93,90,93,90,44"/>
-<area shape="rect" title=" " alt="" coords="204,101,363,126"/>
-<area shape="poly" title=" " alt="" coords="274,139,236,212,231,209,269,137"/>
+<area shape="rect" title=" " alt="" coords="205,101,391,126"/>
+<area shape="poly" title=" " alt="" coords="287,139,252,188,225,213,221,209,248,185,283,136"/>
 </map>
 <center><span class="legend">[<a target="top" href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:af14e4cc0a0c2ece34aee18ba1347dab6" id="r_af14e4cc0a0c2ece34aee18ba1347dab6"><td class="memItemLeft" align="right" valign="top"><a id="af14e4cc0a0c2ece34aee18ba1347dab6" name="af14e4cc0a0c2ece34aee18ba1347dab6"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyConventionalRadialDistributionFunction</b> (size_t numberOfBlocks, size_t numberOfPseudoAtoms, size_t numberOfBins, double range, size_t sampleEvery, size_t writeEvery)</td></tr>
-<tr class="separator:af14e4cc0a0c2ece34aee18ba1347dab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afd8c8d46e3d831dca33cce9874f62cc6" id="r_afd8c8d46e3d831dca33cce9874f62cc6"><td class="memItemLeft" align="right" valign="top"><a id="afd8c8d46e3d831dca33cce9874f62cc6" name="afd8c8d46e3d831dca33cce9874f62cc6"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (size_t blockIndex, size_t atomTypeA, size_t atomTypeB) const</td></tr>
-<tr class="separator:afd8c8d46e3d831dca33cce9874f62cc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8180a8cb04330da3bb9c1b53d80b182a" id="r_a8180a8cb04330da3bb9c1b53d80b182a"><td class="memItemLeft" align="right" valign="top"><a id="a8180a8cb04330da3bb9c1b53d80b182a" name="a8180a8cb04330da3bb9c1b53d80b182a"></a>
-std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (size_t atomTypeA, size_t atomTypeB) const</td></tr>
-<tr class="separator:a8180a8cb04330da3bb9c1b53d80b182a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a139dd26919bea4416bb559cde066a48d" id="r_a139dd26919bea4416bb559cde066a48d"><td class="memItemLeft" align="right" valign="top"><a id="a139dd26919bea4416bb559cde066a48d" name="a139dd26919bea4416bb559cde066a48d"></a>
-std::pair&lt; std::vector&lt; double &gt;, std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageProbabilityHistogram</b> (size_t atomTypeA, size_t atomTypeB) const</td></tr>
-<tr class="separator:a139dd26919bea4416bb559cde066a48d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab4ea65c59242bc96596ec4f73499bf1c" id="r_ab4ea65c59242bc96596ec4f73499bf1c"><td class="memItemLeft" align="right" valign="top"><a id="ab4ea65c59242bc96596ec4f73499bf1c" name="ab4ea65c59242bc96596ec4f73499bf1c"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, size_t currentCycle, size_t block)</td></tr>
-<tr class="separator:ab4ea65c59242bc96596ec4f73499bf1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a242e2869c1434bd1f96e28b789b001a2" id="r_a242e2869c1434bd1f96e28b789b001a2"><td class="memItemLeft" align="right" valign="top"><a id="a242e2869c1434bd1f96e28b789b001a2" name="a242e2869c1434bd1f96e28b789b001a2"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, size_t systemId, double volume, std::vector&lt; size_t &gt; &amp;numberOfPseudoAtomsType, size_t currentCycle)</td></tr>
-<tr class="separator:a242e2869c1434bd1f96e28b789b001a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a40bf3d48295b209c7130042ecfde3d3d" id="r_a40bf3d48295b209c7130042ecfde3d3d"><td class="memItemLeft" align="right" valign="top"><a id="a40bf3d48295b209c7130042ecfde3d3d" name="a40bf3d48295b209c7130042ecfde3d3d"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyConventionalRadialDistributionFunction</b> (std::size_t numberOfBlocks, std::size_t numberOfPseudoAtoms, std::size_t numberOfBins, double range, std::size_t sampleEvery, std::size_t writeEvery)</td></tr>
+<tr class="separator:a40bf3d48295b209c7130042ecfde3d3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47cc2dccca1e5c468763fc1010ee14b2" id="r_a47cc2dccca1e5c468763fc1010ee14b2"><td class="memItemLeft" align="right" valign="top"><a id="a47cc2dccca1e5c468763fc1010ee14b2" name="a47cc2dccca1e5c468763fc1010ee14b2"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (std::size_t blockIndex, std::size_t atomTypeA, std::size_t atomTypeB) const</td></tr>
+<tr class="separator:a47cc2dccca1e5c468763fc1010ee14b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a155402f06b8947c64ccb6f078de12342" id="r_a155402f06b8947c64ccb6f078de12342"><td class="memItemLeft" align="right" valign="top"><a id="a155402f06b8947c64ccb6f078de12342" name="a155402f06b8947c64ccb6f078de12342"></a>
+std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (std::size_t atomTypeA, std::size_t atomTypeB) const</td></tr>
+<tr class="separator:a155402f06b8947c64ccb6f078de12342"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6ae87fdeb8bf9937c6cddefbd0e2b08a" id="r_a6ae87fdeb8bf9937c6cddefbd0e2b08a"><td class="memItemLeft" align="right" valign="top"><a id="a6ae87fdeb8bf9937c6cddefbd0e2b08a" name="a6ae87fdeb8bf9937c6cddefbd0e2b08a"></a>
+std::pair&lt; std::vector&lt; double &gt;, std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageProbabilityHistogram</b> (std::size_t atomTypeA, std::size_t atomTypeB) const</td></tr>
+<tr class="separator:a6ae87fdeb8bf9937c6cddefbd0e2b08a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba9ae107c7a40a309953604cb6ee5c18" id="r_aba9ae107c7a40a309953604cb6ee5c18"><td class="memItemLeft" align="right" valign="top"><a id="aba9ae107c7a40a309953604cb6ee5c18" name="aba9ae107c7a40a309953604cb6ee5c18"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>sample</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> &amp;simulationBox, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; frameworkAtoms, std::span&lt; <a class="el" href="structAtom.html">Atom</a> &gt; moleculeAtoms, std::size_t currentCycle, std::size_t block)</td></tr>
+<tr class="separator:aba9ae107c7a40a309953604cb6ee5c18"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a425938c4ef8b012f9d726c2735c418f3" id="r_a425938c4ef8b012f9d726c2735c418f3"><td class="memItemLeft" align="right" valign="top"><a id="a425938c4ef8b012f9d726c2735c418f3" name="a425938c4ef8b012f9d726c2735c418f3"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, std::size_t systemId, double volume, std::vector&lt; std::size_t &gt; &amp;numberOfPseudoAtomsType, std::size_t currentCycle)</td></tr>
+<tr class="separator:a425938c4ef8b012f9d726c2735c418f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a35568308bc75b34a6957ac0dcd0740a7" id="r_a35568308bc75b34a6957ac0dcd0740a7"><td class="memItemLeft" align="right" valign="top"><a id="a35568308bc75b34a6957ac0dcd0740a7" name="a35568308bc75b34a6957ac0dcd0740a7"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="separator:a35568308bc75b34a6957ac0dcd0740a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2983415d2dfcda313f7c79ae22fd1cfd" id="r_a2983415d2dfcda313f7c79ae22fd1cfd"><td class="memItemLeft" align="right" valign="top"><a id="a2983415d2dfcda313f7c79ae22fd1cfd" name="a2983415d2dfcda313f7c79ae22fd1cfd"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
-<tr class="separator:a2983415d2dfcda313f7c79ae22fd1cfd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af9c8ab0f0782da1bdbc2b39b1ae745af" id="r_af9c8ab0f0782da1bdbc2b39b1ae745af"><td class="memItemLeft" align="right" valign="top"><a id="af9c8ab0f0782da1bdbc2b39b1ae745af" name="af9c8ab0f0782da1bdbc2b39b1ae745af"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtoms</b></td></tr>
-<tr class="separator:af9c8ab0f0782da1bdbc2b39b1ae745af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3e683e342ec3e14c8ce8e39c990e64c1" id="r_a3e683e342ec3e14c8ce8e39c990e64c1"><td class="memItemLeft" align="right" valign="top"><a id="a3e683e342ec3e14c8ce8e39c990e64c1" name="a3e683e342ec3e14c8ce8e39c990e64c1"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtomsSymmetricMatrix</b></td></tr>
-<tr class="separator:a3e683e342ec3e14c8ce8e39c990e64c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a234271fda0e2663b3b8383f3c079ebe0" id="r_a234271fda0e2663b3b8383f3c079ebe0"><td class="memItemLeft" align="right" valign="top"><a id="a234271fda0e2663b3b8383f3c079ebe0" name="a234271fda0e2663b3b8383f3c079ebe0"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
-<tr class="separator:a234271fda0e2663b3b8383f3c079ebe0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad4352477cbaa816b5e146db871772c7e" id="r_ad4352477cbaa816b5e146db871772c7e"><td class="memItemLeft" align="right" valign="top"><a id="ad4352477cbaa816b5e146db871772c7e" name="ad4352477cbaa816b5e146db871772c7e"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="separator:ad4352477cbaa816b5e146db871772c7e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a305cdaee0402b47807815d4c47557f93" id="r_a305cdaee0402b47807815d4c47557f93"><td class="memItemLeft" align="right" valign="top"><a id="a305cdaee0402b47807815d4c47557f93" name="a305cdaee0402b47807815d4c47557f93"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
+<tr class="separator:a305cdaee0402b47807815d4c47557f93"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05fcb3b375c8ef65ba7ddd2b5aebdd0b" id="r_a05fcb3b375c8ef65ba7ddd2b5aebdd0b"><td class="memItemLeft" align="right" valign="top"><a id="a05fcb3b375c8ef65ba7ddd2b5aebdd0b" name="a05fcb3b375c8ef65ba7ddd2b5aebdd0b"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtoms</b></td></tr>
+<tr class="separator:a05fcb3b375c8ef65ba7ddd2b5aebdd0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9abdaa361a3ad7bbb5a9147283ddbf2" id="r_af9abdaa361a3ad7bbb5a9147283ddbf2"><td class="memItemLeft" align="right" valign="top"><a id="af9abdaa361a3ad7bbb5a9147283ddbf2" name="af9abdaa361a3ad7bbb5a9147283ddbf2"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfPseudoAtomsSymmetricMatrix</b></td></tr>
+<tr class="separator:af9abdaa361a3ad7bbb5a9147283ddbf2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad09f53636a87c2946540da4dd8cf504c" id="r_ad09f53636a87c2946540da4dd8cf504c"><td class="memItemLeft" align="right" valign="top"><a id="ad09f53636a87c2946540da4dd8cf504c" name="ad09f53636a87c2946540da4dd8cf504c"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
+<tr class="separator:ad09f53636a87c2946540da4dd8cf504c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a25e632c912714d4a8fa96bb730503886" id="r_a25e632c912714d4a8fa96bb730503886"><td class="memItemLeft" align="right" valign="top"><a id="a25e632c912714d4a8fa96bb730503886" name="a25e632c912714d4a8fa96bb730503886"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>range</b></td></tr>
 <tr class="separator:a25e632c912714d4a8fa96bb730503886"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c0fa82b7e2316b78bccae35ba5f31d3" id="r_a2c0fa82b7e2316b78bccae35ba5f31d3"><td class="memItemLeft" align="right" valign="top"><a id="a2c0fa82b7e2316b78bccae35ba5f31d3" name="a2c0fa82b7e2316b78bccae35ba5f31d3"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>deltaR</b></td></tr>
 <tr class="separator:a2c0fa82b7e2316b78bccae35ba5f31d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2b27b2fa49bbd53c8da77e054a3c91d5" id="r_a2b27b2fa49bbd53c8da77e054a3c91d5"><td class="memItemLeft" align="right" valign="top"><a id="a2b27b2fa49bbd53c8da77e054a3c91d5" name="a2b27b2fa49bbd53c8da77e054a3c91d5"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b></td></tr>
-<tr class="separator:a2b27b2fa49bbd53c8da77e054a3c91d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0f0ee0bdb4cae164c1996ae96615107f" id="r_a0f0ee0bdb4cae164c1996ae96615107f"><td class="memItemLeft" align="right" valign="top"><a id="a0f0ee0bdb4cae164c1996ae96615107f" name="a0f0ee0bdb4cae164c1996ae96615107f"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
-<tr class="separator:a0f0ee0bdb4cae164c1996ae96615107f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5b8cdfe50125995534cff46626bf08ef" id="r_a5b8cdfe50125995534cff46626bf08ef"><td class="memItemLeft" align="right" valign="top"><a id="a5b8cdfe50125995534cff46626bf08ef" name="a5b8cdfe50125995534cff46626bf08ef"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b></td></tr>
+<tr class="separator:a5b8cdfe50125995534cff46626bf08ef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad214aebb3cb91b3a432a3b20b311aa40" id="r_ad214aebb3cb91b3a432a3b20b311aa40"><td class="memItemLeft" align="right" valign="top"><a id="ad214aebb3cb91b3a432a3b20b311aa40" name="ad214aebb3cb91b3a432a3b20b311aa40"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
+<tr class="separator:ad214aebb3cb91b3a432a3b20b311aa40"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c635df81bf9ec08162f0ae9105f95d6" id="r_a6c635df81bf9ec08162f0ae9105f95d6"><td class="memItemLeft" align="right" valign="top"><a id="a6c635df81bf9ec08162f0ae9105f95d6" name="a6c635df81bf9ec08162f0ae9105f95d6"></a>
 std::vector&lt; std::vector&lt; double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>sumProperty</b></td></tr>
 <tr class="separator:a6c635df81bf9ec08162f0ae9105f95d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa4fc3d4ddec0879f903eda6514641a5d" id="r_aa4fc3d4ddec0879f903eda6514641a5d"><td class="memItemLeft" align="right" valign="top"><a id="aa4fc3d4ddec0879f903eda6514641a5d" name="aa4fc3d4ddec0879f903eda6514641a5d"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>totalNumberOfCounts</b></td></tr>
-<tr class="separator:aa4fc3d4ddec0879f903eda6514641a5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8bed061278a8246c43a68938b2e2891d" id="r_a8bed061278a8246c43a68938b2e2891d"><td class="memItemLeft" align="right" valign="top"><a id="a8bed061278a8246c43a68938b2e2891d" name="a8bed061278a8246c43a68938b2e2891d"></a>
-std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCounts</b></td></tr>
-<tr class="separator:a8bed061278a8246c43a68938b2e2891d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a778bbac03ba47ee3613cffb707bf0d19" id="r_a778bbac03ba47ee3613cffb707bf0d19"><td class="memItemLeft" align="right" valign="top"><a id="a778bbac03ba47ee3613cffb707bf0d19" name="a778bbac03ba47ee3613cffb707bf0d19"></a>
-std::vector&lt; size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pairCount</b></td></tr>
-<tr class="separator:a778bbac03ba47ee3613cffb707bf0d19"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23091baa63bd88f0c87afd46b8ef4095" id="r_a23091baa63bd88f0c87afd46b8ef4095"><td class="memItemLeft" align="right" valign="top"><a id="a23091baa63bd88f0c87afd46b8ef4095" name="a23091baa63bd88f0c87afd46b8ef4095"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>totalNumberOfCounts</b></td></tr>
+<tr class="separator:a23091baa63bd88f0c87afd46b8ef4095"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a38ee0e4328e2f8d0349bd87d4ac853be" id="r_a38ee0e4328e2f8d0349bd87d4ac853be"><td class="memItemLeft" align="right" valign="top"><a id="a38ee0e4328e2f8d0349bd87d4ac853be" name="a38ee0e4328e2f8d0349bd87d4ac853be"></a>
+std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfCounts</b></td></tr>
+<tr class="separator:a38ee0e4328e2f8d0349bd87d4ac853be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a72d2e399b1683ba80c821854cd24bdef" id="r_a72d2e399b1683ba80c821854cd24bdef"><td class="memItemLeft" align="right" valign="top"><a id="a72d2e399b1683ba80c821854cd24bdef" name="a72d2e399b1683ba80c821854cd24bdef"></a>
+std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>pairCount</b></td></tr>
+<tr class="separator:a72d2e399b1683ba80c821854cd24bdef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

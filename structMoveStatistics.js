@@ -11,5 +11,5 @@ var structMoveStatistics =
     [ "totalAccepted", "structMoveStatistics.html#a1d546cab5fff2095667239d800003b54", null ],
     [ "totalConstructed", "structMoveStatistics.html#a414e98d30a2468ced9b383b86a1f6825", null ],
     [ "totalCounts", "structMoveStatistics.html#a281604fa5eca42ea9ae0912dbf2d121f", null ],
-    [ "versionNumber", "structMoveStatistics.html#ae9348a8831b926728758c159aca96f67", null ]
+    [ "versionNumber", "structMoveStatistics.html#a4fcacdad160e41bb8839b42b251f91d2", null ]
 ];

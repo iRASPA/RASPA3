@@ -35,5 +35,5 @@ var structRunningEnergy =
     [ "rotationalKineticEnergy", "structRunningEnergy.html#a52e9488faa6805d564a6969f4f575162", null ],
     [ "tail", "structRunningEnergy.html#a3d78e3c9d3c1ec203ee3028b3f4290df", null ],
     [ "translationalKineticEnergy", "structRunningEnergy.html#a28f3273ae836dcad36c9490be5e16398", null ],
-    [ "versionNumber", "structRunningEnergy.html#aa8bc344d1d51e2dcbb66b7bbfdd69e67", null ]
+    [ "versionNumber", "structRunningEnergy.html#abec4bdeca4aaa86cf55f0c7cfdcb682a", null ]
 ];

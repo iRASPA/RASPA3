@@ -1,0 +1,15 @@
+<map id="TorsionPotential" name="TorsionPotential">
+<area shape="rect" id="Node000001" title="Represents a torsion potential between two particles." alt="" coords="895,109,1021,134"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="433,5,587,45"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="601,30,730,48,801,62,872,80,934,106,932,111,870,85,800,67,729,53,600,36"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="363,69,657,109"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="671,98,895,114,894,120,671,103"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="433,133,587,173"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="600,149,728,143,870,132,894,129,895,134,871,137,729,148,601,154"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="405,198,615,253"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="629,214,747,197,809,183,870,165,906,150,936,132,939,136,908,154,872,171,811,188,748,202,629,219"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="193,213,280,238"/>
+<area shape="poly" id="edge5_Node000005_Node000006" title=" " alt="" coords="294,223,404,223,404,228,294,228"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="5,205,144,245"/>
+<area shape="poly" id="edge6_Node000006_Node000007" title=" " alt="" coords="157,223,193,223,193,228,157,228"/>
+</map>

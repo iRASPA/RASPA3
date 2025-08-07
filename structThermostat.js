@@ -1,16 +1,16 @@
 var structThermostat =
 [
     [ "Thermostat", "structThermostat.html#a67cfc54f1cff43f4cd92c58e3be01919", null ],
-    [ "Thermostat", "structThermostat.html#ae7b544f987b2c5411d3df58c802fd4cf", null ],
+    [ "Thermostat", "structThermostat.html#a928eb3843dc4c16007cdc961ff1ac9c6", null ],
     [ "getEnergy", "structThermostat.html#a37e05fbe868be237f4c7716314fa7554", null ],
     [ "initialize", "structThermostat.html#a5911a729d2c24011148809df03e87f1b", null ],
     [ "NoseHooverNVT", "structThermostat.html#af9491d6875c72853601f4b1596130414", null ],
     [ "deltaT", "structThermostat.html#a6f4c036f36ff5dab39631d338d972532", null ],
-    [ "numberOfRespaSteps", "structThermostat.html#a2263f489c13902dd7c65cd0400c46d81", null ],
-    [ "numberOfYoshidaSuzukiSteps", "structThermostat.html#a6ac3558389551feb7adcad4baa5d572f", null ],
-    [ "rotationalDgreesOfFreedom", "structThermostat.html#ab358212e5ec392466d49e1aa15dd3ae4", null ],
+    [ "numberOfRespaSteps", "structThermostat.html#a875ad835d2f8dae8e0ce5da569e6dbae", null ],
+    [ "numberOfYoshidaSuzukiSteps", "structThermostat.html#a05deed2e57f723cca81d5bb5d607ac14", null ],
+    [ "rotationalDgreesOfFreedom", "structThermostat.html#a946a876db659830ca6aa7e10e3454c50", null ],
     [ "temperature", "structThermostat.html#a564b06899d415e5eccff754baf90befb", null ],
-    [ "thermostatChainLength", "structThermostat.html#ad5545e7265380253421d932d16bece5a", null ],
+    [ "thermostatChainLength", "structThermostat.html#a990a546a3698e41470773e4c74553bf1", null ],
     [ "thermostatDegreesOfFreedomRotation", "structThermostat.html#aa738cd9b37cfec0c6e55112c8aa9c737", null ],
     [ "thermostatDegreesOfFreedomTranslation", "structThermostat.html#ab6e8b1130ba44b56bb9b026a49653f1b", null ],
     [ "thermostatForceRotation", "structThermostat.html#a800de3925450967b3f797544f89e4c94", null ],
@@ -22,8 +22,8 @@ var structThermostat =
     [ "thermostatVelocityRotation", "structThermostat.html#a88af01e4bd1de74f22e6dbc8e69e76c5", null ],
     [ "thermostatVelocityTranslation", "structThermostat.html#a0dba9fe9c012a76ff9778322b6a5097e", null ],
     [ "timeScaleParameterThermostat", "structThermostat.html#ad57f98f69a2cdb26d5a60cd15ac060f5", null ],
-    [ "translationalCenterOfMassConstraint", "structThermostat.html#adb662b3ae770966eeb6f3e44b26c1fde", null ],
-    [ "translationalDegreesOfFreedom", "structThermostat.html#aee65fc9d76fd7ea54938a31164508bad", null ],
-    [ "versionNumber", "structThermostat.html#a20a5d64eca3e51f42ef2d8ad632b6a8f", null ],
+    [ "translationalCenterOfMassConstraint", "structThermostat.html#a1cae9505e7ac3c8850e3f27e0e1d97a1", null ],
+    [ "translationalDegreesOfFreedom", "structThermostat.html#ac0df6b6f29ff06d36ff49f8dd484b5b4", null ],
+    [ "versionNumber", "structThermostat.html#a658d3f898503d86e1eea0b0b8b6d860f", null ],
     [ "w", "structThermostat.html#a221afa2d6bb540e2c53731cb66cfae8a", null ]
 ];

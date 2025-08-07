@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -173,10 +173,10 @@ Public Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:aa8bc344d1d51e2dcbb66b7bbfdd69e67" id="r_aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="memItemLeft" align="right" valign="top"><a id="aa8bc344d1d51e2dcbb66b7bbfdd69e67" name="aa8bc344d1d51e2dcbb66b7bbfdd69e67"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="memdesc:aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
-<tr class="separator:aa8bc344d1d51e2dcbb66b7bbfdd69e67"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abec4bdeca4aaa86cf55f0c7cfdcb682a" id="r_abec4bdeca4aaa86cf55f0c7cfdcb682a"><td class="memItemLeft" align="right" valign="top"><a id="abec4bdeca4aaa86cf55f0c7cfdcb682a" name="abec4bdeca4aaa86cf55f0c7cfdcb682a"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="memdesc:abec4bdeca4aaa86cf55f0c7cfdcb682a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Version number for serialization. <br /></td></tr>
+<tr class="separator:abec4bdeca4aaa86cf55f0c7cfdcb682a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8f50572c04bc302d0f14b2867e0ecb95" id="r_a8f50572c04bc302d0f14b2867e0ecb95"><td class="memItemLeft" align="right" valign="top"><a id="a8f50572c04bc302d0f14b2867e0ecb95" name="a8f50572c04bc302d0f14b2867e0ecb95"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>externalFieldVDW</b></td></tr>
 <tr class="memdesc:a8f50572c04bc302d0f14b2867e0ecb95"><td class="mdescLeft">&#160;</td><td class="mdescRight">Energy from van der Waals interactions with external field. <br /></td></tr>
@@ -213,6 +213,42 @@ double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald_self</b></td>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>ewald_exclusion</b></td></tr>
 <tr class="memdesc:a1d9f3b4cae89901cf24ed95a44ffca5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Exclusion term in Ewald sum for Coulomb interactions. <br /></td></tr>
 <tr class="separator:a1d9f3b4cae89901cf24ed95a44ffca5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae048cfe0352a22bdd716121cc939ff4" id="r_aae048cfe0352a22bdd716121cc939ff4"><td class="memItemLeft" align="right" valign="top"><a id="aae048cfe0352a22bdd716121cc939ff4" name="aae048cfe0352a22bdd716121cc939ff4"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bond</b></td></tr>
+<tr class="separator:aae048cfe0352a22bdd716121cc939ff4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1aeec763d935df57a915845b221e9f4" id="r_ab1aeec763d935df57a915845b221e9f4"><td class="memItemLeft" align="right" valign="top"><a id="ab1aeec763d935df57a915845b221e9f4" name="ab1aeec763d935df57a915845b221e9f4"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>ureyBradley</b></td></tr>
+<tr class="separator:ab1aeec763d935df57a915845b221e9f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:affac5412e148cb0b26fbd4ab8019fcb9" id="r_affac5412e148cb0b26fbd4ab8019fcb9"><td class="memItemLeft" align="right" valign="top"><a id="affac5412e148cb0b26fbd4ab8019fcb9" name="affac5412e148cb0b26fbd4ab8019fcb9"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bend</b></td></tr>
+<tr class="separator:affac5412e148cb0b26fbd4ab8019fcb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f3d1e04710f373b9d4bf4977744f769" id="r_a6f3d1e04710f373b9d4bf4977744f769"><td class="memItemLeft" align="right" valign="top"><a id="a6f3d1e04710f373b9d4bf4977744f769" name="a6f3d1e04710f373b9d4bf4977744f769"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>inversionBend</b></td></tr>
+<tr class="separator:a6f3d1e04710f373b9d4bf4977744f769"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d9143026cc84c05b16b4054a7eb868d" id="r_a2d9143026cc84c05b16b4054a7eb868d"><td class="memItemLeft" align="right" valign="top"><a id="a2d9143026cc84c05b16b4054a7eb868d" name="a2d9143026cc84c05b16b4054a7eb868d"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>outOfPlaneBend</b></td></tr>
+<tr class="separator:a2d9143026cc84c05b16b4054a7eb868d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a43204f1efc03d87872c364b353cca9ca" id="r_a43204f1efc03d87872c364b353cca9ca"><td class="memItemLeft" align="right" valign="top"><a id="a43204f1efc03d87872c364b353cca9ca" name="a43204f1efc03d87872c364b353cca9ca"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>torsion</b></td></tr>
+<tr class="separator:a43204f1efc03d87872c364b353cca9ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf8a24e734661f8ef7487a70e3f96331" id="r_adf8a24e734661f8ef7487a70e3f96331"><td class="memItemLeft" align="right" valign="top"><a id="adf8a24e734661f8ef7487a70e3f96331" name="adf8a24e734661f8ef7487a70e3f96331"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>improperTorsion</b></td></tr>
+<tr class="separator:adf8a24e734661f8ef7487a70e3f96331"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a98994ea7e3583f759af92901eefbd42a" id="r_a98994ea7e3583f759af92901eefbd42a"><td class="memItemLeft" align="right" valign="top"><a id="a98994ea7e3583f759af92901eefbd42a" name="a98994ea7e3583f759af92901eefbd42a"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bondBond</b></td></tr>
+<tr class="separator:a98994ea7e3583f759af92901eefbd42a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a006fa297cd101bcfadd1e2c2df8a7d3f" id="r_a006fa297cd101bcfadd1e2c2df8a7d3f"><td class="memItemLeft" align="right" valign="top"><a id="a006fa297cd101bcfadd1e2c2df8a7d3f" name="a006fa297cd101bcfadd1e2c2df8a7d3f"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bondBend</b></td></tr>
+<tr class="separator:a006fa297cd101bcfadd1e2c2df8a7d3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa7feb016406c8d3dc9e8a355eacbab21" id="r_aa7feb016406c8d3dc9e8a355eacbab21"><td class="memItemLeft" align="right" valign="top"><a id="aa7feb016406c8d3dc9e8a355eacbab21" name="aa7feb016406c8d3dc9e8a355eacbab21"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bondTorsion</b></td></tr>
+<tr class="separator:aa7feb016406c8d3dc9e8a355eacbab21"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adca166d43f310866924c6dcb849bbc54" id="r_adca166d43f310866924c6dcb849bbc54"><td class="memItemLeft" align="right" valign="top"><a id="adca166d43f310866924c6dcb849bbc54" name="adca166d43f310866924c6dcb849bbc54"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bendBend</b></td></tr>
+<tr class="separator:adca166d43f310866924c6dcb849bbc54"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afae58dd6efd23367d8d306e5024300dd" id="r_afae58dd6efd23367d8d306e5024300dd"><td class="memItemLeft" align="right" valign="top"><a id="afae58dd6efd23367d8d306e5024300dd" name="afae58dd6efd23367d8d306e5024300dd"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>bendTorsion</b></td></tr>
+<tr class="separator:afae58dd6efd23367d8d306e5024300dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e4b1176212f678c23bd5bc7f8d3d3af" id="r_a6e4b1176212f678c23bd5bc7f8d3d3af"><td class="memItemLeft" align="right" valign="top"><a id="a6e4b1176212f678c23bd5bc7f8d3d3af" name="a6e4b1176212f678c23bd5bc7f8d3d3af"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>intraVDW</b></td></tr>
 <tr class="memdesc:a6e4b1176212f678c23bd5bc7f8d3d3af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Intramolecular van der Waals energy. <br /></td></tr>

@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -128,9 +128,9 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <h1>Citing RASPA3</h1>
 <p>Y.A. Ran, S. Sharma, S.R.G. Balestra, Z. Li, S. Calero, T.J.H. Vlugt, R.Q. Snurr, D. Dubbeldam, _"RASPA3: A Monte Carlo code for computing adsorption and diffusion in nanoporous materials and thermodynamics properties of fluids"_, <b>2024</b>, J. Chem. Phys., 161, 114106, <a href="https://doi.org/10.1063/5.0226249">DOI</a></p>
 <h1>Running</h1>
-<p>cd examples/basic/1_mc_methane_in_box<br  />
- ./run</p>
-<h1>Implemented so far</h1>
+<div class="fragment"><div class="line">cd examples/basic/1_mc_methane_in_box</div>
+<div class="line">./run</div>
+</div><!-- fragment --><h1>Implemented so far</h1>
 <ul>
 <li>rigid molecules and rigid framework</li>
 <li>multiple systems, box or framework</li>
@@ -147,10 +147,11 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <li>MC/MD hybrid move</li>
 <li>tail-corrections for CFCMC</li>
 <li>grids for rigid frameworks</li>
+<li>restart-file</li>
+<li>zeo++-type calculations</li>
 </ul>
 <h1>Todo-list</h1>
 <ul>
-<li>restart-file</li>
 <li>flexible molecules</li>
 <li>flexible frameworks</li>
 <li>reaction ensemble</li>
@@ -158,185 +159,12 @@ $(document).ready(function(){initNavTree('index.html',''); initResizable(); });
 <li>polarization</li>
 <li>cell-lists for rigid frameworks</li>
 <li>partial molar volumes</li>
-<li>zeo++-type calculations</li>
 <li>partial molar enthalpies/volumes</li>
 <li>optimization</li>
 <li>elastic constants</li>
-<li>HDF5 property writing</li>
+<li>HDF5 property writing </li>
 </ul>
-<h1>Installation Guide</h1>
-<p>RASPA3 makes use of modern C++ and requires C++ version 23. This is only included with later versions of compilers and the code is only tested using LLVM &amp; Clang version 18. All prebuilt versions are built with static linking, making it unnecessary for users to install dependencies.</p>
-<p>For contributors or others who need to build from scratch, we recommend loading the supplied Dockerfiles, which include all the dependencies.</p>
-<p>For python users we currently only offer installation via pip, that includes building from source, requiring users to have installed all dependencies.</p>
-<ul>
-<li>Prebuilt installation</li>
-<li>Building from source<ul>
-<li>Presets</li>
-<li>Linux<ul>
-<li>Ubuntu 24</li>
-<li>Fedora 40</li>
-</ul>
-</li>
-<li>macOS</li>
-<li>Python</li>
-</ul>
-</li>
-</ul>
-<h2>Download prebuilt installation</h2>
-<p>In Github, on the right side of the page, you will find the releases section. Select your OS and use the installer to install RASPA3. We provide packages for:<br  />
-</p><ul>
-<li>arm64<br  />
-</li>
-<li>Intel/AMD core-avx2<br  />
-</li>
-<li>Intel skylake-avx512<br  />
- <br  />
- Use the 'core-avx2' version for Intel and AMD cpu's that support the avx2 instruction set:<br  />
-</li>
-<li>Intel: Haswell processors 2013 and newer<br  />
-</li>
-<li>AMD: Excavator processors 2015 and newer<br  />
- <br  />
- The 'skylake-avx512' binary can provide a roughly 25% increase in speed compared to the 'core-avx2' on Intel cpu's that support avx512.</li>
-</ul>
-<h2>Build from source</h2>
-<h3>Dependencies</h3>
-<ul>
-<li>cmake 3.28 or higher<br  />
-</li>
-<li>ninja 1.11 or higher<br  />
-</li>
-<li>llvm-18 or higher<br  />
-</li>
-<li>python3 and pybind11<br  />
-</li>
-<li>blas and lapack (64-bit integers)</li>
-<li>openmp</li>
-<li>hdf5</li>
-</ul>
-<h3>Installing dependencies with Conda</h3>
-<p>The most practical method of compiling raspa from source is through installing the dependencies with conda. This is readily achieved through:</p>
-<div class="fragment"><div class="line">conda env create -f env.yml</div>
-<div class="line">conda acitvate raspa</div>
-<div class="line">cmake --preset=linux_conda   # or -preset=mac_conda</div>
-<div class="line">ninja -C build</div>
-</div><!-- fragment --><h3>presets</h3>
-<p>cmake &ndash;list-presets<br  />
- Available configure presets:<br  />
- </p><blockquote class="doxtable">
-<p>&zwj;"windows_conda_raspa3"<br  />
- "mac_conda"<br  />
- "mac_conda_raspa3"<br  />
- "linux_conda"<br  />
- "linux_conda_raspa3"<br  />
- "windows_conda_raspalib"<br  />
- "mac_conda_raspalib"<br  />
- "linux_conda_raspalib"<br  />
- "windows-arm64-package"<br  />
- "windows-x64-core-avx2-package"<br  />
- "windows-x64-skylake-avx512-package"<br  />
- "macos-x64-core-avx2"<br  />
- "macos-x64-core-avx2-package"<br  />
- "macos-x64-skylake-avx512"<br  />
- "macos-x64-skylake-avx512-package"<br  />
- "macos-x64-debug"<br  />
- "macos-x64-profile"<br  />
- "macos-apple-silicon"<br  />
- "macos-apple-silicon-package"<br  />
- "macos-apple-silicon-profile"<br  />
- "macos-apple-silicon-debug"<br  />
- "linux-x86_64"<br  />
- "linux-x86_64-carbon"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.2"<br  />
- "linux-x86_64-skylake-avx512-opensuse-leap-15.2"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.3"<br  />
- "linux-x86_64-skylake-avx512-opensuse-leap-15.3"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.4"<br  />
- "linux-x86_64-skylake-avx512-opensuse-leap-15.4"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.5"<br  />
- "linux-x86_64-skylake-avx512-opensuse-leap-15.5"<br  />
- "linux-x86_64-core-avx2-opensuse-leap-15.6"<br  />
- "linux-x86_64-skylake-avx512-opensuse-leap-15.6"<br  />
- "linux-x86_64-core-avx2-opensuse-tumbleweed"<br  />
- "linux-x86_64-skylake-avx512-opensuse-tumbleweed"<br  />
- "linux-x86_64-core-avx2-archlinux"<br  />
- "linux-x86_64-skylake-avx512-archlinux"<br  />
- "linux-x86_64-core-avx2-redhat-6"<br  />
- "linux-x86_64-skylake-avx512-redhat-6"<br  />
- "linux-x86_64-core-avx2-redhat-7"<br  />
- "linux-x86_64-skylake-avx512-redhat-7"<br  />
- "linux-x86_64-core-avx2-redhat-8"<br  />
- "linux-x86_64-skylake-avx512-redhat-8"<br  />
- "linux-x86_64-core-avx2-redhat-9"<br  />
- "linux-x86_64-skylake-avx512-redhat-9"<br  />
- "linux-x86_64-core-avx2-debian-12"<br  />
- "linux-x86_64-skylake-avx512-debian-12"<br  />
- "linux-x86_64-core-avx2-debian-11"<br  />
- "linux-x86_64-skylake-avx512-debian-11"<br  />
- "linux-x86_64-core-avx2-debian-10"<br  />
- "linux-x86_64-skylake-avx512-debian-10"<br  />
- "linux-x86_64-core-avx2-ubuntu-24"<br  />
- "linux-x86_64-skylake-avx512-ubuntu-24"<br  />
- "linux-x86_64-core-avx2-ubuntu-22"<br  />
- "linux-x86_64-skylake-avx512-ubuntu-22"<br  />
- "linux-x86_64-core-avx2-ubuntu-20"<br  />
- "linux-x86_64-skylake-avx512-ubuntu-20"<br  />
- "linux-x86_64-core-avx2-fedora-35"<br  />
- "linux-x86_64-skylake-avx512-fedora-35"<br  />
- "linux-x86_64-core-avx2-fedora-36"<br  />
- "linux-x86_64-skylake-avx512-fedora-36"<br  />
- "linux-x86_64-core-avx2-fedora-37"<br  />
- "linux-x86_64-skylake-avx512-fedora-37"<br  />
- "linux-x86_64-core-avx2-fedora-38"<br  />
- "linux-x86_64-skylake-avx512-fedora-38"<br  />
- "linux-x86_64-core-avx2-fedora-39"<br  />
- "linux-x86_64-skylake-avx512-fedora-39"<br  />
- "linux-x86_64-core-avx2-fedora-40"<br  />
- "linux-x86_64-skylake-avx512-fedora-40"<br  />
- "linux-x86_64-core-avx2-fedora-41"<br  />
- "linux-x86_64-skylake-avx512-fedora-41"<br  />
- "linux-aarch64"<br  />
- "linux-aarch64-ubuntu-24"<br  />
- "linux-aarch64-redhat-9" </p>
-</blockquote>
-<h3>linux</h3>
-<h4>Ubuntu 24</h4>
-<p>apt-get install -y &ndash;no-install-recommends git ca-certificates cmake ninja-build<br  />
- apt-get install -y &ndash;no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev libclang-rt-dev<br  />
- apt-get install -y &ndash;no-install-recommends python3 pybind11-dev python3-pybind11 python3-dev<br  />
- apt-get install -y &ndash;no-install-recommends liblapack64-dev libblas64-dev<br  />
- cmake -B build &ndash;preset=linux-ubuntu-24<br  />
- ninja -C build<br  />
- ninja -C build install<br  />
- ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
-<h4>Fedora 40</h4>
-<p>dnf install -y wget git rpm-build<br  />
- dnf install -y llvm lld cmake clang clang-tools-extra ninja-build<br  />
- dnf install -y libomp-devel libcxx libcxxabi libcxx-devel libcxxabi-devel libcxx-static libcxxabi-static<br  />
- dnf install -y lapack-devel lapack64 blas64<br  />
- dnf install -y python3 python3-devel python3-pybind11<br  />
- dnf install -y pybind11-devel<br  />
- cmake -B &ndash;preset linux-fedora-40<br  />
- ninja -C build<br  />
- ninja -C build install<br  />
- ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
-<h3>macOS</h3>
-<p>brew install llvm lld libomp hdf5 libaec ninja cmake doxygen graphviz lapack pybind11<br  />
- (make sure '`brew &ndash;prefix hdf5`/bin' for hdf5 is in your path)<br  />
- cmake -B &ndash;preset macos-apple-silicon<br  />
- (or cmake -B &ndash;preset macos-x64)<br  />
- ninja -C build<br  />
- ninja -C build install<br  />
- ctest &ndash;test-dir build/tests/raspakit-tests &ndash;verbose</p>
-<h3>python</h3>
-<p>This package can also be built as a library for python. To build the python package the pip packaging system can be used. Note that due to compilation of the full package this might take a few minutes. To install, run the following command:</p>
-<div class="fragment"><div class="line">export CMAKE_PRESET=&quot;--preset=python&quot;</div>
-<div class="line">pip install .</div>
-</div><!-- fragment --><p>This will install the package to the current python environment.</p>
-<p>We strongly advise users to use the CMakePresets.json preset for their given system. For building the python package with a given preset change the following line to reflect the given preset:</p>
-<div class="fragment"><div class="line">export CMAKE_PRESET=&quot;--preset=macos-apple-silicon&quot;</div>
-<div class="line">pip install .</div>
-</div><!-- fragment --> </div></div><!-- PageDoc -->
+</div></div><!-- PageDoc -->
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

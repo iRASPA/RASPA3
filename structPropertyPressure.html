@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -122,60 +122,60 @@ Collaboration diagram for PropertyPressure:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a35b6f2d5947f7af3e8b89342f079c0d6" id="r_a35b6f2d5947f7af3e8b89342f079c0d6"><td class="memItemLeft" align="right" valign="top"><a id="a35b6f2d5947f7af3e8b89342f079c0d6" name="a35b6f2d5947f7af3e8b89342f079c0d6"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyPressure</b> (size_t numberOfBlocks)</td></tr>
-<tr class="separator:a35b6f2d5947f7af3e8b89342f079c0d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a53459b4d05361b2ce1c736868bb01794" id="r_a53459b4d05361b2ce1c736868bb01794"><td class="memItemLeft" align="right" valign="top"><a id="a53459b4d05361b2ce1c736868bb01794" name="a53459b4d05361b2ce1c736868bb01794"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyPressure</b> (std::size_t numberOfBlocks)</td></tr>
+<tr class="separator:a53459b4d05361b2ce1c736868bb01794"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ddfdf98f71057cf258710f4f0ca0963" id="r_a0ddfdf98f71057cf258710f4f0ca0963"><td class="memItemLeft" align="right" valign="top"><a id="a0ddfdf98f71057cf258710f4f0ca0963" name="a0ddfdf98f71057cf258710f4f0ca0963"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structPropertyPressure.html">PropertyPressure</a> const &amp;) const =default</td></tr>
 <tr class="separator:a0ddfdf98f71057cf258710f4f0ca0963"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a175f3451e3f547661adf35a5d5e459a3" id="r_a175f3451e3f547661adf35a5d5e459a3"><td class="memItemLeft" align="right" valign="top"><a id="a175f3451e3f547661adf35a5d5e459a3" name="a175f3451e3f547661adf35a5d5e459a3"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>addSample</b> (size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue, double weight)</td></tr>
-<tr class="separator:a175f3451e3f547661adf35a5d5e459a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5526bdb589624a9d4102c67fcbfd86af" id="r_a5526bdb589624a9d4102c67fcbfd86af"><td class="memItemLeft" align="right" valign="top"><a id="a5526bdb589624a9d4102c67fcbfd86af" name="a5526bdb589624a9d4102c67fcbfd86af"></a>
-double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressureTensor</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:a5526bdb589624a9d4102c67fcbfd86af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae70fc5369e06be57e8e90732f1716dc6" id="r_ae70fc5369e06be57e8e90732f1716dc6"><td class="memItemLeft" align="right" valign="top"><a id="ae70fc5369e06be57e8e90732f1716dc6" name="ae70fc5369e06be57e8e90732f1716dc6"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>addSample</b> (std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue, double weight)</td></tr>
+<tr class="separator:ae70fc5369e06be57e8e90732f1716dc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5883c167f6c378804a58ca4514ba560" id="r_ad5883c167f6c378804a58ca4514ba560"><td class="memItemLeft" align="right" valign="top"><a id="ad5883c167f6c378804a58ca4514ba560" name="ad5883c167f6c378804a58ca4514ba560"></a>
+double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressureTensor</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:ad5883c167f6c378804a58ca4514ba560"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af6aa14ad6e705da16f661a06f8fc0b87" id="r_af6aa14ad6e705da16f661a06f8fc0b87"><td class="memItemLeft" align="right" valign="top"><a id="af6aa14ad6e705da16f661a06f8fc0b87" name="af6aa14ad6e705da16f661a06f8fc0b87"></a>
 double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressureTensor</b> () const</td></tr>
 <tr class="separator:af6aa14ad6e705da16f661a06f8fc0b87"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9b5ba15f7ae05fac914cadfce13caa24" id="r_a9b5ba15f7ae05fac914cadfce13caa24"><td class="memItemLeft" align="right" valign="top"><a id="a9b5ba15f7ae05fac914cadfce13caa24" name="a9b5ba15f7ae05fac914cadfce13caa24"></a>
 std::pair&lt; double3x3, double3x3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageExcessPressureTensor</b> () const</td></tr>
 <tr class="separator:a9b5ba15f7ae05fac914cadfce13caa24"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aef39e0844f48d5cfaf7e7730b02bda6d" id="r_aef39e0844f48d5cfaf7e7730b02bda6d"><td class="memItemLeft" align="right" valign="top"><a id="aef39e0844f48d5cfaf7e7730b02bda6d" name="aef39e0844f48d5cfaf7e7730b02bda6d"></a>
-double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressureTensor</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:aef39e0844f48d5cfaf7e7730b02bda6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a079d098dd6329f1acc803bd9a988b08b" id="r_a079d098dd6329f1acc803bd9a988b08b"><td class="memItemLeft" align="right" valign="top"><a id="a079d098dd6329f1acc803bd9a988b08b" name="a079d098dd6329f1acc803bd9a988b08b"></a>
+double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressureTensor</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:a079d098dd6329f1acc803bd9a988b08b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af323d269d4322760d2269a6321859758" id="r_af323d269d4322760d2269a6321859758"><td class="memItemLeft" align="right" valign="top"><a id="af323d269d4322760d2269a6321859758" name="af323d269d4322760d2269a6321859758"></a>
 double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressureTensor</b> () const</td></tr>
 <tr class="separator:af323d269d4322760d2269a6321859758"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aab8672609d5a36d4f7b3120cf8ada035" id="r_aab8672609d5a36d4f7b3120cf8ada035"><td class="memItemLeft" align="right" valign="top"><a id="aab8672609d5a36d4f7b3120cf8ada035" name="aab8672609d5a36d4f7b3120cf8ada035"></a>
 std::pair&lt; double3x3, double3x3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageIdealGasPressureTensor</b> () const</td></tr>
 <tr class="separator:aab8672609d5a36d4f7b3120cf8ada035"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae37de32c6ca254a8ffccce6953d8909c" id="r_ae37de32c6ca254a8ffccce6953d8909c"><td class="memItemLeft" align="right" valign="top"><a id="ae37de32c6ca254a8ffccce6953d8909c" name="ae37de32c6ca254a8ffccce6953d8909c"></a>
-double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedPressureTensor</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:ae37de32c6ca254a8ffccce6953d8909c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab94f83dfbbf91cc59f7031e68c4d22c1" id="r_ab94f83dfbbf91cc59f7031e68c4d22c1"><td class="memItemLeft" align="right" valign="top"><a id="ab94f83dfbbf91cc59f7031e68c4d22c1" name="ab94f83dfbbf91cc59f7031e68c4d22c1"></a>
+double3x3&#160;</td><td class="memItemRight" valign="bottom"><b>averagedPressureTensor</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:ab94f83dfbbf91cc59f7031e68c4d22c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9622ae2b55807ecdf2c5f1b376f0fee5" id="r_a9622ae2b55807ecdf2c5f1b376f0fee5"><td class="memItemLeft" align="right" valign="top"><a id="a9622ae2b55807ecdf2c5f1b376f0fee5" name="a9622ae2b55807ecdf2c5f1b376f0fee5"></a>
 std::pair&lt; double3x3, double3x3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagePressureTensor</b> () const</td></tr>
 <tr class="separator:a9622ae2b55807ecdf2c5f1b376f0fee5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0c686e1ab00e92f6cec464f472cde8de" id="r_a0c686e1ab00e92f6cec464f472cde8de"><td class="memItemLeft" align="right" valign="top"><a id="a0c686e1ab00e92f6cec464f472cde8de" name="a0c686e1ab00e92f6cec464f472cde8de"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressure</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:a0c686e1ab00e92f6cec464f472cde8de"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab5f3ae49cc214bd1f6c178cb4d3ceeef" id="r_ab5f3ae49cc214bd1f6c178cb4d3ceeef"><td class="memItemLeft" align="right" valign="top"><a id="ab5f3ae49cc214bd1f6c178cb4d3ceeef" name="ab5f3ae49cc214bd1f6c178cb4d3ceeef"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressure</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:ab5f3ae49cc214bd1f6c178cb4d3ceeef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8226ce79466b4c04cce521630b6853fd" id="r_a8226ce79466b4c04cce521630b6853fd"><td class="memItemLeft" align="right" valign="top"><a id="a8226ce79466b4c04cce521630b6853fd" name="a8226ce79466b4c04cce521630b6853fd"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedExcessPressure</b> () const</td></tr>
 <tr class="separator:a8226ce79466b4c04cce521630b6853fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afeb6bfaaea281863c07613b279712b67" id="r_afeb6bfaaea281863c07613b279712b67"><td class="memItemLeft" align="right" valign="top"><a id="afeb6bfaaea281863c07613b279712b67" name="afeb6bfaaea281863c07613b279712b67"></a>
 std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageExcessPressure</b> () const</td></tr>
 <tr class="separator:afeb6bfaaea281863c07613b279712b67"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aed5629b23d76d6d358f80999aee1a298" id="r_aed5629b23d76d6d358f80999aee1a298"><td class="memItemLeft" align="right" valign="top"><a id="aed5629b23d76d6d358f80999aee1a298" name="aed5629b23d76d6d358f80999aee1a298"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressure</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:aed5629b23d76d6d358f80999aee1a298"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36f3372f714952da051ca8abf34ca5c0" id="r_a36f3372f714952da051ca8abf34ca5c0"><td class="memItemLeft" align="right" valign="top"><a id="a36f3372f714952da051ca8abf34ca5c0" name="a36f3372f714952da051ca8abf34ca5c0"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressure</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:a36f3372f714952da051ca8abf34ca5c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f2ab82300e51acd6fb691fdec1836d0" id="r_a1f2ab82300e51acd6fb691fdec1836d0"><td class="memItemLeft" align="right" valign="top"><a id="a1f2ab82300e51acd6fb691fdec1836d0" name="a1f2ab82300e51acd6fb691fdec1836d0"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedIdealGasPressure</b> () const</td></tr>
 <tr class="separator:a1f2ab82300e51acd6fb691fdec1836d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a59a629e2d19232e2e407880404a2cb19" id="r_a59a629e2d19232e2e407880404a2cb19"><td class="memItemLeft" align="right" valign="top"><a id="a59a629e2d19232e2e407880404a2cb19" name="a59a629e2d19232e2e407880404a2cb19"></a>
 std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageIdealGasPressure</b> () const</td></tr>
 <tr class="separator:a59a629e2d19232e2e407880404a2cb19"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a06484229179264d5c6e7a9c56a8a8812" id="r_a06484229179264d5c6e7a9c56a8a8812"><td class="memItemLeft" align="right" valign="top"><a id="a06484229179264d5c6e7a9c56a8a8812" name="a06484229179264d5c6e7a9c56a8a8812"></a>
-double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedPressure</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:a06484229179264d5c6e7a9c56a8a8812"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86eb0db6947aca8c59a4214daabe0920" id="r_a86eb0db6947aca8c59a4214daabe0920"><td class="memItemLeft" align="right" valign="top"><a id="a86eb0db6947aca8c59a4214daabe0920" name="a86eb0db6947aca8c59a4214daabe0920"></a>
+double&#160;</td><td class="memItemRight" valign="bottom"><b>averagedPressure</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:a86eb0db6947aca8c59a4214daabe0920"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a790e456f40401ac919cd023d37a751c1" id="r_a790e456f40401ac919cd023d37a751c1"><td class="memItemLeft" align="right" valign="top"><a id="a790e456f40401ac919cd023d37a751c1" name="a790e456f40401ac919cd023d37a751c1"></a>
 std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagePressure</b> () const</td></tr>
 <tr class="separator:a790e456f40401ac919cd023d37a751c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -188,12 +188,12 @@ nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><b>jsonAverage
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a7a7a255130d316e4e1d10b5d1ce57fe5" id="r_a7a7a255130d316e4e1d10b5d1ce57fe5"><td class="memItemLeft" align="right" valign="top"><a id="a7a7a255130d316e4e1d10b5d1ce57fe5" name="a7a7a255130d316e4e1d10b5d1ce57fe5"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="separator:a7a7a255130d316e4e1d10b5d1ce57fe5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abb7463dde42ff53ac197feff83bcc2b6" id="r_abb7463dde42ff53ac197feff83bcc2b6"><td class="memItemLeft" align="right" valign="top"><a id="abb7463dde42ff53ac197feff83bcc2b6" name="abb7463dde42ff53ac197feff83bcc2b6"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
-<tr class="separator:abb7463dde42ff53ac197feff83bcc2b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36deea3fa6e27ca1b8b17593fab209b3" id="r_a36deea3fa6e27ca1b8b17593fab209b3"><td class="memItemLeft" align="right" valign="top"><a id="a36deea3fa6e27ca1b8b17593fab209b3" name="a36deea3fa6e27ca1b8b17593fab209b3"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="separator:a36deea3fa6e27ca1b8b17593fab209b3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a783d6c1340b2c3a1e213d23f62996f9b" id="r_a783d6c1340b2c3a1e213d23f62996f9b"><td class="memItemLeft" align="right" valign="top"><a id="a783d6c1340b2c3a1e213d23f62996f9b" name="a783d6c1340b2c3a1e213d23f62996f9b"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
+<tr class="separator:a783d6c1340b2c3a1e213d23f62996f9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad9945b21125365de099713f3553542d6" id="r_ad9945b21125365de099713f3553542d6"><td class="memItemLeft" align="right" valign="top"><a id="ad9945b21125365de099713f3553542d6" name="ad9945b21125365de099713f3553542d6"></a>
 std::vector&lt; std::pair&lt; double3x3, double &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bookKeepingExcessPressure</b></td></tr>
 <tr class="separator:ad9945b21125365de099713f3553542d6"><td class="memSeparator" colspan="2">&#160;</td></tr>

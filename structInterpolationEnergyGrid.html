@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -102,6 +102,7 @@ $(document).ready(function(){initNavTree('structInterpolationEnergyGrid.html',''
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#friends">Friends</a> &#124;
 <a href="structInterpolationEnergyGrid-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">InterpolationEnergyGrid Struct Reference<span class="mlabels"><span class="mlabel">export</span></span><div class="ingroups">module <a class="el" href="module_interpolation__energy__grid.html">interpolation_energy_grid</a></div></div></div>
@@ -125,9 +126,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a53682014017ce3b9e59f3c332d03cfc4" id="r_a53682014017ce3b9e59f3c332d03cfc4"><td class="memItemLeft" align="right" valign="top"><a id="a53682014017ce3b9e59f3c332d03cfc4" name="a53682014017ce3b9e59f3c332d03cfc4"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>InterpolationEnergyGrid</b> (const <a class="el" href="structSimulationBox.html">SimulationBox</a> unitCellBox, int3 numberOfCells, ForceField::InterpolationScheme order)</td></tr>
 <tr class="separator:a53682014017ce3b9e59f3c332d03cfc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3a2591e586c93cabe4b4dd2cf8f30636" id="r_a3a2591e586c93cabe4b4dd2cf8f30636"><td class="memItemLeft" align="right" valign="top"><a id="a3a2591e586c93cabe4b4dd2cf8f30636" name="a3a2591e586c93cabe4b4dd2cf8f30636"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>makeInterpolationGrid</b> (std::ostream &amp;stream, ForceField::InterpolationGridType interpolationGridType, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double cutOff, size_t pseudo_atom_index)</td></tr>
-<tr class="separator:a3a2591e586c93cabe4b4dd2cf8f30636"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa29ff397b0e8e70fba2807d12ea5d26e" id="r_aa29ff397b0e8e70fba2807d12ea5d26e"><td class="memItemLeft" align="right" valign="top"><a id="aa29ff397b0e8e70fba2807d12ea5d26e" name="aa29ff397b0e8e70fba2807d12ea5d26e"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>makeInterpolationGrid</b> (std::ostream &amp;stream, ForceField::InterpolationGridType interpolationGridType, const <a class="el" href="structForceField.html">ForceField</a> &amp;forceField, const <a class="el" href="structFramework.html">Framework</a> &amp;framework, double cutOff, std::size_t pseudo_atom_index)</td></tr>
+<tr class="separator:aa29ff397b0e8e70fba2807d12ea5d26e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa0c06b46c8d3a8487be1319ef96f18bb" id="r_aa0c06b46c8d3a8487be1319ef96f18bb"><td class="memItemLeft" align="right" valign="top"><a id="aa0c06b46c8d3a8487be1319ef96f18bb" name="aa0c06b46c8d3a8487be1319ef96f18bb"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>interpolate</b> (double3 pos) const</td></tr>
 <tr class="separator:aa0c06b46c8d3a8487be1319ef96f18bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -140,9 +141,9 @@ std::tuple&lt; double, double3, double3x3 &gt;&#160;</td><td class="memItemRight
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:afecdd3551cd241a86d10b0a6ab7fe01c" id="r_afecdd3551cd241a86d10b0a6ab7fe01c"><td class="memItemLeft" align="right" valign="top"><a id="afecdd3551cd241a86d10b0a6ab7fe01c" name="afecdd3551cd241a86d10b0a6ab7fe01c"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="separator:afecdd3551cd241a86d10b0a6ab7fe01c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab15aeea010d19fb0eb9a993891cead80" id="r_ab15aeea010d19fb0eb9a993891cead80"><td class="memItemLeft" align="right" valign="top"><a id="ab15aeea010d19fb0eb9a993891cead80" name="ab15aeea010d19fb0eb9a993891cead80"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="separator:ab15aeea010d19fb0eb9a993891cead80"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc41f56885188f635bbff273cc70ca05" id="r_acc41f56885188f635bbff273cc70ca05"><td class="memItemLeft" align="right" valign="top"><a id="acc41f56885188f635bbff273cc70ca05" name="acc41f56885188f635bbff273cc70ca05"></a>
 <a class="el" href="structSimulationBox.html">SimulationBox</a>&#160;</td><td class="memItemRight" valign="bottom"><b>unitCellBox</b></td></tr>
 <tr class="separator:acc41f56885188f635bbff273cc70ca05"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -158,6 +159,12 @@ ForceField::InterpolationScheme&#160;</td><td class="memItemRight" valign="botto
 <tr class="memitem:a57a22d42dd548649ca1107fca952cf2b" id="r_a57a22d42dd548649ca1107fca952cf2b"><td class="memItemLeft" align="right" valign="top"><a id="a57a22d42dd548649ca1107fca952cf2b" name="a57a22d42dd548649ca1107fca952cf2b"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
 <tr class="separator:a57a22d42dd548649ca1107fca952cf2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a442adfdff67280ddc90f66bfae1dd982" id="r_a442adfdff67280ddc90f66bfae1dd982"><td class="memItemLeft" align="right" valign="top"><a id="a442adfdff67280ddc90f66bfae1dd982" name="a442adfdff67280ddc90f66bfae1dd982"></a>
+static constexpr std::make_signed_t&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>num_points_interpolation</b> {6}</td></tr>
+<tr class="separator:a442adfdff67280ddc90f66bfae1dd982"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
 Friends</h2></td></tr>

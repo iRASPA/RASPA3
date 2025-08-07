@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -124,48 +124,48 @@ Collaboration diagram for PropertyEnergyHistogram:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a240fc80615b3b3473fa7ef9e9bc5fab0" id="r_a240fc80615b3b3473fa7ef9e9bc5fab0"><td class="memItemLeft" align="right" valign="top"><a id="a240fc80615b3b3473fa7ef9e9bc5fab0" name="a240fc80615b3b3473fa7ef9e9bc5fab0"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyEnergyHistogram</b> (size_t numberOfBlocks, size_t numberOfBins, std::pair&lt; double, double &gt; range, size_t sampleEvery, size_t writeEvery)</td></tr>
-<tr class="separator:a240fc80615b3b3473fa7ef9e9bc5fab0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7f61a2370b9441b2456744a73499681" id="r_ac7f61a2370b9441b2456744a73499681"><td class="memItemLeft" align="right" valign="top"><a id="ac7f61a2370b9441b2456744a73499681" name="ac7f61a2370b9441b2456744a73499681"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>addSample</b> (size_t blockIndex, size_t currentCycle, double4 energy, const double &amp;weight)</td></tr>
-<tr class="separator:ac7f61a2370b9441b2456744a73499681"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a59606037c154aef56f9b054a4dc627b2" id="r_a59606037c154aef56f9b054a4dc627b2"><td class="memItemLeft" align="right" valign="top"><a id="a59606037c154aef56f9b054a4dc627b2" name="a59606037c154aef56f9b054a4dc627b2"></a>
-std::vector&lt; double4 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (size_t blockIndex) const</td></tr>
-<tr class="separator:a59606037c154aef56f9b054a4dc627b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a62f48670971c93a5717154a2f21196d4" id="r_a62f48670971c93a5717154a2f21196d4"><td class="memItemLeft" align="right" valign="top"><a id="a62f48670971c93a5717154a2f21196d4" name="a62f48670971c93a5717154a2f21196d4"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>PropertyEnergyHistogram</b> (std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair&lt; double, double &gt; range, std::size_t sampleEvery, std::size_t writeEvery)</td></tr>
+<tr class="separator:a62f48670971c93a5717154a2f21196d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2df011ff64d8462dcee0d304d6178db6" id="r_a2df011ff64d8462dcee0d304d6178db6"><td class="memItemLeft" align="right" valign="top"><a id="a2df011ff64d8462dcee0d304d6178db6" name="a2df011ff64d8462dcee0d304d6178db6"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>addSample</b> (std::size_t blockIndex, std::size_t currentCycle, double4 energy, const double &amp;weight)</td></tr>
+<tr class="separator:a2df011ff64d8462dcee0d304d6178db6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a30261d425ac4af414b8cb1d1f4ada464" id="r_a30261d425ac4af414b8cb1d1f4ada464"><td class="memItemLeft" align="right" valign="top"><a id="a30261d425ac4af414b8cb1d1f4ada464" name="a30261d425ac4af414b8cb1d1f4ada464"></a>
+std::vector&lt; double4 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> (std::size_t blockIndex) const</td></tr>
+<tr class="separator:a30261d425ac4af414b8cb1d1f4ada464"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7a965000ea23ebff65960a1b47f029c3" id="r_a7a965000ea23ebff65960a1b47f029c3"><td class="memItemLeft" align="right" valign="top"><a id="a7a965000ea23ebff65960a1b47f029c3" name="a7a965000ea23ebff65960a1b47f029c3"></a>
 std::vector&lt; double4 &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averagedProbabilityHistogram</b> () const</td></tr>
 <tr class="separator:a7a965000ea23ebff65960a1b47f029c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e5198091dee10bc4c321534d4117208" id="r_a9e5198091dee10bc4c321534d4117208"><td class="memItemLeft" align="right" valign="top"><a id="a9e5198091dee10bc4c321534d4117208" name="a9e5198091dee10bc4c321534d4117208"></a>
 std::pair&lt; std::vector&lt; double4 &gt;, std::vector&lt; double4 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>averageProbabilityHistogram</b> () const</td></tr>
 <tr class="separator:a9e5198091dee10bc4c321534d4117208"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a64203b92eb394ea2562a308a0abd9e8e" id="r_a64203b92eb394ea2562a308a0abd9e8e"><td class="memItemLeft" align="right" valign="top"><a id="a64203b92eb394ea2562a308a0abd9e8e" name="a64203b92eb394ea2562a308a0abd9e8e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (size_t systemId, size_t currentCycle)</td></tr>
-<tr class="separator:a64203b92eb394ea2562a308a0abd9e8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5dbd46f28ae7700cba0837defa759567" id="r_a5dbd46f28ae7700cba0837defa759567"><td class="memItemLeft" align="right" valign="top"><a id="a5dbd46f28ae7700cba0837defa759567" name="a5dbd46f28ae7700cba0837defa759567"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>writeOutput</b> (std::size_t systemId, std::size_t currentCycle)</td></tr>
+<tr class="separator:a5dbd46f28ae7700cba0837defa759567"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9ce017b80b6007814bb9b60c460807ea" id="r_a9ce017b80b6007814bb9b60c460807ea"><td class="memItemLeft" align="right" valign="top"><a id="a9ce017b80b6007814bb9b60c460807ea" name="a9ce017b80b6007814bb9b60c460807ea"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>printSettings</b> () const</td></tr>
 <tr class="separator:a9ce017b80b6007814bb9b60c460807ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:ab836e4dd69118258ab8e0350245b203a" id="r_ab836e4dd69118258ab8e0350245b203a"><td class="memItemLeft" align="right" valign="top"><a id="ab836e4dd69118258ab8e0350245b203a" name="ab836e4dd69118258ab8e0350245b203a"></a>
-uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
-<tr class="separator:ab836e4dd69118258ab8e0350245b203a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac20d89ca9a6d42bf11038ce760608d1c" id="r_ac20d89ca9a6d42bf11038ce760608d1c"><td class="memItemLeft" align="right" valign="top"><a id="ac20d89ca9a6d42bf11038ce760608d1c" name="ac20d89ca9a6d42bf11038ce760608d1c"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
-<tr class="separator:ac20d89ca9a6d42bf11038ce760608d1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afdfbb75b9bc50a178fd01fff274407dc" id="r_afdfbb75b9bc50a178fd01fff274407dc"><td class="memItemLeft" align="right" valign="top"><a id="afdfbb75b9bc50a178fd01fff274407dc" name="afdfbb75b9bc50a178fd01fff274407dc"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
-<tr class="separator:afdfbb75b9bc50a178fd01fff274407dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e9c93e1a9f1e03114fd1ecb2aceb803" id="r_a0e9c93e1a9f1e03114fd1ecb2aceb803"><td class="memItemLeft" align="right" valign="top"><a id="a0e9c93e1a9f1e03114fd1ecb2aceb803" name="a0e9c93e1a9f1e03114fd1ecb2aceb803"></a>
+std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><b>versionNumber</b> {1}</td></tr>
+<tr class="separator:a0e9c93e1a9f1e03114fd1ecb2aceb803"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa73ae4cf44da72a5b8d59e9f6f8df7b2" id="r_aa73ae4cf44da72a5b8d59e9f6f8df7b2"><td class="memItemLeft" align="right" valign="top"><a id="aa73ae4cf44da72a5b8d59e9f6f8df7b2" name="aa73ae4cf44da72a5b8d59e9f6f8df7b2"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBlocks</b></td></tr>
+<tr class="separator:aa73ae4cf44da72a5b8d59e9f6f8df7b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2cad439dee8594b28168cfd8d8d8fd67" id="r_a2cad439dee8594b28168cfd8d8d8fd67"><td class="memItemLeft" align="right" valign="top"><a id="a2cad439dee8594b28168cfd8d8d8fd67" name="a2cad439dee8594b28168cfd8d8d8fd67"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfBins</b></td></tr>
+<tr class="separator:a2cad439dee8594b28168cfd8d8d8fd67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8e54dfd02cede6109c5c4abc7a8be4cd" id="r_a8e54dfd02cede6109c5c4abc7a8be4cd"><td class="memItemLeft" align="right" valign="top"><a id="a8e54dfd02cede6109c5c4abc7a8be4cd" name="a8e54dfd02cede6109c5c4abc7a8be4cd"></a>
 std::pair&lt; double, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>range</b></td></tr>
 <tr class="separator:a8e54dfd02cede6109c5c4abc7a8be4cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6dafed2f6b4f531674f41c5d124affd6" id="r_a6dafed2f6b4f531674f41c5d124affd6"><td class="memItemLeft" align="right" valign="top"><a id="a6dafed2f6b4f531674f41c5d124affd6" name="a6dafed2f6b4f531674f41c5d124affd6"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b></td></tr>
-<tr class="separator:a6dafed2f6b4f531674f41c5d124affd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af7dbcc3d86fc7e658cd2927258600797" id="r_af7dbcc3d86fc7e658cd2927258600797"><td class="memItemLeft" align="right" valign="top"><a id="af7dbcc3d86fc7e658cd2927258600797" name="af7dbcc3d86fc7e658cd2927258600797"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
-<tr class="separator:af7dbcc3d86fc7e658cd2927258600797"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff5d32428b13a33260b0a65d319b3578" id="r_aff5d32428b13a33260b0a65d319b3578"><td class="memItemLeft" align="right" valign="top"><a id="aff5d32428b13a33260b0a65d319b3578" name="aff5d32428b13a33260b0a65d319b3578"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEvery</b></td></tr>
+<tr class="separator:aff5d32428b13a33260b0a65d319b3578"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7486b50f1810100c66d5506aacbc953d" id="r_a7486b50f1810100c66d5506aacbc953d"><td class="memItemLeft" align="right" valign="top"><a id="a7486b50f1810100c66d5506aacbc953d" name="a7486b50f1810100c66d5506aacbc953d"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>writeEvery</b></td></tr>
+<tr class="separator:a7486b50f1810100c66d5506aacbc953d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a55026a72e22cc7f94fc326e39ec02346" id="r_a55026a72e22cc7f94fc326e39ec02346"><td class="memItemLeft" align="right" valign="top"><a id="a55026a72e22cc7f94fc326e39ec02346" name="a55026a72e22cc7f94fc326e39ec02346"></a>
 std::vector&lt; std::vector&lt; double4 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>bookKeepingEnergyHistogram</b></td></tr>
 <tr class="separator:a55026a72e22cc7f94fc326e39ec02346"><td class="memSeparator" colspan="2">&#160;</td></tr>

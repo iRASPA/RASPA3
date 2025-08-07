@@ -11,7 +11,7 @@ var structCIFReader =
     [ "parseValue", "structCIFReader.html#a3aaebba4cc3ec95b47cdba3f404407a2", null ],
     [ "scanDouble", "structCIFReader.html#ab565c94ff105b2feba0040a9adf954dd", null ],
     [ "scanDouble", "structCIFReader.html#a49ccdbf6f29282887f2fc722b3fc2913", null ],
-    [ "scanInt", "structCIFReader.html#a0fab2a978b3323a9bba9510a17c18462", null ],
+    [ "scanInt", "structCIFReader.html#a52a7ea10879c6e900f1aa1b7173ab86a", null ],
     [ "scanString", "structCIFReader.html#a0289369fc9c000f8d448f413e73916e9", null ],
     [ "skipComment", "structCIFReader.html#acfe205358579b54357c90076c9a8d32e", null ],
     [ "_a", "structCIFReader.html#ae39a214f3d2b3feec4280565f5565e3f", null ],
@@ -22,7 +22,7 @@ var structCIFReader =
     [ "_gamma", "structCIFReader.html#a4a6a7c98b7496c883dfc9a1b63cb7faa", null ],
     [ "_previousScanLocation", "structCIFReader.html#a029f5f1d39d0d3ac34f1cf6534e1675b", null ],
     [ "_scanner", "structCIFReader.html#a9bf6d6cb3720731d74028be292c47ee0", null ],
-    [ "_spaceGroupHallNumber", "structCIFReader.html#a555944489f6618cd2a0ad6ee4555f8c0", null ],
+    [ "_spaceGroupHallNumber", "structCIFReader.html#a279a73f3c92144e43f29ce937ea63f66", null ],
     [ "fractionalAtoms", "structCIFReader.html#a3280d0e6e6c55cffa45f595fab54c51d", null ],
     [ "simulationBox", "structCIFReader.html#a599d6c872d3266e626c69564d90c6a69", null ]
 ];

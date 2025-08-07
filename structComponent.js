@@ -1,25 +1,25 @@
 var structComponent =
 [
-    [ "GrowType", "structComponent.html#a66eca735e0715b2592dececdd30021fc", [
-      [ "Rigid", "structComponent.html#a66eca735e0715b2592dececdd30021fcac7207657aba5dfd2e5b0ca3f35cd8c26", null ],
-      [ "Flexible", "structComponent.html#a66eca735e0715b2592dececdd30021fca13b303a6c0d90897b5375ce901acc445", null ]
+    [ "GrowType", "structComponent.html#a455a5265ab0c0b89f72bc67f3c4eded9", [
+      [ "Rigid", "structComponent.html#a455a5265ab0c0b89f72bc67f3c4eded9ac7207657aba5dfd2e5b0ca3f35cd8c26", null ],
+      [ "Flexible", "structComponent.html#a455a5265ab0c0b89f72bc67f3c4eded9a13b303a6c0d90897b5375ce901acc445", null ]
     ] ],
     [ "PressureScale", "structComponent.html#aedcf68ac03a4febf84ad0760caefe94a", [
       [ "Log", "structComponent.html#aedcf68ac03a4febf84ad0760caefe94aace0be71e33226e4c1db2bcea5959f16b", null ],
       [ "Normal", "structComponent.html#aedcf68ac03a4febf84ad0760caefe94aa960b44c579bc2f6818d2daaf9e4c16f0", null ]
     ] ],
-    [ "Shape", "structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2", [
-      [ "NonLinear", "structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a47e3d35ab4249db25f1467971d8aba21", null ],
-      [ "Linear", "structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a32a843da6ea40ab3b17a3421ccdf671b", null ],
-      [ "Point", "structComponent.html#a7c9ac1ec9274cbe653017e42455c62b2a2a3cd5946cfd317eb99c3d32e35e2d4c", null ]
+    [ "Shape", "structComponent.html#ad907a8e6748611ef477b44333027e228", [
+      [ "NonLinear", "structComponent.html#ad907a8e6748611ef477b44333027e228a47e3d35ab4249db25f1467971d8aba21", null ],
+      [ "Linear", "structComponent.html#ad907a8e6748611ef477b44333027e228a32a843da6ea40ab3b17a3421ccdf671b", null ],
+      [ "Point", "structComponent.html#ad907a8e6748611ef477b44333027e228a2a3cd5946cfd317eb99c3d32e35e2d4c", null ]
     ] ],
-    [ "Type", "structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2", [
-      [ "Adsorbate", "structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2a8261db595fcbf7b7f96ce4323ba5d6a4", null ],
-      [ "Cation", "structComponent.html#ad144fa22f6ad69d8a2f2e09ad247eac2ac5d27658781538ced67eb80aeb01df97", null ]
+    [ "Type", "structComponent.html#a44e31e5e28f3f92551440acfdb8306f7", [
+      [ "Adsorbate", "structComponent.html#a44e31e5e28f3f92551440acfdb8306f7a8261db595fcbf7b7f96ce4323ba5d6a4", null ],
+      [ "Cation", "structComponent.html#a44e31e5e28f3f92551440acfdb8306f7ac5d27658781538ced67eb80aeb01df97", null ]
     ] ],
     [ "Component", "structComponent.html#a8775db6d1a2c1afc2e77cd3c8f39da6f", null ],
-    [ "Component", "structComponent.html#abb9cff188713708f6bd40be2c877a679", null ],
-    [ "Component", "structComponent.html#adc74c95da72de097925f5e43da145ac7", null ],
+    [ "Component", "structComponent.html#ac0cc8a11a8e2a80c5eef04d70d2a025b", null ],
+    [ "Component", "structComponent.html#a9b86806b9d64d7c4a101f5c7af0b75e3", null ],
     [ "computeCenterOfMass", "structComponent.html#afb30d7b6098a231880a3accfe421eea8", null ],
     [ "computeRigidProperties", "structComponent.html#ab675ce04de824243180efef21a37627f", null ],
     [ "copiedAtoms", "structComponent.html#a6e6e2f26a4289a8d65e419b7051d6028", null ],
@@ -37,26 +37,17 @@ var structComponent =
     [ "atoms", "structComponent.html#af7ca684104452c143bb5be2d91654de3", null ],
     [ "averageRosenbluthWeights", "structComponent.html#a371290e41662794fbd284fe60bf2745a", null ],
     [ "axialDispersionCoefficient", "structComponent.html#a94286dab5dd62994168deb8993467449", null ],
-    [ "bendBends", "structComponent.html#ac6b0b1c7542fc80f30ad985a5ff1c522", null ],
-    [ "bends", "structComponent.html#ae7d8fc0600af72d76f1f74701e2a459a", null ],
-    [ "bendTorsions", "structComponent.html#a2a92da34c680ca708672aea5e5adce36", null ],
     [ "blockingPockets", "structComponent.html#a39f8c86c497cdac90c3c047f569e2033", null ],
-    [ "bondBonds", "structComponent.html#aa75ed1f5f8a64bd4b2bc39dcdf84e070", null ],
-    [ "bondDipoles", "structComponent.html#a1ff2eab6f4bc64e8941f4369ad7326cc", null ],
-    [ "bonds", "structComponent.html#a4dae239b458ccad307f6117dfcd76e4d", null ],
     [ "bulkFluidDensity", "structComponent.html#a01bdb072f5515d253b962421dca78487", null ],
-    [ "chiralCenters", "structComponent.html#ad65c123bf183691bb92a67b865a75b65", null ],
-    [ "columnError", "structComponent.html#aa6137c7e57bc422c5397e1b0df6dfd38", null ],
-    [ "columnLoading", "structComponent.html#af6ab76fce04d4cd3656a30cbac3118c8", null ],
-    [ "columnPressure", "structComponent.html#a19f24687dc9b3a1be7c0ce1f75265f38", null ],
-    [ "componentId", "structComponent.html#a805338431c177411b378f02d46773f67", null ],
+    [ "columnError", "structComponent.html#a6704ebcf1ca30d6784def7a9d29a760e", null ],
+    [ "columnLoading", "structComponent.html#a5422ea56110d7c91fea999a019b98d37", null ],
+    [ "columnPressure", "structComponent.html#a8635f8451d5387e144a994089c3e5d50", null ],
+    [ "componentId", "structComponent.html#ab195974df594a98b373963364b8b47e2", null ],
     [ "compressibility", "structComponent.html#ace0191604306277b2543a9877f7d52ee", null ],
-    [ "configMoves", "structComponent.html#ac1e4fba930b76d64a61c32c8fd30052f", null ],
-    [ "connectivityTable", "structComponent.html#ad0c5664f522ae2e6d045161a2a01c5f4", null ],
+    [ "connectivityTable", "structComponent.html#ad8882215ec69021809c5344202bb7275", null ],
     [ "criticalPressure", "structComponent.html#a09b85d2b2d2b9d63abb83695d6f93efa", null ],
     [ "criticalTemperature", "structComponent.html#a1ca3964add1374a6ed7fe37745a746cf", null ],
     [ "definedAtoms", "structComponent.html#a68598c4b3262a35fa3c4247c681a3862", null ],
-    [ "excludedIntraCoulomb", "structComponent.html#a80156b6311a538f13b3423ac277794f5", null ],
     [ "filename", "structComponent.html#a29a3884d280b0c88e1971e3df5788260", null ],
     [ "filenameData", "structComponent.html#a1679a72383b9109a977c11a4408e263b", null ],
     [ "fugacityCoefficient", "structComponent.html#a8b31256ad8b46242cf8dc757b22f0dc7", null ],
@@ -64,13 +55,10 @@ var structComponent =
     [ "hasFractionalMolecule", "structComponent.html#a32fe825d2bb33fc17242e6ddd5ae6d37", null ],
     [ "idealGasEnergy", "structComponent.html#a516b8ead93f363496dcdcc7859aac59e", null ],
     [ "idealGasRosenbluthWeight", "structComponent.html#aabb30dcbf69b0ed5ea3df3189d137039", null ],
-    [ "ImproperTorsions", "structComponent.html#a9d62e3cb52b4d9280b604611c3c84f0a", null ],
     [ "inertiaVector", "structComponent.html#a0203b634c556adb6f461e56b4ccc3af1", null ],
-    [ "initialNumberOfMolecules", "structComponent.html#ae61c189255075e2e2dd6607ece850179", null ],
-    [ "intraCoulomb", "structComponent.html#a7b15b1623983677fca6493eaef6c43b1", null ],
-    [ "intraVDW", "structComponent.html#a0dead5a2e3dbdbeb0bbdbfbfd1546bcb", null ],
+    [ "initialNumberOfMolecules", "structComponent.html#a185c14114d569e02eb4b493588e93521", null ],
+    [ "internalPotentials", "structComponent.html#a6b11409b4e664e3a9069dbb56589ff78", null ],
     [ "inverseInertiaVector", "structComponent.html#a968417688263e19e11c6ebafb80d54c0", null ],
-    [ "inversionBends", "structComponent.html#aab3bb6511536c94da913d7223db9e7bd", null ],
     [ "isCarrierGas", "structComponent.html#ab3ffea792d45bdeb913c7fbec63f272f", null ],
     [ "isotherm", "structComponent.html#a5078016b338c5ce128074445efcf8e32", null ],
     [ "lambdaGC", "structComponent.html#a87d07f60122d516125088573d89ec511", null ],
@@ -85,16 +73,12 @@ var structComponent =
     [ "partialPressure", "structComponent.html#a28f0b7e53bc0d9d3087e03ee9001c90b", null ],
     [ "pressureScale", "structComponent.html#aaf086b2b53265bb215bf37236c8a463d", null ],
     [ "rigid", "structComponent.html#a205d5610646701fbcb47d58cee3848be", null ],
-    [ "rotationalDegreesOfFreedom", "structComponent.html#a1b31cf8f59aae9bf70af6fb59692ff8e", null ],
+    [ "rotationalDegreesOfFreedom", "structComponent.html#a79e47df34566ee1922e4f542ef80ad3d", null ],
     [ "shapeType", "structComponent.html#a7f5b913b1f2bee3995b081d03d119498", null ],
-    [ "startingBead", "structComponent.html#a510855c10a7e77cbb0476a758585f10c", null ],
-    [ "stretchBends", "structComponent.html#a515f5f90ce6d142c6a16304a26a45806", null ],
-    [ "stretchTorsions", "structComponent.html#a715c7337cf56101e0acbbe4055177a3a", null ],
+    [ "startingBead", "structComponent.html#ae573cc37f1ddbcaf9add0e1f4da957aa", null ],
     [ "swappable", "structComponent.html#a9bb694a5b3664bafded82337fb57a1e8", null ],
-    [ "Torsion", "structComponent.html#abd70470773c06a2236522f4475da734e", null ],
     [ "totalMass", "structComponent.html#ad6590f82ba2ccb1b16ec8987bef669be", null ],
-    [ "translationalDegreesOfFreedom", "structComponent.html#abb724333fd3186bb3ea604da25e7f6d6", null ],
+    [ "translationalDegreesOfFreedom", "structComponent.html#a7542b027a8246cf691a8d974c9a14863", null ],
     [ "type", "structComponent.html#a18de93d5a176aa3cd6dc6724788dfacb", null ],
-    [ "UreyBradley", "structComponent.html#ac83e3a6f89b4cbce454b1de31b70f3c7", null ],
-    [ "versionNumber", "structComponent.html#a87e68e579bfc285675ea1b2f965aadbe", null ]
+    [ "versionNumber", "structComponent.html#a59d06aec82a4f7c1d28a0dd6846279a2", null ]
 ];

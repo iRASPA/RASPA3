@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -116,9 +116,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a406c61170d52f6ca5074b731844dbb75" id="r_a406c61170d52f6ca5074b731844dbb75"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMolecule.html#a406c61170d52f6ca5074b731844dbb75">Molecule</a> (double3 <a class="el" href="structMolecule.html#ab1e2695326e1c9e4438cb34713ab9c37">centerOfMassPosition</a>, simd_quatd <a class="el" href="structMolecule.html#a25047005ac17f124901439c934802a58">orientation</a>)</td></tr>
 <tr class="memdesc:a406c61170d52f6ca5074b731844dbb75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a <a class="el" href="structMolecule.html">Molecule</a> with specified center of mass position and orientation.  <br /></td></tr>
 <tr class="separator:a406c61170d52f6ca5074b731844dbb75"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4a71d06a853a07862a0f88169597d6f" id="r_af4a71d06a853a07862a0f88169597d6f"><td class="memItemLeft" align="right" valign="top"><a id="af4a71d06a853a07862a0f88169597d6f" name="af4a71d06a853a07862a0f88169597d6f"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Molecule</b> (double3 <a class="el" href="structMolecule.html#ab1e2695326e1c9e4438cb34713ab9c37">centerOfMassPosition</a>, simd_quatd <a class="el" href="structMolecule.html#a25047005ac17f124901439c934802a58">orientation</a>, double <a class="el" href="structMolecule.html#acf57087a8d3f90845883df2264893c59">mass</a>, size_t <a class="el" href="structMolecule.html#ac3cee11937162201d01ab17f7bcefed8">componentId</a>, size_t <a class="el" href="structMolecule.html#ae8b3a67381f67906f9212c6545ca8848">numberOfAtoms</a>)</td></tr>
-<tr class="separator:af4a71d06a853a07862a0f88169597d6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ffdcff3467fef7dcfe75adc47c2c17e" id="r_a5ffdcff3467fef7dcfe75adc47c2c17e"><td class="memItemLeft" align="right" valign="top"><a id="a5ffdcff3467fef7dcfe75adc47c2c17e" name="a5ffdcff3467fef7dcfe75adc47c2c17e"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Molecule</b> (double3 <a class="el" href="structMolecule.html#ab1e2695326e1c9e4438cb34713ab9c37">centerOfMassPosition</a>, simd_quatd <a class="el" href="structMolecule.html#a25047005ac17f124901439c934802a58">orientation</a>, double <a class="el" href="structMolecule.html#acf57087a8d3f90845883df2264893c59">mass</a>, std::size_t <a class="el" href="structMolecule.html#a0bed0ef407474fb6848a07ed3a8ce0c2">componentId</a>, std::size_t <a class="el" href="structMolecule.html#a1a56c9dbfab3691d6f646dd45ff96d41">numberOfAtoms</a>)</td></tr>
+<tr class="separator:a5ffdcff3467fef7dcfe75adc47c2c17e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6f874d22f325cd628aeb85bd27332a54" id="r_a6f874d22f325cd628aeb85bd27332a54"><td class="memItemLeft" align="right" valign="top"><a id="a6f874d22f325cd628aeb85bd27332a54" name="a6f874d22f325cd628aeb85bd27332a54"></a>
 std::string&#160;</td><td class="memItemRight" valign="bottom"><b>repr</b> () const</td></tr>
 <tr class="separator:a6f874d22f325cd628aeb85bd27332a54"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -153,14 +153,14 @@ simd_quatd&#160;</td><td class="memItemRight" valign="bottom"><b>orientationGrad
 double&#160;</td><td class="memItemRight" valign="bottom"><b>mass</b></td></tr>
 <tr class="memdesc:acf57087a8d3f90845883df2264893c59"><td class="mdescLeft">&#160;</td><td class="mdescRight">Molecular mass. <br /></td></tr>
 <tr class="separator:acf57087a8d3f90845883df2264893c59"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac3cee11937162201d01ab17f7bcefed8" id="r_ac3cee11937162201d01ab17f7bcefed8"><td class="memItemLeft" align="right" valign="top"><a id="ac3cee11937162201d01ab17f7bcefed8" name="ac3cee11937162201d01ab17f7bcefed8"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b></td></tr>
-<tr class="memdesc:ac3cee11937162201d01ab17f7bcefed8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointing to the index in the components list. <br /></td></tr>
-<tr class="separator:ac3cee11937162201d01ab17f7bcefed8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae8b3a67381f67906f9212c6545ca8848" id="r_ae8b3a67381f67906f9212c6545ca8848"><td class="memItemLeft" align="right" valign="top"><a id="ae8b3a67381f67906f9212c6545ca8848" name="ae8b3a67381f67906f9212c6545ca8848"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfAtoms</b></td></tr>
-<tr class="memdesc:ae8b3a67381f67906f9212c6545ca8848"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of subatoms in this molecule. <br /></td></tr>
-<tr class="separator:ae8b3a67381f67906f9212c6545ca8848"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bed0ef407474fb6848a07ed3a8ce0c2" id="r_a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memItemLeft" align="right" valign="top"><a id="a0bed0ef407474fb6848a07ed3a8ce0c2" name="a0bed0ef407474fb6848a07ed3a8ce0c2"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>componentId</b></td></tr>
+<tr class="memdesc:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointing to the index in the components list. <br /></td></tr>
+<tr class="separator:a0bed0ef407474fb6848a07ed3a8ce0c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a56c9dbfab3691d6f646dd45ff96d41" id="r_a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memItemLeft" align="right" valign="top"><a id="a1a56c9dbfab3691d6f646dd45ff96d41" name="a1a56c9dbfab3691d6f646dd45ff96d41"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfAtoms</b></td></tr>
+<tr class="memdesc:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of subatoms in this molecule. <br /></td></tr>
+<tr class="separator:a1a56c9dbfab3691d6f646dd45ff96d41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acb1704646872ce5c98ad93cddabd2b08" id="r_acb1704646872ce5c98ad93cddabd2b08"><td class="memItemLeft" align="right" valign="top"><a id="acb1704646872ce5c98ad93cddabd2b08" name="acb1704646872ce5c98ad93cddabd2b08"></a>
 double&#160;</td><td class="memItemRight" valign="bottom"><b>invMass</b></td></tr>
 <tr class="memdesc:acb1704646872ce5c98ad93cddabd2b08"><td class="mdescLeft">&#160;</td><td class="mdescRight">1/mass to save on computing (and set correct size) <br /></td></tr>

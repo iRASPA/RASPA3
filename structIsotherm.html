@@ -34,7 +34,7 @@ MathJax.Hub.Config({
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.6</span>
+   <div id="projectname">RASPA3<span id="projectnumber">&#160;3.0.8</span>
    </div>
    <div id="projectbrief">A molecular simulation code for computing adsorption and diffusion in nanoporous materials</div>
   </td>
@@ -143,9 +143,9 @@ Public Types</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a7c77feae12a2c31fdddfdd249b776e11" id="r_a7c77feae12a2c31fdddfdd249b776e11"><td class="memItemLeft" align="right" valign="top"><a id="a7c77feae12a2c31fdddfdd249b776e11" name="a7c77feae12a2c31fdddfdd249b776e11"></a>
-&#160;</td><td class="memItemRight" valign="bottom"><b>Isotherm</b> (Isotherm::Type type, const std::vector&lt; double &gt; &amp;values, size_t numberOfValues)</td></tr>
-<tr class="separator:a7c77feae12a2c31fdddfdd249b776e11"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afc924d93ec2848eaa7a0fe5a1a84e15a" id="r_afc924d93ec2848eaa7a0fe5a1a84e15a"><td class="memItemLeft" align="right" valign="top"><a id="afc924d93ec2848eaa7a0fe5a1a84e15a" name="afc924d93ec2848eaa7a0fe5a1a84e15a"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>Isotherm</b> (Isotherm::Type type, const std::vector&lt; double &gt; &amp;values, std::size_t numberOfValues)</td></tr>
+<tr class="separator:afc924d93ec2848eaa7a0fe5a1a84e15a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a55ca6308fb09c8692b5533e674f5aaa4" id="r_a55ca6308fb09c8692b5533e674f5aaa4"><td class="memItemLeft" align="right" valign="top"><a id="a55ca6308fb09c8692b5533e674f5aaa4" name="a55ca6308fb09c8692b5533e674f5aaa4"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>operator==</b> (<a class="el" href="structIsotherm.html">Isotherm</a> const &amp;) const =default</td></tr>
 <tr class="separator:a55ca6308fb09c8692b5533e674f5aaa4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -170,9 +170,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>randomize</b> (Random
 <tr class="memitem:a538efba689a59563c8da1dd9cca9bdca" id="r_a538efba689a59563c8da1dd9cca9bdca"><td class="memItemLeft" align="right" valign="top"><a id="a538efba689a59563c8da1dd9cca9bdca" name="a538efba689a59563c8da1dd9cca9bdca"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isUnphysical</b> () const</td></tr>
 <tr class="separator:a538efba689a59563c8da1dd9cca9bdca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a14085573df784eb20708a0158844ef5b" id="r_a14085573df784eb20708a0158844ef5b"><td class="memItemLeft" align="right" valign="top"><a id="a14085573df784eb20708a0158844ef5b" name="a14085573df784eb20708a0158844ef5b"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>gnuplotFunctionString</b> (char s, size_t i) const</td></tr>
-<tr class="separator:a14085573df784eb20708a0158844ef5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a69f398f3ccdaca9d9558ded21181a125" id="r_a69f398f3ccdaca9d9558ded21181a125"><td class="memItemLeft" align="right" valign="top"><a id="a69f398f3ccdaca9d9558ded21181a125" name="a69f398f3ccdaca9d9558ded21181a125"></a>
+std::string&#160;</td><td class="memItemRight" valign="bottom"><b>gnuplotFunctionString</b> (char s, std::size_t i) const</td></tr>
+<tr class="separator:a69f398f3ccdaca9d9558ded21181a125"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -182,9 +182,9 @@ Isotherm::Type&#160;</td><td class="memItemRight" valign="bottom"><b>type</b></t
 <tr class="memitem:a645317bef23291d1f017152847eeaa59" id="r_a645317bef23291d1f017152847eeaa59"><td class="memItemLeft" align="right" valign="top"><a id="a645317bef23291d1f017152847eeaa59" name="a645317bef23291d1f017152847eeaa59"></a>
 std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>parameters</b></td></tr>
 <tr class="separator:a645317bef23291d1f017152847eeaa59"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a630f71d4a058831515d201a25bceaf71" id="r_a630f71d4a058831515d201a25bceaf71"><td class="memItemLeft" align="right" valign="top"><a id="a630f71d4a058831515d201a25bceaf71" name="a630f71d4a058831515d201a25bceaf71"></a>
-size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfParameters</b></td></tr>
-<tr class="separator:a630f71d4a058831515d201a25bceaf71"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1cb41fc8ddc923a86c1f902a8ba568fe" id="r_a1cb41fc8ddc923a86c1f902a8ba568fe"><td class="memItemLeft" align="right" valign="top"><a id="a1cb41fc8ddc923a86c1f902a8ba568fe" name="a1cb41fc8ddc923a86c1f902a8ba568fe"></a>
+std::size_t&#160;</td><td class="memItemRight" valign="bottom"><b>numberOfParameters</b></td></tr>
+<tr class="separator:a1cb41fc8ddc923a86c1f902a8ba568fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <hr/>The documentation for this struct was generated from the following file:<ul>
 <li>src/raspakit/ruptura/<b>isotherm.ixx</b></li>
