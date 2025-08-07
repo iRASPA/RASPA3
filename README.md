@@ -75,9 +75,10 @@ cd examples/basic/1_mc_methane_in_box
 - MC/MD hybrid move
 - tail-corrections for CFCMC
 - grids for rigid frameworks
+- restart-file
+- zeo++-type calculations
 
 # Todo-list
-- restart-file
 - flexible molecules
 - flexible frameworks
 - reaction ensemble
@@ -85,7 +86,6 @@ cd examples/basic/1_mc_methane_in_box
 - polarization
 - cell-lists for rigid frameworks
 - partial molar volumes
-- zeo++-type calculations
 - partial molar enthalpies/volumes
 - optimization
 - elastic constants

@@ -1,8 +1,9 @@
 # User Manual
 
 - \subpage manual_main
-- \subpage installing
-- \subpage compiling
+- \subpage installation
+- \subpage structure
 - \subpage running
 - \subpage units
 - \subpage commands
+- \subpage FAQ

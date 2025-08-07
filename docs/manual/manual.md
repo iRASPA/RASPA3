@@ -107,12 +107,15 @@ articles or book-chapters, then for `RASPA`:
 > Y.A. Ran, S. Sharma, S.R.G. Balestra, Z. Li, S. Calero, T.J.H Vlugt,
 > R.Q. Snurr, and D. Dubbeldam RASPA3: A Monte Carlo Code for Computing
 > Adsorption and Diffusion in Nanoporous Materials and Thermodynamics
-> Properties of Fluids , 2024.
+> Properties of Fluids, 
+> J. Chem. Phys. 2024, 161, 114106
+> <https://doi.org/10.1063/5.0226249>
 
 > D. Dubbeldam, S. Calero, D.E. Ellis, and R.Q. Snurr, RASPA: Molecular
 > Simulation Software for Adsorption and Diffusion in Flexible
-> Nanoporous Materials, ,
-> <http://dx.doi.org/10.1080/08927022.2015.1010082>, 2015.
+> Nanoporous Materials,
+> 2015
+> <http://dx.doi.org/10.1080/08927022.2015.1010082>
 
 For the inner workings of Monte Carlo codes:
 
@@ -133,3 +136,11 @@ For the description of the implementation of force fields:
 > Parameterization, and Implementation of Atomic Force Fields for
 > Adsorption in Nanoporous Materials,
 > <https://doi.org/10.1002/adts.201900135>, , 2(11), 1900135, 2019.
+
+For the implementation of the grid interpolation methods:
+
+> Y.A. Ran, J. Tapia, S. Sharma, P. Bai, S. Calero, T.J.H. Vlugt, D. Dubbeldam
+> Implementation of energy and force grids in molecular simulations of porous 
+> materials.
+> Molecular Physics, 2025, e2542486
+> <https://doi.org/10.1080/00268976.2025.2542486>
