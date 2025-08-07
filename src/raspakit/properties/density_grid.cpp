@@ -58,6 +58,7 @@ void PropertyDensityGrid::sample(const std::optional<Framework> &framework, cons
 
   for (std::span<const Atom>::iterator it = moleculeAtoms.begin(); it != moleculeAtoms.end(); ++it)
   {
+    if (it->isFractional) continue;
     std::size_t comp = static_cast<std::size_t>(it->componentId);
     double3 pos = it->position;
     double3 s = (simulationBox.inverseCell * pos).fract();
