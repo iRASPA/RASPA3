@@ -553,6 +553,41 @@ void MolecularDynamics::production()
     totalSimulationTime += (t2 - t1);
   continueProductionStage:;
   }
+
+  // output properties to files
+  for (System& system : systems)
+  {
+    if (system.propertyConventionalRadialDistributionFunction.has_value())
+    {
+      system.propertyConventionalRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+                                                                         system.simulationBox.volume,
+                                                                         system.totalNumberOfPseudoAtoms, currentCycle);
+    }
+
+    if (system.propertyRadialDistributionFunction.has_value())
+    {
+      system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+                                                             system.simulationBox.volume,
+                                                             system.totalNumberOfPseudoAtoms, currentCycle);
+    }
+    if (system.propertyDensityGrid.has_value())
+    {
+      system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+                                              system.framework, system.components, currentCycle);
+    }
+
+    if (system.propertyMSD.has_value())
+    {
+      system.propertyMSD->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
+                                      system.timeStep, currentCycle);
+    }
+
+    if (system.propertyVACF.has_value())
+    {
+      system.propertyVACF->writeOutput(system.systemId, system.components, system.numberOfIntegerMoleculesPerComponent,
+                                       system.timeStep, currentCycle);
+    }
+  }
 }
 
 void MolecularDynamics::output()
