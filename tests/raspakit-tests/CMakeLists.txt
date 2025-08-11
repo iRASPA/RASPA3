@@ -25,6 +25,8 @@ add_executable(unit_tests_raspakit
   triquintic_derivative_inter_lennard_jones.cpp
   tricubic_derivative_inter_real_ewald.cpp
   triquintic_derivative_inter_real_ewald.cpp
+  intramolecular_energy_gradient_strain_bonds.cpp
+  intramolecular_energy_gradient_strain_bends.cpp
   #  grids.cpp
   main.cpp)
 

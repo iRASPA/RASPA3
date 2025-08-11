@@ -45,7 +45,7 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
 
   Component helium =
       Component(0, forceField, "helium", 5.2, 228000.0, -0.39,
-                {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(probeType.value()), 0, false, false)}, 5, 21);
+                {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(probeType.value()), 0, false, false)}, {}, {}, 5, 21);
 
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {helium}, {0}, 5);
 

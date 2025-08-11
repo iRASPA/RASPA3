@@ -27,7 +27,7 @@ import framework;
 import component;
 import interpolation_energy_grid;
 import bond_potential;
-import internal_potentials;
+import intra_molecular_potentials;
 
 export namespace CBMC
 {
@@ -43,5 +43,5 @@ export namespace CBMC
         Component &component,
         const std::vector<Atom> chain_atoms, std::size_t previousBead,
         std::size_t currentBead, std::vector<std::size_t> nextBeads, std::size_t numberOfTrialDirections,
-        const Potentials::InternalPotentials &internalInteractions);
+        const Potentials::IntraMolecularPotentials &intraMolecularInteractions);
 }

@@ -54,7 +54,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_NonEwald)
                    {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                     Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
                     Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                   5, 21);
+                    {}, {}, 5, 21);
   
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {1}, 5);
   
@@ -124,7 +124,7 @@ TEST(electrostatic_field, Test_2_CO2_in_ITQ_29_2x2x2_Ewald)
                    {Atom({0, 0,  1.149}, -0.3256, 1.0, 0, 4, 0, false, false),
                     Atom({0, 0,  0.000},  0.6512, 1.0, 0, 3, 0, false, false),
                     Atom({0, 0, -1.149}, -0.3256, 1.0, 0, 4, 0, false, false)},
-                   5, 21);
+                    {}, {}, 5, 21);
   
   System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {CO2}, {1}, 5);
   

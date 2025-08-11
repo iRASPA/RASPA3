@@ -326,11 +326,11 @@ std::string RunningEnergy::printMC(const std::string &label) const
              conv * bondBond, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bond-bend{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bondBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    bond-torsion{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+  std::print(stream, "    bond-torsion{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bondTorsion, Units::displayedUnitOfEnergyString);
   std::print(stream, "    bend-bend{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendBend, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    bend-torsion{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+  std::print(stream, "    bend-torsion{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * bendTorsion, Units::displayedUnitOfEnergyString);
   std::print(stream, "    intra VDW{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * intraVDW, Units::displayedUnitOfEnergyString);

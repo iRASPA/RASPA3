@@ -88,10 +88,11 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
                Units::displayedUnitOfEnergyString);
     std::print(stream, "    Molecule bendTorsion:       {: .6e} [{}]\n", conv * intraComponentEnergies[i].bendTorsion,
                Units::displayedUnitOfEnergyString);
-    std::print(stream, "    Molecule intraVDW:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].intraVDW,
+    std::print(stream, "    Molecule intraVDW:          {: .6e} [{}]\n", conv * intraComponentEnergies[i].vanDerWaals,
                Units::displayedUnitOfEnergyString);
     std::print(stream, "    Molecule intraChargeCharge: {: .6e} [{}]\n\n",
-               conv * intraComponentEnergies[i].intraChargeCharge, Units::displayedUnitOfEnergyString);
+               conv * intraComponentEnergies[i].coulomb, Units::displayedUnitOfEnergyString);
+
     for (std::size_t j = 0; j < components.size(); ++j)
     {
       std::print(stream, "    Component: {}-{} [{}-{}]\n", i, j, components[i].name, components[j].name);

@@ -40,16 +40,6 @@ import cbmc_interactions;
 import cbmc_multiple_first_bead;
 import interpolation_energy_grid;
 
-[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const Component &component, bool hasExternalField,
-                                          const ForceField &forcefield, const SimulationBox &simulationBox,
-                                          const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-                                          const std::optional<Framework> &framework,
-                                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-                                          double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, std::size_t startingBead,
-                                          [[maybe_unused]] double scaling, std::span<Atom> molecule,
-                                          std::size_t numberOfTrialDirections) noexcept;
-
 [[nodiscard]] ChainData CBMC::retraceRigidMoleculeSwapDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forcefield, const SimulationBox &simulationBox,
@@ -75,9 +65,9 @@ import interpolation_energy_grid;
   }
 
   const ChainData rigidRotationData =
-      retraceRigidChain(random, component, hasExternalField, forcefield, simulationBox, interpolationGrids, framework,
-                        frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-                        startingBead, scaling, molecule, numberOfTrialDirections);
+      retraceRigidMoleculeChainDeletion(random, component, hasExternalField, forcefield, simulationBox, interpolationGrids, framework,
+                                        frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+                                        startingBead, scaling, molecule, numberOfTrialDirections);
 
   return ChainData(
       Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
@@ -85,15 +75,15 @@ import interpolation_energy_grid;
       firstBeadData.RosenbluthWeight * rigidRotationData.RosenbluthWeight, 0.0);
 }
 
-[[nodiscard]] ChainData retraceRigidChain(RandomNumber &random, const Component &component, bool hasExternalField,
-                                          const ForceField &forcefield, const SimulationBox &simulationBox,
-                                          const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-                                          const std::optional<Framework> &framework,
-                                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
-                                          double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                          double cutOffCoulomb, std::size_t startingBead,
-                                          [[maybe_unused]] double scaling, std::span<Atom> molecule,
-                                          std::size_t numberOfTrialDirections) noexcept
+[[nodiscard]] ChainData retraceRigidMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
+                                                          const ForceField &forcefield, const SimulationBox &simulationBox,
+                                                          const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+                                                          const std::optional<Framework> &framework,
+                                                          std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                                                          double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+                                                          double cutOffCoulomb, std::size_t startingBead,
+                                                          [[maybe_unused]] double scaling, std::span<Atom> molecule,
+                                                          std::size_t numberOfTrialDirections) noexcept
 {
   std::vector<Atom> trialPosition = std::vector<Atom>(molecule.begin(), molecule.end());
   std::for_each(trialPosition.begin(), trialPosition.end(), [&](Atom &a) { a.setScaling(scaling); });

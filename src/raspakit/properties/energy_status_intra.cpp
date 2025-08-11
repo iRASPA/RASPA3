@@ -27,9 +27,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.versionNumber;
 
   archive << e.bond;
+  archive << e.ureyBradley;
   archive << e.bend;
   archive << e.inversionBend;
-  archive << e.ureyBradley;
+  archive << e.outOfPlaneBend;
   archive << e.torsion;
   archive << e.improperTorsion;
   archive << e.bondBond;
@@ -37,8 +38,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.bondTorsion;
   archive << e.bendBend;
   archive << e.bendTorsion;
-  archive << e.intraVDW;
-  archive << e.intraChargeCharge;
+  archive << e.vanDerWaals;
+  archive << e.coulomb;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -59,9 +60,10 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra 
   }
 
   archive >> e.bond;
+  archive >> e.ureyBradley;
   archive >> e.bend;
   archive >> e.inversionBend;
-  archive >> e.ureyBradley;
+  archive >> e.outOfPlaneBend;
   archive >> e.torsion;
   archive >> e.improperTorsion;
   archive >> e.bondBond;
@@ -69,8 +71,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyIntra 
   archive >> e.bondTorsion;
   archive >> e.bendBend;
   archive >> e.bendTorsion;
-  archive >> e.intraVDW;
-  archive >> e.intraChargeCharge;
+  archive >> e.vanDerWaals;
+  archive >> e.coulomb;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

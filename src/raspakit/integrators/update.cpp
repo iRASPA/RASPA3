@@ -204,6 +204,7 @@ void Integrators::updateCenterOfMassAndQuaternionGradients(std::span<Molecule> m
 {
   std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
   std::size_t index{};
+
   // Update gradients of center of mass and orientation for each molecule
   for (Molecule& molecule : moleculePositions)
   {
@@ -262,7 +263,13 @@ RunningEnergy Integrators::updateGradients(
       eik_x, eik_y, eik_z, eik_xy, totalEik, fixedFrameworkStoredEik, forceField, simulationBox, components,
       numberOfMoleculesPerComponent, moleculeAtomPositions);
 
+  RunningEnergy internal_energies{};
+  for(const Component &component : components)
+  {
+    internal_energies += component.intraMolecularPotentials.computeInternalGradient(moleculeAtomPositions);
+  }
+
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   integratorsCPUTime.updateGradients += end - begin;
-  return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy;
+  return frameworkMoleculeEnergy + intermolecularEnergy + ewaldEnergy + internal_energies;
 }

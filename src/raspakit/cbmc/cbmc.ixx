@@ -47,7 +47,8 @@ export namespace CBMC
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, 
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, std::span<Atom> molecule,
     double scaling, std::size_t numberOfTrialDirections) noexcept;
 
@@ -57,7 +58,8 @@ export namespace CBMC
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType,
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
     std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
 
@@ -67,7 +69,8 @@ export namespace CBMC
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, 
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
     std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections) noexcept;
 }  // namespace CBMC

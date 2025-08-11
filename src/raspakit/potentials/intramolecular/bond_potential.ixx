@@ -11,6 +11,9 @@ module;
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <tuple>
+#include <format>
+#include <string_view>
 #endif
 
 export module bond_potential;
@@ -23,6 +26,8 @@ import stringutils;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import gradient_factor;
 import units;
 
 /**
@@ -122,6 +127,20 @@ export struct BondPotential
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
 
+  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA, const double3 &posB) const;
+
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotential &b);
+};
+
+export template <>
+struct std::formatter<BondPotential>: std::formatter<std::string_view>
+{
+  auto format(const BondPotential& v, std::format_context& ctx) const
+  {
+    std::string temp{};
+    std::format_to(std::back_inserter(temp), "({}, {}, {})", v.identifiers, std::to_underlying(v.type), v.parameters);
+    return std::formatter<std::string_view>::format(temp, ctx);
+  }
 };

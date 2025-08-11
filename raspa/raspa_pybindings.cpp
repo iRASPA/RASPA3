@@ -54,6 +54,8 @@ import input_reader;
 import property_loading;
 import loadings;
 import property_lambda_probability_histogram;
+import connectivity_table;
+import intra_molecular_potentials;
 
 PYBIND11_MODULE(raspalib, m)
 {
@@ -174,6 +176,12 @@ PYBIND11_MODULE(raspalib, m)
       .def("normalizedAverageProbabilityHistogram",
            &PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram);
 
+  pybind11::class_<ConnectivityTable>(m, "ConnectivityTable")
+      .def(pybind11::init<>());
+
+  pybind11::class_<Potentials::IntraMolecularPotentials>(m, "IntraMolecularPotentials")
+      .def(pybind11::init<>());
+
   // define before component init to prevent failing default argument
   pybind11::class_<Component> component(m, "Component");
 
@@ -183,11 +191,14 @@ PYBIND11_MODULE(raspalib, m)
       .export_values();
 
   component
-      .def(pybind11::init<std::size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>, std::size_t,
+      .def(pybind11::init<std::size_t, const ForceField &, std::string, double, double, double, std::vector<Atom>, 
+                          const ConnectivityTable &, const  Potentials::IntraMolecularPotentials &, std::size_t,
                           std::size_t, const MCMoveProbabilities &, std::optional<double>, bool>(),
            pybind11::arg("componentId"), pybind11::arg("forceField"), pybind11::arg("componentName"),
            pybind11::arg("criticalTemperature"), pybind11::arg("criticalPressure"), pybind11::arg("acentricFactor"),
-           pybind11::arg("definedAtoms"), pybind11::arg("numberOfBlocks") = 5, pybind11::arg("numberOfLambdaBins") = 41,
+           pybind11::arg("definedAtoms"),  pybind11::arg("connectivitytable") = ConnectivityTable(),
+           pybind11::arg("intraMolecularPotentials") = Potentials::IntraMolecularPotentials(),
+           pybind11::arg("numberOfBlocks") = 5, pybind11::arg("numberOfLambdaBins") = 41,
            pybind11::arg("particleProbabilities"), pybind11::arg("fugacityCoefficient") = std::nullopt,
            pybind11::arg("thermodynamicIntegration") = false)
       .def(pybind11::init<Component::Type, std::size_t, const ForceField &, std::string &, std::string, std::size_t, std::size_t,

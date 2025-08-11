@@ -7,15 +7,17 @@ module;
 #include <vector>
 #include <optional>
 #include <span>
+#include <tuple>
 #endif
 
-export module internal_potentials;
+export module intra_molecular_potentials;
 
 #ifndef USE_LEGACY_HEADERS
 import std;
 #endif
 
 import archive;
+import double3x3;
 import atom;
 import chiral_center;
 import bond_potential;
@@ -35,7 +37,7 @@ import running_energy;
 
 export namespace Potentials
 {
-struct InternalPotentials
+struct IntraMolecularPotentials
 {
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -62,12 +64,29 @@ struct InternalPotentials
 
   RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
-  Potentials::InternalPotentials 
+  RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalUreyBradleyEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBendEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalInversionBendEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalOutOfPlaneBendEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalTorsionEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalImproperTorsionEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBondBondEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBondBendEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBondTorsionEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBendBendEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalBendTorsionEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalIntraVanDerWaalsEnergies(const std::span<const Atom> atoms) const;
+  RunningEnergy computeInternalIntraCoulombEnergies(const std::span<const Atom> atoms) const;
+
+  RunningEnergy computeInternalGradient(const std::span<Atom> atoms) const;
+
+  Potentials::IntraMolecularPotentials 
     filteredInteractions(std::size_t numberOfBeads, const std::span<std::size_t> beadsAlreadyPlaced,
                          const std::span<std::size_t> beadsToBePlaced) const;
 
 
-  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::InternalPotentials& p);
-  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::InternalPotentials& p);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Potentials::IntraMolecularPotentials& p);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Potentials::IntraMolecularPotentials& p);
 };
 }  // namespace Potentials

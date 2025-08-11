@@ -260,6 +260,7 @@ export union double3
   //   return archive;
   // }
 
+
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3& vec);
 
@@ -287,17 +288,17 @@ export double3 clamp(double3 value, double3 low, double3 high)
                  std::clamp(value.z, low.z, high.z));
 }
 
+
 export template <>
-struct std::formatter<double3>: std::formatter<string_view>
+struct std::formatter<double3>: std::formatter<std::string_view>
 {
   auto format(const double3& v, std::format_context& ctx) const
   {
     std::string temp{};
     std::format_to(std::back_inserter(temp), "({}, {}, {})", v.x, v.y, v.z);
-    return std::formatter<string_view>::format(temp, ctx);
+    return std::formatter<std::string_view>::format(temp, ctx);
   }
 };
-
 
 export void to_json(nlohmann::json& j, const double3& a) { j = nlohmann::json{a.x, a.y, a.z}; }
 

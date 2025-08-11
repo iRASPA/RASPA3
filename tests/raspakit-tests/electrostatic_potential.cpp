@@ -50,28 +50,28 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), 0.5, 1.0, 0, 0, 0, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
   Component c2 = Component(1, forceField, "t2", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 1, 1, 1, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
   Component c3 = Component(2, forceField, "t3", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 2, 2, 2, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
   Component c4 = Component(3, forceField, "t4", 0.0, 0.0, 0.0,
                            {
                                // double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 3, 3, 3, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2, c3, c4},
                          {1, 1, 1, 1}, 5);
@@ -225,7 +225,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), -1.25, 1.0, 0, 3, 0, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {framework}, {c4},
                          {1, 1, 1, 1}, 5);
@@ -331,7 +331,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), 1.5, 1.0, 0, 2, 0, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
 
   Component c4 = Component(1, forceField, "t4", 0.0, 0.0, 0.0,
                            {
@@ -339,7 +339,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
                                // uint8_t componentId, bool groupId, bool is_fractional
                                Atom(double3(0.0, 0.0, 0.0), -0.75, 1.0, 0, 3, 0, false, false),
                            },
-                           5, 21);
+                           {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {framework}, {c3, c4},
                          {1, 1, 1, 1}, 5);

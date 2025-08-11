@@ -69,8 +69,7 @@ inline ForceField makeDefaultFF(double rc = 12.0, bool shifted = true, bool tail
 inline Component makeMethane(const ForceField& ff, std::uint8_t id = 0)
 {
   return Component(id, ff, "methane", 190.564, 45599200, 0.01142,
-
-                   {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, id, false, false)}, 5, 21);
+                   {Atom({0, 0, 0}, 0.0, 1.0, 0, 2, id, false, false)}, {}, {}, 5, 21);
 }
 
 inline Component makeCO2(const ForceField& ff, std::uint8_t id = 0, bool useCharges = false)
@@ -81,8 +80,8 @@ inline Component makeCO2(const ForceField& ff, std::uint8_t id = 0, bool useChar
   return Component(
       id, ff, "CO2", 304.1282, 7377300.0, 0.22394,
       {Atom({0, 0, 1.149}, qO, 1.0, 0, 4, id, false, false), Atom({0, 0, 0.000}, qC, 1.0, 0, 3, id, false, false),
-       Atom({0, 0, -1.149}, qO, 1.0, 0, 4, id, false, false)},
-      5, 21);
+       Atom({0, 0, -1.149}, qO, 1.0, 0, 4, id, false, false)}, 
+       {}, {}, 5, 21);
 }
 
 inline Component makeWater(const ForceField& ff, std::uint8_t id = 0, bool useCharges = false)
@@ -97,19 +96,19 @@ inline Component makeWater(const ForceField& ff, std::uint8_t id = 0, bool useCh
        Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, 8, id, false, false),
        Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false),
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, 9, id, false, false)},
+       {}, {},
       5, 21);
 }
 
 inline Component makeIon(const ForceField& ff, std::uint8_t id, std::string_view name, std::uint16_t type, double q)
 {
-  return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, 5,
+  return Component(id, ff, std::string{name}, 0.0, 0.0, 0.0, {Atom({0, 0, 0}, q, 1.0, 0, type, id, false, false)}, {}, {}, 5,
                    21);
 }
 
 inline Framework makeFAU(const ForceField& ff, int3 replicate = {1, 1, 1})
 {
   return Framework(0, ff, "FAU", SimulationBox(24.2576, 24.2576, 24.2576), 526,
-
                    {Atom({-0.05392, 0.1253, 0.03589}, 2.05, 1, 0, 0, 0, false, false),
                     Atom({0, -0.10623, 0.10623}, -1.025, 1, 0, 1, 0, false, false),
                     Atom({-0.00323, -0.00323, 0.14066}, -1.025, 1, 0, 1, 0, false, false),

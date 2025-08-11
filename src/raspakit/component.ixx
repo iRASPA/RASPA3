@@ -58,7 +58,7 @@ import bend_bend_potential;
 import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
-import internal_potentials;
+import intra_molecular_potentials;
 import connectivity_table;
 import json;
 import cbmc_move_statistics;
@@ -163,7 +163,10 @@ export struct Component
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
   Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
-            double w, std::vector<Atom> definedAtoms, std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
+            double w, std::vector<Atom> definedAtoms, 
+            const ConnectivityTable &connectivityTable,
+            const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+            std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
             const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
             bool thermodynamicIntegration = false) noexcept(false);
@@ -245,7 +248,7 @@ export struct Component
 
   PressureScale pressureScale{PressureScale::Log};  ///< Pressure scaling type.
 
-  Potentials::InternalPotentials internalPotentials{};  ///< List of internal potentials.
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< List of internal potentials.
 
   ConnectivityTable connectivityTable{};  ///< Connectivity table for the component.
 

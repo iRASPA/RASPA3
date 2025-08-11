@@ -124,7 +124,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
   ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
       random, componentB, systemB.hasExternalField, systemB.components, systemB.forceField, systemB.simulationBox,
       systemB.interpolationGrids, systemB.framework, systemB.spanOfFrameworkAtoms(), systemB.spanOfMoleculeAtoms(),
-      systemB.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
+      systemB.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
       1.0, systemB.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
 

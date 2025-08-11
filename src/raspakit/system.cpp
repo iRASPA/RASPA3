@@ -1820,12 +1820,16 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
   RunningEnergy runningIntraEnergy{};
-  for(const Component &component : components)
+  std::size_t index = 0;
+  for(std::size_t i = 0; i < components.size(); ++i)
   {
-    runningIntraEnergy += Interactions::computeIntraMolecularEnergy(component.internalPotentials,
-                                                               moleculePositions, moleculeAtomPositions);
+    std::span<const Molecule> span_molecules = {&moleculePositions[index], numberOfMoleculesPerComponent[i]};
+    runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
+                                                        span_molecules, spanOfMoleculeAtoms());
+
+    index += numberOfMoleculesPerComponent[i];
   }
-       
+
   if (forceField.computePolarization)
   {
     std::span<double3> moleculeElectricField = spanOfMoleculeElectricField();
@@ -1959,6 +1963,28 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
+
+  std::size_t index = 0;
+  std::span<Atom> span_atoms = spanOfMoleculeAtoms();
+  for(std::size_t i = 0; i < components.size(); ++i)
+  {
+    std::span<const Molecule> span_molecules = {&moleculePositions[index], numberOfMoleculesPerComponent[i]};
+    for(const Molecule &molecule : span_molecules)
+    {
+      std::pair<double, double3x3> intra_bond = Interactions::computeIntraMolecularBondStrainDerivative(components[i].intraMolecularPotentials,
+                                                                             {&span_atoms[molecule.atomIndex], molecule.numberOfAtoms});
+      pressureInfo.first.intraComponentEnergies[i].bond += intra_bond.first;
+      pressureInfo.second += intra_bond.second;
+
+      std::pair<double, double3x3> intra_bend = Interactions::computeIntraMolecularBendStrainDerivative(components[i].intraMolecularPotentials,
+                                                                             {&span_atoms[molecule.atomIndex], molecule.numberOfAtoms});
+      pressureInfo.first.intraComponentEnergies[i].bend += intra_bend.first;
+      pressureInfo.second += intra_bend.second;
+    }
+
+
+    index += numberOfMoleculesPerComponent[i];
+  }
 
   if (forceField.computePolarization)
   {

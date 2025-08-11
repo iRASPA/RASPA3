@@ -78,7 +78,7 @@ import bend_bend_potential;
 import bend_torsion_potential;
 import van_der_waals_potential;
 import coulomb_potential;
-import internal_potentials;
+import intra_molecular_potentials;
 import vdwparameters;
 import json;
 
@@ -112,7 +112,8 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
 
 // create programmatically an 'adsorbate' component
 Component::Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
-                     double P_c, double w, std::vector<Atom> atomList, std::size_t numberOfBlocks,
+                     double P_c, double w, std::vector<Atom> atomList, const ConnectivityTable &connectivityTable,
+                     const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
                      std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
                      std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
     : type(Type::Adsorbate),
@@ -127,7 +128,8 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
       averageRosenbluthWeights(numberOfBlocks),
-      connectivityTable(atomList.size())
+      intraMolecularPotentials(intraMolecularPotentials),
+      connectivityTable(connectivityTable)
 {
   totalMass = 0.0;
   netCharge = 0.0;
@@ -143,11 +145,10 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
   computeRigidProperties();
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
 
-  for (const BondPotential &bond_potential : internalPotentials.bonds)
+  if(!intraMolecularPotentials.bonds.empty())
   {
-    std::size_t A = bond_potential.identifiers[0];
-    std::size_t B = bond_potential.identifiers[1];
-    connectivityTable[A, B] = true;
+    rigid = true;
+    growType = Component::GrowType::Flexible;
   }
 }
 
@@ -377,11 +378,11 @@ void Component::readComponent(const ForceField &forceField, const std::string &f
   {
     connectivityTable = readConnectivityTable(definedAtoms.size(), parsed_data);
 
-    internalPotentials.bonds = readBondPotentials(forceField, parsed_data);
-    internalPotentials.bends = readBendPotentials(forceField, parsed_data);
-    internalPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
+    intraMolecularPotentials.bonds = readBondPotentials(forceField, parsed_data);
+    intraMolecularPotentials.bends = readBendPotentials(forceField, parsed_data);
+    intraMolecularPotentials.torsions = readTorsionPotentials(forceField, parsed_data);
 
-    //internalPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
+    //intraMolecularPotentials.vanDerWaals = readVanDerWaalsPotentials(forceField, parsed_data);
   }
 }
 
@@ -620,139 +621,139 @@ std::string Component::printStatus(const ForceField &forceField) const
     std::print(stream, "    connectivity:\n");
     std::print(stream, "{}\n", connectivityTable.print("        "));
 
-    std::print(stream, "    number of bond potentials: {}\n", internalPotentials.bonds.size());
-    for (std::size_t i = 0; i < internalPotentials.bonds.size(); ++i)
+    std::print(stream, "    number of bond potentials: {}\n", intraMolecularPotentials.bonds.size());
+    for (std::size_t i = 0; i < intraMolecularPotentials.bonds.size(); ++i)
     {
-      std::print(stream, "        {}", internalPotentials.bonds[i].print());
+      std::print(stream, "        {}", intraMolecularPotentials.bonds[i].print());
     }
     std::print(stream, "\n");
 
-    if(!internalPotentials.ureyBradleys.empty())
+    if(!intraMolecularPotentials.ureyBradleys.empty())
     {
-      std::print(stream, "    number of Urey-Bradley potentials: {}\n", internalPotentials.ureyBradleys.size());
-      for (std::size_t i = 0; i < internalPotentials.ureyBradleys.size(); ++i)
+      std::print(stream, "    number of Urey-Bradley potentials: {}\n", intraMolecularPotentials.ureyBradleys.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.ureyBradleys.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.ureyBradleys[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.ureyBradleys[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bends.empty())
+    if(!intraMolecularPotentials.bends.empty())
     {
-      std::print(stream, "    number of bend potentials: {}\n", internalPotentials.bends.size());
-      for (std::size_t i = 0; i < internalPotentials.bends.size(); ++i)
+      std::print(stream, "    number of bend potentials: {}\n", intraMolecularPotentials.bends.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bends.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bends[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bends[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.inversionBends.empty())
+    if(!intraMolecularPotentials.inversionBends.empty())
     {
-      std::print(stream, "    number of inversion-bend potentials: {}\n", internalPotentials.inversionBends.size());
-      for (std::size_t i = 0; i < internalPotentials.inversionBends.size(); ++i)
+      std::print(stream, "    number of inversion-bend potentials: {}\n", intraMolecularPotentials.inversionBends.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.inversionBends.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.inversionBends[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.inversionBends[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.outOfPlaneBends.empty())
+    if(!intraMolecularPotentials.outOfPlaneBends.empty())
     {
-      std::print(stream, "    number of out-of-plane bend potentials: {}\n", internalPotentials.outOfPlaneBends.size());
-      for (std::size_t i = 0; i < internalPotentials.outOfPlaneBends.size(); ++i)
+      std::print(stream, "    number of out-of-plane bend potentials: {}\n", intraMolecularPotentials.outOfPlaneBends.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.outOfPlaneBends.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.outOfPlaneBends[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.outOfPlaneBends[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.torsions.empty())
+    if(!intraMolecularPotentials.torsions.empty())
     {
-      std::print(stream, "    number of torsion potentials: {}\n", internalPotentials.torsions.size());
-      for (std::size_t i = 0; i < internalPotentials.torsions.size(); ++i)
+      std::print(stream, "    number of torsion potentials: {}\n", intraMolecularPotentials.torsions.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.torsions.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.torsions[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.torsions[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.improperTorsions.empty())
+    if(!intraMolecularPotentials.improperTorsions.empty())
     {
-      std::print(stream, "    number of improper-torsion potentials: {}\n", internalPotentials.improperTorsions.size());
-      for (std::size_t i = 0; i < internalPotentials.improperTorsions.size(); ++i)
+      std::print(stream, "    number of improper-torsion potentials: {}\n", intraMolecularPotentials.improperTorsions.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.improperTorsions.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.improperTorsions[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.improperTorsions[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bondBonds.empty())
+    if(!intraMolecularPotentials.bondBonds.empty())
     {
-      std::print(stream, "    number of bond-bond potentials: {}\n", internalPotentials.bondBonds.size());
-      for (std::size_t i = 0; i < internalPotentials.bondBonds.size(); ++i)
+      std::print(stream, "    number of bond-bond potentials: {}\n", intraMolecularPotentials.bondBonds.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bondBonds.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bondBonds[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bondBonds[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bondBends.empty())
+    if(!intraMolecularPotentials.bondBends.empty())
     {
-      std::print(stream, "    number of bond-bend potentials: {}\n", internalPotentials.bondBends.size());
-      for (std::size_t i = 0; i < internalPotentials.bondBends.size(); ++i)
+      std::print(stream, "    number of bond-bend potentials: {}\n", intraMolecularPotentials.bondBends.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bondBends.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bondBends[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bondBends[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bondTorsions.empty())
+    if(!intraMolecularPotentials.bondTorsions.empty())
     {
-      std::print(stream, "    number of bond-torsion potentials: {}\n", internalPotentials.bondTorsions.size());
-      for (std::size_t i = 0; i < internalPotentials.bondTorsions.size(); ++i)
+      std::print(stream, "    number of bond-torsion potentials: {}\n", intraMolecularPotentials.bondTorsions.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bondTorsions.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bondTorsions[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bondTorsions[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bendBends.empty())
+    if(!intraMolecularPotentials.bendBends.empty())
     {
-      std::print(stream, "    number of bend-bend potentials: {}\n", internalPotentials.bendBends.size());
-      for (std::size_t i = 0; i < internalPotentials.bendBends.size(); ++i)
+      std::print(stream, "    number of bend-bend potentials: {}\n", intraMolecularPotentials.bendBends.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bendBends.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bendBends[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bendBends[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.bendTorsions.empty())
+    if(!intraMolecularPotentials.bendTorsions.empty())
     {
-      std::print(stream, "    number of bend-torsion potentials: {}\n", internalPotentials.bendTorsions.size());
-      for (std::size_t i = 0; i < internalPotentials.bendTorsions.size(); ++i)
+      std::print(stream, "    number of bend-torsion potentials: {}\n", intraMolecularPotentials.bendTorsions.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.bendTorsions.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.bendTorsions[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.bendTorsions[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.vanDerWaals.empty())
+    if(!intraMolecularPotentials.vanDerWaals.empty())
     {
-      std::print(stream, "    number of Van der Waals potentials: {}\n", internalPotentials.vanDerWaals.size());
-      for (std::size_t i = 0; i < internalPotentials.vanDerWaals.size(); ++i)
+      std::print(stream, "    number of Van der Waals potentials: {}\n", intraMolecularPotentials.vanDerWaals.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.vanDerWaals.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.vanDerWaals[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.vanDerWaals[i].print());
       }
       std::print(stream, "\n");
     }
 
-    if(!internalPotentials.coulombs.empty())
+    if(!intraMolecularPotentials.coulombs.empty())
     {
-      std::print(stream, "    number of coulomb potentials: {}\n", internalPotentials.coulombs.size());
-      for (std::size_t i = 0; i < internalPotentials.coulombs.size(); ++i)
+      std::print(stream, "    number of coulomb potentials: {}\n", intraMolecularPotentials.coulombs.size());
+      for (std::size_t i = 0; i < intraMolecularPotentials.coulombs.size(); ++i)
       {
-        std::print(stream, "        {}", internalPotentials.coulombs[i].print());
+        std::print(stream, "        {}", intraMolecularPotentials.coulombs[i].print());
       }
       std::print(stream, "\n");
     }
@@ -806,11 +807,11 @@ nlohmann::json Component::jsonStatus() const
   }
   status["moveProbabilities"] = moves;
 
-  status["n_bonds"] = internalPotentials.bonds.size();
-  std::vector<std::string> bondTypes(internalPotentials.bonds.size());
-  for (std::size_t i = 0; i < internalPotentials.bonds.size(); ++i)
+  status["n_bonds"] = intraMolecularPotentials.bonds.size();
+  std::vector<std::string> bondTypes(intraMolecularPotentials.bonds.size());
+  for (std::size_t i = 0; i < intraMolecularPotentials.bonds.size(); ++i)
   {
-    bondTypes[i] = internalPotentials.bonds[i].print();
+    bondTypes[i] = intraMolecularPotentials.bonds[i].print();
   }
   status["bondTypes"] = bondTypes;
   return status;
@@ -972,7 +973,7 @@ std::vector<BondPotential> Component::readBondPotentials(const ForceField &force
 
   if (parsed_data.contains("Bonds"))
   {
-    internalPotentials.bonds.reserve(found_bonds.size());
+    intraMolecularPotentials.bonds.reserve(found_bonds.size());
 
     for (auto &[_, item] : parsed_data["Bonds"].items())
     {
@@ -1064,7 +1065,7 @@ std::vector<BendPotential> Component::readBendPotentials(const ForceField &force
 
   if (parsed_data.contains("Bends"))
   {
-    internalPotentials.bends.reserve(found_bends.size());
+    intraMolecularPotentials.bends.reserve(found_bends.size());
 
     for (auto &[_, item] : parsed_data["Bends"].items())
     {
@@ -1156,7 +1157,7 @@ std::vector<TorsionPotential> Component::readTorsionPotentials(const ForceField 
 
   if (parsed_data.contains("Torsions"))
   {
-    internalPotentials.torsions.reserve(found_torsions.size());
+    intraMolecularPotentials.torsions.reserve(found_torsions.size());
 
     for (auto &[_, item] : parsed_data["Torsions"].items())
     {
@@ -1249,7 +1250,7 @@ std::vector<VanDerWaalsPotential> Component::readVanDerWaalsPotentials(const For
 
   if (parsed_data.contains("VanDerWaals"))
   {
-    internalPotentials.vanDerWaals.reserve(parsed_data["VanDerWaals"].size());
+    intraMolecularPotentials.vanDerWaals.reserve(parsed_data["VanDerWaals"].size());
 
     for (auto &[_, item] : parsed_data["VanDerWaals"].items())
     {
@@ -1338,7 +1339,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.lambdaGibbs;
   archive << c.hasFractionalMolecule;
 
-  archive << c.internalPotentials;
+  archive << c.intraMolecularPotentials;
 
   archive << c.connectivityTable;
 
@@ -1420,7 +1421,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.lambdaGibbs;
   archive >> c.hasFractionalMolecule;
 
-  archive >> c.internalPotentials;
+  archive >> c.intraMolecularPotentials;
 
   archive >> c.connectivityTable;
 

@@ -7,6 +7,7 @@ module;
 #include <fstream>
 #include <istream>
 #include <ostream>
+#include <string_view>
 #endif
 
 export module double3x3;

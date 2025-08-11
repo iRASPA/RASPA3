@@ -330,6 +330,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
       double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
       double cutOffCoulomb = system.forceField.cutOffCoulomb;
+      Component::GrowType growType = component.growType;
 
       // Select a random integer molecule to be fractional
       selectedMolecule = system.randomIntegerMoleculeOfComponent(random, selectedComponent);
@@ -347,7 +348,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
           system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-          system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule,
+          system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule,
           fractionalMolecule, oldLambda, system.numberOfTrialDirections);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);

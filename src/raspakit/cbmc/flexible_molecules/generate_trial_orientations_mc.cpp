@@ -40,14 +40,14 @@ import framework;
 import component;
 import interpolation_energy_grid;
 import bond_potential;
-import internal_potentials;
+import intra_molecular_potentials;
 import cbmc_move_statistics;
 
 std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &random, double beta,
             Component &component,
             const std::vector<Atom> molecule_atoms, std::size_t previousBead,
             std::size_t currentBead, std::vector<std::size_t> nextBeads, std::size_t numberOfTrialDirections,
-            const Potentials::InternalPotentials &internalInteractions)
+            const Potentials::IntraMolecularPotentials &intraMolecularInteractions)
 {
   std::vector<Atom> chain_atoms(molecule_atoms);
 
@@ -56,11 +56,11 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   {
     for(std::size_t i = 0; i != nextBeads.size(); ++i)
     {
-      std::optional<BondPotential> bond = internalInteractions.findBondPotential(currentBead, nextBeads[i]);
+      std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, nextBeads[i]);
 
       double bond_length = bond.transform([&random, &beta](const BondPotential &bond) { return bond.generateBondLength(random, beta);}).value_or(1.54);
-      double angle = internalInteractions.bends.empty() ? 120.0 * Units::DegreesToRadians :
-                         internalInteractions.bends.front().generateBendAngle(random, beta);
+      double angle = intraMolecularInteractions.bends.empty() ? 120.0 * Units::DegreesToRadians :
+                         intraMolecularInteractions.bends.front().generateBendAngle(random, beta);
 
       double3 last_bond_vector = (chain_atoms[previousBead].position - chain_atoms[currentBead].position).normalized();
       double3 vec = random.randomVectorOnCone(last_bond_vector, angle);
@@ -76,7 +76,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   std::size_t number_of_trials = 300;
 
   std::vector<double> move_probabilities{};
-  if( internalInteractions.bends.size() == 1 )
+  if( intraMolecularInteractions.bends.size() == 1 )
   {
     move_probabilities = { 0.6, 0.4, 0.0 };
   }
@@ -88,8 +88,8 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
   // pick the move accoording to the prescribed weights
   MoveType move_type = MoveType(random.categoricalDistribution(move_probabilities));
 
-  RunningEnergy current_bond_energy = internalInteractions.calculateBondSmallMCEnergies(chain_atoms);
-  RunningEnergy current_bend_energy = internalInteractions.calculateBendSmallMCEnergies(chain_atoms);
+  RunningEnergy current_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
+  RunningEnergy current_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
   for(std::size_t trial = 0; trial != number_of_trials; ++trial)
   {
@@ -113,7 +113,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
         double new_bond_length = current_bond_length + (2.0 * random.uniform() - 1.0) * max_change;
         chain_atoms[selected_next_bead].position = chain_atoms[currentBead].position + (new_bond_length / current_bond_length) * current_bond_vector;
 
-        RunningEnergy new_bond_energy = internalInteractions.calculateBondSmallMCEnergies(chain_atoms);
+        RunningEnergy new_bond_energy = intraMolecularInteractions.calculateBondSmallMCEnergies(chain_atoms);
 
         double energy_difference = (new_bond_energy - current_bond_energy).potentialEnergy();
 
@@ -167,7 +167,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
                                           chain_atoms[selected_next_bead].position);
         double new_sinus = std::sin(new_angle);
 
-        RunningEnergy new_bend_energy = internalInteractions.calculateBendSmallMCEnergies(chain_atoms);
+        RunningEnergy new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
         double energy_difference = (new_bend_energy - current_bend_energy).potentialEnergy();
 
@@ -218,7 +218,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
                                                    chain_atoms[currentBead].position,
                                                    chain_atoms[selected_next_bead].position);
 
-        RunningEnergy new_bend_energy = internalInteractions.calculateBendSmallMCEnergies(chain_atoms);
+        RunningEnergy new_bend_energy = intraMolecularInteractions.calculateBendSmallMCEnergies(chain_atoms);
 
         double energy_difference = (new_bend_energy - current_bend_energy).potentialEnergy();
 
