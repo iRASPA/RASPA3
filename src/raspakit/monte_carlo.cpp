@@ -601,7 +601,6 @@ void MonteCarlo::production()
 
     if (outputToFiles)
     {
-      std::cout << currentCycle << std::endl;
       for (System& system : systems)
       {
         if (system.propertyConventionalRadialDistributionFunction.has_value())
@@ -682,7 +681,6 @@ void MonteCarlo::production()
   }
 
   // Carry out last write of properties after simulation has finished
-  std::cout << currentCycle << std::endl;
   if (outputToFiles)
   {
     for (System& system : systems)
