@@ -1234,7 +1234,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyMSD = PropertyMeanSquaredDisplacement(
-              systems[systemId].components.size(), systems[systemId].moleculePositions.size(), sampleMSDEvery,
+              systems[systemId].components.size(), systems[systemId].moleculeData.size(), sampleMSDEvery,
               writeMSDEvery, numberOfBlockElementsMSD);
         }
       }
@@ -1268,7 +1268,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
 
           systems[systemId].propertyVACF = PropertyVelocityAutoCorrelationFunction(
-              systems[systemId].components.size(), systems[systemId].moleculePositions.size(), numberOfBuffersVACF,
+              systems[systemId].components.size(), systems[systemId].moleculeData.size(), numberOfBuffersVACF,
               bufferLengthVACF, sampleVACFEvery, writeVACFEvery);
         }
       }

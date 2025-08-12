@@ -32,11 +32,11 @@ TEST(spacegroup, TestLennardJonesVDWTwoMethanes)
 
   System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {2}, 5);
 
-  system.atomPositions[0].position = double3(0.0, 0.0, 0.0);
-  system.atomPositions[1].position = double3(0.0, 0.0, 3.72 * std::pow(2.0, 1.0 / 6.0));
+  system.atomData[0].position = double3(0.0, 0.0, 0.0);
+  system.atomData[1].position = double3(0.0, 0.0, 3.72 * std::pow(2.0, 1.0 / 6.0));
 
   RunningEnergy energy =
-      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, system.atomPositions);
+      Interactions::computeInterMolecularEnergy(system.forceField, system.simulationBox, system.atomData);
 
   EXPECT_NEAR(energy.moleculeMoleculeVDW * Units::EnergyToKelvin, -158.5, 1e-12);
 }

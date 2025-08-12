@@ -196,8 +196,8 @@ export struct System
   // A contiguous list of adsorbate atoms per component for easy and fast looping
   // The atoms-order is defined as increasing per component and molecule.
   // Because the number of atoms is fixed per component it is easy to access the n-th molecule
-  std::vector<Atom> atomPositions;
-  std::vector<Molecule> moleculePositions;
+  std::vector<Atom> atomData;
+  std::vector<Molecule> moleculeData;
   std::vector<double> electricPotential;
   std::vector<double3> electricField;
   std::vector<double3> electricFieldNew;

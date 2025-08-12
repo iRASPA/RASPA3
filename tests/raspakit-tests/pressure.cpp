@@ -482,12 +482,12 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   for (size_t i = 0; i < 20; ++i)
   {
     moleculeAtomPositions[i].charge = 1.0;
-    system.atomPositions[i].charge = 1.0;
+    system.atomData[i].charge = 1.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     moleculeAtomPositions[i + 20].charge = -1.0;
-    system.atomPositions[i + 20].charge = -1.0;
+    system.atomData[i + 20].charge = -1.0;
   }
 
   for (Atom& atom : moleculeAtomPositions)
@@ -501,7 +501,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeEwaldFourierEnergyStrainDerivative(
       system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
       system.forceField, system.simulationBox, system.framework, system.components,
-      system.numberOfMoleculesPerComponent, system.atomPositions, system.CoulombicFourierEnergySingleIon,
+      system.numberOfMoleculesPerComponent, system.atomData, system.CoulombicFourierEnergySingleIon,
       system.netChargeFramework, system.netChargePerComponent);
   pressureInfo.first.sumTotal();
 

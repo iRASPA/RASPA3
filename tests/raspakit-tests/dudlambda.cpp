@@ -45,41 +45,41 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i].charge = 0.0;
-    system.atomPositions[i].charge = 0.0;
+    system.atomData[i].charge = 0.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i + 20].charge = 0.0;
-    system.atomPositions[i + 20].charge = 0.0;
+    system.atomData[i + 20].charge = 0.0;
   }
 
-  system.atomPositions[8].groupId = 1;
-  system.atomPositions[2].groupId = 1;
+  system.atomData[8].groupId = 1;
+  system.atomData[2].groupId = 1;
   // system.atomPositions[12].groupId = 1;
   // system.atomPositions[4].groupId = 1;
   // system.atomPositions[14].groupId = 1;
 
-  system.atomPositions[8].scalingVDW = 0.15;
-  system.atomPositions[2].scalingVDW = 0.25;
-  system.atomPositions[12].scalingVDW = 0.34;
-  system.atomPositions[4].scalingVDW = 0.16;
-  system.atomPositions[14].scalingVDW = 0.27;
+  system.atomData[8].scalingVDW = 0.15;
+  system.atomData[2].scalingVDW = 0.25;
+  system.atomData[12].scalingVDW = 0.34;
+  system.atomData[4].scalingVDW = 0.16;
+  system.atomData[14].scalingVDW = 0.27;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                      system.spanOfMoleculeAtoms());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
 
-  system.atomPositions[8].scalingVDW = 0.15 + 0.5 * delta;
-  system.atomPositions[2].scalingVDW = 0.25 + 0.5 * delta;
+  system.atomData[8].scalingVDW = 0.15 + 0.5 * delta;
+  system.atomData[2].scalingVDW = 0.25 + 0.5 * delta;
   // system.atomPositions[12].scalingVDW = 0.34 + 0.5 * delta;
   // system.atomPositions[4].scalingVDW = 0.16 + 0.5 * delta;
   // system.atomPositions[14].scalingVDW = 0.27 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                             system.spanOfMoleculeAtoms());
 
-  system.atomPositions[8].scalingVDW = 0.15 - 0.5 * delta;
-  system.atomPositions[2].scalingVDW = 0.25 - 0.5 * delta;
+  system.atomData[8].scalingVDW = 0.15 - 0.5 * delta;
+  system.atomData[2].scalingVDW = 0.25 - 0.5 * delta;
   // system.atomPositions[12].scalingVDW = 0.34 - 0.5 * delta;
   // system.atomPositions[4].scalingVDW = 0.16 - 0.5 * delta;
   // system.atomPositions[14].scalingVDW = 0.27 - 0.5 * delta;
@@ -115,41 +115,41 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i].charge = 1.0;
-    system.atomPositions[i].charge = 1.0;
+    system.atomData[i].charge = 1.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i + 20].charge = -1.0;
-    system.atomPositions[i + 20].charge = -1.0;
+    system.atomData[i + 20].charge = -1.0;
   }
 
-  system.atomPositions[8].groupId = 1;
-  system.atomPositions[2].groupId = 1;
+  system.atomData[8].groupId = 1;
+  system.atomData[2].groupId = 1;
   // system.atomPositions[12].groupId = 1;
   // system.atomPositions[4].groupId = 1;
   // system.atomPositions[14].groupId = 1;
 
-  system.atomPositions[8].scalingCoulomb = 0.45;
-  system.atomPositions[2].scalingCoulomb = 0.5;
-  system.atomPositions[12].scalingCoulomb = 0.4;
-  system.atomPositions[4].scalingCoulomb = 0.6;
-  system.atomPositions[14].scalingCoulomb = 0.7;
+  system.atomData[8].scalingCoulomb = 0.45;
+  system.atomData[2].scalingCoulomb = 0.5;
+  system.atomData[12].scalingCoulomb = 0.4;
+  system.atomData[4].scalingCoulomb = 0.6;
+  system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                      system.spanOfMoleculeAtoms());
 
   double delta = 1e-6;
   double tolerance = 1e-4;
 
-  system.atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 + 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 + 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 + 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                             system.spanOfMoleculeAtoms());
 
-  system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
@@ -185,41 +185,41 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i].charge = 1.0;
-    system.atomPositions[i].charge = 1.0;
+    system.atomData[i].charge = 1.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i + 20].charge = -1.0;
-    system.atomPositions[i + 20].charge = -1.0;
+    system.atomData[i + 20].charge = -1.0;
   }
 
-  system.atomPositions[8].groupId = 1;
-  system.atomPositions[2].groupId = 1;
+  system.atomData[8].groupId = 1;
+  system.atomData[2].groupId = 1;
   // system.atomPositions[12].groupId = 1;
   // system.atomPositions[4].groupId = 1;
   // system.atomPositions[14].groupId = 1;
 
-  system.atomPositions[8].scalingCoulomb = 0.45;
-  system.atomPositions[2].scalingCoulomb = 0.5;
-  system.atomPositions[12].scalingCoulomb = 0.4;
-  system.atomPositions[4].scalingCoulomb = 0.6;
-  system.atomPositions[14].scalingCoulomb = 0.7;
+  system.atomData[8].scalingCoulomb = 0.45;
+  system.atomData[2].scalingCoulomb = 0.5;
+  system.atomData[12].scalingCoulomb = 0.4;
+  system.atomData[4].scalingCoulomb = 0.6;
+  system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                      system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
   double tolerance = 1e-3;
 
-  system.atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 + 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 + 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 + 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                             system.spanOfMoleculeAtoms());
 
-  system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;
@@ -251,33 +251,33 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
 
-  system.atomPositions[8].groupId = 1;
-  system.atomPositions[2].groupId = 1;
+  system.atomData[8].groupId = 1;
+  system.atomData[2].groupId = 1;
   // system.atomPositions[12].groupId = 1;
   // system.atomPositions[4].groupId = 1;
   // system.atomPositions[14].groupId = 1;
 
-  system.atomPositions[8].scalingCoulomb = 0.45;
-  system.atomPositions[2].scalingCoulomb = 0.5;
-  system.atomPositions[12].scalingCoulomb = 0.4;
-  system.atomPositions[4].scalingCoulomb = 0.6;
-  system.atomPositions[14].scalingCoulomb = 0.7;
+  system.atomData[8].scalingCoulomb = 0.45;
+  system.atomData[2].scalingCoulomb = 0.5;
+  system.atomData[12].scalingCoulomb = 0.4;
+  system.atomData[4].scalingCoulomb = 0.6;
+  system.atomData[14].scalingCoulomb = 0.7;
   RunningEnergy factor = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                      system.spanOfMoleculeAtoms());
 
   double delta = 1e-5;
   double tolerance = 1e-4;
 
-  system.atomPositions[8].scalingCoulomb = 0.45 + 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 + 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 + 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 + 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 + 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 + 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 + 0.5 * delta;
   RunningEnergy energyForward = Interactions::computeInterMolecularGradient(system.forceField, system.simulationBox,
                                                                             system.spanOfMoleculeAtoms());
 
-  system.atomPositions[8].scalingCoulomb = 0.45 - 0.5 * delta;
-  system.atomPositions[2].scalingCoulomb = 0.5 - 0.5 * delta;
+  system.atomData[8].scalingCoulomb = 0.45 - 0.5 * delta;
+  system.atomData[2].scalingCoulomb = 0.5 - 0.5 * delta;
   // system.atomPositions[12].scalingCoulomb = 0.4 - 0.5 * delta;
   // system.atomPositions[4].scalingCoulomb = 0.6 - 0.5 * delta;
   // system.atomPositions[14].scalingCoulomb = 0.7 - 0.5 * delta;

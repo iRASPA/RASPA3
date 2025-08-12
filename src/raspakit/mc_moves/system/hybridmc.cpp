@@ -37,7 +37,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
 
   system.mc_moves_statistics.addTrial(move);
 
-  if (system.moleculePositions.size() <= 1)
+  if (system.moleculeData.size() <= 1)
   {
     return std::nullopt;
   }
@@ -49,7 +49,7 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   std::vector<Atom> moleculeAtomPositions(atomPositions.size());
   std::copy(atomPositions.begin(), atomPositions.end(), moleculeAtomPositions.begin());
 
-  std::vector<Molecule> moleculePositions(system.moleculePositions);
+  std::vector<Molecule> moleculePositions(system.moleculeData);
   std::optional<Thermostat> thermostat(system.thermostat);
 
   // get Timestep from the max change
@@ -95,14 +95,14 @@ std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System
   {
     system.mc_moves_statistics.addAccepted(move);
 
-    system.moleculePositions = moleculePositions;
+    system.moleculeData = moleculePositions;
     system.thermostat = thermostat;
     system.timeStep = dt;
 
     std::copy(moleculeAtomPositions.begin(), moleculeAtomPositions.end(), atomPositions.begin());
     system.spanOfMoleculeAtoms() = moleculeAtomPositions;
 
-    Integrators::createCartesianPositions(system.moleculePositions, system.spanOfMoleculeAtoms(), system.components);
+    Integrators::createCartesianPositions(system.moleculeData, system.spanOfMoleculeAtoms(), system.components);
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
     return currentEnergy;
   }

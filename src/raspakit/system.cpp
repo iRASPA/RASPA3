@@ -138,8 +138,8 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       hasExternalField(false),
       numberOfPseudoAtoms(c.size(), std::vector<std::size_t>(forceField.pseudoAtoms.size())),
       totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
-      atomPositions({}),
-      moleculePositions({}),
+      atomData({}),
+      moleculeData({}),
       runningEnergies(),
       currentEnergyStatus(1, f.has_value() ? 1 : 0, c.size()),
       netChargePerComponent(c.size()),
@@ -221,7 +221,7 @@ void System::createFrameworks()
     const std::vector<Atom>& atoms = framework->atoms;
     for (const Atom& atom : atoms)
     {
-      atomPositions.push_back(atom);
+      atomData.push_back(atom);
       electricPotential.push_back(0.0);
       electricField.push_back(double3(0.0, 0.0, 0.0));
       electricFieldNew.push_back(double3(0.0, 0.0, 0.0));
@@ -260,10 +260,10 @@ void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unu
     atom.setScaling(l);
   }
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
-  atomPositions.insert(iterator, atoms.begin(), atoms.end());
+  atomData.insert(iterator, atoms.begin(), atoms.end());
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, 0);
-  moleculePositions.insert(moleculeIterator, molecule);
+  moleculeData.insert(moleculeIterator, molecule);
 
   electricPotential.resize(electricPotential.size() + atoms.size());
   electricField.resize(electricField.size() + atoms.size());
@@ -295,11 +295,11 @@ void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] cons
 {
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  atomPositions.insert(iterator, atoms.begin(), atoms.end());
+  atomData.insert(iterator, atoms.begin(), atoms.end());
 
   std::vector<Molecule>::iterator moleculeIterator =
       indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  moleculePositions.insert(moleculeIterator, molecule);
+  moleculeData.insert(moleculeIterator, molecule);
 
   electricPotential.resize(electricPotential.size() + atoms.size());
   electricField.resize(electricField.size() + atoms.size());
@@ -331,7 +331,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
 {
   std::vector<Atom>::const_iterator iterator =
       iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  atomPositions.insert(iterator, atoms.begin(), atoms.end());
+  atomData.insert(iterator, atoms.begin(), atoms.end());
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
@@ -339,7 +339,7 @@ void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_u
 
   std::vector<Molecule>::iterator moleculeIterator =
       indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  moleculePositions.insert(moleculeIterator, molecule);
+  moleculeData.insert(moleculeIterator, molecule);
 
   electricPotential.resize(electricPotential.size() + atoms.size());
   electricFieldNew.resize(electricFieldNew.size() + atoms.size());
@@ -375,7 +375,7 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
   }
 
   std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
-  atomPositions.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
+  atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
 
   std::vector<double3>::const_iterator iterator_electric_field =
       iteratorForElectricField(selectedComponent, selectedMolecule);
@@ -383,7 +383,7 @@ void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedM
                       iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
 
   std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, selectedMolecule);
-  moleculePositions.erase(moleculeIterator, moleculeIterator + 1);
+  moleculeData.erase(moleculeIterator, moleculeIterator + 1);
 
   electricPotential.resize(electricPotential.size() - molecule.size());
   electricFieldNew.resize(electricFieldNew.size() - molecule.size());
@@ -412,13 +412,13 @@ void System::updateMoleculeAtomInformation()
 
     for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
     {
-      moleculePositions[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
-      moleculePositions[molecule_index].numberOfAtoms = numberOfAtoms;
+      moleculeData[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
+      moleculeData[molecule_index].numberOfAtoms = numberOfAtoms;
 
       for (std::size_t j = 0; j < numberOfAtoms; ++j)
       {
-        atomPositions[atom_index].moleculeId = static_cast<std::uint16_t>(i);
-        atomPositions[atom_index].componentId = static_cast<std::uint8_t>(componentId);
+        atomData[atom_index].moleculeId = static_cast<std::uint16_t>(i);
+        atomData[atom_index].componentId = static_cast<std::uint8_t>(componentId);
         ++atom_index;
       }
       ++molecule_index;
@@ -583,7 +583,7 @@ std::vector<Atom>::iterator System::iteratorForMolecule(std::size_t selectedComp
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule + numberOfFrameworkAtoms;
-  return atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
+  return atomData.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
 std::vector<double3>::iterator System::iteratorForElectricField(std::size_t selectedComponent,
@@ -608,7 +608,7 @@ std::vector<Molecule>::iterator System::indexForMolecule(std::size_t selectedCom
     index += numberOfMoleculesPerComponent[i];
   }
   index += selectedMolecule;
-  return moleculePositions.begin() + static_cast<std::vector<Atom>::difference_type>(index);
+  return moleculeData.begin() + static_cast<std::vector<Atom>::difference_type>(index);
 }
 
 std::size_t System::moleculeIndexOfComponent(std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -624,32 +624,32 @@ std::size_t System::moleculeIndexOfComponent(std::size_t selectedComponent, std:
 
 std::span<const Atom> System::spanOfFrameworkAtoms() const
 {
-  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
+  return std::span(atomData.begin(), numberOfFrameworkAtoms);
 }
 
-std::span<Atom> System::spanOfFrameworkAtoms() { return std::span(atomPositions.begin(), numberOfFrameworkAtoms); }
+std::span<Atom> System::spanOfFrameworkAtoms() { return std::span(atomData.begin(), numberOfFrameworkAtoms); }
 
 std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
 {
-  return std::span(atomPositions.begin(), numberOfFrameworkAtoms);
+  return std::span(atomData.begin(), numberOfFrameworkAtoms);
 }
 
 std::span<const Atom> System::spanOfFlexibleAtoms() const
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomPositions.end());
+  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
+                   atomData.end());
 }
 
 std::span<const Atom> System::spanOfMoleculeAtoms() const
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomPositions.end());
+  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
+                   atomData.end());
 }
 
 std::span<Atom> System::spanOfMoleculeAtoms()
 {
-  return std::span(atomPositions.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomPositions.end());
+  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
+                   atomData.end());
 }
 
 std::span<double> System::spanOfMoleculeElectrostaticPotential()
@@ -682,7 +682,7 @@ std::span<Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomPositions[index + numberOfFrameworkAtoms], size);
+  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
 }
 
 const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule) const
@@ -695,7 +695,7 @@ const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent
   }
   std::size_t size = components[selectedComponent].atoms.size();
   index += size * selectedMolecule;
-  return std::span(&atomPositions[index + numberOfFrameworkAtoms], size);
+  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
 }
 
 std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule)
@@ -907,7 +907,7 @@ void System::computeNumberOfPseudoAtoms()
   }
   std::fill(totalNumberOfPseudoAtoms.begin(), totalNumberOfPseudoAtoms.end(), 0);
 
-  for (const Atom& atom : atomPositions)
+  for (const Atom& atom : atomData)
   {
     std::size_t componentId = static_cast<std::size_t>(atom.componentId);
     std::size_t type = static_cast<std::size_t>(atom.type);
@@ -1112,22 +1112,22 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   std::print(stream, "===============================================================================\n\n");
 
   std::print(stream, "{}\n", simulationBox.printStatus());
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculePositions);
+  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculePositions);
+  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculePositions);
+  double3 com = Integrators::computeCenterOfMass(moleculeData);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "\n");
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
+  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotationalTemperature =
       2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   double overallTemperature =
@@ -1383,23 +1383,23 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
   std::print(stream, "\n");
 
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculePositions);
+  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
   std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
              linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculePositions);
+  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
   std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
              com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculePositions);
+  double3 com = Integrators::computeCenterOfMass(moleculeData);
   std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
   std::print(stream, "Net charge: {:12.8f}\n", netCharge);
   std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
              static_cast<double>(currentCycle) * timeStep / 1000.0);
 
-  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(moleculeData);
   double translational_temperature =
       2.0 * translational_kinetic_energy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
+  double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotational_temperature =
       2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   double overall_temperature =
@@ -1638,13 +1638,13 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculePositions);
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculePositions, components);
+  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
   double rotationalTemperature =
       2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
@@ -1687,7 +1687,7 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomPositions, simulationBox, forceField,
+    writeLammpsData->update(currentCycle, components, atomData, simulationBox, forceField,
                             numberOfIntegerMoleculesPerComponent, framework);
   }
 
@@ -1700,8 +1700,8 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
   if (propertyRadialDistributionFunction.has_value())
   {
     precomputeTotalGradients();
-    Integrators::updateCenterOfMassAndQuaternionGradients(moleculePositions, spanOfMoleculeAtoms(), components);
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculePositions,
+    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(), components);
+    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculeData,
                                                spanOfMoleculeAtoms(), currentCycle, currentBlock);
   }
 
@@ -1723,12 +1723,12 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (propertyMSD.has_value())
   {
-    propertyMSD->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculePositions);
+    propertyMSD->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
   }
 
   if (propertyVACF.has_value())
   {
-    propertyVACF->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculePositions);
+    propertyVACF->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
   }
 
   if (propertyDensityGrid.has_value())
@@ -1754,8 +1754,8 @@ void System::writeCPUTimeStatistics(std::ostream& stream) const
 
 std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
 {
-  std::vector<Molecule> scaledMolecules(moleculePositions);
-  std::vector<Atom> scaledAtoms(atomPositions);
+  std::vector<Molecule> scaledMolecules(moleculeData);
+  std::vector<Atom> scaledAtoms(atomData);
 
   for (Molecule &molecule : scaledMolecules)
   {
@@ -1817,7 +1817,7 @@ RunningEnergy System::computeTotalEnergies() noexcept
   std::size_t index = 0;
   for(std::size_t i = 0; i < components.size(); ++i)
   {
-    std::span<const Molecule> span_molecules = {&moleculePositions[index], numberOfMoleculesPerComponent[i]};
+    std::span<const Molecule> span_molecules = {&moleculeData[index], numberOfMoleculesPerComponent[i]};
     runningIntraEnergy += Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
                                                         span_molecules, spanOfMoleculeAtoms());
 
@@ -1940,7 +1940,7 @@ void System::computeTotalElectricField() noexcept
 
 std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 {
-  for (Atom& atom : atomPositions)
+  for (Atom& atom : atomData)
   {
     atom.gradient = double3(0.0, 0.0, 0.0);
   }
@@ -1962,7 +1962,7 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   std::size_t molecule_index = 0;
   for(std::size_t i = 0; i < components.size(); ++i)
   {
-    std::span<const Molecule> span_molecules = {&moleculePositions[molecule_index], numberOfMoleculesPerComponent[i]};
+    std::span<const Molecule> span_molecules = {&moleculeData[molecule_index], numberOfMoleculesPerComponent[i]};
     RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
                                                         span_molecules, spanOfMoleculeAtoms());
 
@@ -1982,14 +1982,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   double pressureTailCorrection = 0.0;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
-  for (std::vector<Atom>::iterator it1 = atomPositions.begin(); it1 != atomPositions.end(); ++it1)
+  for (std::vector<Atom>::iterator it1 = atomData.begin(); it1 != atomData.end(); ++it1)
   {
     std::size_t typeA = static_cast<std::size_t>(it1->type);
     double scalingVDWA = it1->scalingVDW;
 
     pressureTailCorrection += scalingVDWA * scalingVDWA * preFactor * forceField(typeA, typeA).tailCorrectionPressure;
 
-    for (std::vector<Atom>::iterator it2 = it1 + 1; it2 != atomPositions.end(); ++it2)
+    for (std::vector<Atom>::iterator it2 = it1 + 1; it2 != atomData.end(); ++it2)
     {
       std::size_t typeB = static_cast<std::size_t>(it2->type);
       double scalingVDWB = it2->scalingVDW;
@@ -2005,9 +2005,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
-  for (Molecule &molecule : moleculePositions)
+  for (Molecule &molecule : moleculeData)
   {
-    const std::span<Atom> span = { &atomPositions[molecule.atomIndex], molecule.numberOfAtoms };
+    const std::span<Atom> span = { &atomData[molecule.atomIndex], molecule.numberOfAtoms };
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
@@ -2052,7 +2052,7 @@ void System::checkCartesianPositions()
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
   std::size_t index{};
-  for (Molecule& molecule : moleculePositions)
+  for (Molecule& molecule : moleculeData)
   {
     std::span<Atom> span = std::span(&moleculeAtomPositions[index], molecule.numberOfAtoms);
     if (components[molecule.componentId].rigid)
@@ -2854,8 +2854,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.rotationalDegreesOfFreedom;
   archive << s.timeStep;
   archive << s.simulationBox;
-  archive << s.atomPositions;
-  archive << s.moleculePositions;
+  archive << s.atomData;
+  archive << s.moleculeData;
   archive << s.electricPotential;
   archive << s.electricField;
   archive << s.electricFieldNew;
@@ -2965,8 +2965,8 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.rotationalDegreesOfFreedom;
   archive >> s.timeStep;
   archive >> s.simulationBox;
-  archive >> s.atomPositions;
-  archive >> s.moleculePositions;
+  archive >> s.atomData;
+  archive >> s.moleculeData;
   archive >> s.electricPotential;
   archive >> s.electricField;
   archive >> s.electricFieldNew;
@@ -3043,7 +3043,7 @@ void System::writeRestartFile()
 
   json["simulationBox"] = simulationBox;
   json["atom"] = spanOfMoleculeAtoms();
-  json["molecules"] = moleculePositions;
+  json["molecules"] = moleculeData;
 
   // use pretty print and indent of 2
   // std::cout << std::setw(2) << j << std::endl;
@@ -3091,11 +3091,11 @@ void System::readRestartFile()
 
   for (const Atom& atom : read_atom_data)
   {
-    atomPositions.push_back(atom);
+    atomData.push_back(atom);
   }
   for (const Molecule& molecule : read_molecule_data)
   {
-    moleculePositions.push_back(molecule);
+    moleculeData.push_back(molecule);
   }
 }
 

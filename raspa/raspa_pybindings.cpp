@@ -244,7 +244,7 @@ PYBIND11_MODULE(raspalib, m)
       .def_readonly("components", &System::components)
       .def_readonly("loadings", &System::loadings)
       .def_readonly("averageLoadings", &System::averageLoadings)
-      .def_readwrite("atomPositions", &System::atomPositions)
+      .def_readwrite("atomData", &System::atomData)
       .def("writeMCMoveStatistics", &System::writeMCMoveStatistics)
       .def("__repr__", &System::repr);
 

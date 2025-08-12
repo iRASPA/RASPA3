@@ -872,12 +872,12 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i].charge = 1.0;
-    system.atomPositions[i].charge = 1.0;
+    system.atomData[i].charge = 1.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i + 20].charge = -1.0;
-    system.atomPositions[i + 20].charge = -1.0;
+    system.atomData[i + 20].charge = -1.0;
   }
 
   [[maybe_unused]] RunningEnergy factor = Interactions::computeInterMolecularGradient(
@@ -924,8 +924,8 @@ TEST(gradients, Test_20_Na_Cl_in_Box_25x25x25)
         (z2.moleculeMoleculeVDW + z2.moleculeMoleculeCharge - (z1.moleculeMoleculeVDW + z1.moleculeMoleculeCharge)) /
         delta;
 
-    EXPECT_NEAR(system.atomPositions[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(system.atomPositions[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(system.atomPositions[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(system.atomData[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(system.atomData[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(system.atomData[i].gradient.z, gradient.z, tolerance);
   }
 }

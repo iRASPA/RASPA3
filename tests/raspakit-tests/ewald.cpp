@@ -311,12 +311,12 @@ TEST(Ewald, Test_20_Na_Cl_in_Box_25x25x25)
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i].charge = 1.0;
-    system.atomPositions[i].charge = 1.0;
+    system.atomData[i].charge = 1.0;
   }
   for (size_t i = 0; i < 20; ++i)
   {
     atomPositions[i + 20].charge = -1.0;
-    system.atomPositions[i + 20].charge = -1.0;
+    system.atomData[i + 20].charge = -1.0;
   }
 
   for (Atom& atom : atomPositions)

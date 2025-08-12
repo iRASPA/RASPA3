@@ -166,15 +166,15 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
     systemA.mc_moves_statistics.addAccepted(move);
 
     systemA.simulationBox = newBoxA;
-    std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculePositions.begin());
-    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomPositions.begin());
+    std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculeData.begin());
+    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomData.begin());
     Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
 
     systemB.mc_moves_statistics.addAccepted(move);
 
     systemB.simulationBox = newBoxB;
-    std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculePositions.begin());
-    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomPositions.begin());
+    std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculeData.begin());
+    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomData.begin());
     Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
     return std::make_pair(newTotalEnergyA, newTotalEnergyB);

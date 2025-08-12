@@ -45,7 +45,7 @@ TEST(energy_decomposition, CO2_Methane_in_Box)
   RunningEnergy energy = system.computeTotalEnergies();
 
   std::pair<EnergyStatus, double3x3> strainDerivative = Interactions::computeInterMolecularEnergyStrainDerivative(
-      system.forceField, system.components, system.simulationBox, system.atomPositions);
+      system.forceField, system.components, system.simulationBox, system.atomData);
   strainDerivative.first.sumTotal();
 
   EXPECT_NEAR(energy.moleculeMoleculeVDW + energy.moleculeMoleculeCharge, strainDerivative.first.totalEnergy.energy,

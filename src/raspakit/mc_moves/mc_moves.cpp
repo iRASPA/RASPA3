@@ -94,7 +94,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // load molecule atoms
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
@@ -121,7 +121,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // load molecule atoms
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
@@ -147,7 +147,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // load molecule atoms
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
@@ -174,7 +174,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // load molecule atoms
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
 
         // perform move
         std::optional<RunningEnergy> energyDifference =
@@ -213,7 +213,7 @@ void MC_Moves::performRandomMove(RandomNumber &random, System &selectedSystem, S
         // load molecule atoms
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
 
         // perform move
         std::optional<RunningEnergy> energyDifference = MC_Moves::reinsertionMove(
@@ -442,7 +442,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::translationMove(random, selectedSystem, selectedComponent, selectedMolecule,
                                       selectedSystem.components, molecule, molecule_atoms);
@@ -462,7 +462,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::randomTranslationMove(random, selectedSystem, selectedComponent, selectedMolecule,
                                             selectedSystem.components, molecule, molecule_atoms);
@@ -482,7 +482,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::rotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
                                    selectedSystem.components, molecule, molecule_atoms);
@@ -501,7 +501,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference =
             MC_Moves::randomRotationMove(random, selectedSystem, selectedComponent, selectedMolecule,
                                          selectedSystem.components, molecule, molecule_atoms);
@@ -530,7 +530,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       {
         std::span<Atom> molecule_atoms = selectedSystem.spanOfMolecule(selectedComponent, selectedMolecule);
         std::size_t molecule_index = selectedSystem.moleculeIndexOfComponent(selectedComponent, selectedMolecule);
-        Molecule &molecule = selectedSystem.moleculePositions[molecule_index];
+        Molecule &molecule = selectedSystem.moleculeData[molecule_index];
         std::optional<RunningEnergy> energyDifference = MC_Moves::reinsertionMove(
             random, selectedSystem, selectedComponent, selectedMolecule, molecule, molecule_atoms);
 

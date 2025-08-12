@@ -80,7 +80,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
   }
 
   std::pair<double, double3x3> pressureInfo = Interactions::computeIntraMolecularBendStrainDerivative(system.components[0].intraMolecularPotentials,
-                                                                                      system.moleculePositions, moleculeAtomPositions);
+                                                                                      system.moleculeData, moleculeAtomPositions);
 
   double3 gradient{};
   for (size_t i = 0; i < moleculeAtomPositions.size(); ++i)
@@ -91,26 +91,26 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
 
     // finite difference x
     moleculeAtomPositions[i].position.x = saved_position.x + 0.5 * delta;
-    x2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    x2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.x = saved_position.x - 0.5 * delta;
-    x1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    x1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.x = saved_position.x;
 
     // finite difference y
     moleculeAtomPositions[i].position.y = saved_position.y + 0.5 * delta;
-    y2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    y2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.y = saved_position.y - 0.5 * delta;
-    y1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    y1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.y = saved_position.y;
 
     // finite difference z
     moleculeAtomPositions[i].position.z = saved_position.z + 0.5 * delta;
-    z2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    z2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
 
     moleculeAtomPositions[i].position.z = saved_position.z - 0.5 * delta;
-    z1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculePositions, moleculeAtomPositions);
+    z1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
     moleculeAtomPositions[i].position.z = saved_position.z;
 
     gradient.x = (x2.bend - x1.bend) / delta;
@@ -159,7 +159,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
                                  m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculePositions, moleculeAtomPositions_forward2);
+                                                                             system.moleculeData, moleculeAtomPositions_forward2);
 
     SimulationBox strainBox_forward1 =
         SimulationBox((identity + 0.5 * strain.first) * system.simulationBox.cell, SimulationBox::Type::Triclinic);
@@ -172,7 +172,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
                                  m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyForward1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculePositions,
+                                                                             system.moleculeData,
                                                                              moleculeAtomPositions_forward1);
 
     SimulationBox strainBox_backward1 =
@@ -186,7 +186,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
                                  m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward1 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculePositions,
+                                                                             system.moleculeData,
                                                                               moleculeAtomPositions_backward1);
 
     SimulationBox strainBox_backward2 =
@@ -200,7 +200,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bend_pote
                                  m.componentId, m.groupId, m.isFractional);
                    });
     RunningEnergy EnergyBackward2 = Interactions::computeIntraMolecularBendEnergy(system.components[0].intraMolecularPotentials,
-                                                                             system.moleculePositions,
+                                                                             system.moleculeData,
                                                                               moleculeAtomPositions_backward2);
 
     double strainDerivative = (-EnergyForward2.potentialEnergy() + 8.0 * EnergyForward1.potentialEnergy() -

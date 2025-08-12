@@ -131,8 +131,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     system.mc_moves_statistics.addAccepted(move);
 
     system.simulationBox = newBox;
-    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculePositions.begin());
-    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomPositions.begin());
+    std::copy(newPositions.first.begin(), newPositions.first.end(), system.moleculeData.begin());
+    std::copy(newPositions.second.begin(), newPositions.second.end(), system.atomData.begin());
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
