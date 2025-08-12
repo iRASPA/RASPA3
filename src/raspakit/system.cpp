@@ -1754,41 +1754,35 @@ void System::writeCPUTimeStatistics(std::ostream& stream) const
 
 std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
 {
-  std::vector<Molecule> scaledMolecules;
-  std::vector<Atom> scaledAtoms;
-  scaledMolecules.reserve(scaledMolecules.size());
-  scaledAtoms.reserve(atomPositions.size());
+  std::vector<Molecule> scaledMolecules(moleculePositions);
+  std::vector<Atom> scaledAtoms(atomPositions);
 
-  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  for (Molecule &molecule : scaledMolecules)
   {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    const std::span<Atom> span = { &scaledAtoms[molecule.atomIndex], molecule.numberOfAtoms };
+
+    double totalMass = 0.0;
+    double3 com(0.0, 0.0, 0.0);
+    for (const Atom& atom : span)
     {
-      const std::span<const Atom> span = spanOfMolecule(componentId, i);
-      const Molecule& molecule = moleculePositions[i];
+      double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+      com += mass * atom.position;
+      totalMass += mass;
+    }
+    com /= totalMass;
 
-      double totalMass = 0.0;
-      double3 com(0.0, 0.0, 0.0);
-      for (const Atom& atom : span)
-      {
-        double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-        com += mass * atom.position;
-        totalMass += mass;
-      }
-      com = com / totalMass;
+    molecule.centerOfMassPosition = com * scale;
 
-      double3 d = com * (scale - 1.0);
-      scaledMolecules.push_back({com * scale, molecule.orientation, molecule.mass, componentId, span.size()});
-
-      // create copy
-      for (Atom atom : span)
-      {
-        atom.position += d;
-        scaledAtoms.push_back(atom);
-      }
+    double3 d = com * (scale - 1.0);
+    for (Atom &atom : span)
+    {
+      atom.position += d;
     }
   }
+
   return {scaledMolecules, scaledAtoms};
 }
+
 
 inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
                                                    const std::pair<EnergyStatus, double3x3>& rhs)
@@ -1964,26 +1958,18 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                         framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
                         CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
 
-  std::size_t index = 0;
-  std::span<Atom> span_atoms = spanOfMoleculeAtoms();
+
+  std::size_t molecule_index = 0;
   for(std::size_t i = 0; i < components.size(); ++i)
   {
-    std::span<const Molecule> span_molecules = {&moleculePositions[index], numberOfMoleculesPerComponent[i]};
-    for(const Molecule &molecule : span_molecules)
-    {
-      std::pair<double, double3x3> intra_bond = Interactions::computeIntraMolecularBondStrainDerivative(components[i].intraMolecularPotentials,
-                                                                             {&span_atoms[molecule.atomIndex], molecule.numberOfAtoms});
-      pressureInfo.first.intraComponentEnergies[i].bond += intra_bond.first;
-      pressureInfo.second += intra_bond.second;
+    std::span<const Molecule> span_molecules = {&moleculePositions[molecule_index], numberOfMoleculesPerComponent[i]};
+    RunningEnergy runningIntraEnergy = Interactions::computeIntraMolecularEnergy(components[i].intraMolecularPotentials,
+                                                        span_molecules, spanOfMoleculeAtoms());
 
-      std::pair<double, double3x3> intra_bend = Interactions::computeIntraMolecularBendStrainDerivative(components[i].intraMolecularPotentials,
-                                                                             {&span_atoms[molecule.atomIndex], molecule.numberOfAtoms});
-      pressureInfo.first.intraComponentEnergies[i].bend += intra_bend.first;
-      pressureInfo.second += intra_bend.second;
-    }
+    pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
+    pressureInfo.first.intraComponentEnergies[i].bend += runningIntraEnergy.bend;
 
-
-    index += numberOfMoleculesPerComponent[i];
+    molecule_index += numberOfMoleculesPerComponent[i];
   }
 
   if (forceField.computePolarization)
@@ -2019,41 +2005,36 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
 
   // Correct rigid molecule contribution using the constraints forces
   double3x3 correctionTerm{};
-  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  for (Molecule &molecule : moleculePositions)
   {
-    if (components[componentId].rigid)
+    const std::span<Atom> span = { &atomPositions[molecule.atomIndex], molecule.numberOfAtoms };
+
+    double totalMass = 0.0;
+    double3 com(0.0, 0.0, 0.0);
+    for (const Atom& atom : span)
     {
-      for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
-      {
-        std::span<Atom> span = spanOfMolecule(componentId, i);
+      double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+      com += mass * atom.position;
+      totalMass += mass;
+    }
+    com = com / totalMass;
 
-        double totalMass = 0.0;
-        double3 com(0.0, 0.0, 0.0);
-        for (const Atom& atom : span)
-        {
-          double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-          com += mass * atom.position;
-          totalMass += mass;
-        }
-        com = com / totalMass;
+    for (const Atom& atom : span)
+    {
+      correctionTerm.ax += (atom.position.x - com.x) * atom.gradient.x;
+      correctionTerm.ay += (atom.position.x - com.x) * atom.gradient.y;
+      correctionTerm.az += (atom.position.x - com.x) * atom.gradient.z;
 
-        for (const Atom& atom : span)
-        {
-          correctionTerm.ax += (atom.position.x - com.x) * atom.gradient.x;
-          correctionTerm.ay += (atom.position.x - com.x) * atom.gradient.y;
-          correctionTerm.az += (atom.position.x - com.x) * atom.gradient.z;
+      correctionTerm.bx += (atom.position.y - com.y) * atom.gradient.x;
+      correctionTerm.by += (atom.position.y - com.y) * atom.gradient.y;
+      correctionTerm.bz += (atom.position.y - com.y) * atom.gradient.z;
 
-          correctionTerm.bx += (atom.position.y - com.y) * atom.gradient.x;
-          correctionTerm.by += (atom.position.y - com.y) * atom.gradient.y;
-          correctionTerm.bz += (atom.position.y - com.y) * atom.gradient.z;
-
-          correctionTerm.cx += (atom.position.z - com.z) * atom.gradient.x;
-          correctionTerm.cy += (atom.position.z - com.z) * atom.gradient.y;
-          correctionTerm.cz += (atom.position.z - com.z) * atom.gradient.z;
-        }
-      }
+      correctionTerm.cx += (atom.position.z - com.z) * atom.gradient.x;
+      correctionTerm.cy += (atom.position.z - com.z) * atom.gradient.y;
+      correctionTerm.cz += (atom.position.z - com.z) * atom.gradient.z;
     }
   }
+
   pressureInfo.second = -(pressureInfo.second - correctionTerm);
 
   double temp = 0.5 * (pressureInfo.second.ay + pressureInfo.second.bx);

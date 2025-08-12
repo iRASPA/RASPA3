@@ -894,13 +894,12 @@ std::pair<Molecule, std::vector<Atom>> Component::rotate(const Molecule &molecul
   else
   {
     double3x3 rotationMatrix = double3x3(rotation);
-    std::transform(molecule_atoms.begin(), molecule_atoms.end(), trialAtoms.begin(),
-                   [&](Atom a)
-                   {
-                     a.position = rotationMatrix * (a.position - molecule_atoms[startingBead].position) +
+    for(std::size_t i = 0; i < trialAtoms.size(); ++i)
+    {
+       trialAtoms[i].position = rotationMatrix * (molecule_atoms[i].position - molecule_atoms[startingBead].position) +
                                   molecule_atoms[startingBead].position;
-                     return a;
-                   });
+
+    }
   }
 
   return {trialMolecule, trialAtoms};
