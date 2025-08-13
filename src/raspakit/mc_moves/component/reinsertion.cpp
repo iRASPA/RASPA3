@@ -179,7 +179,15 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
     std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
     std::copy(growData->electricField.begin(), growData->electricField.end(), electricFieldMolecule.begin());
+
+    // FIX
+    std::size_t atomIndex = molecule.atomIndex;
+    std::size_t length = molecule.numberOfAtoms;
+
     molecule = growData->molecule;
+
+    molecule.atomIndex = atomIndex;
+    molecule.numberOfAtoms = length;
 
     if (system.forceField.useDualCutOff)
     {

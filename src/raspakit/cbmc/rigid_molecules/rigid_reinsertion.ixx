@@ -32,8 +32,8 @@ export namespace CBMC
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
     std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
 
@@ -41,8 +41,8 @@ export namespace CBMC
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, [[maybe_unused]] std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule,
     Molecule &molecule, std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections);
 }  // namespace CBMC
@@ -52,8 +52,8 @@ namespace CBMC
 [[nodiscard]] std::optional<ChainData> growRigidMoleculeChainReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, Molecule &molecule, std::vector<Atom> molecule_atoms,
     const std::vector<Component> &components, std::size_t selectedComponent,
     std::size_t numberOfTrialDirections) noexcept;
@@ -61,8 +61,8 @@ namespace CBMC
 [[nodiscard]] ChainData retraceRigidChainReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, Molecule &molecule, std::span<Atom> molecule_atoms,
     std::size_t numberOfTrialDirections) noexcept;
 

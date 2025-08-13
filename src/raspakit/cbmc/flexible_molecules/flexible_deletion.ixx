@@ -31,8 +31,8 @@ export namespace CBMC
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forcefield, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, std::span<Atom> molecule,
     double scaling, std::size_t numberOfTrialDirections) noexcept;
 }
@@ -42,7 +42,7 @@ export namespace CBMC
                                                              const ForceField &forcefield, const SimulationBox &simulationBox,
                                                              const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
                                                              const std::optional<Framework> &framework,
-                                                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                                                             std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
                                                              double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
                                                              double cutOffCoulomb, std::size_t startingBead,
                                                              [[maybe_unused]] double scaling, std::span<Atom> molecule,

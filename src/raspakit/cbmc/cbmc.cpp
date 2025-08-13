@@ -42,8 +42,8 @@ import interpolation_energy_grid;
     RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
     double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule,
     double scaling, bool groupId, bool isFractional, std::size_t numberOfTrialDirections) noexcept
 {
@@ -52,12 +52,12 @@ import interpolation_energy_grid;
     case Component::GrowType::Rigid:
       return CBMC::growRigidMoleculeSwapInsertion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, scaling, groupId, isFractional, numberOfTrialDirections);
     case Component::GrowType::Flexible:
       return CBMC::growFlexibleMoleculeSwapInsertion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, scaling, groupId, isFractional, numberOfTrialDirections);
     default:
       std::unreachable();
@@ -68,8 +68,8 @@ import interpolation_energy_grid;
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
     std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept
 {
@@ -77,13 +77,13 @@ import interpolation_energy_grid;
   {
     case Component::GrowType::Rigid:
       return CBMC::growRigidMoleculeReinsertion(random, component, hasExternalField, components, forceField, simulationBox,
-                                                interpolationGrids, framework, frameworkAtoms, moleculeAtoms, beta,
+                                                interpolationGrids, framework, frameworkAtomData, moleculeAtomData, beta,
                                                 cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
                                                 selectedMolecule, molecule, molecule_atoms, numberOfTrialDirections);
     case Component::GrowType::Flexible:
       // TODO!
       return CBMC::growRigidMoleculeReinsertion(random, component, hasExternalField, components, forceField, simulationBox,
-                                                interpolationGrids, framework, frameworkAtoms, moleculeAtoms, beta,
+                                                interpolationGrids, framework, frameworkAtomData, moleculeAtomData, beta,
                                                 cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
                                                 selectedMolecule, molecule, molecule_atoms, numberOfTrialDirections);
     default:
@@ -95,8 +95,8 @@ import interpolation_energy_grid;
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, 
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
     double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
     std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections) noexcept
@@ -106,13 +106,13 @@ import interpolation_energy_grid;
     case Component::GrowType::Rigid:
       return CBMC::retraceRigidMoleculeReinsertion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, molecule, molecule_atoms, storedR, numberOfTrialDirections);
     case Component::GrowType::Flexible:
       // TODO!
       return CBMC::retraceRigidMoleculeReinsertion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, molecule, molecule_atoms, storedR, numberOfTrialDirections);
     default:
       std::unreachable();
@@ -123,8 +123,8 @@ import interpolation_energy_grid;
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, std::span<Atom> molecule,
     double scaling, std::size_t numberOfTrialDirections) noexcept
 {
@@ -133,12 +133,12 @@ import interpolation_energy_grid;
     case Component::GrowType::Rigid:
       return CBMC::retraceRigidMoleculeSwapDeletion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, molecule, scaling, numberOfTrialDirections);
     case Component::GrowType::Flexible:
       return CBMC::retraceFlexibleMoleculeSwapDeletion(
           random, component, hasExternalField, components, forceField, simulationBox, interpolationGrids, framework,
-          frameworkAtoms, moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
+          frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent,
           selectedMolecule, molecule, scaling, numberOfTrialDirections);
     default:
       std::unreachable();

@@ -44,8 +44,8 @@ import interpolation_energy_grid;
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, double scaling, bool groupId,
     bool isFractional, std::size_t numberOfTrialDirections) noexcept
 {
@@ -57,8 +57,8 @@ import interpolation_energy_grid;
   firstBead.setScaling(scaling);
 
   std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
-      moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead, numberOfTrialDirections);
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead, numberOfTrialDirections);
 
   if (!firstBeadData) return std::nullopt;
 
@@ -83,8 +83,8 @@ import interpolation_energy_grid;
                 });
 
   std::optional<ChainData> const rigidRotationData = CBMC::growRigidMoleculeChainInsertion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtoms,
-      moleculeAtoms, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, startingBead, atoms,
+      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
+      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, startingBead, atoms,
       numberOfTrialDirections, selectedMolecule, scaling, groupId, isFractional, components, selectedComponent);
 
   if (!rigidRotationData) return std::nullopt;
@@ -97,8 +97,8 @@ import interpolation_energy_grid;
 [[nodiscard]] std::optional<ChainData> CBMC::growRigidMoleculeChainInsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
-    std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
+    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
+    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule, std::size_t numberOfTrialDirections,
     std::size_t selectedMolecule, double scaling, bool groupId, bool isFractional,
     const std::vector<Component> &components, std::size_t selectedComponent) noexcept
@@ -128,7 +128,7 @@ import interpolation_energy_grid;
 
   const std::vector<std::tuple<Molecule, std::vector<Atom>, RunningEnergy>> externalEnergies =
       CBMC::computeExternalNonOverlappingEnergies(component, hasExternalField, forceField, simulationBox,
-                                                  interpolationGrids, framework, frameworkAtoms, moleculeAtoms,
+                                                  interpolationGrids, framework, frameworkAtomData, moleculeAtomData,
                                                   cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions,
                                                   std::make_signed_t<std::size_t>(startingBead));
   if (externalEnergies.empty()) return std::nullopt;

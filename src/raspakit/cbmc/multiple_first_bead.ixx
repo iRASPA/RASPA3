@@ -31,21 +31,21 @@ export namespace CBMC
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, const Atom &atom, std::size_t numberOfTrialDirections) noexcept;
 
-[[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadSwapDeletion(
+[[nodiscard]] FirstBeadData retraceMultipleFirstBeadSwapDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forcefield,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, const Atom atom, double scaling, std::size_t numberOfTrialDirections) noexcept;
 
-[[nodiscard]] std::optional<FirstBeadData> growRigidMultipleFirstBeadReinsertion(
+[[nodiscard]] std::optional<FirstBeadData> growMultipleFirstBeadReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, const Atom &atom, std::size_t numberOfTrialDirections) noexcept;
 
-[[nodiscard]] FirstBeadData retraceRigidMultipleFirstBeadReinsertion(
+[[nodiscard]] FirstBeadData retraceMultipleFirstBeadReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtoms,

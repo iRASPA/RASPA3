@@ -68,7 +68,7 @@ import interpolation_energy_grid;
                        RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }
 
-[[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadSwapDeletion(
+[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadSwapDeletion(
     RandomNumber& random, const Component& component, bool hasExternalField, const ForceField& forcefield,
     const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
@@ -101,7 +101,7 @@ import interpolation_energy_grid;
   return FirstBeadData(atom, externalEnergies[0].second, RosenbluthWeight / double(numberOfTrialDirections), 0.0);
 }
 
-[[nodiscard]] std::optional<FirstBeadData> CBMC::growRigidMultipleFirstBeadReinsertion(
+[[nodiscard]] std::optional<FirstBeadData> CBMC::growMultipleFirstBeadReinsertion(
     RandomNumber& random, const Component& component, bool hasExternalField, const ForceField& forceField,
     const SimulationBox& simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework>& framework, std::span<const Atom> frameworkAtoms,
@@ -146,7 +146,7 @@ import interpolation_energy_grid;
                        RosenbluthWeight / double(numberOfTrialDirections), storedR);
 }
 
-[[nodiscard]] FirstBeadData CBMC::retraceRigidMultipleFirstBeadReinsertion(
+[[nodiscard]] FirstBeadData CBMC::retraceMultipleFirstBeadReinsertion(
     [[maybe_unused]] RandomNumber& random, const Component& component, bool hasExternalField,
     const ForceField& forceField, const SimulationBox& simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
