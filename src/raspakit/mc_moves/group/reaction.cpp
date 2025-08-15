@@ -62,7 +62,7 @@ std::optional<RunningEnergy> MC_Moves::reactionMove(
 
   [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
 
-  std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
+  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random, system.components[selectedComponent], system.hasExternalField, system.components, system.forceField,
       system.simulationBox, system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(),
       system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,

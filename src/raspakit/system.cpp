@@ -493,7 +493,7 @@ void System::createInitialMolecules()
       numberOfMoleculesPerComponent[componentId] = 0;
       for (std::size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
       {
-        std::optional<ChainData> growData = std::nullopt;
+        std::optional<ChainGrowData> growData = std::nullopt;
         do
         {
           bool groupId = components[componentId].lambdaGC.computeDUdlambda;
@@ -511,7 +511,7 @@ void System::createInitialMolecules()
 
     for (std::size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
     {
-      std::optional<ChainData> growData = std::nullopt;
+      std::optional<ChainGrowData> growData = std::nullopt;
       bool inside_blocked_pocket{false};
       do
       {

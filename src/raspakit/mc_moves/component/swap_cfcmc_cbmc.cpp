@@ -204,7 +204,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     std::size_t newMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
 
     time_begin = std::chrono::system_clock::now();
-    std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
+    std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
         random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
         system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, newMolecule,
@@ -345,7 +345,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Retrace the existing fractional molecule
       time_begin = std::chrono::system_clock::now();
-      ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
+      ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
           system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
           system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, indexFractionalMolecule,

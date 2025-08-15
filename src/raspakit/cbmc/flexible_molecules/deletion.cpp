@@ -46,49 +46,13 @@ import intra_molecular_potentials;
 import bond_potential;
 
 
-[[nodiscard]] ChainData CBMC::retraceFlexibleMoleculeSwapDeletion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
-    const ForceField &forcefield, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, [[maybe_unused]] std::size_t selectedComponent, [[maybe_unused]] std::size_t selectedMolecule,
-    std::span<Atom> molecule_atoms, double scaling, std::size_t numberOfTrialDirections) noexcept
-{
-  std::size_t startingBead = components[selectedComponent].startingBead;
-
-  const FirstBeadData firstBeadData = CBMC::retraceMultipleFirstBeadSwapDeletion(
-      random, component, hasExternalField, forcefield, simulationBox, interpolationGrids, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule_atoms[startingBead], scaling,
-      numberOfTrialDirections);
-
-  if (molecule_atoms.size() == 1)
-  {
-    return ChainData(
-        Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
-        std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end()), firstBeadData.energies, firstBeadData.RosenbluthWeight,
-        0.0);
-  }
-
-  const ChainData chainData =
-      retraceFlexibleMoleculeChainDeletion(random, component, hasExternalField, forcefield, simulationBox, interpolationGrids, framework,
-                        frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-                        startingBead, scaling, molecule_atoms, numberOfTrialDirections);
-
-  return ChainData(
-      Molecule(double3(), simd_quatd(), component.totalMass, component.componentId, component.definedAtoms.size()),
-      std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end()), firstBeadData.energies + chainData.energies,
-      firstBeadData.RosenbluthWeight * chainData.RosenbluthWeight, 0.0);
-}
-
-[[nodiscard]] ChainData retraceFlexibleMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
+[[nodiscard]] ChainRetraceData CBMC::retraceFlexibleMoleculeChainDeletion(RandomNumber &random, const Component &component, bool hasExternalField,
                                                              const ForceField &forceField, const SimulationBox &simulationBox,
                                                              const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
                                                              const std::optional<Framework> &framework,
                                                              std::span<const Atom> frameworkAtomData, std::span<const Atom> moleculeAtomData,
                                                              double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-                                                             double cutOffCoulomb, std::size_t startingBead,
-                                                             [[maybe_unused]] double scaling, std::span<Atom> molecule_atoms,
+                                                             double cutOffCoulomb, std::size_t startingBead, std::span<Atom> molecule_atoms,
                                                              std::size_t numberOfTrialDirections) noexcept
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
@@ -186,5 +150,5 @@ import bond_potential;
   // Recompute all the internal interactions
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(molecule_atoms);
 
-  return ChainData({}, std::vector<Atom>(molecule_atoms.begin(), molecule_atoms.end()), chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
+  return ChainRetraceData(chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
 }

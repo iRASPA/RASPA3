@@ -18,21 +18,37 @@ import double3;
 import randomnumbers;
 import running_energy;
 
-export struct ChainData
+export struct ChainGrowData
 {
   Molecule molecule;
   std::vector<Atom> atom;
-  std::vector<double3> electricField;
   RunningEnergy energies;
   double RosenbluthWeight;
   double storedR;
 
-  ChainData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
+  ChainGrowData(): molecule(), atom(), energies(), RosenbluthWeight(), storedR() {}
+
+  ChainGrowData(const Molecule &molecule, std::vector<Atom> atom, RunningEnergy energies, double RosenbluthWeight,
             double storedR) noexcept
       : molecule(molecule),
         atom(atom),
-        electricField(atom.size()),
         energies(energies),
+        RosenbluthWeight(RosenbluthWeight),
+        storedR(storedR)
+  {
+  }
+};
+
+export struct ChainRetraceData
+{
+  RunningEnergy energies;
+  double RosenbluthWeight;
+  double storedR;
+
+  ChainRetraceData(): energies(), RosenbluthWeight(), storedR() {}
+
+  ChainRetraceData(RunningEnergy energies, double RosenbluthWeight, double storedR) noexcept
+      : energies(energies),
         RosenbluthWeight(RosenbluthWeight),
         storedR(storedR)
   {

@@ -77,7 +77,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
-  std::optional<ChainData> growData = CBMC::growMoleculeReinsertion(
+  std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
       random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
@@ -93,6 +93,10 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Get the new molecule configuration.
   std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
 
+  std::vector<Atom> old_molecule = std::vector(molecule_atoms.begin(), molecule_atoms.end());
+  std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
+  std::vector<double3> new_electric_field = std::vector<double3>(old_molecule.size());
+
   // Check if the new molecule is inside blocked pockets; if so, exit the move.
   if (system.insideBlockedPockets(component, newMolecule))
   {
@@ -104,7 +108,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
-  ChainData retraceData = CBMC::retraceMoleculeReinsertion(
+  ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
       random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
@@ -136,11 +140,12 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
         growData->atom);
+    std::vector<Atom> old_molecule = std::vector(molecule_atoms.begin(), molecule_atoms.end());
     energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
         component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
         system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
         system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW, system.forceField.cutOffCoulomb,
-        retraceData.atom);
+        old_molecule);
     correctionFactorDualCutOff =
         std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
                                  (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
@@ -149,18 +154,19 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
+
     Interactions::computeFrameworkMoleculeElectricFieldDifference(
-        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), growData->electricField,
-        retraceData.electricField, growData->atom, retraceData.atom);
+        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), new_electric_field,
+        old_electric_field, growData->atom, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, growData->electricField, retraceData.electricField,
-        growData->atom, retraceData.atom);
+        system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
+        growData->atom, old_molecule);
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, growData->electricField, retraceData.electricField, growData->atom, retraceData.atom);
+        system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
   }
 
   // Compute correction factor from the Fourier energy difference.
@@ -178,7 +184,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
 
     std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
-    std::copy(growData->electricField.begin(), growData->electricField.end(), electricFieldMolecule.begin());
+    std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
 
     // FIX
     std::size_t atomIndex = molecule.atomIndex;

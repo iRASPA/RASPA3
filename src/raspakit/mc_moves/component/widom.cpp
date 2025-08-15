@@ -62,7 +62,7 @@ std::pair<double, double> MC_Moves::WidomMove(RandomNumber& random, System& syst
 
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::system_clock::now();
-  std::optional<ChainData> growData = CBMC::growMoleculeSwapInsertion(
+  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
       random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
       system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule,

@@ -45,66 +45,15 @@ import connectivity_table;
 import intra_molecular_potentials;
 import bond_potential;
 
-// atoms is a recentered copy of the molecule (recentered around the starting bead)
-[[nodiscard]] std::optional<ChainData> CBMC::growFlexibleMoleculeSwapInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
-    std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, double scaling, bool groupId,
-    bool isFractional, std::size_t numberOfTrialDirections)
-{
-  std::size_t startingBead = components[selectedComponent].startingBead;
-  Atom firstBead = components[selectedComponent].atoms[startingBead];
-  firstBead.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
-  firstBead.groupId = groupId;
-  firstBead.isFractional = isFractional;
-  firstBead.setScaling(scaling);
 
-  std::optional<FirstBeadData> const firstBeadData = CBMC::growMoleculeMultipleFirstBeadSwapInsertion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, firstBead, numberOfTrialDirections);
-
-  if (!firstBeadData) return std::nullopt;
-
-  if (components[selectedComponent].atoms.size() == 1)
-  {
-    return ChainData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
-                              component.totalMass, component.componentId, component.definedAtoms.size()),
-                              {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
-  }
-
-  std::vector<Atom> molecule_atoms = components[selectedComponent].atoms;
-  molecule_atoms[startingBead] = firstBeadData->atom;
-  for(Atom &atom : molecule_atoms)
-  {
-    atom.moleculeId = static_cast<std::uint32_t>(selectedMolecule);
-    atom.groupId = groupId;
-    atom.isFractional = isFractional;
-    atom.setScaling(scaling);
-  }
-
-  std::optional<ChainData> const flexibleChainData = CBMC::growFlexibleMoleculeChainInsertion(
-      random, component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
-      moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, startingBead, molecule_atoms,
-      numberOfTrialDirections, selectedMolecule, scaling, groupId, isFractional, components, selectedComponent);
-
-  if (!flexibleChainData) return std::nullopt;
-
-  return ChainData(flexibleChainData->molecule, flexibleChainData->atom,
-                   firstBeadData->energies + flexibleChainData->energies,
-                   firstBeadData->RosenbluthWeight * flexibleChainData->RosenbluthWeight, 0.0);
-}
-
-[[nodiscard]] std::optional<ChainData> CBMC::growFlexibleMoleculeChainInsertion(
+[[nodiscard]] std::optional<ChainGrowData> CBMC::growFlexibleMoleculeChainInsertion(
     RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule_atoms, std::size_t numberOfTrialDirections,
-    std::size_t selectedMolecule, double scaling, bool groupId, bool isFractional,
-    const std::vector<Component> &components, std::size_t selectedComponent)
+    double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule_atoms,
+    std::size_t selectedMolecule, const std::vector<Component> &components, std::size_t selectedComponent,
+    std::size_t numberOfTrialDirections)
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
   std::vector<std::vector<Atom>> trialPositions(numberOfTrialDirections);
@@ -215,5 +164,5 @@ import bond_potential;
   // Recompute all the internal interactions
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
-  return ChainData({}, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
+  return ChainGrowData({}, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
 }

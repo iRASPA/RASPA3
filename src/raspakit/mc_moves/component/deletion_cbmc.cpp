@@ -74,7 +74,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
     // Retrace the molecule for the swap deletion using CBMC algorithm
     time_begin = std::chrono::system_clock::now();
-    ChainData retraceData = CBMC::retraceMoleculeSwapDeletion(
+    ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
         random, system.components[selectedComponent], system.hasExternalField, system.components, system.forceField,
         system.simulationBox, system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(),
         system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
@@ -113,18 +113,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     RunningEnergy polarizationDifference;
     if (system.forceField.computePolarization)
     {
+      std::vector<Atom> old_molecule = std::vector(molecule.begin(), molecule.end());
+      std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
+
       Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                     system.spanOfFrameworkAtoms(), {},
-                                                                    retraceData.electricField, {}, retraceData.atom);
+                                                                    old_electric_field, {}, old_molecule);
 
       Interactions::computeEwaldFourierElectricFieldDifference(system.eik_x, system.eik_y, system.eik_z, system.eik_xy,
                                                                system.fixedFrameworkStoredEik, system.storedEik,
                                                                system.totalEik, system.forceField, system.simulationBox,
-                                                               {}, retraceData.electricField, {}, retraceData.atom);
+                                                               {}, old_electric_field, {}, old_molecule);
 
       // Compute polarization energy difference
       polarizationDifference = Interactions::computePolarizationEnergyDifference(
-          system.forceField, {}, retraceData.electricField, {}, retraceData.atom);
+          system.forceField, {}, old_electric_field, {}, old_molecule);
     }
 
     // Calculate the correction factor for Ewald summation

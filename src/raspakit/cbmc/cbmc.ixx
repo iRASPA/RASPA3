@@ -32,7 +32,7 @@ import interpolation_energy_grid;
 export namespace CBMC
 {
 // insertion
-[[nodiscard]] std::optional<ChainData> growMoleculeSwapInsertion(
+[[nodiscard]] std::optional<ChainGrowData> growMoleculeSwapInsertion(
     RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
@@ -42,7 +42,7 @@ export namespace CBMC
     double scaling, bool groupId, bool isFractional, std::size_t numberOfTrialDirections) noexcept;
 
 // deletion
-[[nodiscard]] ChainData retraceMoleculeSwapDeletion(
+[[nodiscard]] ChainRetraceData retraceMoleculeSwapDeletion(
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
@@ -53,8 +53,8 @@ export namespace CBMC
     double scaling, std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion grow
-[[nodiscard]] std::optional<ChainData> growMoleculeReinsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+[[nodiscard]] std::optional<ChainGrowData> growMoleculeReinsertion(
+    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -64,7 +64,7 @@ export namespace CBMC
     std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion retrace
-[[nodiscard]] ChainData retraceMoleculeReinsertion(
+[[nodiscard]] ChainRetraceData retraceMoleculeReinsertion(
     RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
