@@ -6,7 +6,9 @@ module;
 #include <map>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <vector>
+#include <format>
 #endif
 
 export module simd_quatd;
@@ -106,6 +108,17 @@ export inline simd_quatd operator*(const simd_quatd& a, const simd_quatd& b)
       double3(a.r * b.ix + a.ix * b.r + a.iy * b.iz - a.iz * b.iy, a.r * b.iy - a.ix * b.iz + a.iy * b.r + a.iz * b.ix,
               a.r * b.iz + a.ix * b.iy - a.iy * b.ix + a.iz * b.r));
 }
+
+export template <>
+struct std::formatter<simd_quatd>: std::formatter<std::string_view>
+{
+  auto format(const simd_quatd& v, std::format_context& ctx) const
+  {
+    std::string temp{};
+    std::format_to(std::back_inserter(temp), "(({}, {}, {}), {})", v.ix, v.iy, v.iz, v.r);
+    return std::formatter<std::string_view>::format(temp, ctx);
+  }
+};
 
 export void to_json(nlohmann::json& j, const simd_quatd& q) { j = nlohmann::json{q.ix, q.iy, q.iz, q.r}; }
 

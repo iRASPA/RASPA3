@@ -13,6 +13,10 @@ module;
 #include <vector>
 #endif
 
+#include <malloc/_malloc.h>
+#include <_stdlib.h>
+#include <_printf.h>
+
 #define sqr(x) ((x) * (x))
 #define SIGN(a, b) ((b) >= 0.0 ? std::fabs(a) : -std::fabs(a))
 
@@ -27,6 +31,10 @@ extern "C"
 {
   void dsyev_(char* jobz, char* uplo, blas_int* n, double* a, blas_int* lda, double* w, double* work, blas_int* lwork,
               blas_int* info);
+
+  void dgesvd_( char* jobu, char* jobvt, blas_int* m, blas_int* n, double* a,
+               blas_int* lda, double* s, double* u, blas_int* ldu, double* vt, blas_int* ldvt,
+               double* work, blas_int* lwork, blas_int* info );
 }
 
 module double3x3;
@@ -345,6 +353,75 @@ simd_quatd double3x3::quaternion()
   }
   return q;
 }
+
+void print_matrix( char* desc, int m, int n, double* a, int lda ) {
+        int i, j;
+        printf( "\n %s\n", desc );
+        for( i = 0; i < m; i++ ) {
+                for( j = 0; j < n; j++ ) printf( " %6.2f", a[i+j*lda] );
+                printf( "\n" );
+        }
+}
+
+double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::vector<double3> &positions_A, double3 center_of_mass_B, std::vector<double3> &positions_B)
+{
+  double3x3 H{};
+
+  for(std::size_t i = 0; i < positions_A.size(); ++i)
+  {
+    double3 vec_i = positions_A[i] - center_of_mass_A;
+    double3 vec_j = positions_B[i] - center_of_mass_B;
+
+    H.ax += vec_i.x * vec_j.x;
+    H.ay += vec_i.x * vec_j.y;
+    H.az += vec_i.x * vec_j.z;
+
+    H.bx += vec_i.y * vec_j.x;
+    H.by += vec_i.y * vec_j.y;
+    H.bz += vec_i.y * vec_j.z;
+
+    H.cx += vec_i.z * vec_j.x;
+    H.cy += vec_i.z * vec_j.y;
+    H.cz += vec_i.z * vec_j.z;
+  }
+
+  blas_int m = 3, n = 3, lda = 3, ldu = 3, ldvt = 3, info, lwork;
+
+  char jobU = 'A';
+  char jobVT = 'A';
+  double wkopt;
+  /* Local arrays */
+  double s[3], u[9], vt[9];
+  std::vector<double> matrix = std::vector<double>{H.ax, H.ay, H.az, H.bx, H.by, H.bz, H.cx, H.cy, H.cz};
+
+  lwork = -1;
+  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, &wkopt, &lwork, &info );
+
+  lwork = static_cast<blas_int>(wkopt);
+  std::vector<double> work(lwork);
+  dgesvd_( &jobU, &jobVT, &m, &n, matrix.data(), &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork,  &info );
+
+  /* Check for convergence */
+  if( info > 0 ) 
+  {
+    printf( "The algorithm computing SVD failed to converge.\n" );
+  }
+
+  double3x3 sigma = double3x3(s[0], 0.0, 0.0, 0.0, s[1], 0.0, 0.0, 0.0, s[2]);
+  double3x3 matrix_u = double3x3(u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8]);
+  double3x3 matrix_vt = double3x3(vt[0], vt[1], vt[2], vt[3], vt[4], vt[5], vt[6], vt[7], vt[8]);
+
+  double3x3 result = matrix_vt.transpose() * matrix_u.transpose();
+
+  double determinant = result.determinant();
+  if(determinant < 0.0)
+  {
+    return matrix_vt.transpose() * double3x3(double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, -1.0)) * matrix_u.transpose();
+  }
+
+  return result;
+}
+
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec)
 {
