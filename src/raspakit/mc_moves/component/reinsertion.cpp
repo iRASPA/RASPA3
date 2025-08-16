@@ -78,9 +78,9 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   time_begin = std::chrono::system_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
   std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
-      random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
+      random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
+      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
       molecule_atoms, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
@@ -109,9 +109,9 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   // Retrace the old molecule configuration using CBMC retracing.
   time_begin = std::chrono::system_clock::now();
   ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, component, system.hasExternalField, system.components, system.forceField, system.simulationBox,
+      random, component, system.hasExternalField, system.forceField, system.simulationBox,
       system.interpolationGrids, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedComponent, selectedMolecule, molecule,
+      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule,
       molecule_atoms, growData->storedR, system.numberOfTrialDirections);
   time_end = std::chrono::system_clock::now();
 
@@ -186,14 +186,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
     std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
 
-    // FIX
-    std::size_t atomIndex = molecule.atomIndex;
-    std::size_t length = molecule.numberOfAtoms;
-
     molecule = growData->molecule;
-
-    molecule.atomIndex = atomIndex;
-    molecule.numberOfAtoms = length;
 
     if (system.forceField.useDualCutOff)
     {

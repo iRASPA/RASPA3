@@ -33,44 +33,42 @@ export namespace CBMC
 {
 // insertion
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeSwapInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, Component &component, bool hasExternalField,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, double cutOffFrameworkVDW,
-    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule,
+    double cutOffMoleculeVDW, double cutOffCoulomb, std::size_t selectedMolecule,
     double scaling, bool groupId, bool isFractional, std::size_t numberOfTrialDirections) noexcept;
 
 // deletion
 [[nodiscard]] ChainRetraceData retraceMoleculeSwapDeletion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, const Component &component, bool hasExternalField,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
-    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, std::span<Atom> molecule,
-    double scaling, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb, std::span<Atom> molecule_atoms,
+    std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion grow
 [[nodiscard]] std::optional<ChainGrowData> growMoleculeReinsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, Component &component, bool hasExternalField,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType,
-    double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffFrameworkVDW, double cutOffMoleculeVDW, double cutOffCoulomb,
+    Molecule &molecule, std::span<Atom> molecule_atoms, std::size_t numberOfTrialDirections) noexcept;
 
 // reinsertion retrace
 [[nodiscard]] ChainRetraceData retraceMoleculeReinsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const std::vector<Component> &components,
+    RandomNumber &random, const Component &component, bool hasExternalField,
     const ForceField &forceField, const SimulationBox &simulationBox,
     const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, Component::GrowType growType, 
     double cutOffFrameworkVDW, double cutOffMoleculeVDW,
-    double cutOffCoulomb, std::size_t selectedComponent, std::size_t selectedMolecule, Molecule &molecule,
-    std::span<Atom> molecule_atoms, double storedR, std::size_t numberOfTrialDirections) noexcept;
+    double cutOffCoulomb, Molecule &molecule, std::span<Atom> molecule_atoms,
+    double storedR, std::size_t numberOfTrialDirections) noexcept;
 }  // namespace CBMC

@@ -499,9 +499,9 @@ void System::createInitialMolecules()
           bool groupId = components[componentId].lambdaGC.computeDUdlambda;
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, components, forceField, simulationBox,
+              random, components[componentId], hasExternalField, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
+              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, 
               numberOfMoleculesPerComponent[componentId], 0.0, groupId, true, numberOfTrialDirections);
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
 
@@ -519,9 +519,9 @@ void System::createInitialMolecules()
         {
           Component::GrowType growType = components[componentId].growType;
           growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, components, forceField, simulationBox,
+              random, components[componentId], hasExternalField, forceField, simulationBox,
               interpolationGrids, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb, componentId,
+              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb,
               numberOfMoleculesPerComponent[componentId], 1.0, false, false, numberOfTrialDirections);
 
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);

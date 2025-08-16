@@ -52,7 +52,6 @@ import bond_potential;
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
     std::span<const Atom> moleculeAtomData, double beta, double cutOffFrameworkVDW, double cutOffMoleculeVDW,
     double cutOffCoulomb, std::size_t startingBead, std::vector<Atom> molecule_atoms,
-    std::size_t selectedMolecule, const std::vector<Component> &components, std::size_t selectedComponent,
     std::size_t numberOfTrialDirections)
 {
   std::size_t numberOfBeads = component.connectivityTable.numberOfBeads;
