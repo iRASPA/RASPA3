@@ -273,11 +273,11 @@ void MonteCarlo::performCycle()
       case SimulationStage::Uninitialized:
         break;
       case SimulationStage::Initialization:
-        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+        MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                     fractionalMoleculeSystem);
         break;
       case SimulationStage::Equilibration:
-        MC_Moves::performRandomMove(random, selectedSystem, selectedSecondSystem, selectedComponent,
+        MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                     fractionalMoleculeSystem);
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(

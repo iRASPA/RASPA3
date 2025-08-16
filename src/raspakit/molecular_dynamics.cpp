@@ -220,7 +220,7 @@ void MolecularDynamics::initialize()
       System& selectSecondSystem = systems[selectedSystemPair.second];
 
       std::size_t selectedComponent = selectedSystem.randomComponent(random);
-      MC_Moves::performRandomMove(random, selectedSystem, selectSecondSystem, selectedComponent,
+      MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectSecondSystem, selectedComponent,
                                   fractionalMoleculeSystem);
 
       for (System& system : systems)
