@@ -327,6 +327,7 @@ export struct System
   std::size_t moleculeIndexOfComponent(std::size_t selectedComponent, std::size_t selectedMolecule);
   std::span<Atom> spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
   const std::span<const Atom> spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule) const;
+  const std::span<const Atom> spanOfIntegerAtomsOfComponent(std::size_t selectedComponent) const;
   std::span<const Atom> spanOfFrameworkAtoms() const;
   std::span<Atom> spanOfFrameworkAtoms();
   std::span<const Atom> spanOfRigidFrameworkAtoms() const;

@@ -698,6 +698,21 @@ const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent
   return std::span(&atomData[index + numberOfFrameworkAtoms], size);
 }
 
+const std::span<const Atom> System::spanOfIntegerAtomsOfComponent(std::size_t selectedComponent) const
+{
+  std::size_t index{0};
+  for (std::size_t i = 0; i < selectedComponent; ++i)
+  {
+    std::size_t size = components[i].atoms.size();
+    index += size * numberOfMoleculesPerComponent[i];
+  }
+  std::size_t size = components[selectedComponent].atoms.size();
+  index += size * numberOfFractionalMoleculesPerComponent[selectedComponent];
+  std::size_t number_of_atoms = size * (numberOfMoleculesPerComponent[selectedComponent] - 
+                      numberOfFractionalMoleculesPerComponent[selectedComponent]);
+  return std::span(&atomData[index + numberOfFrameworkAtoms], number_of_atoms);
+}
+
 std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule)
 {
   std::size_t index{0};
@@ -3041,12 +3056,14 @@ void System::writeRestartFile()
 {
   nlohmann::json json;
 
-  json["simulationBox"] = simulationBox;
-  json["atom"] = spanOfMoleculeAtoms();
-  json["molecules"] = moleculeData;
+  for(std::size_t component_id = 0; component_id < components.size(); ++component_id)
+  {
+    const std::span<const Atom> atoms = spanOfIntegerAtomsOfComponent(component_id);
 
-  // use pretty print and indent of 2
-  // std::cout << std::setw(2) << j << std::endl;
+    std::vector<double3> positions = atoms | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
+    json[components[component_id].name] = positions;
+  }
+
   std::string fileNameString = std::format("output/restart_{}_{}.s{}.json", temperature, input_pressure, systemId);
   std::ofstream file(fileNameString);
   file << json.dump(2);
