@@ -34,7 +34,7 @@ TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
   Component c = TestFactories::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {40}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {40}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -100,7 +100,7 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
                            Atom(double3(-0.81649, 0.51275, 0.00000), 0.42380, 1.0, 0, 1, 0, false, false)},
                            {}, {}, 5, 21);
 
-  System system = System(0, forceField, box, 300.0, 1e4, 1.0, {}, {c}, {400}, 5);
+  System system = System(0, forceField, box, 300.0, 1e4, 1.0, {}, {c}, {}, {400}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 

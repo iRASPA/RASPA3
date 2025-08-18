@@ -117,8 +117,8 @@ export struct System
    */
   System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T, std::optional<double> P,
          double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
-         std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
-         const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
+         std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
+         std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
          std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
 
   System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
@@ -296,7 +296,7 @@ export struct System
   void addComponent(const Component &&component) noexcept(false);
 
   void createFrameworks();
-  void createInitialMolecules();
+  void createInitialMolecules(const std::vector<std::vector<double3>> &initialPositions);
 
   void checkCartesianPositions();
 
@@ -421,7 +421,6 @@ export struct System
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, System &s);
 
   void writeRestartFile();
-  void readRestartFile();
 
   std::string repr() const;
 };

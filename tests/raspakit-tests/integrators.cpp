@@ -84,7 +84,7 @@ TEST(integrators, Test_2_CO2_in_ITQ_29_2x2x2_inter)
   ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
   Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
   Component c = TestFactories::makeCO2(forceField, 0, false);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Molecule> moleculePositions(system.moleculeData);
 

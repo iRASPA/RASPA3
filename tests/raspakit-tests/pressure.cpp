@@ -35,7 +35,7 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_only_VDW)
   forceField.useCharge = false;
   forceField.omitEwaldFourier = true;
   Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
+  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -104,7 +104,7 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_no_fourier)
   forceField.EwaldAlpha = 0.265058;
   forceField.numberOfWaveVectors = int3(7, 7, 7);
   Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
+  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -178,7 +178,7 @@ TEST(MC_strain_tensor, Test_fixed_10_CO2_in_Box_inter_ewald)
   forceField.numberOfWaveVectors = int3(7, 7, 7);
 
   Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
+  System system = System(0, forceField, SimulationBox(24.0, 24.0, 24.0), 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -252,7 +252,7 @@ TEST(MC_strain_tensor, Test_20_CH4_25x25x25_LJ)
 
   ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, false);
   Component c = TestFactories::makeMethane(forceField, 0);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {20}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 
@@ -357,7 +357,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_25x25x25_LJ_Real)
   ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
   Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {1, 1}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {1, 1}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 
@@ -470,7 +470,7 @@ TEST(MC_strain_tensor, Test_20_Na_Cl_in_Box_25x25x25_strain_derivative)
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {20, 20}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 
@@ -634,7 +634,7 @@ TEST(MC_strain_tensor, Test_10_CO2_in_Box_inter)
        Atom(double3(0.0, 0.0, -1.149), 0.0, 1.0, 0, 4, 1, 0)},
       5, 21);
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {10}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {10}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 

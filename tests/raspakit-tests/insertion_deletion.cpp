@@ -27,7 +27,7 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
 {
   ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   Component c = TestFactories::makeMethane(forceField, 0);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {20}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 20uz);
   EXPECT_EQ(system.numberOfPseudoAtoms[0][2], 20uz);
@@ -50,7 +50,7 @@ TEST(insertion_deletion, CO2_number_of_molecules_per_component)
 {
   ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
   Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, std::nullopt, {c}, {3}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, std::nullopt, {c}, {}, {3}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -89,7 +89,7 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
   Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
   Component methane = TestFactories::makeMethane(forceField, 0);
   Component co2 = TestFactories::makeCO2(forceField, 1, true);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {5, 3}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 
@@ -168,7 +168,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
   Component methane = TestFactories::makeMethane(forceField, 0);
   Component co2 = TestFactories::makeCO2(forceField, 1, true);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {5, 3}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 

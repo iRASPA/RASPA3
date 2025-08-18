@@ -11,6 +11,7 @@ module;
 #include <numbers>
 #include <ostream>
 #include <vector>
+#include <span>
 #endif
 
 #include <malloc/_malloc.h>
@@ -363,7 +364,8 @@ void print_matrix( char* desc, int m, int n, double* a, int lda ) {
         }
 }
 
-double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::vector<double3> &positions_A, double3 center_of_mass_B, std::vector<double3> &positions_B)
+// https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
+double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B)
 {
   double3x3 H{};
 

@@ -302,4 +302,9 @@ struct std::formatter<double3>: std::formatter<std::string_view>
 
 export void to_json(nlohmann::json& j, const double3& a) { j = nlohmann::json{a.x, a.y, a.z}; }
 
-export void from_json(const nlohmann::json& j, double3& a) { j.get_to(a); }
+export void from_json(const nlohmann::json& j, double3& a) 
+{ 
+  std::array<double, 3> data;
+  j.get_to(data);
+  a = double3(data[0], data[1], data[2]);
+}

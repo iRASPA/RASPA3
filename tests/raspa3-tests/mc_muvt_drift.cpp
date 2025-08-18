@@ -80,7 +80,7 @@ TEST(MC_MUVT_DRIFT, insertion)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -168,7 +168,7 @@ TEST(MC_MUVT_DRIFT, insertionCBMC)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -256,7 +256,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -344,7 +344,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -432,7 +432,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_co2)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -520,7 +520,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_co2)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -608,7 +608,7 @@ TEST(MC_MUVT_DRIFT, insertionCFCMC_thermodynamic_integration_methane)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};
@@ -696,7 +696,7 @@ TEST(MC_MUVT_DRIFT, insertionCBCFCMC_thermodynamic_integration_methane)
        Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), -0.241, 1.0, 0, 9, 2, false, false)},
        {}, {}, 5, 21, probabilities_water, std::nullopt, false);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {10, 15, 8}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e5, 1.0, {f}, {co2, methane, water}, {}, {10, 15, 8}, 5);
 
   std::vector<System> systems{system};
   size_t numberOfCycles{1000};

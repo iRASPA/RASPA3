@@ -63,7 +63,7 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
                     connectivityTable, intraMolecularPotentials, 5, 21);
 
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {20}, 5);
+  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
 

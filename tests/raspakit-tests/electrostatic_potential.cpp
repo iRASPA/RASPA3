@@ -74,7 +74,7 @@ TEST(electrostatic_potential, Test_reference_system_1_four_ions)
                            {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {}, {c1, c2, c3, c4},
-                         {1, 1, 1, 1}, 5);
+      {}, {1, 1, 1, 1}, 5);
 
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
@@ -228,7 +228,7 @@ TEST(electrostatic_potential, Test_reference_system_1_framework_molecule)
                            {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {framework}, {c4},
-                         {1, 1, 1, 1}, 5);
+      {}, {1, 1, 1, 1}, 5);
 
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
@@ -342,7 +342,7 @@ TEST(electrostatic_potential, Test_reference_system_2_framework_molecule)
                            {}, {}, 5, 21);
 
   System system = System(0, forceField, SimulationBox(1000.0, 1000.0, 1000.0), 300.0, 1e4, 1.0, {framework}, {c3, c4},
-                         {1, 1, 1, 1}, 5);
+      {}, {1, 1, 1, 1}, 5);
 
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
@@ -437,7 +437,7 @@ TEST(electrostatic_potential, Test_2_CO2_in_ITQ_29_2x2x2)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
   Component c = TestFactories::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {1}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {1}, 5);
   system.forceField.EwaldAlpha = 0.25;
   system.forceField.numberOfWaveVectors = int3(8, 8, 8);
   system.forceField.omitEwaldFourier = true;

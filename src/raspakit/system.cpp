@@ -26,6 +26,7 @@ module;
 #include <string_view>
 #include <tuple>
 #include <vector>
+#include <ranges>
 #if defined(__has_include) && __has_include(<mdspan>)
 #include <mdspan>
 #endif
@@ -113,8 +114,9 @@ import mdspan;
  */
 System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T,
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
-               std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
-               const MCMoveProbabilities& systemProbabilities, std::optional<std::size_t> sampleMoviesEvery)
+               std::vector<std::vector<double3>> initialpositions,  std::vector<std::size_t> initialNumberOfMolecules, 
+               std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
+               std::optional<std::size_t> sampleMoviesEvery)
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -186,7 +188,7 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
   translationalDegreesOfFreedom = 0;
   rotationalDegreesOfFreedom = 0;
 
-  createInitialMolecules();
+  createInitialMolecules(initialpositions);
 
   equationOfState =
       EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
@@ -481,7 +483,7 @@ void System::checkMoleculeIds()
   std::print("check complete\n");
 }
 
-void System::createInitialMolecules()
+void System::createInitialMolecules(const std::vector<std::vector<double3>> &initialPositions)
 {
   // keep a fixed seed
   RandomNumber random(1200);
@@ -506,6 +508,45 @@ void System::createInitialMolecules()
         } while (!growData || growData->energies.potentialEnergy() > forceField.overlapCriteria);
 
         insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
+      }
+    }
+
+    // add atom position passed to 'createInitialMolecules'
+    if(componentId < initialPositions.size())
+    {
+      std::vector<double3> positions = initialPositions[componentId];
+      for(std::size_t i = 0; i < positions.size(); i += component.atoms.size())
+      {
+        std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());
+
+        // compute center of mass
+        double totalMass = 0.0;
+        double3 com(0.0, 0.0, 0.0);
+        for (std::size_t k = 0; k < position_view.size(); ++k)
+        {
+          double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
+          com += mass * position_view[k];
+          totalMass += mass;
+        }
+        com /= totalMass;
+
+        double3 reference_com = double3{0.0, 0.0, 0.0};
+        std::vector<double3> reference_positions = {};
+
+        // compute rotation matrix
+        double3x3 rotation_matrix = double3x3::computeRotationMatrix(reference_com, reference_positions, com, position_view);
+        simd_quatd orientation = rotation_matrix.quaternion();
+
+        Molecule molecule = Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());
+
+        // construct atoms
+        std::vector<Atom> molecule_atoms = components[componentId].atoms;
+        for (std::size_t k = 0; k < position_view.size(); ++k)
+        {
+          molecule_atoms[k].position =  position_view[k];
+        }
+
+        insertMolecule(componentId, molecule, molecule_atoms);
       }
     }
 
@@ -3067,53 +3108,6 @@ void System::writeRestartFile()
   std::string fileNameString = std::format("output/restart_{}_{}.s{}.json", temperature, input_pressure, systemId);
   std::ofstream file(fileNameString);
   file << json.dump(2);
-}
-
-void System::readRestartFile()
-{
-  std::string inputFile = std::format("restart.s{}.dat", systemId);
-  if (!std::filesystem::exists(inputFile))
-  {
-    throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", inputFile));
-  }
-
-  std::ifstream input(inputFile);
-
-  nlohmann::basic_json<nlohmann::raspa_map> parsed_data{};
-
-  try
-  {
-    parsed_data = nlohmann::json::parse(input);
-  }
-  catch (nlohmann::json::parse_error& ex)
-  {
-    std::cerr << "parse error at byte " << ex.byte << std::endl;
-  }
-
-  if (parsed_data.contains("SimulationType"))
-  {
-    simulationBox = parsed_data["simulationBox"];
-  }
-  std::vector<Atom> read_atom_data;
-  if (parsed_data.contains("atoms"))
-  {
-    read_atom_data = parsed_data["atoms"];
-  }
-
-  std::vector<Molecule> read_molecule_data;
-  if (parsed_data.contains("molecules"))
-  {
-    read_molecule_data = parsed_data["molecules"];
-  }
-
-  for (const Atom& atom : read_atom_data)
-  {
-    atomData.push_back(atom);
-  }
-  for (const Molecule& molecule : read_molecule_data)
-  {
-    moleculeData.push_back(molecule);
-  }
 }
 
 std::string System::repr() const { return std::string("system test"); }

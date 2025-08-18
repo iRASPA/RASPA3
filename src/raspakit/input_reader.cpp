@@ -367,6 +367,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     restartFromBinary = parsed_data["RestartFromBinaryFile"].get<bool>();
   }
 
+  if (parsed_data.contains("BinaryRestartFileName") && parsed_data["BinaryRestartFileName"].is_string())
+  {
+    restartFromBinaryFileName = parsed_data["BinaryRestartFileName"].get<std::string>();
+  }
+
+
   if (parsed_data.contains("RandomSeed") && parsed_data["RandomSeed"].is_number_unsigned())
   {
     randomSeed = parsed_data["RandomSeed"].get<unsigned long long>();
@@ -455,6 +461,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   std::vector<std::vector<std::size_t>> jsonCreateNumberOfMolecules(jsonNumberOfSystems,
                                                                     std::vector<std::size_t>(jsonNumberOfComponents));
 
+   std::vector<std::vector<std::vector<double3>>> jsonRestartFilePositions(jsonNumberOfSystems,
+                                                                std::vector<std::vector<double3>>(jsonNumberOfComponents, std::vector<double3>()));
+  
   // Parse component options
   if (parsed_data.contains("Components"))
   {
@@ -969,6 +978,40 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
       }
 
+      if (value.contains("RestartFileName") && value["RestartFileName"].is_string())
+      {
+        std::string restartFileName = value["RestartFileName"].get<std::string>();
+
+        if (!std::filesystem::exists(restartFileName))
+        {
+          throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", restartFileName));
+        }
+      
+        std::ifstream input_restart_file(restartFileName);
+      
+        nlohmann::basic_json<nlohmann::raspa_map> restart_data{};
+      
+        try
+        {
+          restart_data = nlohmann::json::parse(input_restart_file);
+
+        }
+        catch (nlohmann::json::parse_error& ex)
+        {
+          std::cerr << "parse error at byte " << ex.byte << std::endl;
+        }
+
+        for(std::size_t i = 0; i < jsonComponents[systemId].size(); ++i)
+        {
+          std::string component_name = jsonComponents[systemId][i].name;
+          if(restart_data.contains(component_name))
+          {
+            std::vector<double3> restart_positions = restart_data[component_name].get<std::vector<double3>>();
+            jsonRestartFilePositions[systemId][i] = restart_positions;
+          }
+        }
+      }
+
       if (caseInSensStringCompare(typeString, "Framework"))
       {
         // Parse framework options
@@ -1003,7 +1046,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         // create system
         systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
                                    jsonFrameworkComponents, jsonComponents[systemId],
-                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+                                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {
@@ -1030,7 +1073,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         SimulationBox simulationBox{boxLengths.x, boxLengths.y, boxLengths.z, boxAngles.x, boxAngles.y, boxAngles.z};
         systems[systemId] =
             System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {}, jsonComponents[systemId],
-                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+                jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
       }
       else
       {
@@ -1619,7 +1662,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "TimeStep",
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",
-    "MacroStateMaximumNumberOfMolecules"};
+    "MacroStateMaximumNumberOfMolecules",
+    "RestartFileName"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",

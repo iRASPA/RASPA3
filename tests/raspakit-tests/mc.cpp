@@ -32,7 +32,7 @@ TEST(MC, translation)
   Component methane = TestFactories::makeMethane(forceField, 0);
   Component co2 = TestFactories::makeCO2(forceField, 1, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {5, 3}, 5);
+  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   [[maybe_unused]] std::span<Atom> atomPositions = system.spanOfMoleculeAtoms();
 }
