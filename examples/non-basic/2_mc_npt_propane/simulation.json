@@ -9,7 +9,7 @@
     {
       "Type" : "Box",
       "BoxLengths" : [30.0, 30.0, 30.0],
-      "ExternalTemperature" : 300.0,
+      "ExternalTemperature" : 250.0,
       "ExternalPressure" : 1e6,
       "ChargeMethod" : "None",
       "VolumeMoveProbability" : 0.05
@@ -19,10 +19,11 @@
   "Components" : 
   [ 
     {
-      "Name" : "methane",
+      "Name" : "propane",
       "MoleculeDefinition" : "ExampleDefinitions",
-      "TranslationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 256
     }
   ]
