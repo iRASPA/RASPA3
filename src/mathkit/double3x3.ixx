@@ -250,6 +250,7 @@ export union double3x3
   */
 
   static double3x3 computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B);
+  static double3x3 computeRotationMatrix(double3 a, double3 b);
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const double3x3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, double3x3& vec);

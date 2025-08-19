@@ -1332,6 +1332,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.definedAtoms;
   archive << c.atoms;
 
+  archive << c.grownAtoms;
+
   archive << c.initialNumberOfMolecules;
 
   archive << c.lambdaGC;
@@ -1413,6 +1415,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.startingBead;
   archive >> c.definedAtoms;
   archive >> c.atoms;
+
+  archive >> c.grownAtoms;
 
   archive >> c.initialNumberOfMolecules;
 

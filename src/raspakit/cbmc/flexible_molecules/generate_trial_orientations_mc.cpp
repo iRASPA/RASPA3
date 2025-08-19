@@ -51,9 +51,29 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
 {
   std::vector<Atom> chain_atoms(molecule_atoms);
 
-  // calculate initial positions for the next beads
-  if(true)
+  // Calculate initial positions for the next beads
+  if(!component.grownAtoms.empty())
   {
+    // Restore from previous configuration stored in component
+    double3 last_bond_vector = chain_atoms[previousBead].position - chain_atoms[currentBead].position;
+    double3 v = component.grownAtoms[previousBead].position - component.grownAtoms[currentBead].position;
+
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(last_bond_vector, v);
+
+    for(std::size_t i = 0; i != nextBeads.size(); ++i)
+    {
+      std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, nextBeads[i]);
+
+      double3 va = component.grownAtoms[nextBeads[i]].position - component.grownAtoms[currentBead].position;
+
+      double3 vec = rotation_matrix * va;
+
+      chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + vec;
+    }
+  }
+  else
+  {
+    // Generate positions from scratch
     for(std::size_t i = 0; i != nextBeads.size(); ++i)
     {
       std::optional<BondPotential> bond = intraMolecularInteractions.findBondPotential(currentBead, nextBeads[i]);
@@ -67,10 +87,6 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
 
       chain_atoms[nextBeads[i]].position = chain_atoms[currentBead].position + bond_length * vec;
     }
-  }
-  else //restore from molecule cache
-  {
-    // TO BE DONE
   }
 
   std::size_t number_of_trials = 300;

@@ -207,10 +207,12 @@ export struct Component
   std::size_t startingBead{0};                          ///< Starting bead index for simulations.
   std::vector<std::pair<Atom, double>> definedAtoms{};  ///< List of defined atoms and their masses.
 
-  double3 inertiaVector{};         ///< Inertia vector of the component.
-  double3 inverseInertiaVector{};  ///< Inverse of the inertia vector.
-  Shape shapeType;                 ///< Shape type of the molecule.
-  std::vector<Atom> atoms{};       ///< List of atoms in the component.
+  double3 inertiaVector{};           ///< Inertia vector of the component.
+  double3 inverseInertiaVector{};    ///< Inverse of the inertia vector.
+  Shape shapeType;                   ///< Shape type of the molecule.
+  std::vector<Atom> atoms{};         ///< List of atoms in the component.
+  
+  std::vector<Atom> grownAtoms{};
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 

@@ -163,5 +163,8 @@ import bond_potential;
   // Recompute all the internal interactions
   RunningEnergy internal_energies = component.intraMolecularPotentials.computeInternalEnergies(chain_atoms);
 
+  // Copy this configuration so that it can be used as a starting point
+  component.grownAtoms = chain_atoms;
+
   return ChainGrowData({}, chain_atoms, chain_external_energies + internal_energies, chain_rosen_bluth_weight, 0.0);
 }
