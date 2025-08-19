@@ -32,12 +32,13 @@ BondPotential::BondPotential(std::array<std::size_t, 2> identifiers, BondType ty
                              std::vector<double> vector_parameters)
     : identifiers(identifiers), type(type)
 {
-  for (std::size_t i = 0; i < std::min(parameters.size(), maximumNumberOfBondParameters); ++i)
+  for (std::size_t i = 0; i < std::min(vector_parameters.size(), maximumNumberOfBondParameters); ++i)
   {
     parameters[i] = vector_parameters[i];
   }
   switch (type)
   {
+    case BondType::None:
     case BondType::Fixed:
       break;
     case BondType::Harmonic:
@@ -85,6 +86,8 @@ std::string BondPotential::print() const
 {
   switch (type)
   {
+    case BondType::None:
+      return std::format("{} - {} : NONE\n", identifiers[0], identifiers[1]);
     case BondType::Fixed:
       return std::format("{} - {} : FIXED\n", identifiers[0], identifiers[1]);
     case BondType::Harmonic:
@@ -134,6 +137,8 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
 
   switch (type)
   {
+    case BondType::None:
+      return 1.0;
     case BondType::Fixed:
       return parameters[0];
     case BondType::Harmonic:
@@ -280,6 +285,7 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
 
   switch (type)
   {
+    case BondType::None:
     case BondType::Fixed:
       return 0.0;
     case BondType::Harmonic:
@@ -374,7 +380,7 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
 {
   double temp, temp2;
   double r1, rri;
-  double U, DF;
+  double U{}, DF{};
   double3 du_dr, du_da, du_db;
   double3x3 strain_derivative;
 
@@ -384,7 +390,10 @@ std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEn
 
   switch (type)
   {
+    case BondType::None:
     case BondType::Fixed:
+      U = 0.0;
+      DF = 0.0;
       break;
     case BondType::Harmonic:
       // 0.5 * p0 * SQR(r - p1);

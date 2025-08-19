@@ -43,17 +43,18 @@ export const std::size_t maximumNumberOfBondParameters{4};
  * Specifies the type of bond potential to be used in simulations.
  */
 export enum class BondType : std::size_t {
-  Fixed = 0,
-  Harmonic = 1,
-  CoreShellSpring = 2,
-  Morse = 3,
-  LJ_12_6 = 4,
-  LennardJones = 5,
-  Buckingham = 6,
-  RestrainedHarmonic = 7,
-  Quartic = 8,
-  CFF_Quartic = 9,
-  MM3 = 10
+  None = 0,
+  Fixed = 1,
+  Harmonic = 2,
+  CoreShellSpring = 3,
+  Morse = 4,
+  LJ_12_6 = 5,
+  LennardJones = 6,
+  Buckingham = 7,
+  RestrainedHarmonic = 8,
+  Quartic = 9,
+  CFF_Quartic = 10,
+  MM3 = 11
 };
 
 /**
@@ -67,7 +68,7 @@ export struct BondPotential
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   std::array<std::size_t, 2> identifiers;                        ///< Identifiers of the two particles forming the bond.
-  BondType type;                                                 ///< The type of bond potential.
+  BondType type{ BondType::None };                                                 ///< The type of bond potential.
   std::array<double, maximumNumberOfBondParameters> parameters;  ///< Parameters associated with the bond potential.
 
   /**
@@ -75,7 +76,7 @@ export struct BondPotential
    *
    * Initializes a BondPotential object with Undefined bond type and zeroed bond IDs.
    */
-  BondPotential() : identifiers({0, 0}), type(BondType::Harmonic) {}
+  BondPotential() : identifiers({0, 0}), type(BondType::None) {}
 
   BondPotential(std::array<std::size_t, 2> identifiers, BondType type, std::vector<double> vector_parameters);
 
@@ -103,7 +104,7 @@ export struct BondPotential
    *
    * A static vector indicating the number of parameters needed for each bond type.
    */
-  static inline std::array<std::size_t, 11> numberOfBondParameters{1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
+  static inline std::array<std::size_t, 12> numberOfBondParameters{0, 1, 2, 1, 3, 2, 2, 3, 3, 4, 4, 2};
 
   /**
    * \brief Mapping of bond type strings to BondType enums.
@@ -111,6 +112,7 @@ export struct BondPotential
    * A static map that associates bond type names with their corresponding BondType enumeration values.
    */
   static inline std::map<std::string, BondType> definitionForString{
+      {"NONE", BondType::None},
       {"FIXED", BondType::Fixed},
       {"HARMONIC", BondType::Harmonic},
       {"CORE_SHELL_SPRING", BondType::CoreShellSpring},

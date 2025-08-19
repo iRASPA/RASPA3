@@ -621,7 +621,8 @@ std::string Component::printStatus(const ForceField &forceField) const
     std::print(stream, "    connectivity:\n");
     std::print(stream, "{}\n", connectivityTable.print("        "));
 
-    std::print(stream, "    number of bond potentials: {}\n", intraMolecularPotentials.bonds.size());
+    std::size_t number_of_total_bonds = connectivityTable.findAllBonds().size();
+    std::print(stream, "    number of bond potentials: {} (out of {})\n", intraMolecularPotentials.bonds.size(), number_of_total_bonds);
     for (std::size_t i = 0; i < intraMolecularPotentials.bonds.size(); ++i)
     {
       std::print(stream, "        {}", intraMolecularPotentials.bonds[i].print());
@@ -640,7 +641,8 @@ std::string Component::printStatus(const ForceField &forceField) const
 
     if(!intraMolecularPotentials.bends.empty())
     {
-      std::print(stream, "    number of bend potentials: {}\n", intraMolecularPotentials.bends.size());
+      std::size_t number_of_total_bends = connectivityTable.findAllBends().size();
+      std::print(stream, "    number of bend potentials: {} (out of {})\n", intraMolecularPotentials.bends.size(), number_of_total_bends);
       for (std::size_t i = 0; i < intraMolecularPotentials.bends.size(); ++i)
       {
         std::print(stream, "        {}", intraMolecularPotentials.bends[i].print());
@@ -670,7 +672,8 @@ std::string Component::printStatus(const ForceField &forceField) const
 
     if(!intraMolecularPotentials.torsions.empty())
     {
-      std::print(stream, "    number of torsion potentials: {}\n", intraMolecularPotentials.torsions.size());
+      std::size_t number_of_total_torsions = connectivityTable.findAllTorsions().size();
+      std::print(stream, "    number of torsion potentials: {} (out of {})\n", intraMolecularPotentials.torsions.size(), number_of_total_torsions);
       for (std::size_t i = 0; i < intraMolecularPotentials.torsions.size(); ++i)
       {
         std::print(stream, "        {}", intraMolecularPotentials.torsions[i].print());
@@ -1049,6 +1052,11 @@ std::vector<BondPotential> Component::readBondPotentials(const ForceField &force
         throw std::runtime_error(std::format("Error in Bond-potential ({}): {}\n", item.dump(), e.what()));
       }
     }
+  }
+
+  if(found_bonds.size() != bond_potentials.size())
+  {
+    throw std::runtime_error(std::format("Error in Bond-potential: not all bond-potentials defined ({} missing)\n", found_bonds.size() - bond_potentials.size()));
   }
 
   return bond_potentials;
