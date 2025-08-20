@@ -58,7 +58,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
     double3 last_bond_vector = chain_atoms[previousBead].position - chain_atoms[currentBead].position;
     double3 v = component.grownAtoms[previousBead].position - component.grownAtoms[currentBead].position;
 
-    double3x3 rotation_matrix = double3x3::computeRotationMatrix(last_bond_vector, v);
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(v, last_bond_vector);
 
     for(std::size_t i = 0; i != nextBeads.size(); ++i)
     {
@@ -89,7 +89,7 @@ std::vector<Atom> CBMC::generateTrialOrientationsMonteCarloScheme(RandomNumber &
     }
   }
 
-  std::size_t number_of_trials = 300;
+  std::size_t number_of_trials = 600;
 
   std::vector<double> move_probabilities{};
   if( intraMolecularInteractions.bends.size() == 1 )

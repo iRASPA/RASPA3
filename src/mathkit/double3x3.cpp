@@ -365,6 +365,7 @@ void print_matrix( char* desc, int m, int n, double* a, int lda ) {
 }
 
 // https://igl.ethz.ch/projects/ARAP/svd_rot.pdf
+// compute the rotation matrix to map set 'A' onto set 'B'
 double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<double3> positions_A, double3 center_of_mass_B, std::span<double3> positions_B)
 {
   double3x3 H{};
@@ -375,15 +376,15 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
     double3 vec_j = positions_B[i] - center_of_mass_B;
 
     H.ax += vec_i.x * vec_j.x;
-    H.ay += vec_i.x * vec_j.y;
-    H.az += vec_i.x * vec_j.z;
+    H.ay += vec_i.y * vec_j.x;
+    H.az += vec_i.z * vec_j.x;
 
-    H.bx += vec_i.y * vec_j.x;
+    H.bx += vec_i.x * vec_j.y;
     H.by += vec_i.y * vec_j.y;
-    H.bz += vec_i.y * vec_j.z;
+    H.bz += vec_i.z * vec_j.y;
 
-    H.cx += vec_i.z * vec_j.x;
-    H.cy += vec_i.z * vec_j.y;
+    H.cx += vec_i.x * vec_j.z;
+    H.cy += vec_i.y * vec_j.z;
     H.cz += vec_i.z * vec_j.z;
   }
 
@@ -423,20 +424,21 @@ double3x3 double3x3::computeRotationMatrix(double3 center_of_mass_A, std::span<d
   return result;
 }
 
+// compute the rotation matrix to map 'vec_i' onto 'vec_j'
 double3x3 double3x3::computeRotationMatrix(double3 vec_i, double3 vec_j)
 {
   double3x3 H{};
 
   H.ax = vec_i.x * vec_j.x;
-  H.ay = vec_i.x * vec_j.y;
-  H.az = vec_i.x * vec_j.z;
+  H.ay = vec_i.y * vec_j.x;
+  H.az = vec_i.z * vec_j.x;
 
-  H.bx = vec_i.y * vec_j.x;
+  H.bx = vec_i.x * vec_j.y;
   H.by = vec_i.y * vec_j.y;
-  H.bz = vec_i.y * vec_j.z;
+  H.bz = vec_i.z * vec_j.y;
 
-  H.cx = vec_i.z * vec_j.x;
-  H.cy = vec_i.z * vec_j.y;
+  H.cx = vec_i.x * vec_j.z;
+  H.cy = vec_i.y * vec_j.z;
   H.cz = vec_i.z * vec_j.z;
   
 

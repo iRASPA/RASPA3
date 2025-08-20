@@ -58,9 +58,10 @@ TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
       reference_positions[j] = c.atoms[j].position;
     }
 
-    double3x3 R = double3x3::computeRotationMatrix(double3{0.0, 0.0, 0.0}, reference_positions, system.moleculeData[i].centerOfMassPosition, positions);
+    // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions, double3{0.0, 0.0, 0.0}, reference_positions);
 
-    simd_quatd computed_quaternion = R.quaternion();
+    simd_quatd computed_quaternion = rotation_matrix.quaternion();
 
     double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse( computed_quaternion);
 
@@ -124,9 +125,10 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
       reference_positions[j] = c.atoms[j].position;
     }
 
-    double3x3 R = double3x3::computeRotationMatrix(double3{0.0, 0.0, 0.0}, reference_positions, system.moleculeData[i].centerOfMassPosition, positions);
+    // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(system.moleculeData[i].centerOfMassPosition, positions, double3{0.0, 0.0, 0.0}, reference_positions);
 
-    simd_quatd computed_quaternion = R.quaternion();
+    simd_quatd computed_quaternion = rotation_matrix.quaternion();
 
     double3x3 finalRotationMatrix = double3x3::buildRotationMatrixInverse( computed_quaternion );
 

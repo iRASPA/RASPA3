@@ -533,8 +533,8 @@ void System::createInitialMolecules(const std::vector<std::vector<double3>> &ini
         double3 reference_com = double3{0.0, 0.0, 0.0};
         std::vector<double3> reference_positions = {};
 
-        // compute rotation matrix
-        double3x3 rotation_matrix = double3x3::computeRotationMatrix(reference_com, reference_positions, com, position_view);
+        // compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
+        double3x3 rotation_matrix = double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
         simd_quatd orientation = rotation_matrix.quaternion();
 
         Molecule molecule = Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());

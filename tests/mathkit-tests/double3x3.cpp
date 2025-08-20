@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <optional>
 
 import double3;
 import double4;
@@ -76,7 +77,7 @@ TEST(double3x3, Test_quaternion)
                  mass[4] * positions[4]) /
                 (1.0 + 0.1 + 4.5 + 0.2 + 1.5);
 
-  std::cout << "center of mass: " << com.x << ", " << com.y << ", " << com.z << std::endl;
+  //std::cout << "center of mass: " << com.x << ", " << com.y << ", " << com.z << std::endl;
 
   // https://faculty.sites.iastate.edu/jia/files/inline-files/homogeneous-transform.pdf
   simd_quatd q = random.randomSimdQuatd();
@@ -87,7 +88,7 @@ TEST(double3x3, Test_quaternion)
     for (const double3 &pos : positions)
     {
       double3 pnew = rotationMatrix * (pos - origin) + origin + com_position;
-      std::cout << "Correct generated positions " << pnew.x << ", " << pnew.y << ", " << pnew.z << std::endl;
+      //std::cout << "Correct generated positions " << pnew.x << ", " << pnew.y << ", " << pnew.z << std::endl;
     }
     std::cout << std::endl;
 
@@ -98,7 +99,7 @@ TEST(double3x3, Test_quaternion)
     for (const double3 &pos : positions)
     {
       double4 pnew2 = m * double4(pos.x, pos.y, pos.z, 1.0);
-      std::cout << "Matrix: " << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
+      //std::cout << "Matrix: " << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
     }
     std::cout << std::endl;
 
@@ -109,9 +110,9 @@ TEST(double3x3, Test_quaternion)
     {
       double3 pnew2 =
           rotationMatrix * (pos - neworigin) + neworigin + rotationMatrix * (neworigin - origin) - (neworigin - origin);
-      std::cout << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
+      //std::cout << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
   {
     // double4x4 translation1 =
@@ -123,8 +124,26 @@ TEST(double3x3, Test_quaternion)
     for (const double3 &pos : positions)
     {
       double3 pnew2 = rotationMatrix * (pos - com) + com + t;
-      std::cout << "com: " << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
+      //std::cout << "com: " << pnew2.x << ", " << pnew2.y << ", " << pnew2.z << std::endl;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
+  }
+}
+
+TEST(double3x3, Test_rotation_matrix_from_svd)
+{
+  RandomNumber random(std::nullopt);
+
+  for(std::size_t i = 0; i < 10000; ++i)
+  {
+    double3 a = random.randomVectorOnUnitSphere();
+    double3 b = random.randomVectorOnUnitSphere();
+    double3x3 rotation_matrix = double3x3::computeRotationMatrix(a, b);
+
+    double3 c = rotation_matrix * a;
+
+    EXPECT_NEAR(c.x, b.x, 1e-6);
+    EXPECT_NEAR(c.y, b.y, 1e-6);
+    EXPECT_NEAR(c.z, b.z, 1e-6);
   }
 }
