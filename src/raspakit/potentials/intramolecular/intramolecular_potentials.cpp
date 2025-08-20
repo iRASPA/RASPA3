@@ -103,6 +103,22 @@ RunningEnergy Potentials::IntraMolecularPotentials::calculateBendSmallMCEnergies
   return energies;
 }
 
+double Potentials::IntraMolecularPotentials::calculateTorsionEnergies(const std::span<Atom> atoms) const
+{
+  double energy{};
+
+  for(const TorsionPotential &torsion : torsions)
+  {
+    std::size_t A = torsion.identifiers[0];
+    std::size_t B = torsion.identifiers[1];
+    std::size_t C = torsion.identifiers[2];
+    std::size_t D = torsion.identifiers[3];
+    energy += torsion.calculateEnergy(atoms[A].position, atoms[B].position, atoms[C].position, atoms[D].position);
+  }
+
+  return energy;
+}
+
 RunningEnergy Potentials::IntraMolecularPotentials::computeInternalEnergies(const std::span<const Atom> atoms) const
 {
   RunningEnergy energies;

@@ -62,6 +62,8 @@ struct IntraMolecularPotentials
   RunningEnergy calculateBondSmallMCEnergies(const std::span<Atom> atoms) const;
   RunningEnergy calculateBendSmallMCEnergies(const std::span<Atom> atoms) const;
 
+  double calculateTorsionEnergies(const std::span<Atom> atoms) const;
+
   RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
   RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;

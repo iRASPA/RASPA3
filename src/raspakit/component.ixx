@@ -213,8 +213,6 @@ export struct Component
   std::vector<Atom> atoms{};         ///< List of atoms in the component.
   
   std::vector<Atom> grownAtoms{};
-  std::size_t numberOfTrialDirections{ 10 };
-  std::size_t numberOfTorsionTrialDirections{ 100 };
 
   std::size_t initialNumberOfMolecules{0};  ///< Initial number of molecules in the component.
 

@@ -2023,7 +2023,19 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
                                                         span_molecules, spanOfMoleculeAtoms());
 
     pressureInfo.first.intraComponentEnergies[i].bond += runningIntraEnergy.bond;
+    pressureInfo.first.intraComponentEnergies[i].ureyBradley += runningIntraEnergy.ureyBradley;
     pressureInfo.first.intraComponentEnergies[i].bend += runningIntraEnergy.bend;
+    pressureInfo.first.intraComponentEnergies[i].inversionBend += runningIntraEnergy.inversionBend;
+    pressureInfo.first.intraComponentEnergies[i].outOfPlaneBend += runningIntraEnergy.outOfPlaneBend;
+    pressureInfo.first.intraComponentEnergies[i].torsion += runningIntraEnergy.torsion;
+    pressureInfo.first.intraComponentEnergies[i].improperTorsion += runningIntraEnergy.improperTorsion;
+    pressureInfo.first.intraComponentEnergies[i].bondBond += runningIntraEnergy.bondBond;
+    pressureInfo.first.intraComponentEnergies[i].bondBend += runningIntraEnergy.bondBend;
+    pressureInfo.first.intraComponentEnergies[i].bondTorsion += runningIntraEnergy.bondTorsion;
+    pressureInfo.first.intraComponentEnergies[i].bendBend += runningIntraEnergy.bendBend;
+    pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
+    pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
+    pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
 
     molecule_index += numberOfMoleculesPerComponent[i];
   }

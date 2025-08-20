@@ -61,7 +61,9 @@ import bond_potential;
   std::vector<std::size_t> beads_already_placed{startingBead};
   const Atom first_bead = molecule_atoms[startingBead];
 
+  std::size_t numberOfTorsionTrialDirections{ 100 };
   double chain_rosen_bluth_weight = 1.0;
+  std::vector<double> RosenBluthWeightTorsion(numberOfTrialDirections, 1.0);
   RunningEnergy chain_external_energies{};
 
   do
@@ -103,22 +105,52 @@ import bond_potential;
           random, beta, component, chain_atoms, previous_bead.value(), current_bead, nextBeads, numberOfTrialDirections,
           intraMolecularPotentials);
 
+
       // Rotate around the last bond-vector to obtain the other trial-orientations
       double3 last_bond_vector =
           (chain_atoms[previous_bead.value()].position - chain_atoms[current_bead].position).normalized();
 
       for (std::size_t i = 0; i != numberOfTrialDirections; ++i)
       {
-        double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+        std::vector<std::pair<std::vector<Atom>, double>> torsion_orientations(numberOfTorsionTrialDirections);
 
-        std::vector<Atom> rotated_atoms = trial_orientations;
-        for(Atom & rotated_atom : rotated_atoms)
+        for(std::size_t j = 0; j != numberOfTorsionTrialDirections; ++j)
         {
-          rotated_atom.position = chain_atoms[current_bead].position +
-              last_bond_vector.rotateAroundAxis(rotated_atom.position - chain_atoms[current_bead].position, random_angle);
+          double random_angle = (2.0 * random.uniform() - 1.0) * std::numbers::pi;
+
+          std::vector<Atom> rotated_atoms = trial_orientations;
+          for(Atom & rotated_atom : rotated_atoms)
+          {
+            rotated_atom.position = chain_atoms[current_bead].position +
+                last_bond_vector.rotateAroundAxis(rotated_atom.position - chain_atoms[current_bead].position, random_angle);
+          }
+
+          for (std::size_t k = 0; k != nextBeads.size(); ++k)
+          {
+            std::size_t index = nextBeads[k];
+            chain_atoms[index] = rotated_atoms[k];
+          }
+
+          double torsion_energy = intraMolecularPotentials.calculateTorsionEnergies(chain_atoms);
+
+          torsion_orientations[j] = {rotated_atoms, torsion_energy};
         }
 
-        trialPositions[i] = rotated_atoms;
+        std::vector<double> logTorsionBoltmannFactors{};
+        logTorsionBoltmannFactors.reserve(numberOfTorsionTrialDirections);
+        std::transform(torsion_orientations.begin(), torsion_orientations.end(), std::back_inserter(logTorsionBoltmannFactors),
+                       [&](const std::pair<std::vector<Atom>, double> &v)
+                       { return -beta * std::get<1>(v); });
+
+        std::size_t selected_torsion = CBMC::selectTrialPosition(random, logTorsionBoltmannFactors);
+
+        trialPositions[i] = torsion_orientations[selected_torsion].first;
+
+        double rosen_bluth_weight_torsion = std::accumulate(logTorsionBoltmannFactors.begin(), logTorsionBoltmannFactors.end(), 0.0,
+                                                    [](const double &acc, const double &logTorsionBoltmannFactor)
+                                                    { return acc + std::exp(logTorsionBoltmannFactor); });
+
+        RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrialDirections);
       }
     }
 
@@ -131,6 +163,7 @@ import bond_potential;
     if (externalEnergies.empty()) return std::nullopt;
 
     std::vector<double> logBoltmannFactors{};
+    logBoltmannFactors.reserve(numberOfTrialDirections);
     std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
                    [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
@@ -143,7 +176,7 @@ import bond_potential;
 
     if (rosen_bluth_weight < forceField.minimumRosenbluthFactor) return std::nullopt;
 
-    chain_rosen_bluth_weight *= rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
+    chain_rosen_bluth_weight *= RosenBluthWeightTorsion[selected] * rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
 
     const std::vector<Atom> &selected_trial_atoms = externalEnergies[selected].first;
     chain_external_energies += externalEnergies[selected].second;
