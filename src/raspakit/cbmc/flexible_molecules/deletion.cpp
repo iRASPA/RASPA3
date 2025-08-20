@@ -136,19 +136,20 @@ import bond_potential;
           torsion_orientations[j] = {rotated_atoms, torsion_energy};
         }
 
-        std::vector<double> logTorsionBoltmannFactors{};
-        logTorsionBoltmannFactors.reserve(numberOfTorsionTrialDirections);
-        std::transform(torsion_orientations.begin(), torsion_orientations.end(), std::back_inserter(logTorsionBoltmannFactors),
+        std::vector<double> logTorsionBoltzmannFactors{};
+        logTorsionBoltzmannFactors.reserve(numberOfTorsionTrialDirections);
+        std::transform(torsion_orientations.begin(), torsion_orientations.end(), std::back_inserter(logTorsionBoltzmannFactors),
                        [&](const std::pair<std::vector<Atom>, double> &v)
                        { return -beta * std::get<1>(v); });
 
-        double rosen_bluth_weight_torsion = std::accumulate(logTorsionBoltmannFactors.begin(), logTorsionBoltmannFactors.end(), 0.0,
-                                                    [](const double &acc, const double &logTorsionBoltmannFactor)
-                                                    { return acc + std::exp(logTorsionBoltmannFactor); });
+        std::size_t selected_torsion = (i == 0) ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltzmannFactors);
+
+        double rosen_bluth_weight_torsion = std::accumulate(logTorsionBoltzmannFactors.begin(), logTorsionBoltzmannFactors.end(), 0.0,
+                                                    [](const double &acc, const double &logTorsionBoltzmannFactor)
+                                                    { return acc + std::exp(logTorsionBoltzmannFactor); });
 
         RosenBluthWeightTorsion[i] = rosen_bluth_weight_torsion / static_cast<double>(numberOfTorsionTrialDirections);
      
-        std::size_t selected_torsion = (i == 0) ? 0 : CBMC::selectTrialPosition(random, logTorsionBoltmannFactors);
 
         trialPositions[i] = torsion_orientations[selected_torsion].first;
       }
@@ -160,17 +161,17 @@ import bond_potential;
             component, hasExternalField, forceField, simulationBox, interpolationGrids, framework, frameworkAtomData,
             moleculeAtomData, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, trialPositions, -1);
 
-    std::vector<double> logBoltmannFactors{};
-    logBoltmannFactors.reserve(numberOfTrialDirections);
-    std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltmannFactors),
+    std::vector<double> logBoltzmannFactors{};
+    logBoltzmannFactors.reserve(numberOfTrialDirections);
+    std::transform(externalEnergies.begin(), externalEnergies.end(), std::back_inserter(logBoltzmannFactors),
                    [&](const std::pair<std::vector<Atom>, RunningEnergy> &v)
                    { return -beta * std::get<1>(v).potentialEnergy(); });
 
     std::size_t selected = 0;
 
-    double rosen_bluth_weight = std::accumulate(logBoltmannFactors.begin(), logBoltmannFactors.end(), 0.0,
-                                                [](const double &acc, const double &logBoltmannFactor)
-                                                { return acc + std::exp(logBoltmannFactor); });
+    double rosen_bluth_weight = std::accumulate(logBoltzmannFactors.begin(), logBoltzmannFactors.end(), 0.0,
+                                                [](const double &acc, const double &logBoltzmannFactor)
+                                                { return acc + std::exp(logBoltzmannFactor); });
 
     chain_rosen_bluth_weight *= RosenBluthWeightTorsion[selected] * rosen_bluth_weight / static_cast<double>(numberOfTrialDirections);
 
